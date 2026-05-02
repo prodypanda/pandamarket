@@ -5,7 +5,7 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import { ZodError, ZodSchema } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import { verifyAccessToken } from '../utils/jwt';
 import { logger, childLogger } from '../utils/logger';
 import {
@@ -209,7 +209,7 @@ export const apiRateLimit = rateLimit({
   keyGenerator: (req) => {
     if (req.user?.id) return `u:${req.user.id}`;
     if (req.apiKey?.id) return `k:${req.apiKey.id}`;
-    return ipKeyGenerator(req.ip ?? '');
+    return req.ip ?? 'unknown';
   },
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many requests' } },
 });

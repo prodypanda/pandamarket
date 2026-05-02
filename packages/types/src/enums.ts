@@ -157,3 +157,16 @@ export enum AiJobStatus {
   Completed = 'completed',
   Failed = 'failed',
 }
+
+// =====================================================
+// API Keys
+// =====================================================
+
+export enum ApiKeyScope {
+  ReadProducts = 'read:products',
+  WriteProducts = 'write:products',
+  ReadOrders = 'read:orders',
+  WriteOrders = 'write:orders',
+  ReadCustomers = 'read:customers',
+  FullAccess = 'full_access',
+}

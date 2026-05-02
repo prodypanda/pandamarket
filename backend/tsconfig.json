@@ -5,7 +5,6 @@
     "moduleResolution": "Node",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -27,6 +26,6 @@
       "@pandamarket/types": ["../packages/types/src/index.ts"]
     }
   },
-  "include": ["src/**/*", "data/**/*"],
+  "include": ["src/**/*", "data/**/*", "../packages/types/src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

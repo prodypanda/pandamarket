@@ -6,6 +6,7 @@
 import {
   AiJobStatus,
   AiJobType,
+  ApiKeyScope,
   MandatStatus,
   MandatUploader,
   OrderStatus,
@@ -280,13 +281,7 @@ export interface IReport {
 // API Keys
 // =====================================================
 
-export type ApiKeyScope =
-  | 'products:read'
-  | 'products:write'
-  | 'orders:read'
-  | 'orders:write'
-  | 'stock:read'
-  | 'stock:write';
+// ApiKeyScope is now imported from enums.ts above and re-exported via index.ts
 
 export interface IApiKey {
   id: string;

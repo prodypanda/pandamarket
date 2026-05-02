@@ -2,7 +2,7 @@
  * AuthService — registration, login, refresh, password handling.
  */
 
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { query, transaction } from '../db/pool';
 import {
   PdAuthenticationError,
