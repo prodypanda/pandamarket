@@ -1,0 +1,73 @@
+# =====================================================
+# PandaMarket - Caddy Reverse Proxy Configuration
+# =====================================================
+# Production: pandamarket.tn (wildcard SSL)
+# Local dev:  pandamarket.local (use /etc/hosts)
+# =====================================================
+
+{
+    # Global options
+    email admin@pandamarket.tn
+    # Allow on-demand TLS for vendor custom domains
+    on_demand_tls {
+        ask http://localhost:9000/api/pd/internal/tls-allowed
+        interval 2m
+        burst 5
+    }
+}
+
+# ----------------------------------------------------
+# Hub Central
+# ----------------------------------------------------
+pandamarket.tn, www.pandamarket.tn {
+    reverse_proxy localhost:3000
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# ----------------------------------------------------
+# Admin Panel
+# ----------------------------------------------------
+admin.pandamarket.tn {
+    reverse_proxy localhost:3000
+    encode gzip
+}
+
+# ----------------------------------------------------
+# Backend API
+# ----------------------------------------------------
+api.pandamarket.tn {
+    reverse_proxy localhost:9000
+    encode gzip
+}
+
+# ----------------------------------------------------
+# Search (Meilisearch - read-only public key)
+# ----------------------------------------------------
+search.pandamarket.tn {
+    reverse_proxy localhost:7700
+    encode gzip
+}
+
+# ----------------------------------------------------
+# Wildcard - all vendor subdomains (boutique.pandamarket.tn)
+# ----------------------------------------------------
+*.pandamarket.tn {
+    reverse_proxy localhost:3000
+    encode gzip
+}
+
+# ----------------------------------------------------
+# Custom vendor domains (on-demand TLS)
+# ----------------------------------------------------
+:443 {
+    tls {
+        on_demand
+    }
+    reverse_proxy localhost:3000
+}
