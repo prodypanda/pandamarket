@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Star, Heart, Shield, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Star, Heart, Shield, ArrowLeft } from 'lucide-react';
+import { AddToCartButton } from '../../../../../components/store/AddToCartButton';
+import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
 
 interface Product {
   id: string;
@@ -81,6 +84,42 @@ function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
 }
 
+/**
+ * Dynamic SEO metadata for store product pages.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ storeHost: string; slug: string }>;
+}): Promise<Metadata> {
+  const { storeHost, slug } = await params;
+  const store = await getStoreByHost(decodeURIComponent(storeHost));
+  if (!store) return { title: 'Produit introuvable' };
+
+  const product = await getProduct(slug, store.id);
+  if (!product) return { title: 'Produit introuvable' };
+
+  const imageUrl = product.images?.[0]?.url;
+  const description = product.description?.slice(0, 160)
+    || `Achetez ${product.title} chez ${store.name} — ${formatPrice(product.price)}`;
+
+  return {
+    title: `${product.title} — ${store.name}`,
+    description,
+    openGraph: {
+      title: product.title,
+      description,
+      type: 'website',
+      ...(imageUrl ? { images: [{ url: imageUrl, width: 800, height: 800, alt: product.title }] } : {}),
+    },
+    twitter: {
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title: `${product.title} — ${store.name}`,
+      description,
+    },
+  };
+}
+
 export default async function StoreProductPage({
   params,
 }: {
@@ -123,13 +162,16 @@ export default async function StoreProductPage({
                 </Link>
               )}
             </div>
-            <Link
-              href={`/store/${storeHost}`}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Retour à la boutique
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/store/${storeHost}`}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Retour à la boutique
+              </Link>
+              <StoreCartIcon storeHost={storeHost} storeId={store.id} primaryColor={primaryColor} />
+            </div>
           </div>
         </div>
       </header>
@@ -242,14 +284,18 @@ export default async function StoreProductPage({
 
             {/* Add to Cart */}
             <div className="flex items-center gap-3 mb-6">
-              <button
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: primaryColor }}
-                disabled={product.inventory_quantity === 0}
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Ajouter au panier
-              </button>
+              <AddToCartButton
+                product={{
+                  id: product.id,
+                  title: product.title,
+                  price: product.price,
+                  store_id: store.id,
+                  store_name: store.name,
+                  image_url: mainImage || null,
+                  inventory_quantity: product.inventory_quantity,
+                }}
+                primaryColor={primaryColor}
+              />
               <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
                 <Heart className="w-5 h-5 text-gray-600" />
               </button>

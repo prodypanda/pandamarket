@@ -1,19 +1,203 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
+# PandaMarket CI/CD Pipeline
+# ─────────────────────────────────────────────────────────────────
+# Stages: lint → test → security → build
+# Runs on merge requests and pushes to main/develop branches.
+
 stages:
-- test
-- secret-detection
-sast:
-  stage: test
-include:
-- template: Security/SAST.gitlab-ci.yml
-- template: Security/Secret-Detection.gitlab-ci.yml
+  - lint
+  - test
+  - security
+  - build
+  - e2e
+
+# ─── Global defaults ─────────────────────────────────────────────
+
+default:
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+      - backend/node_modules/
+      - frontend/node_modules/
+      - packages/types/node_modules/
+
 variables:
-  SECRET_DETECTION_ENABLED: 'true'
+  NODE_ENV: test
+  PD_DATABASE_URL: "postgresql://pd_user:password@postgres:5432/pandamarket_test"
+  PD_REDIS_URL: "redis://redis:6379"
+  PD_JWT_SECRET: "ci_test_jwt_secret"
+  PD_COOKIE_SECRET: "ci_test_cookie_secret"
+  PD_MEILI_HOST: "http://meilisearch:7700"
+  PD_MEILI_MASTER_KEY: "ci_meili_key"
+  PD_S3_ENDPOINT: "http://minio:9000"
+  PD_S3_ACCESS_KEY: "minioadmin"
+  PD_S3_SECRET_KEY: "minioadmin"
+  PD_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+
+# ─── Security scan templates ────────────────────────────────────
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+# ─── Install dependencies (shared before_script) ────────────────
+
+.install_deps: &install_deps
+  before_script:
+    - npm ci --ignore-scripts || npm install
+
+# ─── LINT STAGE ──────────────────────────────────────────────────
+
+type_check_backend:
+  stage: lint
+  <<: *install_deps
+  script:
+    - cd backend && npx tsc --noEmit
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+lint_backend:
+  stage: lint
+  <<: *install_deps
+  script:
+    - cd backend && npm run lint
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+lint_frontend:
+  stage: lint
+  <<: *install_deps
+  script:
+    - cd frontend && npm run lint
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+# ─── TEST STAGE ──────────────────────────────────────────────────
+
+unit_tests_frontend:
+  stage: test
+  <<: *install_deps
+  script:
+    - cd frontend && npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+unit_tests_backend:
+  stage: test
+  <<: *install_deps
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_DB: pandamarket_test
+        POSTGRES_USER: pd_user
+        POSTGRES_PASSWORD: password
+    - name: redis:7.2-alpine
+      alias: redis
+  script:
+    - cd backend && npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    reports:
+      junit: backend/test-results.xml
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+# ─── SECURITY STAGE ─────────────────────────────────────────────
+
+sast:
+  stage: security
+
 secret_detection:
-  stage: secret-detection
+  stage: security
+
+dependency_scanning:
+  stage: security
+
+npm_audit:
+  stage: security
+  <<: *install_deps
+  script:
+    - cd backend && npm audit --audit-level=high --omit=dev || true
+    - cd ../frontend && npm audit --audit-level=high --omit=dev || true
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+# ─── BUILD STAGE ─────────────────────────────────────────────────
+
+build_backend:
+  stage: build
+  <<: *install_deps
+  script:
+    - cd backend && npx tsc -p tsconfig.json
+  artifacts:
+    paths:
+      - backend/dist/
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+build_frontend:
+  stage: build
+  <<: *install_deps
+  script:
+    - cd frontend && npm run build
+  artifacts:
+    paths:
+      - frontend/.next/
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+# ─── E2E STAGE ───────────────────────────────────────────────────
+
+e2e_tests:
+  stage: e2e
+  image: mcr.microsoft.com/playwright:v1.44.0-jammy
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_DB: pandamarket_test
+        POSTGRES_USER: pd_user
+        POSTGRES_PASSWORD: password
+    - name: redis:7.2-alpine
+      alias: redis
+  variables:
+    E2E_BASE_URL: "http://localhost:3000"
+    E2E_API_URL: "http://localhost:9000"
+  before_script:
+    - npm ci --ignore-scripts || npm install
+    - cd frontend && npx playwright install --with-deps chromium
+  script:
+    - cd frontend && npx playwright test --project=chromium
+  artifacts:
+    when: always
+    paths:
+      - frontend/playwright-report/
+      - frontend/e2e-results.xml
+    reports:
+      junit: frontend/e2e-results.xml
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual

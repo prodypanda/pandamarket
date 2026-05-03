@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -39,6 +40,25 @@ async function getCategoryProducts(
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const name = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
+  return {
+    title: `${name} — Produits`,
+    description: `Découvrez les meilleurs produits ${name.toLowerCase()} sur PandaMarket. Comparez les prix et achetez auprès de vendeurs tunisiens vérifiés.`,
+    openGraph: {
+      title: `${name} — PandaMarket`,
+      description: `Découvrez les meilleurs produits ${name.toLowerCase()} sur PandaMarket.`,
+      type: 'website',
+      url: `/hub/category/${slug}`,
+    },
+  };
 }
 
 function formatPrice(price: number): string {

@@ -176,6 +176,91 @@ describe('Multi-Tenant Isolation', () => {
     });
   });
 
+  describe('API Key Isolation', () => {
+    it('should only return API keys for the requesting store', async () => {
+      const { ApiKeyService } = await import('../services/api-key.service');
+      const apiKeyService = new ApiKeyService();
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'pd_key_1', store_id: 'pd_store_A', key_prefix: 'pd_sk_a1b2', label: 'ERP Key', scopes: ['products:read'], is_active: true },
+        ],
+        rowCount: 1,
+      } as any);
+
+      const keys = await apiKeyService.listByStore('pd_store_A');
+      expect(keys).toHaveLength(1);
+      expect(keys[0].store_id).toBe('pd_store_A');
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('store_id'),
+        expect.arrayContaining(['pd_store_A']),
+      );
+    });
+  });
+
+  describe('Cross-Store Wallet Prevention', () => {
+    const walletService = new WalletService();
+
+    it('should not allow withdrawal from another store wallet', async () => {
+      // Wallet belongs to store_B but vendor A is trying to withdraw
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pd_wallet_B',
+          store_id: 'pd_store_B',
+          balance: '500.000',
+          pending_balance: '0.000',
+          total_earned: '1000.000',
+          total_withdrawn: '500.000',
+          payout_mode: 'on_demand',
+          retention_days: 7,
+          currency: 'TND',
+        }],
+        rowCount: 1,
+      } as any);
+
+      // The wallet service uses store_id in WHERE clause, so store_A would get no results
+      mockQuery.mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      } as any);
+
+      await expect(
+        walletService.getByStore('pd_store_A'),
+      ).rejects.toThrow('Wallet not found');
+    });
+  });
+
+  describe('Cross-Store Product Modification', () => {
+    const productService = new ProductService();
+
+    it('should throw when vendor tries to delete another store product', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pd_prod_X',
+          store_id: 'pd_store_B',
+          title: 'Not My Product',
+          status: 'published',
+        }],
+        rowCount: 1,
+      } as any);
+
+      await expect(
+        productService.assertOwnership('pd_prod_X', 'pd_store_A'),
+      ).rejects.toThrow('You can only modify your own products');
+    });
+
+    it('should throw when product does not exist', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      } as any);
+
+      await expect(
+        productService.assertOwnership('pd_prod_nonexistent', 'pd_store_A'),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('Store Resolution', () => {
     it('should resolve correct store by subdomain', async () => {
       const { StoreService } = await import('../services/store.service');

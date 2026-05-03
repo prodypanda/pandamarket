@@ -1,0 +1,202 @@
+version: '3.8'
+
+# ─── Docker Secrets (production) ─────────────────────────────────
+# Create secrets before deploying:
+#   echo "your_jwt_secret" | docker secret create pd_jwt_secret -
+#   echo "your_cookie_secret" | docker secret create pd_cookie_secret -
+#   echo "your_encryption_key" | docker secret create pd_encryption_key -
+#   echo "your_db_password" | docker secret create pd_db_password -
+#   echo "your_meili_key" | docker secret create pd_meili_master_key -
+#   echo "your_flouci_token" | docker secret create pd_flouci_app_token -
+#   echo "your_flouci_secret" | docker secret create pd_flouci_app_secret -
+#   echo "your_konnect_key" | docker secret create pd_konnect_api_key -
+#   echo "your_konnect_wallet" | docker secret create pd_konnect_receiver_wallet -
+#   echo "your_gemini_key" | docker secret create pd_gemini_api_key -
+#   echo "your_minio_user" | docker secret create pd_minio_root_user -
+#   echo "your_minio_pass" | docker secret create pd_minio_root_password -
+#
+# For non-Swarm deployments, use file-based secrets (see secrets section below).
+
+secrets:
+  pd_jwt_secret:
+    file: ./secrets/pd_jwt_secret.txt
+  pd_cookie_secret:
+    file: ./secrets/pd_cookie_secret.txt
+  pd_encryption_key:
+    file: ./secrets/pd_encryption_key.txt
+  pd_db_password:
+    file: ./secrets/pd_db_password.txt
+  pd_meili_master_key:
+    file: ./secrets/pd_meili_master_key.txt
+  pd_flouci_app_token:
+    file: ./secrets/pd_flouci_app_token.txt
+  pd_flouci_app_secret:
+    file: ./secrets/pd_flouci_app_secret.txt
+  pd_konnect_api_key:
+    file: ./secrets/pd_konnect_api_key.txt
+  pd_konnect_receiver_wallet:
+    file: ./secrets/pd_konnect_receiver_wallet.txt
+  pd_gemini_api_key:
+    file: ./secrets/pd_gemini_api_key.txt
+  pd_minio_root_user:
+    file: ./secrets/pd_minio_root_user.txt
+  pd_minio_root_password:
+    file: ./secrets/pd_minio_root_password.txt
+
+services:
+  # ─── Backend API ────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    secrets:
+      - pd_jwt_secret
+      - pd_cookie_secret
+      - pd_encryption_key
+      - pd_db_password
+      - pd_meili_master_key
+      - pd_flouci_app_token
+      - pd_flouci_app_secret
+      - pd_konnect_api_key
+      - pd_konnect_receiver_wallet
+      - pd_gemini_api_key
+      - pd_minio_root_user
+      - pd_minio_root_password
+    environment:
+      PD_NODE_ENV: production
+      PD_PORT: 9000
+      # Non-secret config (safe to keep in environment)
+      PD_DATABASE_URL: postgresql://pd_user:@postgres:5432/pandamarket
+      PD_REDIS_URL: redis://redis:6379
+      PD_S3_ENDPOINT: http://minio:9000
+      PD_S3_BUCKET_PUBLIC: pd-product-images
+      PD_S3_BUCKET_PRIVATE: pd-private-files
+      PD_S3_REGION: us-east-1
+      PD_MEILI_HOST: http://meilisearch:7700
+      PD_HUB_DOMAIN: pandamarket.tn
+      PD_METRICS_ENABLED: "true"
+      # File-based secrets (Docker Secrets mounted at /run/secrets/)
+      PD_JWT_SECRET_FILE: /run/secrets/pd_jwt_secret
+      PD_COOKIE_SECRET_FILE: /run/secrets/pd_cookie_secret
+      PD_ENCRYPTION_KEY_FILE: /run/secrets/pd_encryption_key
+      PD_MEILI_MASTER_KEY_FILE: /run/secrets/pd_meili_master_key
+      PD_FLOUCI_APP_TOKEN_FILE: /run/secrets/pd_flouci_app_token
+      PD_FLOUCI_APP_SECRET_FILE: /run/secrets/pd_flouci_app_secret
+      PD_KONNECT_API_KEY_FILE: /run/secrets/pd_konnect_api_key
+      PD_KONNECT_RECEIVER_WALLET_FILE: /run/secrets/pd_konnect_receiver_wallet
+      PD_GEMINI_API_KEY_FILE: /run/secrets/pd_gemini_api_key
+      PD_S3_ACCESS_KEY_FILE: /run/secrets/pd_minio_root_user
+      PD_S3_SECRET_KEY_FILE: /run/secrets/pd_minio_root_password
+    ports:
+      - "9000:9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  # ─── Frontend (Next.js) ────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: https://api.pandamarket.tn
+      NEXT_PUBLIC_HUB_DOMAIN: pandamarket.tn
+      NEXT_PUBLIC_MEILI_HOST: https://search.pandamarket.tn
+      BACKEND_URL: http://backend:9000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # ─── PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    secrets:
+      - pd_db_password
+    environment:
+      POSTGRES_DB: pandamarket
+      POSTGRES_USER: pd_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/pd_db_password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pd_user -d pandamarket"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ─── Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─── Meilisearch ───────────────────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.8
+    restart: unless-stopped
+    secrets:
+      - pd_meili_master_key
+    environment:
+      MEILI_MASTER_KEY_FILE: /run/secrets/pd_meili_master_key
+      MEILI_ENV: production
+    volumes:
+      - meili_data:/meili_data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ─── MinIO (S3-compatible storage) ─────────────────────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    secrets:
+      - pd_minio_root_user
+      - pd_minio_root_password
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/pd_minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/pd_minio_root_password
+    volumes:
+      - minio_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  pg_data:
+  redis_data:
+  meili_data:
+  minio_data:

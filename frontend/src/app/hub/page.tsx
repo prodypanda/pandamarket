@@ -1,6 +1,18 @@
+import type { Metadata } from 'next';
 import { HubNavbar } from '../../components/hub/HubNavbar';
 import { ArrowRight, ShoppingBag, Store, Zap } from 'lucide-react';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Hub — Explorez des milliers de produits',
+  description: 'Parcourez le Hub central PandaMarket : des milliers de produits de vendeurs tunisiens indépendants. Électronique, mode, maison, gaming et plus.',
+  openGraph: {
+    title: 'PandaMarket Hub — La marketplace tunisienne #1',
+    description: 'Parcourez le Hub central PandaMarket : des milliers de produits de vendeurs tunisiens indépendants.',
+    type: 'website',
+    url: '/hub',
+  },
+};
 
 interface Product {
   id: string;

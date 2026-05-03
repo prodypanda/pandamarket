@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { AddToCartButton } from '../../../../components/hub/AddToCartButton';
@@ -47,6 +48,41 @@ async function getSimilarProducts(category: string, excludeId: string): Promise<
   } catch {
     return [];
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProduct(id);
+
+  if (!product) {
+    return { title: 'Produit introuvable' };
+  }
+
+  const imageUrl = product.images?.[0]?.url;
+
+  return {
+    title: product.title,
+    description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket — ${product.price.toFixed(3)} TND`,
+    openGraph: {
+      title: `${product.title} — ${product.price.toFixed(3)} TND`,
+      description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
+      type: 'website',
+      url: `/hub/products/${id}`,
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 800, height: 800, alt: product.title }],
+      }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.title} — ${product.price.toFixed(3)} TND`,
+      description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
 }
 
 function formatPrice(price: number): string {
@@ -233,7 +269,7 @@ export default async function ProductDetailPage({
         {similarProducts.length > 0 && (
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Produits Similaires</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {similarProducts.map((p) => (
                 <Link
                   key={p.id}

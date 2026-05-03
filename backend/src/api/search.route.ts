@@ -18,4 +18,26 @@ router.get(
   }),
 );
 
+// Public: Search suggest (autocomplete)
+router.get(
+  '/suggest',
+  asyncHandler(async (req: Request, res: Response) => {
+    const q = (req.query.q as string) || '';
+    if (q.length < 2) {
+      return res.status(200).json({ suggestions: [] });
+    }
+
+    const results = await searchService.searchProducts(q, { limit: 8 });
+    const suggestions = (results.hits || []).map((hit: any) => ({
+      id: hit.id,
+      title: hit.title,
+      category: hit.category,
+      price: hit.price,
+      thumbnail: hit.thumbnail,
+    }));
+
+    res.status(200).json({ suggestions });
+  }),
+);
+
 export default router;

@@ -15,10 +15,12 @@ import { socketGateway } from '../realtime/socket-gateway';
 import { calculateCommission, calculateVendorNet } from '../utils/money';
 import { subscriptionService } from '../services/subscription.service';
 import { SubscriptionPlan } from '@pandamarket/types';
+import { incrementBusinessMetric } from '../utils/metrics';
 
 export function registerOrderSubscribers(): void {
   eventBus.on(PdEvent.ORDER_PLACED, async (payload: { order_id: string }) => {
     try {
+      incrementBusinessMetric('orders_created');
       await onOrderPlaced(payload.order_id);
     } catch (err) {
       logger.error({ err, payload }, 'order.placed subscriber failed');
@@ -27,6 +29,7 @@ export function registerOrderSubscribers(): void {
 
   eventBus.on(PdEvent.PAYMENT_CAPTURED, async (payload: { order_id: string; gateway: string }) => {
     try {
+      incrementBusinessMetric('payments_captured', { gateway: payload.gateway });
       await onPaymentCaptured(payload.order_id);
     } catch (err) {
       logger.error({ err, payload }, 'payment.captured subscriber failed');

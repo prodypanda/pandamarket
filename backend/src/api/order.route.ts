@@ -95,4 +95,28 @@ router.post(
   }),
 );
 
+// Customer or Vendor: cancel an order
+const cancelSchema = z.object({
+  reason: z.string().min(1, 'Cancellation reason is required'),
+});
+
+router.put(
+  '/:id/cancel',
+  requireAuth,
+  validate(cancelSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.getById(req.params.id);
+    // Only the customer who placed the order, the vendor, or an admin can cancel
+    const isCustomer = order.customer_id === req.user!.id;
+    const isVendor = req.user!.store_id && order.store_id === req.user!.store_id;
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
+    if (!isCustomer && !isVendor && !isAdmin) {
+      res.status(404).json({ error: { message: 'Order not found' } });
+      return;
+    }
+    await orderService.cancel(req.params.id, req.body.reason);
+    res.status(200).json({ success: true, message: 'Order cancelled' });
+  }),
+);
+
 export default router;

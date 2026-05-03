@@ -7,6 +7,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { asyncHandler, requireAuth, requireStore, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
 import { presignUpload, publicUrl } from '../utils/s3';
@@ -16,6 +17,16 @@ import { logger } from '../utils/logger';
 import { PdValidationError, PdErrorCode } from '../errors';
 
 const router = Router();
+
+// Upload rate limit: 10 uploads per 5 minutes per user
+const uploadRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id ?? req.ip ?? 'unknown',
+  message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many upload requests. Please wait before uploading more files.' } },
+});
 
 // Allowed MIME types per purpose
 const ALLOWED_TYPES: Record<string, string[]> = {
@@ -42,6 +53,7 @@ const MAX_SIZES: Record<string, number> = {
 router.post(
   '/presign',
   requireAuth,
+  uploadRateLimit,
   validate(presignUploadSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { filename, content_type, purpose } = req.body;

@@ -11,13 +11,21 @@ interface StoreProduct {
   category?: string;
 }
 
+interface StoreBranding {
+  primary_color?: string;
+  secondary_color?: string;
+  logo_url?: string;
+  favicon_url?: string;
+}
+
 interface ThemeProps {
   theme: ThemeConfig;
   storeName: string;
   products?: StoreProduct[];
+  branding?: StoreBranding;
 }
 
-export function ModernTheme({ theme, storeName, products = [] }: ThemeProps) {
+export function ModernTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tags = ['New Arrival', 'Trending', 'Pro', 'Best Seller'];
   const displayProducts = products.length > 0
     ? products
@@ -34,10 +42,17 @@ export function ModernTheme({ theme, storeName, products = [] }: ThemeProps) {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600 rounded-full blur-[120px] opacity-20 animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full blur-[120px] opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
+      {branding?.favicon_url && (
+        <link rel="icon" href={branding.favicon_url} />
+      )}
       <header className="relative z-10 px-6 lg:px-12 py-6 flex justify-between items-center">
-        <h1 className={`text-2xl ${theme.typography.headingStyle} ${theme.colors.accent}`}>
-          {storeName}
-        </h1>
+        {branding?.logo_url ? (
+          <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+        ) : (
+          <h1 className={`text-2xl ${theme.typography.headingStyle} ${theme.colors.accent}`}>
+            {storeName}
+          </h1>
+        )}
         <nav className="hidden md:flex space-x-8">
           <a href="#" className="text-slate-300 hover:text-white transition-colors">Discover</a>
           <a href="#" className="text-slate-300 hover:text-white transition-colors">Collections</a>

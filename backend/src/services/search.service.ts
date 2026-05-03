@@ -67,6 +67,30 @@ export class SearchService {
   }
 
   /**
+   * Bulk index multiple products (used by search reindex worker)
+   */
+  async indexDocuments(documents: Record<string, unknown>[]): Promise<void> {
+    try {
+      await this.client.index(config.meili.productsIndex).addDocuments(documents);
+      logger.info({ count: documents.length }, 'Bulk indexed documents to Meilisearch');
+    } catch (err) {
+      logger.error({ count: documents.length, err }, 'Failed to bulk index documents');
+      throw err;
+    }
+  }
+
+  /**
+   * Remove a product from the search index
+   */
+  async removeProduct(productId: string): Promise<void> {
+    try {
+      await this.client.index(config.meili.productsIndex).deleteDocument(productId);
+    } catch (err) {
+      logger.error({ product_id: productId }, 'Failed to remove product from Meilisearch');
+    }
+  }
+
+  /**
    * Query the products index
    */
   async searchProducts(query: string, opts: { limit?: number; offset?: number; category?: string } = {}) {

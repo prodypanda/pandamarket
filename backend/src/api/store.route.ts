@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storeService } from '../services/store.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
-import { SubscriptionPlan, ShippingMode } from '@pandamarket/types';
+import { SubscriptionPlan, ShippingMode, IStorePaymentConfig } from '@pandamarket/types';
 import { config } from '../config';
 
 const router = Router();
@@ -31,6 +31,13 @@ const updateDomainSchema = z.object({
 
 const updateShippingSchema = z.object({
   shipping_mode: z.nativeEnum(ShippingMode),
+});
+
+const updatePaymentConfigSchema = z.object({
+  flouci_app_token: z.string().optional(),
+  flouci_app_secret: z.string().optional(),
+  konnect_api_key: z.string().optional(),
+  konnect_receiver_wallet: z.string().optional(),
 });
 
 // ==========================================================
@@ -126,6 +133,75 @@ router.put(
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.updateShippingMode(req.user!.store_id!, req.body.shipping_mode);
     res.status(200).json({ store });
+  }),
+);
+
+/**
+ * PUT /api/pd/stores/me/payment-config
+ * Set vendor's own payment provider credentials (Pro+ only).
+ */
+router.put(
+  '/me/payment-config',
+  requireAuth,
+  requireStore,
+  validate(updatePaymentConfigSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeData = await storeService.getById(req.user!.store_id!);
+    const cfg: IStorePaymentConfig = req.body;
+    const store = await storeService.setPaymentConfig(
+      req.user!.store_id!,
+      storeData.subscription_plan,
+      cfg,
+    );
+    res.status(200).json({ store, message: 'Payment configuration updated' });
+  }),
+);
+
+// ==========================================================
+// Public Page Builder Endpoints (Storefront Rendering)
+// ==========================================================
+
+import { pageBuilderService } from '../services/page-builder.service';
+
+/**
+ * GET /api/pd/stores/:storeId/pages
+ * List published pages for a store (public, no auth required).
+ */
+router.get(
+  '/:storeId/pages',
+  asyncHandler(async (req: Request, res: Response) => {
+    const pages = await pageBuilderService.listPublishedPages(req.params.storeId);
+    res.json({ data: pages, count: pages.length });
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:storeId/pages/:slug
+ * Get a published page by slug (HTML/CSS only, for storefront rendering).
+ */
+router.get(
+  '/:storeId/pages/:slug',
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = await pageBuilderService.getPublishedPageBySlug(
+      req.params.storeId,
+      req.params.slug,
+    );
+    if (!page) {
+      return res.status(404).json({ error: { code: 'PD_NOT_FOUND', message: 'Page introuvable' } });
+    }
+    res.json({ page });
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:storeId/homepage
+ * Get the homepage override for a store (if any).
+ */
+router.get(
+  '/:storeId/homepage',
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = await pageBuilderService.getHomepageOverride(req.params.storeId);
+    res.json({ page }); // null if no homepage override
   }),
 );
 

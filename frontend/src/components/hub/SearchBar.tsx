@@ -41,10 +41,11 @@ export function SearchBar() {
     setIsSearching(true);
     setShowDropdown(true);
     try {
-      const res = await fetch(`/api/pd/search?q=${encodeURIComponent(q)}&limit=5`);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      const res = await fetch(`${backendUrl}/api/pd/search/suggest?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
-        setResults(data.hits || data.data || []);
+        setResults(data.suggestions || []);
       } else {
         setResults([]);
       }

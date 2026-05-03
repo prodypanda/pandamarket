@@ -75,13 +75,32 @@
   --color-panda-black: #1A1A2E;
 }
 
-/* Dark Mode */
+/* Dark Mode — system preference */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0F0F23;
     --foreground: #E2E8F0;
     --surface: #1A1A2E;
+    --color-gray-900: #E2E8F0;
+    --color-gray-700: #CBD5E1;
+    --color-gray-500: #94A3B8;
+    --color-gray-300: #2D2D4A;
+    --color-gray-100: #25253D;
+    --color-gray-50: #1A1A2E;
   }
+}
+
+/* Dark Mode — manual toggle via .dark class */
+:root.dark {
+  --background: #0F0F23;
+  --foreground: #E2E8F0;
+  --surface: #1A1A2E;
+  --color-gray-900: #E2E8F0;
+  --color-gray-700: #CBD5E1;
+  --color-gray-500: #94A3B8;
+  --color-gray-300: #2D2D4A;
+  --color-gray-100: #25253D;
+  --color-gray-50: #1A1A2E;
 }
 
 body {

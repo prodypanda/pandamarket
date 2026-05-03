@@ -1,16 +1,45 @@
 /**
  * Centralised configuration loaded from environment variables.
  * All env vars MUST be prefixed with `PD_`.
+ *
+ * Supports Docker Secrets: if a `_FILE` suffixed env var exists
+ * (e.g. `PD_JWT_SECRET_FILE=/run/secrets/jwt_secret`), the file
+ * contents are read and used as the value. This allows production
+ * deployments to use Docker Secrets, Vault Agent injected files,
+ * or Kubernetes Secrets mounted as volumes — without changing code.
+ *
+ * Priority: _FILE env var > plain env var > fallback
  */
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Load .env early
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+/**
+ * Read a Docker Secret / file-based secret.
+ * Checks for `{name}_FILE` env var pointing to a file path,
+ * reads and trims the file content if it exists.
+ */
+function readSecretFile(name: string): string | undefined {
+  const filePath = process.env[`${name}_FILE`];
+  if (!filePath) return undefined;
+  try {
+    return fs.readFileSync(filePath, 'utf-8').trim();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // In production, a missing secret file is a fatal misconfiguration
+    if (process.env.PD_NODE_ENV === 'production') {
+      throw new Error(`Failed to read secret file for ${name} at ${filePath}: ${msg}`);
+    }
+    return undefined;
+  }
+}
+
 function required(name: string, fallback?: string): string {
-  const value = process.env[name] ?? fallback;
+  const value = readSecretFile(name) ?? process.env[name] ?? fallback;
   if (value === undefined) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
@@ -18,7 +47,7 @@ function required(name: string, fallback?: string): string {
 }
 
 function optional(name: string, fallback?: string): string | undefined {
-  return process.env[name] ?? fallback;
+  return readSecretFile(name) ?? process.env[name] ?? fallback;
 }
 
 function asInt(name: string, fallback: number): number {
@@ -120,6 +149,20 @@ export const config = {
     pass: optional('PD_SMTP_PASS', '')!,
   },
   mailFrom: optional('PD_MAIL_FROM', 'PandaMarket <noreply@pandamarket.tn>')!,
+
+  // SMS (Phone verification)
+  sms: {
+    provider: optional('PD_SMS_PROVIDER', 'console') as 'twilio' | 'infobip' | 'console',
+    twilioAccountSid: optional('PD_TWILIO_ACCOUNT_SID', ''),
+    twilioAuthToken: optional('PD_TWILIO_AUTH_TOKEN', ''),
+    twilioFromNumber: optional('PD_TWILIO_FROM_NUMBER', ''),
+    infobipApiKey: optional('PD_INFOBIP_API_KEY', ''),
+    infobipBaseUrl: optional('PD_INFOBIP_BASE_URL', 'https://api.infobip.com'),
+  },
+
+  // Observability
+  sentryDsn: optional('PD_SENTRY_DSN', ''),
+  metricsEnabled: asBool('PD_METRICS_ENABLED', false),
 
   // Misc
   defaultRetentionDays: asInt('PD_DEFAULT_RETENTION_DAYS', 7),

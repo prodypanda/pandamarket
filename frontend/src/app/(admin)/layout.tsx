@@ -9,6 +9,11 @@ import {
   Flag,
   Users,
   Settings,
+  Wallet,
+  ScrollText,
+  Crown,
+  Sparkles,
+  Mail,
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +22,11 @@ const navItems = [
   { href: '/mandats', label: 'Mandats', icon: Receipt },
   { href: '/reports', label: 'Reports', icon: Flag },
   { href: '/users', label: 'Vendors', icon: Users },
+  { href: '/withdrawals', label: 'Withdrawals', icon: Wallet },
+  { href: '/plans', label: 'Plans', icon: Crown },
+  { href: '/ai-costs', label: 'AI Costs', icon: Sparkles },
+  { href: '/audit-log', label: 'Audit Log', icon: ScrollText },
+  { href: '/smtp-config', label: 'Email Config', icon: Mail },
 ];
 
 export default function AdminLayout({

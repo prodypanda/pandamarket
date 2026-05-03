@@ -250,6 +250,16 @@ export default function SubscriptionPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {plan.has_page_builder ? (
+                    <Check className="w-4 h-4 text-[#16C784]" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-300" />
+                  )}
+                  <span className={!plan.has_page_builder ? 'text-gray-400' : ''}>
+                    Page Builder
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   {plan.has_ai_seo ? (
                     <Check className="w-4 h-4 text-[#16C784]" />
                   ) : (

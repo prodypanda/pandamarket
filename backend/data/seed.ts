@@ -230,6 +230,42 @@ async function seedThemes(c: PoolClient): Promise<void> {
       is_free: true,
       price: 0,
     },
+    {
+      slug: 'boutique',
+      name: 'Boutique',
+      description:
+        'Élégance luxueuse avec tons ivoire et or. Typographie serif, espacement généreux. Idéal pour mode, bijoux et lifestyle premium.',
+      preview_url: '/themes/boutique/preview.jpg',
+      is_free: false,
+      price: 75,
+    },
+    {
+      slug: 'artisan',
+      name: 'Artisan',
+      description:
+        'Tons terreux et chaleureux, formes organiques arrondies. Parfait pour produits artisanaux, bio, fait-main et cosmétiques naturels.',
+      preview_url: '/themes/artisan/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'techhub',
+      name: 'TechHub',
+      description:
+        'Design sombre avec accents cyan néon. Header sticky, grille dense. Conçu pour électronique, gadgets et produits tech.',
+      preview_url: '/themes/techhub/preview.jpg',
+      is_free: false,
+      price: 100,
+    },
+    {
+      slug: 'flavor',
+      name: 'Flavor',
+      description:
+        'Couleurs chaudes terracotta, coins arrondis généreux. Idéal pour restaurants, pâtisseries, épiceries fines et produits alimentaires.',
+      preview_url: '/themes/flavor/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
   ];
 
   for (const t of themes) {

@@ -12,6 +12,8 @@ import { registerProductSubscribers } from './product.subscriber';
 import { registerWalletSubscribers } from './wallet.subscriber';
 import { registerAiSubscribers } from './ai.subscriber';
 import { registerMandatSubscribers } from './mandat.subscriber';
+import { registerWebhookSubscribers } from './webhook.subscriber';
+import { registerStockLowSubscriber } from './stock-low.subscriber';
 import { logger } from '../utils/logger';
 
 export function registerAllSubscribers(): void {
@@ -21,5 +23,7 @@ export function registerAllSubscribers(): void {
   registerWalletSubscribers();
   registerAiSubscribers();
   registerMandatSubscribers();
+  registerWebhookSubscribers();
+  registerStockLowSubscriber();
   logger.info('Subscribers registered');
 }

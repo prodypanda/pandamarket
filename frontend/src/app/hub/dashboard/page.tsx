@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
   Package,
   ShoppingCart,
   Wallet,
+  TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,8 +24,36 @@ interface Order {
   customer_email?: string;
 }
 
+interface DailySales {
+  date: string;
+  total: number;
+  count: number;
+}
+
 function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
+}
+
+/** Build last-30-day sales data from orders */
+function buildSalesChart(orders: Order[]): DailySales[] {
+  const days: DailySales[] = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ date: key, total: 0, count: 0 });
+  }
+  const map = new Map(days.map((d) => [d.date, d]));
+  for (const order of orders) {
+    const key = new Date(order.created_at).toISOString().slice(0, 10);
+    const entry = map.get(key);
+    if (entry) {
+      entry.total += order.total_amount;
+      entry.count += 1;
+    }
+  }
+  return days;
 }
 
 export default function DashboardOverview() {
@@ -32,15 +61,17 @@ export default function DashboardOverview() {
   const [productCount, setProductCount] = useState<number>(0);
   const [orderCount, setOrderCount] = useState<number>(0);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [walletRes, productsRes, ordersRes] = await Promise.allSettled([
+        const [walletRes, productsRes, ordersRes, chartOrdersRes] = await Promise.allSettled([
           fetch('/api/pd/wallet/me', { credentials: 'include' }),
           fetch('/api/pd/products/me?limit=1', { credentials: 'include' }),
           fetch('/api/pd/orders/store?limit=5', { credentials: 'include' }),
+          fetch('/api/pd/orders/store?limit=200&days=30', { credentials: 'include' }),
         ]);
 
         if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
@@ -58,6 +89,11 @@ export default function DashboardOverview() {
           setRecentOrders(data.data || []);
           setOrderCount(data.meta?.total || 0);
         }
+
+        if (chartOrdersRes.status === 'fulfilled' && chartOrdersRes.value.ok) {
+          const data = await chartOrdersRes.value.json();
+          setAllOrders(data.data || []);
+        }
       } catch {
         // ignore
       } finally {
@@ -66,6 +102,11 @@ export default function DashboardOverview() {
     }
     fetchData();
   }, []);
+
+  const salesData = useMemo(() => buildSalesChart(allOrders), [allOrders]);
+  const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
+  const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
+  const totalOrders30d = useMemo(() => salesData.reduce((s, d) => s + d.count, 0), [salesData]);
 
   const stats = [
     {
@@ -125,9 +166,53 @@ export default function DashboardOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Sales</h3>
-          <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-lg text-gray-400">
-            Chart coming soon
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Sales (30 days)</h3>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1.5 text-[#16C784]">
+                <TrendingUp className="h-4 w-4" />
+                <span className="font-semibold">{formatPrice(totalRevenue30d)}</span>
+              </div>
+              <span className="text-gray-400">{totalOrders30d} orders</span>
+            </div>
+          </div>
+          {loading ? (
+            <div className="h-48 bg-gray-50 rounded-lg animate-pulse" />
+          ) : (
+            <div className="h-48 flex items-end gap-[2px]">
+              {salesData.map((day, i) => {
+                const height = maxSales > 0 ? (day.total / maxSales) * 100 : 0;
+                const isToday = i === salesData.length - 1;
+                return (
+                  <div
+                    key={day.date}
+                    className="flex-1 group relative"
+                    title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
+                  >
+                    <div
+                      className={`w-full rounded-t transition-all duration-300 ${
+                        isToday ? 'bg-[#16C784]' : 'bg-[#16C784]/40 group-hover:bg-[#16C784]/70'
+                      }`}
+                      style={{ height: `${Math.max(height, 2)}%` }}
+                    />
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                      <div className="bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
+                        <p className="font-medium">{new Date(day.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</p>
+                        <p className="text-[#16C784]">{formatPrice(day.total)}</p>
+                        <p className="text-gray-400">{day.count} order{day.count !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* X-axis labels */}
+          <div className="flex justify-between mt-2 text-[10px] text-gray-400">
+            <span>{new Date(salesData[0]?.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
+            <span>{new Date(salesData[14]?.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
+            <span>Today</span>
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">

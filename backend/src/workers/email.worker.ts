@@ -249,42 +249,142 @@ class ConsoleTransport implements MailTransport {
 }
 
 class SmtpTransport implements MailTransport {
-  // Minimal SMTP client built on top of `nodemailer` IF available.
-  // We keep it optional to avoid forcing the dep when not needed.
+  /**
+   * Dynamic SMTP transport that reads config from the database first,
+   * then falls back to env vars. Recreates the transporter when config changes.
+   *
+   * Config priority:
+   *   1. Database (pd_platform_config) — set by Super Admin via dashboard
+   *   2. Environment variables (PD_SMTP_*) — set in .env / Docker secrets
+   *   3. Console fallback — logs email to stdout
+   */
   private nodemailer: typeof import('nodemailer') | null = null;
   private transporter: import('nodemailer').Transporter | null = null;
+  private configHash: string = '';
+  private lastConfigCheck: number = 0;
+  private readonly CONFIG_TTL_MS = 60_000; // re-read DB config every 60s
 
-  private async ensure() {
-    if (this.transporter) return;
+  private async loadNodemailer(): Promise<typeof import('nodemailer')> {
+    if (this.nodemailer) return this.nodemailer;
     try {
       this.nodemailer = (await import('nodemailer')) as typeof import('nodemailer');
+      return this.nodemailer;
     } catch {
       logger.warn('nodemailer not installed — falling back to console transport');
       throw new Error('nodemailer_missing');
     }
-    this.transporter = this.nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.port === 465,
+  }
+
+  private async getSmtpConfig(): Promise<{
+    host: string;
+    port: number;
+    user: string;
+    pass: string;
+    secure: boolean;
+    fromAddress: string;
+  } | null> {
+    // Try database config first (set by Super Admin)
+    try {
+      const { smtpConfigService } = await import('../services/smtp-config.service');
+      const dbConfig = await smtpConfigService.getConfig();
+      if (dbConfig && dbConfig.smtp_enabled && dbConfig.smtp_host) {
+        return {
+          host: dbConfig.smtp_host,
+          port: dbConfig.smtp_port,
+          user: dbConfig.smtp_user,
+          pass: dbConfig.smtp_pass,
+          secure: dbConfig.smtp_secure,
+          fromAddress: `${dbConfig.smtp_from_name} <${dbConfig.smtp_from_email}>`,
+        };
+      }
+    } catch (err) {
+      logger.debug({ err: (err as Error).message }, 'Could not load SMTP config from DB, trying env vars');
+    }
+
+    // Fall back to env vars
+    if (config.smtp.host) {
+      return {
+        host: config.smtp.host,
+        port: config.smtp.port,
+        user: config.smtp.user,
+        pass: config.smtp.pass,
+        secure: config.smtp.port === 465,
+        fromAddress: config.mailFrom,
+      };
+    }
+
+    return null;
+  }
+
+  private async ensure(): Promise<{ fromAddress: string }> {
+    const now = Date.now();
+    const shouldRefresh = now - this.lastConfigCheck > this.CONFIG_TTL_MS;
+
+    const smtpConfig = await this.getSmtpConfig();
+    if (!smtpConfig) {
+      throw new Error('no_smtp_config');
+    }
+
+    // Build a hash to detect config changes
+    const hash = `${smtpConfig.host}:${smtpConfig.port}:${smtpConfig.user}:${smtpConfig.secure}`;
+
+    if (this.transporter && hash === this.configHash && !shouldRefresh) {
+      return { fromAddress: smtpConfig.fromAddress };
+    }
+
+    // Config changed or TTL expired — recreate transporter
+    if (this.transporter) {
+      this.transporter.close();
+    }
+
+    const nm = await this.loadNodemailer();
+    this.transporter = nm.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
       auth:
-        config.smtp.user && config.smtp.pass
-          ? { user: config.smtp.user, pass: config.smtp.pass }
+        smtpConfig.user && smtpConfig.pass
+          ? { user: smtpConfig.user, pass: smtpConfig.pass }
           : undefined,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
     });
+
+    this.configHash = hash;
+    this.lastConfigCheck = now;
+    logger.info({ host: smtpConfig.host, port: smtpConfig.port }, 'SMTP transporter (re)created');
+
+    return { fromAddress: smtpConfig.fromAddress };
   }
 
   async send(opts: { to: string; from: string; subject: string; html: string; text: string }) {
-    await this.ensure();
+    const { fromAddress } = await this.ensure();
     if (!this.transporter) throw new Error('SMTP transporter not initialised');
-    await this.transporter.sendMail(opts);
+    // Use the dynamically resolved from address
+    await this.transporter.sendMail({ ...opts, from: fromAddress });
   }
 }
 
 const consoleTransport = new ConsoleTransport();
 const smtpTransport = new SmtpTransport();
 
-function pickTransport(): MailTransport {
-  return config.smtp.host ? smtpTransport : consoleTransport;
+async function pickTransport(): Promise<MailTransport> {
+  // Check if SMTP is configured (DB or env)
+  try {
+    const { smtpConfigService } = await import('../services/smtp-config.service');
+    const dbConfig = await smtpConfigService.getConfig();
+    if (dbConfig && dbConfig.smtp_enabled && dbConfig.smtp_host) {
+      return smtpTransport;
+    }
+  } catch {
+    // DB not available — check env
+  }
+
+  if (config.smtp.host) {
+    return smtpTransport;
+  }
+
+  return consoleTransport;
 }
 
 // ----------------------------------------------------------------
@@ -299,7 +399,8 @@ export function startEmailWorker(): Worker<EmailJobData> {
       const rendered = render(template, variables);
       if (subject) rendered.subject = subject;
       try {
-        await pickTransport().send({
+        const transport = await pickTransport();
+        await transport.send({
           to,
           from: config.mailFrom,
           subject: rendered.subject,
@@ -307,7 +408,8 @@ export function startEmailWorker(): Worker<EmailJobData> {
           text: rendered.text,
         });
       } catch (err) {
-        if ((err as Error).message === 'nodemailer_missing') {
+        const errMsg = (err as Error).message;
+        if (errMsg === 'nodemailer_missing' || errMsg === 'no_smtp_config') {
           // Graceful degradation: log and succeed
           await consoleTransport.send({
             to,

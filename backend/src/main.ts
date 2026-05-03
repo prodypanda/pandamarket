@@ -6,6 +6,8 @@ import { config } from './config';
 import { logger } from './utils/logger';
 import { accessLog, apiRateLimit, errorHandler, requestId } from './middlewares';
 import { csrfProtection } from './middlewares/csrf.middleware';
+import { initSentry, sentryRequestHandler, sentryErrorHandler } from './utils/sentry';
+import { metricsMiddleware, metricsRouter, logMetricsStatus } from './utils/metrics';
 
 import { getPool } from './db/pool';
 import { getRedis } from './db/redis';
@@ -28,8 +30,20 @@ import adminRouter from './api/admin.route';
 import notificationRouter from './api/notification.route';
 import creditsRouter from './api/credits.route';
 import categoriesRouter from './api/categories.route';
+import vendorRouter from './api/vendor.route';
+import shippingRouter from './api/shipping.route';
+import themeRouter from './api/theme.route';
+import pageBuilderRouter from './api/page-builder.route';
+import { socketGateway } from './realtime/socket-gateway';
+import { registerAllSubscribers } from './subscribers';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 
 async function bootstrap() {
+  // Initialise Sentry (no-op if DSN not configured)
+  await initSentry();
+  logMetricsStatus();
+
   // Validate DB and Redis connection
   try {
     const dbPool = getPool();
@@ -47,6 +61,13 @@ async function bootstrap() {
   const app = express();
 
   app.set('trust proxy', 1);
+
+  // Sentry request handler (must be first middleware)
+  app.use(sentryRequestHandler());
+
+  // Prometheus metrics
+  app.use(metricsMiddleware);
+  app.use(metricsRouter());
 
   // Security middlewares
   app.use(
@@ -142,21 +163,105 @@ async function bootstrap() {
   apiRouter.use('/notifications', notificationRouter);
   apiRouter.use('/credits', creditsRouter);
   apiRouter.use('/categories', categoriesRouter);
+  apiRouter.use('/vendor', vendorRouter);
+  apiRouter.use('/shipping', shippingRouter);
+  apiRouter.use('/themes', themeRouter);
+  apiRouter.use('/page-builder', pageBuilderRouter);
 
   app.use('/api/pd', apiRouter);
 
-  // Health check
+  // Swagger API documentation
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'PandaMarket API Documentation',
+  }));
+  app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+
+  // Health check (liveness)
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  // Readiness check (all dependencies reachable)
+  app.get('/ready', async (_req, res) => {
+    const checks: Record<string, { status: string; latency_ms?: number }> = {};
+    let allHealthy = true;
+
+    // PostgreSQL
+    try {
+      const start = Date.now();
+      const dbPool = getPool();
+      const client = await dbPool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      checks.postgres = { status: 'ok', latency_ms: Date.now() - start };
+    } catch {
+      checks.postgres = { status: 'error' };
+      allHealthy = false;
+    }
+
+    // Redis
+    try {
+      const start = Date.now();
+      await getRedis().ping();
+      checks.redis = { status: 'ok', latency_ms: Date.now() - start };
+    } catch {
+      checks.redis = { status: 'error' };
+      allHealthy = false;
+    }
+
+    // Meilisearch
+    try {
+      const start = Date.now();
+      const meiliRes = await fetch(`${config.meili.host}/health`, { signal: AbortSignal.timeout(5000) });
+      if (meiliRes.ok) {
+        checks.meilisearch = { status: 'ok', latency_ms: Date.now() - start };
+      } else {
+        checks.meilisearch = { status: 'error' };
+        allHealthy = false;
+      }
+    } catch {
+      checks.meilisearch = { status: 'error' };
+      allHealthy = false;
+    }
+
+    // MinIO / S3
+    try {
+      const start = Date.now();
+      const s3Res = await fetch(`${config.s3.endpoint}/minio/health/live`, { signal: AbortSignal.timeout(5000) });
+      if (s3Res.ok) {
+        checks.s3 = { status: 'ok', latency_ms: Date.now() - start };
+      } else {
+        checks.s3 = { status: 'degraded' };
+      }
+    } catch {
+      checks.s3 = { status: 'degraded' }; // S3 not critical for readiness
+    }
+
+    const statusCode = allHealthy ? 200 : 503;
+    res.status(statusCode).json({
+      status: allHealthy ? 'ready' : 'not_ready',
+      timestamp: new Date().toISOString(),
+      checks,
+    });
+  });
+
+  // Sentry error handler (must be before custom error handler)
+  app.use(sentryErrorHandler());
 
   // Error handler
   app.use(errorHandler);
 
   const port = config.port;
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     logger.info(`Server listening on port ${port} in ${config.env} mode.`);
   });
+
+  // Attach WebSocket gateway for real-time notifications
+  socketGateway.attach(server);
+
+  // Register event subscribers (notifications, wallet credits, search sync, webhooks)
+  registerAllSubscribers();
 }
 
 bootstrap().catch((err) => {

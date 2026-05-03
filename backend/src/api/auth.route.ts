@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authService } from '../services/auth.service';
 import { asyncHandler, validate, authRateLimit, requireAuth } from '../middlewares';
+import { incrementBusinessMetric } from '../utils/metrics';
 
 const router = Router();
 
@@ -38,7 +39,8 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const user = await authService.register(req.body);
     const tokens = await authService.issueTokens(user);
-    
+    incrementBusinessMetric('user_registrations', { role: user.role });
+
     // Set cookie for access token (optional, based on design)
     res.cookie('pd_at', tokens.access_token, {
       httpOnly: true,

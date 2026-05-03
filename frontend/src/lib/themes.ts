@@ -1,4 +1,4 @@
-export type ThemeId = 'minimal' | 'classic' | 'modern';
+export type ThemeId = 'minimal' | 'classic' | 'modern' | 'boutique' | 'artisan' | 'techhub' | 'flavor';
 
 export interface ThemeConfig {
   id: ThemeId;
@@ -79,6 +79,86 @@ export const themes: Record<ThemeId, ThemeConfig> = {
     layout: {
       headerStyle: 'split',
       productGrid: 'masonry',
+      borderRadius: 'rounded-2xl',
+    },
+  },
+  boutique: {
+    id: 'boutique',
+    name: 'Boutique',
+    colors: {
+      primary: 'bg-[#1C1C1C] text-[#F5F0EB]',
+      secondary: 'bg-[#F5F0EB] text-[#1C1C1C]',
+      accent: 'text-[#C9A96E]',
+      background: 'bg-[#F5F0EB]',
+      text: 'text-[#1C1C1C]',
+    },
+    typography: {
+      fontFamily: 'font-serif',
+      headingStyle: 'font-light tracking-[0.15em] uppercase',
+    },
+    layout: {
+      headerStyle: 'center',
+      productGrid: 'relaxed',
+      borderRadius: 'rounded-none',
+    },
+  },
+  artisan: {
+    id: 'artisan',
+    name: 'Artisan',
+    colors: {
+      primary: 'bg-[#5C4033] text-white',
+      secondary: 'bg-[#FFF8F0] text-[#3E2723]',
+      accent: 'text-[#5C4033]',
+      background: 'bg-[#FFF8F0]',
+      text: 'text-[#3E2723]',
+    },
+    typography: {
+      fontFamily: 'font-serif',
+      headingStyle: 'font-semibold tracking-normal',
+    },
+    layout: {
+      headerStyle: 'left',
+      productGrid: 'masonry',
+      borderRadius: 'rounded-xl',
+    },
+  },
+  techhub: {
+    id: 'techhub',
+    name: 'TechHub',
+    colors: {
+      primary: 'bg-[#00D4FF] text-[#0A0A0A]',
+      secondary: 'bg-[#111111] text-[#E0E0E0]',
+      accent: 'text-[#00D4FF]',
+      background: 'bg-[#0A0A0A]',
+      text: 'text-[#E0E0E0]',
+    },
+    typography: {
+      fontFamily: 'font-sans',
+      headingStyle: 'font-bold tracking-tight',
+    },
+    layout: {
+      headerStyle: 'split',
+      productGrid: 'tight',
+      borderRadius: 'rounded-lg',
+    },
+  },
+  flavor: {
+    id: 'flavor',
+    name: 'Flavor',
+    colors: {
+      primary: 'bg-[#D4451A] text-white',
+      secondary: 'bg-[#FFF9F5] text-[#2D1B0E]',
+      accent: 'text-[#D4451A]',
+      background: 'bg-[#FFFCF8]',
+      text: 'text-[#2D1B0E]',
+    },
+    typography: {
+      fontFamily: 'font-sans',
+      headingStyle: 'font-extrabold tracking-tight',
+    },
+    layout: {
+      headerStyle: 'center',
+      productGrid: 'tight',
       borderRadius: 'rounded-2xl',
     },
   },

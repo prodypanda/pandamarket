@@ -18,6 +18,7 @@ import {
 } from '../errors';
 import { UserRole } from '@pandamarket/types';
 import { apiKeyService } from '../services/api-key.service';
+import { captureException, setUser } from '../utils/sentry';
 
 // =====================================================
 // Request ID + access logging
@@ -80,6 +81,8 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
       role: payload.role,
       store_id: payload.store_id,
     };
+    // Set Sentry user context for error attribution
+    setUser({ id: payload.sub, role: payload.role, store_id: payload.store_id });
     next();
   } catch (err) {
     next(err);
@@ -233,6 +236,7 @@ export const errorHandler = (
   }
   // Unknown error — wrap as 500
   log.error({ err }, 'Unhandled error');
+  captureException(err, { request_id: req.requestId, path: req.originalUrl });
   const wrapped = new PdInternalError('Internal server error', { request_id: req.requestId });
   res.status(500).json(wrapped.toJSON());
 };

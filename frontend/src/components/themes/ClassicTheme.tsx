@@ -11,13 +11,27 @@ interface StoreProduct {
   category?: string;
 }
 
+interface StoreBranding {
+  primary_color?: string;
+  secondary_color?: string;
+  logo_url?: string;
+  favicon_url?: string;
+}
+
 interface ThemeProps {
   theme: ThemeConfig;
   storeName: string;
   products?: StoreProduct[];
+  branding?: StoreBranding;
 }
 
-export function ClassicTheme({ theme, storeName, products = [] }: ThemeProps) {
+export function ClassicTheme({ theme, storeName, products = [], branding }: ThemeProps) {
+  const headerStyle = branding?.primary_color
+    ? { backgroundColor: branding.primary_color }
+    : {};
+  const accentStyle = branding?.primary_color
+    ? { color: branding.primary_color }
+    : {};
   const displayProducts = products.length > 0
     ? products
     : [
@@ -29,11 +43,18 @@ export function ClassicTheme({ theme, storeName, products = [] }: ThemeProps) {
 
   return (
     <div className={`${theme.colors.background} ${theme.colors.text} ${theme.typography.fontFamily} min-h-screen`}>
-      <header className={`${theme.colors.primary} shadow-md`}>
+      {branding?.favicon_url && (
+        <link rel="icon" href={branding.favicon_url} />
+      )}
+      <header className={`${branding?.primary_color ? '' : theme.colors.primary} shadow-md`} style={headerStyle}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Menu className="w-6 h-6 lg:hidden" />
-            <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
+            {branding?.logo_url ? (
+              <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
+            ) : (
+              <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
+            )}
           </div>
           
           <div className="hidden lg:flex flex-1 max-w-lg mx-8 relative">

@@ -11,13 +11,24 @@ interface StoreProduct {
   category?: string;
 }
 
+interface StoreBranding {
+  primary_color?: string;
+  secondary_color?: string;
+  logo_url?: string;
+  favicon_url?: string;
+}
+
 interface ThemeProps {
   theme: ThemeConfig;
   storeName: string;
   products?: StoreProduct[];
+  branding?: StoreBranding;
 }
 
-export function MinimalTheme({ theme, storeName, products = [] }: ThemeProps) {
+export function MinimalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
+  const brandStyle = branding?.primary_color
+    ? { '--store-primary': branding.primary_color, '--store-secondary': branding.secondary_color || branding.primary_color } as React.CSSProperties
+    : {};
   const displayProducts = products.length > 0
     ? products
     : [
@@ -28,9 +39,16 @@ export function MinimalTheme({ theme, storeName, products = [] }: ThemeProps) {
       ];
 
   return (
-    <div className={`${theme.colors.background} ${theme.colors.text} ${theme.typography.fontFamily} min-h-screen`}>
+    <div className={`${theme.colors.background} ${theme.colors.text} ${theme.typography.fontFamily} min-h-screen`} style={brandStyle}>
+      {branding?.favicon_url && (
+        <link rel="icon" href={branding.favicon_url} />
+      )}
       <header className="py-12 px-8 border-b border-gray-100 flex justify-between items-center max-w-7xl mx-auto">
-        <h1 className={`text-3xl ${theme.typography.headingStyle}`}>{storeName}</h1>
+        {branding?.logo_url ? (
+          <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+        ) : (
+          <h1 className={`text-3xl ${theme.typography.headingStyle}`}>{storeName}</h1>
+        )}
         <nav className="flex space-x-8 text-sm font-medium tracking-wide">
           <a href="#" className="hover:text-gray-500 transition-colors">Shop</a>
           <a href="#" className="hover:text-gray-500 transition-colors">About</a>

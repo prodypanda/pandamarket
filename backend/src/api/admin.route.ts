@@ -12,18 +12,21 @@ import {
   requireAdmin,
   validate,
 } from '../middlewares';
+import { auditLog } from '../middlewares/audit-log.middleware';
 import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
 import { storeService } from '../services/store.service';
+import { productService } from '../services/product.service';
 import { query } from '../db/pool';
 import { VerificationStatus, MandatStatus, ReportStatus } from '@pandamarket/types';
 import { logger } from '../utils/logger';
+import { smtpConfigService } from '../services/smtp-config.service';
 
 const router = Router();
 
-// All admin routes require authentication + admin role
-router.use(requireAuth, requireAdmin);
+// All admin routes require authentication + admin role + audit logging
+router.use(requireAuth, requireAdmin, auditLog);
 
 // =====================================================
 // KYC Verification Queue
@@ -156,6 +159,70 @@ router.put(
 );
 
 // =====================================================
+// Product Approval Queue (unverified vendors)
+// =====================================================
+
+const productListSchema = z.object({
+  status: z.enum(['pending_approval', 'published', 'rejected']).optional().default('pending_approval'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+router.get(
+  '/products/pending',
+  validate(productListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { status, page, limit } = req.query as unknown as { status: string; page: number; limit: number };
+    const offset = (page - 1) * limit;
+    const { rows } = await query<{
+      id: string;
+      title: string;
+      status: string;
+      store_id: string;
+      store_name: string;
+      created_at: Date;
+    }>(
+      `SELECT p.id, p.title, p.status, p.store_id, s.name AS store_name, p.created_at
+       FROM pd_product p
+       JOIN pd_store s ON s.id = p.store_id
+       WHERE p.status = $1
+       ORDER BY p.created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [status, limit, offset],
+    );
+    const { rows: countRows } = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM pd_product WHERE status = $1',
+      [status],
+    );
+    const total = parseInt(countRows[0].count, 10);
+    res.status(200).json({ data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } });
+  }),
+);
+
+router.put(
+  '/products/:id/approve',
+  asyncHandler(async (req: Request, res: Response) => {
+    const product = await productService.approve(req.params.id);
+    logger.info({ product_id: req.params.id, admin_id: req.user!.id }, 'Admin approved product');
+    res.status(200).json({ success: true, product });
+  }),
+);
+
+const rejectProductSchema = z.object({
+  reason: z.string().min(1).max(500),
+});
+
+router.put(
+  '/products/:id/reject',
+  validate(rejectProductSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const product = await productService.reject(req.params.id, req.body.reason);
+    logger.info({ product_id: req.params.id, admin_id: req.user!.id }, 'Admin rejected product');
+    res.status(200).json({ success: true, product });
+  }),
+);
+
+// =====================================================
 // Vendor Management
 // =====================================================
 
@@ -217,6 +284,368 @@ router.get(
       pending_mandats: parseInt(pendingMandats.rows[0].count, 10),
       open_reports: parseInt(openReports.rows[0].count, 10),
     });
+  }),
+);
+
+// =====================================================
+// Withdrawal / Payout Queue
+// =====================================================
+
+const withdrawalListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  type: z.string().optional(),
+});
+
+/**
+ * GET /api/pd/admin/withdrawals
+ * List payout transactions across all vendors.
+ */
+router.get(
+  '/withdrawals',
+  validate(withdrawalListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { page, limit, type } = req.query as unknown as {
+      page: number;
+      limit: number;
+      type?: string;
+    };
+    const offset = (page - 1) * limit;
+    const txType = type || 'payout';
+
+    const { rows } = await query<{
+      id: string;
+      wallet_id: string;
+      type: string;
+      amount: string;
+      balance_after: string;
+      description: string | null;
+      created_at: Date;
+      store_id: string;
+      store_name: string;
+    }>(
+      `SELECT t.id, t.wallet_id, t.type, t.amount::text, t.balance_after::text,
+              t.description, t.created_at, w.store_id, s.name AS store_name
+       FROM pd_wallet_transaction t
+       JOIN pd_vendor_wallet w ON w.id = t.wallet_id
+       JOIN pd_store s ON s.id = w.store_id
+       WHERE t.type = $1
+       ORDER BY t.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [txType, limit, offset],
+    );
+
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_wallet_transaction WHERE type = $1`,
+      [txType],
+    );
+    const total = parseInt(countRows[0].count, 10);
+
+    res.status(200).json({
+      data: rows.map((r) => ({
+        ...r,
+        amount: parseFloat(r.amount),
+        balance_after: parseFloat(r.balance_after),
+        created_at: r.created_at.toISOString(),
+      })),
+      meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
+    });
+  }),
+);
+
+// =====================================================
+// Global Platform Settings
+// =====================================================
+
+const globalSettingsSchema = z.object({
+  order_splitting_enabled: z.boolean().optional(),
+  retention_days_flouci: z.coerce.number().int().min(1).max(90).optional(),
+  retention_days_konnect: z.coerce.number().int().min(1).max(90).optional(),
+  retention_days_mandat: z.coerce.number().int().min(1).max(90).optional(),
+  retention_days_cod: z.coerce.number().int().min(1).max(90).optional(),
+  min_withdrawal_tnd: z.coerce.number().min(1).optional(),
+  platform_commission_rate: z.coerce.number().min(0).max(100).optional(),
+  mandat_recipient_name: z.string().max(200).optional(),
+  mandat_recipient_cin: z.string().max(20).optional(),
+  mandat_recipient_city: z.string().max(100).optional(),
+  max_upload_size_mb: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+/**
+ * GET /admin/settings — Retrieve current platform settings.
+ * Settings are stored in pd_platform_config (key-value).
+ * Falls back to defaults from config.ts if not set.
+ */
+router.get(
+  '/settings',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { rows } = await query<{ key: string; value: string }>(
+      `SELECT key, value FROM pd_platform_config ORDER BY key`,
+    );
+
+    const settings: Record<string, string | number | boolean> = {};
+    for (const row of rows) {
+      // Auto-parse booleans and numbers
+      if (row.value === 'true') settings[row.key] = true;
+      else if (row.value === 'false') settings[row.key] = false;
+      else if (!isNaN(Number(row.value))) settings[row.key] = Number(row.value);
+      else settings[row.key] = row.value;
+    }
+
+    res.status(200).json({ data: settings });
+  }),
+);
+
+/**
+ * PUT /admin/settings — Update platform settings.
+ * Upserts each key-value pair into pd_platform_config.
+ */
+router.put(
+  '/settings',
+  validate(globalSettingsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const entries = Object.entries(req.body).filter(([, v]) => v !== undefined);
+
+    for (const [key, value] of entries) {
+      await query(
+        `INSERT INTO pd_platform_config (key, value, updated_by, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_by = $3, updated_at = NOW()`,
+        [key, String(value), req.user!.id],
+      );
+    }
+
+    logger.info(
+      { admin_id: req.user!.id, keys: entries.map(([k]) => k) },
+      'Admin updated platform settings',
+    );
+
+    res.status(200).json({ success: true, message: 'Settings updated' });
+  }),
+);
+
+// =====================================================
+// Audit Log Viewer
+// =====================================================
+
+const auditLogListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  action: z.string().optional(),
+  search: z.string().optional(),
+});
+
+router.get(
+  '/audit-log',
+  validate(auditLogListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { page, limit, action, search } = req.query as unknown as {
+      page: number;
+      limit: number;
+      action?: string;
+      search?: string;
+    };
+    const offset = (page - 1) * limit;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (action) {
+      conditions.push(`a.action = $${paramIdx++}`);
+      params.push(action);
+    }
+    if (search) {
+      conditions.push(`(a.resource_type ILIKE $${paramIdx} OR a.resource_id ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx})`);
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const { rows } = await query<{
+      id: string;
+      admin_id: string;
+      admin_email: string;
+      action: string;
+      resource_type: string;
+      resource_id: string;
+      details: Record<string, unknown> | null;
+      ip_address: string | null;
+      created_at: Date;
+    }>(
+      `SELECT a.id, a.admin_id, u.email AS admin_email, a.action,
+              a.resource_type, a.resource_id, a.details, a.ip_address, a.created_at
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.admin_id
+       ${whereClause}
+       ORDER BY a.created_at DESC
+       LIMIT $${paramIdx++} OFFSET $${paramIdx}`,
+      [...params, limit, offset],
+    );
+
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.admin_id
+       ${whereClause}`,
+      params,
+    );
+    const total = parseInt(countRows[0].count, 10);
+
+    res.status(200).json({
+      data: rows.map((r) => ({
+        ...r,
+        created_at: r.created_at.toISOString(),
+      })),
+      meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
+    });
+  }),
+);
+
+// =====================================================
+// AI Cost Dashboard
+// =====================================================
+
+router.get(
+  '/ai-costs',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const [totalJobs, totalTokens, byType, topConsumers, recentJobs] = await Promise.all([
+      query<{ count: string }>('SELECT COUNT(*)::text AS count FROM pd_ai_job'),
+      query<{ total: string }>(
+        "SELECT COALESCE(SUM(tokens_used), 0)::text AS total FROM pd_ai_job WHERE status = 'completed'",
+      ),
+      query<{ type: string; count: string; tokens: string }>(
+        `SELECT type, COUNT(*)::text AS count, COALESCE(SUM(tokens_used), 0)::text AS tokens
+         FROM pd_ai_job GROUP BY type ORDER BY count DESC`,
+      ),
+      query<{ store_id: string; store_name: string; total_tokens: string; job_count: string }>(
+        `SELECT j.store_id, s.name AS store_name,
+                SUM(j.tokens_used)::text AS total_tokens,
+                COUNT(*)::text AS job_count
+         FROM pd_ai_job j
+         JOIN pd_store s ON s.id = j.store_id
+         WHERE j.status = 'completed'
+         GROUP BY j.store_id, s.name
+         ORDER BY SUM(j.tokens_used) DESC
+         LIMIT 10`,
+      ),
+      query<{ date: string; count: string; tokens: string }>(
+        `SELECT DATE(created_at)::text AS date,
+                COUNT(*)::text AS count,
+                COALESCE(SUM(tokens_used), 0)::text AS tokens
+         FROM pd_ai_job
+         WHERE created_at >= NOW() - INTERVAL '30 days'
+         GROUP BY DATE(created_at)
+         ORDER BY date ASC`,
+      ),
+    ]);
+
+    res.status(200).json({
+      total_jobs: parseInt(totalJobs.rows[0].count, 10),
+      total_tokens: parseInt(totalTokens.rows[0].total, 10),
+      estimated_cost_tnd: parseFloat(totalTokens.rows[0].total) * 0.005,
+      by_type: byType.rows.map((r) => ({
+        type: r.type,
+        count: parseInt(r.count, 10),
+        tokens: parseInt(r.tokens, 10),
+      })),
+      top_consumers: topConsumers.rows.map((r) => ({
+        store_id: r.store_id,
+        store_name: r.store_name,
+        total_tokens: parseInt(r.total_tokens, 10),
+        job_count: parseInt(r.job_count, 10),
+      })),
+      daily_usage: recentJobs.rows.map((r) => ({
+        date: r.date,
+        count: parseInt(r.count, 10),
+        tokens: parseInt(r.tokens, 10),
+      })),
+    });
+  }),
+);
+
+// =====================================================
+// SMTP Email Configuration
+// =====================================================
+
+const smtpConfigSchema = z.object({
+  smtp_host: z.string().min(1).max(255),
+  smtp_port: z.coerce.number().int().min(1).max(65535),
+  smtp_user: z.string().max(255).default(''),
+  smtp_pass: z.string().max(500).optional().default(''), // empty = keep existing
+  smtp_secure: z.boolean().default(false),
+  smtp_from_name: z.string().min(1).max(200).default('PandaMarket'),
+  smtp_from_email: z.string().email().max(255).default('noreply@pandamarket.tn'),
+  smtp_enabled: z.boolean().default(false),
+});
+
+/**
+ * GET /admin/smtp-config — Retrieve current SMTP configuration.
+ * Password is never returned — only a boolean indicating if it's set.
+ */
+router.get(
+  '/smtp-config',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const config = await smtpConfigService.getPublicConfig();
+    res.status(200).json({ data: config });
+  }),
+);
+
+/**
+ * PUT /admin/smtp-config — Save SMTP configuration.
+ * Password is encrypted at rest using AES-256-GCM.
+ * If smtp_pass is empty, the existing password is preserved.
+ */
+router.put(
+  '/smtp-config',
+  validate(smtpConfigSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await smtpConfigService.saveConfig(req.body, req.user!.id);
+    logger.info({ admin_id: req.user!.id }, 'Admin updated SMTP configuration');
+    res.status(200).json({ success: true, message: 'SMTP configuration saved' });
+  }),
+);
+
+const smtpTestSchema = z.object({
+  smtp_host: z.string().min(1).max(255).optional(),
+  smtp_port: z.coerce.number().int().min(1).max(65535).optional(),
+  smtp_user: z.string().max(255).optional(),
+  smtp_pass: z.string().max(500).optional(),
+  smtp_secure: z.boolean().optional(),
+  smtp_from_name: z.string().max(200).optional(),
+  smtp_from_email: z.string().email().max(255).optional(),
+  recipient_email: z.string().email().max(255).optional(),
+});
+
+/**
+ * POST /admin/smtp-config/test — Test SMTP connection.
+ * Optionally sends a test email to the specified recipient.
+ * Can test with unsaved config (pass overrides in body) or saved config (empty body).
+ */
+router.post(
+  '/smtp-config/test',
+  validate(smtpTestSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { recipient_email, ...overrides } = req.body;
+
+    // If overrides have a host, use them; otherwise test saved config
+    const hasOverrides = overrides.smtp_host && overrides.smtp_host.length > 0;
+
+    const result = await smtpConfigService.testConnection(
+      hasOverrides
+        ? {
+            smtp_host: overrides.smtp_host,
+            smtp_port: overrides.smtp_port ?? 587,
+            smtp_user: overrides.smtp_user ?? '',
+            smtp_pass: overrides.smtp_pass,
+            smtp_secure: overrides.smtp_secure ?? false,
+            smtp_from_name: overrides.smtp_from_name ?? 'PandaMarket',
+            smtp_from_email: overrides.smtp_from_email ?? 'noreply@pandamarket.tn',
+          }
+        : undefined,
+      recipient_email,
+    );
+
+    res.status(result.success ? 200 : 422).json(result);
   }),
 );
 

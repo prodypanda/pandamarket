@@ -9,6 +9,12 @@ import {
   Shield,
   Sparkles,
   Crown,
+  Key,
+  CreditCard,
+  Webhook,
+  Bell,
+  Flag,
+  LayoutTemplate,
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -21,9 +27,15 @@ export default function DashboardLayout({
     { name: 'Products', href: '/hub/dashboard/products', icon: Package },
     { name: 'Orders', href: '/hub/dashboard/orders', icon: ShoppingCart },
     { name: 'Wallet', href: '/hub/dashboard/wallet', icon: Wallet },
+    { name: 'Page Builder', href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
     { name: 'AI Tools', href: '/hub/dashboard/ai', icon: Sparkles },
     { name: 'KYC Verification', href: '/hub/dashboard/kyc', icon: Shield },
     { name: 'Subscription', href: '/hub/dashboard/subscription', icon: Crown },
+    { name: 'API Keys', href: '/hub/dashboard/api-keys', icon: Key },
+    { name: 'Webhooks', href: '/hub/dashboard/webhooks', icon: Webhook },
+    { name: 'Payment Config', href: '/hub/dashboard/payment-config', icon: CreditCard },
+    { name: 'Reports', href: '/hub/dashboard/reports', icon: Flag },
+    { name: 'Notifications', href: '/hub/dashboard/notifications', icon: Bell },
     { name: 'Settings', href: '/hub/dashboard/settings', icon: Settings },
   ];
 
