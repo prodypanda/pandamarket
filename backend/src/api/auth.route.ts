@@ -108,4 +108,60 @@ router.get(
   }),
 );
 
+// Forgot password
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+router.post(
+  '/forgot-password',
+  authRateLimit,
+  validate(forgotPasswordSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await authService.forgotPassword(req.body.email);
+    // Always return success to prevent email enumeration
+    res.status(200).json({ message: 'If an account exists with this email, a reset link has been sent.' });
+  }),
+);
+
+// Reset password
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8),
+});
+
+router.post(
+  '/reset-password',
+  authRateLimit,
+  validate(resetPasswordSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await authService.resetPassword(req.body.token, req.body.password);
+    res.status(200).json({ message: 'Password reset successfully. Please log in.' });
+  }),
+);
+
+// Send verification email
+router.post(
+  '/send-verification',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    await authService.sendVerificationEmail(req.user!.id);
+    res.status(200).json({ message: 'Verification email sent.' });
+  }),
+);
+
+// Verify email
+const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
+router.get(
+  '/verify-email',
+  validate(verifyEmailSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    await authService.verifyEmail(req.query.token as string);
+    res.status(200).json({ message: 'Email verified successfully.' });
+  }),
+);
+
 export default router;

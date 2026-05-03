@@ -61,12 +61,21 @@ router.get(
   }),
 );
 
-// Get single order
+// Get single order (tenant-isolated: customer sees own orders, vendor sees store orders)
 router.get(
   '/:id',
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const order = await orderService.getById(req.params.id);
+    // Tenant isolation: customer can only see their own orders,
+    // vendor can only see orders containing their store's products
+    const isCustomer = order.customer_id === req.user!.id;
+    const isVendor = req.user!.store_id && order.store_id === req.user!.store_id;
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
+    if (!isCustomer && !isVendor && !isAdmin) {
+      res.status(404).json({ error: { message: 'Order not found' } });
+      return;
+    }
     res.status(200).json({ order });
   }),
 );

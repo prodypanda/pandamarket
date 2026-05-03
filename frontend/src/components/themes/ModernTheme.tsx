@@ -1,19 +1,32 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { Sparkles, ArrowRight, ShoppingCart } from 'lucide-react';
+import { Sparkles, ArrowRight, ShoppingCart, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
+
+interface StoreProduct {
+  id: string;
+  title: string;
+  price: number;
+  images?: { url: string }[];
+  category?: string;
+}
 
 interface ThemeProps {
   theme: ThemeConfig;
   storeName: string;
+  products?: StoreProduct[];
 }
 
-export function ModernTheme({ theme, storeName }: ThemeProps) {
-  const products = [
-    { id: 1, name: 'Neon Cyber Keyboard', price: 'TND 350', tag: 'New Arrival' },
-    { id: 2, name: 'Holographic Display', price: 'TND 1200', tag: 'Trending' },
-    { id: 3, name: 'Quantum Processor Unit', price: 'TND 899', tag: 'Pro' },
-    { id: 4, name: 'Neural Link Headset', price: 'TND 450', tag: 'Best Seller' },
-  ];
+export function ModernTheme({ theme, storeName, products = [] }: ThemeProps) {
+  const tags = ['New Arrival', 'Trending', 'Pro', 'Best Seller'];
+  const displayProducts = products.length > 0
+    ? products
+    : [
+        { id: '1', title: 'Neon Cyber Keyboard', price: 350, images: [] },
+        { id: '2', title: 'Holographic Display', price: 1200, images: [] },
+        { id: '3', title: 'Quantum Processor Unit', price: 899, images: [] },
+        { id: '4', title: 'Neural Link Headset', price: 450, images: [] },
+      ];
 
   return (
     <div className={`${theme.colors.background} ${theme.colors.text} ${theme.typography.fontFamily} min-h-screen relative overflow-hidden`}>
@@ -53,30 +66,45 @@ export function ModernTheme({ theme, storeName }: ThemeProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((p) => (
-            <div key={p.id} className="group relative rounded-2xl bg-white/5 border border-white/10 overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-colors duration-500">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {displayProducts.map((p, idx) => (
+            <Link key={p.id} href={`/hub/products/${p.id}`} className="group relative rounded-2xl bg-white/5 border border-white/10 overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-colors duration-500 block">
               <div className="absolute top-4 left-4 z-20">
                 <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-black/50 backdrop-blur-md rounded-full text-white border border-white/20">
-                  {p.tag}
+                  {p.category || tags[idx % tags.length]}
                 </span>
               </div>
               <div className="aspect-[4/5] bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden">
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500"></div>
-                <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                {p.images && p.images[0]?.url ? (
+                  <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500"></div>
+                    <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-white/30">
+                      <ShoppingBag className="w-10 h-10" />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="p-6">
-                <h3 className="text-lg font-bold text-white mb-2">{p.name}</h3>
+                <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{p.title}</h3>
                 <div className="flex justify-between items-center">
-                  <p className="text-purple-300 font-medium">{p.price}</p>
-                  <button className="h-10 w-10 rounded-full bg-white text-black flex items-center justify-center opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                  <p className="text-purple-300 font-medium">{p.price.toFixed(3)} TND</p>
+                  <span className="h-10 w-10 rounded-full bg-white text-black flex items-center justify-center opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                     <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
+        {displayProducts.length === 0 && (
+          <div className="text-center py-20 text-slate-400">
+            <ShoppingBag className="w-12 h-12 mx-auto mb-4" />
+            <p>No products yet</p>
+          </div>
+        )}
       </main>
     </div>
   );

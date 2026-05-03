@@ -15,7 +15,7 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-500 text-sm mt-1">Manage your product catalog and inventory.</p>
         </div>
-        <button className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
+        <button className="flex items-center px-4 py-2 bg-[#16C784] text-white font-medium rounded-lg shadow-md hover:bg-[#14b876] hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
           <Plus className="w-5 h-5 mr-2" />
           Add Product
         </button>
@@ -29,7 +29,7 @@ export default function ProductsPage() {
             <input 
               type="text" 
               placeholder="Search products..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
             />
           </div>
           <button className="flex items-center px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
@@ -58,7 +58,7 @@ export default function ProductsPage() {
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-lg"></div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
+                        <div className="text-sm font-medium text-gray-900 group-hover:text-[#16C784] transition-colors">{product.name}</div>
                       </div>
                     </div>
                   </td>
@@ -80,7 +80,7 @@ export default function ProductsPage() {
                   <td className="px-6 py-4 text-sm text-gray-600">{product.sales}</td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">

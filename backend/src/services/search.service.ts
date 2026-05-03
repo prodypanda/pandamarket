@@ -30,8 +30,25 @@ export class SearchService {
   async init(): Promise<void> {
     try {
       const index = this.client.index(config.meili.productsIndex);
-      await index.updateFilterableAttributes(['category', 'store_id', 'price']);
+      await index.updateSearchableAttributes([
+        'title',
+        'description',
+        'category',
+        'tags',
+      ]);
+      await index.updateFilterableAttributes(['category', 'store_id', 'price', 'status']);
       await index.updateSortableAttributes(['price', 'created_at']);
+      await index.updateDisplayedAttributes([
+        'id',
+        'title',
+        'slug',
+        'price',
+        'thumbnail',
+        'store_id',
+        'category',
+        'description',
+        'tags',
+      ]);
       logger.info('Meilisearch indices initialized successfully');
     } catch (err) {
       logger.error({ err }, 'Failed to initialize Meilisearch indices');

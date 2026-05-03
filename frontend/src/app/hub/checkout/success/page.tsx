@@ -49,7 +49,7 @@ function SuccessContent() {
 export default function CheckoutSuccessPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 z-0">
-      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-[#16C784]" /></div>}>
         <SuccessContent />
       </Suspense>
     </div>

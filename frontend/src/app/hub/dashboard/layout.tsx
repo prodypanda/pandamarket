@@ -6,6 +6,9 @@ import {
   Wallet,
   Settings,
   LogOut,
+  Shield,
+  Sparkles,
+  Crown,
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -18,6 +21,9 @@ export default function DashboardLayout({
     { name: 'Products', href: '/hub/dashboard/products', icon: Package },
     { name: 'Orders', href: '/hub/dashboard/orders', icon: ShoppingCart },
     { name: 'Wallet', href: '/hub/dashboard/wallet', icon: Wallet },
+    { name: 'AI Tools', href: '/hub/dashboard/ai', icon: Sparkles },
+    { name: 'KYC Verification', href: '/hub/dashboard/kyc', icon: Shield },
+    { name: 'Subscription', href: '/hub/dashboard/subscription', icon: Crown },
     { name: 'Settings', href: '/hub/dashboard/settings', icon: Settings },
   ];
 
@@ -26,8 +32,8 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex fixed h-full z-10">
         <div className="h-16 flex items-center px-6 border-b border-gray-200">
-          <Link href="/hub/dashboard" className="text-xl font-bold text-blue-600">
-            Vendor Portal
+          <Link href="/hub/dashboard" className="text-xl font-bold text-[#16C784]">
+            🐼 PandaMarket
           </Link>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -35,7 +41,7 @@ export default function DashboardLayout({
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-blue-600 transition-colors"
+              className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-[#16C784]/5 hover:text-[#16C784] transition-colors"
             >
               <item.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
               {item.name}
@@ -43,6 +49,9 @@ export default function DashboardLayout({
           ))}
         </nav>
         <div className="p-4 border-t border-gray-200">
+          <Link href="/hub" className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-500 rounded-md hover:bg-gray-100 transition-colors mb-1">
+            ← Back to Hub
+          </Link>
           <button className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">
             <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
             Logout
@@ -57,7 +66,7 @@ export default function DashboardLayout({
           <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-500">Welcome, Vendor</div>
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+            <div className="h-8 w-8 rounded-full bg-[#16C784]/10 flex items-center justify-center text-[#16C784] font-bold">
               V
             </div>
           </div>

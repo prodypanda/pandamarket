@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Providers } from "../components/Providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "PandaMarket",
-  description: "The premier hybrid MaaS and SaaS platform in Tunisia",
+  title: "PandaMarket — La marketplace tunisienne #1",
+  description:
+    "Découvrez des milliers de produits uniques de vendeurs indépendants tunisiens. Créez votre boutique en ligne gratuitement.",
+  keywords: ["marketplace", "tunisie", "e-commerce", "boutique en ligne", "pandamarket"],
 };
 
 export default function RootLayout({
@@ -23,11 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

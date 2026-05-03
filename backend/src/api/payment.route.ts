@@ -1,22 +1,88 @@
 import { Router, Request, Response } from 'express';
+import * as crypto from 'crypto';
 import { z } from 'zod';
 import { paymentService } from '../services/payment.service';
 import { mandatService } from '../services/mandat.service';
 import { orderService } from '../services/order.service';
 import { asyncHandler, requireAuth, validate } from '../middlewares';
 import { PaymentGateway, MandatUploader } from '@pandamarket/types';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
 const initPaymentSchema = z.object({
   order_id: z.string(),
-  gateway: z.enum([PaymentGateway.Flouci, PaymentGateway.Konnect]),
+  gateway: z.enum([
+    PaymentGateway.Flouci,
+    PaymentGateway.Konnect,
+    PaymentGateway.ManualMandat,
+    PaymentGateway.Cod,
+  ]),
 });
 
 const mandatUploadSchema = z.object({
   order_id: z.string(),
   image_url: z.string().url(),
 });
+
+// =====================================================
+// HMAC Signature Verification Helpers
+// =====================================================
+
+/**
+ * Verify Flouci webhook signature using HMAC-SHA256.
+ * Flouci sends the signature in the `x-flouci-signature` header.
+ */
+function verifyFlouciSignature(req: Request): boolean {
+  const signature = req.headers['x-flouci-signature'] as string | undefined;
+  if (!signature) {
+    logger.warn('Flouci webhook missing signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.flouci.appSecret)
+    .update(payload)
+    .digest('hex');
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expected, 'hex'),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify Konnect webhook signature using HMAC-SHA256.
+ * Konnect sends the signature in the `x-konnect-signature` header.
+ */
+function verifyKonnectSignature(req: Request): boolean {
+  const signature = req.headers['x-konnect-signature'] as string | undefined;
+  if (!signature) {
+    logger.warn('Konnect webhook missing signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.konnect.apiKey)
+    .update(payload)
+    .digest('hex');
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expected, 'hex'),
+    );
+  } catch {
+    return false;
+  }
+}
+
+// =====================================================
+// Routes
+// =====================================================
 
 // Initialize Payment Link
 router.post(
@@ -33,15 +99,17 @@ router.post(
       return;
     }
 
-    let checkoutUrl = '';
-    if (gateway === PaymentGateway.Flouci) {
-      checkoutUrl = await paymentService.initFlouciPayment(order);
-    } else if (gateway === PaymentGateway.Konnect) {
-      checkoutUrl = await paymentService.initKonnectPayment(order);
-    }
+    const result = await paymentService.initPayment(
+      order,
+      gateway as PaymentGateway,
+      req.user!.id, // customer email would be fetched from user in a real scenario
+    );
 
-    res.status(200).json({ checkout_url: checkoutUrl });
-    return;
+    res.status(200).json({
+      checkout_url: result.redirect_url,
+      gateway_reference: result.gateway_reference,
+      metadata: result.metadata,
+    });
   }),
 );
 
@@ -68,28 +136,67 @@ router.post(
     });
 
     res.status(201).json({ proof });
-    return;
   }),
 );
 
-// Flouci Webhook
+// Flouci Webhook — with HMAC signature verification + idempotency
 router.post(
   '/webhook/flouci',
   asyncHandler(async (req: Request, res: Response) => {
-    // In production, verify Flouci signature here
+    // Verify HMAC signature (skip in development if no secret configured)
+    const signatureValid = verifyFlouciSignature(req);
+    if (!signatureValid && config.env === 'production') {
+      logger.warn({ ip: req.ip }, 'Flouci webhook signature verification failed');
+      res.status(401).json({ error: { message: 'Invalid signature' } });
+      return;
+    }
+
     const { payment_id, order_id } = req.body;
-    await paymentService.verifyFlouciPayment(payment_id, order_id);
+    if (!payment_id || !order_id) {
+      res.status(400).json({ error: { message: 'Missing payment_id or order_id' } });
+      return;
+    }
+
+    await paymentService.processPaymentWebhook({
+      gateway: PaymentGateway.Flouci,
+      gatewayEventId: payment_id,
+      orderId: order_id,
+      rawPayload: req.body,
+      sourceIp: req.ip ?? undefined,
+      signatureValid,
+    });
+
     res.status(200).send('OK');
   }),
 );
 
-// Konnect Webhook
+// Konnect Webhook — with HMAC signature verification + idempotency
 router.post(
   '/webhook/konnect',
   asyncHandler(async (req: Request, res: Response) => {
-    // In production, verify Konnect signature here
+    // Verify HMAC signature (skip in development if no secret configured)
+    const signatureValid = verifyKonnectSignature(req);
+    if (!signatureValid && config.env === 'production') {
+      logger.warn({ ip: req.ip }, 'Konnect webhook signature verification failed');
+      res.status(401).json({ error: { message: 'Invalid signature' } });
+      return;
+    }
+
     const { payment_ref, order_id } = req.body;
-    await paymentService.verifyKonnectPayment(payment_ref, order_id);
+    if (!payment_ref || !order_id) {
+      res.status(400).json({ error: { message: 'Missing payment_ref or order_id' } });
+      return;
+    }
+
+    await paymentService.processPaymentWebhook({
+      gateway: PaymentGateway.Konnect,
+      gatewayEventId: payment_ref,
+      orderId: order_id,
+      rawPayload: req.body,
+      sourceIp: req.ip ?? undefined,
+      signatureValid,
+    });
+
     res.status(200).send('OK');
   }),
 );

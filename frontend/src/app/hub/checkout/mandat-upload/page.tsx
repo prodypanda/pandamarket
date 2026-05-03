@@ -60,9 +60,9 @@ function MandatUploadContent() {
         Order ID: <strong className="text-gray-900">{orderId || 'Unknown'}</strong>
       </p>
 
-      <div className="bg-blue-50 p-4 rounded-xl flex gap-4 mb-8">
-        <Info className="w-6 h-6 text-blue-600 flex-shrink-0" />
-        <p className="text-sm text-blue-900">
+      <div className="bg-[#16C784]/5 p-4 rounded-xl flex gap-4 mb-8">
+        <Info className="w-6 h-6 text-[#16C784] flex-shrink-0" />
+        <p className="text-sm text-gray-800">
           Please complete a Mandat Minute transfer at La Poste to <strong>PandaMarket SARL</strong> (CIN: 12345678). 
           Then, take a clear photo of your receipt and upload it here to validate your order.
         </p>
@@ -94,7 +94,7 @@ function MandatUploadContent() {
       <button 
         disabled={!file || uploading} 
         onClick={handleUpload}
-        className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex justify-center items-center"
+        className="w-full bg-[#16C784] text-white font-bold text-lg py-4 rounded-xl hover:bg-[#14b876] transition-colors disabled:opacity-50 flex justify-center items-center"
       >
         {uploading ? (
           <Loader2 className="w-6 h-6 animate-spin" />
@@ -109,7 +109,7 @@ function MandatUploadContent() {
 export default function MandatUploadPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-[#16C784]" /></div>}>
         <MandatUploadContent />
       </Suspense>
     </div>

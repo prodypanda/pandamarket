@@ -4,6 +4,7 @@
 
 import bcrypt from 'bcryptjs';
 import { query, transaction } from '../db/pool';
+import { getRedis } from '../db/redis';
 import {
   PdAuthenticationError,
   PdConflictError,
@@ -19,6 +20,9 @@ import {
 } from '../utils/jwt';
 import { logger } from '../utils/logger';
 import { UserRole } from '@pandamarket/types';
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
 
 export interface UserRow {
   id: string;
@@ -89,16 +93,35 @@ export class AuthService {
 
   /**
    * Verify email + password and return user (no tokens here).
+   * Includes brute-force protection: locks account after MAX_LOGIN_ATTEMPTS
+   * failed attempts for LOCKOUT_DURATION_SECONDS.
    */
   async login(email: string, password: string): Promise<UserRow> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const lockoutKey = `pd:login_attempts:${normalizedEmail}`;
+
+    // Check if account is locked out
+    const redis = getRedis();
+    const attempts = await redis.get(lockoutKey);
+    if (attempts && parseInt(attempts, 10) >= MAX_LOGIN_ATTEMPTS) {
+      const ttl = await redis.ttl(lockoutKey);
+      logger.warn({ email: normalizedEmail, attempts }, 'Login attempt on locked account');
+      throw new PdAuthenticationError(
+        PdErrorCode.AUTH_ACCOUNT_SUSPENDED,
+        `Too many failed login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`,
+      );
+    }
+
     const { rows } = await query<UserRow>(
       `SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone
        FROM pd_user
        WHERE email = $1`,
-      [email.trim().toLowerCase()],
+      [normalizedEmail],
     );
     const user = rows[0];
     if (!user) {
+      // Increment failed attempts even for non-existent users (prevent enumeration)
+      await this.incrementLoginAttempts(lockoutKey);
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_INVALID_CREDENTIALS,
         'Invalid email or password',
@@ -112,13 +135,31 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
+      await this.incrementLoginAttempts(lockoutKey);
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_INVALID_CREDENTIALS,
         'Invalid email or password',
       );
     }
+
+    // Successful login — clear failed attempts
+    await redis.del(lockoutKey);
     await query('UPDATE pd_user SET last_login_at = NOW() WHERE id = $1', [user.id]);
     return user;
+  }
+
+  private async incrementLoginAttempts(key: string): Promise<void> {
+    try {
+      const redis = getRedis();
+      const current = await redis.incr(key);
+      if (current === 1) {
+        // First failed attempt — set expiry
+        await redis.expire(key, LOCKOUT_DURATION_SECONDS);
+      }
+    } catch (err) {
+      // Don't block login if Redis is down
+      logger.warn({ err }, 'Failed to track login attempt in Redis');
+    }
   }
 
   /**
@@ -196,6 +237,99 @@ export class AuthService {
       'UPDATE pd_refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
       [userId],
     );
+  }
+
+  /**
+   * Generate a password reset token and store its hash in Redis.
+   * In production, this would also queue an email via the email worker.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const { rows } = await query<{ id: string }>(
+      'SELECT id FROM pd_user WHERE email = $1 AND is_active = true',
+      [normalizedEmail],
+    );
+    // Always return success to prevent email enumeration
+    if (!rows[0]) {
+      logger.info({ email: normalizedEmail }, 'Forgot password for non-existent email');
+      return;
+    }
+    const userId = rows[0].id;
+    const token = require('node:crypto').randomBytes(32).toString('hex');
+    const tokenHash = sha256(token);
+    const redis = getRedis();
+    // Store token hash → userId mapping with 1-hour expiry
+    await redis.set(`pd:reset_token:${tokenHash}`, userId, 'EX', 3600);
+
+    // TODO: Queue email via emailWorker with the reset link containing the raw token
+    // For now, log it (NEVER do this in production)
+    logger.info({ user_id: userId, token_preview: token.slice(0, 8) + '...' }, 'Password reset token generated');
+  }
+
+  /**
+   * Validate a reset token and update the user's password.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    if (newPassword.length < 8) {
+      throw new PdValidationError('Password must be at least 8 characters', {
+        field: 'password',
+        min_length: 8,
+      });
+    }
+    const tokenHash = sha256(token);
+    const redis = getRedis();
+    const userId = await redis.get(`pd:reset_token:${tokenHash}`);
+    if (!userId) {
+      throw new PdAuthenticationError(
+        PdErrorCode.AUTH_TOKEN_INVALID,
+        'Invalid or expired reset token',
+      );
+    }
+    const passwordHash = await bcrypt.hash(newPassword, config.bcryptRounds);
+    await query('UPDATE pd_user SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+    // Invalidate the token
+    await redis.del(`pd:reset_token:${tokenHash}`);
+    // Revoke all refresh tokens (force re-login)
+    await this.logout(userId);
+    logger.info({ user_id: userId }, 'Password reset successfully');
+  }
+
+  /**
+   * Send a verification email. Stores a verification token in Redis.
+   */
+  async sendVerificationEmail(userId: string): Promise<void> {
+    const { rows } = await query<{ email: string; email_verified: boolean }>(
+      'SELECT email, email_verified FROM pd_user WHERE id = $1',
+      [userId],
+    );
+    if (!rows[0]) return;
+    if (rows[0].email_verified) return;
+
+    const token = require('node:crypto').randomBytes(32).toString('hex');
+    const tokenHash = sha256(token);
+    const redis = getRedis();
+    await redis.set(`pd:verify_email:${tokenHash}`, userId, 'EX', 86400); // 24 hours
+
+    // TODO: Queue email via emailWorker
+    logger.info({ user_id: userId, token_preview: token.slice(0, 8) + '...' }, 'Email verification token generated');
+  }
+
+  /**
+   * Verify email using the token.
+   */
+  async verifyEmail(token: string): Promise<void> {
+    const tokenHash = sha256(token);
+    const redis = getRedis();
+    const userId = await redis.get(`pd:verify_email:${tokenHash}`);
+    if (!userId) {
+      throw new PdAuthenticationError(
+        PdErrorCode.AUTH_TOKEN_INVALID,
+        'Invalid or expired verification token',
+      );
+    }
+    await query('UPDATE pd_user SET email_verified = true WHERE id = $1', [userId]);
+    await redis.del(`pd:verify_email:${tokenHash}`);
+    logger.info({ user_id: userId }, 'Email verified');
   }
 
   // ----------------------------------------------------------------
