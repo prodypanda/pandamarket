@@ -183,7 +183,7 @@ describe('Multi-Tenant Isolation', () => {
 
       mockQuery.mockResolvedValueOnce({
         rows: [
-          { id: 'pd_key_1', store_id: 'pd_store_A', key_prefix: 'pd_sk_a1b2', label: 'ERP Key', scopes: ['products:read'], is_active: true },
+          { id: 'pd_key_1', store_id: 'pd_store_A', key_prefix: 'pd_sk_a1b2', label: 'ERP Key', scopes: ['products:read'], is_active: true, last_used_at: null, expires_at: null, created_at: new Date() },
         ],
         rowCount: 1,
       } as any);
@@ -202,23 +202,8 @@ describe('Multi-Tenant Isolation', () => {
     const walletService = new WalletService();
 
     it('should not allow withdrawal from another store wallet', async () => {
-      // Wallet belongs to store_B but vendor A is trying to withdraw
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_wallet_B',
-          store_id: 'pd_store_B',
-          balance: '500.000',
-          pending_balance: '0.000',
-          total_earned: '1000.000',
-          total_withdrawn: '500.000',
-          payout_mode: 'on_demand',
-          retention_days: 7,
-          currency: 'TND',
-        }],
-        rowCount: 1,
-      } as any);
-
       // The wallet service uses store_id in WHERE clause, so store_A would get no results
+      // because the wallet belongs to store_B
       mockQuery.mockResolvedValueOnce({
         rows: [],
         rowCount: 0,

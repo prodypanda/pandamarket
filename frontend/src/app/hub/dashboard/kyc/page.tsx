@@ -29,10 +29,6 @@ export default function KycPage() {
   const [uploadingRc, setUploadingRc] = useState(false);
   const [uploadingCin, setUploadingCin] = useState(false);
 
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/pd/verification/status', { credentials: 'include' });
@@ -46,6 +42,10 @@ export default function KycPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
 
   const handleFileUpload = async (
     file: File,
@@ -169,7 +169,7 @@ export default function KycPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">En cours de vérification</h2>
           <p className="text-gray-500 mb-4">
-            Vos documents ont été soumis et sont en cours d'examen. Notre équipe vous contactera sous 48h.
+            Vos documents ont été soumis et sont en cours d&apos;examen. Notre équipe vous contactera sous 48h.
           </p>
           <p className="text-sm text-gray-400">
             Soumis le {new Date(verification.created_at).toLocaleDateString('fr-TN')}
@@ -182,7 +182,7 @@ export default function KycPage() {
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs font-semibold text-gray-500 mb-1">Carte d'Identité</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Carte d&apos;Identité</p>
               <p className="text-sm text-[#16C784] flex items-center gap-1">
                 <FileText className="w-4 h-4" /> Uploadé
               </p>
@@ -280,7 +280,7 @@ export default function KycPage() {
           {/* CIN Document */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              2. Carte d'Identité Nationale (CIN)
+              2. Carte d&apos;Identité Nationale (CIN)
             </label>
             {cinDocUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">

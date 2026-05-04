@@ -485,6 +485,8 @@ describe('PageBuilderService', () => {
   describe('size validation', () => {
     it('should reject builder_data exceeding 5MB', async () => {
       setupPlanCheck(true);
+      // Mock page count query
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
 
       const hugeData: Record<string, unknown> = {};
       // Create a string that's > 5MB
@@ -502,6 +504,8 @@ describe('PageBuilderService', () => {
 
     it('should reject HTML exceeding 2MB', async () => {
       setupPlanCheck(true);
+      // Mock page count query
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
 
       await expect(
         pageBuilderService.createPage({
@@ -515,6 +519,8 @@ describe('PageBuilderService', () => {
 
     it('should reject CSS exceeding 512KB', async () => {
       setupPlanCheck(true);
+      // Mock page count query
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
 
       await expect(
         pageBuilderService.createPage({

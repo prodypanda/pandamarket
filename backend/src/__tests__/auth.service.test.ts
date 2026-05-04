@@ -11,15 +11,16 @@ vi.mock('../db/pool', () => ({
   transaction: vi.fn(),
 }));
 
+const mockRedis = {
+  get: vi.fn(),
+  set: vi.fn(),
+  del: vi.fn(),
+  incr: vi.fn(),
+  expire: vi.fn(),
+  ttl: vi.fn(),
+};
 vi.mock('../db/redis', () => ({
-  getRedis: vi.fn(() => ({
-    get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn(),
-    incr: vi.fn(),
-    expire: vi.fn(),
-    ttl: vi.fn(),
-  })),
+  getRedis: vi.fn(() => mockRedis),
 }));
 
 vi.mock('../utils/crypto', () => ({
@@ -154,8 +155,7 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should login with correct credentials', async () => {
-      const redis = getRedis();
-      (redis.get as any).mockResolvedValue(null);
+      mockRedis.get.mockResolvedValue(null);
 
       mockQuery.mockResolvedValueOnce({
         rows: [{
@@ -187,13 +187,12 @@ describe('AuthService', () => {
 
       const user = await authService.login('test@example.com', 'correct_password');
       expect(user.id).toBe('user-1');
-      expect(redis.del).toHaveBeenCalled();
+      expect(mockRedis.del).toHaveBeenCalled();
     });
 
     it('should reject login with wrong password', async () => {
-      const redis = getRedis();
-      (redis.get as any).mockResolvedValue(null);
-      (redis.incr as any).mockResolvedValue(1);
+      mockRedis.get.mockResolvedValue(null);
+      mockRedis.incr.mockResolvedValue(1);
 
       mockQuery.mockResolvedValueOnce({
         rows: [{
@@ -220,9 +219,8 @@ describe('AuthService', () => {
     });
 
     it('should lock account after 5 failed attempts', async () => {
-      const redis = getRedis();
-      (redis.get as any).mockResolvedValue('5');
-      (redis.ttl as any).mockResolvedValue(600);
+      mockRedis.get.mockResolvedValue('5');
+      mockRedis.ttl.mockResolvedValue(600);
 
       await expect(
         authService.login('test@example.com', 'any_password'),
@@ -230,8 +228,7 @@ describe('AuthService', () => {
     });
 
     it('should reject login for suspended account', async () => {
-      const redis = getRedis();
-      (redis.get as any).mockResolvedValue(null);
+      mockRedis.get.mockResolvedValue(null);
 
       mockQuery.mockResolvedValueOnce({
         rows: [{
@@ -301,8 +298,6 @@ describe('AuthService', () => {
     });
 
     it('should store reset token in Redis for existing user', async () => {
-      const redis = getRedis();
-
       mockQuery.mockResolvedValueOnce({
         rows: [{ id: 'user-1' }],
         rowCount: 1,
@@ -313,7 +308,7 @@ describe('AuthService', () => {
 
       await authService.forgotPassword('test@example.com');
 
-      expect(redis.set).toHaveBeenCalledWith(
+      expect(mockRedis.set).toHaveBeenCalledWith(
         expect.stringContaining('pd:reset_token:'),
         'user-1',
         'EX',
@@ -324,8 +319,7 @@ describe('AuthService', () => {
 
   describe('resetPassword', () => {
     it('should reject with invalid token', async () => {
-      const redis = getRedis();
-      (redis.get as any).mockResolvedValue(null);
+      mockRedis.get.mockResolvedValue(null);
 
       await expect(
         authService.resetPassword('invalid-token', 'newpassword123'),

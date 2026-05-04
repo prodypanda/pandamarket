@@ -20,11 +20,11 @@ vi.mock('axios', () => ({
   },
 }));
 
-vi.mock('../../db/pool', () => ({
+vi.mock('../db/pool', () => ({
   query: vi.fn(),
 }));
 
-vi.mock('../../config', () => ({
+vi.mock('../config', () => ({
   config: {
     flouci: {
       appToken: 'platform_flouci_token',
@@ -39,7 +39,7 @@ vi.mock('../../config', () => ({
   },
 }));
 
-vi.mock('../../utils/logger', () => ({
+vi.mock('../utils/logger', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -48,12 +48,12 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
-vi.mock('../../utils/money', () => ({
+vi.mock('../utils/money', () => ({
   tndToMillimes: vi.fn((tnd: number) => Math.round(tnd * 1000)),
   millimesToTnd: vi.fn((m: number) => m / 1000),
 }));
 
-vi.mock('../../errors', () => {
+vi.mock('../errors', () => {
   class PdError extends Error {
     code: string;
     httpStatus: number;
@@ -75,8 +75,8 @@ vi.mock('../../errors', () => {
 });
 
 import axios from 'axios';
-import { query } from '../../db/pool';
-import { PaymentInitContext } from '../../plugins/payment/payment-provider.interface';
+import { query } from '../db/pool';
+import { PaymentInitContext } from '../plugins/payment/payment-provider.interface';
 import { PaymentGateway, MandatStatus } from '@pandamarket/types';
 
 const mockAxios = vi.mocked(axios);
@@ -103,7 +103,7 @@ describe('FlouciProvider', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const mod = await import('../../plugins/payment/flouci.provider');
+    const mod = await import('../plugins/payment/flouci.provider');
     FlouciProvider = mod.FlouciProvider;
     provider = new FlouciProvider();
   });
@@ -268,7 +268,7 @@ describe('KonnectProvider', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const mod = await import('../../plugins/payment/konnect.provider');
+    const mod = await import('../plugins/payment/konnect.provider');
     KonnectProvider = mod.KonnectProvider;
     provider = new KonnectProvider();
   });
@@ -404,7 +404,7 @@ describe('ManualMandatProvider', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const mod = await import('../../plugins/payment/manual-mandat.provider');
+    const mod = await import('../plugins/payment/manual-mandat.provider');
     ManualMandatProvider = mod.ManualMandatProvider;
     provider = new ManualMandatProvider();
   });
@@ -521,7 +521,7 @@ describe('CodProvider', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const mod = await import('../../plugins/payment/cod.provider');
+    const mod = await import('../plugins/payment/cod.provider');
     CodProvider = mod.CodProvider;
     provider = new CodProvider();
   });
@@ -576,17 +576,17 @@ describe('Payment Provider Registry', () => {
     vi.resetModules();
 
     // Re-mock dependencies needed by the registry
-    vi.doMock('../../utils/crypto', () => ({
+    vi.doMock('../utils/crypto', () => ({
       decrypt: vi.fn((s: string) => s),
     }));
-    vi.doMock('../../errors', () => ({
+    vi.doMock('../errors', () => ({
       PdValidationError: class extends Error {
         constructor(msg: string) { super(msg); }
       },
       PdErrorCode: { PAY_INVALID_GATEWAY: 'PD_PAY_INVALID_GATEWAY' },
     }));
 
-    const { getPaymentProvider } = await import('../../plugins/payment/index');
+    const { getPaymentProvider } = await import('../plugins/payment/index');
 
     const flouci = getPaymentProvider(PaymentGateway.Flouci);
     expect(flouci.gateway).toBe(PaymentGateway.Flouci);
@@ -603,30 +603,30 @@ describe('Payment Provider Registry', () => {
 
   it('should throw for invalid gateway', async () => {
     vi.resetModules();
-    vi.doMock('../../utils/crypto', () => ({ decrypt: vi.fn() }));
-    vi.doMock('../../errors', () => ({
+    vi.doMock('../utils/crypto', () => ({ decrypt: vi.fn() }));
+    vi.doMock('../errors', () => ({
       PdValidationError: class extends Error {
         constructor(msg: string) { super(msg); }
       },
       PdErrorCode: { PAY_INVALID_GATEWAY: 'PD_PAY_INVALID_GATEWAY' },
     }));
 
-    const { getPaymentProvider } = await import('../../plugins/payment/index');
+    const { getPaymentProvider } = await import('../plugins/payment/index');
 
     expect(() => getPaymentProvider('invalid_gateway' as any)).toThrow();
   });
 
   it('should decrypt vendor config correctly', async () => {
     vi.resetModules();
-    vi.doMock('../../utils/crypto', () => ({
+    vi.doMock('../utils/crypto', () => ({
       decrypt: vi.fn(() => JSON.stringify({ flouci_app_token: 'tok', flouci_app_secret: 'sec' })),
     }));
-    vi.doMock('../../errors', () => ({
+    vi.doMock('../errors', () => ({
       PdValidationError: class extends Error { constructor(msg: string) { super(msg); } },
       PdErrorCode: { PAY_INVALID_GATEWAY: 'PD_PAY_INVALID_GATEWAY' },
     }));
 
-    const { decryptVendorConfig } = await import('../../plugins/payment/index');
+    const { decryptVendorConfig } = await import('../plugins/payment/index');
 
     const result = decryptVendorConfig('encrypted_data');
     expect(result).toEqual({ flouci_app_token: 'tok', flouci_app_secret: 'sec' });
@@ -634,28 +634,28 @@ describe('Payment Provider Registry', () => {
 
   it('should return null for null config (escrow mode)', async () => {
     vi.resetModules();
-    vi.doMock('../../utils/crypto', () => ({ decrypt: vi.fn() }));
-    vi.doMock('../../errors', () => ({
+    vi.doMock('../utils/crypto', () => ({ decrypt: vi.fn() }));
+    vi.doMock('../errors', () => ({
       PdValidationError: class extends Error { constructor(msg: string) { super(msg); } },
       PdErrorCode: { PAY_INVALID_GATEWAY: 'PD_PAY_INVALID_GATEWAY' },
     }));
 
-    const { decryptVendorConfig } = await import('../../plugins/payment/index');
+    const { decryptVendorConfig } = await import('../plugins/payment/index');
 
     expect(decryptVendorConfig(null)).toBeNull();
   });
 
   it('should return null for corrupted encrypted config', async () => {
     vi.resetModules();
-    vi.doMock('../../utils/crypto', () => ({
+    vi.doMock('../utils/crypto', () => ({
       decrypt: vi.fn(() => { throw new Error('decrypt failed'); }),
     }));
-    vi.doMock('../../errors', () => ({
+    vi.doMock('../errors', () => ({
       PdValidationError: class extends Error { constructor(msg: string) { super(msg); } },
       PdErrorCode: { PAY_INVALID_GATEWAY: 'PD_PAY_INVALID_GATEWAY' },
     }));
 
-    const { decryptVendorConfig } = await import('../../plugins/payment/index');
+    const { decryptVendorConfig } = await import('../plugins/payment/index');
 
     expect(decryptVendorConfig('corrupted_data')).toBeNull();
   });

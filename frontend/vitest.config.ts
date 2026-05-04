@@ -16,6 +16,10 @@ export default defineConfig({
       include: ['src/components/**/*.tsx', 'src/contexts/**/*.tsx', 'src/lib/**/*.ts'],
     },
   },
+  css: {
+    // Disable PostCSS processing in tests to avoid lightningcss native binary issues in CI
+    postcss: '',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

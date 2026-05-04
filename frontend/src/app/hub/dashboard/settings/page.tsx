@@ -27,10 +27,6 @@ export default function SettingsPage() {
   // Shipping
   const [shippingMode, setShippingMode] = useState('standard');
 
-  useEffect(() => {
-    fetchStoreSettings();
-  }, []);
-
   const fetchStoreSettings = async () => {
     try {
       const res = await fetch('/api/pd/stores/me', { credentials: 'include' });
@@ -51,6 +47,10 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchStoreSettings();
+  }, []);
 
   const showFeedback = (msg: string, isError = false) => {
     if (isError) {
