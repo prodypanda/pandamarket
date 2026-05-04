@@ -157,7 +157,8 @@ build_backend:
 
 build_frontend:
   stage: build
-  <<: *install_deps
+  before_script:
+    - npm ci
   script:
     - cd frontend && npm run build
   artifacts:
