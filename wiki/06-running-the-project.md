@@ -34,15 +34,29 @@ npm run dev -w frontend
 
 ## Background Workers
 
-Workers process asynchronous tasks (image compression, email sending). Start them in separate terminals:
+PandaMarket has 6 BullMQ workers that process asynchronous tasks. Start them in separate terminals:
 
 ```powershell
 # AI worker (image compression, SEO generation)
 npm run worker:ai -w backend
 
-# Email worker
+# Email worker (sends emails via SMTP, reads config from DB)
 npm run worker:email -w backend
+
+# Payout worker (releases retained funds every 15 min)
+npm run worker:payout -w backend
+
+# Subscription worker (checks expiry daily at 02:00, sends warnings at 09:00)
+npm run worker:subscription -w backend
+
+# Webhook worker (dispatches outgoing webhooks with HMAC signing)
+npm run worker:webhook -w backend
+
+# Search worker (full Meilisearch reindex daily at 03:00)
+npm run worker:search -w backend
 ```
+
+> **Note:** For development, the AI and email workers are the most important. The others run on cron schedules and can be started as needed.
 
 ## Useful Commands
 
@@ -53,11 +67,28 @@ npm run worker:email -w backend
 | `npm run lint` | Check code for errors |
 | `npm run format` | Auto-format all code with Prettier |
 | `npm run type-check -w backend` | Check TypeScript types without building |
-| `npm run test -w backend` | Run backend tests |
+| `npm run test -w backend` | Run backend unit tests (9 suites) |
+| `npm run test -w frontend` | Run frontend unit tests (3 suites) |
+| `npm run migrate -w backend` | Apply database migrations |
+| `npm run seed -w backend` | Seed sample data (plans, themes, test users) |
 | `npm run docker:up` | Start Docker services |
 | `npm run docker:down` | Stop Docker services |
 | `npm run docker:logs` | View Docker logs (live) |
 | `npm run docker:reset` | Delete all data and restart fresh |
+
+### Makefile Targets (if using `make`)
+
+| Target | Description |
+|--------|-------------|
+| `make dev` | Start dev environment |
+| `make test` | Run all tests |
+| `make lint` | Lint all code |
+| `make build` | Build for production |
+| `make db-migrate` | Run migrations |
+| `make db-seed` | Seed database |
+| `make db-reset` | Reset database (migrate + seed) |
+| `make backup` | Backup all data (PostgreSQL, Redis, Meilisearch, MinIO) |
+| `make workers` | Start all BullMQ workers |
 
 ## Stopping Everything
 

@@ -6,6 +6,20 @@ PandaMarket uses a custom SQL migration runner. Migration files are `.sql` files
 
 The system tracks which migrations have been applied in a `pd_migrations` table.
 
+## Current Migrations
+
+The project has 5 SQL migration files:
+
+| File | Description |
+|------|-------------|
+| `001_initial_schema.sql` | 16 core tables (users, stores, products, orders, wallet, credits, KYC, reports, etc.) + indexes + triggers |
+| `002_payment_idempotency_and_webhooks.sql` | Payment events (idempotency), webhook subscriptions/deliveries, audit log, platform config |
+| `003_shipping_and_digital.sql` | License keys, shipments, pickup requests |
+| `004_theme_purchases.sql` | Theme purchase tracking + price columns on themes |
+| `005_page_builder.sql` | Store pages for GrapesJS page builder |
+
+All tables use the `pd_` prefix (e.g., `pd_store`, `pd_product`, `pd_order`).
+
 ## Running Migrations
 
 ```powershell
