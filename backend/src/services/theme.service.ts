@@ -8,7 +8,7 @@
  *   - Listing purchased themes for a store
  */
 
-import { query, transaction } from '../db/pool';
+import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { PdNotFoundError, PdConflictError, PdErrorCode } from '../errors';
 import { logger } from '../utils/logger';
@@ -58,7 +58,7 @@ export class ThemeService {
       [slug],
     );
     if (rows.length === 0) {
-      throw new PdNotFoundError('Theme not found', { slug });
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Theme not found', { slug });
     }
     return this.mapRow(rows[0]);
   }
@@ -72,7 +72,7 @@ export class ThemeService {
       [id],
     );
     if (rows.length === 0) {
-      throw new PdNotFoundError('Theme not found', { id });
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Theme not found', { id });
     }
     return this.mapRow(rows[0]);
   }
@@ -104,7 +104,7 @@ export class ThemeService {
     const theme = await this.getById(themeId);
 
     if (theme.is_free) {
-      throw new PdConflictError('This theme is free and does not require purchase');
+      throw new PdConflictError(PdErrorCode.VALIDATION_ERROR, 'This theme is free and does not require purchase');
     }
 
     // Check if already purchased

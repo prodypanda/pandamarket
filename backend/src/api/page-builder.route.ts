@@ -18,9 +18,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { pageBuilderService } from '../services/page-builder.service';
-import { requireAuth, requireVendor, requireStore } from '../middlewares';
-import { validate } from '../validators';
-import { logger } from '../utils/logger';
+import { requireAuth, requireVendor, requireStore, validate } from '../middlewares';
 
 const router = Router();
 

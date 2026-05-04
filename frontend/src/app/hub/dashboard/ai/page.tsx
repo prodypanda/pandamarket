@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Image, FileText, Zap, History, RefreshCw, AlertCircle } from 'lucide-react';
+import { Image, FileText, Zap, History, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface AiJob {
   id: string;
@@ -63,8 +63,9 @@ export default function AiToolsPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchCredits(), fetchJobs()]).finally(() => setLoading(false));
-  }, [fetchCredits, fetchJobs]);
+    void Promise.all([fetchCredits(), fetchJobs()]).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showFeedback = (msg: string, isError = false) => {
     if (isError) {

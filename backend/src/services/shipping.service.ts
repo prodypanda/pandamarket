@@ -13,11 +13,9 @@
 
 import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
-import { config } from '../config';
 import { logger } from '../utils/logger';
 import {
   PdNotFoundError,
-  PdValidationError,
   PdInternalError,
   PdErrorCode,
 } from '../errors';
@@ -382,7 +380,7 @@ export class ShippingService {
               Reference1: req.order_id,
               AccountNumber: ARAMEX_CONFIG.accountNumber,
               PartyAddress: {
-                Line1: req.sender.address.line1,
+                Line1: req.sender.address.address_line_1,
                 City: req.sender.address.city,
                 CountryCode: req.sender.address.country ?? 'TN',
                 PostCode: req.sender.address.postal_code ?? '',
@@ -395,7 +393,7 @@ export class ShippingService {
             Consignee: {
               Reference1: req.fulfillment_id,
               PartyAddress: {
-                Line1: req.recipient.address.line1,
+                Line1: req.recipient.address.address_line_1,
                 City: req.recipient.address.city,
                 CountryCode: req.recipient.address.country ?? 'TN',
                 PostCode: req.recipient.address.postal_code ?? '',

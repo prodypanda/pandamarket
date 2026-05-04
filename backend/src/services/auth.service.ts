@@ -255,7 +255,8 @@ export class AuthService {
       return;
     }
     const userId = rows[0].id;
-    const token = require('node:crypto').randomBytes(32).toString('hex');
+    const { randomBytes } = await import('node:crypto');
+    const token = randomBytes(32).toString('hex');
     const tokenHash = sha256(token);
     const redis = getRedis();
     // Store token hash → userId mapping with 1-hour expiry
@@ -305,7 +306,8 @@ export class AuthService {
     if (!rows[0]) return;
     if (rows[0].email_verified) return;
 
-    const token = require('node:crypto').randomBytes(32).toString('hex');
+    const { randomBytes } = await import('node:crypto');
+    const token = randomBytes(32).toString('hex');
     const tokenHash = sha256(token);
     const redis = getRedis();
     await redis.set(`pd:verify_email:${tokenHash}`, userId, 'EX', 86400); // 24 hours

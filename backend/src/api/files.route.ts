@@ -8,7 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { asyncHandler, requireAuth, requireStore, validate } from '../middlewares';
+import { asyncHandler, requireAuth, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
 import { presignUpload, publicUrl } from '../utils/s3';
 import { config } from '../config';

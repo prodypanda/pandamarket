@@ -26,7 +26,7 @@ dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 import bcrypt from 'bcryptjs';
 import { PoolClient } from 'pg';
-import { closePool, getPool, transaction } from '../src/db/pool';
+import { closePool, transaction } from '../src/db/pool';
 import { pdId } from '../src/utils/crypto';
 import { logger } from '../src/utils/logger';
 import { config } from '../src/config';

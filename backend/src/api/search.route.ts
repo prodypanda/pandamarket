@@ -36,7 +36,7 @@ router.get(
       thumbnail: hit.thumbnail,
     }));
 
-    res.status(200).json({ suggestions });
+    return res.status(200).json({ suggestions });
   }),
 );
 

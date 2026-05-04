@@ -234,6 +234,19 @@ export class OrderService {
     return rows[0];
   }
 
+  /**
+   * Check if an order contains items from a specific store (for vendor tenant isolation).
+   */
+  async hasStoreItems(orderId: string, storeId: string): Promise<boolean> {
+    const { rows } = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+        SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2
+      ) AS exists`,
+      [orderId, storeId],
+    );
+    return rows[0]?.exists ?? false;
+  }
+
   async listByCustomer(customerId: string, opts: { page?: number; limit?: number } = {}) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);

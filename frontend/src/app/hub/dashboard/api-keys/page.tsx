@@ -9,9 +9,6 @@ import {
   Check,
   AlertTriangle,
   Loader2,
-  Eye,
-  EyeOff,
-  Shield,
 } from 'lucide-react';
 
 interface ApiKey {
@@ -71,8 +68,9 @@ export default function ApiKeysPage() {
   }, []);
 
   useEffect(() => {
-    fetchKeys();
-  }, [fetchKeys]);
+    void fetchKeys();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreate = async () => {
     setCreateError('');

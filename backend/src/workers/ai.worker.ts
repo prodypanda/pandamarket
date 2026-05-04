@@ -38,7 +38,7 @@ const TOKEN_COSTS: Record<AiJobType, number> = {
 // ----------------------------------------------------
 
 async function compressImage(job: Job<AiJobData>) {
-  const { input_url, store_id, job_id: _job_id } = job.data;
+  const { input_url, store_id } = job.data;
   if (!input_url) throw new Error('Missing input_url');
 
   // 1. download

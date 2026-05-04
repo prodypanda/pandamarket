@@ -49,7 +49,7 @@ function generateOtp(): string {
  * Normalise a Tunisian phone number to +216XXXXXXXX format.
  */
 function normalisePhone(phone: string): string {
-  let cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+  let cleaned = phone.replace(/[\s\-().]/g, '');
   // If starts with 00216, replace with +216
   if (cleaned.startsWith('00216')) {
     cleaned = '+216' + cleaned.slice(5);

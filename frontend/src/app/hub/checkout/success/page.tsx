@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { CheckCircle, ArrowRight, Loader2, Package } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 function SuccessContent() {
@@ -27,7 +27,7 @@ function SuccessContent() {
         <Package className="w-6 h-6 text-gray-400" />
         <div className="text-left">
           <p className="text-sm font-medium text-gray-900">Track your delivery</p>
-          <p className="text-sm text-gray-500">We'll send shipping updates to your email.</p>
+          <p className="text-sm text-gray-500">We&apos;ll send shipping updates to your email.</p>
         </div>
       </div>
 

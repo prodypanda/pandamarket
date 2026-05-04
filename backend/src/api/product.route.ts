@@ -235,7 +235,7 @@ router.get(
     const downloadUrl = await presignDownload({
       bucket: 'pd-private-files',
       key: `digital/${req.params.id}/${product.slug || 'download'}`,
-      expiresIn: (product.download_expires_hours ?? 72) * 3600,
+      expiresInSeconds: (product.download_expires_hours ?? 72) * 3600,
     });
 
     // Increment download count
@@ -244,7 +244,7 @@ router.get(
       [req.params.id],
     );
 
-    res.json({
+    return res.json({
       data: {
         download_url: downloadUrl,
         license_key: licenseRows[0]?.license_key ?? null,

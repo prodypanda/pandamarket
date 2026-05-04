@@ -22,6 +22,7 @@ import {
   PdNotFoundError,
   PdConflictError,
   PdValidationError,
+  PdErrorCode,
 } from '../errors';
 import { logger } from '../utils/logger';
 
@@ -136,7 +137,7 @@ class PageBuilderService {
       [storeId],
     );
     if (storeResult.rows.length === 0) {
-      throw new PdNotFoundError('Boutique introuvable.');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Boutique introuvable.');
     }
     const plan = storeResult.rows[0].subscription_plan;
     const limits = await subscriptionService.getLimits(plan);
@@ -153,7 +154,7 @@ class PageBuilderService {
    * List all pages for a store (vendor dashboard).
    */
   async listPages(storeId: string): Promise<IStorePage[]> {
-    const result = await query(
+    const result = await query<IStorePage>(
       `SELECT * FROM pd_store_page
        WHERE store_id = $1
        ORDER BY sort_order ASC, created_at DESC`,
@@ -166,7 +167,7 @@ class PageBuilderService {
    * List published pages for a store (public storefront).
    */
   async listPublishedPages(storeId: string): Promise<IStorePage[]> {
-    const result = await query(
+    const result = await query<IStorePage>(
       `SELECT id, store_id, slug, title, html, css, is_homepage, sort_order, created_at, updated_at
        FROM pd_store_page
        WHERE store_id = $1 AND is_published = true
@@ -180,12 +181,12 @@ class PageBuilderService {
    * Get a single page by ID (vendor dashboard — includes builder_data).
    */
   async getPageById(pageId: string, storeId: string): Promise<IStorePage> {
-    const result = await query(
+    const result = await query<IStorePage>(
       `SELECT * FROM pd_store_page WHERE id = $1 AND store_id = $2`,
       [pageId, storeId],
     );
     if (result.rows.length === 0) {
-      throw new PdNotFoundError('Page introuvable.');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Page introuvable.');
     }
     return result.rows[0];
   }
@@ -195,7 +196,7 @@ class PageBuilderService {
    * Does NOT return builder_data (only compiled HTML/CSS for performance).
    */
   async getPublishedPageBySlug(storeId: string, slug: string): Promise<IStorePage | null> {
-    const result = await query(
+    const result = await query<IStorePage>(
       `SELECT id, store_id, slug, title, html, css, is_homepage, sort_order, created_at, updated_at
        FROM pd_store_page
        WHERE store_id = $1 AND slug = $2 AND is_published = true`,
@@ -208,7 +209,7 @@ class PageBuilderService {
    * Get the homepage override for a store (if any).
    */
   async getHomepageOverride(storeId: string): Promise<IStorePage | null> {
-    const result = await query(
+    const result = await query<IStorePage>(
       `SELECT id, store_id, slug, title, html, css, is_homepage, sort_order, created_at, updated_at
        FROM pd_store_page
        WHERE store_id = $1 AND is_homepage = true AND is_published = true
@@ -286,6 +287,7 @@ class PageBuilderService {
       // Handle duplicate slug (PostgreSQL unique_violation 23505)
       if (err?.code === '23505' && err?.constraint === 'uq_store_page_slug') {
         throw new PdConflictError(
+          PdErrorCode.STORE_SUBDOMAIN_TAKEN,
           `Une page avec le slug "${input.slug}" existe déjà dans cette boutique.`,
         );
       }
@@ -326,7 +328,7 @@ class PageBuilderService {
           [pageId, storeId],
         );
         if (existing.rows.length === 0) {
-          throw new PdNotFoundError('Page introuvable.');
+          throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Page introuvable.');
         }
 
         // If setting as homepage, unset any existing homepage
@@ -378,6 +380,7 @@ class PageBuilderService {
       // Handle duplicate slug
       if (err?.code === '23505' && err?.constraint === 'uq_store_page_slug') {
         throw new PdConflictError(
+          PdErrorCode.STORE_SUBDOMAIN_TAKEN,
           `Une page avec le slug "${sanitizedInput.slug}" existe déjà dans cette boutique.`,
         );
       }
@@ -394,7 +397,7 @@ class PageBuilderService {
       [pageId, storeId],
     );
     if (result.rows.length === 0) {
-      throw new PdNotFoundError('Page introuvable.');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Page introuvable.');
     }
     logger.info({ pageId, storeId }, 'Page builder page deleted');
   }

@@ -18,7 +18,8 @@ import { logger } from './logger';
 // Lazy-loaded Sentry SDK (only imported when DSN is configured)
 // ---------------------------------------------------------------------------
 
-let Sentry: typeof import('@sentry/node') | null = null;
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
+let Sentry: any = null;
 
 export function isSentryEnabled(): boolean {
   return !!config.sentryDsn;
@@ -34,16 +35,15 @@ export async function initSentry(): Promise<void> {
   }
 
   try {
-    Sentry = await import('@sentry/node');
+    // Dynamic require to avoid TS module resolution errors when @sentry/node is not installed
+    Sentry = require('@sentry/node');
 
     Sentry.init({
       dsn: config.sentryDsn,
       environment: config.env,
       release: `pandamarket-backend@${process.env.npm_package_version ?? '0.1.0'}`,
       tracesSampleRate: config.env === 'production' ? 0.2 : 1.0,
-      // Do not send PII by default
       sendDefaultPii: false,
-      // Ignore expected client errors
       ignoreErrors: [
         'PdValidationError',
         'PdAuthenticationError',
@@ -53,8 +53,7 @@ export async function initSentry(): Promise<void> {
         'PdRateLimitError',
         'PdQuotaExceededError',
       ],
-      beforeSend(event) {
-        // Strip sensitive headers
+      beforeSend(event: any) {
         if (event.request?.headers) {
           delete event.request.headers['authorization'];
           delete event.request.headers['cookie'];
@@ -67,6 +66,7 @@ export async function initSentry(): Promise<void> {
     logger.info('Sentry initialised successfully.');
   } catch (err) {
     logger.warn({ err }, 'Failed to initialise Sentry — continuing without error reporting.');
+    Sentry = null;
   }
 }
 
@@ -78,11 +78,11 @@ export function captureException(
   context?: Record<string, unknown>,
 ): void {
   if (!Sentry) return;
-  Sentry.withScope((scope) => {
+  Sentry.withScope((scope: any) => {
     if (context) {
       scope.setExtras(context);
     }
-    Sentry!.captureException(err);
+    Sentry.captureException(err);
   });
 }
 
@@ -102,7 +102,7 @@ export function captureMessage(
  */
 export function setUser(user: { id: string; role: string; store_id?: string | null }): void {
   if (!Sentry) return;
-  Sentry.setUser({ id: user.id, role: user.role, store_id: user.store_id ?? undefined } as Record<string, string | undefined>);
+  Sentry.setUser({ id: user.id, role: user.role, store_id: user.store_id ?? undefined });
 }
 
 /**
@@ -110,8 +110,7 @@ export function setUser(user: { id: string; role: string; store_id?: string | nu
  * Place BEFORE your routes.
  */
 export function sentryRequestHandler() {
-  if (!Sentry) {
-    // Return a no-op middleware
+  if (!Sentry?.Handlers) {
     return (_req: unknown, _res: unknown, next: () => void) => next();
   }
   return Sentry.Handlers.requestHandler({ ip: true });
@@ -122,14 +121,14 @@ export function sentryRequestHandler() {
  * Place AFTER your routes but BEFORE your custom error handler.
  */
 export function sentryErrorHandler() {
-  if (!Sentry) {
+  if (!Sentry?.Handlers) {
     return (_err: unknown, _req: unknown, _res: unknown, next: () => void) => next();
   }
   return Sentry.Handlers.errorHandler({
     shouldHandleError(error: Error & { httpStatus?: number }) {
-      // Only report 5xx errors to Sentry (client errors are expected)
       const status = error.httpStatus ?? 500;
       return status >= 500;
     },
   });
 }
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */

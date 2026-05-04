@@ -41,6 +41,10 @@ export interface ProductRow {
   tags: string[];
   metadata: Record<string, unknown>;
   rejection_reason: string | null;
+  // Digital product fields
+  max_downloads: number | null;
+  download_count: number | null;
+  download_expires_hours: number | null;
   created_at: Date;
   updated_at: Date;
 }

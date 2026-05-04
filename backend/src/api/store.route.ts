@@ -189,7 +189,7 @@ router.get(
     if (!page) {
       return res.status(404).json({ error: { code: 'PD_NOT_FOUND', message: 'Page introuvable' } });
     }
-    res.json({ page });
+    return res.json({ page });
   }),
 );
 

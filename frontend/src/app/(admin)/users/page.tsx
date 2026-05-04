@@ -9,8 +9,6 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
-  Search,
 } from 'lucide-react';
 
 interface Vendor {
@@ -71,8 +69,9 @@ export default function AdminUsersPage() {
   }, [page]);
 
   useEffect(() => {
-    fetchVendors();
-  }, [fetchVendors]);
+    void fetchVendors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const handleSuspend = async (storeId: string) => {
     setSuspendingId(storeId);
