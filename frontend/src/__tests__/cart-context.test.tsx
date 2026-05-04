@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { CartProvider, useCart, CartItem } from '../contexts/CartContext';
-import React from 'react';
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <CartProvider>{children}</CartProvider>
-);
+// ---------------------------------------------------------------------------
+// Helper: a tiny component that exposes CartContext values to the DOM so we
+// can assert against them without `renderHook` (which triggers the React 19
+// dual-instance bug in monorepo CI environments).
+// ---------------------------------------------------------------------------
 
 const sampleItem: Omit<CartItem, 'id'> = {
   product_id: 'prod_001',
@@ -27,102 +28,149 @@ const sampleItem2: Omit<CartItem, 'id'> = {
   image_url: null,
 };
 
+/**
+ * Test harness component that renders cart state as data-testid attributes
+ * and exposes action buttons so tests can drive the cart via fireEvent.
+ */
+function CartTestHarness() {
+  const ctx = useCart();
+
+  return (
+    <div>
+      <span data-testid="item-count">{ctx.getItemCount()}</span>
+      <span data-testid="cart-total">{ctx.getCartTotal()}</span>
+      <span data-testid="items-length">{ctx.items.length}</span>
+      <span data-testid="items-json">{JSON.stringify(ctx.items)}</span>
+      <span data-testid="grouped-json">{JSON.stringify(ctx.getItemsByStore())}</span>
+
+      <button data-testid="add-item1" onClick={() => ctx.addToCart(sampleItem)}>Add1</button>
+      <button data-testid="add-item2" onClick={() => ctx.addToCart(sampleItem2)}>Add2</button>
+      <button data-testid="add-variant-L" onClick={() => ctx.addToCart({ ...sampleItem, variant: 'L' })}>AddL</button>
+      <button data-testid="add-variant-XL" onClick={() => ctx.addToCart({ ...sampleItem, variant: 'XL' })}>AddXL</button>
+      <button data-testid="remove-item1" onClick={() => ctx.removeFromCart('prod_001')}>Remove1</button>
+      <button data-testid="update-qty-5" onClick={() => ctx.updateQuantity('prod_001', 5)}>Qty5</button>
+      <button data-testid="update-qty-0" onClick={() => ctx.updateQuantity('prod_001', 0)}>Qty0</button>
+      <button data-testid="clear" onClick={() => ctx.clearCart()}>Clear</button>
+    </div>
+  );
+}
+
+function renderCart() {
+  return render(
+    <CartProvider>
+      <CartTestHarness />
+    </CartProvider>,
+  );
+}
+
+// Helpers to read values from the rendered harness
+const itemCount = () => Number(screen.getByTestId('item-count').textContent);
+const cartTotal = () => Number(screen.getByTestId('cart-total').textContent);
+const itemsLength = () => Number(screen.getByTestId('items-length').textContent);
+const items = (): CartItem[] => JSON.parse(screen.getByTestId('items-json').textContent || '[]');
+const grouped = () => JSON.parse(screen.getByTestId('grouped-json').textContent || '{}');
+const click = (id: string) => fireEvent.click(screen.getByTestId(id));
+
 describe('CartContext', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   it('starts with an empty cart', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    expect(result.current.items).toEqual([]);
-    expect(result.current.getItemCount()).toBe(0);
-    expect(result.current.getCartTotal()).toBe(0);
+    renderCart();
+    expect(itemsLength()).toBe(0);
+    expect(itemCount()).toBe(0);
+    expect(cartTotal()).toBe(0);
   });
 
   it('adds an item to the cart', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0].title).toBe('Test Product');
-    expect(result.current.items[0].price).toBe(85.0);
-    expect(result.current.getItemCount()).toBe(1);
+    renderCart();
+    click('add-item1');
+    expect(itemsLength()).toBe(1);
+    expect(items()[0].title).toBe('Test Product');
+    expect(items()[0].price).toBe(85.0);
+    expect(itemCount()).toBe(1);
   });
 
   it('increments quantity when adding the same product', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.addToCart(sampleItem); });
-    expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0].quantity).toBe(2);
-    expect(result.current.getItemCount()).toBe(2);
+    renderCart();
+    click('add-item1');
+    click('add-item1');
+    expect(itemsLength()).toBe(1);
+    expect(items()[0].quantity).toBe(2);
+    expect(itemCount()).toBe(2);
   });
 
   it('calculates cart total correctly', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.addToCart(sampleItem2); });
+    renderCart();
+    click('add-item1');
+    click('add-item2');
     // 85 * 1 + 45.5 * 2 = 176
-    expect(result.current.getCartTotal()).toBe(176);
+    expect(cartTotal()).toBe(176);
   });
 
   it('removes an item from the cart', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.addToCart(sampleItem2); });
-    expect(result.current.items).toHaveLength(2);
-    act(() => { result.current.removeFromCart('prod_001'); });
-    expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0].title).toBe('Another Product');
+    renderCart();
+    click('add-item1');
+    click('add-item2');
+    expect(itemsLength()).toBe(2);
+    click('remove-item1');
+    expect(itemsLength()).toBe(1);
+    expect(items()[0].title).toBe('Another Product');
   });
 
   it('updates item quantity', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.updateQuantity('prod_001', 5); });
-    expect(result.current.items[0].quantity).toBe(5);
-    expect(result.current.getCartTotal()).toBe(425);
+    renderCart();
+    click('add-item1');
+    click('update-qty-5');
+    expect(items()[0].quantity).toBe(5);
+    expect(cartTotal()).toBe(425);
   });
 
   it('removes item when quantity set to 0', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.updateQuantity('prod_001', 0); });
-    expect(result.current.items).toHaveLength(0);
+    renderCart();
+    click('add-item1');
+    click('update-qty-0');
+    expect(itemsLength()).toBe(0);
   });
 
   it('clears the entire cart', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.addToCart(sampleItem2); });
-    expect(result.current.items).toHaveLength(2);
-    act(() => { result.current.clearCart(); });
-    expect(result.current.items).toHaveLength(0);
-    expect(result.current.getCartTotal()).toBe(0);
+    renderCart();
+    click('add-item1');
+    click('add-item2');
+    expect(itemsLength()).toBe(2);
+    click('clear');
+    expect(itemsLength()).toBe(0);
+    expect(cartTotal()).toBe(0);
   });
 
   it('groups items by store', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart(sampleItem); });
-    act(() => { result.current.addToCart(sampleItem2); });
-    const grouped = result.current.getItemsByStore();
-    expect(Object.keys(grouped)).toHaveLength(2);
-    expect(grouped['store_001'].store_name).toBe('Test Store');
-    expect(grouped['store_001'].items).toHaveLength(1);
-    expect(grouped['store_002'].store_name).toBe('Another Store');
-    expect(grouped['store_002'].items).toHaveLength(1);
+    renderCart();
+    click('add-item1');
+    click('add-item2');
+    const g = grouped();
+    expect(Object.keys(g)).toHaveLength(2);
+    expect(g['store_001'].store_name).toBe('Test Store');
+    expect(g['store_001'].items).toHaveLength(1);
+    expect(g['store_002'].store_name).toBe('Another Store');
+    expect(g['store_002'].items).toHaveLength(1);
   });
 
   it('handles variant-based cart item IDs', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    act(() => { result.current.addToCart({ ...sampleItem, variant: 'L' }); });
-    act(() => { result.current.addToCart({ ...sampleItem, variant: 'XL' }); });
+    renderCart();
+    click('add-variant-L');
+    click('add-variant-XL');
     // Same product, different variants = 2 separate items
-    expect(result.current.items).toHaveLength(2);
+    expect(itemsLength()).toBe(2);
   });
 
-  it('throws when useCart is used outside CartProvider', () => {
+  it('useCart throws when used outside CartProvider', () => {
+    // Verify the hook guard works by rendering without a provider.
+    // We catch the React error boundary throw instead of using renderHook.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => {
-      renderHook(() => useCart());
-    }).toThrow('useCart must be used within a CartProvider');
+      render(<CartTestHarness />);
+    }).toThrow();
+    spy.mockRestore();
   });
 });

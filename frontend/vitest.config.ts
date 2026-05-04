@@ -15,19 +15,6 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/components/**/*.tsx', 'src/contexts/**/*.tsx', 'src/lib/**/*.ts'],
     },
-    // Ensure single React instance for hooks to work correctly with React 19
-    deps: {
-      optimizer: {
-        web: {
-          include: ['react', 'react-dom', 'react-dom/client', '@testing-library/react'],
-        },
-      },
-    },
-    server: {
-      deps: {
-        inline: ['react', 'react-dom'],
-      },
-    },
   },
   css: {
     // Override PostCSS with empty config to avoid loading postcss.config.mjs
