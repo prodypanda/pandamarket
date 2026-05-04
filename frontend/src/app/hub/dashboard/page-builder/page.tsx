@@ -26,6 +26,8 @@ import {
   FileText,
 } from 'lucide-react';
 import { PageBuilderEditor } from '../../../../components/page-builder/PageBuilderEditor';
+import { TemplatePicker } from '../../../../components/page-builder/TemplatePicker';
+import type { PageTemplate } from '../../../../components/page-builder/templates';
 
 interface StorePage {
   id: string;
@@ -51,8 +53,11 @@ export default function PageBuilderDashboard() {
   const [editingPage, setEditingPage] = useState<StorePage | null>(null);
   const [creating, setCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [newPageTitle, setNewPageTitle] = useState('');
   const [newPageSlug, setNewPageSlug] = useState('');
+  const [templateHtml, setTemplateHtml] = useState('');
+  const [templateCss, setTemplateCss] = useState('');
 
   const fetchPages = useCallback(async () => {
     try {
@@ -84,7 +89,11 @@ export default function PageBuilderDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title: newPageTitle, slug: newPageSlug }),
+        body: JSON.stringify({
+          title: newPageTitle,
+          slug: newPageSlug,
+          ...(templateHtml ? { html: templateHtml, css: templateCss } : {}),
+        }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -95,6 +104,8 @@ export default function PageBuilderDashboard() {
       setShowCreateModal(false);
       setNewPageTitle('');
       setNewPageSlug('');
+      setTemplateHtml('');
+      setTemplateCss('');
       // Open editor immediately for the new page
       setEditingPage(data.page);
       setView('editor');
@@ -197,6 +208,16 @@ export default function PageBuilderDashboard() {
     }
   };
 
+  // Handle template selection from TemplatePicker
+  const handleTemplateSelect = (template: PageTemplate) => {
+    setShowTemplatePicker(false);
+    setNewPageTitle(template.name);
+    setNewPageSlug(template.slug);
+    setTemplateHtml(template.html);
+    setTemplateCss(template.css);
+    setShowCreateModal(true);
+  };
+
   // ─── Editor View ──────────────────────────────────────────
 
   if (view === 'editor' && editingPage) {
@@ -277,13 +298,22 @@ export default function PageBuilderDashboard() {
             Créez et personnalisez les pages de votre boutique avec l&apos;éditeur visuel.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nouvelle page
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTemplatePicker(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#16C784] font-semibold rounded-lg border-2 border-[#16C784] hover:bg-[#16C784]/5 transition-colors"
+          >
+            <LayoutTemplate className="w-4 h-4" />
+            Depuis un template
+          </button>
+          <button
+            onClick={() => { setTemplateHtml(''); setTemplateCss(''); setShowCreateModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Page vierge
+          </button>
+        </div>
       </div>
 
       {/* Page Count */}
@@ -302,15 +332,24 @@ export default function PageBuilderDashboard() {
           </h2>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
             Créez votre première page avec l&apos;éditeur Drag &amp; Drop.
-            Ajoutez des sections hero, grilles de produits, témoignages et plus.
+            Choisissez parmi 20 templates prêts à l&apos;emploi ou partez de zéro.
           </p>
+          <div className="flex items-center gap-3 justify-center">
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowTemplatePicker(true)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors"
           >
-            <Plus className="w-5 h-5" />
-            Créer ma première page
+            <LayoutTemplate className="w-5 h-5" />
+            Choisir un template
           </button>
+          <button
+            onClick={() => { setTemplateHtml(''); setTemplateCss(''); setShowCreateModal(true); }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Page vierge
+          </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -428,6 +467,12 @@ export default function PageBuilderDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Nouvelle page</h2>
+            {templateHtml && (
+              <div className="mb-4 px-3 py-2 bg-[#16C784]/10 border border-[#16C784]/20 rounded-lg flex items-center gap-2">
+                <LayoutTemplate className="w-4 h-4 text-[#16C784] flex-shrink-0" />
+                <p className="text-sm text-[#16C784] font-medium">Template pré-rempli. Vous pourrez le personnaliser dans l&apos;éditeur.</p>
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -467,6 +512,8 @@ export default function PageBuilderDashboard() {
                   setShowCreateModal(false);
                   setNewPageTitle('');
                   setNewPageSlug('');
+                  setTemplateHtml('');
+                  setTemplateCss('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -487,6 +534,14 @@ export default function PageBuilderDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Template Picker Modal */}
+      {showTemplatePicker && (
+        <TemplatePicker
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplatePicker(false)}
+        />
       )}
     </div>
   );

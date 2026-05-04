@@ -1,0 +1,388 @@
+{
+  "common": {
+    "appName": "باندا ماركت",
+    "tagline": "السوق التونسي الأول",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "retry": "إعادة المحاولة",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "close": "إغلاق",
+    "search": "بحث...",
+    "seeAll": "عرض الكل",
+    "seeMore": "عرض المزيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "confirm": "تأكيد",
+    "yes": "نعم",
+    "no": "لا",
+    "or": "أو",
+    "and": "و",
+    "free": "مجاني",
+    "currency": "د.ت",
+    "poweredBy": "مدعوم من 🐼 باندا ماركت",
+    "noResults": "لم يتم العثور على نتائج",
+    "memberSince": "عضو منذ {date}"
+  },
+
+  "nav": {
+    "home": "الرئيسية",
+    "explore": "استكشاف",
+    "categories": "الفئات",
+    "cart": "السلة",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "dashboard": "لوحة التحكم",
+    "profile": "ملفي الشخصي",
+    "orders": "طلباتي",
+    "wishlist": "المفضلة",
+    "notifications": "الإشعارات",
+    "createStore": "إنشاء متجري",
+    "pricing": "الأسعار"
+  },
+
+  "hub": {
+    "hero": {
+      "title": "اكتشف آلاف المنتجات الفريدة",
+      "subtitle": "السوق التونسي الذي يربط البائعين المستقلين بالمشترين. جودة وثقة ودفع محلي.",
+      "ctaExplore": "استكشف المنصة",
+      "ctaCreateStore": "أنشئ متجرك"
+    },
+    "trending": "المنتجات الرائجة",
+    "trendingSubtitle": "أكثر المنتجات شعبية حالياً.",
+    "categories": "الفئات الشائعة",
+    "verifiedStores": "المتاجر الموثقة",
+    "newArrivals": "وصل حديثاً",
+    "valueProps": {
+      "verified": {
+        "title": "بائعون موثقون",
+        "desc": "كل بائع يمر بعملية تحقق صارمة من الهوية."
+      },
+      "payment": {
+        "title": "دفع محلي",
+        "desc": "فلوسي، كونكت، حوالة دقيقة أو الدفع عند الاستلام."
+      },
+      "fast": {
+        "title": "توصيل سريع",
+        "desc": "استلم طلباتك خلال 3-5 أيام في كل أنحاء تونس."
+      }
+    },
+    "ctaBanner": {
+      "title": "هل أنت بائع؟",
+      "subtitle": "أنشئ متجرك الإلكتروني مجاناً وتواصل مع آلاف العملاء.",
+      "cta": "ابدأ مجاناً"
+    }
+  },
+
+  "product": {
+    "addToCart": "أضف إلى السلة",
+    "outOfStock": "نفذ من المخزون",
+    "inStock": "{count} متوفر",
+    "quantity": "الكمية",
+    "description": "الوصف",
+    "specifications": "المواصفات",
+    "reviews": "التقييمات ({count})",
+    "similarProducts": "منتجات مشابهة",
+    "category": "الفئة",
+    "vendor": "البائع",
+    "verified": "موثق",
+    "visitStore": "زيارة المتجر",
+    "variants": "الخيارات",
+    "price": "السعر",
+    "writeReview": "اكتب تقييماً",
+    "noReviews": "لا توجد تقييمات بعد."
+  },
+
+  "cart": {
+    "title": "سلتي",
+    "empty": "سلتك فارغة",
+    "emptySubtitle": "تصفح كتالوجنا للعثور على منتجات تعجبك.",
+    "continueShopping": "متابعة التسوق",
+    "itemCount": "{count} منتج(ات)",
+    "subtotal": "المجموع الفرعي",
+    "shipping": "التوصيل",
+    "shippingPerVendor": "توصيل {vendor}",
+    "total": "المجموع",
+    "checkout": "إتمام الطلب",
+    "remove": "إزالة",
+    "vendorGroup": "البائع: {name}"
+  },
+
+  "checkout": {
+    "title": "إتمام الشراء",
+    "steps": {
+      "address": "العنوان",
+      "shipping": "التوصيل",
+      "payment": "الدفع",
+      "confirmation": "التأكيد"
+    },
+    "address": {
+      "title": "عنوان التوصيل",
+      "firstName": "الاسم",
+      "lastName": "اللقب",
+      "phone": "الهاتف",
+      "address": "العنوان",
+      "city": "المدينة",
+      "postalCode": "الرمز البريدي",
+      "governorate": "الولاية"
+    },
+    "payment": {
+      "title": "طريقة الدفع",
+      "flouci": "فلوسي",
+      "konnect": "كونكت",
+      "mandat": "حوالة دقيقة",
+      "cod": "الدفع عند الاستلام",
+      "mandatInstructions": "أرسل حوالة دقيقة بالمبلغ المحدد، ثم ارفع صورة الوصل.",
+      "codInstructions": "ادفع نقداً عند استلام طلبك."
+    },
+    "confirm": "تأكيد والدفع",
+    "processing": "جاري المعالجة...",
+    "success": {
+      "title": "شكراً لطلبك!",
+      "subtitle": "تم تأكيد طلبك بنجاح. ستتلقى بريداً إلكترونياً للتأكيد.",
+      "orderNumber": "رقم الطلب",
+      "estimatedDelivery": "التوصيل المتوقع",
+      "trackOrder": "تتبع طلبي",
+      "continueShopping": "متابعة التسوق"
+    }
+  },
+
+  "auth": {
+    "login": {
+      "title": "تسجيل الدخول",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "submit": "دخول",
+      "forgotPassword": "نسيت كلمة المرور؟",
+      "noAccount": "ليس لديك حساب؟",
+      "createStore": "أنشئ متجرك",
+      "invalidCredentials": "بريد إلكتروني أو كلمة مرور غير صحيحة"
+    },
+    "register": {
+      "title": "إنشاء متجري",
+      "step1": "المعلومات الشخصية",
+      "step2": "متجري",
+      "step3": "اختيار الخطة",
+      "step4": "التأكيد",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "firstName": "الاسم",
+      "lastName": "اللقب",
+      "storeName": "اسم المتجر",
+      "storeCategory": "الفئة",
+      "subdomain": "النطاق الفرعي",
+      "submit": "إنشاء حسابي",
+      "alreadyHaveAccount": "لديك حساب بالفعل؟",
+      "loginLink": "تسجيل الدخول"
+    },
+    "forgotPassword": {
+      "title": "نسيت كلمة المرور",
+      "subtitle": "أدخل بريدك الإلكتروني لتلقي رابط إعادة التعيين.",
+      "submit": "إرسال الرابط",
+      "sent": "تم إرسال البريد! تحقق من صندوق الوارد.",
+      "backToLogin": "العودة لتسجيل الدخول"
+    },
+    "resetPassword": {
+      "title": "إعادة تعيين كلمة المرور",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "submit": "إعادة التعيين",
+      "success": "تم إعادة تعيين كلمة المرور بنجاح!"
+    }
+  },
+
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "مرحباً، {name} 👋",
+    "sidebar": {
+      "overview": "نظرة عامة",
+      "products": "المنتجات",
+      "orders": "الطلبات",
+      "wallet": "المحفظة",
+      "aiTools": "أدوات الذكاء الاصطناعي",
+      "myStore": "متجري",
+      "apiKeys": "مفاتيح API",
+      "verification": "التحقق",
+      "settings": "الإعدادات",
+      "subscription": "الاشتراك",
+      "pageBuilder": "منشئ الصفحات",
+      "webhooks": "ويب هوك",
+      "reports": "البلاغات",
+      "paymentConfig": "الدفع المباشر",
+      "notifications": "الإشعارات"
+    },
+    "stats": {
+      "sales": "المبيعات",
+      "orders": "الطلبات",
+      "products": "المنتجات",
+      "wallet": "المحفظة"
+    },
+    "recentOrders": "الطلبات الأخيرة"
+  },
+
+  "wallet": {
+    "title": "محفظتي",
+    "available": "متاح",
+    "pending": "قيد الانتظار",
+    "releasedIn": "يُحرر خلال {days} يوم",
+    "totalEarned": "إجمالي الأرباح",
+    "totalWithdrawn": "إجمالي السحب",
+    "withdraw": "سحب",
+    "payoutMode": "طريقة الدفع",
+    "automatic": "تلقائي",
+    "onDemand": "عند الطلب",
+    "history": "السجل",
+    "transaction": {
+      "sale": "بيع",
+      "commission": "عمولة",
+      "payout": "سحب",
+      "refund": "استرداد"
+    }
+  },
+
+  "kyc": {
+    "title": "التحقق من الحساب",
+    "status": {
+      "unverified": "غير موثق",
+      "pending": "قيد التحقق",
+      "approved": "موثق ✓",
+      "rejected": "مرفوض"
+    },
+    "instructions": "لنشر منتجاتك فوراً، أكمل عملية التحقق:",
+    "step1": "السجل التجاري",
+    "step2": "بطاقة التعريف الوطنية",
+    "step3": "التحقق الهاتفي",
+    "step3Desc": "سيتواصل معك فريقنا خلال 48 ساعة",
+    "submit": "تقديم للتحقق",
+    "uploaded": "تم الرفع"
+  },
+
+  "subscription": {
+    "title": "اشتراكي",
+    "currentPlan": "الخطة الحالية",
+    "upgrade": "ترقية",
+    "downgrade": "تخفيض",
+    "expiresOn": "ينتهي في {date}",
+    "plans": {
+      "free": "مجاني",
+      "starter": "مبتدئ",
+      "regular": "عادي",
+      "agency": "وكالة",
+      "pro": "احترافي",
+      "golden": "ذهبي",
+      "platinum": "بلاتيني"
+    },
+    "features": {
+      "products": "{count} منتج",
+      "productsUnlimited": "منتجات غير محدودة",
+      "images": "{count} صورة/منتج",
+      "commission": "{rate}% عمولة",
+      "noCommission": "0% عمولة",
+      "customDomain": "نطاق مخصص",
+      "pageBuilder": "منشئ الصفحات",
+      "aiTools": "أدوات الذكاء الاصطناعي",
+      "directPayment": "دفع مباشر",
+      "apiWebhooks": "API وويب هوك",
+      "whiteLabel": "علامة بيضاء"
+    }
+  },
+
+  "ai": {
+    "title": "أدوات الذكاء الاصطناعي",
+    "tokens": "الرموز: {count}",
+    "buyTokens": "شراء رموز",
+    "compress": {
+      "title": "ضغط الصور",
+      "desc": "حسّن صور منتجاتك دون فقدان الجودة.",
+      "cta": "ضغط",
+      "cost": "1 رمز / صورة"
+    },
+    "seo": {
+      "title": "تحسين محركات البحث التلقائي",
+      "desc": "أنشئ عناوين وأوصاف SEO من صورك.",
+      "cta": "إنشاء",
+      "cost": "2 رمز / منتج"
+    },
+    "history": "سجل المهام",
+    "status": {
+      "completed": "مكتمل",
+      "processing": "قيد المعالجة",
+      "failed": "فشل"
+    }
+  },
+
+  "admin": {
+    "title": "الإدارة",
+    "sidebar": {
+      "dashboard": "لوحة التحكم",
+      "kyc": "التحقق من الهوية",
+      "mandats": "الحوالات",
+      "reports": "البلاغات",
+      "vendors": "البائعون",
+      "withdrawals": "عمليات السحب",
+      "plans": "الخطط",
+      "auditLog": "سجل المراجعة",
+      "settings": "الإعدادات",
+      "aiCosts": "تكاليف الذكاء الاصطناعي",
+      "smtpConfig": "إعدادات البريد"
+    },
+    "urgentActions": "إجراءات عاجلة",
+    "kycPending": "{count} تحقق قيد الانتظار",
+    "mandatsPending": "{count} حوالة للتحقق",
+    "productsPending": "{count} منتج للموافقة",
+    "reportsPending": "{count} بلاغ(ات) مفتوحة"
+  },
+
+  "store": {
+    "catalog": "الكتالوج",
+    "about": "حول",
+    "contact": "اتصل بنا",
+    "featuredProducts": "منتجات مميزة",
+    "newArrivals": "وصل حديثاً",
+    "allProducts": "جميع المنتجات",
+    "welcome": "مرحباً بك في {name}",
+    "viewCatalog": "عرض الكتالوج"
+  },
+
+  "search": {
+    "title": "نتائج البحث",
+    "resultsFor": "{count} نتيجة لـ \"{query}\"",
+    "noResults": "لا توجد نتائج لـ \"{query}\"",
+    "noResultsSubtitle": "جرب كلمات مفتاحية أخرى أو تصفح فئاتنا.",
+    "filters": "الفلاتر",
+    "sortBy": "ترتيب حسب",
+    "sortOptions": {
+      "relevance": "الصلة",
+      "priceAsc": "السعر: من الأقل للأعلى",
+      "priceDesc": "السعر: من الأعلى للأقل",
+      "newest": "الأحدث"
+    },
+    "priceRange": "نطاق السعر",
+    "verifiedOnly": "بائعون موثقون فقط"
+  },
+
+  "footer": {
+    "about": "حول",
+    "help": "مساعدة",
+    "terms": "الشروط",
+    "privacy": "الخصوصية",
+    "contact": "اتصل بنا",
+    "social": "وسائل التواصل",
+    "copyright": "© {year} باندا ماركت. جميع الحقوق محفوظة."
+  },
+
+  "errors": {
+    "notFound": "الصفحة غير موجودة",
+    "notFoundDesc": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    "serverError": "خطأ في الخادم",
+    "networkError": "خطأ في الشبكة. تحقق من اتصالك.",
+    "unauthorized": "يجب تسجيل الدخول للوصول إلى هذه الصفحة.",
+    "forbidden": "ليس لديك صلاحية لهذا الإجراء."
+  }
+}

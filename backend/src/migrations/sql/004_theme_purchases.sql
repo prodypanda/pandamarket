@@ -5,9 +5,9 @@
 -- ─── Theme purchases table ──────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS pd_theme_purchase (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  store_id        UUID NOT NULL REFERENCES pd_store(id) ON DELETE CASCADE,
-  theme_id        UUID NOT NULL REFERENCES pd_theme(id) ON DELETE CASCADE,
+  id              VARCHAR(64) PRIMARY KEY,
+  store_id        VARCHAR(64) NOT NULL REFERENCES pd_store(id) ON DELETE CASCADE,
+  theme_id        VARCHAR(64) NOT NULL REFERENCES pd_theme(id) ON DELETE CASCADE,
   amount_paid     DECIMAL(10, 3) NOT NULL DEFAULT 0,
   currency        VARCHAR(3) NOT NULL DEFAULT 'TND',
   payment_reference VARCHAR(255),
@@ -58,7 +58,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS pd_platform_config (
   key             VARCHAR(100) PRIMARY KEY,
   value           TEXT NOT NULL,
-  updated_by      UUID REFERENCES pd_user(id),
+  updated_by      VARCHAR(64) REFERENCES pd_user(id),
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
   created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );

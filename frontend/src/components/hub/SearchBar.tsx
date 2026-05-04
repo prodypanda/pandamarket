@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useLocale } from '../../contexts/LocaleContext';
 
 interface SearchResult {
   id: string;
@@ -14,6 +15,7 @@ interface SearchResult {
 
 export function SearchBar() {
   const router = useRouter();
+  const { t } = useLocale();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -82,7 +84,7 @@ export function SearchBar() {
           onChange={handleSearch}
           onKeyDown={handleKeyDown}
           onFocus={() => query.length > 1 && setShowDropdown(true)}
-          placeholder="Search for products across all stores..."
+          placeholder={t('common.search')}
           className="w-full px-5 py-3 pl-12 text-gray-900 bg-white border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#16C784] shadow-sm transition-shadow"
         />
         <Search className="absolute left-4 w-5 h-5 text-gray-400" />
@@ -91,7 +93,7 @@ export function SearchBar() {
       {showDropdown && query.length > 1 && (
         <div className="absolute w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
           {isSearching ? (
-            <div className="p-4 text-center text-sm text-gray-500">Searching...</div>
+            <div className="p-4 text-center text-sm text-gray-500">{t('common.loading')}</div>
           ) : results.length > 0 ? (
             <>
               <ul className="divide-y divide-gray-50">
@@ -107,7 +109,7 @@ export function SearchBar() {
                         {r.category && <p className="text-xs text-gray-500">{r.category}</p>}
                       </div>
                       <span className="text-sm font-bold text-[#16C784]">
-                        {r.price.toFixed(3)} TND
+                        {r.price.toFixed(3)} {t('common.currency')}
                       </span>
                     </Link>
                   </li>
@@ -118,11 +120,11 @@ export function SearchBar() {
                 onClick={() => setShowDropdown(false)}
                 className="block p-3 text-center text-sm font-medium text-[#16C784] hover:bg-gray-50 border-t border-gray-100"
               >
-                View all results →
+                {t('common.seeAll')} →
               </Link>
             </>
           ) : (
-            <div className="p-4 text-center text-sm text-gray-500">No products found</div>
+            <div className="p-4 text-center text-sm text-gray-500">{t('common.noResults')}</div>
           )}
         </div>
       )}

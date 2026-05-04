@@ -170,3 +170,14 @@ export enum ApiKeyScope {
   ReadCustomers = 'read:customers',
   FullAccess = 'full_access',
 }
+
+// =====================================================
+// Reviews
+// =====================================================
+
+export enum ReviewStatus {
+  Published = 'published',
+  Pending = 'pending',
+  Hidden = 'hidden',
+  Flagged = 'flagged',
+}

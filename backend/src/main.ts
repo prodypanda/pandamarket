@@ -34,6 +34,8 @@ import vendorRouter from './api/vendor.route';
 import shippingRouter from './api/shipping.route';
 import themeRouter from './api/theme.route';
 import pageBuilderRouter from './api/page-builder.route';
+import reviewRouter from './api/review.route';
+import wishlistRouter from './api/wishlist.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -167,6 +169,8 @@ async function bootstrap() {
   apiRouter.use('/shipping', shippingRouter);
   apiRouter.use('/themes', themeRouter);
   apiRouter.use('/page-builder', pageBuilderRouter);
+  apiRouter.use('/reviews', reviewRouter);
+  apiRouter.use('/wishlist', wishlistRouter);
 
   app.use('/api/pd', apiRouter);
 

@@ -2,28 +2,8 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Heart, User } from 'lucide-react';
 import Link from 'next/link';
-
-interface StoreProduct {
-  id: string;
-  title: string;
-  price: number;
-  images?: { url: string }[];
-  category?: string;
-}
-
-interface StoreBranding {
-  primary_color?: string;
-  secondary_color?: string;
-  logo_url?: string;
-  favicon_url?: string;
-}
-
-interface ThemeProps {
-  theme: ThemeConfig;
-  storeName: string;
-  products?: StoreProduct[];
-  branding?: StoreBranding;
-}
+import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { ThemeLayout } from './ThemeLayout';
 
 /**
  * Boutique Theme — Luxury fashion & lifestyle.
@@ -31,7 +11,8 @@ interface ThemeProps {
  * generous whitespace, editorial-style product grid.
  */
 export function BoutiqueTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const goldAccent = branding?.primary_color || '#C9A96E';
+  const tc = useThemeCustomization(theme, branding);
+  const goldAccent = tc.colors.accent;
   const displayProducts = products.length > 0
     ? products
     : [
@@ -44,7 +25,7 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
       ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F5F0EB', color: '#1C1C1C' }}>
+    <div className="min-h-screen" style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Announcement Bar */}
@@ -120,8 +101,9 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
       </section>
 
       {/* Products */}
-      <main id="products" className="max-w-7xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-14">
+      <main id="products" className="pb-24">
+        <ThemeLayout variation={tc.layoutVariation} layout={tc.layout} colors={tc.colors} categories={[...new Set(displayProducts.map(p => p.category).filter(Boolean))] as string[]}>
+        <div className={`grid ${tc.gridClasses}`} style={{ rowGap: '3.5rem' }}>
           {displayProducts.map((p) => (
             <Link key={p.id} href={`/hub/products/${p.id}`} className="group block">
               <div className="aspect-[3/4] mb-5 overflow-hidden bg-[#EDE8E1]">
@@ -155,6 +137,7 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
             <p className="text-sm tracking-wide">Aucun produit pour le moment</p>
           </div>
         )}
+        </ThemeLayout>
       </main>
 
       {/* Footer */}

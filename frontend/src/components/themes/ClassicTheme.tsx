@@ -2,36 +2,11 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingCart, Search, Menu, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-
-interface StoreProduct {
-  id: string;
-  title: string;
-  price: number;
-  images?: { url: string }[];
-  category?: string;
-}
-
-interface StoreBranding {
-  primary_color?: string;
-  secondary_color?: string;
-  logo_url?: string;
-  favicon_url?: string;
-}
-
-interface ThemeProps {
-  theme: ThemeConfig;
-  storeName: string;
-  products?: StoreProduct[];
-  branding?: StoreBranding;
-}
+import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { ThemeLayout } from './ThemeLayout';
 
 export function ClassicTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const headerStyle = branding?.primary_color
-    ? { backgroundColor: branding.primary_color }
-    : {};
-  const accentStyle = branding?.primary_color
-    ? { color: branding.primary_color }
-    : {};
+  const tc = useThemeCustomization(theme, branding);
   const displayProducts = products.length > 0
     ? products
     : [
@@ -41,12 +16,17 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
         { id: '4', title: 'Power Bank', price: 45, images: [] },
       ];
 
+  const categories = [...new Set(displayProducts.map((p) => p.category).filter(Boolean))] as string[];
+
   return (
-    <div className={`${theme.colors.background} ${theme.colors.text} ${theme.typography.fontFamily} min-h-screen`}>
-      {branding?.favicon_url && (
-        <link rel="icon" href={branding.favicon_url} />
-      )}
-      <header className={`${branding?.primary_color ? '' : theme.colors.primary} shadow-md`} style={headerStyle}>
+    <div
+      className={`${theme.typography.fontFamily} min-h-screen`}
+      style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}
+    >
+      {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+
+      {/* Header */}
+      <header className="shadow-md" style={{ backgroundColor: tc.colors.primary, color: tc.colors.background }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Menu className="w-6 h-6 lg:hidden" />
@@ -56,62 +36,112 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
               <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
             )}
           </div>
-          
           <div className="hidden lg:flex flex-1 max-w-lg mx-8 relative">
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              className="w-full py-2 px-4 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-white"
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              className="w-full py-2 px-4 rounded-md focus:outline-none focus:ring-2"
+              style={{ color: tc.colors.text, backgroundColor: tc.colors.background }}
             />
-            <Search className="w-5 h-5 text-gray-500 absolute right-3 top-2.5" />
+            <Search className="w-5 h-5 absolute right-3 top-2.5" style={{ color: `${tc.colors.text}60` }} />
           </div>
-
           <div className="flex items-center space-x-6">
-            <a href="#" className="text-sm font-medium hover:text-blue-100 transition-colors">Sign In</a>
-            <a href="#" className="flex items-center hover:text-blue-100 transition-colors relative">
+            <a href="#" className="text-sm font-medium hover:opacity-80 transition-opacity">Connexion</a>
+            <a href="#" className="flex items-center hover:opacity-80 transition-opacity relative">
               <ShoppingCart className="w-6 h-6" />
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                0
-              </span>
+              <span className="absolute -top-2 -right-2 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" style={{ backgroundColor: tc.colors.accent }}>0</span>
             </a>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-xl font-bold border-b border-gray-200 pb-4 mb-8">Featured Products</h2>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {displayProducts.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="bg-white border border-gray-200 rounded-md overflow-hidden hover:shadow-lg transition-shadow duration-300 block">
-              <div className="bg-gray-100 aspect-square w-full overflow-hidden">
-                {p.images && p.images[0]?.url ? (
-                  <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <ShoppingBag className="w-8 h-8" />
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="text-gray-800 font-medium line-clamp-1">{p.title}</h3>
-                <div className="flex items-center justify-between mt-3">
-                  <span className={`font-bold ${theme.colors.accent}`}>{p.price.toFixed(3)} TND</span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded hover:bg-gray-200 transition-colors">
-                    View
-                  </span>
+      {/* Hero */}
+      {tc.heroStyle !== 'none' && (
+        <section
+          className="py-16 text-center"
+          style={{
+            backgroundColor: tc.heroStyle === 'banner' ? tc.colors.primary : tc.colors.secondary,
+            color: tc.heroStyle === 'banner' ? tc.colors.background : tc.colors.text,
+          }}
+        >
+          <div className="max-w-4xl mx-auto px-6">
+            {tc.heroStyle === 'split' ? (
+              <div className="flex items-center gap-10 text-left">
+                <div className="flex-1">
+                  <h2 className={`text-3xl md:text-4xl mb-3 ${theme.typography.headingFont || ''} ${theme.typography.headingStyle}`}>
+                    Bienvenue chez {storeName}
+                  </h2>
+                  <p className="opacity-70 mb-6">Découvrez nos produits de qualité sélectionnés avec soin.</p>
+                  <a href="#products" className="inline-block px-6 py-2.5 rounded-md text-sm font-semibold" style={{ backgroundColor: tc.colors.accent, color: tc.colors.background }}>
+                    Voir le catalogue
+                  </a>
                 </div>
+                <div className="flex-1 hidden md:block aspect-[4/3] rounded-lg" style={{ backgroundColor: `${tc.colors.text}10` }} />
               </div>
-            </Link>
-          ))}
-        </div>
-        {displayProducts.length === 0 && (
-          <div className="text-center py-20 text-gray-400">
-            <ShoppingBag className="w-12 h-12 mx-auto mb-4" />
-            <p>No products yet</p>
+            ) : tc.heroStyle === 'minimal' ? (
+              <h2 className={`text-2xl ${theme.typography.headingFont || ''} ${theme.typography.headingStyle}`}>
+                {storeName}
+              </h2>
+            ) : (
+              <>
+                <h2 className={`text-3xl md:text-5xl mb-4 ${theme.typography.headingFont || ''} ${theme.typography.headingStyle}`}>
+                  Bienvenue chez {storeName}
+                </h2>
+                <p className="text-lg opacity-80 mb-6">Découvrez nos produits de qualité sélectionnés avec soin.</p>
+              </>
+            )}
           </div>
-        )}
+        </section>
+      )}
+
+      {/* Products */}
+      <main id="products" className="py-12">
+        <ThemeLayout variation={tc.layoutVariation} layout={tc.layout} colors={tc.colors} categories={categories}>
+          <h2 className="text-xl font-bold pb-4 mb-6" style={{ borderBottom: `1px solid ${tc.colors.text}15`, color: tc.colors.text }}>
+            Produits en vedette
+          </h2>
+          <div className={`grid ${tc.gridClasses}`}>
+            {displayProducts.map((p) => (
+              <Link
+                key={p.id}
+                href={`/hub/products/${p.id}`}
+                className="rounded-md overflow-hidden hover:shadow-lg transition-shadow duration-300 block border"
+                style={{ backgroundColor: tc.colors.background, borderColor: `${tc.colors.text}15` }}
+              >
+                <div className="aspect-square w-full overflow-hidden" style={{ backgroundColor: tc.colors.secondary }}>
+                  {p.images && p.images[0]?.url ? (
+                    <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ color: `${tc.colors.text}30` }}>
+                      <ShoppingBag className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-medium line-clamp-1" style={{ color: tc.colors.text }}>{p.title}</h3>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="font-bold" style={{ color: tc.colors.accent }}>{p.price.toFixed(3)} TND</span>
+                    <span className="px-3 py-1 text-sm font-medium rounded transition-colors" style={{ backgroundColor: tc.colors.secondary, color: tc.colors.text }}>
+                      Voir
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {displayProducts.length === 0 && (
+            <div className="text-center py-20" style={{ color: `${tc.colors.text}50` }}>
+              <ShoppingBag className="w-12 h-12 mx-auto mb-4" />
+              <p>Aucun produit pour le moment</p>
+            </div>
+          )}
+        </ThemeLayout>
       </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center text-xs" style={{ backgroundColor: tc.colors.footerBg, color: `${tc.colors.background}80` }}>
+        <p>© {new Date().getFullYear()} {storeName} — Propulsé par <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+      </footer>
     </div>
   );
 }

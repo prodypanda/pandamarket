@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { themes, ThemeId } from '../../../lib/themes';
+import { themes, ThemeId, type ThemeCustomization, resolveThemeColors } from '../../../lib/themes';
 import { MinimalTheme } from '../../../components/themes/MinimalTheme';
 import { ClassicTheme } from '../../../components/themes/ClassicTheme';
 import { ModernTheme } from '../../../components/themes/ModernTheme';
@@ -9,6 +9,19 @@ import { BoutiqueTheme } from '../../../components/themes/BoutiqueTheme';
 import { ArtisanTheme } from '../../../components/themes/ArtisanTheme';
 import { TechHubTheme } from '../../../components/themes/TechHubTheme';
 import { FlavorTheme } from '../../../components/themes/FlavorTheme';
+import { EleganceTheme } from '../../../components/themes/EleganceTheme';
+import { NeonTheme } from '../../../components/themes/NeonTheme';
+import { SaharaTheme } from '../../../components/themes/SaharaTheme';
+import { MedinaTheme } from '../../../components/themes/MedinaTheme';
+import { CoastalTheme } from '../../../components/themes/CoastalTheme';
+import { UrbanTheme } from '../../../components/themes/UrbanTheme';
+import { GardenTheme } from '../../../components/themes/GardenTheme';
+import { StudioTheme } from '../../../components/themes/StudioTheme';
+import { LuxeTheme } from '../../../components/themes/LuxeTheme';
+import { FreshTheme } from '../../../components/themes/FreshTheme';
+import { CraftTheme } from '../../../components/themes/CraftTheme';
+import { DigitalTheme } from '../../../components/themes/DigitalTheme';
+import { KidsTheme } from '../../../components/themes/KidsTheme';
 import { SafePageRenderer } from '../../../components/page-builder/SafePageRenderer';
 
 interface StoreBranding {
@@ -16,6 +29,7 @@ interface StoreBranding {
   secondary_color?: string;
   logo_url?: string;
   favicon_url?: string;
+  themeCustomization?: ThemeCustomization;
 }
 
 interface StoreData {
@@ -203,31 +217,43 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   const activeTheme = themes[store.theme_id] || themes['classic'];
 
   // Extract branding from store settings
+  const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
+  const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+
+  // Use resolved colors as primary_color override for backward compatibility
   const branding: StoreBranding = {
-    primary_color: store.settings?.colors?.primary,
-    secondary_color: store.settings?.colors?.secondary,
+    primary_color: themeCustomization?.customColors?.primary || resolvedColors.primary,
+    secondary_color: themeCustomization?.customColors?.secondary || resolvedColors.secondary,
     logo_url: store.settings?.logo_url as string | undefined,
     favicon_url: store.settings?.favicon_url as string | undefined,
+    themeCustomization,
   };
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding };
 
-  switch (activeTheme.id) {
-    case 'minimal':
-      return <MinimalTheme {...themeProps} />;
-    case 'classic':
-      return <ClassicTheme {...themeProps} />;
-    case 'modern':
-      return <ModernTheme {...themeProps} />;
-    case 'boutique':
-      return <BoutiqueTheme {...themeProps} />;
-    case 'artisan':
-      return <ArtisanTheme {...themeProps} />;
-    case 'techhub':
-      return <TechHubTheme {...themeProps} />;
-    case 'flavor':
-      return <FlavorTheme {...themeProps} />;
-    default:
-      return <ClassicTheme {...themeProps} />;
-  }
+  const themeComponents: Record<string, React.FC<typeof themeProps>> = {
+    minimal: MinimalTheme,
+    classic: ClassicTheme,
+    modern: ModernTheme,
+    boutique: BoutiqueTheme,
+    artisan: ArtisanTheme,
+    techhub: TechHubTheme,
+    flavor: FlavorTheme,
+    elegance: EleganceTheme,
+    neon: NeonTheme,
+    sahara: SaharaTheme,
+    medina: MedinaTheme,
+    coastal: CoastalTheme,
+    urban: UrbanTheme,
+    garden: GardenTheme,
+    studio: StudioTheme,
+    luxe: LuxeTheme,
+    fresh: FreshTheme,
+    craft: CraftTheme,
+    digital: DigitalTheme,
+    kids: KidsTheme,
+  };
+
+  const ThemeComponent = themeComponents[activeTheme.id] || ClassicTheme;
+  return <ThemeComponent {...themeProps} />;
 }

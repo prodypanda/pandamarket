@@ -4,6 +4,23 @@ This guide walks you through setting up PandaMarket on your Windows computer fro
 
 ---
 
+## Disk Space Requirements
+
+Make sure you have enough free disk space before starting:
+
+| Component | Approximate Size |
+|-----------|-----------------|
+| Source code (cloned repo) | ~8 MB |
+| Node.js dependencies (`node_modules`) | ~610 MB |
+| Next.js build cache (`.next/`) | ~28 MB |
+| Docker images (PostgreSQL, Redis, Meilisearch, MinIO) | ~1.5 GB |
+| Docker data volumes (databases, files) | ~200 MB (grows with usage) |
+| **Total minimum free space needed** | **~2.5 GB** |
+
+> 💡 The largest packages are **Next.js** (~165 MB), **@next/swc-win32-x64-msvc** (~131 MB), **lucide-react** (~37 MB), **TypeScript** (~23 MB x2), and **sharp** (~19 MB). These are platform-specific native binaries for Windows x64.
+
+---
+
 ## Step 1: Clone the Repository
 
 Open **PowerShell** and run:
@@ -61,6 +78,25 @@ All containers should show `running` or `healthy` status.
 
 ## Step 3: Install Node.js Dependencies
 
+### ⚠️ Windows Symlink Requirement (IMPORTANT — Read First!)
+
+PandaMarket uses **npm workspaces**, which require symlinks to link the `backend`, `frontend`, and `packages/*` folders inside `node_modules`. On Windows, creating symlinks requires one of the following:
+
+**Option A — Enable Developer Mode (Recommended):**
+1. Open **Settings** → **Update & Security** → **For developers**
+2. Toggle **Developer Mode** to **ON**
+3. Restart your terminal (close and reopen PowerShell)
+
+**Option B — Run as Administrator:**
+1. Right-click PowerShell → **Run as Administrator**
+2. Navigate to your project folder before running `npm install`
+
+> 💡 If you skip this step, you will get an `EISDIR: illegal operation on a directory, symlink` error.
+
+---
+
+### Install Dependencies
+
 From the **project root** folder, run:
 
 ```powershell
@@ -69,7 +105,20 @@ npm install
 
 This installs dependencies for all workspaces (backend, frontend, and shared types). It may take 2–3 minutes.
 
-> ⚠️ You might see `EBADENGINE` warnings — these are safe to ignore. The project works fine with your Node version.
+> ⚠️ You might see deprecation warnings (e.g., `@types/bcryptjs`, `inflight`, `glob`) — these are safe to ignore. The project works fine.
+
+If you previously attempted `npm install` and it failed, clean up first:
+
+```powershell
+# Remove the broken node_modules
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force backend\node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force frontend\node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force packages\types\node_modules -ErrorAction SilentlyContinue
+
+# Then install fresh
+npm install
+```
 
 ---
 

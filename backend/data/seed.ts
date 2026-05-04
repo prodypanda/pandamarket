@@ -5,7 +5,7 @@
  *
  * Seeds:
  *   1. `pd_subscription_limits` (7 plans — source of truth for quotas)
- *   2. `pd_theme` (3 base themes: minimal, classic, modern)
+ *   2. `pd_theme` (20 themes: minimal, classic, modern, boutique, artisan, techhub, flavor, elegance, neon, sahara, medina, coastal, urban, garden, studio, luxe, fresh, craft, digital, kids)
  *   3. Super admin user                  (admin@pandamarket.tn / Admin123!)
  *   4. Verified Pro vendor + store       (vendor.pro@test.tn / Test123!)
  *   5. Free-plan vendor + store          (vendor.free@test.tn / Test123!)
@@ -263,6 +263,110 @@ async function seedThemes(c: PoolClient): Promise<void> {
       description:
         'Couleurs chaudes terracotta, coins arrondis généreux. Idéal pour restaurants, pâtisseries, épiceries fines et produits alimentaires.',
       preview_url: '/themes/flavor/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'elegance',
+      name: 'Elegance',
+      description: 'Luxe minimaliste avec typographie serif, espacement généreux et palette sobre. Idéal pour marques haut de gamme.',
+      preview_url: '/themes/elegance/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'neon',
+      name: 'Neon',
+      description: 'Mode sombre par défaut, accents néon vibrants, ambiance gaming/cyberpunk. Pour boutiques tech et gaming.',
+      preview_url: '/themes/neon/preview.jpg',
+      is_free: false,
+      price: 120,
+    },
+    {
+      slug: 'sahara',
+      name: 'Sahara',
+      description: 'Tons désertiques chaleureux, motifs tunisiens. Parfait pour artisanat local, décoration et produits du terroir.',
+      preview_url: '/themes/sahara/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'medina',
+      name: 'Medina',
+      description: 'Ambiance souk traditionnel, palette teal et or, bordures ornées. Pour artisanat, bijoux et produits culturels.',
+      preview_url: '/themes/medina/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'coastal',
+      name: 'Coastal',
+      description: 'Bleus océan et tons sablés, ambiance bord de mer méditerranéen. Pour mode estivale, accessoires et lifestyle.',
+      preview_url: '/themes/coastal/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'urban',
+      name: 'Urban',
+      description: 'Typographie bold, contraste élevé, style streetwear. Pour mode urbaine, sneakers et culture street.',
+      preview_url: '/themes/urban/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'garden',
+      name: 'Garden',
+      description: 'Verts naturels et tons terreux, ambiance organique. Pour cosmétiques bio, produits naturels et bien-être.',
+      preview_url: '/themes/garden/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'studio',
+      name: 'Studio',
+      description: 'Style portfolio/galerie avec layout masonry. Pour photographes, artistes, créateurs et produits visuels.',
+      preview_url: '/themes/studio/preview.jpg',
+      is_free: false,
+      price: 90,
+    },
+    {
+      slug: 'luxe',
+      name: 'Luxe',
+      description: 'Fond sombre avec accents dorés, typographie serif élégante. Pour joaillerie, montres et produits de luxe.',
+      preview_url: '/themes/luxe/preview.jpg',
+      is_free: false,
+      price: 150,
+    },
+    {
+      slug: 'fresh',
+      name: 'Fresh',
+      description: 'Verts vifs et blancs lumineux, design épuré. Pour épicerie, alimentation saine, produits bio et fitness.',
+      preview_url: '/themes/fresh/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'craft',
+      name: 'Craft',
+      description: 'Textures rustiques, bordures en pointillés, palette chaude. Pour artisanat DIY, fait-main et créations uniques.',
+      preview_url: '/themes/craft/preview.jpg',
+      is_free: true,
+      price: 0,
+    },
+    {
+      slug: 'digital',
+      name: 'Digital',
+      description: 'Fond sombre avec dégradés, design moderne. Pour produits numériques, logiciels, templates et assets digitaux.',
+      preview_url: '/themes/digital/preview.jpg',
+      is_free: false,
+      price: 80,
+    },
+    {
+      slug: 'kids',
+      name: 'Kids',
+      description: 'Coloré et ludique, formes arrondies, typographie fun. Pour jouets, vêtements enfants et produits éducatifs.',
+      preview_url: '/themes/kids/preview.jpg',
       is_free: true,
       price: 0,
     },

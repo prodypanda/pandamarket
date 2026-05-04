@@ -1,0 +1,388 @@
+{
+  "common": {
+    "appName": "PandaMarket",
+    "tagline": "La marketplace tunisienne #1",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Éditer",
+    "create": "Créer",
+    "close": "Fermer",
+    "search": "Rechercher...",
+    "seeAll": "Voir tout",
+    "seeMore": "Voir plus",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non",
+    "or": "ou",
+    "and": "et",
+    "free": "Gratuit",
+    "currency": "TND",
+    "poweredBy": "Propulsé par 🐼 PandaMarket",
+    "noResults": "Aucun résultat trouvé",
+    "memberSince": "Membre depuis {date}"
+  },
+
+  "nav": {
+    "home": "Accueil",
+    "explore": "Explorer",
+    "categories": "Catégories",
+    "cart": "Panier",
+    "login": "Connexion",
+    "register": "Inscription",
+    "logout": "Déconnexion",
+    "dashboard": "Tableau de bord",
+    "profile": "Mon profil",
+    "orders": "Mes commandes",
+    "wishlist": "Favoris",
+    "notifications": "Notifications",
+    "createStore": "Créer ma boutique",
+    "pricing": "Tarifs"
+  },
+
+  "hub": {
+    "hero": {
+      "title": "Découvrez des milliers de produits uniques",
+      "subtitle": "La marketplace tunisienne qui connecte vendeurs indépendants et acheteurs. Qualité, confiance et paiement local.",
+      "ctaExplore": "Explorer le Hub",
+      "ctaCreateStore": "Créer ma boutique"
+    },
+    "trending": "Produits Tendance",
+    "trendingSubtitle": "Les articles les plus populaires du moment.",
+    "categories": "Catégories Populaires",
+    "verifiedStores": "Boutiques Vérifiées",
+    "newArrivals": "Nouveautés",
+    "valueProps": {
+      "verified": {
+        "title": "Vendeurs Vérifiés",
+        "desc": "Chaque vendeur passe un processus de vérification KYC rigoureux."
+      },
+      "payment": {
+        "title": "Paiement Local",
+        "desc": "Flouci, Konnect, Mandat Minute ou paiement à la livraison."
+      },
+      "fast": {
+        "title": "Livraison Rapide",
+        "desc": "Recevez vos commandes en 3-5 jours partout en Tunisie."
+      }
+    },
+    "ctaBanner": {
+      "title": "Vous êtes vendeur ?",
+      "subtitle": "Créez votre boutique en ligne gratuitement et touchez des milliers de clients.",
+      "cta": "Commencer gratuitement"
+    }
+  },
+
+  "product": {
+    "addToCart": "Ajouter au panier",
+    "outOfStock": "Rupture de stock",
+    "inStock": "{count} disponible(s)",
+    "quantity": "Quantité",
+    "description": "Description",
+    "specifications": "Caractéristiques",
+    "reviews": "Avis ({count})",
+    "similarProducts": "Produits Similaires",
+    "category": "Catégorie",
+    "vendor": "Vendeur",
+    "verified": "Vérifié",
+    "visitStore": "Visiter la boutique",
+    "variants": "Variantes",
+    "price": "Prix",
+    "writeReview": "Écrire un avis",
+    "noReviews": "Aucun avis pour le moment."
+  },
+
+  "cart": {
+    "title": "Mon Panier",
+    "empty": "Votre panier est vide",
+    "emptySubtitle": "Parcourez notre catalogue pour trouver des produits qui vous plaisent.",
+    "continueShopping": "Continuer mes achats",
+    "itemCount": "{count} article(s)",
+    "subtotal": "Sous-total",
+    "shipping": "Livraison",
+    "shippingPerVendor": "Livraison {vendor}",
+    "total": "Total",
+    "checkout": "Passer la commande",
+    "remove": "Retirer",
+    "vendorGroup": "Vendeur : {name}"
+  },
+
+  "checkout": {
+    "title": "Checkout",
+    "steps": {
+      "address": "Adresse",
+      "shipping": "Livraison",
+      "payment": "Paiement",
+      "confirmation": "Confirmation"
+    },
+    "address": {
+      "title": "Adresse de livraison",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "city": "Ville",
+      "postalCode": "Code postal",
+      "governorate": "Gouvernorat"
+    },
+    "payment": {
+      "title": "Mode de paiement",
+      "flouci": "Flouci",
+      "konnect": "Konnect",
+      "mandat": "Mandat Minute",
+      "cod": "Paiement à la livraison",
+      "mandatInstructions": "Envoyez un Mandat Minute du montant indiqué, puis uploadez la photo du reçu.",
+      "codInstructions": "Payez en espèces à la réception de votre commande."
+    },
+    "confirm": "Confirmer et payer",
+    "processing": "Traitement en cours...",
+    "success": {
+      "title": "Merci pour votre commande !",
+      "subtitle": "Votre commande a été confirmée avec succès. Vous recevrez un email de confirmation.",
+      "orderNumber": "Numéro de commande",
+      "estimatedDelivery": "Livraison estimée",
+      "trackOrder": "Suivre ma commande",
+      "continueShopping": "Continuer mes achats"
+    }
+  },
+
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "email": "Email",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas de compte ?",
+      "createStore": "Créer ma boutique",
+      "invalidCredentials": "Email ou mot de passe incorrect"
+    },
+    "register": {
+      "title": "Créer ma boutique",
+      "step1": "Informations personnelles",
+      "step2": "Ma boutique",
+      "step3": "Choisir mon plan",
+      "step4": "Confirmation",
+      "email": "Email",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "storeName": "Nom de la boutique",
+      "storeCategory": "Catégorie",
+      "subdomain": "Sous-domaine",
+      "submit": "Créer mon compte",
+      "alreadyHaveAccount": "Déjà un compte ?",
+      "loginLink": "Se connecter"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation.",
+      "submit": "Envoyer le lien",
+      "sent": "Email envoyé ! Vérifiez votre boîte de réception.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "Réinitialiser",
+      "success": "Mot de passe réinitialisé avec succès !"
+    }
+  },
+
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bonjour, {name} 👋",
+    "sidebar": {
+      "overview": "Aperçu",
+      "products": "Produits",
+      "orders": "Commandes",
+      "wallet": "Wallet",
+      "aiTools": "Outils IA",
+      "myStore": "Ma Boutique",
+      "apiKeys": "Clés API",
+      "verification": "Vérification",
+      "settings": "Paramètres",
+      "subscription": "Abonnement",
+      "pageBuilder": "Page Builder",
+      "webhooks": "Webhooks",
+      "reports": "Signalements",
+      "paymentConfig": "Paiement Direct",
+      "notifications": "Notifications"
+    },
+    "stats": {
+      "sales": "Ventes",
+      "orders": "Commandes",
+      "products": "Produits",
+      "wallet": "Wallet"
+    },
+    "recentOrders": "Commandes Récentes"
+  },
+
+  "wallet": {
+    "title": "Mon Wallet",
+    "available": "Disponible",
+    "pending": "En attente",
+    "releasedIn": "Libéré dans {days}j",
+    "totalEarned": "Total gagné",
+    "totalWithdrawn": "Total retiré",
+    "withdraw": "Retirer",
+    "payoutMode": "Mode de versement",
+    "automatic": "Automatique",
+    "onDemand": "Sur demande",
+    "history": "Historique",
+    "transaction": {
+      "sale": "Vente",
+      "commission": "Commission",
+      "payout": "Retrait",
+      "refund": "Remboursement"
+    }
+  },
+
+  "kyc": {
+    "title": "Vérification de Compte",
+    "status": {
+      "unverified": "Non vérifié",
+      "pending": "En attente de vérification",
+      "approved": "Vérifié ✓",
+      "rejected": "Refusé"
+    },
+    "instructions": "Pour publier vos produits instantanément, complétez votre vérification :",
+    "step1": "Registre de Commerce",
+    "step2": "Carte d'Identité Nationale",
+    "step3": "Vérification Téléphonique",
+    "step3Desc": "Notre équipe vous contactera sous 48h",
+    "submit": "Soumettre pour vérification",
+    "uploaded": "Uploadé"
+  },
+
+  "subscription": {
+    "title": "Mon Abonnement",
+    "currentPlan": "Plan actuel",
+    "upgrade": "Upgrader",
+    "downgrade": "Downgrader",
+    "expiresOn": "Expire le {date}",
+    "plans": {
+      "free": "Gratuit",
+      "starter": "Starter",
+      "regular": "Regular",
+      "agency": "Agency",
+      "pro": "Pro",
+      "golden": "Golden",
+      "platinum": "Platinum"
+    },
+    "features": {
+      "products": "{count} produits",
+      "productsUnlimited": "Produits illimités",
+      "images": "{count} images/produit",
+      "commission": "{rate}% commission",
+      "noCommission": "0% commission",
+      "customDomain": "Domaine personnalisé",
+      "pageBuilder": "Page Builder",
+      "aiTools": "Outils IA",
+      "directPayment": "Paiement direct",
+      "apiWebhooks": "API & Webhooks",
+      "whiteLabel": "White Label"
+    }
+  },
+
+  "ai": {
+    "title": "Outils IA",
+    "tokens": "Tokens : {count}",
+    "buyTokens": "Acheter des tokens",
+    "compress": {
+      "title": "Compression Image",
+      "desc": "Optimisez vos photos produit sans perte de qualité.",
+      "cta": "Compresser",
+      "cost": "1 token / image"
+    },
+    "seo": {
+      "title": "SEO Automatique",
+      "desc": "Générez titres et descriptions SEO à partir de vos photos.",
+      "cta": "Générer",
+      "cost": "2 tokens / produit"
+    },
+    "history": "Historique des Jobs",
+    "status": {
+      "completed": "Terminé",
+      "processing": "En cours",
+      "failed": "Échoué"
+    }
+  },
+
+  "admin": {
+    "title": "Administration",
+    "sidebar": {
+      "dashboard": "Dashboard",
+      "kyc": "Vérifications KYC",
+      "mandats": "Mandats",
+      "reports": "Signalements",
+      "vendors": "Vendeurs",
+      "withdrawals": "Retraits",
+      "plans": "Plans",
+      "auditLog": "Journal d'audit",
+      "settings": "Paramètres",
+      "aiCosts": "Coûts IA",
+      "smtpConfig": "Config Email"
+    },
+    "urgentActions": "Actions Urgentes",
+    "kycPending": "{count} KYC en attente",
+    "mandatsPending": "{count} Mandats à valider",
+    "productsPending": "{count} Produits à approuver",
+    "reportsPending": "{count} Signalement(s) ouvert(s)"
+  },
+
+  "store": {
+    "catalog": "Catalogue",
+    "about": "À propos",
+    "contact": "Contact",
+    "featuredProducts": "Produits en vedette",
+    "newArrivals": "Nouvelles arrivées",
+    "allProducts": "Tous les produits",
+    "welcome": "Bienvenue chez {name}",
+    "viewCatalog": "Voir le catalogue"
+  },
+
+  "search": {
+    "title": "Résultats de recherche",
+    "resultsFor": "{count} résultat(s) pour \"{query}\"",
+    "noResults": "Aucun résultat pour \"{query}\"",
+    "noResultsSubtitle": "Essayez avec d'autres mots-clés ou parcourez nos catégories.",
+    "filters": "Filtres",
+    "sortBy": "Trier par",
+    "sortOptions": {
+      "relevance": "Pertinence",
+      "priceAsc": "Prix croissant",
+      "priceDesc": "Prix décroissant",
+      "newest": "Plus récent"
+    },
+    "priceRange": "Fourchette de prix",
+    "verifiedOnly": "Vendeurs vérifiés uniquement"
+  },
+
+  "footer": {
+    "about": "À propos",
+    "help": "Aide",
+    "terms": "CGU",
+    "privacy": "Confidentialité",
+    "contact": "Contact",
+    "social": "Réseaux sociaux",
+    "copyright": "© {year} PandaMarket. Tous droits réservés."
+  },
+
+  "errors": {
+    "notFound": "Page introuvable",
+    "notFoundDesc": "La page que vous cherchez n'existe pas ou a été déplacée.",
+    "serverError": "Erreur serveur",
+    "networkError": "Erreur réseau. Vérifiez votre connexion.",
+    "unauthorized": "Vous devez être connecté pour accéder à cette page.",
+    "forbidden": "Vous n'avez pas les droits pour cette action."
+  }
+}

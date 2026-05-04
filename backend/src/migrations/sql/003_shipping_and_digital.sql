@@ -10,10 +10,10 @@
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS pd_shipment (
-  id                  VARCHAR(50) PRIMARY KEY,
-  order_id            VARCHAR(50) NOT NULL REFERENCES pd_order(id),
-  fulfillment_id      VARCHAR(50) REFERENCES pd_fulfillment(id),
-  store_id            VARCHAR(50) NOT NULL REFERENCES pd_store(id),
+  id                  VARCHAR(64) PRIMARY KEY,
+  order_id            VARCHAR(64) NOT NULL REFERENCES pd_order(id),
+  fulfillment_id      VARCHAR(64) REFERENCES pd_fulfillment(id),
+  store_id            VARCHAR(64) NOT NULL REFERENCES pd_store(id),
   provider            VARCHAR(20) NOT NULL DEFAULT 'manual',
     -- 'aramex', 'laposte', 'manual'
   tracking_number     VARCHAR(100) NOT NULL,
@@ -36,8 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_shipment_tracking ON pd_shipment(tracking_number)
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS pd_pickup_request (
-  id                  VARCHAR(50) PRIMARY KEY,
-  store_id            VARCHAR(50) NOT NULL REFERENCES pd_store(id),
+  id                  VARCHAR(64) PRIMARY KEY,
+  store_id            VARCHAR(64) NOT NULL REFERENCES pd_store(id),
   shipment_ids        JSONB NOT NULL DEFAULT '[]',
   pickup_date         DATE NOT NULL,
   pickup_address      JSONB NOT NULL,
@@ -57,11 +57,11 @@ CREATE INDEX IF NOT EXISTS idx_pickup_store ON pd_pickup_request(store_id);
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS pd_license_key (
-  id                  VARCHAR(50) PRIMARY KEY,
-  product_id          VARCHAR(50) NOT NULL REFERENCES pd_product(id),
-  store_id            VARCHAR(50) NOT NULL REFERENCES pd_store(id),
+  id                  VARCHAR(64) PRIMARY KEY,
+  product_id          VARCHAR(64) NOT NULL REFERENCES pd_product(id),
+  store_id            VARCHAR(64) NOT NULL REFERENCES pd_store(id),
   license_key         TEXT NOT NULL,
-  order_id            VARCHAR(50) REFERENCES pd_order(id),
+  order_id            VARCHAR(64) REFERENCES pd_order(id),
   assigned_at         TIMESTAMP,
   is_used             BOOLEAN DEFAULT false,
   created_at          TIMESTAMP DEFAULT NOW()

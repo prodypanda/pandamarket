@@ -1,7 +1,7 @@
 # PandaMarket — Task List
 
-> **Last updated:** 2026-05-10 (Full audit — all implemented items checked off)
-> **Overall completion:** ~99% (MVP production-ready)
+> **Last updated:** 2026-05-04-v10 (Full independent audit — all implemented items checked off, post-MVP items updated)
+> **Overall completion:** ~99% (MVP production-ready, no production blockers)
 
 ---
 
@@ -124,6 +124,15 @@
 
 ### Remaining TODO (Post-MVP)
 - [x] Documentation API publique (Swagger/OpenAPI) ✅ — Implemented with swagger-jsdoc + swagger-ui-express
-- [ ] Secrets Manager integration (Vault/Doppler/Docker Secrets) — for production hardening
-- [ ] More storefront themes beyond 3 (Minimal, Classic, Modern)
-- [ ] Real SMTP email provider configuration (Brevo/Resend) — worker exists, needs provider config
+- [x] Secrets Manager integration (Vault/Doppler/Docker Secrets) ✅ — config.ts reads `_FILE` suffixed env vars, docker-compose.prod.yml uses Docker Secrets, scripts/init-secrets.sh + docs/secrets-setup.md
+- [x] More storefront themes beyond 3 ✅ — Now 20 themes (Minimal, Classic, Modern, Boutique, Artisan, TechHub, Flavor, Elegance, Neon, Sahara, Medina, Coastal, Urban, Garden, Studio, Luxe, Fresh, Craft, Digital, Kids)
+- [x] Real SMTP email provider configuration (Brevo/Resend) ✅ — smtp-config.service.ts + admin UI with provider presets, test connection, AES-256-GCM encrypted credentials
+
+### Post-MVP Enhancements (Not blocking launch — identified 2026-05-04)
+- [x] Micro-animations systematic application across all components (design-system.md §3) ✅ DONE (v13)
+- [x] Font selection per theme (Playfair Display, Poppins, Montserrat, etc.) ✅ DONE (v13)
+- [x] Page Builder pre-built templates (~20 templates: landing, about, FAQ, contact, sale, etc.) ✅ DONE (v14)
+- [x] WebSocket live notifications in frontend (useWebSocket hook, channel subscriptions) ✅ DONE (v11)
+- [x] Product reviews & ratings system (pd_review table, service, routes, UI) ✅ DONE (v12)
+- [x] Customer wishlist (pd_wishlist_item table, service, routes, UI) ✅ DONE (v12)
+- [x] Multi-language support (French/Arabic/English) ✅ DONE (v17) — i18n config, 3 locale files, LocaleContext, useLocale hook, LocaleSwitcher, RTL CSS

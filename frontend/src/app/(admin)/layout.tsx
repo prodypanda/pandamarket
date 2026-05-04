@@ -15,19 +15,7 @@ import {
   Sparkles,
   Mail,
 } from 'lucide-react';
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/kyc', label: 'KYC Queue', icon: ShieldCheck },
-  { href: '/mandats', label: 'Mandats', icon: Receipt },
-  { href: '/reports', label: 'Reports', icon: Flag },
-  { href: '/users', label: 'Vendors', icon: Users },
-  { href: '/withdrawals', label: 'Withdrawals', icon: Wallet },
-  { href: '/plans', label: 'Plans', icon: Crown },
-  { href: '/ai-costs', label: 'AI Costs', icon: Sparkles },
-  { href: '/audit-log', label: 'Audit Log', icon: ScrollText },
-  { href: '/smtp-config', label: 'Email Config', icon: Mail },
-];
+import { useLocale } from '../../contexts/LocaleContext';
 
 export default function AdminLayout({
   children,
@@ -35,6 +23,20 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { t } = useLocale();
+
+  const navItems = [
+    { href: '/dashboard', label: t('admin.sidebar.dashboard'), icon: LayoutDashboard },
+    { href: '/kyc', label: t('admin.sidebar.kyc'), icon: ShieldCheck },
+    { href: '/mandats', label: t('admin.sidebar.mandats'), icon: Receipt },
+    { href: '/reports', label: t('admin.sidebar.reports'), icon: Flag },
+    { href: '/users', label: t('admin.sidebar.vendors'), icon: Users },
+    { href: '/withdrawals', label: t('admin.sidebar.withdrawals'), icon: Wallet },
+    { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },
+    { href: '/ai-costs', label: t('admin.sidebar.aiCosts'), icon: Sparkles },
+    { href: '/audit-log', label: t('admin.sidebar.auditLog'), icon: ScrollText },
+    { href: '/smtp-config', label: t('admin.sidebar.smtpConfig'), icon: Mail },
+  ];
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -45,7 +47,7 @@ export default function AdminLayout({
             <span className="text-xl font-black text-[#16C784]">🐼</span>
             <span className="text-lg font-bold">PandaMarket</span>
           </Link>
-          <p className="text-xs text-gray-400 mt-1">Admin Panel</p>
+          <p className="text-xs text-gray-400 mt-1">{t('admin.title')}</p>
         </div>
 
         <nav className="flex-1 py-4">
@@ -74,7 +76,7 @@ export default function AdminLayout({
             className="flex items-center gap-3 px-2 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             <Settings className="w-5 h-5" />
-            Settings
+            {t('admin.sidebar.settings')}
           </Link>
         </div>
       </aside>
@@ -82,7 +84,7 @@ export default function AdminLayout({
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('admin.title')}</h2>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">admin@pandamarket.tn</span>
             <div className="w-8 h-8 rounded-full bg-[#16C784] flex items-center justify-center text-white text-sm font-bold">

@@ -4,16 +4,18 @@ import { useCart } from '../../../contexts/CartContext';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Store } from 'lucide-react';
 import Link from 'next/link';
-
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
-}
+import { useLocale } from '../../../contexts/LocaleContext';
 
 const SHIPPING_PER_VENDOR = 7;
 
 export default function CartPage() {
   const { items, removeFromCart, updateQuantity, getCartTotal, getItemsByStore, getItemCount } =
     useCart();
+  const { t } = useLocale();
+
+  function formatPrice(price: number): string {
+    return `${price.toFixed(3)} ${t('common.currency')}`;
+  }
 
   const storeGroups = getItemsByStore();
   const storeIds = Object.keys(storeGroups);
@@ -27,15 +29,15 @@ export default function CartPage() {
         <HubNavbar />
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
           <ShoppingCart className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Votre panier est vide</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('cart.empty')}</h1>
           <p className="text-gray-500 mb-8">
-            Découvrez nos produits et ajoutez-les à votre panier.
+            {t('cart.emptySubtitle')}
           </p>
           <Link
             href="/hub"
             className="inline-flex items-center gap-2 px-8 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] transition-colors"
           >
-            Continuer vos achats
+            {t('cart.continueShopping')}
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
@@ -49,8 +51,7 @@ export default function CartPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Panier ({getItemCount()} article{getItemCount() > 1 ? 's' : ''} de {storeIds.length}{' '}
-          vendeur{storeIds.length > 1 ? 's' : ''})
+          {t('cart.title')} ({t('cart.itemCount', { count: getItemCount() })})
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
@@ -149,10 +150,10 @@ export default function CartPage() {
                   {/* Store Shipping + Subtotal */}
                   <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-sm">
                     <span className="text-gray-500">
-                      Livraison : {formatPrice(SHIPPING_PER_VENDOR)}
+                      {t('cart.shipping')} : {formatPrice(SHIPPING_PER_VENDOR)}
                     </span>
                     <span className="font-semibold text-gray-900">
-                      Sous-total : {formatPrice(storeSubtotal + SHIPPING_PER_VENDOR)}
+                      {t('cart.subtotal')} : {formatPrice(storeSubtotal + SHIPPING_PER_VENDOR)}
                     </span>
                   </div>
                 </div>
@@ -163,21 +164,21 @@ export default function CartPage() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-24">
-              <h2 className="font-bold text-gray-900 text-lg mb-4">Résumé</h2>
+              <h2 className="font-bold text-gray-900 text-lg mb-4">{t('cart.title')}</h2>
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Sous-total</span>
+                  <span className="text-gray-500">{t('cart.subtotal')}</span>
                   <span className="font-medium text-gray-900">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">
-                    Livraison ({storeIds.length} vendeur{storeIds.length > 1 ? 's' : ''})
+                    {t('cart.shipping')} ({storeIds.length})
                   </span>
                   <span className="font-medium text-gray-900">{formatPrice(shippingTotal)}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-3 flex justify-between">
-                  <span className="font-bold text-gray-900 text-base">Total</span>
+                  <span className="font-bold text-gray-900 text-base">{t('cart.total')}</span>
                   <span className="font-extrabold text-[#16C784] text-lg">
                     {formatPrice(total)}
                   </span>
@@ -188,7 +189,7 @@ export default function CartPage() {
                 href="/hub/checkout"
                 className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] hover:shadow-lg hover:shadow-[#16C784]/20 transition-all"
               >
-                Passer la commande
+                {t('cart.checkout')}
                 <ArrowRight className="w-5 h-5" />
               </Link>
 
@@ -196,7 +197,7 @@ export default function CartPage() {
                 href="/hub"
                 className="mt-3 w-full flex items-center justify-center py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
-                Continuer vos achats
+                {t('cart.continueShopping')}
               </Link>
             </div>
           </div>

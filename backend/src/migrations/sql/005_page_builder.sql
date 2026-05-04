@@ -38,7 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_store_page_published ON pd_store_page(store_id, i
 CREATE INDEX IF NOT EXISTS idx_store_page_homepage ON pd_store_page(store_id, is_homepage) WHERE is_homepage = true;
 
 -- Trigger for updated_at
+DROP TRIGGER IF EXISTS trg_store_page_updated_at ON pd_store_page;
 CREATE TRIGGER trg_store_page_updated_at
   BEFORE UPDATE ON pd_store_page
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+  EXECUTE FUNCTION pd_set_updated_at();

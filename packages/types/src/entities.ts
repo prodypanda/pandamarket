@@ -16,6 +16,7 @@ import {
   ProductStatus,
   ProductType,
   ReportStatus,
+  ReviewStatus,
   ShippingMode,
   StoreStatus,
   SubscriptionPlan,
@@ -340,4 +341,54 @@ export interface INotification {
   data: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
+}
+
+// =====================================================
+// Reviews
+// =====================================================
+
+export interface IReview {
+  id: string;
+  product_id: string;
+  customer_id: string;
+  store_id: string;
+  order_id: string | null;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  is_verified_purchase: boolean;
+  status: ReviewStatus;
+  helpful_count: number;
+  created_at: string;
+  updated_at: string;
+  /** Joined fields (optional, populated on read) */
+  customer_name?: string;
+}
+
+export interface IProductRating {
+  product_id: string;
+  average_rating: number;
+  review_count: number;
+  rating_1: number;
+  rating_2: number;
+  rating_3: number;
+  rating_4: number;
+  rating_5: number;
+}
+
+// =====================================================
+// Wishlist
+// =====================================================
+
+export interface IWishlistItem {
+  id: string;
+  customer_id: string;
+  product_id: string;
+  created_at: string;
+  /** Joined fields (optional, populated on read) */
+  product_title?: string;
+  product_price?: number;
+  product_thumbnail?: string | null;
+  product_status?: string;
+  store_name?: string;
 }

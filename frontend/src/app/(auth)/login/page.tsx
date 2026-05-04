@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { useLocale } from '../../../contexts/LocaleContext';
 
 export default function LoginPage() {
+  const { t } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -57,9 +59,9 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Connexion</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.login.title')}</h1>
           <p className="text-gray-500 text-sm mb-6">
-            Connectez-vous à votre compte PandaMarket.
+            {t('common.appName')}
           </p>
 
           {error && (
@@ -70,7 +72,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.login.email')}</label>
               <input
                 type="email"
                 value={email}
@@ -82,7 +84,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.login.password')}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -106,11 +108,11 @@ export default function LoginPage() {
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-gray-600">
                 <input type="checkbox" className="rounded border-gray-300 text-[#16C784] focus:ring-[#16C784]" />
-                Se souvenir de moi
+                {t('common.save')}
               </label>
-              <a href="#" className="text-[#16C784] hover:underline font-medium">
-                Mot de passe oublié ?
-              </a>
+              <Link href="/forgot-password" className="text-[#16C784] hover:underline font-medium">
+                {t('auth.login.forgotPassword')}
+              </Link>
             </div>
 
             <button
@@ -123,7 +125,7 @@ export default function LoginPage() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  Se connecter
+                  {t('auth.login.submit')}
                 </>
               )}
             </button>
@@ -135,13 +137,13 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-4 text-gray-400">ou</span>
+                <span className="bg-white px-4 text-gray-400">{t('common.or')}</span>
               </div>
             </div>
             <p className="text-sm text-gray-600">
-              Pas encore de compte ?{' '}
+              {t('auth.login.noAccount')}{' '}
               <Link href="/register" className="text-[#16C784] font-semibold hover:underline">
-                Créer ma boutique →
+                {t('auth.login.createStore')} →
               </Link>
             </p>
           </div>

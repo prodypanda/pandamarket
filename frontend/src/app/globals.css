@@ -125,6 +125,50 @@ body {
   100% { background-position: 200% 0; }
 }
 
+/* Notification bell ring animation (triggered on real-time push) */
+@keyframes ring {
+  0% { transform: rotate(0deg); }
+  10% { transform: rotate(15deg); }
+  20% { transform: rotate(-13deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-8deg); }
+  50% { transform: rotate(5deg); }
+  60% { transform: rotate(-3deg); }
+  70% { transform: rotate(2deg); }
+  80% { transform: rotate(-1deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Stagger fade-in for lists (search results, product grids) */
+@keyframes stagger-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-stagger-item {
+  animation: stagger-fade-in 0.2s ease-out both;
+}
+
+/* Modal open animation */
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-modal-in {
+  animation: modal-in 0.25s ease-out;
+}
+
+/* Toast slide-in from right */
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.3s ease-out;
+}
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
 }
@@ -139,4 +183,158 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-md);
+}
+
+/* =====================================================
+   Systematic Micro-Animations (design-system.md §3)
+   Applied globally to interactive elements.
+   ===================================================== */
+
+/* Card hover: scale(1.02) + shadow lift — applied to all card-like elements */
+.pd-card {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.pd-card:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Image hover: scale(1.05) within container — for product images */
+.pd-img-zoom {
+  overflow: hidden;
+}
+.pd-img-zoom img,
+.pd-img-zoom > div {
+  transition: transform 0.3s ease;
+}
+.pd-img-zoom:hover img,
+.pd-img-zoom:hover > div {
+  transform: scale(1.05);
+}
+
+/* Button press: scale(0.98) on click — for all interactive buttons */
+.pd-btn {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+.pd-btn:hover {
+  transform: scale(1.02);
+}
+.pd-btn:active {
+  transform: scale(0.98);
+}
+
+/* Primary CTA glow on hover */
+.pd-btn-primary:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Page section fade-in on scroll (IntersectionObserver-friendly) */
+@keyframes section-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pd-reveal {
+  animation: section-reveal 0.5s ease-out both;
+}
+
+/* Stagger children: each child fades in with increasing delay */
+.pd-stagger > * {
+  opacity: 0;
+  animation: stagger-fade-in 0.3s ease-out forwards;
+}
+.pd-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.pd-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.pd-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.pd-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.pd-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.pd-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.pd-stagger > *:nth-child(7) { animation-delay: 300ms; }
+.pd-stagger > *:nth-child(8) { animation-delay: 350ms; }
+.pd-stagger > *:nth-child(9) { animation-delay: 400ms; }
+.pd-stagger > *:nth-child(10) { animation-delay: 450ms; }
+.pd-stagger > *:nth-child(n+11) { animation-delay: 500ms; }
+
+/* Link underline animation */
+.pd-link {
+  position: relative;
+  text-decoration: none;
+}
+.pd-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--color-panda-green);
+  transition: width var(--transition-base);
+}
+.pd-link:hover::after {
+  width: 100%;
+}
+
+/* Badge pulse for notification counts */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.pd-badge-pulse {
+  animation: badge-pulse 0.6s ease-in-out;
+}
+
+/* Smooth number counter transition */
+.pd-counter {
+  transition: all 0.3s ease-out;
+  display: inline-block;
+}
+
+/* Focus ring for accessibility */
+.pd-focus:focus-visible {
+  outline: 2px solid var(--color-panda-green);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Dropdown/popover entrance */
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-dropdown-in {
+  animation: dropdown-in 0.2s ease-out;
+}
+
+/* Slide up entrance for bottom sheets (mobile) */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* =====================================================
+   RTL (Right-to-Left) Support for Arabic
+   ===================================================== */
+
+/* Flip horizontal layout for RTL */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Ensure flex/grid layouts respect direction */
+[dir="rtl"] .flex-row {
+  flex-direction: row-reverse;
+}
+
+/* Sidebar positioning for RTL */
+[dir="rtl"] .sidebar-left {
+  left: auto;
+  right: 0;
+}
+
+/* Mirror icons that have directional meaning */
+[dir="rtl"] .icon-directional {
+  transform: scaleX(-1);
 }

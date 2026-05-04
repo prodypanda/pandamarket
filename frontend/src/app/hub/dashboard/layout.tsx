@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import {
   LayoutDashboard,
@@ -16,27 +18,30 @@ import {
   Flag,
   LayoutTemplate,
 } from 'lucide-react';
+import { useLocale } from '../../../contexts/LocaleContext';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useLocale();
+
   const navigation = [
-    { name: 'Overview', href: '/hub/dashboard', icon: LayoutDashboard },
-    { name: 'Products', href: '/hub/dashboard/products', icon: Package },
-    { name: 'Orders', href: '/hub/dashboard/orders', icon: ShoppingCart },
-    { name: 'Wallet', href: '/hub/dashboard/wallet', icon: Wallet },
-    { name: 'Page Builder', href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
-    { name: 'AI Tools', href: '/hub/dashboard/ai', icon: Sparkles },
-    { name: 'KYC Verification', href: '/hub/dashboard/kyc', icon: Shield },
-    { name: 'Subscription', href: '/hub/dashboard/subscription', icon: Crown },
-    { name: 'API Keys', href: '/hub/dashboard/api-keys', icon: Key },
-    { name: 'Webhooks', href: '/hub/dashboard/webhooks', icon: Webhook },
-    { name: 'Payment Config', href: '/hub/dashboard/payment-config', icon: CreditCard },
-    { name: 'Reports', href: '/hub/dashboard/reports', icon: Flag },
-    { name: 'Notifications', href: '/hub/dashboard/notifications', icon: Bell },
-    { name: 'Settings', href: '/hub/dashboard/settings', icon: Settings },
+    { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
+    { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
+    { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
+    { name: t('dashboard.sidebar.wallet'), href: '/hub/dashboard/wallet', icon: Wallet },
+    { name: t('dashboard.sidebar.pageBuilder'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
+    { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
+    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
+    { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
+    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
+    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
+    { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
+    { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
+    { name: t('dashboard.sidebar.notifications'), href: '/hub/dashboard/notifications', icon: Bell },
+    { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
   ];
 
   return (
@@ -62,11 +67,11 @@ export default function DashboardLayout({
         </nav>
         <div className="p-4 border-t border-gray-200">
           <Link href="/hub" className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-500 rounded-md hover:bg-gray-100 transition-colors mb-1">
-            ← Back to Hub
+            ← {t('common.back')}
           </Link>
           <button className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">
             <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
-            Logout
+            {t('nav.logout')}
           </button>
         </div>
       </aside>
@@ -75,7 +80,7 @@ export default function DashboardLayout({
       <main className="flex-1 md:ml-64 flex flex-col">
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t('dashboard.title')}</h2>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-500">Welcome, Vendor</div>
             <div className="h-8 w-8 rounded-full bg-[#16C784]/10 flex items-center justify-center text-[#16C784] font-bold">

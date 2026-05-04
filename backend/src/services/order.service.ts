@@ -374,6 +374,7 @@ export class OrderService {
     const { rows } = await query<OrderRow>(
       `UPDATE pd_order
        SET payment_status = 'captured',
+           payment_gateway = $2,
            payment_reference = $3,
            status = CASE WHEN status = 'payment_required' THEN 'pending' ELSE status END
        WHERE id = $1 AND payment_status != 'captured'

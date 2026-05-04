@@ -2,28 +2,8 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, ShoppingCart, UtensilsCrossed, Clock, Flame } from 'lucide-react';
 import Link from 'next/link';
-
-interface StoreProduct {
-  id: string;
-  title: string;
-  price: number;
-  images?: { url: string }[];
-  category?: string;
-}
-
-interface StoreBranding {
-  primary_color?: string;
-  secondary_color?: string;
-  logo_url?: string;
-  favicon_url?: string;
-}
-
-interface ThemeProps {
-  theme: ThemeConfig;
-  storeName: string;
-  products?: StoreProduct[];
-  branding?: StoreBranding;
-}
+import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { ThemeLayout } from './ThemeLayout';
 
 /**
  * Flavor Theme — Food, restaurants, bakeries, gourmet products.

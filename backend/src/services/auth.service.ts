@@ -18,6 +18,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt';
+import { emailQueue } from '../queues/email-queue';
 import { logger } from '../utils/logger';
 import { UserRole } from '@pandamarket/types';
 
@@ -262,9 +263,19 @@ export class AuthService {
     // Store token hash → userId mapping with 1-hour expiry
     await redis.set(`pd:reset_token:${tokenHash}`, userId, 'EX', 3600);
 
-    // TODO: Queue email via emailWorker with the reset link containing the raw token
-    // For now, log it (NEVER do this in production)
-    logger.info({ user_id: userId, token_preview: token.slice(0, 8) + '...' }, 'Password reset token generated');
+    // Build the reset link and queue the email
+    const hubDomain = config.hubDomain.startsWith('http')
+      ? config.hubDomain
+      : `https://${config.hubDomain}`;
+    const resetUrl = `${hubDomain}/reset-password?token=${token}`;
+
+    await emailQueue.add('password_reset', {
+      to: normalizedEmail,
+      template: 'password_reset',
+      variables: { reset_url: resetUrl },
+    });
+
+    logger.info({ user_id: userId }, 'Password reset email queued');
   }
 
   /**
@@ -312,8 +323,19 @@ export class AuthService {
     const redis = getRedis();
     await redis.set(`pd:verify_email:${tokenHash}`, userId, 'EX', 86400); // 24 hours
 
-    // TODO: Queue email via emailWorker
-    logger.info({ user_id: userId, token_preview: token.slice(0, 8) + '...' }, 'Email verification token generated');
+    // Build the verification link and queue the email
+    const hubDomain = config.hubDomain.startsWith('http')
+      ? config.hubDomain
+      : `https://${config.hubDomain}`;
+    const verifyUrl = `${hubDomain}/api/pd/auth/verify-email?token=${token}`;
+
+    await emailQueue.add('email_verification', {
+      to: rows[0].email,
+      template: 'email_verification',
+      variables: { verify_url: verifyUrl },
+    });
+
+    logger.info({ user_id: userId }, 'Email verification email queued');
   }
 
   /**

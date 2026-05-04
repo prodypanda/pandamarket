@@ -35,6 +35,26 @@ docker compose logs redis
 
 ## Node.js / NPM Issues
 
+### "EISDIR: illegal operation on a directory, symlink" during `npm install`
+This is a **Windows-specific issue**. PandaMarket uses npm workspaces, which create symlinks inside `node_modules`. Windows blocks symlink creation by default.
+
+**Fix — Enable Developer Mode:**
+1. Open **Settings** → **Update & Security** → **For developers**
+2. Toggle **Developer Mode** to **ON**
+3. Restart your terminal
+
+**Alternative — Run as Administrator:**
+Right-click PowerShell → **Run as Administrator**, then run `npm install`.
+
+After fixing permissions, clean up and retry:
+```powershell
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force backend\node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force frontend\node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force packages\types\node_modules -ErrorAction SilentlyContinue
+npm install
+```
+
 ### "EBADENGINE" warnings during `npm install`
 These are **safe to ignore**. They just mean your npm version is slightly different from what's recommended. The project works fine.
 

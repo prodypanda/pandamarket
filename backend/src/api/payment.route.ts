@@ -8,6 +8,7 @@ import { asyncHandler, requireAuth, validate } from '../middlewares';
 import { PaymentGateway, MandatUploader } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { query as dbQuery } from '../db/pool';
 
 const router = Router();
 
@@ -99,10 +100,17 @@ router.post(
       return;
     }
 
+    // Fetch the customer's email for the payment provider
+    const { rows: userRows } = await dbQuery<{ email: string }>(
+      'SELECT email FROM pd_user WHERE id = $1',
+      [req.user!.id],
+    );
+    const customerEmail = userRows[0]?.email ?? '';
+
     const result = await paymentService.initPayment(
       order,
       gateway as PaymentGateway,
-      req.user!.id, // customer email would be fetched from user in a real scenario
+      customerEmail,
     );
 
     res.status(200).json({

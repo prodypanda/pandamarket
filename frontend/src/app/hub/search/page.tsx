@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { Search, Filter, ChevronLeft, ChevronRight, Star, SlidersHorizontal, X } from 'lucide-react';
 import Link from 'next/link';
+import { useLocale } from '../../../contexts/LocaleContext';
 
 interface SearchProduct {
   id: string;
@@ -24,6 +25,7 @@ interface SearchResult {
 }
 
 function SearchContent() {
+  const { t } = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
   const query = searchParams.get('q') || '';
@@ -98,14 +100,14 @@ function SearchContent() {
   };
 
   const formatPrice = (price: number) => {
-    return `${price.toFixed(3)} TND`;
+    return `${price.toFixed(3)} ${t('common.currency')}`;
   };
 
   const renderFilterSidebar = () => (
     <div className="space-y-6">
       {/* Categories */}
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Catégorie</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">{t('product.category')}</h3>
         <div className="space-y-2">
           {categories.map((cat) => (
             <label key={cat} className="flex items-center gap-2 cursor-pointer">
@@ -123,7 +125,7 @@ function SearchContent() {
 
       {/* Price Range */}
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Prix (TND)</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">{t('search.priceRange')}</h3>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -145,7 +147,7 @@ function SearchContent() {
 
       {/* Verified */}
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Vendeur</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">{t('product.vendor')}</h3>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -153,7 +155,7 @@ function SearchContent() {
             onChange={(e) => setVerifiedOnly(e.target.checked)}
             className="w-4 h-4 rounded border-gray-300 text-[#16C784] focus:ring-[#16C784]"
           />
-          <span className="text-sm text-gray-700">Vérifié uniquement</span>
+          <span className="text-sm text-gray-700">{t('search.verifiedOnly')}</span>
         </label>
       </div>
     </div>
@@ -169,11 +171,9 @@ function SearchContent() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {query ? (
-                <>
-                  {totalHits} résultats pour «<span className="text-[#16C784]">{query}</span>»
-                </>
+                <>{t('search.resultsFor', { count: totalHits, query })}</>
               ) : (
-                'Tous les produits'
+                t('search.title')
               )}
             </h1>
           </div>
@@ -183,17 +183,17 @@ function SearchContent() {
               className="lg:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filtrer
+              {t('search.filters')}
             </button>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
             >
-              <option value="relevance">Pertinence</option>
-              <option value="price_asc">Prix croissant</option>
-              <option value="price_desc">Prix décroissant</option>
-              <option value="date">Date</option>
+              <option value="relevance">{t('search.sortOptions.relevance')}</option>
+              <option value="price_asc">{t('search.sortOptions.priceAsc')}</option>
+              <option value="price_desc">{t('search.sortOptions.priceDesc')}</option>
+              <option value="date">{t('search.sortOptions.newest')}</option>
             </select>
           </div>
         </div>
@@ -204,7 +204,7 @@ function SearchContent() {
             <div className="sticky top-24 bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Filter className="w-5 h-5 text-gray-700" />
-                <h2 className="font-bold text-gray-900">Filtres</h2>
+                <h2 className="font-bold text-gray-900">{t('search.filters')}</h2>
               </div>
               {renderFilterSidebar()}
             </div>
@@ -216,7 +216,7 @@ function SearchContent() {
               <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileFilters(false)} />
               <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold text-gray-900 text-lg">Filtres</h2>
+                  <h2 className="font-bold text-gray-900 text-lg">{t('search.filters')}</h2>
                   <button onClick={() => setShowMobileFilters(false)}>
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
@@ -226,7 +226,7 @@ function SearchContent() {
                   onClick={() => setShowMobileFilters(false)}
                   className="w-full mt-6 py-3 bg-[#16C784] text-white font-medium rounded-lg hover:bg-[#14b876] transition-colors"
                 >
-                  Appliquer les filtres
+                  {t('common.confirm')}
                 </button>
               </div>
             </div>
@@ -250,9 +250,9 @@ function SearchContent() {
             ) : results.length === 0 ? (
               <div className="text-center py-20">
                 <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun résultat</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('search.noResults', { query })}</h3>
                 <p className="text-gray-500">
-                  Essayez de modifier vos filtres ou votre recherche.
+                  {t('search.noResultsSubtitle')}
                 </p>
               </div>
             ) : (

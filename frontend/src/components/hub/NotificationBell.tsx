@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCheck } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, CheckCheck, Wifi, WifiOff } from 'lucide-react';
+import { useSocketContext } from '../../contexts/SocketContext';
 
 interface Notification {
   id: string;
@@ -19,21 +20,59 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(0);
+  const [hasNewRealtime, setHasNewRealtime] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
+  // WebSocket integration — live push notifications
+  let socketConnected = false;
+  let socketOn: ((event: string, handler: (payload: unknown) => void) => () => void) | null = null;
+  let resetRealtimeCount: (() => void) | null = null;
+  try {
+    const ctx = useSocketContext();
+    socketConnected = ctx.isConnected;
+    socketOn = ctx.on;
+    resetRealtimeCount = ctx.resetRealtimeCount;
+  } catch {
+    // SocketProvider not available — fallback to polling only
+  }
 
   // Set initial timestamp on mount
   useEffect(() => {
     setNow(Date.now());
   }, []);
 
-  // Fetch unread count on mount and periodically
+  /**
+   * When WebSocket is connected, listen for real-time notification events.
+   * This replaces the 30s polling with instant push when WS is available.
+   * Falls back to polling if WS is unavailable (per notifications-system.md §5.2).
+   */
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30_000); // poll every 30s
-    return () => clearInterval(interval);
-  }, []);
+    if (!socketOn || !socketConnected) return;
+
+    const unsubscribe = socketOn('notification', () => {
+      // Increment unread count immediately without a full API call
+      setUnreadCount((prev) => prev + 1);
+      setHasNewRealtime(true);
+      // If dropdown is open, refresh the list
+      if (isOpen) {
+        fetchNotifications();
+      }
+    });
+
+    return unsubscribe;
+  }, [socketOn, socketConnected, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch unread count on mount and periodically (fallback when WS unavailable)
+  const fetchUnreadCountCb = useCallback(fetchUnreadCount, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchUnreadCountCb();
+    // Use longer polling interval when WebSocket is connected (just a safety net)
+    const interval = socketConnected ? 120_000 : 30_000;
+    const timer = setInterval(fetchUnreadCountCb, interval);
+    return () => clearInterval(timer);
+  }, [fetchUnreadCountCb, socketConnected]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -108,6 +147,8 @@ export function NotificationBell() {
   function toggleDropdown() {
     if (!isOpen) {
       fetchNotifications();
+      // Reset the real-time counter when opening the dropdown
+      if (resetRealtimeCount) resetRealtimeCount();
     }
     setIsOpen(!isOpen);
   }
@@ -137,15 +178,27 @@ export function NotificationBell() {
       {/* Bell Button */}
       <button
         onClick={toggleDropdown}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className={`relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-150 ${
+          hasNewRealtime ? 'animate-[ring_0.5s_ease-in-out]' : ''
+        }`}
         aria-label="Notifications"
+        onAnimationEnd={() => setHasNewRealtime(false)}
       >
         <Bell className="w-5 h-5" strokeWidth={1.75} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse">
+          <span className={`absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full ${
+            hasNewRealtime ? 'animate-pulse' : ''
+          }`}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
+        {/* WebSocket connection indicator (subtle dot) */}
+        <span
+          className={`absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${
+            socketConnected ? 'bg-[#16C784]' : 'bg-gray-300'
+          }`}
+          title={socketConnected ? 'Temps réel actif' : 'Mode polling'}
+        />
       </button>
 
       {/* Dropdown */}

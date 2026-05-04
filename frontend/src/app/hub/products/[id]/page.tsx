@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { AddToCartButton } from '../../../../components/hub/AddToCartButton';
-import { ChevronRight, Star, Heart, Shield } from 'lucide-react';
+import { ReviewSection } from '../../../../components/hub/ReviewSection';
+import { WishlistButton } from '../../../../components/hub/WishlistButton';
+import { ChevronRight, Star, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 interface Product {
@@ -29,6 +31,19 @@ async function getProduct(id: string): Promise<Product | null> {
     if (!res.ok) return null;
     const data = await res.json();
     return data.product;
+  } catch {
+    return null;
+  }
+}
+
+async function getProductRating(productId: string): Promise<{ average_rating: number; review_count: number } | null> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const res = await fetch(`${backendUrl}/api/pd/reviews/products/${productId}/rating`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }
@@ -101,9 +116,13 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const similarProducts = product.category
-    ? await getSimilarProducts(product.category, product.id)
-    : [];
+  const [similarProducts, ratingData] = await Promise.all([
+    product.category ? getSimilarProducts(product.category, product.id) : [],
+    getProductRating(id),
+  ]);
+
+  const avgRating = ratingData?.average_rating ?? 0;
+  const reviewCount = ratingData?.review_count ?? 0;
 
   const mainImage = product.images?.[0]?.url;
   const thumbnails = product.images?.slice(0, 5) || [];
@@ -172,17 +191,17 @@ export default async function ProductDetailPage({
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-3">{product.title}</h1>
 
-            {/* Rating placeholder */}
+            {/* Rating */}
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`w-5 h-5 ${star <= 4 ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                    className={`w-5 h-5 ${star <= Math.round(avgRating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
                   />
                 ))}
               </div>
-              <span className="text-sm text-gray-500">(0 avis)</span>
+              <span className="text-sm text-gray-500">({reviewCount} avis)</span>
             </div>
 
             {/* Price */}
@@ -234,26 +253,14 @@ export default async function ProductDetailPage({
                 store_name={product.store_name || 'Store'}
                 image_url={mainImage || null}
               />
-              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-                <Heart className="w-5 h-5 text-gray-600" />
-              </button>
+              <WishlistButton productId={product.id} size="md" />
             </div>
           </div>
         </div>
 
-        {/* Tabs: Description */}
-        <div className="border-t border-gray-200 pt-10 mb-16">
-          <div className="flex gap-8 border-b border-gray-200 mb-6">
-            <button className="pb-3 border-b-2 border-[#16C784] text-[#16C784] font-semibold text-sm">
-              Description
-            </button>
-            <button className="pb-3 border-b-2 border-transparent text-gray-500 font-medium text-sm hover:text-gray-700">
-              Caractéristiques
-            </button>
-            <button className="pb-3 border-b-2 border-transparent text-gray-500 font-medium text-sm hover:text-gray-700">
-              Avis (0)
-            </button>
-          </div>
+        {/* Description Section */}
+        <div className="border-t border-gray-200 pt-10 mb-10">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
           <div className="prose prose-gray max-w-none">
             {product.description ? (
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -263,6 +270,14 @@ export default async function ProductDetailPage({
               <p className="text-gray-400 italic">Aucune description disponible.</p>
             )}
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="border-t border-gray-200 pt-10 mb-16">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Avis clients ({reviewCount})
+          </h2>
+          <ReviewSection productId={product.id} />
         </div>
 
         {/* Similar Products */}

@@ -4,17 +4,19 @@ import React, { useState } from 'react';
 import { CreditCard, Banknote, Truck, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
-
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
-}
+import { useLocale } from '../../../contexts/LocaleContext';
 
 const SHIPPING_PER_VENDOR = 7;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getCartTotal, getItemsByStore, clearCart } = useCart();
+  const { t } = useLocale();
   const [selectedGateway, setSelectedGateway] = useState('flouci');
+
+  function formatPrice(price: number): string {
+    return `${price.toFixed(3)} ${t('common.currency')}`;
+  }
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,22 +36,22 @@ export default function CheckoutPage() {
   const total = subtotal + shippingTotal;
 
   const gateways = [
-    { id: 'flouci', name: 'Flouci', icon: CreditCard, desc: 'Paiement sécurisé par carte bancaire ou wallet Flouci.' },
-    { id: 'konnect', name: 'Konnect', icon: CreditCard, desc: 'Paiement en ligne via le réseau Konnect.' },
-    { id: 'manual_mandat', name: 'Mandat Minute', icon: Banknote, desc: 'Payez à la poste et uploadez votre reçu.' },
-    { id: 'cod', name: 'Cash on Delivery', icon: Truck, desc: 'Paiement à la livraison.' },
+    { id: 'flouci', name: t('checkout.payment.flouci'), icon: CreditCard, desc: t('checkout.payment.flouci') },
+    { id: 'konnect', name: t('checkout.payment.konnect'), icon: CreditCard, desc: t('checkout.payment.konnect') },
+    { id: 'manual_mandat', name: t('checkout.payment.mandat'), icon: Banknote, desc: t('checkout.payment.mandatInstructions') },
+    { id: 'cod', name: t('checkout.payment.cod'), icon: Truck, desc: t('checkout.payment.codInstructions') },
   ];
 
   const handleCheckout = async () => {
     setError('');
 
     if (!address.full_name || !address.address_line || !address.city || !address.phone) {
-      setError('Veuillez remplir tous les champs d\'adresse');
+      setError(t('errors.forbidden'));
       return;
     }
 
     if (items.length === 0) {
-      setError('Votre panier est vide');
+      setError(t('cart.empty'));
       return;
     }
 
@@ -124,7 +126,7 @@ export default function CheckoutPage() {
         router.push(`/hub/checkout/success?order_id=${orderId}`);
       }
     } catch {
-      setError('Erreur réseau. Veuillez réessayer.');
+      setError(t('errors.networkError'));
       setIsProcessing(false);
     }
   };
@@ -133,13 +135,13 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Panier vide</h1>
-          <p className="text-gray-500 mb-6">Ajoutez des produits à votre panier avant de passer commande.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('cart.empty')}</h1>
+          <p className="text-gray-500 mb-6">{t('cart.emptySubtitle')}</p>
           <button
             onClick={() => router.push('/hub')}
             className="px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] transition-colors"
           >
-            Continuer vos achats
+            {t('cart.continueShopping')}
           </button>
         </div>
       </div>
@@ -149,7 +151,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8 text-center">Checkout</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-8 text-center">{t('checkout.title')}</h1>
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
@@ -160,7 +162,7 @@ export default function CheckoutPage() {
 
         {/* Order Summary */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">Résumé de la commande</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('cart.title')}</h2>
           {items.map((item) => (
             <div key={item.id} className="flex justify-between items-center mb-3">
               <span className="text-gray-600">
@@ -170,21 +172,21 @@ export default function CheckoutPage() {
             </div>
           ))}
           <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-600">Livraison ({storeIds.length} vendeur{storeIds.length > 1 ? 's' : ''})</span>
+            <span className="text-gray-600">{t('cart.shipping')} ({storeIds.length})</span>
             <span className="font-medium">{formatPrice(shippingTotal)}</span>
           </div>
           <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-            <span className="text-lg font-bold text-gray-900">Total</span>
+            <span className="text-lg font-bold text-gray-900">{t('cart.total')}</span>
             <span className="text-2xl font-black text-[#16C784]">{formatPrice(total)}</span>
           </div>
         </div>
 
         {/* Shipping Address */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">Adresse de livraison</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
               <input
                 type="text"
                 value={address.full_name}
@@ -193,7 +195,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
               <input
                 type="text"
                 value={address.address_line}
@@ -202,7 +204,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
               <input
                 type="text"
                 value={address.city}
@@ -211,7 +213,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
               <input
                 type="text"
                 value={address.postal_code}
@@ -220,7 +222,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
               <input
                 type="tel"
                 value={address.phone}
@@ -233,7 +235,7 @@ export default function CheckoutPage() {
 
         {/* Payment Method */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">Mode de paiement</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</h2>
           
           <div className="space-y-4">
             {gateways.map((g) => (
@@ -269,7 +271,7 @@ export default function CheckoutPage() {
             disabled={isProcessing}
             className="w-full mt-8 bg-[#16C784] text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-[#16C784]/20 hover:bg-[#14b876] hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center"
           >
-            {isProcessing ? 'Traitement en cours...' : 'Confirmer et payer'}
+            {isProcessing ? t('checkout.processing') : t('checkout.confirm')}
           </button>
         </div>
       </div>

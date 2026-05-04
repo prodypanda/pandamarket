@@ -74,33 +74,35 @@ export const auditLog: RequestHandler = (req: Request, res: Response, next: Next
     // Fire and forget — don't block the response
     const logEntry = {
       id: pdId('audit'),
-      user_id: req.user!.id,
+      actor_id: req.user!.id,
+      actor_role: req.user!.role ?? null,
       action: `${req.method} ${req.originalUrl}`,
       resource_type: extractResourceType(req.originalUrl),
       resource_id: extractResourceId(req.originalUrl),
-      details: JSON.stringify({
+      ip: req.ip ?? null,
+      user_agent: req.headers['user-agent'] ?? null,
+      metadata: JSON.stringify({
         method: req.method,
         path: req.originalUrl,
         body: req.body ? redactBody(req.body) : null,
         status_code: res.statusCode,
         duration_ms: duration,
-        ip: req.ip,
-        user_agent: req.headers['user-agent'],
       }),
-      ip_address: req.ip ?? null,
     };
 
     query(
-      `INSERT INTO pd_audit_log (id, user_id, action, resource_type, resource_id, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::inet)`,
+      `INSERT INTO pd_audit_log (id, actor_id, actor_role, action, resource_type, resource_id, ip, user_agent, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::inet, $8, $9::jsonb)`,
       [
         logEntry.id,
-        logEntry.user_id,
+        logEntry.actor_id,
+        logEntry.actor_role,
         logEntry.action,
         logEntry.resource_type,
         logEntry.resource_id,
-        logEntry.details,
-        logEntry.ip_address,
+        logEntry.ip,
+        logEntry.user_agent,
+        logEntry.metadata,
       ],
     ).catch((err) => {
       logger.warn({ err }, 'Failed to write audit log entry');
