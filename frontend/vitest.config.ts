@@ -17,11 +17,10 @@ export default defineConfig({
     },
   },
   css: {
-    // Override PostCSS with empty config to avoid loading postcss.config.mjs
-    // which requires lightningcss native binary (not available in alpine CI)
     postcss: { plugins: [] },
   },
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@pandamarket/types': path.resolve(__dirname, '../packages/types/src/index.ts'),
