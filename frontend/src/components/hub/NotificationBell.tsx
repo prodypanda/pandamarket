@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, CheckCheck, X } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -18,9 +18,15 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
+  // Set initial timestamp on mount
+  useEffect(() => {
+    setNow(Date.now());
+  }, []);
 
   // Fetch unread count on mount and periodically
   useEffect(() => {
@@ -106,8 +112,17 @@ export function NotificationBell() {
     setIsOpen(!isOpen);
   }
 
+  // Update the "now" timestamp when dropdown opens or notifications change
+  useEffect(() => {
+    if (isOpen) {
+      setNow(Date.now());
+      const timer = setInterval(() => setNow(Date.now()), 60_000);
+      return () => clearInterval(timer);
+    }
+  }, [isOpen, notifications]);
+
   function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = now - new Date(dateStr).getTime();
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return 'à l\'instant';
     if (minutes < 60) return `il y a ${minutes}m`;

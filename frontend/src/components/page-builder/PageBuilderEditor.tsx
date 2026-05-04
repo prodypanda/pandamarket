@@ -181,6 +181,8 @@ export function PageBuilderEditor({
 
   // Add e-commerce specific blocks
   const addEcommerceBlocks = (editor: GrapesJSEditor) => {
+    // GrapesJS BlockManager is not exposed in the public type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bm = (editor as any).BlockManager;
 
     bm.add('hero-section', {
