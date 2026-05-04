@@ -17,8 +17,9 @@ export default defineConfig({
     },
   },
   css: {
-    // Disable PostCSS processing in tests to avoid lightningcss native binary issues in CI
-    postcss: '',
+    // Override PostCSS with empty config to avoid loading postcss.config.mjs
+    // which requires lightningcss native binary (not available in alpine CI)
+    postcss: { plugins: [] },
   },
   resolve: {
     alias: {

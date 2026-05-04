@@ -279,7 +279,7 @@ export default async function ProductDetailPage({
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
                     {p.images && p.images[0] ? (
                       <img
-                        src={typeof p.images[0] === 'string' ? p.images[0] : (p.images[0] as any).url}
+                        src={typeof p.images[0] === 'string' ? p.images[0] : (p.images[0] as Record<string, string>).url}
                         alt={p.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />

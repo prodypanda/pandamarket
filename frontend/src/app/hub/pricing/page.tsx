@@ -73,7 +73,7 @@ export default function PricingPage() {
             </div>
             <ul className="space-y-2 mb-4">
               {features.map((f) => {
-                const val = (plan as any)[f.key];
+                const val = (plan as Record<string, unknown>)[f.key];
                 return (
                   <li key={f.key} className="flex items-center text-sm">
                     {f.boolean ? (
@@ -136,7 +136,7 @@ export default function PricingPage() {
               <tr key={f.key} className={i % 2 === 0 ? 'bg-gray-50/50' : ''}>
                 <td className="p-4 text-sm font-medium text-gray-700">{f.label}</td>
                 {plans.map((plan) => {
-                  const val = (plan as any)[f.key];
+                  const val = (plan as Record<string, unknown>)[f.key];
                   return (
                     <td key={plan.id} className="p-4 text-center text-sm">
                       {f.boolean ? (

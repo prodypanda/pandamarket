@@ -101,7 +101,7 @@ function SearchContent() {
     return `${price.toFixed(3)} TND`;
   };
 
-  const FilterSidebar = () => (
+  const renderFilterSidebar = () => (
     <div className="space-y-6">
       {/* Categories */}
       <div>
@@ -206,7 +206,7 @@ function SearchContent() {
                 <Filter className="w-5 h-5 text-gray-700" />
                 <h2 className="font-bold text-gray-900">Filtres</h2>
               </div>
-              <FilterSidebar />
+              {renderFilterSidebar()}
             </div>
           </aside>
 
@@ -221,7 +221,7 @@ function SearchContent() {
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
-                <FilterSidebar />
+                {renderFilterSidebar()}
                 <button
                   onClick={() => setShowMobileFilters(false)}
                   className="w-full mt-6 py-3 bg-[#16C784] text-white font-medium rounded-lg hover:bg-[#14b876] transition-colors"
