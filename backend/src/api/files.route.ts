@@ -14,7 +14,9 @@ import { presignUpload, publicUrl } from '../utils/s3';
 import { config } from '../config';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
-import { PdValidationError, PdErrorCode } from '../errors';
+import { PdValidationError, PdErrorCode, PdForbiddenError } from '../errors';
+import { fileAssetService } from '../services/file-asset.service';
+import { UserRole } from '@pandamarket/types';
 
 const router = Router();
 
@@ -34,6 +36,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   kyc_document: ['image/jpeg', 'image/png', 'application/pdf'],
   mandat_proof: ['image/jpeg', 'image/png'],
   theme_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'],
+  marketplace_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'],
 };
 
 // Max file sizes per purpose (bytes)
@@ -42,6 +45,7 @@ const MAX_SIZES: Record<string, number> = {
   kyc_document: 10 * 1024 * 1024,    // 10 MB
   mandat_proof: 10 * 1024 * 1024,    // 10 MB
   theme_asset: 5 * 1024 * 1024,      // 5 MB
+  marketplace_asset: 25 * 1024 * 1024,
 };
 
 /**
@@ -56,7 +60,7 @@ router.post(
   uploadRateLimit,
   validate(presignUploadSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { filename, content_type, purpose } = req.body;
+    const { filename, content_type, purpose, file_size } = req.body;
 
     // Validate content type for the given purpose
     const allowed = ALLOWED_TYPES[purpose];
@@ -66,6 +70,22 @@ router.post(
         valid_types: allowed,
         provided: content_type,
       });
+    }
+
+    if (file_size !== undefined && file_size > MAX_SIZES[purpose]) {
+      throw new PdValidationError('File is too large for this purpose', {
+        code: PdErrorCode.FILE_TOO_LARGE,
+        max_size: MAX_SIZES[purpose],
+        provided_size: file_size,
+      });
+    }
+
+    if (
+      purpose === 'marketplace_asset' &&
+      req.user!.role !== UserRole.Admin &&
+      req.user!.role !== UserRole.SuperAdmin
+    ) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only admins can upload marketplace assets');
     }
 
     // Determine bucket and key path
@@ -92,6 +112,10 @@ router.post(
         bucket = config.s3.bucketThemes;
         keyPrefix = `themes/${req.user!.store_id ?? req.user!.id}`;
         break;
+      case 'marketplace_asset':
+        bucket = config.s3.bucketPublic;
+        keyPrefix = `marketplace/${req.user!.id}`;
+        break;
       default:
         throw new PdValidationError('Invalid purpose');
     }
@@ -113,10 +137,27 @@ router.post(
       'Presigned upload URL generated',
     );
 
+    const publicAssetUrl = isPublic ? publicUrl(fileKey) : undefined;
+    const asset = publicAssetUrl
+      ? await fileAssetService.registerAsset({
+        scope: purpose === 'marketplace_asset' ? 'platform' : 'store',
+        purpose,
+        url: publicAssetUrl,
+        file_key: fileKey,
+        bucket,
+        filename,
+        content_type,
+        file_size: file_size ?? null,
+        owner_user_id: req.user!.id,
+        store_id: purpose === 'marketplace_asset' ? null : req.user!.store_id ?? null,
+      })
+      : null;
+
     res.status(200).json({
       upload_url: uploadUrl,
       file_key: fileKey,
-      public_url: isPublic ? publicUrl(fileKey) : undefined,
+      public_url: publicAssetUrl,
+      asset,
       max_size: MAX_SIZES[purpose],
       expires_in: 900,
     });

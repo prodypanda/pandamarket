@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { SafePageRenderer } from '../../../../../components/page-builder/SafePageRenderer';
+import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
+import { getStoreRouteContext } from '../../../../../lib/store-routing';
+import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 
 /**
  * Storefront Custom Page Renderer
@@ -27,16 +30,18 @@ interface StorePageData {
 interface StoreData {
   id: string;
   name: string;
+  theme_id: ThemeId;
   settings?: {
-    colors?: { primary?: string };
+    colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    themeCustomization?: ThemeCustomization;
     [key: string]: unknown;
   };
 }
 
 async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
       next: { revalidate: 60 },
     });
@@ -50,7 +55,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
 
 async function getPublishedPage(storeId: string, slug: string): Promise<StorePageData | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/stores/${storeId}/pages/${encodeURIComponent(slug)}`,
       { next: { revalidate: 30 } },
@@ -98,20 +103,28 @@ export default async function CustomStorePage({
   const store = await getStoreByHost(decodedHost);
   if (!store) notFound();
 
+  const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
+  if (isMarketplaceStoreRoute) {
+    redirect(`/store/${storeHost}`);
+  }
+
   const page = await getPublishedPage(store.id, slug);
   if (!page) notFound();
 
-  const primaryColor = store.settings?.colors?.primary || '#16C784';
+  const activeTheme = themes[store.theme_id] || themes.classic;
+  const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
+  const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+  const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
   const logoUrl = store.settings?.logo_url as string | undefined;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
       {/* Minimal Store Header */}
       <header
-        className="h-16 border-b border-gray-200 flex items-center justify-between px-6"
-        style={{ borderBottomColor: `${primaryColor}20` }}
+        className="h-16 border-b flex items-center justify-between px-6"
+        style={{ backgroundColor: resolvedColors.headerBg, borderBottomColor: `${primaryColor}20` }}
       >
-        <Link href={`/store/${storeHost}`} className="flex items-center gap-2">
+        <Link href={storePathBase || '/'} className="flex items-center gap-2">
           {logoUrl ? (
             <img src={logoUrl} alt={store.name} className="h-8 object-contain" />
           ) : (
@@ -122,17 +135,13 @@ export default async function CustomStorePage({
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link
-            href={`/store/${storeHost}`}
-            className="text-gray-600 hover:text-gray-900 transition-colors"
+            href={storePathBase || '/'}
+            className="transition-colors hover:opacity-80"
+            style={{ color: resolvedColors.text }}
           >
             Accueil
           </Link>
-          <Link
-            href={`/store/${storeHost}/cart`}
-            className="text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Panier
-          </Link>
+          <StoreCartIcon storeId={store.id} storeHost={storeHost} primaryColor={primaryColor} storePathBase={storePathBase} iconColor={resolvedColors.text} className="inline-flex items-center gap-2 transition-colors hover:opacity-80" label="Panier" />
         </nav>
       </header>
 
@@ -142,9 +151,9 @@ export default async function CustomStorePage({
       </main>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-xs text-gray-400 border-t border-gray-100">
+      <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
         Propulsé par{' '}
-        <Link href="/" className="text-[#16C784] hover:underline">
+        <Link href="/" className="hover:underline" style={{ color: primaryColor }}>
           🐼 PandaMarket
         </Link>
       </footer>

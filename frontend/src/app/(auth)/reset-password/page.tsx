@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
+
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -34,7 +36,7 @@ function ResetPasswordContent() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/pd/auth/reset-password', {
+      const res = await fetchWithCsrf('/api/pd/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),

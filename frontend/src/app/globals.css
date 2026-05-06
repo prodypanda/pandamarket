@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* =====================================================
    PandaMarket Design System Tokens
    Based on: ai instructions/design-system.md
@@ -81,12 +83,6 @@
     --background: #0F0F23;
     --foreground: #E2E8F0;
     --surface: #1A1A2E;
-    --color-gray-900: #E2E8F0;
-    --color-gray-700: #CBD5E1;
-    --color-gray-500: #94A3B8;
-    --color-gray-300: #2D2D4A;
-    --color-gray-100: #25253D;
-    --color-gray-50: #1A1A2E;
   }
 }
 
@@ -95,18 +91,38 @@
   --background: #0F0F23;
   --foreground: #E2E8F0;
   --surface: #1A1A2E;
-  --color-gray-900: #E2E8F0;
-  --color-gray-700: #CBD5E1;
-  --color-gray-500: #94A3B8;
-  --color-gray-300: #2D2D4A;
-  --color-gray-100: #25253D;
-  --color-gray-50: #1A1A2E;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.admin-shell input:not([type="checkbox"]):not([type="radio"]),
+.admin-shell textarea,
+.admin-shell select {
+  color: #111827;
+  background-color: #ffffff;
+  caret-color: #16C784;
+}
+
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder {
+  color: #9CA3AF;
+  opacity: 1;
+}
+
+.admin-shell input:disabled,
+.admin-shell textarea:disabled,
+.admin-shell select:disabled {
+  color: #6B7280;
+  background-color: #F3F4F6;
+}
+
+.admin-shell option {
+  color: #111827;
+  background-color: #ffffff;
 }
 
 /* Global Animations */

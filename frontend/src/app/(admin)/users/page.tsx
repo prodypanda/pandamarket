@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users,
@@ -53,7 +54,7 @@ export default function AdminUsersPage() {
   const fetchVendors = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/pd/admin/vendors?page=${page}&limit=20`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/vendors?page=${page}&limit=20`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -76,7 +77,7 @@ export default function AdminUsersPage() {
   const handleSuspend = async (storeId: string) => {
     setSuspendingId(storeId);
     try {
-      const res = await fetch(`/api/pd/admin/vendors/${storeId}/suspend`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/vendors/${storeId}/suspend`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Webhook,
@@ -46,7 +47,7 @@ const AVAILABLE_EVENTS = [
   { value: 'pd.stock.low', label: 'Stock Low', desc: 'When product stock falls below threshold' },
 ];
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000/api/pd';
+const API_BASE = '/api/pd';
 
 export default function WebhooksPage() {
   const [webhooks, setWebhooks] = useState<WebhookSubscription[]>([]);
@@ -106,7 +107,7 @@ export default function WebhooksPage() {
     if (!newUrl || newEvents.length === 0) return;
     setCreating(true);
     try {
-      const res = await fetch(`${API_BASE}/vendor/webhooks`, {
+      const res = await fetchWithCsrf(`${API_BASE}/vendor/webhooks`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -130,7 +131,7 @@ export default function WebhooksPage() {
 
   const handleToggle = async (id: string, currentActive: boolean) => {
     try {
-      await fetch(`${API_BASE}/vendor/webhooks/${id}`, {
+      await fetchWithCsrf(`${API_BASE}/vendor/webhooks/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -145,7 +146,7 @@ export default function WebhooksPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this webhook?')) return;
     try {
-      await fetch(`${API_BASE}/vendor/webhooks/${id}`, {
+      await fetchWithCsrf(`${API_BASE}/vendor/webhooks/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });

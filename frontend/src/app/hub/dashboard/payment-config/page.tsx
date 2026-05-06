@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import {
   CreditCard,
@@ -14,6 +15,15 @@ import {
 interface StoreInfo {
   id: string;
   subscription_plan: string;
+}
+
+async function getErrorMessage(res: Response, fallback = 'Request failed') {
+  try {
+    const data = await res.json();
+    return data.error?.message || data.message || `${fallback} (${res.status})`;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
 }
 
 export default function PaymentConfigPage() {
@@ -32,24 +42,18 @@ export default function PaymentConfigPage() {
   useEffect(() => {
     async function fetchStore() {
       try {
-        // Fetch store info to check plan
-        const walletRes = await fetch('/api/pd/wallet/me', { credentials: 'include' });
-        if (walletRes.ok) {
-          const data = await walletRes.json();
+        const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
           setStore({
-            id: data.wallet?.store_id || '',
-            subscription_plan: data.wallet?.subscription_plan || 'free',
+            id: data.store?.id || '',
+            subscription_plan: data.store?.subscription_plan || 'free',
           });
+        } else {
+          setError(await getErrorMessage(res, 'Failed to load store information'));
         }
-
-        // Also try to get store details
-        const storesRes = await fetch('/api/pd/stores', { credentials: 'include' });
-        if (storesRes.ok) {
-          const data = await storesRes.json();
-          // The store info should be available from the user's context
-        }
-      } catch {
-        // ignore
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Network error');
       }
       setLoading(false);
     }
@@ -78,7 +82,7 @@ export default function PaymentConfigPage() {
         return;
       }
 
-      const res = await fetch('/api/pd/stores/me/payment-config', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/payment-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -93,11 +97,10 @@ export default function PaymentConfigPage() {
         setKonnectApiKey('');
         setKonnectReceiverWallet('');
       } else {
-        const data = await res.json();
-        setError(data.error?.message || 'Failed to save payment configuration');
+        setError(await getErrorMessage(res, 'Failed to save payment configuration'));
       }
-    } catch {
-      setError('Network error');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setSaving(false);
     }

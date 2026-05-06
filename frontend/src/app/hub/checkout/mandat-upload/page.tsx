@@ -3,8 +3,13 @@
 import React, { useState, useRef, Suspense } from 'react';
 import { Upload, FileText, CheckCircle, ArrowRight, Loader2, Info } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { HubNavbar } from '../../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../../components/hub/HubFooter';
+import { useMarketplaceTheme } from '../../../../hooks/useMarketplaceTheme';
 
-function MandatUploadContent() {
+type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes'];
+
+function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceThemeClasses; isAliExpress: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderId = searchParams.get('order_id');
@@ -37,15 +42,17 @@ function MandatUploadContent() {
 
   if (success) {
     return (
-      <div className="bg-white rounded-2xl p-12 text-center shadow-lg border border-gray-100 max-w-2xl mx-auto mt-20">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+      <div className={`${classes.panel} max-w-2xl mx-auto mt-20 p-12 text-center`}>
+        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${classes.primarySoft}`}>
+          <CheckCircle className="w-10 h-10" />
+        </div>
         <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Proof Submitted!</h1>
         <p className="text-gray-500 mb-8 max-w-md mx-auto">
           We have received your payment proof. Your order will be processed as soon as our team verifies the Mandat transfer.
         </p>
         <button 
           onClick={() => router.push('/hub')}
-          className="px-8 py-3 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors"
+          className={`px-8 py-3 font-black rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
         >
           Return to Hub
         </button>
@@ -54,14 +61,14 @@ function MandatUploadContent() {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-8 lg:p-12 shadow-sm border border-gray-100 max-w-3xl mx-auto mt-12">
+    <div className={`${classes.panel} max-w-3xl mx-auto mt-12 p-8 lg:p-12`}>
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Upload Payment Proof</h1>
       <p className="text-gray-500 mb-8">
         Order ID: <strong className="text-gray-900">{orderId || 'Unknown'}</strong>
       </p>
 
-      <div className="bg-[#16C784]/5 p-4 rounded-xl flex gap-4 mb-8">
-        <Info className="w-6 h-6 text-[#16C784] flex-shrink-0" />
+      <div className={`${classes.primarySoft} p-4 rounded-2xl flex gap-4 mb-8`}>
+        <Info className="w-6 h-6 flex-shrink-0" />
         <p className="text-sm text-gray-800">
           Please complete a Mandat Minute transfer at La Poste to <strong>PandaMarket SARL</strong> (CIN: 12345678). 
           Then, take a clear photo of your receipt and upload it here to validate your order.
@@ -71,7 +78,7 @@ function MandatUploadContent() {
       <div 
         onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200 mb-8 ${
-          file ? 'border-green-500 bg-green-50/30' : 'border-gray-300 hover:border-blue-400 bg-gray-50'
+          file ? `${classes.primaryBorder} ${classes.primarySoft}` : isAliExpress ? 'border-orange-200 hover:border-[#ff4747] bg-orange-50/30' : 'border-gray-300 hover:border-[#16C784] bg-gray-50'
         }`}
       >
         {file ? (
@@ -94,7 +101,7 @@ function MandatUploadContent() {
       <button 
         disabled={!file || uploading} 
         onClick={handleUpload}
-        className="w-full bg-[#16C784] text-white font-bold text-lg py-4 rounded-xl hover:bg-[#14b876] transition-colors disabled:opacity-50 flex justify-center items-center"
+        className={`w-full text-white font-black text-lg py-4 rounded-full transition-all disabled:opacity-50 flex justify-center items-center hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
       >
         {uploading ? (
           <Loader2 className="w-6 h-6 animate-spin" />
@@ -107,11 +114,21 @@ function MandatUploadContent() {
 }
 
 export default function MandatUploadPage() {
+  const { settings, classes, isAliExpress } = useMarketplaceTheme();
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-[#16C784]" /></div>}>
-        <MandatUploadContent />
-      </Suspense>
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={settings.marketplace_name}
+        marketplaceLogoUrl={settings.marketplace_logo_url}
+        marketplaceTheme={settings.marketplace_theme}
+      />
+      <div className="px-4 py-12 sm:px-6 lg:px-8">
+        <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className={`w-8 h-8 animate-spin ${classes.primaryText}`} /></div>}>
+          <MandatUploadContent classes={classes} isAliExpress={isAliExpress} />
+        </Suspense>
+      </div>
+      <HubFooter {...settings} />
     </div>
   );
 }

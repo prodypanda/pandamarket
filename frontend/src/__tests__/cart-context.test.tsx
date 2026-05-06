@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   addItem,
   removeItem,
+  removeItemsByStore,
   updateItemQuantity,
   getCartTotal,
   getItemCount,
@@ -96,6 +97,14 @@ describe('CartContext', () => {
     items = []; // clearCart just sets items to []
     expect(items).toHaveLength(0);
     expect(getCartTotal(items)).toBe(0);
+  });
+
+  it('removes only items from a selected store', () => {
+    let items = addItem([], sampleInput);
+    items = addItem(items, sampleInput2);
+    items = removeItemsByStore(items, 'store_001');
+    expect(items).toHaveLength(1);
+    expect(items[0].store_id).toBe('store_002');
   });
 
   it('groups items by store', () => {

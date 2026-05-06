@@ -132,6 +132,7 @@ export interface IProduct {
   slug: string;
   description: string | null;
   category: string | null;
+  product_reference: string | null;
   price: number;
   inventory_quantity: number;
   weight_grams: number | null;
@@ -139,6 +140,7 @@ export interface IProduct {
   seo_title: string | null;
   seo_description: string | null;
   tags: string[];
+  attributes: Array<{ name: string; value: string }>;
   images: IProductImage[];
   variants: IProductVariant[];
   created_at: string;

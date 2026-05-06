@@ -1,10 +1,13 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { useCart } from '../../../../contexts/CartContext';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { isMarketplaceHost } from '../../../../lib/store-hosts';
+import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
 
 function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
@@ -15,23 +18,32 @@ const SHIPPING_PER_VENDOR = 7;
 interface StoreData {
   id: string;
   name: string;
+  theme_id: ThemeId;
   settings?: {
-    colors?: { primary?: string };
+    colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    themeCustomization?: ThemeCustomization;
   };
 }
 
 export default function StoreCartPage() {
   const params = useParams();
+  const router = useRouter();
   const storeHost = decodeURIComponent(params.storeHost as string);
-  const { items, removeFromCart, updateQuantity, getItemCount } = useCart();
+  const { items, removeFromCart, updateQuantity } = useCart();
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isMarketplaceHost(window.location.host)) {
+      router.replace('/hub/cart');
+    }
+  }, [router]);
+
+  useEffect(() => {
     async function fetchStore() {
       try {
-        const res = await fetch(`/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`);
+        const res = await fetchWithCsrf(`/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`);
         if (res.ok) {
           const data = await res.json();
           setStore(data.store);
@@ -44,7 +56,17 @@ export default function StoreCartPage() {
     fetchStore();
   }, [storeHost]);
 
-  const primaryColor = store?.settings?.colors?.primary || '#16C784';
+  const activeTheme = store?.theme_id ? themes[store.theme_id] || themes.classic : themes.classic;
+  const themeCustomization = (store?.settings?.themeCustomization || {}) as ThemeCustomization;
+  const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+  const primaryColor = store?.settings?.colors?.primary || resolvedColors.primary;
+  const surfaceColor = store?.settings?.colors?.secondary || resolvedColors.secondary;
+  const pageBackground = resolvedColors.background;
+  const textColor = resolvedColors.text;
+  const mutedTextColor = `${textColor}99`;
+  const headerBackground = resolvedColors.headerBg;
+  const borderColor = `${primaryColor}20`;
+  const storeBaseHref = '';
 
   // Filter items to only this store
   const storeItems = store ? items.filter((item) => item.store_id === store.id) : [];
@@ -55,7 +77,7 @@ export default function StoreCartPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: primaryColor }} />
       </div>
     );
@@ -63,13 +85,13 @@ export default function StoreCartPage() {
 
   if (storeItems.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
         {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
+        <header className="border-b sticky top-0 z-50" style={{ backgroundColor: headerBackground, borderColor }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <Link
-                href={`/store/${params.storeHost}`}
+                href={storeBaseHref || '/'}
                 className="text-xl font-bold"
                 style={{ color: primaryColor }}
               >
@@ -81,12 +103,12 @@ export default function StoreCartPage() {
 
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
           <ShoppingCart className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Votre panier est vide</h1>
-          <p className="text-gray-500 mb-8">
+          <h1 className="text-2xl font-bold mb-3" style={{ color: textColor }}>Votre panier est vide</h1>
+          <p className="mb-8" style={{ color: `${textColor}99` }}>
             Découvrez nos produits et ajoutez-les à votre panier.
           </p>
           <Link
-            href={`/store/${params.storeHost}`}
+            href={storeBaseHref || '/'}
             className="inline-flex items-center gap-2 px-8 py-3 text-white font-semibold rounded-xl hover:opacity-90 transition-colors"
             style={{ backgroundColor: primaryColor }}
           >
@@ -99,21 +121,22 @@ export default function StoreCartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
+      <header className="border-b sticky top-0 z-50" style={{ backgroundColor: headerBackground, borderColor }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link
-              href={`/store/${params.storeHost}`}
+              href={storeBaseHref || '/'}
               className="text-xl font-bold"
               style={{ color: primaryColor }}
             >
               {store?.name || storeHost}
             </Link>
             <Link
-              href={`/store/${params.storeHost}`}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              href={storeBaseHref || '/'}
+              className="flex items-center gap-2 text-sm transition-colors hover:opacity-80"
+              style={{ color: textColor }}
             >
               <ArrowLeft className="w-4 h-4" />
               Retour à la boutique
@@ -123,14 +146,14 @@ export default function StoreCartPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: textColor }}>
           Panier ({itemCount} article{itemCount > 1 ? 's' : ''})
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: surfaceColor, borderColor }}>
               <div className="divide-y divide-gray-100">
                 {storeItems.map((item) => (
                   <div key={item.id} className="px-6 py-4 flex items-center gap-4">
@@ -151,11 +174,11 @@ export default function StoreCartPage() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 line-clamp-1">{item.title}</p>
+                      <p className="font-medium line-clamp-1" style={{ color: textColor }}>{item.title}</p>
                       {item.variant && (
-                        <p className="text-xs text-gray-500 mt-0.5">{item.variant}</p>
+                        <p className="text-xs mt-0.5" style={{ color: mutedTextColor }}>{item.variant}</p>
                       )}
-                      <p className="text-sm font-semibold text-gray-700 mt-1">
+                      <p className="text-sm font-semibold mt-1" style={{ color: mutedTextColor }}>
                         {formatPrice(item.price)}
                       </p>
                     </div>
@@ -168,7 +191,7 @@ export default function StoreCartPage() {
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-600" />
                       </button>
-                      <span className="px-3 text-sm font-semibold text-gray-900 min-w-[32px] text-center">
+                      <span className="px-3 text-sm font-semibold min-w-[32px] text-center" style={{ color: textColor }}>
                         {item.quantity}
                       </span>
                       <button
@@ -181,7 +204,7 @@ export default function StoreCartPage() {
 
                     {/* Line Total */}
                     <div className="text-right min-w-[100px]">
-                      <p className="font-bold text-gray-900">
+                      <p className="font-bold" style={{ color: textColor }}>
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
@@ -198,11 +221,11 @@ export default function StoreCartPage() {
               </div>
 
               {/* Shipping */}
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-sm">
-                <span className="text-gray-500">
+              <div className="px-6 py-3 border-t flex items-center justify-between text-sm" style={{ backgroundColor: surfaceColor, borderColor }}>
+                <span style={{ color: mutedTextColor }}>
                   Livraison : {formatPrice(SHIPPING_PER_VENDOR)}
                 </span>
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold" style={{ color: textColor }}>
                   Sous-total : {formatPrice(subtotal + shippingTotal)}
                 </span>
               </div>
@@ -211,20 +234,20 @@ export default function StoreCartPage() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-24">
-              <h2 className="font-bold text-gray-900 text-lg mb-4">Résumé</h2>
+            <div className="rounded-xl border p-6 sticky top-24" style={{ backgroundColor: surfaceColor, borderColor }}>
+              <h2 className="font-bold text-lg mb-4" style={{ color: textColor }}>Résumé</h2>
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Sous-total</span>
-                  <span className="font-medium text-gray-900">{formatPrice(subtotal)}</span>
+                  <span style={{ color: mutedTextColor }}>Sous-total</span>
+                  <span className="font-medium" style={{ color: textColor }}>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Livraison</span>
-                  <span className="font-medium text-gray-900">{formatPrice(shippingTotal)}</span>
+                  <span style={{ color: mutedTextColor }}>Livraison</span>
+                  <span className="font-medium" style={{ color: textColor }}>{formatPrice(shippingTotal)}</span>
                 </div>
-                <div className="border-t border-gray-200 pt-3 flex justify-between">
-                  <span className="font-bold text-gray-900 text-base">Total</span>
+                <div className="border-t pt-3 flex justify-between" style={{ borderColor }}>
+                  <span className="font-bold text-base" style={{ color: textColor }}>Total</span>
                   <span className="font-extrabold text-lg" style={{ color: primaryColor }}>
                     {formatPrice(total)}
                   </span>
@@ -232,7 +255,7 @@ export default function StoreCartPage() {
               </div>
 
               <Link
-                href={`/store/${params.storeHost}/checkout`}
+                href={`${storeBaseHref}/checkout`}
                 className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 text-white font-semibold rounded-xl hover:opacity-90 hover:shadow-lg transition-all"
                 style={{ backgroundColor: primaryColor }}
               >
@@ -241,8 +264,9 @@ export default function StoreCartPage() {
               </Link>
 
               <Link
-                href={`/store/${params.storeHost}`}
-                className="mt-3 w-full flex items-center justify-center py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                href={storeBaseHref || '/'}
+                className="mt-3 w-full flex items-center justify-center py-3 text-sm transition-colors hover:opacity-80"
+                style={{ color: `${textColor}99` }}
               >
                 Continuer vos achats
               </Link>

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, CheckCheck, Wifi, WifiOff } from 'lucide-react';
 import { useSocketContext } from '../../contexts/SocketContext';
@@ -22,8 +23,6 @@ export function NotificationBell() {
   const [now, setNow] = useState(0);
   const [hasNewRealtime, setHasNewRealtime] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
   // WebSocket integration — live push notifications
   let socketConnected = false;
@@ -87,7 +86,7 @@ export function NotificationBell() {
 
   async function fetchUnreadCount() {
     try {
-      const res = await fetch(`${backendUrl}/api/pd/notifications/unread-count`, {
+      const res = await fetch('/api/pd/notifications/unread-count', {
         credentials: 'include',
       });
       if (res.ok) {
@@ -102,7 +101,7 @@ export function NotificationBell() {
   async function fetchNotifications() {
     setLoading(true);
     try {
-      const res = await fetch(`${backendUrl}/api/pd/notifications?limit=10`, {
+      const res = await fetch('/api/pd/notifications?limit=10', {
         credentials: 'include',
       });
       if (res.ok) {
@@ -118,7 +117,7 @@ export function NotificationBell() {
 
   async function markAsRead(id: string) {
     try {
-      await fetch(`${backendUrl}/api/pd/notifications/${id}/read`, {
+      await fetchWithCsrf(`/api/pd/notifications/${id}/read`, {
         method: 'PATCH',
         credentials: 'include',
       });
@@ -133,7 +132,7 @@ export function NotificationBell() {
 
   async function markAllAsRead() {
     try {
-      await fetch(`${backendUrl}/api/pd/notifications/read-all`, {
+      await fetchWithCsrf('/api/pd/notifications/read-all', {
         method: 'PATCH',
         credentials: 'include',
       });

@@ -237,7 +237,7 @@
 | **Backend security** | **~100%** | ✅ All 15 critical security items verified + Docker Secrets support (`_FILE` env var pattern) for production. bcrypt, JWT rotation, AES-256-GCM, CSP, HSTS, CORS, rate limiting, CSRF, HMAC, idempotency, PII redaction, tenant isolation, Zod validation, audit log, Sentry + Prometheus |
 | **Backend workers (BullMQ)** | **~99%** | ✅ 6 workers (12 files): AI, email (dynamic SMTP from DB), payout, subscription, webhook, search + stock-low subscriber |
 | **Frontend Hub** | **~97%** | ✅ All pages: homepage, search, products, cart, checkout, category, orders, profile, pricing, vendor-signup |
-| **Frontend Storefront (themes)** | **~100%** | ✅ Product detail, cart, checkout, store branding, custom 404, custom domain routing, SEO metadata. **7 themes** (Minimal, Classic, Modern, Boutique, Artisan, TechHub, Flavor) + GrapesJS Page Builder with homepage override |
+| **Frontend Storefront (themes)** | **~100%** | ✅ Product detail, cart, checkout, store branding, custom 404, custom domain routing, SEO metadata. **20 themes** with seller color customization + GrapesJS Page Builder with homepage override |
 | **Frontend Vendor Dashboard** | **~99%** | ✅ All 14 pages: overview, products, orders, wallet, KYC, settings, AI, subscription, API keys, payment config, notifications, webhooks, reports, page-builder |
 | **Frontend Admin Panel** | **~100%** | ✅ All 12 pages: dashboard, KYC, mandats, reports, vendors, withdrawals, plans editor, audit log, global settings, AI costs, **SMTP email config** |
 | **Tests** | **~82%** | ✅ 9 backend + 3 frontend + 6 E2E (Playwright) + 3 k6 load test scripts |
@@ -276,7 +276,7 @@
 | 1.4 | [x] | `.editorconfig`, `.prettierrc`, `.gitignore`, `.nvmrc` | OK |
 | 1.5 | [x] | `tsconfig.json` strict mode (backend) | OK |
 | 1.6 | [x] | `.gitlab-ci.yml` present | **DONE (2026-05-03-v3)** — Rebuilt with 4 stages: lint (type-check + ESLint backend/frontend), test (Vitest with PostgreSQL+Redis services), security (SAST, Secret Detection, Dependency Scanning, npm audit), build (tsc + next build). CI env vars configured. |
-| 1.7 | [~] | `frontend/AGENTS.md` exists but instructs to read Next.js docs | Frontend uses Next 16.2.4 + React 19 + Tailwind 4 — verify that `app/page.tsx` template is intentionally still the "create-next-app" boilerplate (it's not customised) |
+| 1.7 | [x] | `frontend/AGENTS.md` exists with Next.js and PandaMarket handoff rules | DONE — points new agents to `docs/AGENT_CHECKPOINT_2026-05-06.md` |
 | 1.8 | [x] | `Dockerfile` for backend & frontend (production images) | **DONE** — Multi-stage builds, non-root users, healthchecks, standalone Next.js output |
 | 1.9 | [x] | Production `docker-compose.prod.yml` | **DONE** — Production config with resource limits, health checks, env vars from secrets, no debug ports exposed |
 | 1.10 | [x] | `Makefile` or scripts for common ops (logs, db reset, worker restart) | **DONE** — Comprehensive Makefile with targets: dev, stop, restart, logs, db-migrate, db-rollback, db-seed, db-reset, db-shell, workers, test, lint, format, build, build-docker, backup, backup-db, clean |
@@ -449,12 +449,12 @@
 | # | Status | Item | Notes |
 | :--- | :--- | :--- | :--- |
 | 8.1 | [x] | `app/store/[storeHost]/page.tsx` — resolves theme by host prefix | **VERIFIED**: Fetches store data from real API (`/api/pd/stores/by-host/:hostname`) with `revalidate: 60`. Products fetched from API. |
-| 8.2 | [x] | 3 themes scaffolded: `MinimalTheme`, `ClassicTheme`, `ModernTheme` | OK structurally |
+| 8.2 | [x] | 20 storefront themes scaffolded and registered | DONE — theme registry and storefront component map include all 20 themes |
 | 8.3 | [x] | **Real store fetch via `/api/pd/stores/by-host/:hostname`** | DONE — storefront page fetches from real API with fallback |
 | 8.4 | [x] | **Real product fetch per store** | DONE — themes accept products prop, fetched from API |
 | 8.5 | [x] | **Store product detail page** `/store/[storeHost]/product/[slug]` | DONE — Full product detail with images, info, related products, AddToCartButton client component, StoreCartIcon |
-| 8.6 | [x] | **Store cart + checkout** | DONE — Store cart page (`/store/[storeHost]/cart`) and checkout page (`/store/[storeHost]/checkout`) with store branding |
-| 8.7 | [x] | **Store branding application** — `settings.colors`, `settings.logo_url`, `settings.favicon_url` | **DONE** — Storefront page extracts branding from `store.settings` and passes to all 3 themes. MinimalTheme uses CSS custom properties, ClassicTheme uses headerStyle, ModernTheme uses logo/favicon. |
+| 8.6 | [x] | **Store cart + checkout** | DONE — Store cart and checkout pages use selected theme chrome/colors; checkout removes only current store items |
+| 8.7 | [x] | **Store branding application** — `settings.colors`, `settings.logo_url`, `settings.favicon_url`, `themeCustomization` | **DONE** — Theme templates and route-level storefront pages use dynamic theme colors and shared cart helpers. |
 | 8.8 | [x] | **404 page when store doesn't exist** | **DONE** — Custom `not-found.tsx` in `frontend/src/app/store/[storeHost]/` with branded design (Panda Green, Store icon, Hub/Search CTAs) |
 | 8.9 | [x] | **Page Builder integration (GrapesJS)** for Regular+ plans | **DONE (2026-05-03-v5)** — Migration 005 (`pd_store_page` table), `page-builder.service.ts` (CRUD + plan gate + tenant isolation + size validation + homepage override), `page-builder.route.ts` (6 vendor endpoints + 3 public endpoints), `PageBuilderEditor.tsx` (GrapesJS wrapper with e-commerce blocks: hero, product grid, testimonials, CTA banner, footer), dashboard page `/hub/dashboard/page-builder` (list, create, edit, delete, duplicate, publish/unpublish, set homepage), storefront renderer `/store/[storeHost]/pages/[slug]`, homepage override in storefront page, sidebar nav link, subscription plan comparison updated, 9 backend test cases |
 | 8.10 | [x] | **Custom domain support** (host header → store lookup including `custom_domain`) | **DONE** — Middleware now treats non-platform hostnames as custom domains, storefront page resolves via API |
@@ -588,7 +588,7 @@
 
 ### Sprint 3 — "Real frontend" (2 weeks) 🟠
 
-1. Replace the create-next-app `app/page.tsx`.
+1. Maintain the real Hub/storefront/dashboard frontend and avoid reverting to boilerplate.
 2. Replace all hardcoded mock data with real API calls (Hub home, storefronts, dashboard).
 3. Build product detail / search / category / cart / checkout pages.
 4. Build vendor dashboard pages: wallet, KYC, settings, subscription, AI tools, API keys.
@@ -838,7 +838,7 @@ Admin vendor management and withdrawal queue done. Tests partially done (payment
 - ~~Swagger/OpenAPI Documentation~~ ✅ DONE (2026-05-10) — `swagger-jsdoc` + `swagger-ui-express` at `/api/docs`, OpenAPI 3.0.3 spec with 20 tags, 40+ endpoint paths, JWT + API Key security schemes, `/api/docs.json` raw spec endpoint
 - ~~Email sending via real SMTP provider (Brevo/Resend)~~ ✅ DONE (2026-05-03-v6) — `smtp-config.service.ts` with AES-256-GCM encrypted password, admin API routes (GET/PUT/POST test), admin frontend page `/(admin)/smtp-config` with provider presets (Brevo, Resend, Gmail, Outlook, Mailgun, SendGrid), test connection UI, dynamic config reload in email worker (60s cache TTL), env var fallback
 - ~~Secrets Manager (Vault/Doppler/Docker Secrets)~~ ✅ DONE (2026-05-03-v6) — `config.ts` reads `_FILE` suffixed env vars (Docker Secrets pattern). `docker-compose.prod.yml` updated with 12 file-based secrets. `scripts/init-secrets.sh` generates all secrets with `openssl rand`. `docs/secrets-setup.md` covers Docker Compose, Swarm, Kubernetes, and Vault integration. `.gitignore` updated.
-- ~~More storefront themes beyond 3~~ ✅ DONE (2026-05-03-v6) — 4 new themes added: **Boutique** (luxury fashion, ivory+gold, serif typography), **Artisan** (handmade/organic, earthy browns, rounded cards), **TechHub** (electronics, dark+cyan, sticky header, spec cards), **Flavor** (food/restaurant, terracotta, appetizing layout). Total: 7 themes (4 free + 3 premium). Seeded in `seed.ts`, registered in `themes.ts`, wired in storefront `page.tsx`.
+- ~~More storefront themes beyond 3~~ ✅ DONE — Total: 20 themes. Seeded, registered in `themes.ts`, wired in storefront `page.tsx`, and audited for dynamic theme colors/shared storefront cart links.
 
 **Everything else is ✅ DONE:**
 - ~~Digital product download endpoint~~ ✅ DONE

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 /**
  * PageBuilderEditor — GrapesJS integration for PandaMarket vendor dashboard.
  * ─────────────────────────────────────────────────────────────────────────
@@ -347,7 +348,7 @@ export function PageBuilderEditor({
     setSaving(true);
     try {
       const editor = editorRef.current;
-      const res = await fetch(`/api/pd/page-builder/pages/${pageId}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${pageId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -380,7 +381,7 @@ export function PageBuilderEditor({
       const newPublished = !isPublished;
 
       // Save content + toggle publish in one call
-      const res = await fetch(`/api/pd/page-builder/pages/${pageId}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${pageId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

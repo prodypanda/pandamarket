@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { UserPlus, Store, Eye, EyeOff } from 'lucide-react';
@@ -43,7 +45,7 @@ export default function RegisterPage() {
 
     try {
       // Register user
-      const res = await fetch('/api/pd/auth/register', {
+      const res = await fetchWithCsrf('/api/pd/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -63,7 +65,7 @@ export default function RegisterPage() {
       }
 
       // Create store
-      const storeRes = await fetch('/api/pd/stores', {
+      const storeRes = await fetchWithCsrf('/api/pd/stores', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

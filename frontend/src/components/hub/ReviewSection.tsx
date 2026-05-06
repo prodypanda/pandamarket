@@ -1,7 +1,9 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Star, ThumbsUp, ChevronDown, MessageSquare } from 'lucide-react';
+import { Star, ThumbsUp, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
 
 interface Review {
   id: string;
@@ -26,6 +28,7 @@ interface ProductRating {
 
 interface ReviewSectionProps {
   productId: string;
+  marketplaceTheme?: 'panda' | 'aliexpress';
 }
 
 function StarRating({
@@ -89,7 +92,39 @@ function timeAgo(dateStr: string): string {
   return `Il y a ${Math.floor(months / 12)} an(s)`;
 }
 
-export function ReviewSection({ productId }: ReviewSectionProps) {
+async function getResponseErrorMessage(res: Response, fallback: string) {
+  if (res.status === 401) return 'Connectez-vous pour publier un avis.';
+  if (res.status === 403) return 'Votre session a expiré ou la vérification CSRF a échoué. Actualisez la page puis réessayez.';
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const data = await res.json();
+      return data.error?.message || data.message || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  try {
+    const text = await res.text();
+    if (text && !text.trim().startsWith('<')) return text.slice(0, 220);
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+
+  return `${fallback} (${res.status})`;
+}
+
+export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewSectionProps) {
+  const isAliExpress = marketplaceTheme === 'aliexpress';
+  const primaryButtonClass = isAliExpress
+    ? 'bg-[#ff4747] hover:bg-[#e63f00]'
+    : 'bg-[#16C784] hover:bg-[#14b576]';
+  const primaryActiveClass = isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]';
+  const focusRingClass = isAliExpress
+    ? 'focus:ring-[#ff4747] focus:border-transparent'
+    : 'focus:ring-[#16C784] focus:border-transparent';
   const [rating, setRating] = useState<ProductRating | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [total, setTotal] = useState(0);
@@ -97,6 +132,8 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
   const [sort, setSort] = useState<string>('recent');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Form state
   const [formRating, setFormRating] = useState(0);
@@ -106,20 +143,18 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_URL || 'http://localhost:4000';
-
   const fetchRating = useCallback(async () => {
     try {
-      const res = await fetch(`${backendUrl}/api/pd/reviews/products/${productId}/rating`);
+      const res = await fetch(`/api/pd/reviews/products/${productId}/rating`);
       if (res.ok) setRating(await res.json());
     } catch { /* ignore */ }
-  }, [backendUrl, productId]);
+  }, [productId]);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${backendUrl}/api/pd/reviews/products/${productId}/reviews?page=${page}&limit=10&sort=${sort}`,
+        `/api/pd/reviews/products/${productId}/reviews?page=${page}&limit=10&sort=${sort}`,
       );
       if (res.ok) {
         const data = await res.json();
@@ -128,12 +163,45 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [backendUrl, productId, page, sort]);
+  }, [productId, page, sort]);
 
   useEffect(() => {
     fetchRating();
     fetchReviews();
   }, [fetchRating, fetchReviews]);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/pd/auth/me', { credentials: 'include' });
+      const authenticated = res.ok;
+      setIsAuthenticated(authenticated);
+      setAuthChecked(true);
+      return authenticated;
+    } catch {
+      setIsAuthenticated(false);
+      setAuthChecked(true);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const toggleForm = async () => {
+    setSubmitError('');
+    if (showForm) {
+      setShowForm(false);
+      return;
+    }
+    const canReview = await checkAuth();
+    if (!canReview) {
+      setSubmitError('Connectez-vous ou créez un compte pour publier un avis.');
+      return;
+    }
+    setSubmitSuccess(false);
+    setShowForm(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,13 +212,17 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
     setSubmitting(true);
     setSubmitError('');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('pd_access_token') : null;
-      const res = await fetch(`${backendUrl}/api/pd/reviews`, {
+      const canReview = await checkAuth();
+      if (!canReview) {
+        throw new Error('Connectez-vous ou créez un compte pour publier un avis.');
+      }
+
+      const res = await fetchWithCsrf('/api/pd/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
+        credentials: 'include',
         body: JSON.stringify({
           product_id: productId,
           rating: formRating,
@@ -159,8 +231,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || 'Erreur lors de la soumission');
+        throw new Error(await getResponseErrorMessage(res, 'Erreur lors de la soumission'));
       }
       setSubmitSuccess(true);
       setShowForm(false);
@@ -177,10 +248,9 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
 
   const handleHelpful = async (reviewId: string) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('pd_access_token') : null;
-      await fetch(`${backendUrl}/api/pd/reviews/${reviewId}/helpful`, {
+      await fetchWithCsrf(`/api/pd/reviews/${reviewId}/helpful`, {
         method: 'POST',
-        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+        credentials: 'include',
       });
       setReviews((prev) =>
         prev.map((r) =>
@@ -224,16 +294,16 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
       {/* Actions */}
       <div className="flex items-center justify-between mb-6">
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-5 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b576] transition-colors text-sm"
+          onClick={toggleForm}
+          className={`px-5 py-2.5 ${primaryButtonClass} text-white font-semibold rounded-lg transition-colors text-sm`}
         >
-          {showForm ? 'Annuler' : 'Écrire un avis'}
+          {showForm ? 'Annuler' : authChecked && !isAuthenticated ? 'Connexion pour écrire un avis' : 'Écrire un avis'}
         </button>
 
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value); setPage(1); }}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#16C784] focus:border-transparent"
+          className={`text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 ${focusRingClass}`}
         >
           <option value="recent">Plus récents</option>
           <option value="helpful">Plus utiles</option>
@@ -246,6 +316,20 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
       {submitSuccess && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
           Merci pour votre avis ! Il a été publié avec succès.
+        </div>
+      )}
+
+      {submitError && !showForm && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <p className="font-semibold">{submitError}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/login" className={`rounded-lg px-4 py-2 text-xs font-bold text-white ${primaryButtonClass}`}>
+              Login
+            </Link>
+            <Link href="/register" className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+              Register
+            </Link>
+          </div>
         </div>
       )}
 
@@ -267,7 +351,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
               onChange={(e) => setFormTitle(e.target.value)}
               placeholder="Résumez votre expérience"
               maxLength={200}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent text-sm"
+              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${focusRingClass} text-sm`}
             />
           </div>
 
@@ -279,7 +363,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
               placeholder="Partagez votre expérience avec ce produit..."
               rows={4}
               maxLength={5000}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent text-sm resize-none"
+              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${focusRingClass} text-sm resize-none`}
             />
           </div>
 
@@ -290,7 +374,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
           <button
             type="submit"
             disabled={submitting || formRating === 0}
-            className="px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b576] transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-6 py-2.5 ${primaryButtonClass} text-white font-semibold rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {submitting ? 'Publication...' : 'Publier mon avis'}
           </button>
@@ -351,7 +435,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
 
               <button
                 onClick={() => handleHelpful(review.id)}
-                className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#16C784] transition-colors"
+                className={`mt-3 flex items-center gap-1.5 text-xs text-gray-500 transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}
               >
                 <ThumbsUp className="w-3.5 h-3.5" />
                 Utile ({review.helpful_count})
@@ -370,7 +454,7 @@ export function ReviewSection({ productId }: ReviewSectionProps) {
               onClick={() => setPage(p)}
               className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
                 p === page
-                  ? 'bg-[#16C784] text-white'
+                  ? `${primaryActiveClass} text-white`
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >

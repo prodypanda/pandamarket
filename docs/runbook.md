@@ -1,6 +1,6 @@
 # PandaMarket — Incident Response Runbook
 
-> **Version:** 1.0 | **Last updated:** 2026-05-03
+> **Version:** 1.1 | **Last updated:** 2026-05-06
 
 ---
 
@@ -12,6 +12,10 @@
 | **SEV-2** | Major feature broken, degraded for many users | < 1 hour | Search down, checkout failing, worker crash |
 | **SEV-3** | Minor feature broken, workaround exists | < 4 hours | AI tools failing, CSV export broken, theme rendering issue |
 | **SEV-4** | Cosmetic, low impact | Next business day | UI glitch, typo, non-critical log noise |
+
+## Current engineering handoff
+
+For the latest storefront theming/cart state, read [`AGENT_CHECKPOINT_2026-05-06.md`](./AGENT_CHECKPOINT_2026-05-06.md).
 
 ---
 

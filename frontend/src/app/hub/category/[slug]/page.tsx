@@ -1,17 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../../components/hub/HubFooter';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { getHubProductHref } from '../../../../lib/product-links';
+import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 
 interface Product {
   id: string;
   title: string;
-  price: number;
+  slug?: string | null;
+  price: number | string;
   thumbnail?: string;
   images?: { url: string }[];
   category?: string;
+  marketplace_category_slug?: string | null;
   store_id: string;
   store_name?: string;
+  store_subdomain?: string | null;
 }
 
 interface CategoryData {
@@ -30,7 +36,7 @@ async function getCategoryProducts(
   page: number = 1,
 ): Promise<CategoryResponse | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/categories/${encodeURIComponent(slug)}?page=${page}&limit=20`,
       { next: { revalidate: 120 } },
@@ -61,8 +67,9 @@ export async function generateMetadata({
   };
 }
 
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
+function formatPrice(price: number | string): string {
+  const amount = Number(price);
+  return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
 }
 
 export default async function CategoryPage({
@@ -76,12 +83,23 @@ export default async function CategoryPage({
   const sp = await searchParams;
   const page = parseInt(sp.page || '1', 10);
 
-  const result = await getCategoryProducts(slug, page);
+  const [result, marketplaceSettings] = await Promise.all([
+    getCategoryProducts(slug, page),
+    getMarketplaceSettings(),
+  ]);
+  const isAliExpress = marketplaceSettings.marketplace_theme === 'aliexpress';
+  const accentText = isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]';
+  const accentBg = isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]';
+  const accentHoverBg = isAliExpress ? 'hover:bg-[#f03d3d]' : 'hover:bg-[#14b576]';
 
   if (!result) {
     return (
-      <div className="min-h-screen bg-[#F8F9FC]">
-        <HubNavbar />
+      <div className={`min-h-screen ${isAliExpress ? 'bg-[#f5f5f5]' : 'bg-[#F8F9FC]'}`}>
+        <HubNavbar
+          marketplaceName={marketplaceSettings.marketplace_name}
+          marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+          marketplaceTheme={marketplaceSettings.marketplace_theme}
+        />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Catégorie introuvable</h1>
           <p className="text-gray-500 mb-8">
@@ -89,11 +107,12 @@ export default async function CategoryPage({
           </p>
           <Link
             href="/hub"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b576] transition-colors"
+            className={`inline-flex items-center gap-2 px-6 py-3 ${accentBg} text-white font-semibold rounded-xl ${accentHoverBg} transition-colors`}
           >
             Retour au Hub
           </Link>
         </main>
+        <HubFooter {...marketplaceSettings} />
       </div>
     );
   }
@@ -101,13 +120,17 @@ export default async function CategoryPage({
   const { category, data: products, meta } = result;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC]">
-      <HubNavbar />
+    <div className={`min-h-screen ${isAliExpress ? 'bg-[#f5f5f5]' : 'bg-[#F8F9FC]'}`}>
+      <HubNavbar
+        marketplaceName={marketplaceSettings.marketplace_name}
+        marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceTheme={marketplaceSettings.marketplace_theme}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link href="/hub" className="hover:text-[#16C784] transition-colors">
+          <Link href="/hub" className={`transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
             Hub
           </Link>
           <ChevronRight className="w-4 h-4" />
@@ -115,16 +138,18 @@ export default async function CategoryPage({
         </nav>
 
         {/* Category Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className={`mb-8 flex items-center justify-between ${isAliExpress ? 'rounded-3xl bg-gradient-to-r from-[#ff4747] to-[#ff8a00] p-6 text-white shadow-lg shadow-orange-900/10' : ''}`}>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
-            <p className="text-gray-500 mt-1">
+            <h1 className={`text-3xl font-bold ${isAliExpress ? 'text-white' : 'text-gray-900'}`}>{category.name}</h1>
+            <p className={`mt-1 ${isAliExpress ? 'text-white/80' : 'text-gray-500'}`}>
               {meta.total} produit{meta.total !== 1 ? 's' : ''} trouvé{meta.total !== 1 ? 's' : ''}
             </p>
           </div>
           <Link
             href={`/hub/search?category=${encodeURIComponent(category.name)}`}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
+              isAliExpress ? 'border border-white/25 bg-white/15 text-white hover:bg-white/25' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filtres avancés
@@ -146,7 +171,7 @@ export default async function CategoryPage({
               return (
                 <Link
                   key={product.id}
-                  href={`/hub/products/${product.id}`}
+                  href={getHubProductHref(product)}
                   className="bg-white rounded-xl border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300"
                 >
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -171,7 +196,7 @@ export default async function CategoryPage({
                     <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
                       {product.title}
                     </h3>
-                    <p className="font-bold text-[#16C784] text-sm">
+                    <p className={`font-bold ${accentText} text-sm`}>
                       {formatPrice(product.price)}
                     </p>
                     {product.store_name && (
@@ -207,7 +232,7 @@ export default async function CategoryPage({
                   href={`/hub/category/${slug}?page=${pageNum}`}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     pageNum === page
-                      ? 'bg-[#16C784] text-white'
+                      ? `${accentBg} text-white`
                       : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -226,6 +251,7 @@ export default async function CategoryPage({
           </div>
         )}
       </main>
+      <HubFooter {...marketplaceSettings} />
     </div>
   );
 }

@@ -2,12 +2,14 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Diamond } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /** Luxe Theme — High-end jewelry/watches, dark with gold accents. */
 export function LuxeTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const gold = branding?.primary_color || '#D4AF37';
+  const tc = useThemeCustomization(theme, branding);
+  const gold = tc.colors.primary;
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Diamond Pendant', price: 2800, images: [], category: 'Necklaces' },
     { id: '2', title: 'Swiss Chronograph', price: 4500, images: [], category: 'Watches' },
@@ -15,17 +17,22 @@ export function LuxeTheme({ theme, storeName, products = [], branding }: ThemePr
     { id: '4', title: 'Sapphire Ring', price: 3200, images: [], category: 'Rings' },
   ];
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0D0D0D', color: '#F5F5F0' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
       <header className="border-b" style={{ borderColor: `${gold}20` }}>
         <div className="max-w-6xl mx-auto px-6 py-10 text-center">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" /> : (
-            <div className="flex items-center justify-center gap-3">
-              <Diamond className="w-5 h-5" style={{ color: gold }} />
-              <h1 className="text-2xl font-serif font-light tracking-[0.3em] uppercase">{storeName}</h1>
-              <Diamond className="w-5 h-5" style={{ color: gold }} />
-            </div>
-          )}
+          <div className="flex items-center justify-center gap-5">
+            <Link href={branding?.store_path_base || '/'} className="inline-block">
+              {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" /> : (
+                <div className="flex items-center justify-center gap-3">
+                  <Diamond className="w-5 h-5" style={{ color: gold }} />
+                  <h1 className="text-2xl font-serif font-light tracking-[0.3em] uppercase">{storeName}</h1>
+                  <Diamond className="w-5 h-5" style={{ color: gold }} />
+                </div>
+              )}
+            </Link>
+            <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={gold} iconColor={gold} className="inline-flex items-center hover:opacity-70 transition-opacity" />
+          </div>
         </div>
       </header>
       <section className="py-24 text-center">
@@ -37,15 +44,15 @@ export function LuxeTheme({ theme, storeName, products = [], branding }: ThemePr
       <main id="products" className="max-w-6xl mx-auto px-6 pb-32">
         <div className="grid grid-cols-2 gap-8">
           {dp.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block">
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block">
               <div className="aspect-square overflow-hidden mb-6" style={{ backgroundColor: '#1A1A1A' }}>
-                {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700" /> : (
+                {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700" /> : (
                   <div className="w-full h-full flex items-center justify-center"><Diamond className="w-12 h-12" style={{ color: `${gold}20` }} strokeWidth={1} /></div>
                 )}
               </div>
               {p.category && <p className="text-[10px] tracking-[0.3em] uppercase mb-2" style={{ color: gold }}>{p.category}</p>}
               <h3 className="text-lg font-serif font-light tracking-wide">{p.title}</h3>
-              <p className="text-sm mt-2" style={{ color: gold }}>{p.price.toFixed(3)} TND</p>
+              <p className="text-sm mt-2" style={{ color: gold }}>{formatStorePrice(p)}</p>
             </Link>
           ))}
         </div>
@@ -56,3 +63,4 @@ export function LuxeTheme({ theme, storeName, products = [], branding }: ThemePr
     </div>
   );
 }
+

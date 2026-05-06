@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Crown, Check, X, ArrowUp, ArrowDown, AlertCircle, Sparkles } from 'lucide-react';
 
@@ -48,31 +49,44 @@ export default function SubscriptionPage() {
   const [success, setSuccess] = useState('');
   const [confirmPlan, setConfirmPlan] = useState<string | null>(null);
 
+  const getErrorMessage = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data.error?.message || data.message || `${fallback} (${res.status})`;
+    } catch {
+      return `${fallback} (${res.status})`;
+    }
+  };
+
   useEffect(() => {
     Promise.all([fetchCurrentPlan(), fetchAllPlans()]).finally(() => setLoading(false));
   }, []);
 
   const fetchCurrentPlan = async () => {
     try {
-      const res = await fetch('/api/pd/subscriptions/current', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/subscriptions/current', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setCurrentPlan(data);
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement du plan actuel'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   };
 
   const fetchAllPlans = async () => {
     try {
-      const res = await fetch('/api/pd/subscriptions/plans');
+      const res = await fetchWithCsrf('/api/pd/subscriptions/plans');
       if (res.ok) {
         const data = await res.json();
         setAllPlans(data.plans || []);
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement des plans'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   };
 
@@ -81,7 +95,7 @@ export default function SubscriptionPage() {
     setSuccess('');
     setChanging(true);
     try {
-      const res = await fetch('/api/pd/subscriptions/change', {
+      const res = await fetchWithCsrf('/api/pd/subscriptions/change', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -90,10 +104,9 @@ export default function SubscriptionPage() {
       if (res.ok) {
         setSuccess('Plan mis à jour avec succès !');
         setConfirmPlan(null);
-        fetchCurrentPlan();
+        await fetchCurrentPlan();
       } else {
-        const data = await res.json();
-        setError(data.error?.message || 'Erreur lors du changement de plan');
+        setError(await getErrorMessage(res, 'Erreur lors du changement de plan'));
       }
     } catch {
       setError('Erreur réseau');

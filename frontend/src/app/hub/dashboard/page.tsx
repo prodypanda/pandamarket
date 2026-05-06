@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
@@ -11,14 +12,15 @@ import {
 import Link from 'next/link';
 
 interface WalletData {
-  balance: number;
-  pending_balance: number;
-  total_earned: number;
+  balance?: number | string | null;
+  pending_balance?: number | string | null;
+  total_earned?: number | string | null;
 }
 
 interface Order {
   id: string;
-  total_amount: number;
+  total_amount?: number | string | null;
+  total?: number | string | null;
   status: string;
   created_at: string;
   customer_email?: string;
@@ -30,8 +32,17 @@ interface DailySales {
   count: number;
 }
 
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
+function toNumber(value: unknown): number {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function formatPrice(price: unknown): string {
+  return `${toNumber(price).toFixed(3)} TND`;
+}
+
+function getOrderTotal(order: Order): number {
+  return toNumber(order.total_amount ?? order.total);
 }
 
 /** Build last-30-day sales data from orders */
@@ -49,7 +60,7 @@ function buildSalesChart(orders: Order[]): DailySales[] {
     const key = new Date(order.created_at).toISOString().slice(0, 10);
     const entry = map.get(key);
     if (entry) {
-      entry.total += order.total_amount;
+      entry.total += getOrderTotal(order);
       entry.count += 1;
     }
   }
@@ -68,10 +79,10 @@ export default function DashboardOverview() {
     async function fetchData() {
       try {
         const [walletRes, productsRes, ordersRes, chartOrdersRes] = await Promise.allSettled([
-          fetch('/api/pd/wallet/me', { credentials: 'include' }),
-          fetch('/api/pd/products/me?limit=1', { credentials: 'include' }),
-          fetch('/api/pd/orders/store?limit=5', { credentials: 'include' }),
-          fetch('/api/pd/orders/store?limit=200&days=30', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/orders/store?limit=5', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/orders/store?limit=200&days=30', { credentials: 'include' }),
         ]);
 
         if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
@@ -111,7 +122,7 @@ export default function DashboardOverview() {
   const stats = [
     {
       name: 'Total Revenue',
-      value: loading ? '—' : formatPrice(wallet?.total_earned || 0),
+      value: loading ? '—' : formatPrice(wallet?.total_earned),
       icon: DollarSign,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
@@ -129,7 +140,7 @@ export default function DashboardOverview() {
     },
     {
       name: 'Available Balance',
-      value: loading ? '—' : formatPrice(wallet?.balance || 0),
+      value: loading ? '—' : formatPrice(wallet?.balance),
       icon: Wallet,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
@@ -247,7 +258,7 @@ export default function DashboardOverview() {
                     </div>
                   </div>
                   <div className="text-sm font-bold text-gray-900">
-                    {formatPrice(order.total_amount)}
+                    {formatPrice(getOrderTotal(order))}
                   </div>
                 </li>
               ))}

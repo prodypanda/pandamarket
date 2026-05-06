@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Key,
@@ -54,7 +55,7 @@ export default function ApiKeysPage() {
 
   const fetchKeys = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/vendor/api-keys', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/vendor/api-keys', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setKeys(data.data || []);
@@ -93,7 +94,7 @@ export default function ApiKeysPage() {
         body.expires_at = new Date(newExpiresAt).toISOString();
       }
 
-      const res = await fetch('/api/pd/vendor/api-keys', {
+      const res = await fetchWithCsrf('/api/pd/vendor/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -122,7 +123,7 @@ export default function ApiKeysPage() {
   const handleRevoke = async (keyId: string) => {
     setRevoking(true);
     try {
-      const res = await fetch(`/api/pd/vendor/api-keys/${keyId}`, {
+      const res = await fetchWithCsrf(`/api/pd/vendor/api-keys/${keyId}`, {
         method: 'DELETE',
         credentials: 'include',
       });

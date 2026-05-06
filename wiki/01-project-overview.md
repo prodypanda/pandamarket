@@ -28,7 +28,7 @@ PandaMarket is a **Marketplace as a Service (MaaS)** platform built for the Tuni
 
 ### For Customers
 - Browse the central Hub marketplace with instant search (Meilisearch)
-- Visit individual vendor storefronts (7 themes available)
+- Visit individual vendor storefronts (20 themes available)
 - Multi-vendor cart with per-vendor shipping (order splitting)
 - Pay via **Flouci**, **Konnect**, **Mandat Minute**, or **COD**
 - Order tracking, profile management, report fraudulent vendors
@@ -36,7 +36,7 @@ PandaMarket is a **Marketplace as a Service (MaaS)** platform built for the Tuni
 
 ### For Vendors
 - **7 subscription plans** (Free with 15% commission to Platinum with white-label)
-- Customizable storefront with 7 themes + GrapesJS page builder (Regular+)
+- Customizable storefront with 20 themes + GrapesJS page builder (Regular+)
 - Product management (physical, digital, services) with variant support
 - AI tools: image compression (sharp) + SEO generation (Gemini Pro)
 - Wallet with escrow, retention periods, and on-demand/automatic withdrawal
@@ -155,7 +155,15 @@ The Next.js middleware (`frontend/src/middleware.ts`) routes based on hostname:
 | **Platinum** | Unlimited | 0% | Premium | Yes | Yes | 9,600 TND |
 
 ### Storefront Themes
-7 themes (5 free + 2 premium): Minimal, Classic, Modern, Boutique, Artisan, TechHub, Flavor.
+20 themes: Minimal, Classic, Modern, Boutique, Artisan, TechHub, Flavor, Elegance, Neon, Sahara, Medina, Coastal, Urban, Garden, Studio, Luxe, Fresh, Craft, Digital, Kids.
+
+Current storefront theming implementation notes:
+
+- Theme colors resolve through `resolveThemeColors()` and seller `store.settings.themeCustomization`.
+- Theme templates use shared cart helpers (`StorefrontThemeCartLink` / `StoreCartIcon`) for live store-scoped cart counts.
+- Route-level storefront pages (`cart`, `checkout`, product detail, Page Builder homepage/custom pages) apply the selected theme font, background, header, footer, surface, and text colors.
+- Storefront checkout removes only the current store's cart items after success.
+- See [`14-agent-checkpoint-current-state.md`](14-agent-checkpoint-current-state.md) for the latest handoff.
 
 ### Test Accounts (After Seeding)
 

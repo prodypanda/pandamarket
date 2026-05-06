@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 
@@ -30,7 +31,7 @@ export default function VendorReportsPage() {
   useEffect(() => {
     async function fetchReports() {
       try {
-        const res = await fetch('/api/pd/reports/store', { credentials: 'include' });
+        const res = await fetchWithCsrf('/api/pd/reports/store', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setReports(data.data || []);

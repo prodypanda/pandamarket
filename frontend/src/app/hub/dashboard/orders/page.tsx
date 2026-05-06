@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { fetchWithCsrf } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Eye, Truck, Loader2 } from 'lucide-react';
 
 interface Order {
@@ -40,33 +41,92 @@ const statusLabel = (status: string) => {
   return labels[status] || status;
 };
 
+async function getErrorMessage(res: Response, fallback = 'Erreur') {
+  try {
+    const data = await res.json();
+    return data.error?.message || data.message || `${fallback} (${res.status})`;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [error, setError] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [fulfillingId, setFulfillingId] = useState('');
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store?page=${page}&limit=20`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data.data || []);
+        setTotalPages(data.meta?.total_pages || 1);
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement des commandes'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
 
   useEffect(() => {
-    async function fetchOrders() {
-      setLoading(true);
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-        const res = await fetch(`${backendUrl}/api/pd/orders?page=${page}&limit=20`, {
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOrders(data.data || []);
-          setTotalPages(data.meta?.total_pages || 1);
-        }
-      } catch (err) {
-        console.error('Failed to fetch orders:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchOrders();
-  }, [page]);
+  }, [fetchOrders]);
+
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return orders.filter((order) => {
+      const matchesSearch =
+        !q ||
+        order.id.toLowerCase().includes(q) ||
+        order.customer_id.toLowerCase().includes(q) ||
+        order.payment_gateway?.toLowerCase().includes(q);
+      const matchesStatus = !statusFilter || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, search, statusFilter]);
+
+  const fulfillOrder = async (order: Order) => {
+    const carrier = window.prompt('Transporteur (optionnel)', '') || '';
+    const trackingNumber = window.prompt('Numéro de suivi (optionnel)', '') || '';
+
+    setFulfillingId(order.id);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/${order.id}/fulfill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          carrier: carrier.trim() || undefined,
+          tracking_number: trackingNumber.trim() || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchOrders();
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de l’expédition'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setFulfillingId('');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -77,21 +137,41 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Toolbar */}
         <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50">
           <div className="relative w-full sm:w-96">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input 
-              type="text" 
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by order ID or customer..." 
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
             />
           </div>
-          <button className="flex items-center px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </button>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto outline-none"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="pending">En attente</option>
+              <option value="payment_required">Paiement requis</option>
+              <option value="processing">En cours</option>
+              <option value="fulfilled">Expédié</option>
+              <option value="delivered">Livré</option>
+              <option value="cancelled">Annulé</option>
+            </select>
+          </div>
         </div>
 
         {/* Table */}
@@ -101,7 +181,7 @@ export default function OrdersPage() {
               <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
               <span className="ml-2 text-gray-500">Chargement des commandes...</span>
             </div>
-          ) : orders.length === 0 ? (
+          ) : filteredOrders.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500">Aucune commande pour le moment.</p>
             </div>
@@ -118,7 +198,7 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="px-6 py-4">
                       <span className="text-sm font-bold text-gray-900 group-hover:text-[#16C784] transition-colors">
@@ -145,11 +225,26 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
-                        <button className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors" title="Voir détails">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(order)}
+                          className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors"
+                          title="Voir détails"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Marquer expédié">
-                          <Truck className="w-4 h-4" />
+                        <button
+                          type="button"
+                          onClick={() => fulfillOrder(order)}
+                          disabled={fulfillingId === order.id || ['fulfilled', 'delivered', 'cancelled'].includes(order.status)}
+                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-40"
+                          title="Marquer expédié"
+                        >
+                          {fulfillingId === order.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Truck className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -183,6 +278,58 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Détails commande</h2>
+                <p className="text-xs text-gray-500">{selectedOrder.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Client</span>
+                <span className="font-medium text-gray-900">{selectedOrder.customer_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Statut</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedOrder.status)}`}>
+                  {statusLabel(selectedOrder.status)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Paiement</span>
+                <span className="font-medium text-gray-900">{selectedOrder.payment_gateway?.replace('_', ' ') || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Statut paiement</span>
+                <span className="font-medium text-gray-900">{selectedOrder.payment_status || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Sous-total</span>
+                <span className="font-medium text-gray-900">{parseFloat(selectedOrder.subtotal).toFixed(3)} {selectedOrder.currency || 'TND'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Livraison</span>
+                <span className="font-medium text-gray-900">{parseFloat(selectedOrder.shipping_total).toFixed(3)} {selectedOrder.currency || 'TND'}</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-100 pt-3">
+                <span className="text-gray-900 font-semibold">Total</span>
+                <span className="font-bold text-gray-900">{parseFloat(selectedOrder.total).toFixed(3)} {selectedOrder.currency || 'TND'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

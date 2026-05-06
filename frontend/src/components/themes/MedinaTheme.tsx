@@ -2,16 +2,18 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Star } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Medina Theme — Traditional marketplace feel, ornate borders, warm colors.
  * Deep teal and gold palette, arch-shaped elements, rich textures.
  */
 export function MedinaTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const gold = branding?.primary_color || '#D4A853';
-  const teal = '#1A4A4A';
+  const tc = useThemeCustomization(theme, branding);
+  const gold = tc.colors.primary;
+  const teal = tc.colors.accent;
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Zellige Tiles Set', price: 180, images: [], category: 'Decor' },
     { id: '2', title: 'Copper Tea Set', price: 220, images: [], category: 'Kitchen' },
@@ -21,21 +23,26 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
     { id: '6', title: 'Woven Basket', price: 55, images: [], category: 'Home' },
   ];
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FBF7F0', color: '#1C1C1C' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
       <div className="text-center py-2 text-xs tracking-widest uppercase font-medium text-white" style={{ backgroundColor: teal }}>
         <Star className="w-3 h-3 inline mr-2" style={{ color: gold }} />Artisanat Authentique — Livraison Tunisie
       </div>
       <header className="border-b" style={{ borderColor: `${gold}30` }}>
         <div className="max-w-7xl mx-auto px-6 py-8 text-center">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-12 mx-auto object-contain" /> : (
-            <h1 className="text-3xl font-serif font-bold tracking-wide" style={{ color: teal }}>{storeName}</h1>
-          )}
+          <Link href={branding?.store_path_base || '/'} className="inline-block">
+            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-12 mx-auto object-contain" /> : (
+              <h1 className="text-3xl font-serif font-bold tracking-wide" style={{ color: teal }}>{storeName}</h1>
+            )}
+          </Link>
           <nav className="flex justify-center gap-8 mt-4 text-xs tracking-[0.15em] uppercase font-medium" style={{ color: '#8B7355' }}>
-            <a href="#" className="hover:opacity-70 transition-opacity">Souk</a>
-            <a href="#" className="hover:opacity-70 transition-opacity">Collections</a>
-            <a href="#" className="hover:opacity-70 transition-opacity">Notre Médina</a>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Souk</a>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Collections</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">Notre Médina</Link>
           </nav>
+          <div className="mt-4 flex justify-center">
+            <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={gold} iconColor={teal} className="inline-flex items-center hover:opacity-70 transition-opacity" />
+          </div>
         </div>
       </header>
       <section className="py-20 text-center" style={{ background: `linear-gradient(180deg, ${teal}08 0%, transparent 100%)` }}>
@@ -47,16 +54,16 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
       <main id="products" className="max-w-7xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           {dp.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block rounded-xl overflow-hidden border-2 transition-all hover:shadow-lg" style={{ borderColor: `${gold}20`, backgroundColor: '#FFFDF8' }}>
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-xl overflow-hidden border-2 transition-all hover:shadow-lg" style={{ borderColor: `${gold}20`, backgroundColor: '#FFFDF8' }}>
               <div className="aspect-square overflow-hidden" style={{ backgroundColor: `${teal}08` }}>
-                {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                   <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10" style={{ color: `${gold}30` }} /></div>
                 )}
               </div>
               <div className="p-4 text-center">
                 {p.category && <p className="text-[10px] tracking-widest uppercase font-semibold mb-1" style={{ color: gold }}>{p.category}</p>}
                 <h3 className="text-sm font-serif font-semibold">{p.title}</h3>
-                <p className="text-sm font-bold mt-1" style={{ color: teal }}>{p.price.toFixed(3)} TND</p>
+                <p className="text-sm font-bold mt-1" style={{ color: teal }}>{formatStorePrice(p)}</p>
               </div>
             </Link>
           ))}
@@ -68,3 +75,4 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
     </div>
   );
 }
+

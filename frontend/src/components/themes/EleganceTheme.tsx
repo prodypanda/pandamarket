@@ -2,8 +2,9 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Menu, Search } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Elegance Theme — Minimalist luxury with generous whitespace.
@@ -11,7 +12,8 @@ import { ThemeLayout } from './ThemeLayout';
  * editorial grid, large imagery, understated sophistication.
  */
 export function EleganceTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const accent = branding?.primary_color || '#2C2C2C';
+  const tc = useThemeCustomization(theme, branding);
+  const accent = tc.colors.primary;
   const displayProducts = products.length > 0
     ? products
     : [
@@ -22,7 +24,7 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
       ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FAFAF8', color: '#1A1A1A' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Header */}
@@ -31,25 +33,23 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
           <button className="md:hidden">
             <Menu className="w-5 h-5" strokeWidth={1.5} />
           </button>
-          <div className="flex-1 text-center">
+          <Link href={branding?.store_path_base || '/'} className="flex-1 text-center">
             {branding?.logo_url ? (
               <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" />
             ) : (
               <h1 className="text-3xl md:text-4xl font-serif font-light tracking-wide">{storeName}</h1>
             )}
-          </div>
+          </Link>
           <div className="flex items-center gap-5">
             <Search className="w-5 h-5 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer" strokeWidth={1.5} />
-            <Link href="/hub/cart" className="relative">
-              <ShoppingBag className="w-5 h-5 text-gray-400 hover:text-gray-700 transition-colors" strokeWidth={1.5} />
-            </Link>
+            <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accent} iconColor="#9CA3AF" className="inline-flex items-center transition-colors hover:text-gray-700" />
           </div>
         </div>
         <nav className="hidden md:flex justify-center gap-10 pb-6 text-xs tracking-[0.2em] uppercase text-gray-500">
-          <a href="#" className="hover:text-gray-900 transition-colors">New Arrivals</a>
-          <a href="#" className="hover:text-gray-900 transition-colors">Collections</a>
-          <a href="#" className="hover:text-gray-900 transition-colors">About</a>
-          <a href="#" className="hover:text-gray-900 transition-colors">Contact</a>
+          <a href="#products" className="hover:text-gray-900 transition-colors">New Arrivals</a>
+          <a href="#products" className="hover:text-gray-900 transition-colors">Collections</a>
+          <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:text-gray-900 transition-colors">About</Link>
+          <Link href={`${branding?.store_path_base || ''}/pages/contact`} className="hover:text-gray-900 transition-colors">Contact</Link>
         </nav>
       </header>
 
@@ -74,11 +74,11 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
       <main id="products" className="max-w-6xl mx-auto px-6 pb-32">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
           {displayProducts.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block">
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block">
               <div className="aspect-[3/4] mb-6 overflow-hidden bg-gray-100">
-                {p.images && p.images[0]?.url ? (
+                {getStoreProductImage(p) ? (
                   <img
-                    src={p.images[0].url}
+                    src={getStoreProductImage(p)}
                     alt={p.title}
                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                   />
@@ -89,7 +89,7 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
                 )}
               </div>
               <h3 className="text-sm font-serif tracking-wide">{p.title}</h3>
-              <p className="text-xs text-gray-500 mt-2">{p.price.toFixed(3)} TND</p>
+              <p className="text-xs text-gray-500 mt-2">{formatStorePrice(p)}</p>
             </Link>
           ))}
         </div>
@@ -111,3 +111,4 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
     </div>
   );
 }
+

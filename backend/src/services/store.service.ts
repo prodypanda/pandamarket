@@ -135,10 +135,21 @@ export class StoreService {
     if (cleanHost === hubDomain || cleanHost === `www.${hubDomain}` || cleanHost === `admin.${hubDomain}`) {
       return null;
     }
+
+    if (!cleanHost.includes('.')) {
+      return this.getBySubdomain(cleanHost);
+    }
+
     if (cleanHost.endsWith(`.${hubDomain}`)) {
       const subdomain = cleanHost.slice(0, -1 - hubDomain.length);
       return this.getBySubdomain(subdomain);
     }
+
+    if (cleanHost.endsWith('.localhost')) {
+      const subdomain = cleanHost.slice(0, -'.localhost'.length);
+      return this.getBySubdomain(subdomain);
+    }
+
     return this.getByCustomDomain(cleanHost);
   }
 
@@ -149,9 +160,26 @@ export class StoreService {
     storeId: string,
     settings: Record<string, unknown>,
   ): Promise<StoreRow> {
+    const nextSettings: Record<string, unknown> = { ...settings };
+    const storeName =
+      typeof nextSettings.name === 'string' && nextSettings.name.trim().length > 0
+        ? nextSettings.name.trim()
+        : null;
+
+    delete nextSettings.name;
+
+    if (typeof nextSettings.description === 'string') {
+      nextSettings.store_description = nextSettings.description;
+      delete nextSettings.description;
+    }
+
     const { rows } = await query<StoreRow>(
-      `UPDATE pd_store SET settings = settings || $2::jsonb WHERE id = $1 RETURNING *`,
-      [storeId, JSON.stringify(settings)],
+      `UPDATE pd_store
+       SET name = COALESCE($2, name),
+           settings = settings || $3::jsonb
+       WHERE id = $1
+       RETURNING *`,
+      [storeId, storeName, JSON.stringify(nextSettings)],
     );
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');

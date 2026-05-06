@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 /**
  * Page Builder Dashboard — Vendor page management.
  * ─────────────────────────────────────────────────
@@ -43,6 +44,10 @@ interface StorePage {
   updated_at: string;
 }
 
+interface StoreData {
+  subdomain?: string | null;
+}
+
 type View = 'list' | 'editor';
 
 export default function PageBuilderDashboard() {
@@ -58,20 +63,37 @@ export default function PageBuilderDashboard() {
   const [newPageSlug, setNewPageSlug] = useState('');
   const [templateHtml, setTemplateHtml] = useState('');
   const [templateCss, setTemplateCss] = useState('');
+  const [store, setStore] = useState<StoreData | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const getErrorMessage = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data.error?.message || data.message || `${fallback} (${res.status})`;
+    } catch {
+      return `${fallback} (${res.status})`;
+    }
+  };
 
   const fetchPages = useCallback(async () => {
+    setError('');
     try {
-      const res = await fetch('/api/pd/page-builder/pages', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/page-builder/pages', { credentials: 'include' });
       if (res.status === 403) {
         setHasAccess(false);
         return;
       }
-      if (!res.ok) throw new Error('Failed to fetch pages');
+      if (!res.ok) {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement des pages'));
+        return;
+      }
       const data = await res.json();
       setPages(data.data || []);
       setHasAccess(true);
-    } catch {
-      setHasAccess(true); // Assume access, show empty state
+    } catch (err) {
+      setHasAccess(true);
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setLoading(false);
     }
@@ -81,11 +103,29 @@ export default function PageBuilderDashboard() {
     fetchPages();
   }, [fetchPages]);
 
+  useEffect(() => {
+    async function fetchStore() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setStore(data.store || null);
+        }
+      } catch {
+        setStore(null);
+      }
+    }
+
+    fetchStore();
+  }, []);
+
   const handleCreatePage = async () => {
     if (!newPageTitle.trim() || !newPageSlug.trim()) return;
+    setError('');
+    setSuccess('');
     setCreating(true);
     try {
-      const res = await fetch('/api/pd/page-builder/pages', {
+      const res = await fetchWithCsrf('/api/pd/page-builder/pages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -96,8 +136,7 @@ export default function PageBuilderDashboard() {
         }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        alert(data.error?.message || 'Erreur lors de la création');
+        setError(await getErrorMessage(res, 'Erreur lors de la création'));
         return;
       }
       const data = await res.json();
@@ -109,9 +148,10 @@ export default function PageBuilderDashboard() {
       // Open editor immediately for the new page
       setEditingPage(data.page);
       setView('editor');
+      setSuccess('Page créée avec succès.');
       fetchPages();
-    } catch {
-      alert('Erreur réseau');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setCreating(false);
     }
@@ -119,36 +159,48 @@ export default function PageBuilderDashboard() {
 
   const handleDeletePage = async (pageId: string) => {
     if (!confirm('Supprimer cette page ? Cette action est irréversible.')) return;
+    setError('');
+    setSuccess('');
     try {
-      const res = await fetch(`/api/pd/page-builder/pages/${pageId}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${pageId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
       if (res.ok) {
         setPages((prev) => prev.filter((p) => p.id !== pageId));
+        setSuccess('Page supprimée.');
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de la suppression'));
       }
-    } catch {
-      alert('Erreur lors de la suppression');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
     }
   };
 
   const handleDuplicatePage = async (pageId: string) => {
+    setError('');
+    setSuccess('');
     try {
-      const res = await fetch(`/api/pd/page-builder/pages/${pageId}/duplicate`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${pageId}/duplicate`, {
         method: 'POST',
         credentials: 'include',
       });
       if (res.ok) {
+        setSuccess('Page dupliquée.');
         fetchPages();
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de la duplication'));
       }
-    } catch {
-      alert('Erreur lors de la duplication');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la duplication');
     }
   };
 
   const handleTogglePublish = async (page: StorePage) => {
+    setError('');
+    setSuccess('');
     try {
-      const res = await fetch(`/api/pd/page-builder/pages/${page.id}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${page.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -158,15 +210,20 @@ export default function PageBuilderDashboard() {
         setPages((prev) =>
           prev.map((p) => (p.id === page.id ? { ...p, is_published: !p.is_published } : p)),
         );
+        setSuccess(!page.is_published ? 'Page publiée.' : 'Page dépubliée.');
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
       }
-    } catch {
-      alert('Erreur');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
     }
   };
 
   const handleSetHomepage = async (page: StorePage) => {
+    setError('');
+    setSuccess('');
     try {
-      const res = await fetch(`/api/pd/page-builder/pages/${page.id}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${page.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -179,24 +236,30 @@ export default function PageBuilderDashboard() {
             is_homepage: p.id === page.id ? !p.is_homepage : false,
           })),
         );
+        setSuccess(!page.is_homepage ? 'Page définie comme accueil.' : 'Page retirée de l’accueil.');
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
       }
-    } catch {
-      alert('Erreur');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
     }
   };
 
   const openEditor = async (page: StorePage) => {
     // Fetch full page data (including builder_data)
     try {
-      const res = await fetch(`/api/pd/page-builder/pages/${page.id}`, {
+      const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${page.id}`, {
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to fetch page');
+      if (!res.ok) {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement de la page'));
+        return;
+      }
       const data = await res.json();
       setEditingPage(data.page);
       setView('editor');
-    } catch {
-      alert('Erreur lors du chargement de la page');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement de la page');
     }
   };
 
@@ -315,6 +378,17 @@ export default function PageBuilderDashboard() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-100">
+          {success}
+        </div>
+      )}
 
       {/* Page Count */}
       <div className="text-sm text-gray-500">
@@ -436,9 +510,9 @@ export default function PageBuilderDashboard() {
                   >
                     <Copy className="w-4 h-4" />
                   </button>
-                  {page.is_published && (
+                  {page.is_published && store?.subdomain && (
                     <a
-                      href={`/store/my-store/pages/${page.slug}`}
+                      href={`/store/${store.subdomain}/pages/${page.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"

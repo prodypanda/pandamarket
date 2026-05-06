@@ -28,10 +28,11 @@ export function ThemeToggle() {
 
   function applyTheme(t: Theme) {
     const root = document.documentElement;
+    root.classList.remove('dark', 'light');
     if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+    } else if (t === 'light') {
+      root.classList.add('light');
     }
   }
 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, ShoppingCart, Gamepad2, Sparkles } from 'lucide-react';
+import { ShoppingBag, Gamepad2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Neon Theme — Dark mode default, neon accent colors, gaming/tech vibe.
@@ -11,7 +12,8 @@ import { ThemeLayout } from './ThemeLayout';
  * cyberpunk-inspired typography, animated hover states.
  */
 export function NeonTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const neon = branding?.primary_color || '#39FF14';
+  const tc = useThemeCustomization(theme, branding);
+  const neon = tc.colors.primary;
   const displayProducts = products.length > 0
     ? products
     : [
@@ -24,30 +26,30 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
       ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#050505', color: '#E8E8E8' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Header */}
       <header className="border-b" style={{ borderColor: `${neon}15` }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {branding?.logo_url ? (
-            <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
-          ) : (
-            <div className="flex items-center gap-2">
-              <Gamepad2 className="w-6 h-6" style={{ color: neon }} />
-              <span className="text-xl font-black uppercase tracking-tighter" style={{ color: neon }}>
-                {storeName}
-              </span>
-            </div>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? (
+              <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Gamepad2 className="w-6 h-6" style={{ color: neon }} />
+                <span className="text-xl font-black uppercase tracking-tighter" style={{ color: neon }}>
+                  {storeName}
+                </span>
+              </div>
+            )}
+          </Link>
           <nav className="hidden md:flex gap-6 text-xs uppercase tracking-widest font-bold text-gray-500">
-            <a href="#" className="hover:text-white transition-colors">Shop</a>
-            <a href="#" className="hover:text-white transition-colors">Deals</a>
-            <a href="#" className="hover:text-white transition-colors">About</a>
+            <a href="#products" className="hover:text-white transition-colors">Shop</a>
+            <a href="#products" className="hover:text-white transition-colors">Deals</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:text-white transition-colors">About</Link>
           </nav>
-          <button className="relative">
-            <ShoppingCart className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
-          </button>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={neon} iconColor="#9CA3AF" badgeTextColor="#050505" className="inline-flex items-center transition-colors hover:text-white" icon="cart" />
         </div>
       </header>
 
@@ -86,13 +88,13 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
           {displayProducts.map((p) => (
             <Link
               key={p.id}
-              href={`/hub/products/${p.id}`}
+              href={getStorefrontProductPath(p, branding?.store_path_base)}
               className="group block border overflow-hidden transition-all duration-300 hover:border-opacity-60"
               style={{ borderColor: `${neon}10`, backgroundColor: '#0A0A0A' }}
             >
               <div className="aspect-square overflow-hidden relative">
-                {p.images && p.images[0]?.url ? (
-                  <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                {getStoreProductImage(p) ? (
+                  <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#0F0F0F' }}>
                     <ShoppingBag className="w-10 h-10" style={{ color: `${neon}15` }} />
@@ -108,7 +110,7 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
               </div>
               <div className="p-4">
                 <h3 className="text-sm font-bold text-white line-clamp-1">{p.title}</h3>
-                <p className="text-sm font-black mt-1" style={{ color: neon }}>{p.price.toFixed(3)} TND</p>
+                <p className="text-sm font-black mt-1" style={{ color: neon }}>{formatStorePrice(p)}</p>
               </div>
             </Link>
           ))}
@@ -131,3 +133,4 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
     </div>
   );
 }
+

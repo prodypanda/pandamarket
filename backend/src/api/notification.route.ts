@@ -88,4 +88,12 @@ router.patch(
   }),
 );
 
+router.delete(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    await notificationService.delete(req.params.id, req.user!.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
 export default router;

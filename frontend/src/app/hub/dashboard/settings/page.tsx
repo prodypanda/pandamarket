@@ -1,11 +1,28 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 
 type Tab = 'store' | 'theme' | 'domain' | 'shipping';
+
+interface MediaItem {
+  url: string;
+  product_id: string;
+  product_title: string;
+  alt_text?: string | null;
+}
+
+async function getErrorMessage(res: Response, fallback = 'Erreur') {
+  try {
+    const data = await res.json();
+    return data.error?.message || data.message || `${fallback} (${res.status})`;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('store');
@@ -19,6 +36,10 @@ export default function SettingsPage() {
   const [storeDescription, setStoreDescription] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [showLogoPicker, setShowLogoPicker] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Theme
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('modern');
@@ -32,21 +53,24 @@ export default function SettingsPage() {
 
   const fetchStoreSettings = async () => {
     try {
-      const res = await fetch('/api/pd/stores/me', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const store = data.store;
         setStoreName(store.name || '');
-        setStoreDescription(store.description || '');
+        setStoreDescription(store.settings?.store_description || store.settings?.description || '');
         setContactEmail(store.settings?.contact_email || '');
         setContactPhone(store.settings?.contact_phone || '');
+        setLogoUrl(store.settings?.logo_url || '');
         setSelectedTheme((store.theme_id || 'modern') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
         setShippingMode(store.shipping_mode || 'standard');
+      } else {
+        setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setLoading(false);
     }
@@ -55,6 +79,22 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchStoreSettings();
   }, []);
+
+  const fetchMediaItems = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/media?limit=100', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setMediaItems(data.data || []);
+      }
+    } catch {
+      setMediaItems([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMediaItems();
+  }, [fetchMediaItems]);
 
   const showFeedback = (msg: string, isError = false) => {
     if (isError) {
@@ -73,36 +113,80 @@ export default function SettingsPage() {
   const saveStoreSettings = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/pd/stores/me/settings', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           settings: {
             name: storeName,
-            description: storeDescription,
+            store_description: storeDescription,
             contact_email: contactEmail,
             contact_phone: contactPhone,
+            logo_url: logoUrl,
           },
         }),
       });
       if (res.ok) {
         showFeedback('Paramètres sauvegardés');
       } else {
-        const data = await res.json();
-        showFeedback(data.error?.message || 'Erreur', true);
+        showFeedback(await getErrorMessage(res), true);
       }
-    } catch {
-      showFeedback('Erreur réseau', true);
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadStoreLogo = async (file: File | null) => {
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Veuillez choisir une image JPG, PNG ou WebP.');
+      }
+
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type,
+          file_size: file.size,
+          purpose: 'product_image',
+        }),
+      });
+
+      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Upload impossible'));
+      const presignData = await presignRes.json();
+      const uploadUrl = presignData.upload_url as string | undefined;
+      const publicUrl = presignData.public_url as string | undefined;
+      if (!uploadUrl || !publicUrl) throw new Error('URL upload manquante');
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error('Upload impossible');
+
+      setLogoUrl(publicUrl);
+      await fetchMediaItems();
+      showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Upload impossible', true);
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
   const saveTheme = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/pd/stores/me/theme', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/theme', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -111,11 +195,10 @@ export default function SettingsPage() {
       if (res.ok) {
         showFeedback('Thème mis à jour');
       } else {
-        const data = await res.json();
-        showFeedback(data.error?.message || 'Erreur', true);
+        showFeedback(await getErrorMessage(res), true);
       }
-    } catch {
-      showFeedback('Erreur réseau', true);
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
     }
@@ -123,7 +206,7 @@ export default function SettingsPage() {
 
   const saveThemeCustomization = useCallback(async (customization: ThemeCustomization) => {
     try {
-      const res = await fetch('/api/pd/stores/me/settings', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -135,18 +218,17 @@ export default function SettingsPage() {
         setThemeCustomization(customization);
         showFeedback('Personnalisation sauvegardée');
       } else {
-        const data = await res.json();
-        showFeedback(data.error?.message || 'Erreur', true);
+        showFeedback(await getErrorMessage(res), true);
       }
-    } catch {
-      showFeedback('Erreur réseau', true);
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     }
   }, []);
 
   const saveDomain = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/pd/stores/me/domain', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/domain', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -155,11 +237,10 @@ export default function SettingsPage() {
       if (res.ok) {
         showFeedback('Domaine mis à jour');
       } else {
-        const data = await res.json();
-        showFeedback(data.error?.message || 'Erreur', true);
+        showFeedback(await getErrorMessage(res), true);
       }
-    } catch {
-      showFeedback('Erreur réseau', true);
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
     }
@@ -168,7 +249,7 @@ export default function SettingsPage() {
   const saveShipping = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/pd/stores/me/shipping', {
+      const res = await fetchWithCsrf('/api/pd/stores/me/shipping', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -177,11 +258,10 @@ export default function SettingsPage() {
       if (res.ok) {
         showFeedback('Mode de livraison mis à jour');
       } else {
-        const data = await res.json();
-        showFeedback(data.error?.message || 'Erreur', true);
+        showFeedback(await getErrorMessage(res), true);
       }
-    } catch {
-      showFeedback('Erreur réseau', true);
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
     }
@@ -308,6 +388,57 @@ export default function SettingsPage() {
                   onChange={(e) => setContactPhone(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
                 />
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la boutique</label>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt={storeName || 'Logo boutique'} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <ImageIcon className="h-7 w-7 text-gray-300" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{logoUrl ? 'Logo sélectionné' : 'Aucun logo'}</p>
+                    <p className="text-xs text-gray-500">Téléversez un logo ou choisissez une image de votre galerie.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl('')}
+                      className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
+                    >
+                      Retirer
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogoPicker(true);
+                      void fetchMediaItems();
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#16C784] hover:text-[#16C784]"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Galerie
+                  </button>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#16C784] px-4 py-2 text-sm font-semibold text-white hover:bg-[#14b876]">
+                    <UploadCloud className="h-4 w-4" />
+                    {uploadingLogo ? 'Upload...' : 'Uploader'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={uploadingLogo}
+                      onChange={(event) => void uploadStoreLogo(event.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
             <button
@@ -467,6 +598,50 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      {showLogoPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Galerie de la boutique</h2>
+                <p className="text-sm text-gray-500">Choisissez une image déjà uploadée pour votre logo.</p>
+              </div>
+              <button type="button" onClick={() => setShowLogoPicker(false)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto p-6">
+              {mediaItems.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+                  {mediaItems.map((item) => (
+                    <button
+                      type="button"
+                      key={`${item.url}-${item.product_id}`}
+                      onClick={() => {
+                        setLogoUrl(item.url);
+                        setShowLogoPicker(false);
+                        showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
+                      }}
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#16C784] hover:shadow-md"
+                    >
+                      <div className="aspect-square bg-gray-100">
+                        <img src={item.url} alt={item.alt_text || item.product_title} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="p-2">
+                        <p className="truncate text-xs font-medium text-gray-700">{item.product_title}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
+                  Aucune image disponible. Uploadez un logo pour commencer.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

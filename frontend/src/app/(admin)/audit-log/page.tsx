@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Shield, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -46,7 +47,7 @@ export default function AuditLogPage() {
         if (searchQuery) params.set('search', searchQuery);
         if (actionFilter !== 'all') params.set('action', actionFilter);
 
-        const res = await fetch(`/api/pd/admin/audit-log?${params}`, {
+        const res = await fetchWithCsrf(`/api/pd/admin/audit-log?${params}`, {
           credentials: 'include',
         });
         if (res.ok) {

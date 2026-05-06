@@ -108,7 +108,8 @@ router.post(
     try {
       const { product_ids } = req.body as { product_ids: string[] };
       if (!Array.isArray(product_ids) || product_ids.length === 0) {
-        return res.json({ ratings: {} });
+        res.json({ ratings: {} });
+        return;
       }
       const ratings = await reviewService.getProductRatings(
         product_ids.slice(0, 100),

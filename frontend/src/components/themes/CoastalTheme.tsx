@@ -2,8 +2,9 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Waves, Anchor } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /** Coastal Theme — Beach/resort, blues and sandy tones, relaxed vibe. */
 export function CoastalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -25,14 +26,16 @@ export function CoastalTheme({ theme, storeName, products = [], branding }: Them
       {/* Header */}
       <header className="border-b" style={{ borderColor: `${tc.colors.primary}20`, backgroundColor: tc.colors.headerBg }}>
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
-            <div className="flex items-center gap-2"><Anchor className="w-5 h-5" style={{ color: tc.colors.primary }} /><h1 className="text-2xl font-semibold tracking-wide">{storeName}</h1></div>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+              <div className="flex items-center gap-2"><Anchor className="w-5 h-5" style={{ color: tc.colors.primary }} /><h1 className="text-2xl font-semibold tracking-wide">{storeName}</h1></div>
+            )}
+          </Link>
           <nav className="hidden md:flex gap-8 text-sm font-medium" style={{ color: `${tc.colors.primary}90` }}>
-            <a href="#" className="hover:opacity-70 transition-opacity">Boutique</a>
-            <a href="#" className="hover:opacity-70 transition-opacity">À propos</a>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Boutique</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">À propos</Link>
           </nav>
-          <Link href="/hub/cart"><ShoppingBag className="w-5 h-5" style={{ color: tc.colors.primary }} /></Link>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={tc.colors.primary} iconColor={tc.colors.primary} className="inline-flex items-center hover:opacity-70 transition-opacity" />
         </div>
       </header>
 
@@ -70,16 +73,16 @@ export function CoastalTheme({ theme, storeName, products = [], branding }: Them
         <ThemeLayout variation={tc.layoutVariation} layout={tc.layout} colors={tc.colors} categories={categories}>
           <div className={`grid ${tc.gridClasses}`}>
             {dp.map((p) => (
-              <Link key={p.id} href={`/hub/products/${p.id}`} className="group block rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: tc.colors.headerBg }}>
+              <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: tc.colors.headerBg }}>
                 <div className="aspect-square overflow-hidden" style={{ backgroundColor: `${tc.colors.primary}10` }}>
-                  {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                  {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                     <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10" style={{ color: `${tc.colors.primary}30` }} /></div>
                   )}
                 </div>
                 <div className="p-4">
                   {p.category && <p className="text-[10px] tracking-widest uppercase font-semibold mb-1" style={{ color: tc.colors.primary }}>{p.category}</p>}
                   <h3 className="text-sm font-semibold" style={{ color: tc.colors.text }}>{p.title}</h3>
-                  <p className="text-sm font-bold mt-1" style={{ color: tc.colors.accent }}>{p.price.toFixed(3)} TND</p>
+                  <p className="text-sm font-bold mt-1" style={{ color: tc.colors.accent }}>{formatStorePrice(p)}</p>
                 </div>
               </Link>
             ))}
@@ -94,3 +97,4 @@ export function CoastalTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

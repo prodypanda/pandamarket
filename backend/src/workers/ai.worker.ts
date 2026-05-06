@@ -38,7 +38,7 @@ const TOKEN_COSTS: Record<AiJobType, number> = {
 // ----------------------------------------------------
 
 async function compressImage(job: Job<AiJobData>) {
-  const { input_url, store_id } = job.data;
+  const { input_url, store_id, product_id } = job.data;
   if (!input_url) throw new Error('Missing input_url');
 
   // 1. download
@@ -67,8 +67,24 @@ async function compressImage(job: Job<AiJobData>) {
     }),
   );
 
+  const outputUrl = publicUrl(key);
+  if (product_id) {
+    await query(
+      `UPDATE pd_product_image
+       SET url = $3
+       WHERE product_id = $1 AND url = $2`,
+      [product_id, input_url, outputUrl],
+    );
+    await query(
+      `UPDATE pd_product
+       SET thumbnail = $3
+       WHERE id = $1 AND thumbnail = $2`,
+      [product_id, input_url, outputUrl],
+    );
+  }
+
   return {
-    output_url: publicUrl(key),
+    output_url: outputUrl,
     original_size_bytes: original.length,
     compressed_size_bytes: compressed.length,
     saved_bytes: original.length - compressed.length,

@@ -132,7 +132,21 @@ export const requireVendor: RequestHandler = requireRole(UserRole.Vendor);
  * Require that the authenticated vendor has a store and return it.
  */
 export const requireStore: RequestHandler = (req, _res, next) => {
-  if (!req.user) return next(new PdAuthenticationError());
+  if (!req.user) {
+    const token = extractAccessToken(req);
+    if (!token) return next(new PdAuthenticationError());
+    try {
+      const payload = verifyAccessToken(token);
+      req.user = {
+        id: payload.sub,
+        role: payload.role,
+        store_id: payload.store_id,
+      };
+      setUser({ id: payload.sub, role: payload.role, store_id: payload.store_id });
+    } catch (err) {
+      return next(err);
+    }
+  }
   if (!req.user.store_id) {
     return next(
       new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You do not own a store'),

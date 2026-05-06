@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { Settings, Save, Loader2, AlertTriangle } from 'lucide-react';
 
@@ -30,8 +31,7 @@ export default function AdminPlansPage() {
   useEffect(() => {
     async function fetchPlans() {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-        const res = await fetch(`${backendUrl}/api/pd/subscriptions/plans`, {
+        const res = await fetch('/api/pd/subscriptions/plans', {
           credentials: 'include',
         });
         if (res.ok) {
@@ -61,8 +61,7 @@ export default function AdminPlansPage() {
     setSaving(plan.plan_id);
     setMessage('');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      const res = await fetch(`${backendUrl}/api/pd/admin/plans/${plan.plan_id}`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/plans/${plan.plan_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

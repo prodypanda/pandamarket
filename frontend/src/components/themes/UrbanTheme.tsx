@@ -2,12 +2,14 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Flame } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /** Urban Theme — Street fashion, bold typography, high contrast. */
 export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const accent = branding?.primary_color || '#FF3B30';
+  const tc = useThemeCustomization(theme, branding);
+  const accent = tc.colors.primary;
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Oversized Hoodie', price: 120, images: [], category: 'Streetwear' },
     { id: '2', title: 'Cargo Pants', price: 95, images: [], category: 'Bottoms' },
@@ -17,19 +19,21 @@ export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeP
     { id: '6', title: 'Graphic Tee', price: 55, images: [], category: 'Tops' },
   ];
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFFFFF', color: '#0A0A0A' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
       <header className="border-b-4 border-black">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" /> : (
-            <h1 className="text-2xl font-black uppercase tracking-tighter">{storeName}</h1>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" /> : (
+              <h1 className="text-2xl font-black uppercase tracking-tighter">{storeName}</h1>
+            )}
+          </Link>
           <nav className="hidden md:flex gap-6 text-xs uppercase tracking-widest font-black">
-            <a href="#" className="hover:opacity-60 transition-opacity">New</a>
-            <a href="#" className="hover:opacity-60 transition-opacity">Shop</a>
-            <a href="#" className="hover:opacity-60 transition-opacity">Sale</a>
+            <a href="#products" className="hover:opacity-60 transition-opacity">New</a>
+            <a href="#products" className="hover:opacity-60 transition-opacity">Shop</a>
+            <a href="#products" className="hover:opacity-60 transition-opacity">Sale</a>
           </nav>
-          <Link href="/hub/cart" className="relative"><ShoppingBag className="w-5 h-5" /></Link>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accent} className="inline-flex items-center" />
         </div>
       </header>
       <section className="bg-black text-white py-20 text-center">
@@ -45,16 +49,16 @@ export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeP
       <main id="products" className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {dp.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block border-2 border-black overflow-hidden hover:bg-black hover:text-white transition-all duration-300">
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block border-2 border-black overflow-hidden hover:bg-black hover:text-white transition-all duration-300">
               <div className="aspect-square overflow-hidden bg-gray-100 group-hover:bg-gray-900">
-                {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                   <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10 text-gray-300 group-hover:text-gray-600" /></div>
                 )}
               </div>
               <div className="p-4">
                 {p.category && <p className="text-[10px] tracking-widest uppercase font-black mb-1" style={{ color: accent }}>{p.category}</p>}
                 <h3 className="text-sm font-black uppercase">{p.title}</h3>
-                <p className="text-sm font-bold mt-1">{p.price.toFixed(3)} TND</p>
+                <p className="text-sm font-bold mt-1">{formatStorePrice(p)}</p>
               </div>
             </Link>
           ))}
@@ -66,3 +70,4 @@ export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeP
     </div>
   );
 }
+

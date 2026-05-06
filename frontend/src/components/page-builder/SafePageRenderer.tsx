@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 
 interface SafePageRendererProps {
   html: string;
@@ -19,7 +19,7 @@ interface SafePageRendererProps {
 }
 
 // Configure DOMPurify to allow a generous set of tags for page builder output
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
     // Structure
     'div', 'span', 'section', 'article', 'aside', 'header', 'footer', 'main', 'nav',

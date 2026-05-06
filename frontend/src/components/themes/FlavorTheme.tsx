@@ -1,9 +1,10 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, ShoppingCart, UtensilsCrossed, Clock, Flame } from 'lucide-react';
+import { ShoppingBag, UtensilsCrossed, Clock, Flame } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Flavor Theme — Food, restaurants, bakeries, gourmet products.
@@ -11,7 +12,8 @@ import { ThemeLayout } from './ThemeLayout';
  * bold typography, appetizing card layout with rounded corners.
  */
 export function FlavorTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const accentColor = branding?.primary_color || '#D4451A';
+  const tc = useThemeCustomization(theme, branding);
+  const accentColor = tc.colors.primary;
   const displayProducts = products.length > 0 ? products : [
     { id: '1', title: 'Coffret Pâtisseries Fines', price: 45, images: [], category: 'Pâtisserie' },
     { id: '2', title: 'Huile d\'Olive Extra Vierge', price: 32, images: [], category: 'Épicerie' },
@@ -22,13 +24,13 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFFCF8', color: '#2D1B0E' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl border-b" style={{ backgroundColor: 'rgba(255,252,248,0.9)', borderColor: `${accentColor}15` }}>
+      <header className="sticky top-0 z-50 backdrop-blur-xl border-b" style={{ backgroundColor: `${tc.colors.headerBg}E6`, borderColor: `${accentColor}15` }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link href={branding?.store_path_base || '/'} className="flex items-center gap-2.5">
             {branding?.logo_url ? (
               <img src={branding.logo_url} alt={storeName} className="h-9 object-contain" />
             ) : (
@@ -39,19 +41,16 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
                 <span className="text-lg font-extrabold tracking-tight">{storeName}</span>
               </>
             )}
-          </div>
+          </Link>
 
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[#2D1B0E]/60">
-            <a href="#" className="hover:text-[#2D1B0E] transition-colors">Menu</a>
-            <a href="#" className="hover:text-[#2D1B0E] transition-colors">Spécialités</a>
-            <a href="#" className="hover:text-[#2D1B0E] transition-colors">À propos</a>
+          <nav className="hidden md:flex items-center gap-7 text-sm font-medium" style={{ color: `${tc.colors.text}99` }}>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Menu</a>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Spécialités</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">À propos</Link>
           </nav>
 
           <div className="flex items-center gap-3">
-            <button className="relative text-[#2D1B0E]/60 hover:text-[#2D1B0E] transition-colors">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] flex items-center justify-center text-white font-bold" style={{ backgroundColor: accentColor }}>0</span>
-            </button>
+            <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accentColor} iconColor={`${tc.colors.text}99`} className="inline-flex items-center transition-colors hover:opacity-70" icon="cart" />
           </div>
         </div>
       </header>
@@ -103,10 +102,10 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
       <main id="products" className="max-w-6xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
           {displayProducts.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block bg-white rounded-2xl overflow-hidden border border-[#2D1B0E]/5 hover:shadow-lg hover:shadow-[#D4451A]/5 transition-all duration-300">
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block bg-white rounded-2xl overflow-hidden border border-[#2D1B0E]/5 hover:shadow-lg hover:shadow-[#D4451A]/5 transition-all duration-300">
               <div className="aspect-[4/3] overflow-hidden bg-[#FFF0E6] relative">
-                {p.images && p.images[0]?.url ? (
-                  <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                {getStoreProductImage(p) ? (
+                  <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ color: `${accentColor}20` }}>
                     <ShoppingBag className="w-10 h-10" />
@@ -121,7 +120,7 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
               <div className="p-4">
                 <h3 className="text-sm font-semibold line-clamp-1 mb-1.5">{p.title}</h3>
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-extrabold" style={{ color: accentColor }}>{p.price.toFixed(3)} TND</span>
+                  <span className="text-base font-extrabold" style={{ color: accentColor }}>{formatStorePrice(p)}</span>
                   <span className="w-8 h-8 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-100 scale-75" style={{ backgroundColor: accentColor }}>
                     <ShoppingBag className="w-3.5 h-3.5" />
                   </span>
@@ -148,3 +147,4 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
     </div>
   );
 }
+

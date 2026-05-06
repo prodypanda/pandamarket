@@ -43,7 +43,7 @@ export interface UseSocketReturn {
   socket: Socket | null;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:9000';
 
 /**
  * Maximum reconnection attempts before giving up.

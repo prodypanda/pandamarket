@@ -20,3 +20,43 @@ export const API_BASE = `${BACKEND_URL}/api/pd`;
 
 /** Full API base path for client-side fetches. */
 export const PUBLIC_API_BASE = `${PUBLIC_BACKEND_URL}/api/pd`;
+
+const CSRF_COOKIE = 'pd_csrf';
+const CSRF_HEADER = 'X-CSRF-Token';
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const cookie = document.cookie
+    .split('; ')
+    .find((entry) => entry.startsWith(`${name}=`));
+
+  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
+}
+
+export async function ensureCsrfToken(): Promise<string | null> {
+  let token = getCookie(CSRF_COOKIE);
+  if (token) return token;
+
+  await fetch('/api/pd/search?limit=1', { credentials: 'include' }).catch(() => undefined);
+  token = getCookie(CSRF_COOKIE);
+
+  return token;
+}
+
+export async function fetchWithCsrf(input: RequestInfo | URL, init: RequestInit = {}) {
+  const method = String(init.method || 'GET').toUpperCase();
+  const headers = new Headers(init.headers);
+
+  if (MUTATING_METHODS.has(method)) {
+    const token = await ensureCsrfToken();
+    if (token) headers.set(CSRF_HEADER, token);
+  }
+
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: init.credentials ?? 'include',
+  });
+}

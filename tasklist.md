@@ -1,6 +1,6 @@
 # PandaMarket — Task List
 
-> **Last updated:** 2026-05-04-v10 (Full independent audit — all implemented items checked off, post-MVP items updated)
+> **Last updated:** 2026-05-06-v21 (Storefront theming/cart handoff checkpoint added)
 > **Overall completion:** ~99% (MVP production-ready, no production blockers)
 
 ---
@@ -31,6 +31,8 @@
 - [x] Support domaines personnalisés (custom_domain dans middleware) ✅ — middleware.ts treats non-platform hostnames as custom domains
 - [x] Intégrer GrapesJS/Craft.js (Page Builder) ✅ — Full GrapesJS integration with migration 005, service, routes, editor component, dashboard page, storefront renderer
 - [x] Personnalisation dynamique (couleurs, logo, favicon appliqués aux thèmes) ✅
+- [x] Storefront route-level theming audit ✅ — cart, checkout, product, homepage override, custom Page Builder pages use selected theme chrome/colors
+- [x] Storefront cart/checkout scoping ✅ — checkout removes only current store items and shared cart icons show store-scoped counts
 - [x] Page 404 boutique personnalisée (not-found.tsx avec design PandaMarket) ✅
 
 ## Phase 3 : Marketplace Hub & Search (✅ COMPLETE)

@@ -1,8 +1,10 @@
 # PandaMarket — TODO List
 
-> **Last updated:** 2026-05-04-v18 (Deep code audit — 4 bugs fixed)
+> **Last updated:** 2026-05-06-v21 (Storefront theming/cart checkpoint and documentation handoff)
 > **Overall status:** 99%+ MVP complete. All critical and high-priority items resolved.
-> **Production blockers:** NONE
+> **Production blockers:** NONE after v20 fixes; verified with `npm run build -w frontend` and `npm run build -w backend`.
+> **v20 audit note:** Fixed frontend routing/API proxy/login blockers; added CSRF-aware `fetchWithCsrf` coverage for mutating `/api/pd/*` frontend calls across auth, dashboard, admin, wishlist, reviews, notifications, checkout, webhooks, profile, wallet, KYC, API keys, page builder, and store settings; normalized client API calls to same-origin `/api/pd` proxy; added backend `GET/PUT /api/pd/auth/me` profile support; fixed backend review/wishlist TypeScript blockers. Remaining caveat: Socket.IO authentication uses the JWT access token stored in `localStorage` and should be refreshed/rotated in a future hardening pass to avoid stale realtime connections after token expiry.
+> **v21 audit note:** Storefront theming/cart pass completed. Theme templates and route-level storefront pages now use shared dynamic theme colors/chrome and store-scoped cart helpers; checkout removes only current store items. Handoff created at `docs/AGENT_CHECKPOINT_2026-05-06.md`.
 > **v18 bugfix note:** Deep code-level audit of 50+ files. Found and fixed 4 bugs: (1) `forgotPassword()` now queues email via `emailQueue.add()` instead of just logging the token, (2) `sendVerificationEmail()` now queues email via `emailQueue.add()` instead of just logging, (3) `payment.route.ts` `/init` endpoint now fetches the real customer email from `pd_user` instead of passing the user ID as email, (4) `order.service.ts` `markPaid()` now correctly uses the `gateway` parameter in the SQL UPDATE (`payment_gateway = $2`) instead of leaving it unused.
 > **v19 migration audit note:** Full audit of all 6 SQL migration files. Found and fixed 3 critical migration bugs: (1) Migration 004 used `UUID` types for `store_id`/`theme_id`/`updated_by` FKs but parent tables use `VARCHAR(64)` — type mismatch would cause FK creation to fail. Fixed to `VARCHAR(64)`. (2) Migration 005 referenced non-existent function `update_updated_at()` instead of `pd_set_updated_at()` — trigger creation would fail. Fixed. (3) Migration 003 used `VARCHAR(50)` for all IDs while the rest of the schema uses `VARCHAR(64)` — inconsistent and could truncate IDs. Fixed to `VARCHAR(64)`. Also fixed audit-log middleware column name mismatches (`user_id`→`actor_id`, `details`→`metadata`, `ip_address`→`ip`) to match the `pd_audit_log` table schema in migration 002.
 > **Post-MVP gaps (confirmed v17):** 0 items remaining — multi-language support IMPLEMENTED
@@ -21,6 +23,8 @@ All core features verified as implemented:
 - [x] 5 SQL migrations, 20+ tables, comprehensive seed data
 - [x] Frontend: Hub (11 pages), Dashboard (14 pages), Admin (12 pages), Auth (4 pages), Storefront (5+ pages)
 - [x] 20 storefront themes (Minimal, Classic, Modern, Boutique, Artisan, TechHub, Flavor, Elegance, Neon, Sahara, Medina, Coastal, Urban, Garden, Studio, Luxe, Fresh, Craft, Digital, Kids)
+- [x] Storefront theme/chrome consistency across themes and route-level pages
+- [x] Store-scoped cart/checkout behavior on storefront checkout success
 - [x] GrapesJS Page Builder with migration, service, routes, editor, dashboard, storefront renderer
 - [x] 9 backend tests + 3 frontend tests + 6 E2E tests + 3 load tests
 - [x] Docker (dev+prod), Caddy, CI/CD, backup/restore, secrets management, runbook

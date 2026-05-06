@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, XCircle, Upload, Clock, FileText, AlertCircle } from 'lucide-react';
 
@@ -31,7 +32,7 @@ export default function KycPage() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/pd/verification/status', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setVerification(data.verification);
@@ -55,7 +56,7 @@ export default function KycPage() {
     setUploading(true);
     try {
       // Get presigned URL
-      const presignRes = await fetch('/api/pd/files/presign', {
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -96,7 +97,7 @@ export default function KycPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/pd/verification/documents', {
+      const res = await fetchWithCsrf('/api/pd/verification/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

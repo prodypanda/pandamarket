@@ -7,7 +7,7 @@
 
 import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
-import { PdNotFoundError } from '../errors';
+import { PdErrorCode, PdNotFoundError } from '../errors';
 import { logger } from '../utils/logger';
 
 export interface WishlistItemRow {
@@ -16,11 +16,15 @@ export interface WishlistItemRow {
   product_id: string;
   created_at: Date;
   product_title?: string;
-  product_price?: number;
+  product_slug?: string | null;
+  product_category?: string | null;
+  marketplace_category_slug?: string | null;
+  product_price?: number | string;
   product_thumbnail?: string | null;
   product_status?: string;
   store_name?: string;
   store_id?: string;
+  store_subdomain?: string | null;
 }
 
 export class WishlistService {
@@ -36,7 +40,7 @@ export class WishlistService {
       [product_id],
     );
     if (productRows.length === 0) {
-      throw new PdNotFoundError('Product not found');
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
     }
 
     // Check if already in wishlist
@@ -73,7 +77,7 @@ export class WishlistService {
       [product_id],
     );
     if (productRows.length === 0) {
-      throw new PdNotFoundError('Product not found');
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
     }
 
     const id = pdId('wishlist');
@@ -124,14 +128,19 @@ export class WishlistService {
     const { rows } = await query<WishlistItemRow>(
       `SELECT w.*,
               p.title as product_title,
+              p.slug as product_slug,
+              p.category as product_category,
+              mc.slug as marketplace_category_slug,
               p.price as product_price,
               p.thumbnail as product_thumbnail,
               p.status as product_status,
               s.name as store_name,
-              s.id as store_id
+              s.id as store_id,
+              s.subdomain as store_subdomain
        FROM pd_wishlist_item w
        JOIN pd_product p ON p.id = w.product_id
        JOIN pd_store s ON s.id = p.store_id
+       LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        WHERE w.customer_id = $1
        ORDER BY w.created_at DESC
        LIMIT $2 OFFSET $3`,

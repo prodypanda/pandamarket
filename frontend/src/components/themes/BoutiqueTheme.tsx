@@ -1,9 +1,10 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Heart, User } from 'lucide-react';
+import { Heart, ShoppingBag, User } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Boutique Theme — Luxury fashion & lifestyle.
@@ -40,39 +41,40 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
       <header className="border-b" style={{ borderColor: `${goldAccent}30` }}>
         <div className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
           <nav className="hidden md:flex gap-8 text-xs tracking-[0.15em] uppercase font-medium">
-            <a href="#" className="hover:opacity-60 transition-opacity">Nouveautés</a>
-            <a href="#" className="hover:opacity-60 transition-opacity">Collections</a>
+            <a href="#products" className="hover:opacity-60 transition-opacity">Nouveautés</a>
+            <a href="#products" className="hover:opacity-60 transition-opacity">Collections</a>
           </nav>
 
           <div className="text-center flex-1 md:flex-none">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" />
-            ) : (
-              <h1
-                className="text-2xl md:text-3xl font-light tracking-[0.2em] uppercase font-serif"
-                style={{ color: '#1C1C1C' }}
-              >
-                {storeName}
-              </h1>
-            )}
+            <Link href={branding?.store_path_base || '/'}>
+              {branding?.logo_url ? (
+                <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" />
+              ) : (
+                <h1
+                  className="text-2xl md:text-3xl font-light tracking-[0.2em] uppercase font-serif"
+                  style={{ color: tc.colors.text }}
+                >
+                  {storeName}
+                </h1>
+              )}
+            </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-6">
-            <button className="hover:opacity-60 transition-opacity">
+            <Link href="/hub/profile" className="hover:opacity-60 transition-opacity">
               <User className="w-5 h-5" strokeWidth={1.5} />
-            </button>
-            <button className="hover:opacity-60 transition-opacity">
+            </Link>
+            <Link href="/hub/wishlist" className="hover:opacity-60 transition-opacity">
               <Heart className="w-5 h-5" strokeWidth={1.5} />
-            </button>
-            <button className="hover:opacity-60 transition-opacity relative">
-              <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
-              <span
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] flex items-center justify-center text-white"
-                style={{ backgroundColor: goldAccent }}
-              >
-                0
-              </span>
-            </button>
+            </Link>
+            <StorefrontThemeCartLink
+              storeId={branding?.store_id}
+              storeHost={branding?.store_host}
+              storePathBase={branding?.store_path_base}
+              primaryColor={goldAccent}
+              iconColor={tc.colors.text}
+              className="inline-flex items-center transition-opacity hover:opacity-60"
+            />
           </div>
         </div>
       </header>
@@ -105,11 +107,11 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
         <ThemeLayout variation={tc.layoutVariation} layout={tc.layout} colors={tc.colors} categories={[...new Set(displayProducts.map(p => p.category).filter(Boolean))] as string[]}>
         <div className={`grid ${tc.gridClasses}`} style={{ rowGap: '3.5rem' }}>
           {displayProducts.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block">
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block">
               <div className="aspect-[3/4] mb-5 overflow-hidden bg-[#EDE8E1]">
-                {p.images && p.images[0]?.url ? (
+                {getStoreProductImage(p) ? (
                   <img
-                    src={p.images[0].url}
+                    src={getStoreProductImage(p)}
                     alt={p.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
@@ -126,7 +128,7 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
               )}
               <h3 className="text-sm font-medium tracking-wide">{p.title}</h3>
               <p className="text-sm mt-1" style={{ color: goldAccent }}>
-                {p.price.toFixed(3)} TND
+                {formatStorePrice(p)}
               </p>
             </Link>
           ))}
@@ -152,3 +154,4 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
     </div>
   );
 }
+

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import { Image, FileText, Zap, History, RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -40,7 +41,7 @@ export default function AiToolsPage() {
 
   const fetchCredits = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/ai/credits', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/ai/credits', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setCredits(data.credits);
@@ -52,7 +53,7 @@ export default function AiToolsPage() {
 
   const fetchJobs = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/ai/history?limit=20', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/ai/history?limit=20', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs || []);
@@ -88,7 +89,7 @@ export default function AiToolsPage() {
     }
     setCompressing(true);
     try {
-      const res = await fetch('/api/pd/ai/compress', {
+      const res = await fetchWithCsrf('/api/pd/ai/compress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -121,7 +122,7 @@ export default function AiToolsPage() {
     }
     setGenerating(true);
     try {
-      const res = await fetch('/api/pd/ai/seo-generate', {
+      const res = await fetchWithCsrf('/api/pd/ai/seo-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

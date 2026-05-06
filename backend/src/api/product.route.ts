@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { productService } from '../services/product.service';
+import { storeService } from '../services/store.service';
+import { categoryService } from '../services/category.service';
 import { asyncHandler, validate, requireStore } from '../middlewares';
 import { ProductType, ProductStatus } from '@pandamarket/types';
 
@@ -9,16 +11,33 @@ const router = Router();
 const createProductSchema = z.object({
   type: z.nativeEnum(ProductType),
   title: z.string().min(2),
+  slug: z.string().max(100).optional(),
   description: z.string().optional(),
   category: z.string().optional(),
+  product_reference: z.string().max(100).nullable().optional(),
+  marketplace_category_id: z.string().nullable().optional(),
+  storefront_category_id: z.string().nullable().optional(),
   price: z.number().min(0),
   inventory_quantity: z.number().min(0).optional(),
   weight_grams: z.number().min(0).optional(),
+  thumbnail: z.string().url().nullable().optional(),
+  seo_title: z.string().max(200).nullable().optional(),
+  seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
+  attributes: z.array(z.object({
+    name: z.string().min(1).max(80),
+    value: z.string().min(1).max(300),
+  })).optional(),
 });
 
 const updateProductSchema = createProductSchema.partial().extend({
   status: z.nativeEnum(ProductStatus).optional(),
+});
+
+const addProductImageSchema = z.object({
+  url: z.string().url(),
+  alt_text: z.string().max(200).optional(),
+  is_thumbnail: z.boolean().optional(),
 });
 
 // Vendor: create product
@@ -29,11 +48,20 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     // Note: store_plan and store_is_verified should be fetched from store details in a real app
     // For this implementation, we assume defaults or fetch it here.
+    const store = await storeService.getById(req.user!.store_id!);
+    const categories = await categoryService.resolveProductCategories(
+      req.user!.store_id!,
+      req.body.marketplace_category_id,
+      req.body.storefront_category_id,
+    );
     const product = await productService.create({
       store_id: req.user!.store_id!,
-      store_plan: 'free' as any, // Mock
-      store_is_verified: true, // Mock
+      store_plan: store.subscription_plan,
+      store_is_verified: store.is_verified,
       ...req.body,
+      marketplace_category_id: categories.marketplace.id,
+      storefront_category_id: categories.storefront.id,
+      category: categories.marketplace.name,
     });
     res.status(201).json({ product });
   }),
@@ -46,11 +74,20 @@ router.get(
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const category = req.query.category as string;
-    const result = await productService.listPublished({ page, limit, category });
+    const marketplaceCategoryId = req.query.marketplace_category_id as string;
+    const storeId = req.query.store_id as string;
+    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId });
     res.status(200).json(result);
   }),
 );
 
+router.get(
+  '/by-store/:storeId/:slug',
+  asyncHandler(async (req: Request, res: Response) => {
+    const product = await productService.getPublishedByStoreSlug(req.params.storeId, req.params.slug);
+    res.status(200).json({ product });
+  }),
+);
 // Vendor: list own products
 router.get(
   '/me',
@@ -109,8 +146,11 @@ router.post(
         .array(
           z.object({
             title: z.string().min(2),
+  slug: z.string().max(100).optional(),
             description: z.string().optional(),
             category: z.string().optional(),
+            marketplace_category_id: z.string().nullable().optional(),
+            storefront_category_id: z.string().nullable().optional(),
             price: z.number().min(0),
             type: z.nativeEnum(ProductType).optional(),
             inventory_quantity: z.number().min(0).optional(),
@@ -127,14 +167,22 @@ router.post(
 
     for (const item of parsed.products) {
       try {
+        const store = await storeService.getById(req.user!.store_id!);
+        const categories = await categoryService.resolveProductCategories(
+          req.user!.store_id!,
+          item.marketplace_category_id,
+          item.storefront_category_id,
+        );
         await productService.create({
           store_id: req.user!.store_id!,
-          store_plan: 'free' as any, // Should be fetched from store
-          store_is_verified: true,
+          store_plan: store.subscription_plan,
+          store_is_verified: store.is_verified,
           type: item.type ?? ProductType.Physical,
           title: item.title,
           description: item.description,
-          category: item.category,
+          category: categories.marketplace.name,
+          marketplace_category_id: categories.marketplace.id,
+          storefront_category_id: categories.storefront.id,
           price: item.price,
           inventory_quantity: item.inventory_quantity,
           weight_grams: item.weight_grams,
@@ -166,8 +214,45 @@ router.put(
   validate(updateProductSchema),
   asyncHandler(async (req: Request, res: Response) => {
     await productService.assertOwnership(req.params.id, req.user!.store_id!);
-    const product = await productService.update(req.params.id, req.body);
+    const store = await storeService.getById(req.user!.store_id!);
+    const patch = { ...req.body };
+    if ('marketplace_category_id' in patch || 'storefront_category_id' in patch) {
+      const categories = await categoryService.resolveProductCategories(
+        req.user!.store_id!,
+        patch.marketplace_category_id,
+        patch.storefront_category_id,
+      );
+      patch.marketplace_category_id = categories.marketplace.id;
+      patch.storefront_category_id = categories.storefront.id;
+      patch.category = categories.marketplace.name;
+    }
+    if (patch.status === ProductStatus.Published && !store.is_verified) {
+      patch.status = ProductStatus.PendingApproval;
+    }
+    const product = await productService.update(req.params.id, patch);
     res.status(200).json({ product });
+  }),
+);
+
+router.post(
+  '/:id/images',
+  requireStore,
+  validate(addProductImageSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    const store = await storeService.getById(req.user!.store_id!);
+    const image = await productService.addImage(req.params.id, store.subscription_plan, req.body);
+    res.status(201).json({ image });
+  }),
+);
+
+router.delete(
+  '/:id/images/:imageId',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    await productService.deleteImage(req.params.id, req.params.imageId);
+    res.status(200).json({ success: true });
   }),
 );
 
@@ -256,3 +341,4 @@ router.get(
 );
 
 export default router;
+

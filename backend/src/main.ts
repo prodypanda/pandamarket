@@ -30,6 +30,7 @@ import adminRouter from './api/admin.route';
 import notificationRouter from './api/notification.route';
 import creditsRouter from './api/credits.route';
 import categoriesRouter from './api/categories.route';
+import marketplaceRouter from './api/marketplace.route';
 import vendorRouter from './api/vendor.route';
 import shippingRouter from './api/shipping.route';
 import themeRouter from './api/theme.route';
@@ -165,6 +166,7 @@ async function bootstrap() {
   apiRouter.use('/notifications', notificationRouter);
   apiRouter.use('/credits', creditsRouter);
   apiRouter.use('/categories', categoriesRouter);
+  apiRouter.use('/marketplace', marketplaceRouter);
   apiRouter.use('/vendor', vendorRouter);
   apiRouter.use('/shipping', shippingRouter);
   apiRouter.use('/themes', themeRouter);

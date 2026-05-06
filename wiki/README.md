@@ -2,7 +2,7 @@
 
 Welcome to the **PandaMarket** platform documentation. This wiki provides step-by-step guidance for setting up, running, deploying, and understanding the full platform.
 
-> **Last updated:** 2026-05-03 | **Platform status:** ✅ Production-ready (100% feature-complete)
+> **Last updated:** 2026-05-06 | **Platform status:** ✅ Production-ready; storefront theming/cart checkpoint added
 
 ## 📖 Table of Contents
 
@@ -29,8 +29,11 @@ Welcome to the **PandaMarket** platform documentation. This wiki provides step-b
 | 10 | [API Reference](10-api-reference.md) | All 80+ REST API endpoints with auth requirements |
 | 11 | [Security Guide](11-security-guide.md) | Authentication, encryption, rate limiting, and security checklist |
 | 12 | [Testing Guide](12-testing-guide.md) | Unit tests, E2E tests, load tests, and CI/CD pipeline |
+| 13 | [Local URLs, Auth Flow, and Dashboard Reference](13-local-urls-auth-dashboard.md) | Localhost URLs, login redirects, dashboard routes, and dev credentials |
+| 14 | [Agent Checkpoint & Current State](14-agent-checkpoint-current-state.md) | Current handoff, completed storefront theming/cart work, next-agent rules |
 
 ---
 
 > **Tip:** If you're setting up the project for the first time, start with document **02** and follow them in order.
 > For a quick understanding of the platform's capabilities, start with **01**.
+> If you are a new AI agent continuing an existing coding session, start with **14**.

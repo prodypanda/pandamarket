@@ -50,6 +50,7 @@ export enum ShippingMode {
 export enum ProductType {
   Physical = 'physical',
   Digital = 'digital',
+  Serial = 'serial',
   Service = 'service',
 }
 

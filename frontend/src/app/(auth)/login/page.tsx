@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
@@ -19,7 +21,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/pd/auth/login', {
+      const res = await fetchWithCsrf('/api/pd/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -30,8 +32,13 @@ export default function LoginPage() {
         setError(data.error?.message || 'Login failed');
         return;
       }
+      const next = new URLSearchParams(window.location.search).get('next');
+      if (next?.startsWith('/') && !next.startsWith('//')) {
+        window.location.href = next;
+        return;
+      }
       // Redirect based on role
-      if (data.user.role === 'Admin' || data.user.role === 'SuperAdmin') {
+      if (data.user.role === 'admin' || data.user.role === 'super_admin' || data.user.role === 'Admin' || data.user.role === 'SuperAdmin') {
         window.location.href = '/dashboard';
       } else if (data.user.store_id) {
         window.location.href = '/hub/dashboard';

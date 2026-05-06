@@ -6,7 +6,8 @@
  * A denormalised `pd_product_rating` table is maintained for fast reads.
  */
 
-import { query, withTransaction } from '../db/pool';
+import { PoolClient } from 'pg';
+import { query, transaction } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import {
   PdConflictError,
@@ -68,7 +69,7 @@ export class ReviewService {
       [opts.product_id],
     );
     if (productRows.length === 0) {
-      throw new PdNotFoundError('Product not found');
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
     }
     const store_id = productRows[0].store_id;
 
@@ -86,7 +87,7 @@ export class ReviewService {
 
     try {
       const id = pdId('review');
-      const review = await withTransaction(async (client) => {
+      const review = await transaction(async (client) => {
         const { rows } = await client.query<ReviewRow>(
           `INSERT INTO pd_review
             (id, product_id, customer_id, store_id, order_id, rating, title, body, is_verified_purchase)
@@ -119,7 +120,10 @@ export class ReviewService {
     } catch (err: unknown) {
       // unique_violation = duplicate review
       if ((err as { code?: string }).code === '23505') {
-        throw new PdConflictError('You have already reviewed this product');
+        throw new PdConflictError(
+          PdErrorCode.VALIDATION_ERROR,
+          'You have already reviewed this product',
+        );
       }
       throw err;
     }
@@ -140,7 +144,7 @@ export class ReviewService {
 
     const existing = await this.getById(opts.review_id);
     if (existing.customer_id !== opts.customer_id) {
-      throw new PdForbiddenError('You can only edit your own reviews');
+      throw new PdForbiddenError(PdErrorCode.PERM_NOT_OWNER, 'You can only edit your own reviews');
     }
 
     const sets: string[] = [];
@@ -164,7 +168,7 @@ export class ReviewService {
 
     vals.push(opts.review_id);
 
-    const review = await withTransaction(async (client) => {
+    const review = await transaction(async (client) => {
       const { rows } = await client.query<ReviewRow>(
         `UPDATE pd_review SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
         vals,
@@ -187,10 +191,10 @@ export class ReviewService {
   async delete(review_id: string, customer_id: string): Promise<void> {
     const existing = await this.getById(review_id);
     if (existing.customer_id !== customer_id) {
-      throw new PdForbiddenError('You can only delete your own reviews');
+      throw new PdForbiddenError(PdErrorCode.PERM_NOT_OWNER, 'You can only delete your own reviews');
     }
 
-    await withTransaction(async (client) => {
+    await transaction(async (client) => {
       await client.query('DELETE FROM pd_review WHERE id = $1', [review_id]);
       await this.recalculateRating(client, existing.product_id);
     });
@@ -205,7 +209,7 @@ export class ReviewService {
       'SELECT * FROM pd_review WHERE id = $1',
       [review_id],
     );
-    if (rows.length === 0) throw new PdNotFoundError('Review not found');
+    if (rows.length === 0) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Review not found');
     return rows[0];
   }
 
@@ -273,10 +277,10 @@ export class ReviewService {
       `UPDATE pd_review SET status = $1, admin_notes = $2 WHERE id = $3 RETURNING *`,
       [status, admin_notes ?? null, review_id],
     );
-    if (rows.length === 0) throw new PdNotFoundError('Review not found');
+    if (rows.length === 0) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Review not found');
 
     // Recalculate since visibility changed
-    await withTransaction(async (client) => {
+    await transaction(async (client) => {
       await this.recalculateRating(client, rows[0].product_id);
     });
 
@@ -318,17 +322,17 @@ export class ReviewService {
       'UPDATE pd_review SET helpful_count = helpful_count + 1 WHERE id = $1',
       [review_id],
     );
-    if (rowCount === 0) throw new PdNotFoundError('Review not found');
+    if (rowCount === 0) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Review not found');
   }
 
   // ─── Rating recalculation (called within transactions) ────────────
 
   private async recalculateRating(
-    client: { query: typeof query extends (...args: infer A) => infer R ? (...args: A) => R : never },
+    client: PoolClient,
     product_id: string,
   ): Promise<void> {
     // Use the raw client.query
-    await (client as any).query(
+    await client.query(
       `INSERT INTO pd_product_rating (product_id, average_rating, review_count,
         rating_1, rating_2, rating_3, rating_4, rating_5, updated_at)
        SELECT

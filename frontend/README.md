@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PandaMarket Frontend
 
-## Getting Started
+Next.js App Router frontend for PandaMarket: central Hub marketplace, vendor storefronts, vendor dashboard, and admin panel.
 
-First, run the development server:
+## Start here
 
-```bash
+If you are a new agent/session, read these first:
+
+- [`../docs/AGENT_CHECKPOINT_2026-05-06.md`](../docs/AGENT_CHECKPOINT_2026-05-06.md)
+- [`AGENTS.md`](./AGENTS.md)
+- [`../wiki/01-project-overview.md`](../wiki/01-project-overview.md)
+
+## Local development
+
+From `c:\tek\pandamarket\frontend`:
+
+```powershell
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default local URLs:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend:** `http://localhost:3000`
+- **Backend API:** `http://localhost:9000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The frontend proxies `/api/pd/*` to the backend via `next.config.ts` rewrites.
 
-## Learn More
+## Key directories
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/hub/` — central marketplace Hub pages.
+- `src/app/store/[storeHost]/` — storefront and central `/store/:storeHost` routes.
+- `src/app/hub/dashboard/` — vendor dashboard.
+- `src/app/(admin)/` — admin panel.
+- `src/components/themes/` — storefront theme templates.
+- `src/components/store/` — shared storefront/cart components.
+- `src/components/hub/` — shared Hub marketplace UI.
+- `src/contexts/CartContext.tsx` — cart state and store-scoped cart actions.
+- `src/lib/themes.ts` — theme registry and customization resolution.
+- `src/lib/store-routing.ts` and `src/lib/store-hosts.ts` — central-vs-storefront route behavior.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Storefront theming rules
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Use `resolveThemeColors()` / `useThemeCustomization()` for theme colors.
+- Use `StorefrontThemeCartLink` or `StoreCartIcon` for storefront cart links/counts.
+- Use `getStorefrontProductPath(product, storePathBase)` for storefront product links.
+- Keep real storefront subdomain links relative where possible: `/`, `/cart`, `/checkout`.
+- Do not clear the whole multi-store cart from storefront checkout; use `removeStoreItems(store.id)`.
 
-## Deploy on Vercel
+## Targeted validation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+From this directory:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npx tsc --noEmit --types vitest/globals --pretty false
+npx eslint src/app/store src/components/themes src/components/store src/contexts src/lib --no-error-on-unmatched-pattern
+npm test -- src/__tests__/cart-context.test.tsx
+```

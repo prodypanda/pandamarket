@@ -1,9 +1,10 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { ShoppingCart, Search, Menu, ShoppingBag } from 'lucide-react';
+import { Search, Menu, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 export function ClassicTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
@@ -30,11 +31,13 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Menu className="w-6 h-6 lg:hidden" />
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
-            ) : (
-              <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
-            )}
+            <Link href={branding?.store_path_base || '/'}>
+              {branding?.logo_url ? (
+                <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
+              ) : (
+                <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
+              )}
+            </Link>
           </div>
           <div className="hidden lg:flex flex-1 max-w-lg mx-8 relative">
             <input
@@ -46,11 +49,16 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
             <Search className="w-5 h-5 absolute right-3 top-2.5" style={{ color: `${tc.colors.text}60` }} />
           </div>
           <div className="flex items-center space-x-6">
-            <a href="#" className="text-sm font-medium hover:opacity-80 transition-opacity">Connexion</a>
-            <a href="#" className="flex items-center hover:opacity-80 transition-opacity relative">
-              <ShoppingCart className="w-6 h-6" />
-              <span className="absolute -top-2 -right-2 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" style={{ backgroundColor: tc.colors.accent }}>0</span>
-            </a>
+            <Link href="/hub/login" className="text-sm font-medium hover:opacity-80 transition-opacity">Connexion</Link>
+            <StorefrontThemeCartLink
+              storeId={branding?.store_id}
+              storeHost={branding?.store_host}
+              storePathBase={branding?.store_path_base}
+              primaryColor={tc.colors.accent}
+              iconColor={tc.colors.background}
+              className="inline-flex items-center transition-opacity hover:opacity-80"
+              icon="cart"
+            />
           </div>
         </div>
       </header>
@@ -104,13 +112,13 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
             {displayProducts.map((p) => (
               <Link
                 key={p.id}
-                href={`/hub/products/${p.id}`}
+                href={getStorefrontProductPath(p, branding?.store_path_base)}
                 className="rounded-md overflow-hidden hover:shadow-lg transition-shadow duration-300 block border"
                 style={{ backgroundColor: tc.colors.background, borderColor: `${tc.colors.text}15` }}
               >
                 <div className="aspect-square w-full overflow-hidden" style={{ backgroundColor: tc.colors.secondary }}>
-                  {p.images && p.images[0]?.url ? (
-                    <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                  {getStoreProductImage(p) ? (
+                    <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ color: `${tc.colors.text}30` }}>
                       <ShoppingBag className="w-8 h-8" />
@@ -120,7 +128,7 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
                 <div className="p-4">
                   <h3 className="font-medium line-clamp-1" style={{ color: tc.colors.text }}>{p.title}</h3>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="font-bold" style={{ color: tc.colors.accent }}>{p.price.toFixed(3)} TND</span>
+                    <span className="font-bold" style={{ color: tc.colors.accent }}>{formatStorePrice(p)}</span>
                     <span className="px-3 py-1 text-sm font-medium rounded transition-colors" style={{ backgroundColor: tc.colors.secondary, color: tc.colors.text }}>
                       Voir
                     </span>
@@ -145,3 +153,4 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

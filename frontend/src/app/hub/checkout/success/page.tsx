@@ -4,18 +4,23 @@ import React, { Suspense } from 'react';
 import { CheckCircle, ArrowRight, Loader2, Package } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { HubNavbar } from '../../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../../components/hub/HubFooter';
+import { useMarketplaceTheme } from '../../../../hooks/useMarketplaceTheme';
 
-function SuccessContent() {
+type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes'];
+
+function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id');
 
   return (
-    <div className="bg-white rounded-3xl p-12 lg:p-16 text-center shadow-xl shadow-gray-200/50 border border-gray-100 max-w-2xl mx-auto mt-20 relative overflow-hidden">
+    <div className={`${classes.panel} max-w-2xl mx-auto mt-20 relative overflow-hidden p-10 text-center lg:p-16`}>
       {/* Decorative background circle */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-50 rounded-full blur-3xl -z-10"></div>
+      <div className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-3xl -z-10 ${classes.primarySoft}`}></div>
       
-      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
-        <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 ${classes.primarySoft}`}>
+        <CheckCircle className="w-10 h-10" />
       </div>
       
       <h1 className="text-4xl font-black text-gray-900 mb-4">Payment Successful!</h1>
@@ -34,7 +39,7 @@ function SuccessContent() {
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Link 
           href="/hub"
-          className="px-8 py-3.5 bg-gray-900 text-white font-bold rounded-full hover:bg-gray-800 transition-colors"
+          className={`px-8 py-3.5 font-black rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
         >
           Return to Home
         </Link>
@@ -47,11 +52,21 @@ function SuccessContent() {
 }
 
 export default function CheckoutSuccessPage() {
+  const { settings, classes } = useMarketplaceTheme();
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 z-0">
-      <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-[#16C784]" /></div>}>
-        <SuccessContent />
-      </Suspense>
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={settings.marketplace_name}
+        marketplaceLogoUrl={settings.marketplace_logo_url}
+        marketplaceTheme={settings.marketplace_theme}
+      />
+      <div className="px-4 py-12 sm:px-6 lg:px-8">
+        <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className={`w-8 h-8 animate-spin ${classes.primaryText}`} /></div>}>
+          <SuccessContent classes={classes} />
+        </Suspense>
+      </div>
+      <HubFooter {...settings} />
     </div>
   );
 }

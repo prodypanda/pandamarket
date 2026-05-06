@@ -1,6 +1,6 @@
 # PandaMarket — Architecture Technique
 
-> **Version :** 1.0 | **Date :** 02 Mai 2026
+> **Version :** 1.1 | **Date :** 06 Mai 2026
 
 ---
 
@@ -78,6 +78,14 @@ hostname === "pandamarket.tn"?
               2. Table `Store.custom_domain` (ex: ma-boutique.com)
               └── Charger le Storefront du vendeur avec son theme_id
 ```
+
+### Notes d'implémentation actuelles
+
+- Le domaine central reste propriétaire du Hub et des pages marketplace.
+- Les vrais sous-domaines/domaines storefront sont réécrits par `frontend/src/middleware.ts` vers `/store/[storeHost]`.
+- `frontend/src/lib/store-hosts.ts` et `frontend/src/lib/store-routing.ts` séparent le comportement central `/store/:storeHost` du comportement storefront réel.
+- Les liens internes storefront doivent rester relatifs (`/`, `/cart`, `/checkout`) quand ils ciblent un vrai sous-domaine.
+- Les pages storefront de niveau route utilisent maintenant les couleurs/polices du thème sélectionné, même lorsqu'elles ne passent pas par un composant de thème.
 
 ---
 
@@ -198,18 +206,20 @@ pandamarket/
 │   └── package.json
 │
 ├── frontend/                   # Next.js
-│   ├── app/
-│   │   ├── (hub)/              # Pages du Hub central
-│   │   ├── (store)/            # Pages storefront vendeur
-│   │   ├── (admin)/            # Pages admin
-│   │   └── (dashboard)/        # Dashboard vendeur
-│   ├── components/
-│   ├── lib/
-│   ├── themes/                 # Templates de boutique
-│   │   ├── minimal/
-│   │   ├── classic/
-│   │   └── modern/
-│   ├── middleware.ts            # Détection hostname
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── hub/            # Pages du Hub central
+│   │   │   ├── store/          # Pages storefront + central /store
+│   │   │   ├── hub/dashboard/  # Dashboard vendeur
+│   │   │   └── (admin)/        # Pages admin
+│   │   ├── components/
+│   │   │   ├── hub/            # Composants marketplace
+│   │   │   ├── store/          # Composants storefront/cart partagés
+│   │   │   └── themes/         # Templates de boutique
+│   │   ├── contexts/           # Contextes React
+│   │   ├── hooks/              # Hooks React
+│   │   ├── lib/                # Helpers themes, routing, marketplace
+│   │   └── middleware.ts       # Détection hostname
 │   └── package.json
 │
 ├── docker-compose.yml           # PostgreSQL, Redis, Meilisearch, MinIO

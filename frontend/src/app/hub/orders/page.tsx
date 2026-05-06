@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Search, Filter, Eye, Loader2, ShoppingBag, ChevronDown } from 'lucide-react';
+import { Package, Loader2, ShoppingBag, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { HubNavbar } from '../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../components/hub/HubFooter';
+import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
 interface Order {
   id: string;
@@ -65,15 +68,15 @@ export default function CustomerOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const { settings, classes, isAliExpress } = useMarketplaceTheme();
 
   useEffect(() => {
     async function fetchOrders() {
       setLoading(true);
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
         const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : '';
         const res = await fetch(
-          `${backendUrl}/api/pd/orders?page=${page}&limit=10${statusParam}`,
+          `/api/pd/orders?page=${page}&limit=10${statusParam}`,
           { credentials: 'include' },
         );
         if (res.ok) {
@@ -91,24 +94,32 @@ export default function CustomerOrdersPage() {
   }, [page, statusFilter]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Package className="w-6 h-6 text-[#16C784]" />
-            Mes Commandes
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Suivez l&apos;état de vos commandes.</p>
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={settings.marketplace_name}
+        marketplaceLogoUrl={settings.marketplace_logo_url}
+        marketplaceTheme={settings.marketplace_theme}
+      />
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className={`mb-8 rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-black flex items-center gap-2">
+                <Package className="w-6 h-6" />
+                Mes Commandes
+              </h1>
+              <p className="text-white/75 text-sm mt-1">Suivez l&apos;état de vos commandes.</p>
+            </div>
+            <Link
+              href="/hub"
+              className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-black text-gray-900 shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
+            >
+              <ShoppingBag className="w-4 h-4 mr-2" />
+              Continuer mes achats
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/hub"
-          className="inline-flex items-center px-4 py-2 bg-[#16C784] text-white rounded-lg hover:bg-[#14b576] transition-colors text-sm font-medium"
-        >
-          <ShoppingBag className="w-4 h-4 mr-2" />
-          Continuer mes achats
-        </Link>
-      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -118,8 +129,8 @@ export default function CustomerOrdersPage() {
             onClick={() => { setStatusFilter(s); setPage(1); }}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               statusFilter === s
-                ? 'bg-[#16C784] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? classes.primary
+                : isAliExpress ? 'bg-white text-gray-600 hover:bg-orange-50 border border-orange-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {s === 'all' ? 'Toutes' : statusLabel(s)}
@@ -130,12 +141,12 @@ export default function CustomerOrdersPage() {
       {/* Orders List */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
+          <Loader2 className={`w-6 h-6 ${classes.primaryText} animate-spin`} />
           <span className="ml-2 text-gray-500">Chargement...</span>
         </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+        <div className={`text-center py-16 ${classes.panel}`}>
+          <Package className={`w-12 h-12 ${isAliExpress ? 'text-orange-200' : 'text-gray-300'} mx-auto mb-4`} />
           <p className="text-gray-500 text-lg">Aucune commande trouvée.</p>
           <p className="text-gray-400 text-sm mt-1">Vos commandes apparaîtront ici.</p>
         </div>
@@ -144,7 +155,7 @@ export default function CustomerOrdersPage() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              className={`${classes.panel} overflow-hidden transition-shadow hover:shadow-md`}
             >
               {/* Order Header */}
               <div
@@ -173,7 +184,7 @@ export default function CustomerOrdersPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-lg font-bold text-[#16C784]">
+                  <span className={`text-lg font-bold ${classes.primaryText}`}>
                     {parseFloat(order.total).toFixed(3)} TND
                   </span>
                   <ChevronDown
@@ -186,7 +197,7 @@ export default function CustomerOrdersPage() {
 
               {/* Expanded Details */}
               {expandedOrder === order.id && (
-                <div className="border-t border-gray-100 p-4 sm:p-6 bg-gray-50/50">
+                <div className={`border-t p-4 sm:p-6 ${isAliExpress ? 'border-orange-100 bg-orange-50/40' : 'border-gray-100 bg-gray-50/50'}`}>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                     <div>
                       <span className="text-xs text-gray-500 uppercase tracking-wider">Sous-total</span>
@@ -202,14 +213,14 @@ export default function CustomerOrdersPage() {
                     </div>
                     <div>
                       <span className="text-xs text-gray-500 uppercase tracking-wider">Total</span>
-                      <p className="text-sm font-bold text-[#16C784]">{parseFloat(order.total).toFixed(3)} TND</p>
+                      <p className={`text-sm font-bold ${classes.primaryText}`}>{parseFloat(order.total).toFixed(3)} TND</p>
                     </div>
                   </div>
 
                   {order.status === 'payment_required' && order.payment_gateway === 'manual_mandat' && (
                     <Link
                       href={`/hub/checkout/mandat-upload?order_id=${order.id}`}
-                      className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium mt-2"
+                      className={`inline-flex items-center px-4 py-2 rounded-full transition-colors text-sm font-black mt-2 ${classes.primaryGradient}`}
                     >
                       Uploader la preuve de mandat
                     </Link>
@@ -227,7 +238,7 @@ export default function CustomerOrdersPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+            className={`px-4 py-2 text-sm border rounded-full disabled:opacity-50 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 hover:bg-gray-50'}`}
           >
             ← Précédent
           </button>
@@ -237,12 +248,14 @@ export default function CustomerOrdersPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+            className={`px-4 py-2 text-sm border rounded-full disabled:opacity-50 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 hover:bg-gray-50'}`}
           >
             Suivant →
           </button>
         </div>
       )}
+      </main>
+      <HubFooter {...settings} />
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, ShoppingCart, Zap, ChevronRight, Cpu } from 'lucide-react';
+import { ShoppingBag, Zap, ChevronRight, Cpu } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * TechHub Theme — Electronics, gadgets, tech products.
@@ -11,7 +12,8 @@ import { ThemeLayout } from './ThemeLayout';
  * grid-based layout with spec-card style product cards.
  */
 export function TechHubTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const accentColor = branding?.primary_color || '#00D4FF';
+  const tc = useThemeCustomization(theme, branding);
+  const accentColor = tc.colors.primary;
   const displayProducts = products.length > 0
     ? products
     : [
@@ -26,13 +28,13 @@ export function TechHubTheme({ theme, storeName, products = [], branding }: Them
       ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0A', color: '#E0E0E0' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Header */}
-      <header className="border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl" style={{ backgroundColor: 'rgba(10,10,10,0.85)' }}>
+      <header className="border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl" style={{ backgroundColor: `${tc.colors.headerBg}D9` }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href={branding?.store_path_base || '/'} className="flex items-center gap-3">
             {branding?.logo_url ? (
               <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
             ) : (
@@ -41,31 +43,24 @@ export function TechHubTheme({ theme, storeName, products = [], branding }: Them
                 <span className="text-lg font-bold tracking-tight">{storeName}</span>
               </div>
             )}
-          </div>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
-            <a href="#" className="hover:text-white transition-colors">Products</a>
-            <a href="#" className="hover:text-white transition-colors">Deals</a>
-            <a href="#" className="hover:text-white transition-colors">Support</a>
+            <a href="#products" className="hover:text-white transition-colors">Products</a>
+            <a href="#products" className="hover:text-white transition-colors">Deals</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/support`} className="hover:text-white transition-colors">Support</Link>
           </nav>
 
           <div className="flex items-center gap-4">
-            <button
+            <a
+              href="#products"
               className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:brightness-110"
               style={{ backgroundColor: accentColor, color: '#0A0A0A' }}
             >
               <Zap className="w-4 h-4" />
               Deals
-            </button>
-            <button className="relative hover:text-white transition-colors text-gray-400">
-              <ShoppingCart className="w-5 h-5" />
-              <span
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded text-[10px] flex items-center justify-center font-bold"
-                style={{ backgroundColor: accentColor, color: '#0A0A0A' }}
-              >
-                0
-              </span>
-            </button>
+            </a>
+            <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accentColor} iconColor="#9CA3AF" badgeTextColor="#0A0A0A" className="inline-flex items-center text-gray-400 transition-colors hover:text-white" icon="cart" />
           </div>
         </div>
       </header>
@@ -119,14 +114,14 @@ export function TechHubTheme({ theme, storeName, products = [], branding }: Them
           {displayProducts.map((p) => (
             <Link
               key={p.id}
-              href={`/hub/products/${p.id}`}
+              href={getStorefrontProductPath(p, branding?.store_path_base)}
               className="group block rounded-lg overflow-hidden border border-white/5 hover:border-white/15 transition-all duration-300"
               style={{ backgroundColor: '#111111' }}
             >
               <div className="aspect-square overflow-hidden bg-[#1A1A1A] relative">
-                {p.images && p.images[0]?.url ? (
+                {getStoreProductImage(p) ? (
                   <img
-                    src={p.images[0].url}
+                    src={getStoreProductImage(p)}
                     alt={p.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -148,7 +143,7 @@ export function TechHubTheme({ theme, storeName, products = [], branding }: Them
                 <h3 className="text-sm font-medium text-white line-clamp-1 mb-2">{p.title}</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold" style={{ color: accentColor }}>
-                    {p.price.toFixed(3)} TND
+                    {formatStorePrice(p)}
                   </span>
                   <span
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium px-2 py-1 rounded"
@@ -181,3 +176,4 @@ export function TechHubTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -16,7 +18,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/pd/auth/forgot-password', {
+      const res = await fetchWithCsrf('/api/pd/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

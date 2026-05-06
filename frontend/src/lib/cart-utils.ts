@@ -7,10 +7,14 @@ export interface CartItem {
   id: string;
   product_id: string;
   title: string;
+  slug?: string | null;
+  category?: string | null;
+  marketplace_category_slug?: string | null;
   price: number;
   quantity: number;
   store_id: string;
   store_name: string;
+  store_subdomain?: string | null;
   image_url: string | null;
   variant?: string;
 }
@@ -32,6 +36,10 @@ export function addItem(items: CartItem[], incoming: Omit<CartItem, 'id'>): Cart
 
 export function removeItem(items: CartItem[], id: string): CartItem[] {
   return items.filter((i) => i.id !== id);
+}
+
+export function removeItemsByStore(items: CartItem[], storeId: string): CartItem[] {
+  return items.filter((item) => item.store_id !== storeId);
 }
 
 export function updateItemQuantity(items: CartItem[], id: string, quantity: number): CartItem[] {

@@ -1,111 +1,1352 @@
-import { Plus, Search, Filter, MoreVertical, Edit, Trash2 } from 'lucide-react';
+'use client';
+
+import { fetchWithCsrf } from '@/lib/api';
+import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
+import { getHubProductHref } from '@/lib/product-links';
+import { Edit3, Eye, ImageIcon, Images, Loader2, Package, Plus, Search, Sparkles, Tags, Trash2, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+interface ProductImage {
+  id: string;
+  url: string;
+  alt_text?: string | null;
+  position: number;
+  is_thumbnail: boolean;
+}
+
+interface ProductAttribute {
+  name: string;
+  value: string;
+}
+
+interface Product {
+  id: string;
+  type?: string;
+  title: string;
+  slug?: string;
+  description?: string | null;
+  category?: string | null;
+  product_reference?: string | null;
+  marketplace_category_id?: string | null;
+  storefront_category_id?: string | null;
+  marketplace_category_name?: string | null;
+  marketplace_category_slug?: string | null;
+  storefront_category_name?: string | null;
+  store_subdomain?: string | null;
+  price: string | number;
+  status: string;
+  inventory_quantity: number;
+  thumbnail?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  tags?: string[];
+  attributes?: ProductAttribute[];
+  images?: ProductImage[];
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id?: string | null;
+  is_default?: boolean;
+  is_active?: boolean;
+  product_count?: number;
+}
+
+interface MediaItem {
+  url: string;
+  product_id: string;
+  product_title: string;
+  alt_text?: string | null;
+  is_thumbnail?: boolean;
+}
+
+interface ProductForm {
+  type: string;
+  title: string;
+  slug: string;
+  product_reference: string;
+  price: string;
+  marketplace_category_id: string;
+  storefront_category_id: string;
+  inventory_quantity: string;
+  description: string;
+  thumbnail: string;
+  gallery_images: string[];
+  seo_title: string;
+  seo_description: string;
+  tags: string;
+  attributes: ProductAttribute[];
+  status: string;
+}
+
+const emptyForm: ProductForm = {
+  type: 'physical',
+  title: '',
+  slug: '',
+  product_reference: '',
+  price: '',
+  marketplace_category_id: '',
+  storefront_category_id: '',
+  inventory_quantity: '0',
+  description: '',
+  thumbnail: '',
+  gallery_images: [],
+  seo_title: '',
+  seo_description: '',
+  tags: '',
+  attributes: [],
+  status: 'published',
+};
+
+function formatPrice(price: string | number) {
+  const amount = Number(price);
+  return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
+}
+
+
+function normalizePermalink(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function parseTags(value: string) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'published':
+      return 'bg-green-50 text-green-700 border-green-200';
+    case 'pending_approval':
+      return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+    case 'draft':
+      return 'bg-gray-50 text-gray-700 border-gray-200';
+    case 'rejected':
+      return 'bg-red-50 text-red-700 border-red-200';
+    case 'archived':
+      return 'bg-slate-50 text-slate-600 border-slate-200';
+    default:
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+  }
+}
+
+async function getErrorMessage(res: Response, fallback = 'Request failed') {
+  try {
+    const data = await res.json();
+    return data.error?.message || data.message || `${fallback} (${res.status})`;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+}
 
 export default function ProductsPage() {
-  const products = [
-    { id: 1, name: 'Premium Wireless Headphones', price: 'TND 149', status: 'Published', stock: 24, sales: 12 },
-    { id: 2, name: 'Ergonomic Office Chair', price: 'TND 399', status: 'Published', stock: 5, sales: 8 },
-    { id: 3, name: 'Smart Fitness Watch', price: 'TND 199', status: 'Pending', stock: 0, sales: 0 },
-    { id: 4, name: 'Mechanical Keyboard', price: 'TND 249', status: 'Published', stock: 12, sales: 34 },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [compressingImages, setCompressingImages] = useState(false);
+  const [generatingSeo, setGeneratingSeo] = useState(false);
+  const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
+  const [storefrontCategories, setStorefrontCategories] = useState<Category[]>([]);
+  const [newStorefrontCategory, setNewStorefrontCategory] = useState('');
+  const [newStorefrontParent, setNewStorefrontParent] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<'thumbnail' | 'gallery'>('thumbnail');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products?page=${page}&limit=20`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data.data || []);
+        setTotalPages(data.meta?.total_pages || 1);
+        setTotalProducts(data.meta?.total || 0);
+      } else {
+        setError(await getErrorMessage(res, 'Failed to load products'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const [marketplaceRes, storefrontRes] = await Promise.all([
+        fetchWithCsrf('/api/pd/categories', { credentials: 'include' }),
+        fetchWithCsrf('/api/pd/stores/me/categories', { credentials: 'include' }),
+      ]);
+      if (marketplaceRes.ok) {
+        const data = await marketplaceRes.json();
+        setMarketplaceCategories(data.data || []);
+      }
+      if (storefrontRes.ok) {
+        const data = await storefrontRes.json();
+        setStorefrontCategories(data.data || []);
+      }
+    } catch {
+      setError('Failed to load product categories');
+    }
+  }, []);
+
+  const fetchMediaItems = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/media?limit=100', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setMediaItems(data.data || []);
+      }
+    } catch {
+      // ignore media picker failures
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchMediaItems();
+  }, [fetchMediaItems]);
+
+  const visibleProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((product) =>
+      [product.title, product.category, product.marketplace_category_name, product.storefront_category_name, product.status]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [products, search]);
+
+  const publishedCount = products.filter((product) => product.status === 'published').length;
+  const draftCount = products.filter((product) => product.status === 'draft').length;
+  const lowStockCount = products.filter((product) => product.inventory_quantity < 10).length;
+  const inventoryCount = products.reduce((total, product) => total + (product.inventory_quantity || 0), 0);
+
+  const saveProductImage = async (productId: string, thumbnail: string) => {
+    if (!thumbnail.trim()) return;
+    const imageRes = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        url: thumbnail.trim(),
+        alt_text: form.title.trim(),
+        is_thumbnail: true,
+      }),
+    });
+    if (!imageRes.ok) {
+      throw new Error(await getErrorMessage(imageRes, 'Failed to save product image'));
+    }
+  };
+
+  const uploadProductFile = async (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Please upload a JPG, PNG, or WebP image.');
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Product image must be smaller than 10 MB.');
+    }
+
+    const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        filename: file.name,
+        content_type: file.type,
+        purpose: 'product_image',
+      }),
+    });
+
+    if (!presignRes.ok) {
+      throw new Error(await getErrorMessage(presignRes, 'Failed to prepare image upload'));
+    }
+
+    const data = await presignRes.json();
+    const uploadUrl = data.upload_url as string | undefined;
+    const publicUrl = data.public_url as string | undefined;
+
+    if (!uploadUrl || !publicUrl) {
+      throw new Error('Upload URL was not returned by the server.');
+    }
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error('Image upload failed.');
+    }
+
+    return publicUrl;
+  };
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+    setError('');
+    setSuccess('');
+    setUploadingImage(true);
+    try {
+      const publicUrl = await uploadProductFile(file);
+
+      setForm((current) => ({ ...current, thumbnail: publicUrl }));
+      await fetchMediaItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image upload failed');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleGalleryUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setError('');
+    setSuccess('');
+    setUploadingImage(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        urls.push(await uploadProductFile(file));
+      }
+      setForm((current) => ({
+        ...current,
+        gallery_images: [...current.gallery_images, ...urls],
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gallery upload failed');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const saveGalleryImages = async (productId: string) => {
+    const existingUrls = new Set((editingProduct?.images || []).filter((image) => !image.is_thumbnail).map((image) => image.url));
+    const newUrls = form.gallery_images.filter((url) => url.trim() && !existingUrls.has(url.trim()));
+    for (const url of newUrls) {
+      const imageRes = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          url: url.trim(),
+          alt_text: form.title.trim(),
+          is_thumbnail: false,
+        }),
+      });
+      if (!imageRes.ok) {
+        throw new Error(await getErrorMessage(imageRes, 'Failed to save gallery image'));
+      }
+    }
+  };
+
+  const deleteRemovedGalleryImages = async (productId: string) => {
+    const keptUrls = new Set(form.gallery_images.map((url) => url.trim()).filter(Boolean));
+    const removedImages = (editingProduct?.images || []).filter((image) => !image.is_thumbnail && !keptUrls.has(image.url));
+    for (const image of removedImages) {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images/${image.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, 'Failed to remove gallery image'));
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingProduct(null);
+    setShowCreate(false);
+    setSuccess('');
+  };
+
+  const openMediaPicker = (target: 'thumbnail' | 'gallery') => {
+    setMediaPickerTarget(target);
+    setShowMediaPicker(true);
+    void fetchMediaItems();
+  };
+
+  const selectMediaItem = (url: string) => {
+    setForm((current) => {
+      if (mediaPickerTarget === 'thumbnail') {
+        return { ...current, thumbnail: url };
+      }
+      return current.gallery_images.includes(url)
+        ? current
+        : { ...current, gallery_images: [...current.gallery_images, url] };
+    });
+    setShowMediaPicker(false);
+  };
+
+  const startEdit = (product: Product) => {
+    const thumbnailImage = product.images?.find((image) => image.is_thumbnail);
+    setEditingProduct(product);
+    setForm({
+      type: product.type || 'physical',
+      title: product.title,
+      slug: product.slug || '',
+      product_reference: product.product_reference || '',
+      price: String(product.price),
+      marketplace_category_id: product.marketplace_category_id || '',
+      storefront_category_id: product.storefront_category_id || '',
+      inventory_quantity: String(product.inventory_quantity ?? 0),
+      description: product.description || '',
+      thumbnail: thumbnailImage?.url || product.thumbnail || '',
+      gallery_images: (product.images || []).filter((image) => !image.is_thumbnail).map((image) => image.url),
+      seo_title: product.seo_title || '',
+      seo_description: product.seo_description || '',
+      tags: (product.tags || []).join(', '),
+      attributes: product.attributes || [],
+      status: product.status,
+    });
+    setShowCreate(true);
+  };
+
+  const updateAttribute = (index: number, patch: Partial<ProductAttribute>) => {
+    setForm((current) => ({
+      ...current,
+      attributes: current.attributes.map((attribute, attributeIndex) =>
+        attributeIndex === index ? { ...attribute, ...patch } : attribute,
+      ),
+    }));
+  };
+
+  const addAttribute = () => {
+    setForm((current) => ({
+      ...current,
+      attributes: [...current.attributes, { name: '', value: '' }],
+    }));
+  };
+
+  const removeAttribute = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      attributes: current.attributes.filter((_, attributeIndex) => attributeIndex !== index),
+    }));
+  };
+
+  const handleSave = async () => {
+    setError('');
+    setSuccess('');
+    const price = Number(form.price);
+    const inventory = Number(form.inventory_quantity || 0);
+
+    if (!form.title.trim()) {
+      setError('Product title is required');
+      return;
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      setError('Product price must be a valid positive number');
+      return;
+    }
+
+    const attributes = form.attributes
+      .map((attribute) => ({ name: attribute.name.trim(), value: attribute.value.trim() }))
+      .filter((attribute) => attribute.name || attribute.value);
+
+    if (attributes.some((attribute) => !attribute.name || !attribute.value)) {
+      setError('Each product attribute must include both a name and a value');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const isEditing = Boolean(editingProduct);
+      const res = await fetchWithCsrf(isEditing ? `/api/pd/stores/me/products/${editingProduct!.id}` : '/api/pd/stores/me/products', {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: form.type,
+          title: form.title.trim(),
+          slug: form.slug.trim(),
+          description: form.description.trim() || undefined,
+          product_reference: form.product_reference.trim() || null,
+          marketplace_category_id: form.marketplace_category_id || null,
+          storefront_category_id: form.storefront_category_id || null,
+          price,
+          inventory_quantity: Number.isFinite(inventory) && inventory >= 0 ? inventory : 0,
+          thumbnail: form.thumbnail.trim() || null,
+          seo_title: form.seo_title.trim() || null,
+          seo_description: form.seo_description.trim() || null,
+          tags: parseTags(form.tags),
+          attributes,
+          status: form.status,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const productId = data.product?.id || editingProduct?.id;
+        const thumbnailChanged = form.thumbnail.trim() !== (editingProduct?.thumbnail || '').trim();
+        if (productId && form.thumbnail.trim() && (!editingProduct || thumbnailChanged)) {
+          await saveProductImage(productId, form.thumbnail);
+        }
+        if (productId) {
+          await deleteRemovedGalleryImages(productId);
+          await saveGalleryImages(productId);
+        }
+        resetForm();
+        await fetchProducts();
+        setSuccess(isEditing ? 'Product updated successfully.' : 'Product created successfully.');
+      } else {
+        setError(await getErrorMessage(res, isEditing ? 'Failed to update product' : 'Failed to create product'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateStorefrontCategory = async () => {
+    if (!newStorefrontCategory.trim()) return;
+    setError('');
+    setSuccess('');
+    setCreatingCategory(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: newStorefrontCategory.trim(),
+          parent_id: newStorefrontParent || null,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, 'Failed to create storefront category'));
+      }
+      const data = await res.json();
+      setStorefrontCategories((current) => [...current, data.category]);
+      setForm((current) => ({ ...current, storefront_category_id: data.category.id }));
+      setNewStorefrontCategory('');
+      setNewStorefrontParent('');
+      setSuccess('Storefront category created and selected.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create storefront category');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleCompressImages = async () => {
+    const urls = [form.thumbnail, ...form.gallery_images].map((url) => url.trim()).filter(Boolean);
+    if (!urls.length) {
+      setError('Upload at least one image before requesting compression.');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setCompressingImages(true);
+    try {
+      for (const url of urls) {
+        const res = await fetchWithCsrf('/api/pd/ai/compress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            image_url: url,
+            product_id: editingProduct?.id,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(await getErrorMessage(res, 'Failed to queue image compression'));
+        }
+      }
+      setSuccess('Image compression queued. Check the AI dashboard/history for compressed outputs.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to queue image compression');
+    } finally {
+      setCompressingImages(false);
+    }
+  };
+
+  const handleGenerateSeo = async () => {
+    setError('');
+    setSuccess('');
+    if (editingProduct?.id) {
+      setGeneratingSeo(true);
+      try {
+        const res = await fetchWithCsrf('/api/pd/ai/seo-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ product_id: editingProduct.id, language: 'fr' }),
+        });
+        if (!res.ok) {
+          throw new Error(await getErrorMessage(res, 'Failed to queue SEO generation'));
+        }
+        setSuccess('SEO generation queued. The product SEO fields will update when the AI job completes.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to queue SEO generation');
+      } finally {
+        setGeneratingSeo(false);
+      }
+      return;
+    }
+
+    const title = form.title.trim();
+    if (!title) {
+      setError('Enter a product title before generating SEO fields.');
+      return;
+    }
+    const marketCategory = marketplaceCategories.find((category) => category.id === form.marketplace_category_id)?.name;
+    const seoTitle = `${title}${marketCategory ? ` | ${marketCategory}` : ''}`.slice(0, 70);
+    const seoDescription = (form.description.trim() || `Découvrez ${title} sur PandaMarket.`).slice(0, 160);
+    setForm((current) => ({
+      ...current,
+      seo_title: current.seo_title || seoTitle,
+      seo_description: current.seo_description || seoDescription,
+    }));
+    setSuccess('SEO fields generated locally. Save the product to keep them.');
+  };
+
+  const handleDelete = async (productId: string) => {
+    if (!window.confirm('Delete this product?')) return;
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setProducts((current) => current.filter((product) => product.id !== productId));
+        setTotalProducts((current) => Math.max(0, current - 1));
+      } else {
+        setError(await getErrorMessage(res, 'Failed to delete product'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    }
+  };
+
+  const handleStatusChange = async (product: Product, status: string) => {
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProducts((current) =>
+          current.map((item) => (item.id === product.id ? { ...item, ...data.product } : item)),
+        );
+        await fetchProducts();
+      } else {
+        setError(await getErrorMessage(res, 'Failed to update product status'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your product catalog and inventory.</p>
+    <div className="space-y-8">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-slate-950 via-slate-900 to-[#16C784] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10">
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#16C784]/30 blur-3xl" />
+        <div className="absolute -bottom-24 left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white/80">
+              <Package className="w-4 h-4" />
+              Product studio
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Products</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/75 sm:text-base">
+              Build your catalog with Hub categories, storefront taxonomy, image gallery, SEO tools, and media reuse.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 xl:min-w-[560px]">
+            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+              <p className="text-2xl font-black">{totalProducts}</p>
+              <p className="text-xs text-white/70">Products</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+              <p className="text-2xl font-black">{publishedCount}</p>
+              <p className="text-xs text-white/70">Published</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+              <p className="text-2xl font-black">{draftCount}</p>
+              <p className="text-xs text-white/70">Drafts</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+              <p className="text-2xl font-black">{lowStockCount}</p>
+              <p className="text-xs text-white/70">Low stock</p>
+            </div>
+          </div>
         </div>
-        <button className="flex items-center px-4 py-2 bg-[#16C784] text-white font-medium rounded-lg shadow-md hover:bg-[#14b876] hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
-          <Plus className="w-5 h-5 mr-2" />
-          Add Product
+        <button
+          type="button"
+          onClick={() => (showCreate ? resetForm() : setShowCreate(true))}
+          className="relative mt-6 inline-flex items-center px-5 py-3 bg-white text-slate-950 font-bold rounded-2xl shadow-lg shadow-black/10 hover:bg-emerald-50 hover:-translate-y-0.5 transition-all"
+        >
+          {showCreate ? <X className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+          {showCreate ? 'Cancel' : 'Add Product'}
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-100">
+          {success}
+        </div>
+      )}
+
+      <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 text-sm text-amber-800 shadow-sm">
+        Only products with status <strong>published</strong> appear in the Hub and public storefront. If your store is not verified, publishing sends the product to <strong>pending approval</strong> until an admin approves it. Current stock across this page: <strong>{inventoryCount}</strong> units.
+      </div>
+
+      {showCreate && (
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-emerald-50/50 px-6 py-5">
+            <div>
+              <h2 className="text-xl font-black text-gray-900">
+                {editingProduct ? 'Edit product' : 'New product'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">Complete each block to publish a clean product page in the Hub and your storefront.</p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-gray-600 border border-gray-200">
+              {editingProduct ? 'Editing existing item' : 'Drafting new item'}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Product title</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                placeholder="Example: Handmade leather bag"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Product permalink</label>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={(event) => setForm((current) => ({ ...current, slug: normalizePermalink(event.target.value) }))}
+                placeholder={normalizePermalink(form.title) || 'auto-generated-from-title'}
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+              />
+              <p className="mt-1 text-xs text-gray-500">Leave empty to generate it from the product title. If it already exists, PandaMarket adds a number.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Price</label>
+              <input
+                type="number"
+                value={form.price}
+                min="0"
+                step="0.001"
+                onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
+                placeholder="0.000"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Product type</label>
+              <select
+                value={form.type}
+                onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+              >
+                <option value="physical">Physical</option>
+                <option value="digital">Digital</option>
+                <option value="serial">Serial/license</option>
+                <option value="service">Service</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Product reference</label>
+              <input
+                type="text"
+                value={form.product_reference}
+                onChange={(event) => setForm((current) => ({ ...current, product_reference: event.target.value }))}
+                placeholder="SKU, supplier ref, serial family..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Marketplace category</label>
+              <select
+                value={form.marketplace_category_id}
+                onChange={(event) => setForm((current) => ({ ...current, marketplace_category_id: event.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+              >
+                <option value="">Non categorized products</option>
+                {marketplaceCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}{category.is_default ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Used by the PandaMarket Hub. Managed by the super admin.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Inventory</label>
+              <input
+                type="number"
+                value={form.inventory_quantity}
+                min="0"
+                onChange={(event) => setForm((current) => ({ ...current, inventory_quantity: event.target.value }))}
+                placeholder="Inventory"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+              />
+            </div>
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Tags className="w-4 h-4 text-[#16C784]" />
+                <h3 className="font-bold text-gray-900">Category mapping</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Storefront category</label>
+                  <select
+                    value={form.storefront_category_id}
+                    onChange={(event) => setForm((current) => ({ ...current, storefront_category_id: event.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                  >
+                    <option value="">Non categorized products</option>
+                    {storefrontCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.parent_id ? '— ' : ''}{category.name}{category.is_default ? ' (default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Used inside your storefront. If empty, the product goes to your default category.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Add storefront category/subcategory</label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newStorefrontCategory}
+                      onChange={(event) => setNewStorefrontCategory(event.target.value)}
+                      placeholder="New category name"
+                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    />
+                    <select
+                      value={newStorefrontParent}
+                      onChange={(event) => setNewStorefrontParent(event.target.value)}
+                      className="px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    >
+                      <option value="">Top level</option>
+                      {storefrontCategories.filter((category) => !category.parent_id).map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleCreateStorefrontCategory}
+                      disabled={creatingCategory || !newStorefrontCategory.trim()}
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {creatingCategory ? 'Adding...' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+              >
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="w-full lg:w-40">
+                  <div className="aspect-square rounded-2xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center shadow-inner">
+                    {form.thumbnail ? (
+                      <img src={form.thumbnail} alt="Product preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-10 h-10 text-gray-300" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">Product picture</label>
+                    <p className="text-xs text-gray-500">Upload a JPG, PNG, or WebP image, or paste an existing image URL.</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+                      {uploadingImage ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2 text-[#16C784]" />
+                      )}
+                      {uploadingImage ? 'Uploading...' : 'Upload image'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploadingImage}
+                        onChange={(event) => handleImageUpload(event.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => openMediaPicker('thumbnail')}
+                      className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                      Choose from library
+                    </button>
+                    {form.thumbnail && (
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, thumbnail: '' }))}
+                        className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={form.thumbnail}
+                    onChange={(event) => setForm((current) => ({ ...current, thumbnail: event.target.value }))}
+                    placeholder="Or paste a thumbnail image URL"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Gallery images</label>
+                  <p className="text-xs text-gray-500">Add extra product images for the product gallery.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                    Upload gallery
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      disabled={uploadingImage}
+                      onChange={(event) => handleGalleryUpload(event.target.files)}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => openMediaPicker('gallery')}
+                    className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                    Choose existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCompressImages}
+                    disabled={compressingImages || uploadingImage}
+                    className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {compressingImages ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#16C784]" />}
+                    Compress images
+                  </button>
+                </div>
+              </div>
+              {form.gallery_images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {form.gallery_images.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative aspect-square rounded-2xl border border-gray-200 bg-white overflow-hidden group shadow-sm">
+                      <img src={url} alt={`Gallery ${index + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({
+                          ...current,
+                          gallery_images: current.gallery_images.filter((_, imageIndex) => imageIndex !== index),
+                        }))}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-white/90 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
+                  No gallery images yet.
+                </div>
+              )}
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Product description</label>
+              <ProductDescriptionEditor
+                value={form.description}
+                onChange={(description) => setForm((current) => ({ ...current, description }))}
+                placeholder="Description"
+              />
+            </div>
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Tags className="w-4 h-4 text-[#16C784]" />
+                <h3 className="font-bold text-gray-900">Product metadata</h3>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1">Tags</label>
+                <input
+                  type="text"
+                  value={form.tags}
+                  onChange={(event) => setForm((current) => ({ ...current, tags: event.target.value }))}
+                  placeholder="Comma separated tags: handmade, leather, gift"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                />
+                <p className="mt-1 text-xs text-gray-500">Tags improve Hub search and filtering.</p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="block text-sm font-semibold text-gray-800">Attributes</label>
+                  <button
+                    type="button"
+                    onClick={addAttribute}
+                    className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5 text-[#16C784]" />
+                    Add attribute
+                  </button>
+                </div>
+                {form.attributes.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-500">
+                    No custom attributes yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {form.attributes.map((attribute, index) => (
+                      <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+                        <input
+                          type="text"
+                          value={attribute.name}
+                          onChange={(event) => updateAttribute(index, { name: event.target.value })}
+                          placeholder="Name, e.g. Material"
+                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                        />
+                        <input
+                          type="text"
+                          value={attribute.value}
+                          onChange={(event) => updateAttribute(index, { value: event.target.value })}
+                          placeholder="Value, e.g. Genuine leather"
+                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAttribute(index)}
+                          className="inline-flex items-center justify-center rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-500 hover:border-red-200 hover:text-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">SEO</label>
+                  <p className="text-xs text-gray-500">Generate or edit SEO metadata for marketplace and storefront pages.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateSeo}
+                  disabled={generatingSeo}
+                  className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {generatingSeo ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#16C784]" />}
+                  SEO Automatique
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">SEO title</label>
+                  <input
+                    type="text"
+                    value={form.seo_title}
+                    maxLength={200}
+                    onChange={(event) => setForm((current) => ({ ...current, seo_title: event.target.value }))}
+                    placeholder="SEO title"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">SEO description</label>
+                  <input
+                    type="text"
+                    value={form.seo_description}
+                    maxLength={300}
+                    onChange={(event) => setForm((current) => ({ ...current, seo_description: event.target.value }))}
+                    placeholder="SEO description"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 bg-gray-50/70 px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-gray-500">Images, category mapping, and SEO metadata will be saved together.</p>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={creating || uploadingImage}
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#16C784] text-white font-bold rounded-2xl hover:bg-[#14b876] shadow-lg shadow-[#16C784]/20 transition-all disabled:opacity-50 disabled:shadow-none"
+            >
+              {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {uploadingImage ? 'Uploading image...' : creating ? 'Saving...' : editingProduct ? 'Save changes' : 'Create product'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-gray-100 flex flex-col lg:flex-row gap-4 justify-between lg:items-center bg-gray-50/70">
           <div className="relative w-full sm:w-96">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search products..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#16C784]/15 focus:border-[#16C784] outline-none transition-all bg-white"
             />
           </div>
-          <button className="flex items-center px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </button>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
-                <th className="px-6 py-4 font-semibold">Product Name</th>
-                <th className="px-6 py-4 font-semibold">Price</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Inventory</th>
-                <th className="px-6 py-4 font-semibold">Sales</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-lg"></div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 group-hover:text-[#16C784] transition-colors">{product.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.price}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      product.status === 'Published' 
-                        ? 'bg-green-50 text-green-700 border-green-200' 
-                        : 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                    }`}>
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <span className={product.stock < 10 ? 'text-red-600 font-medium' : ''}>
-                      {product.stock} in stock
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{product.sales}</td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
+              <span className="ml-2 text-gray-500">Loading products...</span>
+            </div>
+          ) : visibleProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Package className="w-10 h-10 text-gray-300 mb-3" />
+              <p className="text-gray-500">No products found for this store.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                  <th className="px-6 py-4 font-semibold">Product Name</th>
+                  <th className="px-6 py-4 font-semibold">Price</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold">Inventory</th>
+                  <th className="px-6 py-4 font-semibold">Categories</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {visibleProducts.map((product) => (
+                  <tr key={product.id} className="hover:bg-emerald-50/30 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-14 w-14 flex-shrink-0 bg-gray-100 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-200">
+                          {product.thumbnail ? (
+                            <img src={product.thumbnail} alt={product.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <Package className="w-5 h-5 text-gray-300" />
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 group-hover:text-[#16C784] transition-colors">
+                            {product.title}
+                          </div>
+                          <div className="text-xs text-gray-400">{product.id}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{formatPrice(product.price)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(product.status)}`}>
+                        {product.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <span className={product.inventory_quantity < 10 ? 'text-red-600 font-medium' : ''}>
+                        {product.inventory_quantity} in stock
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="space-y-1">
+                        <div>
+                          <span className="text-xs font-semibold text-gray-400 uppercase">Hub</span>{' '}
+                          <span>{product.marketplace_category_name || product.category || 'Non categorized products'}</span>
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-gray-400 uppercase">Store</span>{' '}
+                          <span>{product.storefront_category_name || 'Non categorized products'}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-1">
+                        <a
+                          href={getHubProductHref(product)}
+                          target="_blank"
+                          className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </a>
+                        <select
+                          value={product.status}
+                          onChange={(event) => handleStatusChange(product, event.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600"
+                        >
+                          <option value="published">Published</option>
+                          <option value="draft">Draft</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(product)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(product.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-        
-        {/* Pagination */}
+
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <span className="text-sm text-gray-500">Showing 1 to 4 of 4 products</span>
+          <span className="text-sm text-gray-500">
+            Page {page} of {totalPages} · {totalProducts} products
+          </span>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 disabled:opacity-50">Previous</button>
-            <button className="px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 disabled:opacity-50">Next</button>
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page <= 1 || loading}
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-white disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              disabled={page >= totalPages || loading}
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-white disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
+
+      {showMediaPicker && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Media library</h2>
+                <p className="text-sm text-gray-500">Choose an already uploaded product image.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMediaPicker(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[65vh]">
+              {mediaItems.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {mediaItems.map((item) => (
+                    <button
+                      type="button"
+                      key={`${item.url}-${item.product_id}`}
+                      onClick={() => selectMediaItem(item.url)}
+                      className="text-left rounded-2xl border border-gray-200 overflow-hidden bg-white hover:border-[#16C784] hover:shadow-md transition-all"
+                    >
+                      <div className="aspect-square bg-gray-100">
+                        <img src={item.url} alt={item.alt_text || item.product_title} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-medium text-gray-700 truncate">{item.product_title}</p>
+                        <p className="text-[10px] text-gray-400">{item.is_thumbnail ? 'Thumbnail' : 'Gallery image'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-gray-500">
+                  <Images className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                  <p>No uploaded product images yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

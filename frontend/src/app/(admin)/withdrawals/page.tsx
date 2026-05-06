@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Wallet,
@@ -37,7 +38,7 @@ export default function AdminWithdrawalsPage() {
   const fetchWithdrawals = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/pd/admin/withdrawals?page=${page}&limit=20`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/withdrawals?page=${page}&limit=20`, {
         credentials: 'include',
       });
       if (res.ok) {

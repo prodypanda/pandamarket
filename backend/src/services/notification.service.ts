@@ -109,6 +109,16 @@ export class NotificationService {
       [userId],
     );
   }
+
+  async delete(notifId: string, userId: string): Promise<void> {
+    const { rowCount } = await query(
+      `DELETE FROM pd_notifications WHERE id = $1 AND user_id = $2`,
+      [notifId, userId],
+    );
+    if (!rowCount) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Notification not found');
+    }
+  }
 }
 
 export const notificationService = new NotificationService();

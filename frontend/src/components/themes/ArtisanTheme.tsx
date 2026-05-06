@@ -2,8 +2,9 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, MapPin, Star } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /**
  * Artisan Theme — Handmade goods, crafts, organic products.
@@ -11,7 +12,8 @@ import { ThemeLayout } from './ThemeLayout';
  * hand-drawn feel with rounded cards and textured accents.
  */
 export function ArtisanTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const earthBrown = branding?.primary_color || '#5C4033';
+  const tc = useThemeCustomization(theme, branding);
+  const earthBrown = tc.colors.primary;
   const displayProducts = products.length > 0
     ? products
     : [
@@ -24,13 +26,13 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
       ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFF8F0', color: '#3E2723' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
       {/* Header */}
-      <header className="border-b border-[#5C4033]/10">
+      <header className="border-b" style={{ backgroundColor: tc.colors.headerBg, borderColor: `${earthBrown}20` }}>
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href={branding?.store_path_base || '/'} className="flex items-center gap-3">
             {branding?.logo_url ? (
               <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
             ) : (
@@ -44,23 +46,15 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
                 <h1 className="text-xl font-semibold font-serif">{storeName}</h1>
               </div>
             )}
-          </div>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <a href="#" className="hover:opacity-70 transition-opacity">Boutique</a>
-            <a href="#" className="hover:opacity-70 transition-opacity">Notre Histoire</a>
-            <a href="#" className="hover:opacity-70 transition-opacity">Contact</a>
+            <a href="#products" className="hover:opacity-70 transition-opacity">Boutique</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">Notre Histoire</Link>
+            <Link href={`${branding?.store_path_base || ''}/pages/contact`} className="hover:opacity-70 transition-opacity">Contact</Link>
           </nav>
 
-          <button className="relative hover:opacity-70 transition-opacity">
-            <ShoppingBag className="w-5 h-5" />
-            <span
-              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] flex items-center justify-center text-white"
-              style={{ backgroundColor: earthBrown }}
-            >
-              0
-            </span>
-          </button>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={earthBrown} iconColor={tc.colors.text} className="inline-flex items-center hover:opacity-70 transition-opacity" />
         </div>
       </header>
 
@@ -123,13 +117,13 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
           {displayProducts.map((p) => (
             <Link
               key={p.id}
-              href={`/hub/products/${p.id}`}
+              href={getStorefrontProductPath(p, branding?.store_path_base)}
               className="group bg-white rounded-xl overflow-hidden border border-[#5C4033]/8 hover:shadow-md transition-all duration-300 block"
             >
               <div className="aspect-square overflow-hidden bg-[#F5EDE3]">
-                {p.images && p.images[0]?.url ? (
+                {getStoreProductImage(p) ? (
                   <img
-                    src={p.images[0].url}
+                    src={getStoreProductImage(p)}
                     alt={p.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -147,7 +141,7 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
                 )}
                 <h3 className="text-sm font-medium line-clamp-1">{p.title}</h3>
                 <p className="text-sm font-semibold mt-1.5" style={{ color: earthBrown }}>
-                  {p.price.toFixed(3)} TND
+                  {formatStorePrice(p)}
                 </p>
               </div>
             </Link>
@@ -173,3 +167,4 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

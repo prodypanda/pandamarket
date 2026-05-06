@@ -1,8 +1,11 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { User, Mail, Phone, MapPin, Save, Loader2, Shield } from 'lucide-react';
-import Link from 'next/link';
+import { HubNavbar } from '../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../components/hub/HubFooter';
+import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
 interface UserProfile {
   id: string;
@@ -32,7 +35,7 @@ interface Address {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -56,12 +59,15 @@ export default function ProfilePage() {
     phone: '',
   });
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const { settings, classes } = useMarketplaceTheme();
+  const inputClass = `w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 ${classes.focus} outline-none`;
+  const compactInputClass = `px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 ${classes.focus} outline-none text-sm`;
+  const cardClass = `${classes.panel} p-6`;
 
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-        const res = await fetch(`${backendUrl}/api/pd/auth/me`, { credentials: 'include' });
+        const res = await fetch('/api/pd/auth/me', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setProfile(data.data);
@@ -84,8 +90,7 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage('');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      const res = await fetch(`${backendUrl}/api/pd/auth/me`, {
+      const res = await fetchWithCsrf('/api/pd/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -105,25 +110,38 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
+      <div className={`min-h-screen ${classes.pageSoft}`}>
+        <HubNavbar
+          marketplaceName={settings.marketplace_name}
+          marketplaceLogoUrl={settings.marketplace_logo_url}
+          marketplaceTheme={settings.marketplace_theme}
+        />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className={`w-6 h-6 ${classes.primaryText} animate-spin`} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <User className="w-6 h-6 text-[#16C784]" />
-          Mon Profil
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">Gérez vos informations personnelles et adresses.</p>
-      </div>
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={settings.marketplace_name}
+        marketplaceLogoUrl={settings.marketplace_logo_url}
+        marketplaceTheme={settings.marketplace_theme}
+      />
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className={`mb-8 rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
+          <h1 className="text-2xl font-black flex items-center gap-2">
+            <User className="w-6 h-6" />
+            Mon Profil
+          </h1>
+          <p className="text-white/75 text-sm mt-1">Gérez vos informations personnelles et adresses.</p>
+        </div>
 
       {/* Profile Form */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+      <div className={`${cardClass} mb-6`}>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informations personnelles</h2>
 
         <div className="space-y-4">
@@ -134,7 +152,7 @@ export default function ProfilePage() {
                 type="text"
                 value={form.first_name}
                 onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none"
+                className={inputClass}
                 placeholder="Votre prénom"
               />
             </div>
@@ -144,7 +162,7 @@ export default function ProfilePage() {
                 type="text"
                 value={form.last_name}
                 onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none"
+                className={inputClass}
                 placeholder="Votre nom"
               />
             </div>
@@ -163,7 +181,7 @@ export default function ProfilePage() {
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
               />
               {profile?.email_verified ? (
-                <span className="inline-flex items-center px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${classes.primarySoft}`}>
                   <Shield className="w-3 h-3 mr-1" /> Vérifié
                 </span>
               ) : (
@@ -183,13 +201,13 @@ export default function ProfilePage() {
               type="tel"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none"
+              className={inputClass}
               placeholder="+216 XX XXX XXX"
             />
           </div>
 
           {message && (
-            <p className={`text-sm ${message.includes('succès') ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-sm ${message.includes('succès') ? classes.primaryText : 'text-red-600'}`}>
               {message}
             </p>
           )}
@@ -197,7 +215,7 @@ export default function ProfilePage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center px-4 py-2 bg-[#16C784] text-white rounded-lg hover:bg-[#14b576] transition-colors text-sm font-medium disabled:opacity-50"
+            className={`inline-flex items-center px-4 py-2 rounded-full transition-colors text-sm font-black disabled:opacity-50 ${classes.primary}`}
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Enregistrer
@@ -206,60 +224,60 @@ export default function ProfilePage() {
       </div>
 
       {/* Addresses Section */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <div className={cardClass}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-[#16C784]" />
+            <MapPin className={`w-5 h-5 ${classes.primaryText}`} />
             Mes Adresses
           </h2>
           <button
             onClick={() => setShowAddressForm(!showAddressForm)}
-            className="text-sm text-[#16C784] hover:text-[#14b576] font-medium"
+            className={`text-sm font-bold transition-colors ${classes.primaryText} ${classes.primaryTextHover}`}
           >
             {showAddressForm ? 'Annuler' : '+ Ajouter une adresse'}
           </button>
         </div>
 
         {showAddressForm && (
-          <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50/50">
+          <div className={`rounded-2xl p-4 mb-4 ${classes.subtlePanel}`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
                 type="text"
                 placeholder="Label (ex: Maison, Bureau)"
                 value={newAddress.label}
                 onChange={(e) => setNewAddress({ ...newAddress, label: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none text-sm"
+                className={compactInputClass}
               />
               <input
                 type="text"
                 placeholder="Téléphone"
                 value={newAddress.phone}
                 onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none text-sm"
+                className={compactInputClass}
               />
               <input
                 type="text"
                 placeholder="Adresse ligne 1"
                 value={newAddress.address_line_1}
                 onChange={(e) => setNewAddress({ ...newAddress, address_line_1: e.target.value })}
-                className="sm:col-span-2 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none text-sm"
+                className={`sm:col-span-2 ${compactInputClass}`}
               />
               <input
                 type="text"
                 placeholder="Ville"
                 value={newAddress.city}
                 onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none text-sm"
+                className={compactInputClass}
               />
               <input
                 type="text"
                 placeholder="Code postal"
                 value={newAddress.postal_code}
                 onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none text-sm"
+                className={compactInputClass}
               />
             </div>
-            <button className="mt-3 px-4 py-2 bg-[#16C784] text-white rounded-lg hover:bg-[#14b576] transition-colors text-sm font-medium">
+            <button className={`mt-3 px-4 py-2 rounded-full transition-colors text-sm font-black ${classes.primary}`}>
               Ajouter l&apos;adresse
             </button>
           </div>
@@ -277,7 +295,7 @@ export default function ProfilePage() {
               <div>
                 <span className="text-sm font-medium text-gray-900">{addr.label}</span>
                 {addr.is_default && (
-                  <span className="ml-2 text-xs bg-[#16C784]/10 text-[#16C784] px-2 py-0.5 rounded-full">
+                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${classes.primarySoft}`}>
                     Par défaut
                   </span>
                 )}
@@ -294,6 +312,8 @@ export default function ProfilePage() {
       <div className="mt-6 text-center text-sm text-gray-400">
         Membre depuis {profile ? new Date(profile.created_at).toLocaleDateString('fr-TN', { month: 'long', year: 'numeric' }) : '—'}
       </div>
+      </main>
+      <HubFooter {...settings} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Wallet,
@@ -45,32 +46,46 @@ export default function WalletPage() {
   const [withdrawSuccess, setWithdrawSuccess] = useState('');
   const [payoutMode, setPayoutMode] = useState<'manual' | 'automatic'>('manual');
   const [savingMode, setSavingMode] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const getErrorMessage = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data.error?.message || data.message || `${fallback} (${res.status})`;
+    } catch {
+      return `${fallback} (${res.status})`;
+    }
+  };
 
   const fetchWallet = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/wallet/me', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const w = data.wallet;
         setWallet(w);
         setPayoutMode(w.payout_mode);
+      } else {
+        setLoadError(await getErrorMessage(res, 'Erreur lors du chargement du wallet'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   }, []);
 
   const fetchTransactions = useCallback(async () => {
     try {
-      const res = await fetch(`/api/pd/wallet/me/transactions?page=${txPage}&limit=20`, {
+      const res = await fetchWithCsrf(`/api/pd/wallet/me/transactions?page=${txPage}&limit=20`, {
         credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.data || []);
+      } else {
+        setLoadError(await getErrorMessage(res, 'Erreur lors du chargement des transactions'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   }, [txPage]);
 
@@ -88,7 +103,7 @@ export default function WalletPage() {
     }
     setWithdrawing(true);
     try {
-      const res = await fetch('/api/pd/wallet/me/withdraw', {
+      const res = await fetchWithCsrf('/api/pd/wallet/me/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -112,9 +127,11 @@ export default function WalletPage() {
   };
 
   const handlePayoutModeChange = async (mode: 'manual' | 'automatic') => {
+    setWithdrawError('');
+    setWithdrawSuccess('');
     setSavingMode(true);
     try {
-      const res = await fetch('/api/pd/wallet/me/payout-mode', {
+      const res = await fetchWithCsrf('/api/pd/wallet/me/payout-mode', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -122,9 +139,12 @@ export default function WalletPage() {
       });
       if (res.ok) {
         setPayoutMode(mode);
+        setWithdrawSuccess('Mode de versement mis à jour');
+      } else {
+        setWithdrawError(await getErrorMessage(res, 'Erreur lors du changement de mode'));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setWithdrawError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setSavingMode(false);
     }
@@ -149,6 +169,12 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Mon Wallet</h1>
+
+      {loadError && (
+        <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
+          {loadError}
+        </div>
+      )}
 
       {/* Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

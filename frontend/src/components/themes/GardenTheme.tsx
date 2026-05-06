@@ -2,12 +2,14 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Leaf } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /** Garden Theme — Organic/natural products, greens and earth tones. */
 export function GardenTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const green = branding?.primary_color || '#3A7D44';
+  const tc = useThemeCustomization(theme, branding);
+  const green = tc.colors.primary;
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Organic Face Cream', price: 65, images: [], category: 'Skincare' },
     { id: '2', title: 'Herbal Tea Collection', price: 35, images: [], category: 'Wellness' },
@@ -17,19 +19,21 @@ export function GardenTheme({ theme, storeName, products = [], branding }: Theme
     { id: '6', title: 'Reusable Produce Bags', price: 25, images: [], category: 'Eco' },
   ];
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F5F9F0', color: '#2D3B2D' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
       <header className="border-b" style={{ borderColor: `${green}20` }}>
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
-            <div className="flex items-center gap-2"><Leaf className="w-5 h-5" style={{ color: green }} /><h1 className="text-2xl font-semibold">{storeName}</h1></div>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+              <div className="flex items-center gap-2"><Leaf className="w-5 h-5" style={{ color: green }} /><h1 className="text-2xl font-semibold">{storeName}</h1></div>
+            )}
+          </Link>
           <nav className="hidden md:flex gap-8 text-sm font-medium text-green-600/70">
-            <a href="#" className="hover:text-green-800 transition-colors">Shop</a>
-            <a href="#" className="hover:text-green-800 transition-colors">Our Story</a>
-            <a href="#" className="hover:text-green-800 transition-colors">Sustainability</a>
+            <a href="#products" className="hover:text-green-800 transition-colors">Shop</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:text-green-800 transition-colors">Our Story</Link>
+            <Link href={`${branding?.store_path_base || ''}/pages/sustainability`} className="hover:text-green-800 transition-colors">Sustainability</Link>
           </nav>
-          <Link href="/hub/cart"><ShoppingBag className="w-5 h-5" style={{ color: green }} /></Link>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={green} iconColor={green} className="inline-flex items-center hover:opacity-70 transition-opacity" />
         </div>
       </header>
       <section className="py-20 text-center" style={{ background: `linear-gradient(180deg, #E8F5E0 0%, transparent 100%)` }}>
@@ -41,16 +45,16 @@ export function GardenTheme({ theme, storeName, products = [], branding }: Theme
       <main id="products" className="max-w-7xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           {dp.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all border" style={{ borderColor: `${green}10` }}>
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all border" style={{ borderColor: `${green}10` }}>
               <div className="aspect-square overflow-hidden" style={{ backgroundColor: '#EDF5E5' }}>
-                {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                   <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10" style={{ color: `${green}20` }} /></div>
                 )}
               </div>
               <div className="p-4">
                 {p.category && <p className="text-[10px] tracking-widest uppercase font-semibold mb-1" style={{ color: green }}>{p.category}</p>}
                 <h3 className="text-sm font-semibold">{p.title}</h3>
-                <p className="text-sm font-bold mt-1" style={{ color: green }}>{p.price.toFixed(3)} TND</p>
+                <p className="text-sm font-bold mt-1" style={{ color: green }}>{formatStorePrice(p)}</p>
               </div>
             </Link>
           ))}
@@ -62,3 +66,4 @@ export function GardenTheme({ theme, storeName, products = [], branding }: Theme
     </div>
   );
 }
+

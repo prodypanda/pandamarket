@@ -2,8 +2,9 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 export function MinimalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
@@ -31,20 +32,27 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
         style={{ backgroundColor: tc.colors.headerBg, borderColor: `${tc.colors.text}10` }}
       >
         <div className={tc.layout.container + ' w-full flex justify-between items-center'}>
-          {branding?.logo_url ? (
-            <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
-          ) : (
-            <h1 className={`text-3xl ${theme.typography.headingStyle}`} style={{ color: tc.colors.text }}>
-              {storeName}
-            </h1>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? (
+              <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+            ) : (
+              <h1 className={`text-3xl ${theme.typography.headingStyle}`} style={{ color: tc.colors.text }}>
+                {storeName}
+              </h1>
+            )}
+          </Link>
           <nav className="flex space-x-8 text-sm font-medium tracking-wide">
-            <a href="#" className="hover:opacity-70 transition-opacity" style={{ color: tc.colors.text }}>Shop</a>
-            <a href="#" className="hover:opacity-70 transition-opacity" style={{ color: tc.colors.text }}>About</a>
-            <a href="#" className="flex items-center hover:opacity-70 transition-opacity" style={{ color: tc.colors.text }}>
-              <ShoppingBag className="w-4 h-4 mr-2" />
-              Cart (0)
-            </a>
+            <a href="#products" className="hover:opacity-70 transition-opacity" style={{ color: tc.colors.text }}>Shop</a>
+            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity" style={{ color: tc.colors.text }}>About</Link>
+            <StorefrontThemeCartLink
+              storeId={branding?.store_id}
+              storeHost={branding?.store_host}
+              storePathBase={branding?.store_path_base}
+              primaryColor={tc.colors.primary}
+              iconColor={tc.colors.text}
+              className="inline-flex items-center gap-2 transition-opacity hover:opacity-70"
+              label="Cart"
+            />
           </nav>
         </div>
       </header>
@@ -100,10 +108,10 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
         >
           <div className={`grid ${tc.gridClasses}`}>
             {displayProducts.map((p) => (
-              <Link key={p.id} href={`/hub/products/${p.id}`} className="group cursor-pointer block">
+              <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group cursor-pointer block">
                 <div className="aspect-[3/4] mb-4 overflow-hidden" style={{ backgroundColor: `${tc.colors.text}08` }}>
-                  {p.images && p.images[0]?.url ? (
-                    <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  {getStoreProductImage(p) ? (
+                    <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full group-hover:scale-105 transition-transform duration-500 flex items-center justify-center" style={{ color: `${tc.colors.text}30` }}>
                       <ShoppingBag className="w-8 h-8" />
@@ -111,7 +119,7 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
                   )}
                 </div>
                 <h3 className="text-sm font-medium" style={{ color: tc.colors.text }}>{p.title}</h3>
-                <p className="text-sm mt-1" style={{ color: tc.colors.accent }}>{p.price.toFixed(3)} TND</p>
+                <p className="text-sm mt-1" style={{ color: tc.colors.accent }}>{formatStorePrice(p)}</p>
               </Link>
             ))}
           </div>
@@ -131,3 +139,4 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

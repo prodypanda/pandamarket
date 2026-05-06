@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authService } from '../services/auth.service';
 import { asyncHandler, validate, authRateLimit, requireAuth } from '../middlewares';
 import { incrementBusinessMetric } from '../utils/metrics';
+import { query } from '../db/pool';
 
 const router = Router();
 
@@ -26,6 +27,12 @@ const loginSchema = z.object({
 
 const refreshSchema = z.object({
   refresh_token: z.string().min(1),
+});
+
+const updateMeSchema = z.object({
+  first_name: z.string().trim().min(1).max(100).optional(),
+  last_name: z.string().trim().min(1).max(100).optional(),
+  phone: z.string().trim().max(30).optional(),
 });
 
 // ==========================================================
@@ -105,8 +112,39 @@ router.get(
   '/me',
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    // Return basic user info stored in the token or fetch from DB
-    res.status(200).json({ user: req.user });
+    const { rows } = await query(
+      `SELECT id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at
+       FROM pd_user
+       WHERE id = $1`,
+      [req.user!.id],
+    );
+    const user = rows[0] ?? req.user;
+    res.status(200).json({ user, data: user });
+  }),
+);
+
+router.put(
+  '/me',
+  requireAuth,
+  validate(updateMeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query(
+      `UPDATE pd_user
+       SET first_name = COALESCE($2, first_name),
+           last_name = COALESCE($3, last_name),
+           phone = COALESCE($4, phone),
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at`,
+      [
+        req.user!.id,
+        req.body.first_name ?? null,
+        req.body.last_name ?? null,
+        req.body.phone ?? null,
+      ],
+    );
+    const user = rows[0];
+    res.status(200).json({ user, data: user });
   }),
 );
 

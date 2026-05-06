@@ -1,5 +1,18 @@
 import { MetadataRoute } from 'next';
 
+interface SitemapProduct {
+  id: string;
+  updated_at: string;
+}
+
+interface SitemapCategory {
+  slug: string;
+}
+
+function productUrl(baseUrl: string, product: SitemapProduct): string {
+  return `${baseUrl}/hub/products/${encodeURIComponent(product.id)}`;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_HUB_URL || 'https://pandamarket.tn';
 
@@ -17,14 +30,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dynamic product pages
   let productPages: MetadataRoute.Sitemap = [];
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
-    const res = await fetch(`${backendUrl}/api/pd/products?status=published&limit=1000`, {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=1000`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
       const data = await res.json();
-      productPages = (data.data || []).map((product: { id: string; updated_at: string }) => ({
-        url: `${baseUrl}/hub/products/${product.id}`,
+      productPages = (data.data || []).map((product: SitemapProduct) => ({
+        url: productUrl(baseUrl, product),
         lastModified: new Date(product.updated_at),
         changeFrequency: 'weekly' as const,
         priority: 0.6,
@@ -35,13 +48,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Dynamic category pages
-  const categories = ['electronics', 'fashion', 'home', 'gaming', 'beauty', 'sports'];
-  const categoryPages: MetadataRoute.Sitemap = categories.map((cat) => ({
-    url: `${baseUrl}/hub/category/${cat}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.7,
-  }));
+  let categoryPages: MetadataRoute.Sitemap = [];
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/categories`, {
+      next: { revalidate: 3600 },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      categoryPages = (data.data || []).map((category: SitemapCategory) => ({
+        url: `${baseUrl}/hub/category/${category.slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily' as const,
+        priority: 0.7,
+      }));
+    }
+  } catch {
+    // Silently fail — sitemap will just have static and product pages
+  }
 
   return [...staticPages, ...categoryPages, ...productPages];
 }

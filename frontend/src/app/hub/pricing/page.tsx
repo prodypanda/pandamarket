@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { Check, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { HubNavbar } from '../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../components/hub/HubFooter';
+import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
+import { getMarketplaceThemeClasses } from '../../../lib/marketplace-theme';
 
 export const metadata: Metadata = {
   title: 'Tarifs — Choisissez votre plan',
@@ -36,30 +40,45 @@ const features = [
   { label: 'Support', key: 'support' },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const marketplaceSettings = await getMarketplaceSettings();
+  const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
+  const isAliExpress = classes.isAliExpress;
+  const popularBadgeClass = isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]';
+  const popularPanelClass = isAliExpress ? 'bg-orange-50 ring-2 ring-[#ff4747]' : 'bg-[#16C784]/5 ring-2 ring-[#16C784]';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
-          Des plans pour chaque <span className="text-[#16C784]">ambition</span>
-        </h1>
-        <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-          Commencez gratuitement avec 15% de commission, ou choisissez un abonnement annuel à 0% de commission.
-        </p>
-      </div>
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={marketplaceSettings.marketplace_name}
+        marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceTheme={marketplaceSettings.marketplace_theme}
+      />
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        {/* Header */}
+        <div className={`relative overflow-hidden rounded-[2rem] p-8 text-center text-white mb-12 ${classes.header}`}>
+          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="relative">
+            <h1 className="text-4xl font-extrabold mb-4">
+              Des plans pour chaque <span className={isAliExpress ? 'text-[#ffe1b5]' : 'text-[#1EE69A]'}>ambition</span>
+            </h1>
+            <p className="text-lg text-white/75 max-w-2xl mx-auto">
+              Commencez gratuitement avec 15% de commission, ou choisissez un abonnement annuel à 0% de commission.
+            </p>
+          </div>
+        </div>
 
       {/* Plan Cards (Mobile) */}
       <div className="lg:hidden space-y-4 mb-12">
         {plans.map((plan) => (
           <div
             key={plan.id}
-            className={`rounded-xl border-2 p-5 ${
-              plan.popular ? 'border-[#16C784] shadow-lg shadow-[#16C784]/10' : 'border-gray-200'
+            className={`rounded-xl border-2 bg-white p-5 ${
+              plan.popular ? `${classes.primaryBorder} shadow-lg ${isAliExpress ? 'shadow-orange-900/10' : 'shadow-[#16C784]/10'}` : 'border-gray-200'
             }`}
           >
             {plan.popular && (
-              <span className="inline-block bg-[#16C784] text-white text-xs font-bold px-3 py-1 rounded-full mb-3">
+              <span className={`inline-block ${popularBadgeClass} text-white text-xs font-bold px-3 py-1 rounded-full mb-3`}>
                 Le plus populaire
               </span>
             )}
@@ -73,20 +92,21 @@ export default function PricingPage() {
             </div>
             <ul className="space-y-2 mb-4">
               {features.map((f) => {
-                const val = (plan as Record<string, unknown>)[f.key];
+                const val = (plan as Record<string, string | boolean | undefined>)[f.key];
+                const displayValue = f.boolean ? (val ? 'Oui' : 'Non') : String(val ?? '');
                 return (
                   <li key={f.key} className="flex items-center text-sm">
                     {f.boolean ? (
                       val ? (
-                        <Check className="w-4 h-4 text-[#16C784] mr-2" />
+                        <Check className={`w-4 h-4 ${classes.primaryText} mr-2`} />
                       ) : (
                         <X className="w-4 h-4 text-gray-300 mr-2" />
                       )
                     ) : (
-                      <Check className="w-4 h-4 text-[#16C784] mr-2" />
+                      <Check className={`w-4 h-4 ${classes.primaryText} mr-2`} />
                     )}
                     <span className={f.boolean && !val ? 'text-gray-400' : 'text-gray-700'}>
-                      {f.label}: {f.boolean ? (val ? 'Oui' : 'Non') : val}
+                      {f.label}: {displayValue}
                     </span>
                   </li>
                 );
@@ -96,7 +116,7 @@ export default function PricingPage() {
               href={`/register?plan=${plan.id}`}
               className={`block text-center py-2.5 rounded-lg font-medium transition-colors ${
                 plan.popular
-                  ? 'bg-[#16C784] text-white hover:bg-[#14b576]'
+                  ? classes.primary
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -114,9 +134,9 @@ export default function PricingPage() {
               <th className="text-left p-4 w-48"></th>
               {plans.map((plan) => (
                 <th key={plan.id} className="p-4 text-center">
-                  <div className={`rounded-xl p-4 ${plan.popular ? 'bg-[#16C784]/5 ring-2 ring-[#16C784]' : ''}`}>
+                  <div className={`rounded-xl p-4 ${plan.popular ? popularPanelClass : ''}`}>
                     {plan.popular && (
-                      <span className="inline-block bg-[#16C784] text-white text-xs font-bold px-2 py-0.5 rounded-full mb-2">
+                      <span className={`inline-block ${popularBadgeClass} text-white text-xs font-bold px-2 py-0.5 rounded-full mb-2`}>
                         Populaire
                       </span>
                     )}
@@ -136,17 +156,17 @@ export default function PricingPage() {
               <tr key={f.key} className={i % 2 === 0 ? 'bg-gray-50/50' : ''}>
                 <td className="p-4 text-sm font-medium text-gray-700">{f.label}</td>
                 {plans.map((plan) => {
-                  const val = (plan as Record<string, unknown>)[f.key];
+                  const val = (plan as Record<string, string | boolean | undefined>)[f.key];
                   return (
                     <td key={plan.id} className="p-4 text-center text-sm">
                       {f.boolean ? (
                         val ? (
-                          <Check className="w-5 h-5 text-[#16C784] mx-auto" />
+                          <Check className={`w-5 h-5 ${classes.primaryText} mx-auto`} />
                         ) : (
                           <X className="w-5 h-5 text-gray-300 mx-auto" />
                         )
                       ) : (
-                        <span className="font-medium text-gray-900">{val}</span>
+                        <span className="font-medium text-gray-900">{String(val ?? '')}</span>
                       )}
                     </td>
                   );
@@ -161,7 +181,7 @@ export default function PricingPage() {
                     href={`/register?plan=${plan.id}`}
                     className={`inline-block px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       plan.popular
-                        ? 'bg-[#16C784] text-white hover:bg-[#14b576]'
+                        ? classes.primary
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -175,16 +195,18 @@ export default function PricingPage() {
       </div>
 
       {/* CTA */}
-      <div className="text-center bg-gradient-to-r from-[#1A1A2E] to-[#25253D] rounded-2xl p-8 sm:p-12">
+      <div className={`text-center rounded-[2rem] p-8 sm:p-12 ${classes.header}`}>
         <h2 className="text-2xl font-bold text-white mb-3">Prêt à lancer votre boutique ?</h2>
         <p className="text-gray-300 mb-6">Inscription gratuite, aucune carte bancaire requise.</p>
         <Link
           href="/register"
-          className="inline-flex items-center px-6 py-3 bg-[#16C784] text-white rounded-lg hover:bg-[#1EE69A] transition-all font-semibold"
+          className={`inline-flex items-center px-6 py-3 text-white rounded-full transition-all font-black hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
         >
           Créer ma boutique <ArrowRight className="w-5 h-5 ml-2" />
         </Link>
       </div>
+      </main>
+      <HubFooter {...marketplaceSettings} />
     </div>
   );
 }

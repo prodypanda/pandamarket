@@ -290,5 +290,6 @@ export const presignUploadSchema = z.object({
     .string()
     .regex(/^[a-z]+\/[a-z0-9.+-]+$/i)
     .max(100),
-  purpose: z.enum(['product_image', 'kyc_document', 'mandat_proof', 'theme_asset']),
+  purpose: z.enum(['product_image', 'kyc_document', 'mandat_proof', 'theme_asset', 'marketplace_asset']),
+  file_size: z.number().int().min(0).optional(),
 });

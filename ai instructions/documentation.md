@@ -1,7 +1,7 @@
 # PandaMarket — Documentation Technique Complète
 
 > **Version :** 2.0  
-> **Dernière mise à jour :** 02 Mai 2026  
+> **Dernière mise à jour :** 06 Mai 2026
 > **Type de plateforme :** MaaS (Marketplace as a Service) + SaaS Multi-Tenant  
 > **Comparable à :** Shopify (boutiques individuelles) + Amazon (hub central)
 
@@ -71,6 +71,16 @@ Implémenter un middleware qui détecte le `hostname` de la requête :
 Deux modes au choix du vendeur :
 1. **Thèmes pré-construits** : Composants dynamiques Next.js. Chaque vendeur choisit un `theme_id` et le frontend charge le layout correspondant. Catalogue de thèmes gratuits et payants.
 2. **Page Builder Drag & Drop** : Intégration de GrapesJS ou Craft.js dans le dashboard vendeur pour une personnalisation totale.
+
+État actuel :
+
+- 20 thèmes storefront sont enregistrés dans `frontend/src/lib/themes.ts`.
+- Les personnalisations vendeur sont stockées dans `store.settings.themeCustomization`.
+- `resolveThemeColors()` applique la priorité `customColors` → preset → valeurs par défaut du thème.
+- Les composants de thème doivent utiliser `useThemeCustomization()` depuis `frontend/src/components/themes/shared.ts`.
+- Les liens panier storefront doivent passer par `StorefrontThemeCartLink` ou `StoreCartIcon` afin d'afficher un compteur live filtré par boutique.
+- Les pages route-level (`cart`, `checkout`, `product`, pages Page Builder) appliquent également les couleurs/polices/chrome du thème sélectionné.
+- Le checkpoint actuel se trouve dans `docs/AGENT_CHECKPOINT_2026-05-06.md`.
 
 ---
 

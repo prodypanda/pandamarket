@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Mail,
@@ -78,7 +79,7 @@ export default function AdminSmtpConfigPage() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/admin/smtp-config', {
+      const res = await fetchWithCsrf('/api/pd/admin/smtp-config', {
         credentials: 'include',
       });
       if (res.ok) {
@@ -138,7 +139,7 @@ export default function AdminSmtpConfigPage() {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/pd/admin/smtp-config', {
+      const res = await fetchWithCsrf('/api/pd/admin/smtp-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -186,7 +187,7 @@ export default function AdminSmtpConfigPage() {
         payload.recipient_email = testEmail;
       }
 
-      const res = await fetch('/api/pd/admin/smtp-config/test', {
+      const res = await fetchWithCsrf('/api/pd/admin/smtp-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -19,6 +19,15 @@ PandaMarket allows any Tunisian merchant to:
 4. **Use AI tools** for SEO and image compression.
 5. **Integrate ERP/POS** via REST API and outgoing webhooks.
 
+### Current agent handoff
+
+If you are a new AI agent or developer continuing the current work, start with:
+
+- [`docs/AGENT_CHECKPOINT_2026-05-06.md`](./docs/AGENT_CHECKPOINT_2026-05-06.md)
+- [`wiki/14-agent-checkpoint-current-state.md`](./wiki/14-agent-checkpoint-current-state.md)
+
+These files summarize the storefront theming/cart/checkout pass, validation already run, key files, and rules for continuing without re-discovery.
+
 ### 7-tier subscription model
 
 | Plan         | Price (TND/year) | Commission | Products | Custom Domain | AI Tools  | Direct Payment |
@@ -139,13 +148,15 @@ pandamarket/
 │   │   └── migrations/      # SQL migrations
 │   └── data/seed.ts
 ├── frontend/                # 🎨 Next.js (App Router)
-│   ├── app/
-│   │   ├── (hub)/           # Hub central pages
-│   │   ├── (store)/         # Vendor storefront pages
-│   │   ├── (dashboard)/     # Vendor dashboard
+│   ├── src/app/
+│   │   ├── hub/             # Hub central pages
+│   │   ├── store/           # Vendor storefront + central /store routes
+│   │   ├── hub/dashboard/   # Vendor dashboard
 │   │   └── (admin)/         # Admin panel
-│   ├── themes/              # Storefront templates
-│   └── middleware.ts        # Hostname-based tenant detection
+│   ├── src/components/themes/ # Storefront templates
+│   ├── src/components/store/  # Storefront/cart shared components
+│   ├── src/lib/             # Routing, theme, marketplace helpers
+│   └── src/middleware.ts    # Hostname-based tenant detection
 ├── packages/types/          # Shared TS types
 ├── docker-compose.yml
 ├── Caddyfile
@@ -156,7 +167,13 @@ pandamarket/
 
 ## 📚 Documentation
 
-All project specifications live in [`ai instructions/`](./ai%20instructions/). Start with `spécifications fonctionnelles (PRD).md`.
+- **Current agent checkpoint:** [`docs/AGENT_CHECKPOINT_2026-05-06.md`](./docs/AGENT_CHECKPOINT_2026-05-06.md)
+- **Wiki index:** [`wiki/README.md`](./wiki/README.md)
+- **Project overview:** [`wiki/01-project-overview.md`](./wiki/01-project-overview.md)
+- **AI/project instructions:** [`ai instructions/`](./ai%20instructions/)
+- **Frontend agent rules:** [`frontend/AGENTS.md`](./frontend/AGENTS.md)
+
+For product work, start with `spécifications fonctionnelles (PRD).md`. For current storefront/theming continuation, start with the checkpoint file above.
 
 ---
 

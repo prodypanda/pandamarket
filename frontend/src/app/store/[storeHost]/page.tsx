@@ -23,13 +23,20 @@ import { CraftTheme } from '../../../components/themes/CraftTheme';
 import { DigitalTheme } from '../../../components/themes/DigitalTheme';
 import { KidsTheme } from '../../../components/themes/KidsTheme';
 import { SafePageRenderer } from '../../../components/page-builder/SafePageRenderer';
+import { StoreCartIcon } from '../../../components/store/StoreCartIcon';
+import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
+import { getStoreRouteContext } from '../../../lib/store-routing';
+import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../components/store/MarketplaceStorefront';
 
 interface StoreBranding {
+  store_id?: string;
+  store_host?: string;
   primary_color?: string;
   secondary_color?: string;
   logo_url?: string;
   favicon_url?: string;
   themeCustomization?: ThemeCustomization;
+  store_path_base?: string;
 }
 
 interface StoreData {
@@ -48,16 +55,21 @@ interface StoreData {
 interface StoreProduct {
   id: string;
   title: string;
+  slug?: string;
   price: number;
   images?: { url: string }[];
   category?: string;
+  marketplace_category_slug?: string | null;
+  storefront_category_slug?: string | null;
+  storefront_parent_category_slug?: string | null;
+  thumbnail?: string | null;
   store_id: string;
   store_name?: string;
 }
 
 async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
       next: { revalidate: 60 },
     });
@@ -80,13 +92,14 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
 interface HomepageOverride {
   id: string;
   title: string;
+  slug?: string;
   html: string;
   css: string;
 }
 
 async function getHomepageOverride(storeId: string): Promise<HomepageOverride | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/${storeId}/homepage`, {
       next: { revalidate: 30 },
     });
@@ -100,8 +113,22 @@ async function getHomepageOverride(storeId: string): Promise<HomepageOverride | 
 
 async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=20`, {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=100`, {
+      next: { revalidate: 120 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}
+
+async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/categories`, {
       next: { revalidate: 120 },
     });
     if (!res.ok) return [];
@@ -158,20 +185,44 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
     notFound();
   }
 
+  const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
+
+  if (isMarketplaceStoreRoute) {
+    const [products, categories, marketplaceSettings] = await Promise.all([
+      getStoreProducts(store.id),
+      getMarketplaceCategories(),
+      getMarketplaceSettings(),
+    ]);
+
+    return (
+      <MarketplaceSellerPage
+        storeHost={storeHost}
+        store={store}
+        products={products}
+        categories={categories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    );
+  }
+
+  const activeTheme = themes[store.theme_id] || themes.classic;
+  const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
+  const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+
   // Check for Page Builder homepage override (Regular+ plans)
   const homepageOverride = await getHomepageOverride(store.id);
   if (homepageOverride && homepageOverride.html) {
-    const primaryColor = store.settings?.colors?.primary || '#16C784';
+    const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
     const logoUrl = store.settings?.logo_url as string | undefined;
 
     return (
-      <div className="min-h-screen bg-white">
+      <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
         {/* Minimal Store Header for Page Builder pages */}
         <header
-          className="h-16 border-b border-gray-200 flex items-center justify-between px-6"
-          style={{ borderBottomColor: `${primaryColor}20` }}
+          className="h-16 border-b flex items-center justify-between px-6"
+          style={{ backgroundColor: resolvedColors.headerBg, borderBottomColor: `${primaryColor}20` }}
         >
-          <Link href={`/store/${storeHost}`} className="flex items-center gap-2">
+          <Link href={storePathBase || '/'} className="flex items-center gap-2">
             {logoUrl ? (
               <img src={logoUrl} alt={store.name} className="h-8 object-contain" />
             ) : (
@@ -182,17 +233,13 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link
-              href={`/store/${storeHost}`}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              href={storePathBase || '/'}
+              className="transition-colors hover:opacity-80"
+              style={{ color: resolvedColors.text }}
             >
               Accueil
             </Link>
-            <Link
-              href={`/store/${storeHost}/cart`}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Panier
-            </Link>
+            <StoreCartIcon storeId={store.id} storeHost={storeHost} primaryColor={primaryColor} storePathBase={storePathBase} iconColor={resolvedColors.text} className="inline-flex items-center gap-2 transition-colors hover:opacity-80" label="Panier" />
           </nav>
         </header>
 
@@ -202,9 +249,9 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
         </main>
 
         {/* Footer */}
-        <footer className="py-6 text-center text-xs text-gray-400 border-t border-gray-100">
+        <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
           Propulsé par{' '}
-          <Link href="/" className="text-[#16C784] hover:underline">
+          <Link href="/" className="hover:underline" style={{ color: primaryColor }}>
             🐼 PandaMarket
           </Link>
         </footer>
@@ -214,19 +261,17 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
 
   // Default: Render the selected theme
   const products = await getStoreProducts(store.id);
-  const activeTheme = themes[store.theme_id] || themes['classic'];
-
-  // Extract branding from store settings
-  const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
-  const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
 
   // Use resolved colors as primary_color override for backward compatibility
   const branding: StoreBranding = {
-    primary_color: themeCustomization?.customColors?.primary || resolvedColors.primary,
-    secondary_color: themeCustomization?.customColors?.secondary || resolvedColors.secondary,
+    store_id: store.id,
+    store_host: storeHost,
+    primary_color: store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary,
+    secondary_color: store.settings?.colors?.secondary || themeCustomization?.customColors?.secondary || resolvedColors.secondary,
     logo_url: store.settings?.logo_url as string | undefined,
     favicon_url: store.settings?.favicon_url as string | undefined,
     themeCustomization,
+    store_path_base: storePathBase,
   };
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding };
@@ -257,3 +302,6 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   const ThemeComponent = themeComponents[activeTheme.id] || ClassicTheme;
   return <ThemeComponent {...themeProps} />;
 }
+
+
+

@@ -2,12 +2,14 @@ import React from 'react';
 import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Download, Code2 } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
+import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 /** Digital Theme — Software/SaaS products, gradient backgrounds, modern. */
 export function DigitalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
-  const accent = branding?.primary_color || '#6366F1';
+  const tc = useThemeCustomization(theme, branding);
+  const accent = tc.colors.primary;
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'UI Kit Pro', price: 89, images: [], category: 'Design' },
     { id: '2', title: 'Icon Pack 2000+', price: 35, images: [], category: 'Icons' },
@@ -17,19 +19,21 @@ export function DigitalTheme({ theme, storeName, products = [], branding }: Them
     { id: '6', title: 'Font Family Pack', price: 29, images: [], category: 'Fonts' },
   ];
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0F0F1A', color: '#E2E8F0' }}>
+    <div className={`${theme.typography.fontFamily} min-h-screen`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
       <header className="border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" /> : (
-            <div className="flex items-center gap-2"><Code2 className="w-5 h-5" style={{ color: accent }} /><h1 className="text-lg font-bold">{storeName}</h1></div>
-          )}
+          <Link href={branding?.store_path_base || '/'}>
+            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" /> : (
+              <div className="flex items-center gap-2"><Code2 className="w-5 h-5" style={{ color: accent }} /><h1 className="text-lg font-bold">{storeName}</h1></div>
+            )}
+          </Link>
           <nav className="hidden md:flex gap-6 text-sm text-gray-400">
-            <a href="#" className="hover:text-white transition-colors">Products</a>
-            <a href="#" className="hover:text-white transition-colors">Bundles</a>
-            <a href="#" className="hover:text-white transition-colors">Free</a>
+            <a href="#products" className="hover:text-white transition-colors">Products</a>
+            <a href="#products" className="hover:text-white transition-colors">Bundles</a>
+            <a href="#products" className="hover:text-white transition-colors">Free</a>
           </nav>
-          <Link href="/hub/cart"><ShoppingBag className="w-5 h-5 text-gray-400 hover:text-white transition-colors" /></Link>
+          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accent} iconColor="#9CA3AF" className="inline-flex items-center transition-colors hover:text-white" />
         </div>
       </header>
       <section className="relative overflow-hidden py-24">
@@ -46,9 +50,9 @@ export function DigitalTheme({ theme, storeName, products = [], branding }: Them
       <main id="products" className="max-w-7xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {dp.map((p) => (
-            <Link key={p.id} href={`/hub/products/${p.id}`} className="group block rounded-xl overflow-hidden border border-white/5 hover:border-white/15 transition-all" style={{ backgroundColor: '#1A1A2E' }}>
+            <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-xl overflow-hidden border border-white/5 hover:border-white/15 transition-all" style={{ backgroundColor: '#1A1A2E' }}>
               <div className="aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(135deg, ${accent}10, ${accent}05)` }}>
-                {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                   <div className="w-full h-full flex items-center justify-center"><Download className="w-10 h-10" style={{ color: `${accent}25` }} /></div>
                 )}
               </div>
@@ -56,7 +60,7 @@ export function DigitalTheme({ theme, storeName, products = [], branding }: Them
                 {p.category && <p className="text-[10px] tracking-widest uppercase font-semibold mb-1" style={{ color: accent }}>{p.category}</p>}
                 <h3 className="text-sm font-semibold text-white line-clamp-1">{p.title}</h3>
                 <div className="flex items-center justify-between mt-2">
-                  <p className="text-sm font-bold" style={{ color: accent }}>{p.price.toFixed(3)} TND</p>
+                  <p className="text-sm font-bold" style={{ color: accent }}>{formatStorePrice(p)}</p>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400">Instant</span>
                 </div>
               </div>
@@ -70,3 +74,4 @@ export function DigitalTheme({ theme, storeName, products = [], branding }: Them
     </div>
   );
 }
+

@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storeService } from '../services/store.service';
+import { categoryService } from '../services/category.service';
+import { productService } from '../services/product.service';
+import { fileAssetService } from '../services/file-asset.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
-import { SubscriptionPlan, ShippingMode, IStorePaymentConfig } from '@pandamarket/types';
+import { SubscriptionPlan, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType } from '@pandamarket/types';
 import { config } from '../config';
 
 const router = Router();
@@ -38,6 +41,52 @@ const updatePaymentConfigSchema = z.object({
   flouci_app_secret: z.string().optional(),
   konnect_api_key: z.string().optional(),
   konnect_receiver_wallet: z.string().optional(),
+});
+
+const storefrontCategorySchema = z.object({
+  name: z.string().min(2).max(120),
+  parent_id: z.string().nullable().optional(),
+  description: z.string().max(1000).optional(),
+  short_description: z.string().max(255).optional(),
+  long_description: z.string().max(5000).optional(),
+  image_url: z.string().url().nullable().optional(),
+  position: z.number().int().optional(),
+});
+
+const updateStorefrontCategorySchema = storefrontCategorySchema.partial().extend({
+  is_active: z.boolean().optional(),
+});
+
+const storeProductSchema = z.object({
+  type: z.nativeEnum(ProductType).default(ProductType.Physical),
+  title: z.string().min(2),
+  slug: z.string().max(100).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  product_reference: z.string().max(100).nullable().optional(),
+  marketplace_category_id: z.string().nullable().optional(),
+  storefront_category_id: z.string().nullable().optional(),
+  price: z.number().min(0),
+  inventory_quantity: z.number().min(0).optional(),
+  weight_grams: z.number().min(0).optional(),
+  thumbnail: z.string().url().nullable().optional(),
+  seo_title: z.string().max(200).nullable().optional(),
+  seo_description: z.string().max(300).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  attributes: z.array(z.object({
+    name: z.string().min(1).max(80),
+    value: z.string().min(1).max(300),
+  })).optional(),
+});
+
+const updateStoreProductSchema = storeProductSchema.partial().extend({
+  status: z.nativeEnum(ProductStatus).optional(),
+});
+
+const storeProductImageSchema = z.object({
+  url: z.string().url(),
+  alt_text: z.string().max(200).optional(),
+  is_thumbnail: z.boolean().optional(),
 });
 
 // ==========================================================
@@ -84,6 +133,178 @@ router.get(
       return;
     }
     res.status(200).json({ store });
+  }),
+);
+
+router.get(
+  '/me',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.getById(req.user!.store_id!);
+    res.status(200).json({ store });
+  }),
+);
+
+router.get(
+  '/me/products',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 20;
+    const status = req.query.status as ProductStatus | undefined;
+    const result = await productService.listByStore(req.user!.store_id!, { page, limit, status });
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/me/products',
+  requireStore,
+  validate(storeProductSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.getById(req.user!.store_id!);
+    const categories = await categoryService.resolveProductCategories(
+      req.user!.store_id!,
+      req.body.marketplace_category_id,
+      req.body.storefront_category_id,
+    );
+    const product = await productService.create({
+      store_id: req.user!.store_id!,
+      store_plan: store.subscription_plan,
+      store_is_verified: store.is_verified,
+      ...req.body,
+      marketplace_category_id: categories.marketplace.id,
+      storefront_category_id: categories.storefront.id,
+      category: categories.marketplace.name,
+    });
+    res.status(201).json({ product });
+  }),
+);
+
+router.put(
+  '/me/products/:id',
+  requireStore,
+  validate(updateStoreProductSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    const store = await storeService.getById(req.user!.store_id!);
+    const patch = { ...req.body };
+    if ('marketplace_category_id' in patch || 'storefront_category_id' in patch) {
+      const categories = await categoryService.resolveProductCategories(
+        req.user!.store_id!,
+        patch.marketplace_category_id,
+        patch.storefront_category_id,
+      );
+      patch.marketplace_category_id = categories.marketplace.id;
+      patch.storefront_category_id = categories.storefront.id;
+      patch.category = categories.marketplace.name;
+    }
+    if (patch.status === ProductStatus.Published && !store.is_verified) {
+      patch.status = ProductStatus.PendingApproval;
+    }
+    const product = await productService.update(req.params.id, patch);
+    res.status(200).json({ product });
+  }),
+);
+
+router.post(
+  '/me/products/:id/images',
+  requireStore,
+  validate(storeProductImageSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    const store = await storeService.getById(req.user!.store_id!);
+    const image = await productService.addImage(req.params.id, store.subscription_plan, req.body);
+    res.status(201).json({ image });
+  }),
+);
+
+router.delete(
+  '/me/products/:id/images/:imageId',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    await productService.deleteImage(req.params.id, req.params.imageId);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.delete(
+  '/me/products/:id',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await productService.assertOwnership(req.params.id, req.user!.store_id!);
+    await productService.delete(req.params.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.get(
+  '/me/media',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string, 10) || 60;
+    const [productMedia, storeAssets] = await Promise.all([
+      productService.listStoreMedia(req.user!.store_id!, { limit }),
+      fileAssetService.listAssets({ scope: 'store', storeId: req.user!.store_id!, type: 'image', limit }),
+    ]);
+    const seen = new Set<string>();
+    const media = [
+      ...storeAssets.map((asset) => ({
+        url: asset.url,
+        product_id: asset.id,
+        product_title: asset.filename,
+        alt_text: asset.filename,
+        is_thumbnail: false,
+      })),
+      ...productMedia,
+    ].filter((item) => {
+      if (seen.has(item.url)) return false;
+      seen.add(item.url);
+      return true;
+    }).slice(0, limit);
+    res.status(200).json({ data: media });
+  }),
+);
+
+router.get(
+  '/me/categories',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const categories = (await categoryService.listStorefrontCategories(req.user!.store_id!)).map((category) => ({
+      ...category,
+      product_count: parseInt(category.product_count || '0', 10),
+    }));
+    res.status(200).json({ data: categories });
+  }),
+);
+
+router.post(
+  '/me/categories',
+  requireStore,
+  validate(storefrontCategorySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const category = await categoryService.createStorefrontCategory(req.user!.store_id!, req.body);
+    res.status(201).json({ category });
+  }),
+);
+
+router.put(
+  '/me/categories/:id',
+  requireStore,
+  validate(updateStorefrontCategorySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const category = await categoryService.updateStorefrontCategory(req.user!.store_id!, req.params.id, req.body);
+    res.status(200).json({ category });
+  }),
+);
+
+router.delete(
+  '/me/categories/:id',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await categoryService.deleteStorefrontCategory(req.user!.store_id!, req.params.id);
+    res.status(200).json({ success: true, ...result });
   }),
 );
 
@@ -206,3 +427,4 @@ router.get(
 );
 
 export default router;
+

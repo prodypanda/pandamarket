@@ -1,20 +1,44 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, Trash2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../components/hub/HubFooter';
+import { getHubProductHref } from '../../../lib/product-links';
+import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
 interface WishlistItem {
   id: string;
   product_id: string;
   product_title?: string;
-  product_price?: number;
+  product_slug?: string | null;
+  product_category?: string | null;
+  marketplace_category_slug?: string | null;
+  product_price?: number | string;
   product_thumbnail?: string | null;
   product_status?: string;
   store_name?: string;
   store_id?: string;
+  store_subdomain?: string | null;
   created_at: string;
+}
+
+function getWishlistProductHref(item: WishlistItem): string {
+  return getHubProductHref({
+    id: item.product_id,
+    title: item.product_title,
+    slug: item.product_slug,
+    category: item.product_category,
+    marketplace_category_slug: item.marketplace_category_slug,
+    store_subdomain: item.store_subdomain,
+  });
+}
+
+function formatWishlistPrice(price?: number | string): string {
+  const amount = Number(price);
+  return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
 }
 
 export default function WishlistPage() {
@@ -23,31 +47,29 @@ export default function WishlistPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
-
-  const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_URL || 'http://localhost:4000';
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { settings, classes, isAliExpress } = useMarketplaceTheme();
 
   const fetchWishlist = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('pd_access_token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
       const res = await fetch(
-        `${backendUrl}/api/pd/wishlist?page=${page}&limit=20`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        `/api/pd/wishlist?page=${page}&limit=20`,
+        { credentials: 'include' },
       );
       if (res.ok) {
         const data = await res.json();
         setItems(data.items);
         setTotal(data.total);
+        setIsLoggedIn(true);
+      } else if (res.status === 401) {
+        setIsLoggedIn(false);
       }
     } catch {
       // ignore
     }
     setLoading(false);
-  }, [backendUrl, page]);
+  }, [page]);
 
   useEffect(() => {
     fetchWishlist();
@@ -56,10 +78,9 @@ export default function WishlistPage() {
   const handleRemove = async (productId: string) => {
     setRemoving(productId);
     try {
-      const token = localStorage.getItem('pd_access_token');
-      await fetch(`${backendUrl}/api/pd/wishlist/${productId}`, {
+      await fetchWithCsrf(`/api/pd/wishlist/${productId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       setItems((prev) => prev.filter((i) => i.product_id !== productId));
       setTotal((prev) => prev - 1);
@@ -70,28 +91,32 @@ export default function WishlistPage() {
   };
 
   const totalPages = Math.ceil(total / 20);
-  const isLoggedIn =
-    typeof window !== 'undefined' && !!localStorage.getItem('pd_access_token');
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC]">
-      <HubNavbar />
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={settings.marketplace_name}
+        marketplaceLogoUrl={settings.marketplace_logo_url}
+        marketplaceTheme={settings.marketplace_theme}
+      />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className={`mb-8 flex flex-col gap-4 overflow-hidden rounded-[2rem] p-6 text-white sm:flex-row sm:items-center sm:justify-between ${classes.header}`}>
           <div className="flex items-center gap-3">
-            <Heart className="w-7 h-7 text-red-500 fill-red-500" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
+              <Heart className="w-7 h-7 fill-white text-white" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Ma Wishlist</h1>
-              <p className="text-sm text-gray-500">
+              <h1 className="text-3xl font-black tracking-tight">Ma Wishlist</h1>
+              <p className="text-sm text-white/75">
                 {total} produit{total !== 1 ? 's' : ''} sauvegardé{total !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
           <Link
             href="/hub"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#16C784] transition-colors"
+            className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-white/25"
           >
             <ArrowLeft className="w-4 h-4" />
             Continuer mes achats
@@ -100,8 +125,8 @@ export default function WishlistPage() {
 
         {/* Not logged in */}
         {!isLoggedIn && !loading && (
-          <div className="text-center py-16">
-            <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <div className={`${classes.panel} text-center py-16 px-6`}>
+            <Heart className={`w-16 h-16 mx-auto mb-4 ${classes.primaryText}`} />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               Connectez-vous pour voir votre wishlist
             </h2>
@@ -110,7 +135,7 @@ export default function WishlistPage() {
             </p>
             <Link
               href="/auth/login"
-              className="inline-flex px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b576] transition-colors"
+              className={`inline-flex px-6 py-3 text-white font-black rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
             >
               Se connecter
             </Link>
@@ -132,8 +157,8 @@ export default function WishlistPage() {
 
         {/* Empty state */}
         {!loading && isLoggedIn && items.length === 0 && (
-          <div className="text-center py-16">
-            <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <div className={`${classes.panel} text-center py-16 px-6`}>
+            <Heart className={`w-16 h-16 mx-auto mb-4 ${classes.primaryText}`} />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               Votre wishlist est vide
             </h2>
@@ -142,7 +167,7 @@ export default function WishlistPage() {
             </p>
             <Link
               href="/hub"
-              className="inline-flex px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b576] transition-colors"
+              className={`inline-flex px-6 py-3 text-white font-black rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
             >
               Explorer les produits
             </Link>
@@ -155,11 +180,11 @@ export default function WishlistPage() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className={`bg-white rounded-xl border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300 ${
+                className={`${classes.card} overflow-hidden group ${
                   removing === item.product_id ? 'opacity-50 scale-95' : ''
                 }`}
               >
-                <Link href={`/hub/products/${item.product_id}`}>
+                <Link href={getWishlistProductHref(item)}>
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
                     {item.product_thumbnail ? (
                       <img
@@ -181,8 +206,8 @@ export default function WishlistPage() {
                 </Link>
 
                 <div className="p-4">
-                  <Link href={`/hub/products/${item.product_id}`}>
-                    <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2 hover:text-[#16C784] transition-colors">
+                  <Link href={getWishlistProductHref(item)}>
+                    <h3 className={`font-bold text-gray-900 text-sm mb-1 line-clamp-2 transition-colors ${classes.primaryTextHover}`}>
                       {item.product_title || 'Produit'}
                     </h3>
                   </Link>
@@ -191,14 +216,14 @@ export default function WishlistPage() {
                     <p className="text-xs text-gray-500 mb-2">{item.store_name}</p>
                   )}
 
-                  <p className="font-bold text-[#16C784] text-lg mb-3">
-                    {item.product_price?.toFixed(3) || '0.000'} TND
+                  <p className={`font-black ${classes.primaryText} text-lg mb-3`}>
+                    {formatWishlistPrice(item.product_price)}
                   </p>
 
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/hub/products/${item.product_id}`}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#16C784] text-white text-sm font-semibold rounded-lg hover:bg-[#14b576] transition-colors"
+                      href={getWishlistProductHref(item)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-white text-sm font-black rounded-full transition-all hover:shadow-lg ${classes.primaryGradient}`}
                     >
                       <ShoppingCart className="w-4 h-4" />
                       Voir
@@ -206,7 +231,7 @@ export default function WishlistPage() {
                     <button
                       onClick={() => handleRemove(item.product_id)}
                       disabled={removing === item.product_id}
-                      className="p-2 border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
+                      className="p-2 border border-gray-200 rounded-full hover:bg-red-50 hover:border-red-200 transition-colors"
                       title="Retirer de la wishlist"
                     >
                       <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
@@ -227,8 +252,8 @@ export default function WishlistPage() {
                 onClick={() => setPage(p)}
                 className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
                   p === page
-                    ? 'bg-[#16C784] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? `${isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]'} text-white`
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
                 {p}
@@ -237,6 +262,7 @@ export default function WishlistPage() {
           </div>
         )}
       </main>
+      <HubFooter {...settings} />
     </div>
   );
 }

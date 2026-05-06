@@ -1,30 +1,51 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
+import { HubFooter } from '../../../../components/hub/HubFooter';
 import { AddToCartButton } from '../../../../components/hub/AddToCartButton';
 import { ReviewSection } from '../../../../components/hub/ReviewSection';
 import { WishlistButton } from '../../../../components/hub/WishlistButton';
-import { ChevronRight, Star, Shield } from 'lucide-react';
+import { BadgeCheck, ChevronRight, PackageCheck, RotateCcw, ShieldCheck, Star, Truck, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { getHubProductHref } from '../../../../lib/product-links';
+import { ProductDescriptionRenderer } from '../../../../components/product/ProductDescription';
+import { ProductGallery } from '../../../../components/product/ProductGallery';
+import { SellerHoverCard } from '../../../../components/product/SellerHoverCard';
+import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
+import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
+
+type ProductImage = string | { id?: string; url: string; position?: number };
 
 interface Product {
   id: string;
+  type?: string | null;
   title: string;
+  slug?: string | null;
   description?: string;
-  price: number;
+  price: number | string;
   category?: string;
-  images?: { id: string; url: string; position: number }[];
+  product_reference?: string | null;
+  marketplace_category_slug?: string | null;
+  images?: ProductImage[];
+  thumbnail?: string;
   tags?: string[];
+  attributes?: { name: string; value: string }[];
   inventory_quantity?: number;
   store_id: string;
   store_name?: string;
+  store_subdomain?: string | null;
+  store_is_verified?: boolean | null;
+  store_status?: string | null;
+  store_settings?: Record<string, unknown> | null;
+  store_created_at?: string | null;
+  store_product_count?: string | number | null;
   variants?: { name: string; values: string[] }[];
   status: string;
 }
 
 async function getProduct(id: string): Promise<Product | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/products/${id}`, {
       next: { revalidate: 60 },
     });
@@ -38,7 +59,7 @@ async function getProduct(id: string): Promise<Product | null> {
 
 async function getProductRating(productId: string): Promise<{ average_rating: number; review_count: number } | null> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/reviews/products/${productId}/rating`, {
       next: { revalidate: 60 },
     });
@@ -51,7 +72,7 @@ async function getProductRating(productId: string): Promise<{ average_rating: nu
 
 async function getSimilarProducts(category: string, excludeId: string): Promise<Product[]> {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/search?q=${encodeURIComponent(category)}&limit=4`,
       { next: { revalidate: 120 } },
@@ -77,31 +98,51 @@ export async function generateMetadata({
     return { title: 'Produit introuvable' };
   }
 
-  const imageUrl = product.images?.[0]?.url;
+  const imageUrl = getImageUrl(product.images?.[0]) || product.thumbnail;
+  const formattedPrice = formatPrice(product.price);
 
   return {
     title: product.title,
-    description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket — ${product.price.toFixed(3)} TND`,
+    description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket — ${formattedPrice}`,
     openGraph: {
-      title: `${product.title} — ${product.price.toFixed(3)} TND`,
+      title: `${product.title} — ${formattedPrice}`,
       description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
       type: 'website',
-      url: `/hub/products/${id}`,
+      url: getHubProductHref(product),
       ...(imageUrl && {
         images: [{ url: imageUrl, width: 800, height: 800, alt: product.title }],
       }),
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.title} — ${product.price.toFixed(3)} TND`,
+      title: `${product.title} — ${formattedPrice}`,
       description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
       ...(imageUrl && { images: [imageUrl] }),
     },
   };
 }
 
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
+function toNumber(price: Product['price']): number {
+  const numericPrice = typeof price === 'number' ? price : Number(price);
+  return Number.isFinite(numericPrice) ? numericPrice : 0;
+}
+
+function formatPrice(price: Product['price']): string {
+  return `${toNumber(price).toFixed(3)} TND`;
+}
+
+function getImageUrl(image?: ProductImage): string | undefined {
+  if (!image) return undefined;
+  return typeof image === 'string' ? image : image.url;
+}
+
+function getCategorySearchHref(product: Product): string {
+  return `/hub/search?category=${encodeURIComponent(product.marketplace_category_slug || product.category || '')}`;
+}
+
+function formatProductType(type?: string | null): string {
+  if (!type) return 'Physical';
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export default async function ProductDetailPage({
@@ -116,33 +157,68 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const [similarProducts, ratingData] = await Promise.all([
+  const [similarProducts, ratingData, marketplaceSettings] = await Promise.all([
     product.category ? getSimilarProducts(product.category, product.id) : [],
     getProductRating(id),
+    getMarketplaceSettings(),
   ]);
+  const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
+  const isAliExpress = classes.isAliExpress;
+  const accentHex = isAliExpress ? '#ff4747' : '#16C784';
+  const accentText = classes.primaryText;
+  const accentBgSoft = classes.primarySoft;
+  const accentTextSoft = classes.primaryText;
+  const cardClass = isAliExpress
+    ? 'rounded-[2rem] border border-orange-100/80 bg-white shadow-xl shadow-orange-900/5'
+    : 'rounded-[2rem] border border-gray-100 bg-white shadow-sm';
+  const microCardClass = isAliExpress
+    ? 'rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-white p-4'
+    : 'rounded-2xl border border-gray-100 bg-gray-50 p-4';
 
   const avgRating = ratingData?.average_rating ?? 0;
   const reviewCount = ratingData?.review_count ?? 0;
 
-  const mainImage = product.images?.[0]?.url;
-  const thumbnails = product.images?.slice(0, 5) || [];
+  const mainImage = product.thumbnail || getImageUrl(product.images?.[0]);
+  const numericPrice = toNumber(product.price);
+  const storeHref = product.store_subdomain ? `/store/${encodeURIComponent(product.store_subdomain)}` : null;
 
   return (
-    <div className="min-h-screen bg-white">
-      <HubNavbar />
+    <div className={`min-h-screen ${classes.pageSoft}`}>
+      <HubNavbar
+        marketplaceName={marketplaceSettings.marketplace_name}
+        marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceTheme={marketplaceSettings.marketplace_theme}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isAliExpress && (
+          <div className="mb-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] p-[1px] shadow-xl shadow-orange-900/10">
+            <div className="flex flex-col gap-3 rounded-[1.7rem] bg-white/95 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3 font-black text-[#7a2d11]">
+                <span className="inline-flex items-center gap-2 rounded-full bg-[#ff4747] px-3 py-1.5 text-xs text-white">
+                  <Zap className="h-3.5 w-3.5 fill-white" />
+                  AliExpress Style Deal
+                </span>
+                <span>Buyer protection · fast checkout · verified marketplace sellers</span>
+              </div>
+              <Link href="/hub/search" className="inline-flex items-center justify-center rounded-full bg-[#fff1e8] px-4 py-2 text-xs font-black text-[#ff4747] hover:bg-[#ffe1d1]">
+                Continue shopping
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-          <Link href="/hub" className="hover:text-[#16C784] transition-colors">
+        <nav className={`mb-8 flex items-center gap-2 rounded-full px-4 py-3 text-sm ${isAliExpress ? 'border border-orange-100 bg-white/80 text-gray-500 shadow-sm shadow-orange-900/5' : 'text-gray-500'}`}>
+          <Link href="/hub" className={`font-bold transition-colors ${classes.primaryTextHover}`}>
             Hub
           </Link>
           <ChevronRight className="w-4 h-4" />
           {product.category && (
             <>
               <Link
-                href={`/hub/search?category=${encodeURIComponent(product.category)}`}
-                className="hover:text-[#16C784] transition-colors"
+                href={getCategorySearchHref(product)}
+                className={`font-bold transition-colors ${classes.primaryTextHover}`}
               >
                 {product.category}
               </Link>
@@ -153,46 +229,26 @@ export default async function ProductDetailPage({
         </nav>
 
         {/* Product Main Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 mb-16">
           {/* Images */}
-          <div>
-            <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden mb-4">
-              {mainImage ? (
-                <img
-                  src={mainImage}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
-                  No Image
-                </div>
-              )}
-            </div>
-            {thumbnails.length > 1 && (
-              <div className="flex gap-3">
-                {thumbnails.map((img, idx) => (
-                  <div
-                    key={img.id || idx}
-                    className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-[#16C784] transition-colors cursor-pointer"
-                  >
-                    <img
-                      src={img.url}
-                      alt={`${product.title} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className={isAliExpress ? 'rounded-[2rem] bg-white p-3 shadow-xl shadow-orange-900/5' : ''}>
+            <ProductGallery title={product.title} thumbnail={product.thumbnail} images={product.images} accentColor={accentHex} />
           </div>
 
           {/* Product Info */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">{product.title}</h1>
+          <div className={`lg:sticky lg:top-24 h-fit p-6 sm:p-8 ${cardClass}`}>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {product.category && (
+                <Link href={getCategorySearchHref(product)} className={`rounded-full ${accentBgSoft} px-3 py-1 text-xs font-bold ${accentTextSoft}`}>
+                  {product.category}
+                </Link>
+              )}
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isAliExpress ? 'bg-[#fff1e8] text-[#7a2d11]' : 'bg-gray-100 text-gray-600'}`}>{product.status}</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3 leading-tight">{product.title}</h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className={`mb-5 inline-flex flex-wrap items-center gap-2 rounded-full px-3 py-2 ${isAliExpress ? 'bg-orange-50 text-[#7a2d11]' : 'bg-gray-50 text-gray-600'}`}>
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
@@ -201,28 +257,74 @@ export default async function ProductDetailPage({
                   />
                 ))}
               </div>
-              <span className="text-sm text-gray-500">({reviewCount} avis)</span>
+              <span className="text-sm font-bold">({reviewCount} avis)</span>
+              {isAliExpress && <span className="text-xs font-black text-[#ff4747]">Top marketplace choice</span>}
             </div>
 
             {/* Price */}
-            <p className="text-3xl font-extrabold text-[#16C784] mb-6">
-              {formatPrice(product.price)}
-            </p>
+            <div className={`mb-6 overflow-hidden rounded-[1.75rem] ${isAliExpress ? 'border border-orange-100 bg-gradient-to-br from-[#fff7f2] via-white to-white' : 'border border-gray-100 bg-gray-50'} p-5`}>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
+                  <p className={`mt-1 text-4xl sm:text-5xl font-black ${accentText}`}>
+                    {formatPrice(product.price)}
+                  </p>
+                </div>
+                {isAliExpress && (
+                  <span className="rounded-full bg-[#ff4747] px-4 py-2 text-xs font-black text-white shadow-lg shadow-orange-900/20">
+                    Limited offer
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* Vendor */}
             {product.store_name && (
-              <div className="flex items-center gap-2 mb-6 text-sm">
-                <span className="text-gray-500">Vendeur :</span>
-                <span className="font-medium text-gray-900 flex items-center gap-1">
-                  {product.store_name}
-                  <Shield className="w-4 h-4 text-[#16C784]" />
-                </span>
+              <div className="mb-6">
+                <SellerHoverCard
+                  name={product.store_name}
+                  href={storeHref}
+                  isVerified={product.store_is_verified}
+                  status={product.store_status}
+                  createdAt={product.store_created_at}
+                  productCount={product.store_product_count}
+                  settings={product.store_settings}
+                  accentColor={accentHex}
+                />
               </div>
             )}
 
+            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className={microCardClass}>
+                <span className="block text-xs font-bold uppercase tracking-wide text-gray-400">Type</span>
+                <span className="mt-1 block font-bold text-gray-900">{formatProductType(product.type)}</span>
+              </div>
+              {product.product_reference && (
+                <div className={microCardClass}>
+                  <span className="block text-xs font-bold uppercase tracking-wide text-gray-400">Reference</span>
+                  <span className="mt-1 block font-bold text-gray-900">{product.product_reference}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { icon: ShieldCheck, label: 'Buyer protection', text: 'Secure marketplace checkout' },
+                { icon: Truck, label: 'Delivery', text: 'Seller-managed shipping' },
+                { icon: RotateCcw, label: 'Support', text: 'Order tracking and help' },
+              ].map((item) => (
+                <div key={item.label} className={`rounded-2xl p-3 ${isAliExpress ? 'bg-orange-50/70 text-[#7a2d11]' : 'bg-gray-50 text-gray-700'}`}>
+                  <item.icon className={`mb-2 h-5 w-5 ${accentText}`} />
+                  <p className="text-xs font-black">{item.label}</p>
+                  <p className="mt-0.5 text-[11px] text-gray-500">{item.text}</p>
+                </div>
+              ))}
+            </div>
+
             {/* Stock */}
             {product.inventory_quantity !== undefined && (
-              <p className="text-sm text-gray-500 mb-6">
+              <p className={`mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${product.inventory_quantity > 0 ? accentBgSoft : 'bg-red-50 text-red-600'}`}>
+                <PackageCheck className="h-4 w-4" />
                 {product.inventory_quantity > 0
                   ? `${product.inventory_quantity} disponibles`
                   : 'Rupture de stock'}
@@ -235,7 +337,7 @@ export default async function ProductDetailPage({
                 {product.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full"
+                    className={`px-3 py-1 text-xs font-bold rounded-full ${isAliExpress ? 'bg-orange-50 text-[#7a2d11]' : 'bg-gray-100 text-gray-600'}`}
                   >
                     {tag}
                   </span>
@@ -244,14 +346,19 @@ export default async function ProductDetailPage({
             )}
 
             {/* Add to Cart */}
-            <div className="flex items-center gap-3 mb-6">
+            <div className={`flex items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
               <AddToCartButton
                 product_id={product.id}
                 title={product.title}
-                price={product.price}
+                slug={product.slug}
+                category={product.category}
+                marketplace_category_slug={product.marketplace_category_slug}
+                price={numericPrice}
                 store_id={product.store_id}
                 store_name={product.store_name || 'Store'}
+                store_subdomain={product.store_subdomain}
                 image_url={mainImage || null}
+                maxQuantity={product.inventory_quantity}
               />
               <WishlistButton productId={product.id} size="md" />
             </div>
@@ -259,42 +366,72 @@ export default async function ProductDetailPage({
         </div>
 
         {/* Description Section */}
-        <div className="border-t border-gray-200 pt-10 mb-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
-          <div className="prose prose-gray max-w-none">
-            {product.description ? (
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {product.description}
-              </p>
-            ) : (
-              <p className="text-gray-400 italic">Aucune description disponible.</p>
-            )}
-          </div>
+        <div className={`mb-10 p-6 sm:p-8 ${cardClass}`}>
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-black text-gray-900">
+            <BadgeCheck className={`h-5 w-5 ${accentText}`} />
+            Description
+          </h2>
+          <ProductDescriptionRenderer value={product.description} />
         </div>
 
+        {product.attributes && product.attributes.length > 0 && (
+          <div className={`mb-10 p-6 sm:p-8 ${cardClass}`}>
+            <h2 className="text-xl font-black text-gray-900 mb-4">Product details</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {product.attributes.map((attribute) => (
+                <div key={`${attribute.name}-${attribute.value}`} className={microCardClass}>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{attribute.name}</p>
+                  <p className="mt-1 font-semibold text-gray-900">{attribute.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Reviews Section */}
-        <div className="border-t border-gray-200 pt-10 mb-16">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
+        <div className={`mb-16 p-6 sm:p-8 ${cardClass}`}>
+          <h2 className="text-xl font-black text-gray-900 mb-6">
             Avis clients ({reviewCount})
           </h2>
-          <ReviewSection productId={product.id} />
+          <ReviewSection productId={product.id} marketplaceTheme={marketplaceSettings.marketplace_theme} />
         </div>
 
         {/* Similar Products */}
         {similarProducts.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Produits Similaires</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Produits Similaires</h2>
+                <p className="text-sm text-gray-500 mt-1">Produits de la même catégorie.</p>
+              </div>
+              {product.category && (
+                <Link href={getCategorySearchHref(product)} className={`text-sm font-bold ${classes.primaryText} ${classes.primaryTextHover}`}>
+                  Voir tout
+                </Link>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
               {similarProducts.map((p) => (
                 <Link
                   key={p.id}
-                  href={`/hub/products/${p.id}`}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300"
+                  href={getHubProductHref(p)}
+                  className={`group overflow-hidden ${classes.card}`}
                 >
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                  <div className={`aspect-square relative overflow-hidden ${isAliExpress ? 'bg-orange-50' : 'bg-gray-100'}`}>
+                    {p.category && (
+                      <span className={`absolute left-3 top-3 z-10 rounded-full px-3 py-1 text-[11px] font-bold shadow-sm ${isAliExpress ? 'bg-white/95 text-[#ff4747]' : 'bg-white/90 text-gray-700'}`}>
+                        {p.category}
+                      </span>
+                    )}
                     {p.images && p.images[0] ? (
                       <img
-                        src={typeof p.images[0] === 'string' ? p.images[0] : (p.images[0] as Record<string, string>).url}
+                        src={getImageUrl(p.images[0]) || p.thumbnail}
+                        alt={p.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : p.thumbnail ? (
+                      <img
+                        src={p.thumbnail}
                         alt={p.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -305,10 +442,10 @@ export default async function ProductDetailPage({
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+                    <h3 className={`font-bold text-gray-900 text-sm mb-1 line-clamp-2 transition-colors ${classes.primaryTextHover}`}>
                       {p.title}
                     </h3>
-                    <p className="font-bold text-[#16C784]">{formatPrice(p.price)}</p>
+                    <p className={`font-black ${accentText}`}>{formatPrice(p.price)}</p>
                   </div>
                 </Link>
               ))}
@@ -316,6 +453,7 @@ export default async function ProductDetailPage({
           </section>
         )}
       </main>
+      <HubFooter {...marketplaceSettings} />
     </div>
   );
 }

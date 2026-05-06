@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { Bell, Check, CheckCheck, Loader2, Filter, Trash2 } from 'lucide-react';
 
@@ -35,26 +36,40 @@ export default function NotificationsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [markingAll, setMarkingAll] = useState(false);
+  const [error, setError] = useState('');
+
+  const getErrorMessage = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data.error?.message || data.message || `${fallback} (${res.status})`;
+    } catch {
+      return `${fallback} (${res.status})`;
+    }
+  };
 
   const fetchNotifications = async () => {
     setLoading(true);
+    setError('');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      const res = await fetch(
-        `${backendUrl}/api/pd/notifications?page=${page}&limit=20`,
-        { credentials: 'include' },
-      );
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '20',
+      });
+      if (filter === 'unread') {
+        params.set('unread', 'true');
+      }
+      const res = await fetchWithCsrf(`/api/pd/notifications?${params.toString()}`, {
+        credentials: 'include',
+      });
       if (res.ok) {
         const data = await res.json();
-        let items = data.data || [];
-        if (filter === 'unread') {
-          items = items.filter((n: Notification) => !n.is_read);
-        }
-        setNotifications(items);
+        setNotifications(data.data || []);
         setTotalPages(data.meta?.total_pages || 1);
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors du chargement des notifications'));
       }
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setLoading(false);
     }
@@ -65,33 +80,58 @@ export default function NotificationsPage() {
   }, [page, filter]);
 
   const markAsRead = async (id: string) => {
+    setError('');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      await fetch(`${backendUrl}/api/pd/notifications/${id}/read`, {
-        method: 'PUT',
+      const res = await fetchWithCsrf(`/api/pd/notifications/${id}/read`, {
+        method: 'PATCH',
         credentials: 'include',
       });
+      if (!res.ok) {
+        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        return;
+      }
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
       );
     } catch (err) {
-      console.error('Failed to mark as read:', err);
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   };
 
   const markAllAsRead = async () => {
+    setError('');
     setMarkingAll(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      await fetch(`${backendUrl}/api/pd/notifications/read-all`, {
-        method: 'PUT',
+      const res = await fetchWithCsrf('/api/pd/notifications/read-all', {
+        method: 'PATCH',
         credentials: 'include',
       });
+      if (!res.ok) {
+        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        return;
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (err) {
-      console.error('Failed to mark all as read:', err);
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setMarkingAll(false);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/notifications/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de la suppression'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
   };
 
@@ -137,6 +177,12 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
+          {error}
+        </div>
+      )}
 
       {/* Notifications List */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -190,6 +236,13 @@ export default function NotificationsPage() {
                     <Check className="w-4 h-4" />
                   </button>
                 )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>

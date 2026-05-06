@@ -18,6 +18,8 @@ import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
 import { storeService } from '../services/store.service';
 import { productService } from '../services/product.service';
+import { categoryService } from '../services/category.service';
+import { fileAssetService } from '../services/file-asset.service';
 import { query } from '../db/pool';
 import { VerificationStatus, MandatStatus, ReportStatus } from '@pandamarket/types';
 import { logger } from '../utils/logger';
@@ -27,6 +29,120 @@ const router = Router();
 
 // All admin routes require authentication + admin role + audit logging
 router.use(requireAuth, requireAdmin, auditLog);
+
+const assetListQuerySchema = z.object({
+  type: z.enum(['image', 'document']).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(60),
+});
+
+const registerAssetSchema = z.object({
+  url: z.string().url(),
+  file_key: z.string().min(1).max(500),
+  bucket: z.string().min(1).max(120),
+  filename: z.string().min(1).max(255),
+  content_type: z.string().min(1).max(100),
+  file_size: z.number().int().min(0).nullable().optional(),
+  purpose: z.string().min(1).max(40).default('marketplace_asset'),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+router.get(
+  '/assets',
+  validate(assetListQuerySchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const queryParams = req.query as unknown as { type?: 'image' | 'document'; limit: number };
+    const assets = await fileAssetService.listAssets({
+      scope: 'platform',
+      type: queryParams.type,
+      limit: queryParams.limit,
+    });
+    res.status(200).json({ data: assets });
+  }),
+);
+
+router.post(
+  '/assets',
+  validate(registerAssetSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const asset = await fileAssetService.registerAsset({
+      scope: 'platform',
+      purpose: req.body.purpose,
+      url: req.body.url,
+      file_key: req.body.file_key,
+      bucket: req.body.bucket,
+      filename: req.body.filename,
+      content_type: req.body.content_type,
+      file_size: req.body.file_size ?? null,
+      owner_user_id: req.user!.id,
+      store_id: null,
+      metadata: req.body.metadata,
+    });
+    res.status(201).json({ asset });
+  }),
+);
+
+// =====================================================
+// Marketplace Categories
+// =====================================================
+
+const categorySchema = z.object({
+  name: z.string().min(2).max(120),
+  description: z.string().max(1000).optional(),
+  short_description: z.string().max(255).optional(),
+  long_description: z.string().max(5000).optional(),
+  image_url: z.string().url().nullable().optional(),
+  position: z.number().int().optional(),
+});
+
+const updateCategorySchema = categorySchema.partial().extend({
+  is_active: z.boolean().optional(),
+});
+
+router.get(
+  '/marketplace-categories',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const categories = (await categoryService.listMarketplaceCategories()).map((category) => ({
+      ...category,
+      product_count: parseInt(category.product_count || '0', 10),
+    }));
+    res.status(200).json({ data: categories });
+  }),
+);
+
+router.post(
+  '/marketplace-categories',
+  validate(categorySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const category = await categoryService.createMarketplaceCategory(req.body);
+    res.status(201).json({ category });
+  }),
+);
+
+router.put(
+  '/marketplace-categories/:id',
+  validate(updateCategorySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const category = await categoryService.updateMarketplaceCategory(req.params.id, req.body);
+    res.status(200).json({ category });
+  }),
+);
+
+router.get(
+  '/marketplace-categories/:id/delete-impact',
+  asyncHandler(async (req: Request, res: Response) => {
+    const impact = await categoryService.getMarketplaceDeleteImpact(req.params.id);
+    res.status(200).json(impact);
+  }),
+);
+
+router.delete(
+  '/marketplace-categories/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const confirm = req.query.confirm === 'true';
+    const result = await categoryService.deleteMarketplaceCategory(req.params.id, confirm);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
 
 // =====================================================
 // KYC Verification Queue
@@ -358,6 +474,22 @@ router.get(
 // =====================================================
 
 const globalSettingsSchema = z.object({
+  marketplace_name: z.coerce.string().min(1).max(120).optional(),
+  marketplace_tagline: z.coerce.string().max(255).optional(),
+  marketplace_logo_url: z.coerce.string().max(2048).optional(),
+  marketplace_theme: z.enum(['panda', 'aliexpress']).optional(),
+  marketplace_support_email: z.union([z.coerce.string().email(), z.literal('')]).optional(),
+  marketplace_support_phone: z.coerce.string().max(40).optional(),
+  marketplace_enabled: z.boolean().optional(),
+  vendor_registration_enabled: z.boolean().optional(),
+  buyer_registration_enabled: z.boolean().optional(),
+  product_moderation_required: z.boolean().optional(),
+  product_auto_publish_verified: z.boolean().optional(),
+  reviews_enabled: z.boolean().optional(),
+  review_auto_publish: z.boolean().optional(),
+  wishlist_enabled: z.boolean().optional(),
+  cart_enabled: z.boolean().optional(),
+  shipping_enabled: z.boolean().optional(),
   order_splitting_enabled: z.boolean().optional(),
   retention_days_flouci: z.coerce.number().int().min(1).max(90).optional(),
   retention_days_konnect: z.coerce.number().int().min(1).max(90).optional(),
@@ -365,11 +497,42 @@ const globalSettingsSchema = z.object({
   retention_days_cod: z.coerce.number().int().min(1).max(90).optional(),
   min_withdrawal_tnd: z.coerce.number().min(1).optional(),
   platform_commission_rate: z.coerce.number().min(0).max(100).optional(),
-  mandat_recipient_name: z.string().max(200).optional(),
-  mandat_recipient_cin: z.string().max(20).optional(),
-  mandat_recipient_city: z.string().max(100).optional(),
+  default_currency: z.string().min(3).max(3).optional(),
+  mandat_recipient_name: z.coerce.string().max(200).optional(),
+  mandat_recipient_cin: z.coerce.string().max(20).optional(),
+  mandat_recipient_city: z.coerce.string().max(100).optional(),
   max_upload_size_mb: z.coerce.number().int().min(1).max(100).optional(),
+  max_product_images: z.coerce.number().int().min(1).max(50).optional(),
+  max_products_per_store_free: z.coerce.number().int().min(1).max(10000).optional(),
+  default_low_stock_threshold: z.coerce.number().int().min(0).max(1000).optional(),
 });
+
+const booleanGlobalSettingKeys = new Set([
+  'marketplace_enabled',
+  'vendor_registration_enabled',
+  'buyer_registration_enabled',
+  'product_moderation_required',
+  'product_auto_publish_verified',
+  'reviews_enabled',
+  'review_auto_publish',
+  'wishlist_enabled',
+  'cart_enabled',
+  'shipping_enabled',
+  'order_splitting_enabled',
+]);
+
+const numericGlobalSettingKeys = new Set([
+  'retention_days_flouci',
+  'retention_days_konnect',
+  'retention_days_mandat',
+  'retention_days_cod',
+  'min_withdrawal_tnd',
+  'platform_commission_rate',
+  'max_upload_size_mb',
+  'max_product_images',
+  'max_products_per_store_free',
+  'default_low_stock_threshold',
+]);
 
 /**
  * GET /admin/settings — Retrieve current platform settings.
@@ -385,11 +548,11 @@ router.get(
 
     const settings: Record<string, string | number | boolean> = {};
     for (const row of rows) {
-      // Auto-parse booleans and numbers
-      if (row.value === 'true') settings[row.key] = true;
-      else if (row.value === 'false') settings[row.key] = false;
-      else if (!isNaN(Number(row.value))) settings[row.key] = Number(row.value);
-      else settings[row.key] = row.value;
+      if (booleanGlobalSettingKeys.has(row.key)) settings[row.key] = row.value === 'true';
+      else if (numericGlobalSettingKeys.has(row.key)) {
+        const numericValue = Number(row.value);
+        settings[row.key] = Number.isFinite(numericValue) ? numericValue : row.value;
+      } else settings[row.key] = row.value;
     }
 
     res.status(200).json({ data: settings });

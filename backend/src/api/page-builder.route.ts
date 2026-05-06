@@ -66,7 +66,7 @@ router.get(
   requireStore,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       const pages = await pageBuilderService.listPages(storeId);
       res.json({ data: pages, count: pages.length });
     } catch (err) {
@@ -86,7 +86,7 @@ router.get(
   requireStore,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       const page = await pageBuilderService.getPageById(req.params.id, storeId);
       res.json({ page });
     } catch (err) {
@@ -107,7 +107,7 @@ router.post(
   validate(createPageSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       const page = await pageBuilderService.createPage({
         store_id: storeId,
         ...req.body,
@@ -131,7 +131,7 @@ router.put(
   validate(updatePageSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       const page = await pageBuilderService.updatePage(req.params.id, storeId, req.body);
       res.json({ page });
     } catch (err) {
@@ -151,7 +151,7 @@ router.delete(
   requireStore,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       await pageBuilderService.deletePage(req.params.id, storeId);
       res.json({ success: true });
     } catch (err) {
@@ -171,7 +171,7 @@ router.post(
   requireStore,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const storeId = (req as any).storeId;
+      const storeId = req.user!.store_id!;
       const page = await pageBuilderService.duplicatePage(req.params.id, storeId);
       res.status(201).json({ page });
     } catch (err) {

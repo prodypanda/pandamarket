@@ -5,6 +5,7 @@ import {
   type CartItem,
   addItem,
   removeItem,
+  removeItemsByStore,
   updateItemQuantity,
   getCartTotal as _getCartTotal,
   getItemCount as _getItemCount,
@@ -17,6 +18,7 @@ interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, 'id'>) => void;
   removeFromCart: (id: string) => void;
+  removeStoreItems: (storeId: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
@@ -58,6 +60,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => removeItem(prev, id));
   }, []);
 
+  const removeStoreItems = useCallback((storeId: string) => {
+    setItems((prev) => removeItemsByStore(prev, storeId));
+  }, []);
+
   const updateQuantity = useCallback((id: string, quantity: number) => {
     setItems((prev) => updateItemQuantity(prev, id, quantity));
   }, []);
@@ -71,8 +77,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const getItemsByStore = useCallback(() => _getItemsByStore(items), [items]);
 
   const value = useMemo(
-    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, getCartTotal, getItemCount, getItemsByStore }),
-    [items, addToCart, removeFromCart, updateQuantity, clearCart, getCartTotal, getItemCount, getItemsByStore],
+    () => ({ items, addToCart, removeFromCart, removeStoreItems, updateQuantity, clearCart, getCartTotal, getItemCount, getItemsByStore }),
+    [items, addToCart, removeFromCart, removeStoreItems, updateQuantity, clearCart, getCartTotal, getItemCount, getItemsByStore],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

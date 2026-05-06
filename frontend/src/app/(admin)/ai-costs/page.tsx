@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Sparkles, TrendingUp, Cpu, Coins, ImageIcon, FileText } from 'lucide-react';
 
@@ -43,7 +44,7 @@ export default function AiCostDashboard() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch('/api/pd/admin/ai-stats', { credentials: 'include' });
+        const res = await fetchWithCsrf('/api/pd/admin/ai-stats', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setStats(data);
