@@ -76,6 +76,7 @@ export interface ProductRow {
   storefront_parent_category_name?: string | null;
   storefront_parent_category_slug?: string | null;
   store_subdomain?: string | null;
+  store_custom_domain?: string | null;
   store_seller_type?: SellerType | null;
   store_is_verified?: boolean | null;
   store_status?: string | null;
@@ -335,6 +336,7 @@ export class ProductService {
   async getById(id: string): Promise<ProductRow> {
     const { rows } = await query<ProductRow>(
       `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain,
+              s.custom_domain AS store_custom_domain,
               s.seller_type AS store_seller_type,
               s.is_verified AS store_is_verified,
               s.status AS store_status,
@@ -503,9 +505,9 @@ export class ProductService {
     return this.getById(productId);
   }
 
-  async getPublishedByStoreSlug(storeId: string, slug: string): Promise<ProductRow & { store_name: string; store_subdomain: string }> {
-    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string }>(
-      `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain,
+  async getPublishedByStoreSlug(storeId: string, slug: string): Promise<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }> {
+    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }>(
+      `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               s.seller_type AS store_seller_type,
               s.is_verified AS store_is_verified,
               s.status AS store_status,

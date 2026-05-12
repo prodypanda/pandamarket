@@ -28,6 +28,8 @@ import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../lib/store-routing';
 import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../components/store/MarketplaceStorefront';
 import { MarketplaceBrand } from '../../../components/MarketplaceBrand';
+import { StorefrontSocialLinks } from '../../../components/themes/StorefrontSocialLinks';
+import type { StoreSocialLinks } from '../../../components/themes/shared';
 
 interface StoreBranding {
   store_id?: string;
@@ -40,6 +42,13 @@ interface StoreBranding {
   store_path_base?: string;
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  map_embed_url?: string | null;
+  social?: StoreSocialLinks | null;
 }
 
 interface StoreData {
@@ -57,9 +66,13 @@ interface StoreData {
     favicon_url?: string;
     store_description?: string;
     description?: string;
+    contact_email?: string | null;
+    contact_phone?: string | null;
     address?: string;
     city?: string;
     country?: string;
+    map_embed_url?: string | null;
+    social?: StoreSocialLinks | null;
     [key: string]: unknown;
   };
 }
@@ -221,6 +234,17 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
     const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
     const logoUrl = store.settings?.logo_url as string | undefined;
     const marketplaceSettings = await getMarketplaceSettings();
+    const footerBranding: StoreBranding = {
+      marketplace_name: marketplaceSettings.marketplace_name,
+      marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+      contact_email: store.settings?.contact_email,
+      contact_phone: store.settings?.contact_phone,
+      address: store.settings?.address,
+      city: store.settings?.city,
+      country: store.settings?.country,
+      map_embed_url: store.settings?.map_embed_url,
+      social: store.settings?.social,
+    };
 
     return (
       <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
@@ -262,6 +286,12 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
 
         {/* Footer */}
         <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
+          <StorefrontSocialLinks
+            branding={footerBranding}
+            showContact
+            className="mb-3 flex flex-wrap items-center justify-center gap-3"
+            linkClassName="font-semibold hover:underline"
+          />
           <span className="inline-flex items-center justify-center gap-1">
             Propulsé par{' '}
             <MarketplaceBrand
@@ -297,6 +327,13 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
     store_path_base: storePathBase,
     marketplace_name: marketplaceSettings.marketplace_name,
     marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
   };
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding };

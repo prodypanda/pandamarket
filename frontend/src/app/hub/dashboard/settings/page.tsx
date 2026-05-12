@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2 } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
@@ -10,6 +10,28 @@ import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'payments';
+
+type SocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';
+
+type SocialLinks = Record<SocialPlatform, string>;
+
+const socialPlatforms: { key: SocialPlatform; label: string; placeholder: string }[] = [
+  { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/votrepage' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/votreboutique' },
+  { key: 'x', label: 'X / Twitter', placeholder: 'https://x.com/votreboutique' },
+  { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@votreboutique' },
+  { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@votreboutique' },
+  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/company/votreboutique' },
+  { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/216...' },
+  { key: 'telegram', label: 'Telegram', placeholder: 'https://t.me/votreboutique' },
+  { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/votreboutique' },
+  { key: 'snapchat', label: 'Snapchat', placeholder: 'https://snapchat.com/add/votreboutique' },
+];
+
+const emptySocialLinks = socialPlatforms.reduce((acc, platform) => {
+  acc[platform.key] = '';
+  return acc;
+}, {} as SocialLinks);
 
 interface MediaItem {
   url: string;
@@ -54,10 +76,18 @@ export default function SettingsPage() {
   const [pendingSellerTypeRequest, setPendingSellerTypeRequest] = useState<SellerTypeChangeRequest | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('TN');
+  const [mapEmbedUrl, setMapEmbedUrl] = useState('');
+  const [socialLinks, setSocialLinks] = useState<SocialLinks>(emptySocialLinks);
   const [logoUrl, setLogoUrl] = useState('');
+  const [marketplaceHeaderImageUrl, setMarketplaceHeaderImageUrl] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
+  const [showHeaderImagePicker, setShowHeaderImagePicker] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingHeaderImage, setUploadingHeaderImage] = useState(false);
 
   // Theme
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('modern');
@@ -83,7 +113,16 @@ export default function SettingsPage() {
         setStoreDescription(store.settings?.store_description || store.settings?.description || '');
         setContactEmail(store.settings?.contact_email || '');
         setContactPhone(store.settings?.contact_phone || '');
+        setAddress(store.settings?.address || '');
+        setCity(store.settings?.city || '');
+        setCountry(store.settings?.country || 'TN');
+        setMapEmbedUrl(store.settings?.map_embed_url || '');
+        setSocialLinks({
+          ...emptySocialLinks,
+          ...(store.settings?.social || {}),
+        });
         setLogoUrl(store.settings?.logo_url || '');
+        setMarketplaceHeaderImageUrl(store.settings?.marketplace_header_image_url || '');
         setSelectedTheme((store.theme_id || 'modern') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
@@ -132,6 +171,18 @@ export default function SettingsPage() {
     }, 3000);
   };
 
+  const updateSocialLink = (platform: SocialPlatform, value: string) => {
+    setSocialLinks((current) => ({ ...current, [platform]: value }));
+  };
+
+  const cleanSocialLinks = () => {
+    return socialPlatforms.reduce<Partial<SocialLinks>>((acc, platform) => {
+      const value = socialLinks[platform.key].trim();
+      if (value) acc[platform.key] = value;
+      return acc;
+    }, {});
+  };
+
   const saveStoreSettings = async () => {
     setSaving(true);
     try {
@@ -146,7 +197,13 @@ export default function SettingsPage() {
             store_description: storeDescription,
             contact_email: contactEmail,
             contact_phone: contactPhone,
+            address,
+            city,
+            country,
+            map_embed_url: mapEmbedUrl,
+            social: cleanSocialLinks(),
             logo_url: logoUrl,
+            marketplace_header_image_url: marketplaceHeaderImageUrl,
           },
         }),
       });
@@ -242,6 +299,50 @@ export default function SettingsPage() {
       showFeedback(err instanceof Error ? err.message : 'Upload impossible', true);
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const uploadMarketplaceHeaderImage = async (file: File | null) => {
+    if (!file) return;
+    setUploadingHeaderImage(true);
+    try {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Veuillez choisir une image JPG, PNG ou WebP.');
+      }
+
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type,
+          file_size: file.size,
+          purpose: 'product_image',
+        }),
+      });
+
+      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Upload impossible'));
+      const presignData = await presignRes.json();
+      const uploadUrl = presignData.upload_url as string | undefined;
+      const publicUrl = presignData.public_url as string | undefined;
+      if (!uploadUrl || !publicUrl) throw new Error('URL upload manquante');
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error('Upload impossible');
+
+      setMarketplaceHeaderImageUrl(publicUrl);
+      await fetchMediaItems();
+      showFeedback('Image de couverture sélectionnée. Cliquez sur Sauvegarder pour appliquer.');
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Upload impossible', true);
+    } finally {
+      setUploadingHeaderImage(false);
     }
   };
 
@@ -520,6 +621,81 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-4 flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 text-[#16C784]" />
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Adresse & carte</h3>
+                  <p className="text-xs text-gray-500">Ces informations apparaissent sur votre page vendeur et dans le pied de page de votre boutique.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pays</label>
+                  <input
+                    type="text"
+                    value={country}
+                    onChange={(event) => setCountry(event.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">URL Google Maps embed</label>
+                  <input
+                    type="url"
+                    value={mapEmbedUrl}
+                    onChange={(event) => setMapEmbedUrl(event.target.value)}
+                    placeholder="https://www.google.com/maps/embed?pb=..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Utilisez uniquement une URL d&apos;intégration Google Maps.</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-4 flex items-start gap-3">
+                <Share2 className="mt-0.5 h-5 w-5 text-[#16C784]" />
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Réseaux sociaux</h3>
+                  <p className="text-xs text-gray-500">Ajoutez vos profils publics pour rassurer les clients et générer du trafic.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {socialPlatforms.map((platform) => (
+                  <div key={platform.key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{platform.label}</label>
+                    <div className="relative">
+                      <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="url"
+                        value={socialLinks[platform.key]}
+                        onChange={(event) => updateSocialLink(platform.key, event.target.value)}
+                        placeholder={platform.placeholder}
+                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784]"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la boutique</label>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
@@ -572,6 +748,64 @@ export default function SettingsPage() {
                       className="hidden"
                     />
                   </label>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image d&apos;en-tête marketplace</label>
+              <div className="space-y-4">
+                <div className="h-40 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                  {marketplaceHeaderImageUrl ? (
+                    <div
+                      aria-label="Image d'en-tête marketplace"
+                      role="img"
+                      className="h-full w-full bg-cover bg-center"
+                      style={{ backgroundImage: `url(${marketplaceHeaderImageUrl})` }}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-gray-300">
+                      <ImageIcon className="h-8 w-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{marketplaceHeaderImageUrl ? 'Image sélectionnée' : 'Aucune image'}</p>
+                    <p className="text-xs text-gray-500">Cette image apparaît comme couverture sur votre page vendeur dans la marketplace.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {marketplaceHeaderImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setMarketplaceHeaderImageUrl('')}
+                        className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
+                      >
+                        Retirer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderImagePicker(true);
+                        void fetchMediaItems();
+                      }}
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#16C784] hover:text-[#16C784]"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Galerie
+                    </button>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#16C784] px-4 py-2 text-sm font-semibold text-white hover:bg-[#14b876]">
+                      <UploadCloud className="h-4 w-4" />
+                      {uploadingHeaderImage ? 'Upload...' : 'Uploader'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploadingHeaderImage}
+                        onChange={(event) => void uploadMarketplaceHeaderImage(event.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -778,6 +1012,55 @@ export default function SettingsPage() {
               ) : (
                 <div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
                   Aucune image disponible. Uploadez un logo pour commencer.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showHeaderImagePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Galerie de la boutique</h2>
+                <p className="text-sm text-gray-500">Choisissez une image pour l&apos;en-tête marketplace.</p>
+              </div>
+              <button type="button" onClick={() => setShowHeaderImagePicker(false)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto p-6">
+              {mediaItems.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+                  {mediaItems.map((item) => (
+                    <button
+                      type="button"
+                      key={`header-${item.url}-${item.product_id}`}
+                      onClick={() => {
+                        setMarketplaceHeaderImageUrl(item.url);
+                        setShowHeaderImagePicker(false);
+                        showFeedback('Image sélectionnée. Cliquez sur Sauvegarder pour appliquer.');
+                      }}
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#16C784] hover:shadow-md"
+                    >
+                      <div className="aspect-square bg-gray-100">
+                        <div
+                          aria-label={item.alt_text || item.product_title}
+                          role="img"
+                          className="h-full w-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${item.url})` }}
+                        />
+                      </div>
+                      <div className="p-2">
+                        <p className="truncate text-xs font-medium text-gray-700">{item.product_title}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
+                  Aucune image disponible. Uploadez une image pour commencer.
                 </div>
               )}
             </div>

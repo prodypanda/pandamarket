@@ -10,6 +10,7 @@ import { SellerHoverCard } from '../product/SellerHoverCard';
 import { ContactSellerButton } from '../chat/ContactSellerButton';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
+import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
 import { getMarketplaceStoreProductHref, type MarketplaceStoreData, type MarketplaceStoreProduct } from './MarketplaceStorefront';
 import { getWholesalePricingFromMetadata } from '../../lib/cart-utils';
 import { t as translate } from '../../i18n/utils';
@@ -75,6 +76,10 @@ export function MarketplaceStoreProductDetail({
   const isAliExpress = classes.isAliExpress;
   const accentHex = isAliExpress ? '#ff4747' : '#16C784';
   const storeHref = `/store/${encodeURIComponent(storeHost)}`;
+  const sellerWebsiteHref = getStorefrontWebsiteHref({
+    subdomain: store.subdomain,
+    customDomain: store.custom_domain,
+  });
   const productsHref = `${storeHref}/products`;
   const categoryHref = product.marketplace_category_slug
     ? `${productsHref}?category=${encodeURIComponent(product.marketplace_category_slug)}`
@@ -174,6 +179,7 @@ export function MarketplaceStoreProductDetail({
               <SellerHoverCard
                 name={store.name}
                 href={storeHref}
+                websiteHref={sellerWebsiteHref}
                 isVerified={product.store_is_verified ?? store.is_verified}
                 sellerType={product.store_seller_type ?? store.seller_type}
                 status={product.store_status ?? store.status}

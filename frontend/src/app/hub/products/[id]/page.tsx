@@ -14,6 +14,7 @@ import { SellerHoverCard } from '../../../../components/product/SellerHoverCard'
 import { ContactSellerButton } from '../../../../components/chat/ContactSellerButton';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
+import { getStorefrontWebsiteHref } from '../../../../lib/storefront-url';
 import { getWholesalePricingFromMetadata } from '../../../../lib/cart-utils';
 import { t as translate } from '../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../i18n/config';
@@ -49,6 +50,7 @@ interface Product {
   store_id: string;
   store_name?: string;
   store_subdomain?: string | null;
+  store_custom_domain?: string | null;
   store_is_verified?: boolean | null;
   store_seller_type?: string | null;
   store_status?: string | null;
@@ -202,6 +204,10 @@ export default async function ProductDetailPage({
   const numericPrice = toNumber(product.price);
   const isPhysicalProduct = product.type === 'physical' || !product.type;
   const storeHref = product.store_subdomain ? `/store/${encodeURIComponent(product.store_subdomain)}` : null;
+  const sellerWebsiteHref = getStorefrontWebsiteHref({
+    subdomain: product.store_subdomain,
+    customDomain: product.store_custom_domain,
+  });
   const wholesalePricing = product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
     ? getWholesalePricingFromMetadata(product.metadata)
     : null;
@@ -331,6 +337,7 @@ export default async function ProductDetailPage({
                 <SellerHoverCard
                   name={product.store_name}
                   href={storeHref}
+                  websiteHref={sellerWebsiteHref}
                   isVerified={product.store_is_verified}
                   sellerType={product.store_seller_type}
                   status={product.store_status}

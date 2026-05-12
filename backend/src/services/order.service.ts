@@ -58,6 +58,26 @@ export interface OrderRow {
   updated_at: Date;
 }
 
+export interface StoreOrderRow extends OrderRow {
+  store_subtotal: string;
+  store_shipping_total: string;
+  store_total: string;
+  fulfillment_id: string | null;
+  fulfillment_status: string | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  shipped_at: Date | null;
+  delivered_at: Date | null;
+  customer_email: string | null;
+  customer_first_name: string | null;
+  customer_last_name: string | null;
+  customer_phone: string | null;
+}
+
+export interface StoreOrderDetailRow extends StoreOrderRow {
+  items: unknown[];
+}
+
 const FLAT_SHIPPING_PER_STORE = 7; // TND — placeholder until Aramex integration
 
 function usesInventory(type: ProductType): boolean {
@@ -351,6 +371,64 @@ export class OrderService {
     return rows[0];
   }
 
+  async getStoreOrderDetail(orderId: string, storeId: string): Promise<StoreOrderDetailRow> {
+    const { rows } = await query<StoreOrderDetailRow>(
+      `SELECT o.*,
+              COALESCE(store_totals.store_subtotal, 0)::text AS store_subtotal,
+              COALESCE(f.shipping_total, 0)::text AS store_shipping_total,
+              (COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0))::text AS store_total,
+              f.id AS fulfillment_id,
+              f.status AS fulfillment_status,
+              f.carrier,
+              f.tracking_number,
+              f.shipped_at,
+              f.delivered_at,
+              COALESCE(u.email, sc.email) AS customer_email,
+              COALESCE(u.first_name, sc.first_name) AS customer_first_name,
+              COALESCE(u.last_name, sc.last_name) AS customer_last_name,
+              COALESCE(u.phone, sc.phone) AS customer_phone,
+              COALESCE(items.items, '[]'::json) AS items
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $2
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(i.subtotal), 0) AS store_subtotal
+         FROM pd_order_item i
+         WHERE i.order_id = o.id AND i.store_id = $2
+       ) store_totals ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', i.id,
+             'product_id', i.product_id,
+             'variant_id', i.variant_id,
+             'product_title', i.title,
+             'quantity', i.quantity,
+             'unit_price', i.unit_price,
+             'subtotal', i.subtotal,
+             'product_type', p.type,
+             'thumbnail', p.thumbnail,
+             'slug', p.slug,
+             'variant_sku', v.sku,
+             'variant_title', v.title
+           )
+           ORDER BY i.created_at ASC
+         ) AS items
+         FROM pd_order_item i
+         LEFT JOIN pd_product p ON p.id = i.product_id
+         LEFT JOIN pd_product_variant v ON v.id = i.variant_id
+         WHERE i.order_id = o.id AND i.store_id = $2
+       ) items ON true
+       WHERE o.id = $1
+         AND EXISTS (SELECT 1 FROM pd_order_item oi WHERE oi.order_id = o.id AND oi.store_id = $2)
+       LIMIT 1`,
+      [orderId, storeId],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+    return rows[0];
+  }
+
   /**
    * Check if an order contains items from a specific store (for vendor tenant isolation).
    */
@@ -478,7 +556,7 @@ export class OrderService {
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
     const params: unknown[] = [storeId];
-    let where = 'i.store_id = $1';
+    let where = 'EXISTS (SELECT 1 FROM pd_order_item i WHERE i.order_id = o.id AND i.store_id = $1)';
     const search = opts.search?.trim();
     if (opts.status) {
       params.push(opts.status);
@@ -488,14 +566,40 @@ export class OrderService {
       params.push(`%${search.toLowerCase()}%`);
       where += ` AND (
         LOWER(o.id) LIKE $${params.length}
-        OR LOWER(o.customer_id) LIKE $${params.length}
+        OR LOWER(COALESCE(o.customer_id, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(o.storefront_customer_id, '')) LIKE $${params.length}
         OR LOWER(o.payment_gateway::text) LIKE $${params.length}
+        OR LOWER(COALESCE(u.email, sc.email, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(u.first_name, sc.first_name, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(u.last_name, sc.last_name, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(f.tracking_number, '')) LIKE $${params.length}
       )`;
     }
     params.push(limit, offset);
-    const { rows } = await query<OrderRow>(
-      `SELECT DISTINCT o.* FROM pd_order o
-       JOIN pd_order_item i ON i.order_id = o.id
+    const { rows } = await query<StoreOrderRow>(
+      `SELECT o.*,
+              COALESCE(store_totals.store_subtotal, 0)::text AS store_subtotal,
+              COALESCE(f.shipping_total, 0)::text AS store_shipping_total,
+              (COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0))::text AS store_total,
+              f.id AS fulfillment_id,
+              f.status AS fulfillment_status,
+              f.carrier,
+              f.tracking_number,
+              f.shipped_at,
+              f.delivered_at,
+              COALESCE(u.email, sc.email) AS customer_email,
+              COALESCE(u.first_name, sc.first_name) AS customer_first_name,
+              COALESCE(u.last_name, sc.last_name) AS customer_last_name,
+              COALESCE(u.phone, sc.phone) AS customer_phone
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $1
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(i.subtotal), 0) AS store_subtotal
+         FROM pd_order_item i
+         WHERE i.order_id = o.id AND i.store_id = $1
+       ) store_totals ON true
        WHERE ${where}
        ORDER BY o.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -503,8 +607,11 @@ export class OrderService {
     );
     const countParams = params.slice(0, -2);
     const { rows: cnt } = await query<{ count: string }>(
-      `SELECT COUNT(DISTINCT o.id)::text AS count FROM pd_order o
-       JOIN pd_order_item i ON i.order_id = o.id
+      `SELECT COUNT(*)::text AS count
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $1
        WHERE ${where}`,
       countParams,
     );

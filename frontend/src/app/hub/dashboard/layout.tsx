@@ -24,6 +24,8 @@ import {
   LayoutTemplate,
   Tags,
   Plus,
+  ImageIcon,
+  CheckCircle2,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -40,7 +42,17 @@ interface CurrentUser {
 interface CurrentStore {
   id?: string;
   name?: string;
+  status?: string | null;
+  is_verified?: boolean | null;
+  theme_id?: string | null;
+  subscription_plan?: string | null;
+  settings?: {
+    logo_url?: string | null;
+    store_description?: string | null;
+  } | null;
+  payment_config?: unknown;
   subdomain?: string | null;
+  custom_domain?: string | null;
 }
 
 interface MarketplaceSettings {
@@ -70,6 +82,7 @@ export default function DashboardLayout({
   const [canCreateFreeStore, setCanCreateFreeStore] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
+  const [setupProgress, setSetupProgress] = useState({ completed: 1, total: 6 });
   const isStoreSelectorPage = pathname === '/hub/dashboard/select-store';
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
   const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage;
@@ -144,10 +157,56 @@ export default function DashboardLayout({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSetupProgress() {
+      if (!authorized || isStoreSetupPage) return;
+      try {
+        const [storeRes, productsRes, verificationRes] = await Promise.allSettled([
+          fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
+        ]);
+        if (cancelled) return;
+        const steps = [
+          Boolean(currentStore?.id),
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
+        if (storeRes.status === 'fulfilled' && storeRes.value.ok) {
+          const data = await storeRes.value.json();
+          const store = data.store as CurrentStore | null;
+          steps[1] = Boolean(store?.settings?.logo_url || store?.settings?.store_description);
+          steps[2] = Boolean(store?.theme_id);
+          steps[5] = Boolean(store?.payment_config);
+        }
+        if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+          const data = await productsRes.value.json();
+          steps[4] = Number(data.meta?.total || 0) > 0;
+        }
+        if (verificationRes.status === 'fulfilled' && verificationRes.value.ok) {
+          const data = await verificationRes.value.json();
+          steps[3] = data.verification?.status === 'approved';
+        }
+        setSetupProgress({ completed: steps.filter(Boolean).length, total: steps.length });
+      } catch {
+        setSetupProgress((current) => current);
+      }
+    }
+    fetchSetupProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, [authorized, currentStore?.id, isStoreSetupPage]);
+
   const navigation = [
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
+    { name: 'Media', href: '/hub/dashboard/media', icon: ImageIcon },
     { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
     { name: 'Messages', href: '/hub/dashboard/messages', icon: MessageSquare },
     { name: t('dashboard.sidebar.wallet'), href: '/hub/dashboard/wallet', icon: Wallet },
@@ -187,6 +246,7 @@ export default function DashboardLayout({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'V';
+  const setupPercentage = Math.round((setupProgress.completed / setupProgress.total) * 100);
 
   if (!authorized) {
     return (
@@ -243,14 +303,23 @@ export default function DashboardLayout({
         </div>
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="flex items-center px-3 py-2 text-sm font-semibold text-slate-700 rounded-lg hover:bg-[#16C784]/10 hover:text-[#0f9f6e] transition-colors"
-            >
-              <item.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
-              {item.name}
-            </Link>
+            (() => {
+              const active = pathname === item.href || (item.href !== '/hub/dashboard' && pathname.startsWith(`${item.href}/`));
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                    active
+                      ? 'bg-[#16C784]/12 text-[#0f9f6e] ring-1 ring-[#16C784]/15'
+                      : 'text-slate-700 hover:bg-[#16C784]/10 hover:text-[#0f9f6e]'
+                  }`}
+                >
+                  <item.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  {item.name}
+                </Link>
+              );
+            })()
           ))}
         </nav>
         <div className="p-4 border-t border-slate-200">
@@ -300,6 +369,27 @@ export default function DashboardLayout({
             </div>
           </div>
         </header>
+        {setupPercentage < 100 && (
+          <div className="sticky top-16 z-10 border-b border-emerald-100 bg-white/95 px-8 py-3 backdrop-blur">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#16C784]/10 text-[#0f9f6e]">
+                  <CheckCircle2 className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-black text-slate-900">Store setup progress</p>
+                  <p className="text-xs font-semibold text-slate-500">{setupProgress.completed} of {setupProgress.total} launch steps completed</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 lg:w-80">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-[#16C784]" style={{ width: `${setupPercentage}%` }} />
+                </div>
+                <span className="text-xs font-black text-[#0f9f6e]">{setupPercentage}%</span>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Page Content */}
         <div className="p-8 flex-1 overflow-auto bg-slate-100 text-slate-900">

@@ -77,7 +77,18 @@ export interface StoreBranding {
   store_path_base?: string;
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  map_embed_url?: string | null;
+  social?: StoreSocialLinks | null;
 }
+
+export type StoreSocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';
+
+export type StoreSocialLinks = Partial<Record<StoreSocialPlatform, string>>;
 
 export interface ThemeProps {
   theme: ThemeConfig;

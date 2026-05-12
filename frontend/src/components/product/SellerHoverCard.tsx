@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, CheckCircle2, ExternalLink, Mail, MapPin, Package, Phone, Shield, Store } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ExternalLink, Globe2, Mail, MapPin, Package, Phone, Shield, Store } from 'lucide-react';
 import Link from 'next/link';
 import { getSellerTypeLabel } from '../../lib/seller-type';
 import { useLocale } from '../../contexts/LocaleContext';
@@ -19,6 +19,7 @@ interface SellerSettings {
 interface SellerHoverCardProps {
   name: string;
   href?: string | null;
+  websiteHref?: string | null;
   isVerified?: boolean | null;
   status?: string | null;
   sellerType?: string | null;
@@ -64,6 +65,7 @@ function formatStatus(status: string | null | undefined, isVerified: boolean | n
 export function SellerHoverCard({
   name,
   href,
+  websiteHref,
   isVerified,
   status,
   sellerType,
@@ -74,6 +76,7 @@ export function SellerHoverCard({
 }: SellerHoverCardProps) {
   const { locale, t } = useLocale();
   const sellerSettings = getSellerSettings(settings);
+  const resolvedWebsiteHref = websiteHref || href;
   const description = sellerSettings.store_description || sellerSettings.description;
   const location = [sellerSettings.address, sellerSettings.city, sellerSettings.country].filter(Boolean).join(', ');
   const statusLabel = formatStatus(status, isVerified, t);
@@ -133,9 +136,9 @@ export function SellerHoverCard({
                 {isVerified && <Shield className="h-4 w-4 shrink-0" />}
               </p>
               <p className="mt-1 text-xs font-semibold text-white/75">{sellerTypeLabel} · {statusLabel}</p>
-              {href && (
+              {resolvedWebsiteHref && (
                 <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur">
-                  {t('sellerCard.viewStore')} <ExternalLink className="h-3 w-3" />
+                  {t('sellerCard.visitStore')} <Globe2 className="h-3 w-3" />
                 </span>
               )}
             </div>
@@ -183,9 +186,9 @@ export function SellerHoverCard({
             )}
           </div>
 
-          {href && (
+          {resolvedWebsiteHref && (
             <span className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black text-white" style={{ backgroundColor: accentColor }}>
-              {t('sellerCard.visitStore')} <ExternalLink className="h-3.5 w-3.5" />
+              {t('sellerCard.visitStore')} <Globe2 className="h-3.5 w-3.5" />
             </span>
           )}
         </div>
@@ -193,10 +196,11 @@ export function SellerHoverCard({
     </div>
   );
 
-  if (!href) return content;
+  const linkHref = resolvedWebsiteHref || href;
+  if (!linkHref) return content;
 
   return (
-    <Link href={href} className="block">
+    <Link href={linkHref} className="block">
       {content}
     </Link>
   );

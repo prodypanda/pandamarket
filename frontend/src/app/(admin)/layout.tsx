@@ -113,6 +113,7 @@ export default function AdminLayout({
     { href: '/messages', label: 'Messages', icon: MessageSquare },
     { href: '/reports', label: t('admin.sidebar.reports'), icon: Flag },
     { href: '/users', label: t('admin.sidebar.vendors'), icon: Users },
+    { href: '/buyers', label: 'Buyers', icon: Users },
     { href: '/stores', label: 'Stores', icon: Store },
     { href: '/withdrawals', label: t('admin.sidebar.withdrawals'), icon: Wallet },
     { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },

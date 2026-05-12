@@ -141,6 +141,15 @@ router.get(
   }),
 );
 
+router.get(
+  '/store/:id',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.getStoreOrderDetail(req.params.id, req.user!.store_id!);
+    res.status(200).json({ order });
+  }),
+);
+
 // Get single order (tenant-isolated: customer sees own orders, vendor sees store orders)
 router.get(
   '/:id',

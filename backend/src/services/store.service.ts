@@ -122,6 +122,38 @@ export interface AdminVendorAccountSummary {
   total_stores: number;
 }
 
+export interface AdminBuyerRow {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  email_verified: boolean | null;
+  is_active: boolean | null;
+  two_factor_enabled: boolean | null;
+  last_login_at: Date | null;
+  created_at: Date;
+  order_count: string;
+  open_order_count: string;
+  captured_order_count: string;
+  total_spent: string;
+  last_order_at: Date | null;
+  wishlist_count: string;
+  review_count: string;
+  address_count: string;
+  open_report_count: string;
+  chat_count: string;
+}
+
+export interface AdminBuyerSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  email_verified: number;
+  with_orders: number;
+  total_orders: number;
+}
+
 function parseTimestamp(value: unknown): number | null {
   if (typeof value !== 'string') return null;
   const timestamp = Date.parse(value);
@@ -943,6 +975,146 @@ export class StoreService {
       multi_store_accounts: parseInt(summaryRow.multi_store_accounts, 10),
       free_store_slots_available: parseInt(summaryRow.free_store_slots_available, 10),
       total_stores: parseInt(summaryRow.total_stores, 10),
+    };
+
+    return { data, meta: { page, limit, total, total_pages: Math.ceil(total / limit), summary } };
+  }
+
+  async listBuyersForAdmin(opts: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: 'active' | 'inactive';
+    emailVerified?: boolean;
+    hasOrders?: boolean;
+  } = {}) {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, opts.limit ?? 20);
+    const offset = (page - 1) * limit;
+    const conditions = ['u.role = $1'];
+    const params: unknown[] = [UserRole.Customer];
+
+    if (opts.search?.trim()) {
+      params.push(`%${opts.search.trim()}%`);
+      conditions.push(`(
+        COALESCE(u.email, '') ILIKE $${params.length}
+        OR COALESCE(u.first_name, '') ILIKE $${params.length}
+        OR COALESCE(u.last_name, '') ILIKE $${params.length}
+        OR COALESCE(u.phone, '') ILIKE $${params.length}
+      )`);
+    }
+    if (opts.status === 'active') conditions.push('u.is_active = true');
+    if (opts.status === 'inactive') conditions.push('u.is_active = false');
+    if (typeof opts.emailVerified === 'boolean') {
+      params.push(opts.emailVerified);
+      conditions.push(`u.email_verified = $${params.length}`);
+    }
+    if (typeof opts.hasOrders === 'boolean') {
+      conditions.push(opts.hasOrders ? 'COALESCE(om.order_count, 0) > 0' : 'COALESCE(om.order_count, 0) = 0');
+    }
+
+    const fromSql = `
+      FROM pd_user u
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) AS order_count,
+          COUNT(*) FILTER (WHERE o.status IN ('pending', 'processing')) AS open_order_count,
+          COUNT(*) FILTER (WHERE o.payment_status = 'captured') AS captured_order_count,
+          COALESCE(SUM(CASE WHEN o.payment_status = 'captured' THEN o.total::numeric ELSE 0 END), 0) AS total_spent,
+          MAX(o.created_at) AS last_order_at
+        FROM pd_order o
+        WHERE o.customer_id = u.id
+      ) om ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS wishlist_count
+        FROM pd_wishlist_item wi
+        WHERE wi.customer_id = u.id
+      ) wm ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS review_count
+        FROM pd_review r
+        WHERE r.customer_id = u.id
+      ) rv ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS address_count
+        FROM pd_customer_address ca
+        WHERE ca.customer_id = u.id
+      ) am ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS open_report_count
+        FROM pd_reports rp
+        WHERE rp.target_type = 'buyer'
+          AND rp.target_user_id = u.id
+          AND rp.status IN ('open', 'investigating')
+      ) rm ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS chat_count
+        FROM pd_chat_conversation cc
+        WHERE cc.buyer_id = u.id
+      ) cm ON true`;
+    const where = `WHERE ${conditions.join(' AND ')}`;
+
+    params.push(limit, offset);
+    const { rows: data } = await query<AdminBuyerRow>(
+      `SELECT
+         u.id,
+         u.email,
+         u.first_name,
+         u.last_name,
+         u.phone,
+         u.email_verified,
+         u.is_active,
+         u.two_factor_enabled,
+         u.last_login_at,
+         u.created_at,
+         COALESCE(om.order_count, 0)::text AS order_count,
+         COALESCE(om.open_order_count, 0)::text AS open_order_count,
+         COALESCE(om.captured_order_count, 0)::text AS captured_order_count,
+         COALESCE(om.total_spent, 0)::text AS total_spent,
+         om.last_order_at AS last_order_at,
+         COALESCE(wm.wishlist_count, 0)::text AS wishlist_count,
+         COALESCE(rv.review_count, 0)::text AS review_count,
+         COALESCE(am.address_count, 0)::text AS address_count,
+         COALESCE(rm.open_report_count, 0)::text AS open_report_count,
+         COALESCE(cm.chat_count, 0)::text AS chat_count
+       ${fromSql}
+       ${where}
+       ORDER BY u.created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count ${fromSql} ${where}`,
+      params.slice(0, -2),
+    );
+    const { rows: summaryRows } = await query<{
+      total: string;
+      active: string;
+      inactive: string;
+      email_verified: string;
+      with_orders: string;
+      total_orders: string;
+    }>(
+      `SELECT
+         COUNT(*)::text AS total,
+         COUNT(*) FILTER (WHERE u.is_active = true)::text AS active,
+         COUNT(*) FILTER (WHERE u.is_active = false)::text AS inactive,
+         COUNT(*) FILTER (WHERE u.email_verified = true)::text AS email_verified,
+         COUNT(*) FILTER (WHERE COALESCE(om.order_count, 0) > 0)::text AS with_orders,
+         COALESCE(SUM(om.order_count), 0)::text AS total_orders
+       ${fromSql}
+       WHERE u.role = $1`,
+      [UserRole.Customer],
+    );
+    const total = parseInt(countRows[0].count, 10);
+    const summaryRow = summaryRows[0];
+    const summary: AdminBuyerSummary = {
+      total: parseInt(summaryRow.total, 10),
+      active: parseInt(summaryRow.active, 10),
+      inactive: parseInt(summaryRow.inactive, 10),
+      email_verified: parseInt(summaryRow.email_verified, 10),
+      with_orders: parseInt(summaryRow.with_orders, 10),
+      total_orders: parseInt(summaryRow.total_orders, 10),
     };
 
     return { data, meta: { page, limit, total, total_pages: Math.ceil(total / limit), summary } };

@@ -11,9 +11,12 @@ import { ProductGallery } from '../../../../../components/product/ProductGallery
 import { SellerHoverCard } from '../../../../../components/product/SellerHoverCard';
 import { getMarketplaceSettings } from '../../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../../lib/store-routing';
+import { getStorefrontWebsiteHref } from '../../../../../lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { MarketplaceStoreProductDetail } from '../../../../../components/store/MarketplaceStoreProductDetail';
 import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
+import { StorefrontSocialLinks } from '../../../../../components/themes/StorefrontSocialLinks';
+import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
 import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
 import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
@@ -52,6 +55,7 @@ interface StoreData {
   id: string;
   name: string;
   subdomain: string;
+  custom_domain?: string | null;
   theme_id: ThemeId;
   settings?: {
     colors?: { primary?: string; secondary?: string };
@@ -60,9 +64,13 @@ interface StoreData {
     themeCustomization?: ThemeCustomization;
     store_description?: string;
     description?: string;
+    contact_email?: string | null;
+    contact_phone?: string | null;
     address?: string;
     city?: string;
     country?: string;
+    map_embed_url?: string | null;
+    social?: StoreSocialLinks | null;
   };
   is_verified?: boolean;
   seller_type?: string | null;
@@ -205,6 +213,10 @@ export default async function StoreProductPage({
     getMarketplaceSettings(),
   ]);
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
+  const sellerWebsiteHref = getStorefrontWebsiteHref({
+    subdomain: store.subdomain,
+    customDomain: store.custom_domain,
+  });
 
   if (isMarketplaceStoreRoute) {
     return (
@@ -236,6 +248,15 @@ export default async function StoreProductPage({
   const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
     ? getWholesalePricingFromMetadata(product.metadata)
     : null;
+  const footerBranding: StoreBranding = {
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
+  };
 
   return (
     <div
@@ -360,6 +381,7 @@ export default async function StoreProductPage({
               <SellerHoverCard
                 name={store.name}
                 href={storePathBase || '/'}
+                websiteHref={sellerWebsiteHref}
                 isVerified={product.store_is_verified ?? store.is_verified}
                 sellerType={product.store_seller_type ?? store.seller_type}
                 status={product.store_status ?? store.status}
@@ -507,6 +529,12 @@ export default async function StoreProductPage({
         style={{ backgroundColor: resolvedColors.footerBg, borderTopColor: `${primaryColor}20` }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-white/75">
+          <StorefrontSocialLinks
+            branding={footerBranding}
+            showContact
+            className="mb-3 flex flex-wrap items-center justify-center gap-3"
+            linkClassName="font-semibold hover:text-white hover:underline"
+          />
           <p>
             {store.name} — Propulsé par{' '}
             <MarketplaceBrand

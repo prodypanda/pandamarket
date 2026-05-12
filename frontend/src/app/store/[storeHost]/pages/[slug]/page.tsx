@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { SafePageRenderer } from '../../../../../components/page-builder/SafePageRenderer';
 import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
 import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
+import { StorefrontSocialLinks } from '../../../../../components/themes/StorefrontSocialLinks';
+import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
 import { getMarketplaceSettings } from '../../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../../lib/store-routing';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
@@ -37,6 +39,13 @@ interface StoreData {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
     themeCustomization?: ThemeCustomization;
+    contact_email?: string | null;
+    contact_phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    country?: string | null;
+    map_embed_url?: string | null;
+    social?: StoreSocialLinks | null;
     [key: string]: unknown;
   };
 }
@@ -119,6 +128,15 @@ export default async function CustomStorePage({
   const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
   const logoUrl = store.settings?.logo_url as string | undefined;
   const marketplaceSettings = await getMarketplaceSettings();
+  const footerBranding: StoreBranding = {
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
+  };
 
   return (
     <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
@@ -155,6 +173,12 @@ export default async function CustomStorePage({
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
+        <StorefrontSocialLinks
+          branding={footerBranding}
+          showContact
+          className="mb-3 flex flex-wrap items-center justify-center gap-3"
+          linkClassName="font-semibold hover:underline"
+        />
         <span className="inline-flex items-center justify-center gap-1">
           Propulsé par{' '}
           <MarketplaceBrand

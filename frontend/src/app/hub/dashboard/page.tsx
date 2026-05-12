@@ -3,9 +3,17 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useMemo } from 'react';
 import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
   DollarSign,
   Package,
+  Settings,
+  ShieldCheck,
   ShoppingCart,
+  Store,
   Wallet,
   TrendingUp,
 } from 'lucide-react';
@@ -15,6 +23,25 @@ interface WalletData {
   balance?: number | string | null;
   pending_balance?: number | string | null;
   total_earned?: number | string | null;
+}
+
+interface StoreInfo {
+  id?: string;
+  name?: string;
+  subdomain?: string | null;
+  custom_domain?: string | null;
+  status?: string | null;
+  is_verified?: boolean | null;
+  theme_id?: string | null;
+  payment_config?: unknown;
+  settings?: {
+    logo_url?: string | null;
+    store_description?: string | null;
+  } | null;
+}
+
+interface VerificationData {
+  status?: string | null;
 }
 
 interface Order {
@@ -73,16 +100,20 @@ export default function DashboardOverview() {
   const [orderCount, setOrderCount] = useState<number>(0);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [store, setStore] = useState<StoreInfo | null>(null);
+  const [verification, setVerification] = useState<VerificationData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [walletRes, productsRes, ordersRes, chartOrdersRes] = await Promise.allSettled([
+        const [walletRes, productsRes, ordersRes, chartOrdersRes, storeRes, verificationRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/orders/store?limit=5', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/orders/store?limit=200&days=30', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
         ]);
 
         if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
@@ -105,6 +136,16 @@ export default function DashboardOverview() {
           const data = await chartOrdersRes.value.json();
           setAllOrders(data.data || []);
         }
+
+        if (storeRes.status === 'fulfilled' && storeRes.value.ok) {
+          const data = await storeRes.value.json();
+          setStore(data.store || null);
+        }
+
+        if (verificationRes.status === 'fulfilled' && verificationRes.value.ok) {
+          const data = await verificationRes.value.json();
+          setVerification(data.verification || null);
+        }
       } catch {
         // ignore
       } finally {
@@ -118,29 +159,67 @@ export default function DashboardOverview() {
   const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
   const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
   const totalOrders30d = useMemo(() => salesData.reduce((s, d) => s + d.count, 0), [salesData]);
+  const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}` : '/hub';
+  const setupSteps = [
+    {
+      label: 'Store basics',
+      description: 'Logo and description',
+      completed: Boolean(store?.settings?.logo_url || store?.settings?.store_description),
+      href: '/hub/dashboard/settings',
+    },
+    {
+      label: 'Theme selected',
+      description: 'Storefront design',
+      completed: Boolean(store?.theme_id),
+      href: '/hub/dashboard/settings',
+    },
+    {
+      label: 'KYC approved',
+      description: 'Verification status',
+      completed: verification?.status === 'approved' || Boolean(store?.is_verified),
+      href: '/hub/dashboard/kyc',
+    },
+    {
+      label: 'First product',
+      description: 'Catalog is ready',
+      completed: productCount > 0,
+      href: '/hub/dashboard/products',
+    },
+    {
+      label: 'Payment configured',
+      description: 'Direct payments',
+      completed: Boolean(store?.payment_config),
+      href: '/hub/dashboard/payment-config',
+    },
+  ];
+  const completedSetupSteps = setupSteps.filter((step) => step.completed).length;
 
   const stats = [
     {
       name: 'Total Revenue',
       value: loading ? '—' : formatPrice(wallet?.total_earned),
+      hint: `${formatPrice(totalRevenue30d)} in last 30 days`,
       icon: DollarSign,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
     {
       name: 'Active Products',
       value: loading ? '—' : String(productCount),
+      hint: productCount > 0 ? 'Catalog available' : 'Add your first listing',
       icon: Package,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
     {
       name: 'Total Orders',
       value: loading ? '—' : String(orderCount),
+      hint: `${totalOrders30d} in last 30 days`,
       icon: ShoppingCart,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
     {
       name: 'Available Balance',
       value: loading ? '—' : formatPrice(wallet?.balance),
+      hint: `${formatPrice(wallet?.pending_balance)} pending`,
       icon: Wallet,
       color: 'bg-[#16C784]/10 text-[#16C784]',
     },
@@ -148,10 +227,24 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
-          <p className="text-gray-500 text-sm mt-1">Here is what&apos;s happening with your store today.</p>
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-2xl shadow-slate-900/10">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-emerald-100">
+              <Store className="h-4 w-4" />
+              Seller command center
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight">{store?.name || 'Overview'}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/80">Track store readiness, sales, orders, wallet balance, and the next actions that help you launch faster.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-emerald-50">
+              View storefront <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/hub/dashboard/products" className="inline-flex items-center gap-2 rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#14b876]">
+              Add product <Package className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -166,6 +259,7 @@ export default function DashboardOverview() {
                 ) : (
                   <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
                 )}
+                <p className="mt-2 text-xs font-semibold text-gray-400">{stat.hint}</p>
               </div>
               <div className={`p-3 rounded-lg ${stat.color}`}>
                 <stat.icon className="h-6 w-6" />
@@ -173,6 +267,65 @@ export default function DashboardOverview() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-black text-gray-900">Launch readiness</h3>
+              <p className="mt-1 text-sm font-semibold text-gray-500">{completedSetupSteps} of {setupSteps.length} steps completed</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-black text-[#16C784]">{Math.round((completedSetupSteps / setupSteps.length) * 100)}%</p>
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">Ready</p>
+            </div>
+          </div>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-[#16C784]" style={{ width: `${Math.round((completedSetupSteps / setupSteps.length) * 100)}%` }} />
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {setupSteps.map((step) => (
+              <Link key={step.label} href={step.href} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#16C784]/30 hover:bg-emerald-50/40">
+                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${step.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {step.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                </span>
+                <span>
+                  <span className="block text-sm font-black text-gray-900">{step.label}</span>
+                  <span className="block text-xs font-semibold text-gray-500">{step.description}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-black text-gray-900">Store health</h3>
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><ShieldCheck className="h-4 w-4 text-gray-400" /> Verification</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${verification?.status === 'approved' || store?.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                {verification?.status === 'approved' || store?.is_verified ? 'Approved' : verification?.status || 'Not submitted'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><CreditCard className="h-4 w-4 text-gray-400" /> Payments</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${store?.payment_config ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'}`}>
+                {store?.payment_config ? 'Configured' : 'Marketplace default'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><Settings className="h-4 w-4 text-gray-400" /> Store status</span>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">{store?.status || 'active'}</span>
+            </div>
+            {completedSetupSteps < setupSteps.length && (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                <AlertCircle className="mb-2 h-4 w-4" />
+                Finish the remaining setup steps to improve buyer trust and conversion.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">

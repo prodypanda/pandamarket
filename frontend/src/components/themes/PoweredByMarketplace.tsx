@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import type { StoreBranding } from './shared';
+import { StorefrontSocialLinks } from './StorefrontSocialLinks';
 
 interface PoweredByMarketplaceProps {
   branding?: StoreBranding;
@@ -37,6 +38,11 @@ export function PoweredByMarketplace({
           />
         ) : name}
       </Link>
+      <StorefrontSocialLinks
+        branding={branding}
+        className="ml-2 inline-flex flex-wrap items-center justify-center gap-2"
+        linkClassName={linkClassName || 'font-semibold hover:underline'}
+      />
     </span>
   );
 }

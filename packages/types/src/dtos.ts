@@ -65,6 +65,7 @@ export interface UpdateStoreDto {
 export interface UpdateStoreSettingsDto {
   colors?: { primary?: string; secondary?: string; accent?: string };
   logo_url?: string;
+  marketplace_header_image_url?: string;
   favicon_url?: string;
   store_name?: string;
   store_description?: string;

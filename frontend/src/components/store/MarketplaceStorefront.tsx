@@ -1,15 +1,19 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, CalendarDays, Grid3X3, MapPin, Package, Search, ShieldCheck, Star, Store, Truck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CalendarDays, ExternalLink, Grid3X3, MapPin, Package, Search, ShieldCheck, Star, Store, Truck } from 'lucide-react';
 import { HubNavbar } from '../hub/HubNavbar';
 import { HubFooter } from '../hub/HubFooter';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { SellerTypeText } from '../i18n/SellerTypeText';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
+import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
+import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
+import type { StoreBranding, StoreSocialLinks } from '../themes/shared';
 
 export interface MarketplaceStoreData {
   id: string;
   name: string;
   subdomain?: string | null;
+  custom_domain?: string | null;
   description?: string | null;
   is_verified?: boolean | null;
   seller_type?: string | null;
@@ -19,11 +23,16 @@ export interface MarketplaceStoreData {
   seller_review_count?: number | string | null;
   settings?: {
     logo_url?: string | null;
+    marketplace_header_image_url?: string | null;
     store_description?: string | null;
     description?: string | null;
+    contact_email?: string | null;
+    contact_phone?: string | null;
     address?: string | null;
     city?: string | null;
     country?: string | null;
+    map_embed_url?: string | null;
+    social?: StoreSocialLinks | null;
     [key: string]: unknown;
   };
 }
@@ -102,6 +111,17 @@ function formatSellerScore(value?: number | string | null): string {
   return Number.isFinite(score) && score > 0 ? score.toFixed(1) : 'New';
 }
 
+function safeGoogleMapEmbedUrl(value?: string | null): string {
+  if (!value) return '';
+  try {
+    const url = new URL(value.trim());
+    const isGoogleMaps = url.protocol === 'https:' && /(^|\\.)google\\.[a-z.]+$/i.test(url.hostname) && url.pathname.startsWith('/maps/embed');
+    return isGoogleMaps ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 interface MarketplaceSellerPageProps {
   storeHost: string;
   store: MarketplaceStoreData;
@@ -132,10 +152,25 @@ export function MarketplaceSellerPage({
   }, {});
   const selectedCategory = visibleCategories.find((category) => category.slug === selectedCategorySlug);
   const logoUrl = store.settings?.logo_url || '';
+  const headerImageUrl = store.settings?.marketplace_header_image_url || '';
   const location = storeLocation(store);
   const since = formatSince(store.created_at);
   const productsHref = `/store/${encodeURIComponent(storeHost)}/products`;
+  const storefrontWebsiteHref = getStorefrontWebsiteHref({
+    subdomain: store.subdomain,
+    customDomain: store.custom_domain,
+  });
   const sellerScore = formatSellerScore(store.seller_score);
+  const mapEmbedUrl = safeGoogleMapEmbedUrl(store.settings?.map_embed_url);
+  const storeBranding: StoreBranding = {
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
+  };
 
   return (
     <div className={`min-h-screen ${classes.pageSoft}`}>
@@ -153,7 +188,10 @@ export function MarketplaceSellerPage({
           <span className="font-bold text-gray-900">{store.name}</span>
         </nav>
 
-        <section className={`relative mb-8 overflow-hidden rounded-[2rem] ${isAliExpress ? 'bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white shadow-2xl shadow-orange-900/15' : 'bg-gradient-to-r from-slate-950 via-slate-900 to-[#16C784] text-white shadow-2xl shadow-slate-950/15'} p-6 sm:p-8`}>
+        <section
+          className={`relative mb-8 overflow-hidden rounded-[2rem] ${isAliExpress ? 'bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white shadow-2xl shadow-orange-900/15' : 'bg-gradient-to-r from-slate-950 via-slate-900 to-[#16C784] text-white shadow-2xl shadow-slate-950/15'} p-6 sm:p-8`}
+          style={headerImageUrl ? { backgroundImage: `linear-gradient(135deg, rgba(15,23,42,0.86), rgba(15,23,42,0.52)), url(${headerImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        >
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
           <div className="absolute bottom-0 right-24 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
           <div className="relative grid gap-6 lg:grid-cols-[1fr_320px] lg:items-end">
@@ -188,6 +226,20 @@ export function MarketplaceSellerPage({
                   {since && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Since {since}</span>}
                   <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Buyer protection</span>
                 </div>
+                {storefrontWebsiteHref && (
+                  <Link
+                    href={storefrontWebsiteHref}
+                    className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-white/90"
+                  >
+                    Visit storefront website <ExternalLink className="h-4 w-4" />
+                  </Link>
+                )}
+                <StorefrontSocialLinks
+                  branding={storeBranding}
+                  showContact
+                  className="mt-4 flex flex-wrap items-center gap-3 text-xs font-bold text-white/85"
+                  linkClassName="rounded-full bg-white/15 px-3 py-1 transition hover:bg-white/25"
+                />
               </div>
             </div>
 
@@ -222,6 +274,18 @@ export function MarketplaceSellerPage({
             </div>
           ))}
         </section>
+
+        {mapEmbedUrl && (
+          <section className={`${classes.panel} mb-8 overflow-hidden p-0`}>
+            <iframe
+              src={mapEmbedUrl}
+              title={`${store.name} map`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="h-72 w-full border-0"
+            />
+          </section>
+        )}
 
         <section className={`${classes.panel} mb-8 p-5`}>
           <div className="mb-4 flex items-center justify-between gap-4">

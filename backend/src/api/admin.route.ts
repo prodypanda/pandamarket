@@ -531,6 +531,15 @@ const vendorAccountListSchema = z.object({
   multi_store_only: z.coerce.boolean().optional(),
 });
 
+const buyerListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(120).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  email_verified: z.enum(['true', 'false']).optional(),
+  has_orders: z.enum(['true', 'false']).optional(),
+});
+
 const updateVendorSellerTypeSchema = z.object({
   seller_type: z.nativeEnum(SellerType),
 });
@@ -618,6 +627,101 @@ router.put(
     await authService.resetTwoFactorForUser(rows[0].id);
     logger.warn({ owner_id: rows[0].id, admin_id: req.user!.id }, 'Admin reset vendor account 2FA');
     res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.get(
+  '/buyers',
+  validate(buyerListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { page, limit, search, status, email_verified, has_orders } = req.query as unknown as {
+      page: number;
+      limit: number;
+      search?: string;
+      status?: 'active' | 'inactive';
+      email_verified?: 'true' | 'false';
+      has_orders?: 'true' | 'false';
+    };
+    const result = await storeService.listBuyersForAdmin({
+      page,
+      limit,
+      search,
+      status,
+      emailVerified: email_verified === undefined ? undefined : email_verified === 'true',
+      hasOrders: has_orders === undefined ? undefined : has_orders === 'true',
+    });
+    res.status(200).json(result);
+  }),
+);
+
+router.put(
+  '/buyers/:id/suspend',
+  validate(vendorOwnerActionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      `UPDATE pd_user
+       SET is_active = false,
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = $2
+       RETURNING id, email`,
+      [req.params.id, 'customer'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
+    await authService.logout(rows[0].id);
+    logger.warn({ buyer_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer account');
+    res.status(200).json({ success: true, buyer: rows[0] });
+  }),
+);
+
+router.put(
+  '/buyers/:id/reactivate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      `UPDATE pd_user
+       SET is_active = true,
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = $2
+       RETURNING id, email`,
+      [req.params.id, 'customer'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
+    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated buyer account');
+    res.status(200).json({ success: true, buyer: rows[0] });
+  }),
+);
+
+router.put(
+  '/buyers/:id/reset-2fa',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      'SELECT id, email FROM pd_user WHERE id = $1 AND role = $2',
+      [req.params.id, 'customer'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
+    await authService.resetTwoFactorForUser(rows[0].id);
+    logger.warn({ buyer_id: rows[0].id, admin_id: req.user!.id }, 'Admin reset buyer account 2FA');
+    res.status(200).json({ success: true, buyer: rows[0] });
+  }),
+);
+
+router.put(
+  '/buyers/:id/email-verification',
+  validate(z.object({ email_verified: z.boolean() })),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null; email_verified: boolean }>(
+      `UPDATE pd_user
+       SET email_verified = $2,
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = $3
+       RETURNING id, email, email_verified`,
+      [req.params.id, req.body.email_verified, 'customer'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
+    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id, email_verified: rows[0].email_verified }, 'Admin updated buyer email verification');
+    res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
 

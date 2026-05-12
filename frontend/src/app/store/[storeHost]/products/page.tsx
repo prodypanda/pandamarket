@@ -20,7 +20,7 @@ import { FreshTheme } from '../../../../components/themes/FreshTheme';
 import { CraftTheme } from '../../../../components/themes/CraftTheme';
 import { DigitalTheme } from '../../../../components/themes/DigitalTheme';
 import { KidsTheme } from '../../../../components/themes/KidsTheme';
-import type { StoreProduct as ThemeStoreProduct, ThemeProps } from '../../../../components/themes/shared';
+import type { StoreProduct as ThemeStoreProduct, ThemeProps, StoreSocialLinks } from '../../../../components/themes/shared';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../lib/store-routing';
 import { MarketplaceSellerPage, type MarketplaceCategory, type MarketplaceStoreProduct } from '../../../../components/store/MarketplaceStorefront';
@@ -41,9 +41,13 @@ interface StoreData {
     themeCustomization?: ThemeCustomization;
     store_description?: string;
     description?: string;
+    contact_email?: string | null;
+    contact_phone?: string | null;
     address?: string;
     city?: string;
     country?: string;
+    map_embed_url?: string | null;
+    social?: StoreSocialLinks | null;
     [key: string]: unknown;
   };
 }
@@ -154,6 +158,13 @@ export default async function StoreProductsPage({
     favicon_url: store.settings?.favicon_url,
     themeCustomization,
     store_path_base: storePathBase,
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
   };
   const themeProps: ThemeProps = { theme: activeTheme, storeName: store.name, products: toThemeProducts(products), branding };
   const themeComponents: Record<string, React.FC<ThemeProps>> = {
