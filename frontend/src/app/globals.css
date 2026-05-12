@@ -193,6 +193,113 @@ body {
   animation: pulse-glow 1.5s ease-in-out infinite;
 }
 
+@keyframes admin-vault-rise {
+  from { opacity: 0; transform: translateY(28px) scale(0.98); filter: blur(10px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes admin-vault-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(56px, 56px, 0); }
+}
+
+@keyframes admin-vault-dots {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.18; }
+  50% { transform: translate3d(-18px, 14px, 0); opacity: 0.34; }
+}
+
+@keyframes admin-vault-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(14px, -18px, 0) scale(1.06); }
+}
+
+@keyframes admin-vault-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes admin-vault-breathe {
+  0%, 100% { opacity: 0.55; box-shadow: 0 0 90px rgba(124, 58, 237, 0.24); }
+  50% { opacity: 0.95; box-shadow: 0 0 150px rgba(34, 211, 238, 0.34); }
+}
+
+@keyframes admin-vault-scan {
+  0%, 100% { transform: rotate(18deg) translateX(-120%); opacity: 0; }
+  18%, 58% { opacity: 1; }
+  72% { transform: rotate(18deg) translateX(120%); opacity: 0; }
+}
+
+@keyframes admin-vault-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.admin-vault-panel {
+  animation: admin-vault-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.admin-vault-card {
+  animation: admin-vault-rise 0.85s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.admin-vault-card::before {
+  content: "";
+  position: absolute;
+  inset: -70% -120%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.16), rgba(255, 255, 255, 0.2), transparent);
+  animation: admin-vault-scan 6.5s ease-in-out infinite;
+}
+
+.admin-vault-grid {
+  animation: admin-vault-drift 26s linear infinite;
+}
+
+.admin-vault-dots {
+  animation: admin-vault-dots 12s ease-in-out infinite;
+}
+
+.admin-vault-orb {
+  animation: admin-vault-float 8s ease-in-out infinite;
+}
+
+.admin-vault-orb-delayed {
+  animation: admin-vault-float 10s 1.5s ease-in-out infinite;
+}
+
+.admin-vault-ring {
+  animation: admin-vault-spin 28s linear infinite;
+}
+
+.admin-vault-ring-reverse {
+  animation: admin-vault-spin 38s linear infinite reverse;
+}
+
+.admin-vault-breathe {
+  animation: admin-vault-breathe 5.5s ease-in-out infinite;
+}
+
+.admin-vault-button {
+  background-size: 220% 220%;
+  animation: admin-vault-gradient 6s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-vault-panel,
+  .admin-vault-card,
+  .admin-vault-card::before,
+  .admin-vault-grid,
+  .admin-vault-dots,
+  .admin-vault-orb,
+  .admin-vault-orb-delayed,
+  .admin-vault-ring,
+  .admin-vault-ring-reverse,
+  .admin-vault-breathe,
+  .admin-vault-button {
+    animation: none;
+  }
+}
+
 /* Skeleton loader */
 .skeleton {
   background: linear-gradient(90deg, var(--color-gray-100) 25%, var(--color-gray-50) 50%, var(--color-gray-100) 75%);

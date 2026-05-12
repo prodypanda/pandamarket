@@ -17,13 +17,30 @@ import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
 import { storeService } from '../services/store.service';
+import { authService } from '../services/auth.service';
+import { systemLogService } from '../services/system-log.service';
 import { productService } from '../services/product.service';
 import { categoryService } from '../services/category.service';
 import { fileAssetService } from '../services/file-asset.service';
-import { query } from '../db/pool';
-import { VerificationStatus, MandatStatus, ReportStatus } from '@pandamarket/types';
+import { subscriptionService } from '../services/subscription.service';
+import { query, transaction } from '../db/pool';
+import {
+  VerificationStatus,
+  MandatStatus,
+  ReportPriority,
+  ReportMessageVisibility,
+  ReportSource,
+  ReportStatus,
+  ReportTargetType,
+  SubscriptionPlan,
+  SubscriptionType,
+  SellerType,
+  StoreStatus,
+} from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { smtpConfigService } from '../services/smtp-config.service';
+import { PdErrorCode, PdNotFoundError } from '../errors';
+import { normalizePlanId } from '../utils/plan-id';
 
 const router = Router();
 
@@ -240,7 +257,12 @@ router.put(
 // =====================================================
 
 const reportListSchema = z.object({
-  status: z.enum(['open', 'investigating', 'resolved', 'dismissed']).optional(),
+  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']).optional(),
+  target_type: z.enum(['seller', 'buyer']).optional(),
+  source: z.enum(['buyer', 'admin']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  search: z.string().max(120).optional(),
+  store_id: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -249,16 +271,122 @@ router.get(
   '/reports',
   validate(reportListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status?: ReportStatus; page: number; limit: number };
-    const result = await reportService.list({ status, page, limit });
+    const { status, target_type, source, priority, search, store_id, page, limit } = req.query as unknown as {
+      status?: ReportStatus;
+      target_type?: ReportTargetType;
+      source?: ReportSource;
+      priority?: ReportPriority;
+      search?: string;
+      store_id?: string;
+      page: number;
+      limit: number;
+    };
+    const result = await reportService.list({
+      status,
+      targetType: target_type,
+      source,
+      priority,
+      search,
+      storeId: store_id,
+      page,
+      limit,
+    });
     res.status(200).json(result);
   }),
 );
 
-const updateReportSchema = z.object({
-  status: z.enum(['open', 'investigating', 'resolved', 'dismissed']),
+const reportTargetListSchema = z.object({
+  type: z.enum(['seller', 'buyer']),
+  search: z.string().max(120).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+router.get(
+  '/reports/targets',
+  validate(reportTargetListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { type, search, limit } = req.query as unknown as { type: ReportTargetType; search?: string; limit: number };
+    const data = await reportService.listTargets(type, search, limit);
+    res.status(200).json({ data });
+  }),
+);
+
+const createAdminReportSchema = z.object({
+  target_type: z.enum(['seller', 'buyer']),
+  store_id: z.string().optional(),
+  target_user_id: z.string().optional(),
+  order_id: z.string().optional(),
+  category: z.string().max(40).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  reason: z.string().min(10).max(2000),
+  evidence_urls: z.array(z.string().url()).max(10).optional(),
   admin_notes: z.string().max(2000).optional(),
 });
+
+router.post(
+  '/reports',
+  validate(createAdminReportSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const report = await reportService.create({
+      reporter_id: req.user!.id,
+      source: ReportSource.Admin,
+      target_type: req.body.target_type,
+      store_id: req.body.store_id,
+      target_user_id: req.body.target_user_id,
+      order_id: req.body.order_id,
+      category: req.body.category,
+      priority: req.body.priority,
+      reason: req.body.reason,
+      evidence_urls: req.body.evidence_urls,
+      admin_notes: req.body.admin_notes,
+    });
+    res.status(201).json({ report });
+  }),
+);
+
+const updateReportSchema = z.object({
+  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']),
+  admin_notes: z.string().max(2000).optional(),
+});
+
+const reportAttachmentInputSchema = z.object({
+  file_url: z.string().url().optional(),
+  file_key: z.string().min(1).max(1024).optional(),
+  file_name: z.string().min(1).max(255),
+  content_type: z.string().min(1).max(120),
+  file_size: z.number().int().min(0).max(20 * 1024 * 1024).optional(),
+}).refine((value) => value.file_url || value.file_key, {
+  message: 'Either file_url or file_key is required',
+});
+
+const createReportMessageSchema = z.object({
+  visibility: z.enum(['buyer_admin', 'seller_admin', 'all_parties', 'admin_internal']),
+  body: z.string().min(1).max(5000),
+  attachments: z.array(reportAttachmentInputSchema).max(10).optional(),
+});
+
+router.get(
+  '/reports/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await reportService.getAdminCase(req.params.id);
+    res.status(200).json(data);
+  }),
+);
+
+router.post(
+  '/reports/:id/messages',
+  validate(createReportMessageSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await reportService.addAdminMessage(
+      req.params.id,
+      { id: req.user!.id, role: req.user!.role },
+      req.body.body,
+      req.body.visibility as ReportMessageVisibility,
+      req.body.attachments,
+    );
+    res.status(201).json(data);
+  }),
+);
 
 router.put(
   '/reports/:id/status',
@@ -271,6 +399,49 @@ router.put(
       req.body.admin_notes,
     );
     res.status(200).json({ report });
+  }),
+);
+
+const buyerEnforcementSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+router.put(
+  '/buyers/:id/suspend',
+  validate(buyerEnforcementSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string; role: string; is_active: boolean }>(
+      `UPDATE pd_user
+       SET is_active = false,
+           updated_at = NOW()
+       WHERE id = $1 AND role = $2
+       RETURNING id, email, role, is_active`,
+      [req.params.id, 'customer'],
+    );
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
+    }
+    logger.warn({ buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer');
+    res.status(200).json({ success: true, user: rows[0] });
+  }),
+);
+
+router.put(
+  '/buyers/:id/reactivate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string; role: string; is_active: boolean }>(
+      `UPDATE pd_user
+       SET is_active = true,
+           updated_at = NOW()
+       WHERE id = $1 AND role = $2
+       RETURNING id, email, role, is_active`,
+      [req.params.id, 'customer'],
+    );
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
+    }
+    logger.info({ buyer_id: req.params.id, admin_id: req.user!.id }, 'Admin reactivated buyer');
+    res.status(200).json({ success: true, user: rows[0] });
   }),
 );
 
@@ -345,16 +516,183 @@ router.put(
 const vendorListSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(120).optional(),
+  owner_id: z.string().max(80).optional(),
+  status: z.nativeEnum(StoreStatus).optional(),
   verified_only: z.coerce.boolean().optional(),
+  seller_type: z.nativeEnum(SellerType).optional(),
+  pending_seller_type_request: z.coerce.boolean().optional(),
 });
+
+const vendorAccountListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(120).optional(),
+  multi_store_only: z.coerce.boolean().optional(),
+});
+
+const updateVendorSellerTypeSchema = z.object({
+  seller_type: z.nativeEnum(SellerType),
+});
+
+const rejectSellerTypeRequestSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+const vendorOwnerActionSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+const updateVendorSubscriptionSchema = z.object({
+  subscription_plan: z.string().transform((value) => normalizePlanId(value)),
+  subscription_type: z.nativeEnum(SubscriptionType).default(SubscriptionType.Commission),
+  subscription_expires_at: z.string().datetime().nullable().optional(),
+});
+
+router.get(
+  '/vendor-accounts',
+  validate(vendorAccountListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { page, limit, search, multi_store_only } = req.query as unknown as {
+      page: number;
+      limit: number;
+      search?: string;
+      multi_store_only?: boolean;
+    };
+    const result = await storeService.listVendorAccountsForAdmin({
+      page,
+      limit,
+      search,
+      multiStoreOnly: multi_store_only,
+    });
+    res.status(200).json(result);
+  }),
+);
+
+router.put(
+  '/vendor-accounts/:id/suspend',
+  validate(vendorOwnerActionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      `UPDATE pd_user
+       SET is_active = false,
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = $2
+       RETURNING id, email`,
+      [req.params.id, 'vendor'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
+    await authService.logout(rows[0].id);
+    logger.warn({ owner_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor account');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.put(
+  '/vendor-accounts/:id/reactivate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      `UPDATE pd_user
+       SET is_active = true,
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = $2
+       RETURNING id, email`,
+      [req.params.id, 'vendor'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
+    logger.info({ owner_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated vendor account');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.put(
+  '/vendor-accounts/:id/reset-2fa',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ id: string; email: string | null }>(
+      'SELECT id, email FROM pd_user WHERE id = $1 AND role = $2',
+      [req.params.id, 'vendor'],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
+    await authService.resetTwoFactorForUser(rows[0].id);
+    logger.warn({ owner_id: rows[0].id, admin_id: req.user!.id }, 'Admin reset vendor account 2FA');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
 
 router.get(
   '/vendors',
   validate(vendorListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, verified_only } = req.query as unknown as { page: number; limit: number; verified_only?: boolean };
-    const result = await storeService.list({ page, limit, verifiedOnly: verified_only });
+    const { page, limit, search, owner_id, status, verified_only, seller_type, pending_seller_type_request } = req.query as unknown as {
+      page: number;
+      limit: number;
+      search?: string;
+      owner_id?: string;
+      status?: StoreStatus;
+      verified_only?: boolean;
+      seller_type?: SellerType;
+      pending_seller_type_request?: boolean;
+    };
+    const result = await storeService.listForAdmin({
+      page,
+      limit,
+      search,
+      ownerId: owner_id,
+      status,
+      verifiedOnly: verified_only,
+      sellerType: seller_type,
+      pendingSellerTypeRequest: pending_seller_type_request,
+    });
     res.status(200).json(result);
+  }),
+);
+
+router.put(
+  '/vendors/:id/verify',
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.verify(req.params.id);
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin verified store');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.put(
+  '/vendors/:id/reactivate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.reactivate(req.params.id);
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin reactivated store');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.put(
+  '/vendors/:id/seller-type',
+  validate(updateVendorSellerTypeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.updateSellerType(req.params.id, req.body.seller_type);
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: req.body.seller_type }, 'Admin updated seller type');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.put(
+  '/vendors/:id/seller-type-request/approve',
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.approveSellerTypeChange(req.params.id);
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: store.seller_type }, 'Admin approved seller type change');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.put(
+  '/vendors/:id/seller-type-request/reject',
+  validate(rejectSellerTypeRequestSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.rejectSellerTypeChange(req.params.id, req.body.reason);
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin rejected seller type change');
+    res.status(200).json({ success: true, store });
   }),
 );
 
@@ -365,6 +703,97 @@ router.put(
     await storeService.suspend(req.params.id, reason);
     logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin suspended store');
     res.status(200).json({ success: true, message: 'Store suspended' });
+  }),
+);
+
+router.put(
+  '/vendors/:id/owner/suspend',
+  validate(vendorOwnerActionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ owner_id: string; owner_email: string | null }>(
+      `UPDATE pd_user u
+       SET is_active = false,
+           updated_at = NOW()
+       FROM pd_store s
+       WHERE s.id = $1
+         AND s.owner_id = u.id
+       RETURNING u.id AS owner_id, u.email AS owner_email`,
+      [req.params.id],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
+    await authService.logout(rows[0].owner_id);
+    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor owner');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.put(
+  '/vendors/:id/owner/reactivate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ owner_id: string; owner_email: string | null }>(
+      `UPDATE pd_user u
+       SET is_active = true,
+           updated_at = NOW()
+       FROM pd_store s
+       WHERE s.id = $1
+         AND s.owner_id = u.id
+       RETURNING u.id AS owner_id, u.email AS owner_email`,
+      [req.params.id],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
+    logger.info({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reactivated vendor owner');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.put(
+  '/vendors/:id/owner/reset-2fa',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ owner_id: string; owner_email: string | null }>(
+      `SELECT s.owner_id, u.email AS owner_email
+       FROM pd_store s
+       JOIN pd_user u ON u.id = s.owner_id
+       WHERE s.id = $1`,
+      [req.params.id],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
+    await authService.resetTwoFactorForUser(rows[0].owner_id);
+    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reset vendor owner 2FA');
+    res.status(200).json({ success: true, owner: rows[0] });
+  }),
+);
+
+router.put(
+  '/vendors/:id/subscription',
+  validate(updateVendorSubscriptionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await subscriptionService.getLimits(req.body.subscription_plan);
+    const store = await storeService.updateSubscription(
+      req.params.id,
+      req.body.subscription_plan,
+      req.body.subscription_type,
+      req.body.subscription_expires_at,
+    );
+    logger.info({ store_id: req.params.id, admin_id: req.user!.id, plan: req.body.subscription_plan }, 'Admin updated vendor subscription');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.delete(
+  '/vendors/:id/payment-config',
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.clearPaymentConfig(req.params.id);
+    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor payment config');
+    res.status(200).json({ success: true, store });
+  }),
+);
+
+router.delete(
+  '/vendors/:id/custom-domain',
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.clearCustomDomain(req.params.id);
+    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor custom domain');
+    res.status(200).json({ success: true, store });
   }),
 );
 
@@ -400,6 +829,253 @@ router.get(
       pending_mandats: parseInt(pendingMandats.rows[0].count, 10),
       open_reports: parseInt(openReports.rows[0].count, 10),
     });
+  }),
+);
+
+const updatePlanSchema = z.object({
+  max_products: z.coerce.number().int().min(-1),
+  max_images_per_product: z.coerce.number().int().min(1),
+  has_ai_seo: z.boolean(),
+  has_image_compression: z.boolean(),
+  has_custom_domain: z.boolean(),
+  has_page_builder: z.boolean(),
+  has_direct_payment: z.boolean(),
+  has_white_label: z.boolean(),
+  commission_rate: z.coerce.number().min(0).max(100),
+  ai_tokens_included: z.coerce.number().int().min(-1),
+  yearly_price: z.coerce.number().min(0),
+  is_enabled: z.boolean().optional().default(true),
+});
+
+const createPlanSchema = updatePlanSchema.extend({
+  plan_id: z.string().transform((value) => normalizePlanId(value)),
+});
+
+const deletePlanSchema = z.object({
+  replacement_plan_id: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
+});
+
+router.get(
+  '/plans',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { rows } = await query(
+      `SELECT l.*,
+              COUNT(s.id)::int AS stores_count,
+              COUNT(s.id) FILTER (WHERE s.status = 'verified')::int AS verified_stores_count,
+              COUNT(s.id) FILTER (WHERE s.status = 'suspended')::int AS suspended_stores_count
+       FROM pd_subscription_limits l
+       LEFT JOIN pd_store s ON s.subscription_plan = l.plan_id
+       GROUP BY l.plan_id
+       ORDER BY CASE l.plan_id
+         WHEN 'free' THEN 1
+         WHEN 'starter' THEN 2
+         WHEN 'regular' THEN 3
+         WHEN 'agency' THEN 4
+         WHEN 'pro' THEN 5
+         WHEN 'golden' THEN 6
+         WHEN 'platinum' THEN 7
+         ELSE 99
+       END`,
+    );
+    res.status(200).json({ data: rows, plans: rows });
+  }),
+);
+
+router.post(
+  '/plans',
+  validate(createPlanSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const planId = req.body.plan_id;
+    const commissionRate = Number(req.body.commission_rate) > 1
+      ? Number(req.body.commission_rate) / 100
+      : Number(req.body.commission_rate);
+    const { rows } = await query(
+      `INSERT INTO pd_subscription_limits (
+         plan_id,
+         max_products,
+         max_images_per_product,
+         has_ai_seo,
+         has_image_compression,
+         has_custom_domain,
+         has_page_builder,
+         has_direct_payment,
+         has_white_label,
+         commission_rate,
+         ai_tokens_included,
+         yearly_price,
+         is_enabled
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING *`,
+      [
+        planId,
+        req.body.max_products,
+        req.body.max_images_per_product,
+        req.body.has_ai_seo,
+        req.body.has_image_compression,
+        req.body.has_custom_domain,
+        req.body.has_page_builder,
+        req.body.has_direct_payment,
+        req.body.has_white_label,
+        commissionRate,
+        req.body.ai_tokens_included,
+        req.body.yearly_price,
+        req.body.is_enabled,
+      ],
+    );
+
+    subscriptionService.invalidateCache();
+    logger.info({ admin_id: req.user!.id, plan_id: planId }, 'Admin created subscription plan');
+    res.status(201).json({ data: rows[0], plan: rows[0] });
+  }),
+);
+
+router.put(
+  '/plans/:planId',
+  validate(updatePlanSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const planId = normalizePlanId(req.params.planId);
+    const commissionRate = Number(req.body.commission_rate) > 1
+      ? Number(req.body.commission_rate) / 100
+      : Number(req.body.commission_rate);
+    const { rows } = await query(
+      `UPDATE pd_subscription_limits
+       SET max_products = $2,
+           max_images_per_product = $3,
+           has_ai_seo = $4,
+           has_image_compression = $5,
+           has_custom_domain = $6,
+           has_page_builder = $7,
+           has_direct_payment = $8,
+           has_white_label = $9,
+           commission_rate = $10,
+           ai_tokens_included = $11,
+           yearly_price = $12,
+           is_enabled = $13,
+           updated_at = NOW()
+       WHERE plan_id = $1
+       RETURNING *`,
+      [
+        planId,
+        req.body.max_products,
+        req.body.max_images_per_product,
+        req.body.has_ai_seo,
+        req.body.has_image_compression,
+        req.body.has_custom_domain,
+        req.body.has_page_builder,
+        req.body.has_direct_payment,
+        req.body.has_white_label,
+        commissionRate,
+        req.body.ai_tokens_included,
+        req.body.yearly_price,
+        req.body.is_enabled,
+      ],
+    );
+
+    if (!rows[0]) {
+      res.status(404).json({ error: { message: 'Plan not found' } });
+      return;
+    }
+
+    subscriptionService.invalidateCache();
+    logger.info({ admin_id: req.user!.id, plan_id: planId }, 'Admin updated subscription plan');
+    res.status(200).json({ data: rows[0], plan: rows[0] });
+  }),
+);
+
+router.delete(
+  '/plans/:planId',
+  validate(deletePlanSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const planId = normalizePlanId(req.params.planId);
+    if (planId === SubscriptionPlan.Free) {
+      res.status(400).json({ error: { message: 'The free plan cannot be deleted' } });
+      return;
+    }
+
+    const replacementPlanId = req.body.replacement_plan_id;
+    if (replacementPlanId === planId) {
+      res.status(400).json({ error: { message: 'Replacement plan must be different from the deleted plan' } });
+      return;
+    }
+
+    const result = await transaction(async (client) => {
+      const existingPlan = await client.query<{ plan_id: string }>(
+        'SELECT plan_id FROM pd_subscription_limits WHERE plan_id = $1 FOR UPDATE',
+        [planId],
+      );
+      if (!existingPlan.rows[0]) {
+        return { status: 'not_found' as const };
+      }
+
+      const storeCountResult = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM pd_store WHERE subscription_plan = $1',
+        [planId],
+      );
+      const storeCount = parseInt(storeCountResult.rows[0]?.count ?? '0', 10);
+      if (storeCount > 0 && !replacementPlanId) {
+        return { status: 'replacement_required' as const, storeCount };
+      }
+
+      if (replacementPlanId) {
+        const replacementPlan = await client.query<{ plan_id: string; ai_tokens_included: number }>(
+          'SELECT plan_id, ai_tokens_included FROM pd_subscription_limits WHERE plan_id = $1',
+          [replacementPlanId],
+        );
+        if (!replacementPlan.rows[0]) {
+          return { status: 'replacement_not_found' as const };
+        }
+        const movedStores = await client.query<{ id: string }>(
+          `UPDATE pd_store
+           SET subscription_plan = $2,
+               subscription_type = CASE WHEN $2 = $3 THEN $4 ELSE $5 END,
+               subscription_expires_at = CASE WHEN $2 = $3 THEN NULL ELSE subscription_expires_at END,
+               updated_at = NOW()
+           WHERE subscription_plan = $1
+           RETURNING id`,
+          [planId, replacementPlanId, SubscriptionPlan.Free, SubscriptionType.Commission, SubscriptionType.Yearly],
+        );
+        if (movedStores.rows.length > 0) {
+          await client.query(
+            `UPDATE pd_vendor_credits
+             SET ai_tokens = $2,
+                 last_refill = NOW()
+             WHERE store_id = ANY($1::text[])`,
+            [movedStores.rows.map((store) => store.id), replacementPlan.rows[0].ai_tokens_included],
+          );
+        }
+      }
+
+      await client.query('DELETE FROM pd_subscription_limits WHERE plan_id = $1', [planId]);
+      return { status: 'deleted' as const, storeCount, replacementPlanId };
+    });
+
+    if (result.status === 'not_found') {
+      res.status(404).json({ error: { message: 'Plan not found' } });
+      return;
+    }
+    if (result.status === 'replacement_required') {
+      res.status(409).json({
+        error: {
+          message: 'This plan has stores attached. Select a replacement plan before deleting it.',
+          details: { stores_count: result.storeCount },
+        },
+      });
+      return;
+    }
+    if (result.status === 'replacement_not_found') {
+      res.status(400).json({ error: { message: 'Replacement plan not found' } });
+      return;
+    }
+
+    subscriptionService.invalidateCache();
+    logger.warn({
+      admin_id: req.user!.id,
+      plan_id: planId,
+      replacement_plan_id: result.replacementPlanId ?? null,
+      stores_count: result.storeCount,
+    }, 'Admin deleted subscription plan');
+    res.status(200).json({ success: true, ...result });
   }),
 );
 
@@ -480,11 +1156,14 @@ const globalSettingsSchema = z.object({
   marketplace_theme: z.enum(['panda', 'aliexpress']).optional(),
   marketplace_support_email: z.union([z.coerce.string().email(), z.literal('')]).optional(),
   marketplace_support_phone: z.coerce.string().max(40).optional(),
+  chat_bubble_enabled: z.boolean().optional(),
+  chat_bubble_position: z.enum(['bottom-right', 'bottom-left']).optional(),
   marketplace_enabled: z.boolean().optional(),
   vendor_registration_enabled: z.boolean().optional(),
   buyer_registration_enabled: z.boolean().optional(),
   product_moderation_required: z.boolean().optional(),
   product_auto_publish_verified: z.boolean().optional(),
+  seller_type_change_auto_approval: z.boolean().optional(),
   reviews_enabled: z.boolean().optional(),
   review_auto_publish: z.boolean().optional(),
   wishlist_enabled: z.boolean().optional(),
@@ -505,6 +1184,10 @@ const globalSettingsSchema = z.object({
   max_product_images: z.coerce.number().int().min(1).max(50).optional(),
   max_products_per_store_free: z.coerce.number().int().min(1).max(10000).optional(),
   default_low_stock_threshold: z.coerce.number().int().min(0).max(1000).optional(),
+  chat_message_rate_limit_per_minute: z.coerce.number().int().min(1).max(300).optional(),
+  chat_max_images_per_message: z.coerce.number().int().min(1).max(10).optional(),
+  chat_max_image_size_mb: z.coerce.number().int().min(1).max(25).optional(),
+  chat_max_message_length: z.coerce.number().int().min(1).max(5000).optional(),
 });
 
 const booleanGlobalSettingKeys = new Set([
@@ -513,12 +1196,14 @@ const booleanGlobalSettingKeys = new Set([
   'buyer_registration_enabled',
   'product_moderation_required',
   'product_auto_publish_verified',
+  'seller_type_change_auto_approval',
   'reviews_enabled',
   'review_auto_publish',
   'wishlist_enabled',
   'cart_enabled',
   'shipping_enabled',
   'order_splitting_enabled',
+  'chat_bubble_enabled',
 ]);
 
 const numericGlobalSettingKeys = new Set([
@@ -532,6 +1217,10 @@ const numericGlobalSettingKeys = new Set([
   'max_product_images',
   'max_products_per_store_free',
   'default_low_stock_threshold',
+  'chat_message_rate_limit_per_minute',
+  'chat_max_images_per_message',
+  'chat_max_image_size_mb',
+  'chat_max_message_length',
 ]);
 
 /**
@@ -594,72 +1283,400 @@ router.put(
 const auditLogListSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  action: z.string().optional(),
-  search: z.string().optional(),
+  action: z.string().trim().max(160).optional(),
+  resource_type: z.string().trim().max(80).optional(),
+  actor_role: z.string().trim().max(40).optional(),
+  method: z.string().trim().max(12).optional(),
+  status_code: z.coerce.number().int().min(100).max(599).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  search: z.string().trim().max(200).optional(),
 });
+
+const auditLogSummarySchema = auditLogListSchema.omit({ page: true, limit: true });
+
+type AuditLogFilters = {
+  action?: string;
+  resource_type?: string;
+  actor_role?: string;
+  method?: string;
+  status_code?: number;
+  from?: Date;
+  to?: Date;
+  search?: string;
+};
+
+function buildAuditLogWhere(filters: AuditLogFilters) {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIdx = 1;
+
+  const statusExpr = "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
+  const methodExpr = "UPPER(COALESCE(a.metadata->>'method', split_part(a.action, ' ', 1)))";
+
+  if (filters.action) {
+    conditions.push(`a.action = $${paramIdx++}`);
+    params.push(filters.action);
+  }
+  if (filters.resource_type) {
+    conditions.push(`a.resource_type = $${paramIdx++}`);
+    params.push(filters.resource_type);
+  }
+  if (filters.actor_role) {
+    conditions.push(`a.actor_role = $${paramIdx++}`);
+    params.push(filters.actor_role);
+  }
+  if (filters.method) {
+    conditions.push(`${methodExpr} = $${paramIdx++}`);
+    params.push(filters.method.toUpperCase());
+  }
+  if (filters.status_code) {
+    conditions.push(`${statusExpr} = $${paramIdx++}`);
+    params.push(filters.status_code);
+  }
+  if (filters.from) {
+    conditions.push(`a.created_at >= $${paramIdx++}`);
+    params.push(filters.from);
+  }
+  if (filters.to) {
+    conditions.push(`a.created_at <= $${paramIdx++}`);
+    params.push(filters.to);
+  }
+  if (filters.search) {
+    conditions.push(`(
+      a.action ILIKE $${paramIdx}
+      OR a.resource_type ILIKE $${paramIdx}
+      OR a.resource_id ILIKE $${paramIdx}
+      OR a.actor_id ILIKE $${paramIdx}
+      OR a.actor_role ILIKE $${paramIdx}
+      OR u.email ILIKE $${paramIdx}
+      OR a.ip::text ILIKE $${paramIdx}
+      OR a.metadata::text ILIKE $${paramIdx}
+    )`);
+    params.push(`%${filters.search}%`);
+    paramIdx++;
+  }
+
+  return {
+    whereClause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+    nextParamIdx: paramIdx,
+    statusExpr,
+    methodExpr,
+  };
+}
+
+const systemLogListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  level: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).optional(),
+  event_type: z.string().max(80).optional(),
+  source: z.string().max(80).optional(),
+  status_code: z.coerce.number().int().min(100).max(599).optional(),
+  request_id: z.string().max(64).optional(),
+  has_stack: z.coerce.boolean().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  search: z.string().max(200).optional(),
+});
+
+const systemLogCreateSchema = z.object({
+  level: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  source: z.string().trim().min(1).max(80).default('admin'),
+  event_type: z.string().trim().min(1).max(80).default('admin_manual_log'),
+  message: z.string().trim().min(3).max(4000),
+  path: z.string().trim().max(2000).optional(),
+  status_code: z.number().int().min(100).max(599).nullable().optional(),
+  error_name: z.string().trim().max(120).optional(),
+  error_code: z.string().trim().max(120).optional(),
+  stack: z.string().trim().max(12000).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+const systemLogClearFilterSchema = z.object({
+  level: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).optional(),
+  event_type: z.string().max(80).optional(),
+  source: z.string().max(80).optional(),
+  status_code: z.number().int().min(100).max(599).optional(),
+  request_id: z.string().max(64).optional(),
+  has_stack: z.boolean().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  search: z.string().max(200).optional(),
+});
+
+const systemLogClearSchema = z.object({
+  confirm: z.literal('CLEAR LOGS'),
+  ids: z.array(z.string().min(1).max(64)).max(1000).optional(),
+  older_than_days: z.number().int().min(1).max(3650).optional(),
+  clear_all: z.boolean().optional(),
+  filters: systemLogClearFilterSchema.optional(),
+}).refine(
+  (value) =>
+    value.clear_all === true ||
+    Boolean(value.older_than_days) ||
+    Boolean(value.ids?.length) ||
+    Boolean(value.filters && Object.values(value.filters).some((filterValue) => filterValue !== undefined && filterValue !== '')),
+  { message: 'Provide logs to clear, an age limit, filters, or clear_all=true' },
+);
+
+const systemLogParamSchema = z.object({
+  id: z.string().min(1).max(64),
+});
+
+router.get(
+  '/system-logs/summary',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const summary = await systemLogService.summary();
+    res.status(200).json({ summary });
+  }),
+);
+
+router.get(
+  '/system-logs',
+  validate(systemLogListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const {
+      page,
+      limit,
+      level,
+      event_type,
+      source,
+      status_code,
+      request_id,
+      has_stack,
+      from,
+      to,
+      search,
+    } = req.query as unknown as {
+      page: number;
+      limit: number;
+      level?: string;
+      event_type?: string;
+      source?: string;
+      status_code?: number;
+      request_id?: string;
+      has_stack?: boolean;
+      from?: Date;
+      to?: Date;
+      search?: string;
+    };
+    const result = await systemLogService.list({
+      page,
+      limit,
+      level,
+      eventType: event_type,
+      source,
+      statusCode: status_code,
+      requestId: request_id,
+      hasStack: has_stack,
+      from,
+      to,
+      search,
+    });
+    res.status(200).json({
+      data: result.data.map((entry) => ({
+        ...entry,
+        created_at: entry.created_at.toISOString(),
+      })),
+      meta: result.meta,
+    });
+  }),
+);
+
+router.post(
+  '/system-logs',
+  validate(systemLogCreateSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const body = req.body as z.infer<typeof systemLogCreateSchema>;
+    const log = await systemLogService.create({
+      level: body.level,
+      source: body.source,
+      event_type: body.event_type,
+      message: body.message,
+      request_id: req.requestId,
+      method: 'ADMIN',
+      path: body.path || req.originalUrl,
+      status_code: body.status_code ?? null,
+      user_id: req.user?.id ?? null,
+      user_role: req.user?.role ?? null,
+      ip: req.ip ?? null,
+      user_agent: req.headers['user-agent'] ?? null,
+      error_name: body.error_name || null,
+      error_code: body.error_code || null,
+      stack: body.stack || null,
+      metadata: {
+        ...(body.metadata ?? {}),
+        created_by: 'superadmin_dashboard',
+      },
+    });
+    res.status(201).json({
+      data: {
+        ...log,
+        created_at: log.created_at.toISOString(),
+      },
+    });
+  }),
+);
+
+router.post(
+  '/system-logs/clear',
+  validate(systemLogClearSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const body = req.body as z.infer<typeof systemLogClearSchema>;
+    const deleted = await systemLogService.clear({
+      ids: body.ids,
+      olderThanDays: body.older_than_days,
+      clearAll: body.clear_all,
+      level: body.filters?.level,
+      eventType: body.filters?.event_type,
+      source: body.filters?.source,
+      statusCode: body.filters?.status_code,
+      requestId: body.filters?.request_id,
+      hasStack: body.filters?.has_stack,
+      from: body.filters?.from,
+      to: body.filters?.to,
+      search: body.filters?.search,
+    });
+    res.status(200).json({ deleted });
+  }),
+);
+
+router.delete(
+  '/system-logs/:id',
+  validate(systemLogParamSchema, 'params'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params as { id: string };
+    const deleted = await systemLogService.deleteById(id);
+    res.status(200).json({ deleted });
+  }),
+);
+
+router.get(
+  '/audit-log/summary',
+  validate(auditLogSummarySchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const filters = req.query as unknown as AuditLogFilters;
+    const { whereClause, params, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+
+    const { rows: summaryRows } = await query<{
+      total: string;
+      last_24h: string;
+      failed: string;
+      actors: string;
+      writes: string;
+    }>(
+      `SELECT COUNT(*)::text AS total,
+              COUNT(*) FILTER (WHERE a.created_at >= NOW() - INTERVAL '24 hours')::text AS last_24h,
+              COUNT(*) FILTER (WHERE ${statusExpr} >= 400)::text AS failed,
+              COUNT(DISTINCT a.actor_id)::text AS actors,
+              COUNT(*) FILTER (WHERE ${methodExpr} IN ('POST', 'PUT', 'PATCH', 'DELETE'))::text AS writes
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.actor_id
+       ${whereClause}`,
+      params,
+    );
+
+    const { rows: actionRows } = await query<{ action: string; count: string }>(
+      `SELECT a.action, COUNT(*)::text AS count
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.actor_id
+       ${whereClause}
+       GROUP BY a.action
+       ORDER BY COUNT(*) DESC, a.action ASC
+       LIMIT 50`,
+      params,
+    );
+
+    const { rows: resourceRows } = await query<{ resource_type: string | null; count: string }>(
+      `SELECT a.resource_type, COUNT(*)::text AS count
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.actor_id
+       ${whereClause}
+       GROUP BY a.resource_type
+       ORDER BY COUNT(*) DESC, a.resource_type ASC
+       LIMIT 50`,
+      params,
+    );
+
+    res.status(200).json({
+      summary: summaryRows[0] ?? { total: '0', last_24h: '0', failed: '0', actors: '0', writes: '0' },
+      actions: actionRows,
+      resources: resourceRows,
+    });
+  }),
+);
 
 router.get(
   '/audit-log',
   validate(auditLogListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, action, search } = req.query as unknown as {
+    const { page, limit, ...filters } = req.query as unknown as {
       page: number;
       limit: number;
-      action?: string;
-      search?: string;
-    };
+    } & AuditLogFilters;
+    const { whereClause, params, nextParamIdx, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+    const limitParamIdx = nextParamIdx;
+    const offsetParamIdx = nextParamIdx + 1;
     const offset = (page - 1) * limit;
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    let paramIdx = 1;
-
-    if (action) {
-      conditions.push(`a.action = $${paramIdx++}`);
-      params.push(action);
-    }
-    if (search) {
-      conditions.push(`(a.resource_type ILIKE $${paramIdx} OR a.resource_id ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx})`);
-      params.push(`%${search}%`);
-      paramIdx++;
-    }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const { rows } = await query<{
       id: string;
-      admin_id: string;
-      admin_email: string;
+      actor_id: string | null;
+      actor_email: string | null;
+      actor_role: string | null;
       action: string;
-      resource_type: string;
-      resource_id: string;
-      details: Record<string, unknown> | null;
-      ip_address: string | null;
+      resource_type: string | null;
+      resource_id: string | null;
+      method: string | null;
+      status_code: number | null;
+      duration_ms: number | null;
+      path: string | null;
+      ip: string | null;
+      user_agent: string | null;
+      metadata: Record<string, unknown> | null;
       created_at: Date;
     }>(
-      `SELECT a.id, a.admin_id, u.email AS admin_email, a.action,
-              a.resource_type, a.resource_id, a.details, a.ip_address, a.created_at
+      `SELECT a.id,
+              a.actor_id,
+              u.email AS actor_email,
+              a.actor_role,
+              a.action,
+              a.resource_type,
+              a.resource_id,
+              ${methodExpr} AS method,
+              ${statusExpr} AS status_code,
+              CASE WHEN a.metadata->>'duration_ms' ~ '^\\d+$' THEN (a.metadata->>'duration_ms')::int ELSE NULL END AS duration_ms,
+              COALESCE(a.metadata->>'path', a.action) AS path,
+              a.ip::text AS ip,
+              a.user_agent,
+              a.metadata,
+              a.created_at
        FROM pd_audit_log a
-       LEFT JOIN pd_user u ON u.id = a.admin_id
+       LEFT JOIN pd_user u ON u.id = a.actor_id
        ${whereClause}
        ORDER BY a.created_at DESC
-       LIMIT $${paramIdx++} OFFSET $${paramIdx}`,
+       LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}`,
       [...params, limit, offset],
     );
 
     const { rows: countRows } = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM pd_audit_log a
-       LEFT JOIN pd_user u ON u.id = a.admin_id
+       LEFT JOIN pd_user u ON u.id = a.actor_id
        ${whereClause}`,
       params,
     );
-    const total = parseInt(countRows[0].count, 10);
+    const total = parseInt(countRows[0]?.count ?? '0', 10);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     res.status(200).json({
       data: rows.map((r) => ({
         ...r,
+        actor_email: r.actor_email ?? null,
+        metadata: r.metadata ?? {},
         created_at: r.created_at.toISOString(),
       })),
-      meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
+      meta: { page, limit, total, total_pages: totalPages, totalPages },
     });
   }),
 );
@@ -668,63 +1685,89 @@ router.get(
 // AI Cost Dashboard
 // =====================================================
 
-router.get(
-  '/ai-costs',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const [totalJobs, totalTokens, byType, topConsumers, recentJobs] = await Promise.all([
-      query<{ count: string }>('SELECT COUNT(*)::text AS count FROM pd_ai_job'),
-      query<{ total: string }>(
-        "SELECT COALESCE(SUM(tokens_used), 0)::text AS total FROM pd_ai_job WHERE status = 'completed'",
-      ),
-      query<{ type: string; count: string; tokens: string }>(
-        `SELECT type, COUNT(*)::text AS count, COALESCE(SUM(tokens_used), 0)::text AS tokens
-         FROM pd_ai_job GROUP BY type ORDER BY count DESC`,
-      ),
-      query<{ store_id: string; store_name: string; total_tokens: string; job_count: string }>(
-        `SELECT j.store_id, s.name AS store_name,
-                SUM(j.tokens_used)::text AS total_tokens,
-                COUNT(*)::text AS job_count
-         FROM pd_ai_job j
-         JOIN pd_store s ON s.id = j.store_id
-         WHERE j.status = 'completed'
-         GROUP BY j.store_id, s.name
-         ORDER BY SUM(j.tokens_used) DESC
-         LIMIT 10`,
-      ),
-      query<{ date: string; count: string; tokens: string }>(
-        `SELECT DATE(created_at)::text AS date,
-                COUNT(*)::text AS count,
-                COALESCE(SUM(tokens_used), 0)::text AS tokens
-         FROM pd_ai_job
-         WHERE created_at >= NOW() - INTERVAL '30 days'
-         GROUP BY DATE(created_at)
-         ORDER BY date ASC`,
-      ),
-    ]);
+const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
+  const [summary, topConsumers, dailyUsage, byType] = await Promise.all([
+    query<{
+      total_jobs: string;
+      total_tokens_consumed: string;
+      jobs_today: string;
+      tokens_today: string;
+      compression_jobs: string;
+      seo_jobs: string;
+    }>(
+      `SELECT COUNT(*)::text AS total_jobs,
+              COALESCE(SUM(tokens_consumed), 0)::text AS total_tokens_consumed,
+              COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::text AS jobs_today,
+              COALESCE(SUM(tokens_consumed) FILTER (WHERE created_at >= CURRENT_DATE), 0)::text AS tokens_today,
+              COUNT(*) FILTER (WHERE type = 'image_compression')::text AS compression_jobs,
+              COUNT(*) FILTER (WHERE type = 'seo_generation')::text AS seo_jobs
+       FROM pd_ai_jobs`,
+    ),
+    query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
+      `SELECT j.store_id,
+              s.name AS store_name,
+              COALESCE(SUM(j.tokens_consumed), 0)::text AS tokens_used,
+              COUNT(*)::text AS job_count
+       FROM pd_ai_jobs j
+       JOIN pd_store s ON s.id = j.store_id
+       GROUP BY j.store_id, s.name
+       ORDER BY SUM(j.tokens_consumed) DESC
+       LIMIT 10`,
+    ),
+    query<{ date: string; tokens: string; jobs: string }>(
+      `SELECT DATE(created_at)::text AS date,
+              COALESCE(SUM(tokens_consumed), 0)::text AS tokens,
+              COUNT(*)::text AS jobs
+       FROM pd_ai_jobs
+       WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`,
+    ),
+    query<{ type: string; count: string; tokens: string }>(
+      `SELECT type,
+              COUNT(*)::text AS count,
+              COALESCE(SUM(tokens_consumed), 0)::text AS tokens
+       FROM pd_ai_jobs
+       GROUP BY type
+       ORDER BY count DESC`,
+    ),
+  ]);
 
-    res.status(200).json({
-      total_jobs: parseInt(totalJobs.rows[0].count, 10),
-      total_tokens: parseInt(totalTokens.rows[0].total, 10),
-      estimated_cost_tnd: parseFloat(totalTokens.rows[0].total) * 0.005,
-      by_type: byType.rows.map((r) => ({
-        type: r.type,
-        count: parseInt(r.count, 10),
-        tokens: parseInt(r.tokens, 10),
-      })),
-      top_consumers: topConsumers.rows.map((r) => ({
-        store_id: r.store_id,
-        store_name: r.store_name,
-        total_tokens: parseInt(r.total_tokens, 10),
-        job_count: parseInt(r.job_count, 10),
-      })),
-      daily_usage: recentJobs.rows.map((r) => ({
-        date: r.date,
-        count: parseInt(r.count, 10),
-        tokens: parseInt(r.tokens, 10),
-      })),
-    });
-  }),
-);
+  const row = summary.rows[0];
+  const totalTokens = parseInt(row.total_tokens_consumed, 10);
+
+  res.status(200).json({
+    total_jobs: parseInt(row.total_jobs, 10),
+    total_tokens_consumed: totalTokens,
+    total_tokens: totalTokens,
+    jobs_today: parseInt(row.jobs_today, 10),
+    tokens_today: parseInt(row.tokens_today, 10),
+    compression_jobs: parseInt(row.compression_jobs, 10),
+    seo_jobs: parseInt(row.seo_jobs, 10),
+    estimated_cost_tnd: totalTokens * 0.005,
+    by_type: byType.rows.map((r) => ({
+      type: r.type,
+      count: parseInt(r.count, 10),
+      tokens: parseInt(r.tokens, 10),
+    })),
+    top_consumers: topConsumers.rows.map((r) => ({
+      store_id: r.store_id,
+      store_name: r.store_name,
+      tokens_used: parseInt(r.tokens_used, 10),
+      total_tokens: parseInt(r.tokens_used, 10),
+      job_count: parseInt(r.job_count, 10),
+    })),
+    daily_usage: dailyUsage.rows.map((r) => ({
+      date: r.date,
+      tokens: parseInt(r.tokens, 10),
+      jobs: parseInt(r.jobs, 10),
+      count: parseInt(r.jobs, 10),
+    })),
+  });
+});
+
+router.get('/ai-costs', aiStatsHandler);
+router.get('/ai-stats', aiStatsHandler);
 
 // =====================================================
 // SMTP Email Configuration

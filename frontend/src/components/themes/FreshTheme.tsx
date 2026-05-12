@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Apple } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Fresh Theme — Grocery/health food, bright greens and whites. */
 export function FreshTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -63,7 +62,7 @@ export function FreshTheme({ theme, storeName, products = [], branding }: ThemeP
         </div>
       </main>
       <footer className="border-t py-8 text-center" style={{ backgroundColor: tc.colors.footerBg, borderColor: `${fresh}15` }}>
-        <p className="text-xs text-gray-400">© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs text-gray-400">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

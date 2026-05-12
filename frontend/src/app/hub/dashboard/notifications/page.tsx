@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, Check, CheckCheck, Loader2, Filter, Trash2 } from 'lucide-react';
 
 interface Notification {
@@ -38,16 +38,16 @@ export default function NotificationsPage() {
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState('');
 
-  const getErrorMessage = async (res: Response, fallback: string) => {
+  const getErrorMessage = useCallback(async (res: Response, fallback: string) => {
     try {
       const data = await res.json();
       return data.error?.message || data.message || `${fallback} (${res.status})`;
     } catch {
       return `${fallback} (${res.status})`;
     }
-  };
+  }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -73,11 +73,11 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, getErrorMessage, page]);
 
   useEffect(() => {
     fetchNotifications();
-  }, [page, filter]);
+  }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
     setError('');

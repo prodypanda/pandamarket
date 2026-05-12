@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "PandaMarket backend — MedusaJS-style Express+TypeORM API",
-  "main": "dist/main.js",
+  "main": "dist/backend/src/main.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node dist/backend/src/main.js",
     "migrate": "tsx src/migrations/run.ts",
     "migrate:rollback": "tsx src/migrations/rollback.ts",
     "seed": "tsx data/seed.ts",

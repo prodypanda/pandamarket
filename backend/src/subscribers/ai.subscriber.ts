@@ -21,7 +21,7 @@ export function registerAiSubscribers(): void {
           type: 'ai_job_completed',
           title: 'Tâche IA terminée',
           message: `Votre tâche ${payload.type} a été complétée avec succès.`,
-          data: { job_id: payload.job_id },
+          data: { store_id: payload.store_id, job_id: payload.job_id },
         });
       }
     } catch (err) {

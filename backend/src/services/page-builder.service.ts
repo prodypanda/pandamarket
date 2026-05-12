@@ -119,6 +119,17 @@ function generatePageId(): string {
   return `pd_page_${ts}${rand}`;
 }
 
+function isPgUniqueViolation(err: unknown, constraint: string): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    'constraint' in err &&
+    err.code === '23505' &&
+    err.constraint === constraint
+  );
+}
+
 const MAX_PAGES_PER_STORE = 20;
 const MAX_BUILDER_DATA_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_HTML_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -283,9 +294,9 @@ class PageBuilderService {
         logger.info({ pageId: id, storeId: input.store_id, slug: input.slug }, 'Page builder page created');
         return result.rows[0];
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle duplicate slug (PostgreSQL unique_violation 23505)
-      if (err?.code === '23505' && err?.constraint === 'uq_store_page_slug') {
+      if (isPgUniqueViolation(err, 'uq_store_page_slug')) {
         throw new PdConflictError(
           PdErrorCode.STORE_SUBDOMAIN_TAKEN,
           `Une page avec le slug "${input.slug}" existe déjà dans cette boutique.`,
@@ -376,9 +387,9 @@ class PageBuilderService {
         logger.info({ pageId, storeId }, 'Page builder page updated');
         return result.rows[0];
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle duplicate slug
-      if (err?.code === '23505' && err?.constraint === 'uq_store_page_slug') {
+      if (isPgUniqueViolation(err, 'uq_store_page_slug')) {
         throw new PdConflictError(
           PdErrorCode.STORE_SUBDOMAIN_TAKEN,
           `Une page avec le slug "${sanitizedInput.slug}" existe déjà dans cette boutique.`,

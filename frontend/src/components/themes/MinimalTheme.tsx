@@ -1,10 +1,10 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 export function MinimalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
@@ -134,7 +134,7 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
 
       {/* Footer */}
       <footer className="py-8 text-center text-xs" style={{ backgroundColor: tc.colors.footerBg, color: `${tc.colors.background}80` }}>
-        <p>© {new Date().getFullYear()} {storeName} — Propulsé par <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

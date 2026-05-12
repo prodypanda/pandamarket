@@ -17,13 +17,13 @@ interface Review {
 }
 
 interface ProductRating {
-  average_rating: number;
-  review_count: number;
-  rating_1: number;
-  rating_2: number;
-  rating_3: number;
-  rating_4: number;
-  rating_5: number;
+  average_rating: number | string | null;
+  review_count: number | string | null;
+  rating_1: number | string | null;
+  rating_2: number | string | null;
+  rating_3: number | string | null;
+  rating_4: number | string | null;
+  rating_5: number | string | null;
 }
 
 interface ReviewSectionProps {
@@ -90,6 +90,11 @@ function timeAgo(dateStr: string): string {
   const months = Math.floor(days / 30);
   if (months < 12) return `Il y a ${months} mois`;
   return `Il y a ${Math.floor(months / 12)} an(s)`;
+}
+
+function toNumber(value: number | string | null | undefined): number {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 async function getResponseErrorMessage(res: Response, fallback: string) {
@@ -261,8 +266,13 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
   };
 
   const totalPages = Math.ceil(total / 10);
-  const avg = rating?.average_rating ?? 0;
-  const count = rating?.review_count ?? 0;
+  const avg = toNumber(rating?.average_rating);
+  const count = toNumber(rating?.review_count);
+  const rating1 = toNumber(rating?.rating_1);
+  const rating2 = toNumber(rating?.rating_2);
+  const rating3 = toNumber(rating?.rating_3);
+  const rating4 = toNumber(rating?.rating_4);
+  const rating5 = toNumber(rating?.rating_5);
 
   return (
     <div>
@@ -282,11 +292,11 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
         {/* Distribution */}
         {rating && count > 0 && (
           <div className="md:col-span-2 space-y-1.5">
-            <RatingBar label="5" count={rating.rating_5} total={count} />
-            <RatingBar label="4" count={rating.rating_4} total={count} />
-            <RatingBar label="3" count={rating.rating_3} total={count} />
-            <RatingBar label="2" count={rating.rating_2} total={count} />
-            <RatingBar label="1" count={rating.rating_1} total={count} />
+            <RatingBar label="5" count={rating5} total={count} />
+            <RatingBar label="4" count={rating4} total={count} />
+            <RatingBar label="3" count={rating3} total={count} />
+            <RatingBar label="2" count={rating2} total={count} />
+            <RatingBar label="1" count={rating1} total={count} />
           </div>
         )}
       </div>
@@ -323,10 +333,10 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <p className="font-semibold">{submitError}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/login" className={`rounded-lg px-4 py-2 text-xs font-bold text-white ${primaryButtonClass}`}>
+            <Link href="/login/buyer" className={`rounded-lg px-4 py-2 text-xs font-bold text-white ${primaryButtonClass}`}>
               Login
             </Link>
-            <Link href="/register" className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+            <Link href="/register/buyer" className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
               Register
             </Link>
           </div>

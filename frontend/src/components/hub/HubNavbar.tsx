@@ -2,12 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, User, Heart } from 'lucide-react';
+import { Heart, MessageSquare, ShoppingBag, User } from 'lucide-react';
 import { SearchBar } from './SearchBar';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LocaleSwitcher } from '../LocaleSwitcher';
 import { useLocale } from '../../contexts/LocaleContext';
 import { useCart } from '../../contexts/CartContext';
+import { normalizePublicAssetUrl } from '../../lib/public-assets';
+import { InstantChatLauncher } from '../chat/InstantChatLauncher';
+import { MarketplaceBrand } from '../MarketplaceBrand';
 
 interface CurrentUser {
   role?: string;
@@ -18,6 +21,7 @@ interface HubNavbarProps {
   marketplaceName?: string;
   marketplaceLogoUrl?: string;
   marketplaceTheme?: 'panda' | 'aliexpress';
+  showInstantChat?: boolean;
 }
 
 interface MarketplaceSettings {
@@ -26,12 +30,12 @@ interface MarketplaceSettings {
   marketplace_theme?: 'panda' | 'aliexpress';
 }
 
-export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceTheme }: HubNavbarProps) {
+export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceTheme, showInstantChat = true }: HubNavbarProps) {
   const { t } = useLocale();
   const { getItemCount } = useCart();
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const resolvedMarketplaceName = marketplaceName || marketplaceSettings.marketplace_name || 'PandaMarket';
-  const resolvedMarketplaceLogoUrl = marketplaceLogoUrl || marketplaceSettings.marketplace_logo_url;
+  const resolvedMarketplaceLogoUrl = normalizePublicAssetUrl(marketplaceLogoUrl || marketplaceSettings.marketplace_logo_url);
   const resolvedMarketplaceTheme = marketplaceTheme || marketplaceSettings.marketplace_theme || 'panda';
   const isAliExpress = resolvedMarketplaceTheme === 'aliexpress';
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -41,10 +45,10 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
   const dashboardHref =
     role === 'admin' || role === 'super_admin'
       ? '/dashboard'
-      : currentUser?.store_id
+      : role === 'vendor' || currentUser?.store_id
         ? '/hub/dashboard'
-        : '/hub/vendor-signup';
-  const accountHref = currentUser ? dashboardHref : authChecked ? '/login' : '/hub/dashboard';
+        : '/hub/account';
+  const accountHref = currentUser ? dashboardHref : authChecked ? '/login/buyer' : '/hub/account';
 
   useEffect(() => {
     let cancelled = false;
@@ -112,17 +116,17 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link
+            <MarketplaceBrand
               href="/hub"
-              className={`flex items-center gap-3 text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${
+              marketplaceName={resolvedMarketplaceName}
+              marketplaceLogoUrl={resolvedMarketplaceLogoUrl}
+              className="flex items-center gap-3"
+              imageClassName="h-10 max-w-[150px] object-contain"
+              textClassName={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${
                 isAliExpress ? 'from-[#ff4747] to-[#ff8a00]' : 'from-[#16C784] to-[#1EE69A]'
               }`}
-            >
-              {resolvedMarketplaceLogoUrl && (
-                <img src={resolvedMarketplaceLogoUrl} alt={resolvedMarketplaceName} className="h-10 max-w-[150px] object-contain" />
-              )}
-              <span className={resolvedMarketplaceLogoUrl ? 'hidden sm:inline' : ''}>{resolvedMarketplaceName}</span>
-            </Link>
+              fallbackMarkClassName="hidden"
+            />
           </div>
 
           {/* Search Bar - Hidden on small screens */}
@@ -141,11 +145,14 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
             <Link href={accountHref} className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
               <User className="w-5 h-5" strokeWidth={1.75} />
               <span className="ms-2 text-sm font-medium hidden sm:block">
-                {currentUser ? 'My Dashboard' : t('nav.login')}
+                {currentUser ? 'Mon compte' : t('nav.login')}
               </span>
             </Link>
             <Link href="/hub/wishlist" className="flex items-center text-gray-600 dark:text-gray-300 hover:text-red-400 transition-colors">
               <Heart className="w-5 h-5" strokeWidth={1.75} />
+            </Link>
+            <Link href="/hub/messages" className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
+              <MessageSquare className="w-5 h-5" strokeWidth={1.75} />
             </Link>
             <Link href="/hub/cart" className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors relative ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
               <ShoppingBag className="w-5 h-5" strokeWidth={1.75} />
@@ -161,6 +168,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
           <SearchBar marketplaceTheme={resolvedMarketplaceTheme} />
         </div>
       </div>
+      {showInstantChat && <InstantChatLauncher marketplaceTheme={resolvedMarketplaceTheme} />}
     </header>
   );
 }

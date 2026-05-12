@@ -7,14 +7,14 @@
 
 import { eventBus, PdEvent } from '../events/event-bus';
 import { logger } from '../utils/logger';
-import { query } from '../db/pool';
+import { query, transaction } from '../db/pool';
 import { walletService } from '../services/wallet.service';
 import { notificationService } from '../services/notification.service';
 import { emailQueue } from '../queues/email-queue';
 import { socketGateway } from '../realtime/socket-gateway';
 import { calculateCommission, calculateVendorNet } from '../utils/money';
 import { subscriptionService } from '../services/subscription.service';
-import { SubscriptionPlan } from '@pandamarket/types';
+import { ProductType } from '@pandamarket/types';
 import { incrementBusinessMetric } from '../utils/metrics';
 
 export function registerOrderSubscribers(): void {
@@ -50,12 +50,16 @@ export function registerOrderSubscribers(): void {
 async function onOrderPlaced(orderId: string): Promise<void> {
   const { rows } = await query<{
     id: string;
-    customer_id: string;
+    customer_id: string | null;
+    storefront_customer_id: string | null;
     total: string;
-    customer_email: string;
+    customer_email: string | null;
   }>(
-    `SELECT o.id, o.customer_id, o.total::text, u.email AS customer_email
-     FROM pd_order o JOIN pd_user u ON u.id = o.customer_id
+    `SELECT o.id, o.customer_id, o.storefront_customer_id, o.total::text,
+            COALESCE(u.email, sc.email) AS customer_email
+     FROM pd_order o
+     LEFT JOIN pd_user u ON u.id = o.customer_id
+     LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
      WHERE o.id = $1`,
     [orderId],
   );
@@ -63,18 +67,22 @@ async function onOrderPlaced(orderId: string): Promise<void> {
   if (!order) return;
 
   // In-app notification + email to customer
-  await notificationService.create({
-    user_id: order.customer_id,
-    type: 'order_placed',
-    title: 'Commande confirmée',
-    message: `Votre commande #${order.id.slice(-8)} a bien été enregistrée.`,
-    data: { order_id: order.id },
-  });
-  await emailQueue.add('order_confirmed', {
-    to: order.customer_email,
-    template: 'order_confirmed',
-    variables: { order_id: order.id, total: order.total },
-  });
+  if (order.customer_id) {
+    await notificationService.create({
+      user_id: order.customer_id,
+      type: 'order_placed',
+      title: 'Commande confirmée',
+      message: `Votre commande #${order.id.slice(-8)} a bien été enregistrée.`,
+      data: { order_id: order.id },
+    });
+  }
+  if (order.customer_email) {
+    await emailQueue.add('order_confirmed', {
+      to: order.customer_email,
+      template: 'order_confirmed',
+      variables: { order_id: order.id, total: order.total },
+    });
+  }
 
   // Notify each vendor (one email per distinct store in the order)
   const { rows: storeRows } = await query<{
@@ -98,7 +106,7 @@ async function onOrderPlaced(orderId: string): Promise<void> {
       type: 'new_order',
       title: '🛍️ Nouvelle commande',
       message: `Vous avez reçu une commande de ${row.store_total} TND`,
-      data: { order_id: order.id, total: row.store_total },
+      data: { store_id: row.store_id, order_id: order.id, total: row.store_total },
     });
     socketGateway.emitToStore(row.store_id, 'new_order', {
       order_id: order.id,
@@ -113,12 +121,14 @@ async function onOrderPlaced(orderId: string): Promise<void> {
 }
 
 async function onPaymentCaptured(orderId: string): Promise<void> {
+  await assignSerialLicenseKeys(orderId);
+
   // Per-store totals (excluding shipping for commission calc — keep it simple here)
   const { rows: storeRows } = await query<{
     store_id: string;
     owner_id: string;
     owner_email: string;
-    plan: SubscriptionPlan;
+    plan: string;
     store_total: string;
   }>(
     `SELECT i.store_id, s.owner_id, u.email AS owner_email,
@@ -155,7 +165,7 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
       type: 'payment_captured',
       title: 'Paiement reçu',
       message: `Vous avez reçu un paiement de ${net} TND.`,
-      data: { order_id: orderId, amount: net, commission },
+      data: { store_id: row.store_id, order_id: orderId, amount: net, commission },
     });
     socketGateway.emitToStore(row.store_id, 'payment_received', {
       order_id: orderId,
@@ -171,30 +181,97 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
 
   // Notify the customer too
   const { rows: orderRows } = await query<{
-    customer_id: string;
-    customer_email: string;
+    customer_id: string | null;
+    storefront_customer_id: string | null;
+    customer_email: string | null;
     total: string;
   }>(
-    `SELECT o.customer_id, u.email AS customer_email, o.total::text
-       FROM pd_order o JOIN pd_user u ON u.id = o.customer_id
+    `SELECT o.customer_id, o.storefront_customer_id,
+            COALESCE(u.email, sc.email) AS customer_email,
+            o.total::text
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
       WHERE o.id = $1`,
     [orderId],
   );
   const c = orderRows[0];
   if (c) {
-    await notificationService.create({
-      user_id: c.customer_id,
-      type: 'payment_captured',
-      title: 'Paiement confirmé',
-      message: `Votre paiement de ${c.total} TND a bien été reçu.`,
-      data: { order_id: orderId, amount: c.total },
-    });
-    await emailQueue.add('payment_captured_customer', {
-      to: c.customer_email,
-      template: 'payment_captured',
-      variables: { order_id: orderId, amount: c.total, method: 'PandaMarket' },
-    });
+    if (c.customer_id) {
+      await notificationService.create({
+        user_id: c.customer_id,
+        type: 'payment_captured',
+        title: 'Paiement confirmé',
+        message: `Votre paiement de ${c.total} TND a bien été reçu.`,
+        data: { order_id: orderId, amount: c.total },
+      });
+    }
+    if (c.customer_email) {
+      await emailQueue.add('payment_captured_customer', {
+        to: c.customer_email,
+        template: 'payment_captured',
+        variables: { order_id: orderId, amount: c.total, method: 'PandaMarket' },
+      });
+    }
   }
+}
+
+async function assignSerialLicenseKeys(orderId: string): Promise<void> {
+  await transaction(async (c) => {
+    const { rows: serialItems } = await c.query<{
+      product_id: string;
+      store_id: string;
+      quantity: number;
+    }>(
+      `SELECT i.product_id, i.store_id, SUM(i.quantity)::int AS quantity
+       FROM pd_order_item i
+       JOIN pd_product p ON p.id = i.product_id
+       WHERE i.order_id = $1 AND p.type = $2
+       GROUP BY i.product_id, i.store_id`,
+      [orderId, ProductType.Serial],
+    );
+
+    for (const item of serialItems) {
+      await c.query(
+        `UPDATE pd_license_key
+         SET is_used = true,
+             assigned_at = COALESCE(assigned_at, NOW())
+         WHERE order_id = $1 AND product_id = $2 AND is_used = false`,
+        [orderId, item.product_id],
+      );
+
+      const { rows: existingRows } = await c.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM pd_license_key
+         WHERE order_id = $1 AND product_id = $2`,
+        [orderId, item.product_id],
+      );
+      const remaining = item.quantity - parseInt(existingRows[0]?.count ?? '0', 10);
+      if (remaining <= 0) continue;
+
+      const { rowCount } = await c.query(
+        `UPDATE pd_license_key
+         SET order_id = $1,
+             assigned_at = NOW(),
+             is_used = true
+         WHERE id IN (
+           SELECT id FROM pd_license_key
+           WHERE product_id = $2 AND store_id = $3 AND order_id IS NULL AND is_used = false
+           ORDER BY created_at ASC
+           LIMIT $4
+           FOR UPDATE SKIP LOCKED
+         )`,
+        [orderId, item.product_id, item.store_id, remaining],
+      );
+
+      if ((rowCount ?? 0) < remaining) {
+        logger.error(
+          { order_id: orderId, product_id: item.product_id, requested: remaining, assigned: rowCount ?? 0 },
+          'Not enough serial license keys to fulfill order',
+        );
+      }
+    }
+  });
 }
 
 async function onOrderFulfilled(payload: {
@@ -203,30 +280,38 @@ async function onOrderFulfilled(payload: {
   tracking_number?: string;
 }): Promise<void> {
   const { rows } = await query<{
-    customer_id: string;
-    customer_email: string;
+    customer_id: string | null;
+    storefront_customer_id: string | null;
+    customer_email: string | null;
   }>(
-    `SELECT o.customer_id, u.email AS customer_email
-       FROM pd_order o JOIN pd_user u ON u.id = o.customer_id
+    `SELECT o.customer_id, o.storefront_customer_id,
+            COALESCE(u.email, sc.email) AS customer_email
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
       WHERE o.id = $1`,
     [payload.order_id],
   );
   const c = rows[0];
   if (!c) return;
-  await notificationService.create({
-    user_id: c.customer_id,
-    type: 'order_fulfilled',
-    title: 'Commande expédiée',
-    message: `Votre commande #${payload.order_id.slice(-8)} est en route.`,
-    data: payload,
-  });
-  await emailQueue.add('order_shipped', {
-    to: c.customer_email,
-    template: 'order_shipped',
-    variables: {
-      order_id: payload.order_id,
-      carrier: payload.carrier ?? '',
-      tracking_number: payload.tracking_number ?? '',
-    },
-  });
+  if (c.customer_id) {
+    await notificationService.create({
+      user_id: c.customer_id,
+      type: 'order_fulfilled',
+      title: 'Commande expédiée',
+      message: `Votre commande #${payload.order_id.slice(-8)} est en route.`,
+      data: payload,
+    });
+  }
+  if (c.customer_email) {
+    await emailQueue.add('order_shipped', {
+      to: c.customer_email,
+      template: 'order_shipped',
+      variables: {
+        order_id: payload.order_id,
+        carrier: payload.carrier ?? '',
+        tracking_number: payload.tracking_number ?? '',
+      },
+    });
+  }
 }

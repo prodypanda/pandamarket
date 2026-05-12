@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Sahara Theme — Warm desert tones, Tunisian-inspired patterns.
@@ -64,7 +63,7 @@ export function SaharaTheme({ theme, storeName, products = [], branding }: Theme
         </div>
       </main>
       <footer className="border-t-2 py-10 text-center" style={{ borderColor: `${accent}20` }}>
-        <p className="text-xs" style={{ color: '#7A5C44' }}>© {new Date().getFullYear()} {storeName} — Propulsé par <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs" style={{ color: '#7A5C44' }}>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

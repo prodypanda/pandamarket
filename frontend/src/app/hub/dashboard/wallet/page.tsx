@@ -7,31 +7,35 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Clock,
-  DollarSign,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
 interface WalletData {
-  balance: number;
-  pending_balance: number;
-  total_earned: number;
-  total_withdrawn: number;
+  balance: number | string | null;
+  pending_balance: number | string | null;
+  total_earned: number | string | null;
+  total_withdrawn: number | string | null;
   payout_mode: 'manual' | 'automatic';
 }
 
 interface Transaction {
   id: string;
   type: string;
-  amount: number;
+  amount: number | string | null;
   status: string;
   reference?: string;
   created_at: string;
 }
 
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
+function toNumber(value: unknown): number {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function formatPrice(price: unknown): string {
+  return `${toNumber(price).toFixed(3)} TND`;
 }
 
 export default function WalletPage() {
@@ -327,36 +331,39 @@ export default function WalletPage() {
                   </td>
                 </tr>
               ) : (
-                transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 text-sm text-gray-700">
-                      {new Date(tx.created_at).toLocaleDateString('fr-TN')}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-700 capitalize">{tx.type}</td>
-                    <td
-                      className={`px-6 py-3 text-sm font-semibold ${
-                        tx.amount >= 0 ? 'text-[#16C784]' : 'text-red-500'
-                      }`}
-                    >
-                      {tx.amount >= 0 ? '+' : ''}
-                      {formatPrice(tx.amount)}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                          tx.status === 'completed'
-                            ? 'bg-green-50 text-green-700'
-                            : tx.status === 'pending'
-                              ? 'bg-yellow-50 text-yellow-700'
-                              : 'bg-gray-100 text-gray-600'
+                transactions.map((tx) => {
+                  const txAmount = toNumber(tx.amount);
+                  return (
+                    <tr key={tx.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        {new Date(tx.created_at).toLocaleDateString('fr-TN')}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700 capitalize">{tx.type}</td>
+                      <td
+                        className={`px-6 py-3 text-sm font-semibold ${
+                          txAmount >= 0 ? 'text-[#16C784]' : 'text-red-500'
                         }`}
                       >
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-500">{tx.reference || '—'}</td>
-                  </tr>
-                ))
+                        {txAmount >= 0 ? '+' : ''}
+                        {formatPrice(txAmount)}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span
+                          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                            tx.status === 'completed'
+                              ? 'bg-green-50 text-green-700'
+                              : tx.status === 'pending'
+                                ? 'bg-yellow-50 text-yellow-700'
+                                : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{tx.reference || '—'}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

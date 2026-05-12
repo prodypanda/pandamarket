@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Gamepad2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Neon Theme — Dark mode default, neon accent colors, gaming/tech vibe.
@@ -126,8 +125,7 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
       {/* Footer */}
       <footer className="border-t py-10 text-center" style={{ borderColor: `${neon}10` }}>
         <p className="text-xs text-gray-600">
-          © {new Date().getFullYear()} {storeName} — Powered by{' '}
-          <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link>
+          © {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" />
         </p>
       </footer>
     </div>

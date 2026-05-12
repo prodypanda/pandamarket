@@ -1,9 +1,7 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { Sparkles, ArrowRight, ShoppingCart, ShoppingBag } from 'lucide-react';
+import { Sparkles, ArrowRight, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 export function ModernTheme({ theme, storeName, products = [], branding }: ThemeProps) {

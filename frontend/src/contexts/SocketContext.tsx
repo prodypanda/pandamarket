@@ -69,6 +69,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socket.on('kyc_pending', handleNotification);
     socket.on('mandat_pending', handleNotification);
     socket.on('new_report', handleNotification);
+    socket.on('chat_message', handleNotification);
 
     listenersAttached.current = true;
 
@@ -81,6 +82,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       socket.off('kyc_pending', handleNotification);
       socket.off('mandat_pending', handleNotification);
       socket.off('new_report', handleNotification);
+      socket.off('chat_message', handleNotification);
       listenersAttached.current = false;
     };
   }, [socket, isConnected]);

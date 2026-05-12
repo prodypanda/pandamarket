@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { SafePageRenderer } from '../../../../../components/page-builder/SafePageRenderer';
+import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
 import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
+import { getMarketplaceSettings } from '../../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../../lib/store-routing';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 
@@ -116,6 +118,7 @@ export default async function CustomStorePage({
   const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
   const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
   const logoUrl = store.settings?.logo_url as string | undefined;
+  const marketplaceSettings = await getMarketplaceSettings();
 
   return (
     <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
@@ -152,10 +155,18 @@ export default async function CustomStorePage({
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
-        Propulsé par{' '}
-        <Link href="/" className="hover:underline" style={{ color: primaryColor }}>
-          🐼 PandaMarket
-        </Link>
+        <span className="inline-flex items-center justify-center gap-1">
+          Propulsé par{' '}
+          <MarketplaceBrand
+            href="/hub"
+            marketplaceName={marketplaceSettings.marketplace_name}
+            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+            className="inline-flex align-middle"
+            imageClassName="h-5 max-w-[120px] object-contain"
+            textClassName="font-semibold hover:underline"
+            fallbackMarkClassName="hidden"
+          />
+        </span>
       </footer>
     </div>
   );

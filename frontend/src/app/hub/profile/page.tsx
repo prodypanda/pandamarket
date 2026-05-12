@@ -1,10 +1,11 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useEffect, useState } from 'react';
-import { User, Mail, Phone, MapPin, Save, Loader2, Shield } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { User, Mail, Phone, MapPin, Save, Loader2, Shield, Trash2 } from 'lucide-react';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
+import { AccountTwoFactorPanel } from '../../../components/AccountTwoFactorPanel';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
 interface UserProfile {
@@ -35,7 +36,7 @@ interface Address {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [addresses] = useState<Address[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -64,6 +65,14 @@ export default function ProfilePage() {
   const compactInputClass = `px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 ${classes.focus} outline-none text-sm`;
   const cardClass = `${classes.panel} p-6`;
 
+  const loadAddresses = useCallback(async () => {
+    const res = await fetch('/api/pd/addresses', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      setAddresses(data.addresses || data.data || []);
+    }
+  }, []);
+
   useEffect(() => {
     async function fetchProfile() {
       try {
@@ -77,6 +86,7 @@ export default function ProfilePage() {
             phone: data.data.phone || '',
           });
         }
+        await loadAddresses();
       } catch (err) {
         console.error('Failed to fetch profile:', err);
       } finally {
@@ -84,7 +94,7 @@ export default function ProfilePage() {
       }
     }
     fetchProfile();
-  }, []);
+  }, [loadAddresses]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -105,6 +115,90 @@ export default function ProfilePage() {
       setMessage('Erreur réseau.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddAddress = async () => {
+    setMessage('');
+    if (!newAddress.address_line_1 || !newAddress.city || !newAddress.postal_code || !newAddress.phone) {
+      setMessage('Veuillez remplir les champs obligatoires de l’adresse.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...newAddress,
+          first_name: newAddress.first_name || form.first_name || profile?.first_name || 'Client',
+          last_name: newAddress.last_name || form.last_name || profile?.last_name || 'PandaMarket',
+          label: newAddress.label || 'Adresse',
+          is_default: addresses.length === 0,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error?.message || 'Erreur lors de l’ajout de l’adresse.');
+        return;
+      }
+      setNewAddress({
+        label: '',
+        first_name: '',
+        last_name: '',
+        address_line_1: '',
+        address_line_2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: 'TN',
+        phone: '',
+      });
+      setShowAddressForm(false);
+      await loadAddresses();
+      setMessage('Adresse ajoutée avec succès !');
+    } catch {
+      setMessage('Erreur réseau.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId: string) => {
+    setMessage('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/addresses/${addressId}/default`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error?.message || 'Erreur lors de la mise à jour de l’adresse.');
+        return;
+      }
+      await loadAddresses();
+    } catch {
+      setMessage('Erreur réseau.');
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    setMessage('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/addresses/${addressId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error?.message || 'Erreur lors de la suppression de l’adresse.');
+        return;
+      }
+      await loadAddresses();
+      setMessage('Adresse supprimée.');
+    } catch {
+      setMessage('Erreur réseau.');
     }
   };
 
@@ -223,6 +317,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <div className="mb-6">
+        <AccountTwoFactorPanel accentClass={classes.primary} />
+      </div>
+
       {/* Addresses Section */}
       <div className={cardClass}>
         <div className="flex justify-between items-center mb-4">
@@ -257,6 +355,20 @@ export default function ProfilePage() {
               />
               <input
                 type="text"
+                placeholder="Prénom"
+                value={newAddress.first_name}
+                onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
+                className={compactInputClass}
+              />
+              <input
+                type="text"
+                placeholder="Nom"
+                value={newAddress.last_name}
+                onChange={(e) => setNewAddress({ ...newAddress, last_name: e.target.value })}
+                className={compactInputClass}
+              />
+              <input
+                type="text"
                 placeholder="Adresse ligne 1"
                 value={newAddress.address_line_1}
                 onChange={(e) => setNewAddress({ ...newAddress, address_line_1: e.target.value })}
@@ -277,8 +389,13 @@ export default function ProfilePage() {
                 className={compactInputClass}
               />
             </div>
-            <button className={`mt-3 px-4 py-2 rounded-full transition-colors text-sm font-black ${classes.primary}`}>
-              Ajouter l&apos;adresse
+            <button
+              type="button"
+              onClick={handleAddAddress}
+              disabled={saving}
+              className={`mt-3 px-4 py-2 rounded-full transition-colors text-sm font-black disabled:opacity-50 ${classes.primary}`}
+            >
+              {saving ? 'Ajout...' : 'Ajouter l’adresse'}
             </button>
           </div>
         )}
@@ -302,6 +419,25 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-600 mt-1">{addr.address_line_1}</p>
                 <p className="text-sm text-gray-600">{addr.city}, {addr.postal_code}</p>
                 <p className="text-sm text-gray-500">{addr.phone}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!addr.is_default && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetDefaultAddress(addr.id)}
+                    className={`text-xs font-bold ${classes.primaryText} ${classes.primaryTextHover}`}
+                  >
+                    Définir par défaut
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAddress(addr.id)}
+                  className="p-2 text-gray-400 hover:text-red-600"
+                  aria-label="Supprimer l’adresse"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>

@@ -2,6 +2,8 @@
 
 import { CalendarDays, CheckCircle2, ExternalLink, Mail, MapPin, Package, Phone, Shield, Store } from 'lucide-react';
 import Link from 'next/link';
+import { getSellerTypeLabel } from '../../lib/seller-type';
+import { useLocale } from '../../contexts/LocaleContext';
 
 interface SellerSettings {
   logo_url?: string;
@@ -19,17 +21,19 @@ interface SellerHoverCardProps {
   href?: string | null;
   isVerified?: boolean | null;
   status?: string | null;
+  sellerType?: string | null;
   createdAt?: string | null;
   productCount?: string | number | null;
   settings?: unknown;
   accentColor?: string;
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return 'Non renseigné';
+function formatDate(value: string | null | undefined, locale: string, fallback: string): string {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Non renseigné';
-  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  if (Number.isNaN(date.getTime())) return fallback;
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-FR';
+  return date.toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' });
 }
 
 function asString(value: unknown): string | undefined {
@@ -51,9 +55,9 @@ function getSellerSettings(settings?: unknown): SellerSettings {
   };
 }
 
-function formatStatus(status?: string | null, isVerified?: boolean | null): string {
-  if (isVerified) return 'Vendeur vérifié';
-  if (!status) return 'Vendeur marketplace';
+function formatStatus(status: string | null | undefined, isVerified: boolean | null | undefined, t: (key: string) => string): string {
+  if (isVerified) return t('sellerCard.verifiedSeller');
+  if (!status) return t('sellerCard.marketplaceSeller');
   return status.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -62,15 +66,18 @@ export function SellerHoverCard({
   href,
   isVerified,
   status,
+  sellerType,
   createdAt,
   productCount,
   settings,
   accentColor = '#16C784',
 }: SellerHoverCardProps) {
+  const { locale, t } = useLocale();
   const sellerSettings = getSellerSettings(settings);
   const description = sellerSettings.store_description || sellerSettings.description;
   const location = [sellerSettings.address, sellerSettings.city, sellerSettings.country].filter(Boolean).join(', ');
-  const statusLabel = formatStatus(status, isVerified);
+  const statusLabel = formatStatus(status, isVerified, t);
+  const sellerTypeLabel = getSellerTypeLabel(sellerType, t);
   const initials = name
     .split(' ')
     .map((part) => part[0])
@@ -82,13 +89,18 @@ export function SellerHoverCard({
     <div className="group relative flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white p-4 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:border-gray-200 hover:shadow-lg">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-sm font-black shadow-sm ring-1 ring-gray-100" style={{ color: accentColor }}>
         {sellerSettings.logo_url ? (
-          <img src={sellerSettings.logo_url} alt={name} className="h-full w-full object-cover" />
+          <div
+            aria-label={name}
+            role="img"
+            className="h-full w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${sellerSettings.logo_url})` }}
+          />
         ) : (
           initials || <Store className="h-5 w-5" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <span className="block text-xs text-gray-500">Vendeur</span>
+        <span className="block text-xs text-gray-500">{sellerTypeLabel}</span>
         <span className="flex items-center gap-1 truncate font-black text-gray-900">
           {name}
           {isVerified && <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: accentColor }} />}
@@ -96,7 +108,7 @@ export function SellerHoverCard({
         <span className="mt-0.5 block truncate text-[11px] font-semibold text-gray-500">{statusLabel}</span>
       </div>
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black shadow-sm" style={{ color: accentColor }}>
-        Boutique <ExternalLink className="h-3.5 w-3.5" />
+        {t('sellerCard.store')} <ExternalLink className="h-3.5 w-3.5" />
       </span>
 
       <div className="pointer-events-none absolute left-0 top-full z-30 mt-3 w-[min(22rem,calc(100vw-2rem))] translate-y-2 overflow-hidden rounded-3xl border border-gray-100 bg-white text-sm opacity-0 shadow-2xl shadow-slate-900/15 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
@@ -105,7 +117,12 @@ export function SellerHoverCard({
           <div className="relative flex items-start gap-3">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-base font-black shadow-lg" style={{ color: accentColor }}>
               {sellerSettings.logo_url ? (
-                <img src={sellerSettings.logo_url} alt={name} className="h-full w-full object-cover" />
+                <div
+                  aria-label={name}
+                  role="img"
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${sellerSettings.logo_url})` }}
+                />
               ) : (
                 initials || <Store className="h-6 w-6" />
               )}
@@ -115,10 +132,10 @@ export function SellerHoverCard({
                 <span className="truncate">{name}</span>
                 {isVerified && <Shield className="h-4 w-4 shrink-0" />}
               </p>
-              <p className="mt-1 text-xs font-semibold text-white/75">{statusLabel}</p>
+              <p className="mt-1 text-xs font-semibold text-white/75">{sellerTypeLabel} · {statusLabel}</p>
               {href && (
                 <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur">
-                  Voir la boutique <ExternalLink className="h-3 w-3" />
+                  {t('sellerCard.viewStore')} <ExternalLink className="h-3 w-3" />
                 </span>
               )}
             </div>
@@ -131,20 +148,20 @@ export function SellerHoverCard({
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-2xl bg-gray-50 p-3">
               <CalendarDays className="mb-1 h-4 w-4 text-gray-400" />
-              <p className="font-black text-gray-900">{formatDate(createdAt)}</p>
-              <p className="text-gray-500">Membre depuis</p>
+              <p className="font-black text-gray-900">{formatDate(createdAt, locale, t('sellerCard.notProvided'))}</p>
+              <p className="text-gray-500">{t('sellerCard.memberSince')}</p>
             </div>
             <div className="rounded-2xl bg-gray-50 p-3">
               <Package className="mb-1 h-4 w-4 text-gray-400" />
               <p className="font-black text-gray-900">{productCount || 0}</p>
-              <p className="text-gray-500">Produits actifs</p>
+              <p className="text-gray-500">{t('sellerCard.activeProducts')}</p>
             </div>
           </div>
 
           <div className="mt-3 space-y-2 text-xs text-gray-600">
             <div className="flex items-center gap-2 rounded-2xl bg-gray-50 p-3">
               <Shield className="h-4 w-4 shrink-0 text-gray-400" />
-              <span>{isVerified ? 'Profil contrôlé par PandaMarket' : 'Profil vendeur marketplace'}</span>
+              <span>{isVerified ? t('sellerCard.verifiedProfile') : t('sellerCard.marketplaceProfile')}</span>
             </div>
             {location && (
               <div className="flex items-center gap-2 rounded-2xl bg-gray-50 p-3">
@@ -168,7 +185,7 @@ export function SellerHoverCard({
 
           {href && (
             <span className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black text-white" style={{ backgroundColor: accentColor }}>
-              Visiter la boutique <ExternalLink className="h-3.5 w-3.5" />
+              {t('sellerCard.visitStore')} <ExternalLink className="h-3.5 w-3.5" />
             </span>
           )}
         </div>

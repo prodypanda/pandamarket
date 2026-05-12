@@ -9,8 +9,8 @@ import {
   PayoutMode,
   ProductType,
   ShippingMode,
-  SubscriptionPlan,
 } from '@pandamarket/types';
+import { normalizePlanId } from '../utils/plan-id';
 
 // =====================================================
 // Auth
@@ -51,7 +51,7 @@ export const createStoreSchema = z.object({
     .min(3)
     .max(50)
     .regex(/^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])?$/),
-  plan: z.nativeEnum(SubscriptionPlan).optional(),
+  plan: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
 });
 
 export const updateStoreSettingsSchema = z.object({
@@ -203,7 +203,7 @@ export const reviewKycSchema = z.object({
 // =====================================================
 
 export const upgradePlanSchema = z.object({
-  plan: z.nativeEnum(SubscriptionPlan),
+  plan: z.string().transform((value) => normalizePlanId(value)),
   payment_gateway: z.nativeEnum(PaymentGateway).optional(),
 });
 
@@ -228,13 +228,33 @@ export const aiSeoSchema = z.object({
 export const createReportSchema = z.object({
   store_id: z.string().min(1),
   order_id: z.string().optional(),
+  category: z.string().max(40).optional(),
   reason: z.string().min(10).max(2000),
   evidence_urls: z.array(z.string().url()).max(10).optional(),
 });
 
 export const updateReportStatusSchema = z.object({
-  status: z.enum(['open', 'investigating', 'resolved', 'dismissed']),
+  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']),
   admin_notes: z.string().max(2000).optional(),
+});
+
+export const reportAttachmentInputSchema = z.object({
+  file_url: z.string().url().optional(),
+  file_key: z.string().min(1).max(1024).optional(),
+  file_name: z.string().min(1).max(255),
+  content_type: z.string().min(1).max(120),
+  file_size: z.number().int().min(0).max(20 * 1024 * 1024).optional(),
+}).refine((value) => value.file_url || value.file_key, {
+  message: 'Either file_url or file_key is required',
+});
+
+export const createReportMessageSchema = z.object({
+  body: z.string().min(1).max(5000),
+  attachments: z.array(reportAttachmentInputSchema).max(10).optional(),
+});
+
+export const createAdminReportMessageSchema = createReportMessageSchema.extend({
+  visibility: z.enum(['buyer_admin', 'seller_admin', 'all_parties', 'admin_internal']),
 });
 
 // =====================================================
@@ -290,6 +310,6 @@ export const presignUploadSchema = z.object({
     .string()
     .regex(/^[a-z]+\/[a-z0-9.+-]+$/i)
     .max(100),
-  purpose: z.enum(['product_image', 'kyc_document', 'mandat_proof', 'theme_asset', 'marketplace_asset']),
+  purpose: z.enum(['product_image', 'digital_product', 'kyc_document', 'mandat_proof', 'theme_asset', 'marketplace_asset', 'report_evidence', 'chat_image']),
   file_size: z.number().int().min(0).optional(),
 });

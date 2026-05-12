@@ -11,6 +11,8 @@ const PUBLIC_SETTING_DEFAULTS = {
   marketplace_theme: 'panda',
   marketplace_support_email: 'support@pandamarket.tn',
   marketplace_support_phone: '',
+  chat_bubble_enabled: 'true',
+  chat_bubble_position: 'bottom-right',
   default_currency: 'TND',
 };
 

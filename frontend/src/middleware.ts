@@ -10,7 +10,7 @@ export const config = {
      * 3. /_static (inside /public)
      * 4. all root files inside /public (e.g. favicon.ico)
      */
-    '/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)',
+    '/((?!api/|_next/|_static/|_vercel|pd-product-images/|pd-themes/|[\\w-]+\\.\\w+).*)',
   ],
 };
 
@@ -53,8 +53,10 @@ const PLATFORM_BASES = [
 const AUTH_ROUTE_PREFIXES = ['/login', '/register', '/forgot-password', '/reset-password'];
 
 const PROTECTED_HUB_ROUTE_PREFIXES = [
+  '/hub/account',
   '/hub/dashboard',
   '/hub/orders',
+  '/hub/messages',
   '/hub/profile',
   '/hub/wishlist',
 ];
@@ -63,13 +65,17 @@ const ADMIN_ROUTE_PREFIXES = [
   '/dashboard',
   '/kyc',
   '/mandats',
+  '/messages',
   '/reports',
   '/users',
+  '/vendors',
+  '/stores',
   '/withdrawals',
   '/plans',
   '/marketplace-categories',
   '/ai-costs',
   '/audit-log',
+  '/system-logs',
   '/smtp-config',
   '/settings',
 ];
@@ -78,12 +84,35 @@ function matchesRoutePrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function getHostNameOnly(hostname: string) {
+  const lower = hostname.toLowerCase();
+  if (lower.startsWith('[')) {
+    const closingBracketIndex = lower.indexOf(']');
+    return closingBracketIndex >= 0 ? lower.slice(1, closingBracketIndex) : lower;
+  }
+  return lower.split(':')[0];
+}
+
+function isPrivateLanHost(hostname: string) {
+  const host = getHostNameOnly(hostname);
+  const parts = host.split('.').map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const [first, second] = parts;
+  return first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
+}
+
+function isHubHost(hostname: string) {
+  return HUB_DOMAINS.has(hostname.toLowerCase()) || isPrivateLanHost(hostname);
+}
+
 function hasAuthCookie(req: NextRequest) {
   return Boolean(req.cookies.get('pd_at')?.value);
 }
 
-function redirectToLogin(req: NextRequest) {
-  const loginUrl = new URL('/login', req.url);
+function redirectToLogin(req: NextRequest, loginPath = '/login/buyer') {
+  const loginUrl = new URL(loginPath, req.url);
   const nextPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
   loginUrl.searchParams.set('next', nextPath);
   return NextResponse.redirect(loginUrl);
@@ -97,7 +126,7 @@ export function middleware(req: NextRequest) {
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
 
   // 1. Hub central (pandamarket.tn)
-  if (HUB_DOMAINS.has(hostname)) {
+  if (isHubHost(hostname)) {
     if (url.pathname === '/store' || url.pathname.startsWith('/store/')) {
       return NextResponse.next();
     }
@@ -107,7 +136,12 @@ export function middleware(req: NextRequest) {
       matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES)
     ) {
       if (!hasAuthCookie(req)) {
-        return redirectToLogin(req);
+        const loginPath = matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES)
+          ? '/login/admin'
+          : url.pathname.startsWith('/hub/dashboard')
+            ? '/login/seller'
+            : '/login/buyer';
+        return redirectToLogin(req, loginPath);
       }
     }
 
@@ -126,7 +160,7 @@ export function middleware(req: NextRequest) {
   // 2. Admin panel (admin.pandamarket.tn)
   if (ADMIN_DOMAINS.has(hostname)) {
     if (!matchesRoutePrefix(url.pathname, AUTH_ROUTE_PREFIXES) && !hasAuthCookie(req)) {
-      return redirectToLogin(req);
+      return redirectToLogin(req, '/login/admin');
     }
 
     // Admin routes are under /(admin)/ in the app directory

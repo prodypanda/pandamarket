@@ -39,7 +39,7 @@ export async function ensureCsrfToken(): Promise<string | null> {
   let token = getCookie(CSRF_COOKIE);
   if (token) return token;
 
-  await fetch('/api/pd/search?limit=1', { credentials: 'include' }).catch(() => undefined);
+  await fetch('/api/pd/auth/csrf', { credentials: 'include' }).catch(() => undefined);
   token = getCookie(CSRF_COOKIE);
 
   return token;

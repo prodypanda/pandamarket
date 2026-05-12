@@ -73,6 +73,7 @@ export function registerStockLowSubscriber(): void {
               data: {
                 product_id: product.id,
                 product_title: product.title,
+                store_id: product.store_id,
                 quantity: product.inventory_quantity,
                 threshold: LOW_STOCK_THRESHOLD,
               },

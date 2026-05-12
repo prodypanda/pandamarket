@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Studio Theme — Photography/art portfolio style, gallery-focused layout. */
 export function StudioTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -62,7 +61,7 @@ export function StudioTheme({ theme, storeName, products = [], branding }: Theme
         </div>
       </main>
       <footer className="border-t border-gray-200 py-10 text-center">
-        <p className="text-xs text-gray-400">© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs text-gray-400">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

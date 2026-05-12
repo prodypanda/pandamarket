@@ -98,6 +98,66 @@
     "noReviews": "لا توجد تقييمات بعد."
   },
 
+  "sellerTypes": {
+    "title": "نوع البائع",
+    "all": "كل أنواع البائعين",
+    "options": {
+      "retailer": "بائع تجزئة",
+      "wholesaler": "بائع جملة",
+      "hybrid": "مختلط"
+    },
+    "descriptions": {
+      "retailer": "بيع مباشر للعملاء النهائيين.",
+      "wholesaler": "بيع بالجملة للموزعين والمهنيين.",
+      "hybrid": "بيع بالتجزئة وبالجملة من نفس المتجر."
+    },
+    "approval": {
+      "requestSubmitted": "تم إرسال طلب التغيير لموافقة المشرف العام.",
+      "autoApproved": "تم تحديث نوع البائع تلقائياً.",
+      "pendingRequest": "طلب معلق: البائع طلب {type}",
+      "pendingDetails": "لا يمكنك إرسال طلب آخر لتغيير نوع البائع ما دام هذا الطلب معلقاً. يمكنك إلغاء الطلب، لكن يجب الانتظار 24 ساعة قبل طلب جديد. تغييرات نوع البائع الموافق عليها محدودة بمرة واحدة كل 30 يوماً.",
+      "cancelRequest": "إلغاء الطلب",
+      "cancelling": "جاري الإلغاء...",
+      "cancelled": "تم إلغاء طلب تغيير نوع البائع. يمكنك إرسال طلب جديد بعد 24 ساعة.",
+      "requestLocked": "الطلب مقفل",
+      "monthlyLimit": "تغييرات نوع البائع الموافق عليها محدودة بمرة واحدة كل 30 يوماً.",
+      "currentType": "النوع الحالي",
+      "requestedType": "النوع المطلوب",
+      "approvalMode": "موافقة نوع البائع",
+      "autoApproval": "موافقة تلقائية",
+      "autoApprovalDesc": "تطبيق تغييرات النوع التي يطلبها البائعون فوراً.",
+      "manualApproval": "موافقة يدوية",
+      "manualApprovalDesc": "تبقى تغييرات البائعين معلقة حتى موافقة المشرف العام.",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "approving": "جاري الموافقة...",
+      "directChange": "تغيير مباشر",
+      "updating": "جاري التحديث...",
+      "updated": "تم تحديث نوع البائع."
+    }
+  },
+
+  "productWholesale": {
+    "title": "تسعير الجملة حسب الكمية",
+    "hybridDescription": "البائع المختلط يحتفظ بسعر الوحدة الواحدة ويضيف أسعاراً متدرجة لمشتري الجملة.",
+    "wholesalerDescription": "منتجات الجملة تحتاج إلى حد أدنى للطلب وأسعار متدرجة جذابة للشراء بالكميات.",
+    "minimumWholesaleQuantity": "الحد الأدنى لكمية الجملة",
+    "minimumOrderQuantity": "الحد الأدنى للطلب",
+    "hybridMinimumHelp": "يمكن لمشتري التجزئة شراء وحدة واحدة بالسعر العادي.",
+    "wholesalerMinimumHelp": "لا يمكن للمشتري إتمام الطلب بأقل من هذه الكمية.",
+    "oneQuantityPrice": "سعر وحدة واحدة",
+    "basePriceHelp": "هذا هو السعر الأساسي للمنتج أعلاه.",
+    "priceTiers": "شرائح الأسعار",
+    "addTier": "إضافة شريحة",
+    "quantityFrom": "الكمية ابتداءً من",
+    "unitPrice": "سعر الوحدة",
+    "publicTitle": "تسعير جملة متاح",
+    "publicSubtitle": "اشترِ وحدات أكثر من هذا البائع للحصول على سعر وحدة أفضل.",
+    "minimumQuantity": "الكمية الدنيا",
+    "tierLine": "{quantity}+ وحدة",
+    "unitPriceLine": "{price} د.ت / وحدة"
+  },
+
   "cart": {
     "title": "سلتي",
     "empty": "سلتك فارغة",
@@ -203,6 +263,7 @@
     "sidebar": {
       "overview": "نظرة عامة",
       "products": "المنتجات",
+      "categories": "الفئات",
       "orders": "الطلبات",
       "wallet": "المحفظة",
       "aiTools": "أدوات الذكاء الاصطناعي",
@@ -223,7 +284,12 @@
       "products": "المنتجات",
       "wallet": "المحفظة"
     },
-    "recentOrders": "الطلبات الأخيرة"
+    "recentOrders": "الطلبات الأخيرة",
+    "checkingAccess": "جاري التحقق من صلاحية البائع...",
+    "loggingOut": "جاري تسجيل الخروج...",
+    "top": {
+      "welcome": "مرحباً، {name}"
+    }
   },
 
   "wallet": {
@@ -319,6 +385,12 @@
 
   "admin": {
     "title": "الإدارة",
+    "checkingAccess": "جاري التحقق من صلاحية الإدارة...",
+    "loggingOut": "جاري تسجيل الخروج...",
+    "top": {
+      "subtitle": "مركز التحكم · عمليات السوق",
+      "goToHub": "الذهاب إلى الهب"
+    },
     "sidebar": {
       "dashboard": "لوحة التحكم",
       "kyc": "التحقق من الهوية",
@@ -327,6 +399,7 @@
       "vendors": "البائعون",
       "withdrawals": "عمليات السحب",
       "plans": "الخطط",
+      "marketplaceCategories": "فئات السوق",
       "auditLog": "سجل المراجعة",
       "settings": "الإعدادات",
       "aiCosts": "تكاليف الذكاء الاصطناعي",
@@ -336,7 +409,166 @@
     "kycPending": "{count} تحقق قيد الانتظار",
     "mandatsPending": "{count} حوالة للتحقق",
     "productsPending": "{count} منتج للموافقة",
-    "reportsPending": "{count} بلاغ(ات) مفتوحة"
+    "reportsPending": "{count} بلاغ(ات) مفتوحة",
+    "vendorsPage": {
+      "title": "إدارة البائعين",
+      "subtitle": "راقب صحة البائعين، التوثيق، طلبات تغيير النوع، الإيرادات، البلاغات والمخاطر التشغيلية من مركز تحكم واحد.",
+      "total": "{count} بائع(ين)",
+      "filteredTotal": "البائعون المفلترون",
+      "sellerTypeFilter": "نوع البائع",
+      "sellerTypeFilterDesc": "فلترة البائعين حسب نموذج النشاط.",
+      "search": "بحث عن البائعين",
+      "searchPlaceholder": "ابحث بالمتجر أو النطاق أو اسم المالك أو البريد...",
+      "allStatuses": "كل الحالات",
+      "pendingRequests": "طلبات معلقة",
+      "clearFilters": "مسح الفلاتر",
+      "store": "المتجر",
+      "plan": "الخطة",
+      "type": "النوع",
+      "status": "الحالة",
+      "created": "تاريخ الإنشاء",
+      "actions": "الإجراءات",
+      "noVendors": "لم يتم العثور على بائعين",
+      "metrics": {
+        "total": "الإجمالي",
+        "verified": "موثقون",
+        "unverified": "غير موثقين",
+        "suspended": "معلقون",
+        "pendingType": "طلبات النوع",
+        "pendingKyc": "توثيق معلق"
+      },
+      "statuses": {
+        "verified": "موثق",
+        "unverified": "غير موثق",
+        "suspended": "معلق"
+      },
+      "kyc": {
+        "pending": "توثيق معلق",
+        "approved": "توثيق مقبول",
+        "rejected": "توثيق مرفوض",
+        "missing": "لا يوجد توثيق"
+      },
+      "openStore": "فتح المتجر",
+      "products": "المنتجات",
+      "orders": "الطلبات",
+      "revenue": "الإيرادات",
+      "reports": "البلاغات",
+      "owner": "المالك",
+      "activity": "النشاط",
+      "lastLogin": "آخر دخول",
+      "health": "الصحة",
+      "published": "منشور",
+      "pendingOrders": "طلبات معلقة",
+      "ownerActive": "المالك نشط",
+      "ownerInactive": "المالك غير نشط",
+      "requestedAt": "تاريخ الطلب",
+      "rejectReasonPlaceholder": "سبب الرفض...",
+      "sellerTypeApproved": "تم قبول طلب نوع البائع.",
+      "sellerTypeRejected": "تم رفض طلب نوع البائع.",
+      "verify": "توثيق",
+      "verified": "تم توثيق البائع.",
+      "reactivate": "إعادة تفعيل",
+      "reactivated": "تمت إعادة تفعيل البائع.",
+      "suspended": "تم تعليق البائع.",
+      "viewReports": "عرض البلاغات",
+      "suspend": "تعليق",
+      "reasonPlaceholder": "السبب...",
+      "confirm": "تأكيد",
+      "cancel": "إلغاء",
+      "previous": "السابق",
+      "next": "التالي",
+      "listDensity": "كثافة قائمة البائعين",
+      "listDensityDesc": "استخدم الصفوف المختصرة للمراجعة السريعة، ثم وسّع أي بائع لعرض التحكم الكامل.",
+      "compactView": "عرض مختصر",
+      "fullView": "عرض كامل",
+      "expandAll": "توسيع الكل",
+      "collapseAll": "طي الكل",
+      "showDetails": "عرض التفاصيل",
+      "hideDetails": "إخفاء التفاصيل",
+      "pendingSellerTypeShort": "طلب نوع بائع معلق",
+      "pageOf": "الصفحة {page} من {totalPages}"
+    },
+    "reportsPage": {
+      "title": "إدارة البلاغات",
+      "subtitle": "راجع شكاوى المشترين، وأنشئ بلاغات marketplace ضد المشترين أو البائعين، ونسّق قرارات المعالجة.",
+      "createReport": "إنشاء بلاغ",
+      "closeCreate": "إغلاق النموذج",
+      "metrics": {
+        "total": "الإجمالي",
+        "open": "مفتوحة",
+        "investigating": "قيد التحقيق",
+        "highPriority": "أولوية عالية",
+        "sellers": "بلاغات البائعين",
+        "buyers": "بلاغات المشترين"
+      },
+      "targetType": "نوع الهدف",
+      "targetTypes": {
+        "seller": "بائع",
+        "buyer": "مشتري"
+      },
+      "targetSearch": "البحث عن هدف",
+      "targetSearchPlaceholder": "ابحث بالاسم أو البريد أو المتجر أو الهاتف...",
+      "target": "الهدف",
+      "selectTarget": "اختر هدفاً",
+      "priority": "الأولوية",
+      "priorities": {
+        "low": "منخفضة",
+        "medium": "متوسطة",
+        "high": "عالية",
+        "critical": "حرجة"
+      },
+      "category": "التصنيف",
+      "orderId": "رقم الطلب",
+      "optional": "اختياري",
+      "reasonPlaceholder": "صف المشكلة والأدلة والمتابعة المطلوبة...",
+      "notesPlaceholder": "ملاحظات داخلية للمشرف...",
+      "creating": "جارٍ الإنشاء...",
+      "submitReport": "إرسال البلاغ",
+      "searchPlaceholder": "ابحث في البلاغات أو الطلبات أو المتاجر أو المشترين أو المبلّغين...",
+      "allStatuses": "كل الحالات",
+      "statuses": {
+        "open": "مفتوح",
+        "investigating": "قيد التحقيق",
+        "awaiting_buyer": "بانتظار المشتري",
+        "awaiting_seller": "بانتظار البائع",
+        "resolved": "تم الحل",
+        "dismissed": "مرفوض"
+      },
+      "allTargets": "كل الأهداف",
+      "allSources": "كل المصادر",
+      "sources": {
+        "buyer": "مقدم من مشتري",
+        "admin": "Marketplace"
+      },
+      "allPriorities": "كل الأولويات",
+      "noReports": "لا توجد بلاغات",
+      "noReportsDesc": "لا توجد بلاغات تطابق الفلاتر المحددة.",
+      "unknownTarget": "هدف غير معروف",
+      "reportedBy": "مقدم من",
+      "order": "طلب",
+      "openStore": "فتح المتجر",
+      "openCase": "فتح القضية",
+      "adminNotes": "ملاحظات المشرف",
+      "status": "الحالة",
+      "statusUpdated": "تم تحديث حالة البلاغ.",
+      "storeSuspended": "تم تعليق متجر البائع.",
+      "buyerSuspended": "تم تعليق حساب المشتري.",
+      "buyerReactivated": "تمت إعادة تفعيل حساب المشتري.",
+      "reportCreated": "تم إنشاء بلاغ marketplace.",
+      "updateStatus": "تحديث الحالة",
+      "updating": "جارٍ التحديث...",
+      "suspendSeller": "تعليق البائع",
+      "suspendBuyer": "تعليق المشتري",
+      "reactivateBuyer": "إعادة تفعيل المشتري",
+      "buyerActionHint": "يمكن تنفيذ إجراءات المشتري من أدوات الحسابات/المستخدمين؛ احتفظ بالملاحظات هنا لسجل التدقيق.",
+      "reportId": "رقم البلاغ",
+      "resolvedAt": "تم الحل في",
+      "resolvedBy": "تم الحل بواسطة",
+      "previous": "السابق",
+      "next": "التالي",
+      "pageOf": "الصفحة {page} من {totalPages}",
+      "total": "إجمالي"
+    }
   },
 
   "store": {
@@ -365,6 +597,19 @@
     },
     "priceRange": "نطاق السعر",
     "verifiedOnly": "بائعون موثقون فقط"
+  },
+
+  "sellerCard": {
+    "notProvided": "غير مذكور",
+    "verifiedSeller": "بائع موثق",
+    "marketplaceSeller": "بائع في السوق",
+    "store": "المتجر",
+    "viewStore": "عرض المتجر",
+    "visitStore": "زيارة المتجر",
+    "memberSince": "عضو منذ",
+    "activeProducts": "منتجات نشطة",
+    "verifiedProfile": "ملف موثق من باندا ماركت",
+    "marketplaceProfile": "ملف بائع في السوق"
   },
 
   "footer": {

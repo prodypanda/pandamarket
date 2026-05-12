@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 
@@ -9,7 +10,7 @@ interface Report {
   store_id: string;
   order_id: string | null;
   reason: string;
-  status: 'open' | 'investigating' | 'resolved' | 'dismissed';
+  status: 'open' | 'investigating' | 'awaiting_buyer' | 'awaiting_seller' | 'resolved' | 'dismissed';
   admin_notes: string | null;
   created_at: string;
   resolved_at: string | null;
@@ -18,6 +19,8 @@ interface Report {
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-red-100 text-red-700', icon: AlertTriangle },
   investigating: { label: 'Investigating', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  awaiting_buyer: { label: 'Awaiting buyer', color: 'bg-blue-100 text-blue-700', icon: Clock },
+  awaiting_seller: { label: 'Action required', color: 'bg-purple-100 text-purple-700', icon: AlertTriangle },
   resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   dismissed: { label: 'Dismissed', color: 'bg-gray-100 text-gray-600', icon: XCircle },
 };
@@ -37,7 +40,6 @@ export default function VendorReportsPage() {
           setReports(data.data || []);
         }
       } catch {
-        // Reports endpoint may not exist yet for vendor view
         setReports([]);
       } finally {
         setLoading(false);
@@ -61,7 +63,7 @@ export default function VendorReportsPage() {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {['all', 'open', 'investigating', 'resolved', 'dismissed'].map((status) => (
+        {['all', 'open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed'].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
@@ -136,12 +138,12 @@ export default function VendorReportsPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedReport(report)}
+                  <Link
+                    href={`/hub/dashboard/reports/${report.id}`}
                     className="ml-4 p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors"
                   >
                     <Eye className="h-5 w-5" />
-                  </button>
+                  </Link>
                 </div>
 
                 {report.admin_notes && (

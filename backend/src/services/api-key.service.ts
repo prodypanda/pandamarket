@@ -16,7 +16,7 @@ import {
 import { ApiKeyScope, IApiKey } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 
-interface ApiKeyRow {
+export interface ApiKeyRow {
   id: string;
   store_id: string;
   key_hash: string;
@@ -113,7 +113,7 @@ export class ApiKeyService {
   /**
    * Throw if the key does not have the required scope.
    */
-  assertScope(row: ApiKeyRow, required: ApiKeyScope): void {
+  assertScope(row: { scopes: ApiKeyScope[] }, required: ApiKeyScope): void {
     if (!row.scopes.includes(required)) {
       throw new PdForbiddenError(
         PdErrorCode.KEY_SCOPE_DENIED,

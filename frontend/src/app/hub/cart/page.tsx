@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
+import { getCartItemUnitPrice, getCartLineTotal, getShippableStoreCount, getShippingTotalForItems, getStoreShippingTotal } from '../../../lib/cart-utils';
 
 const SHIPPING_PER_VENDOR = 7;
 
@@ -35,7 +36,8 @@ export default function CartPage() {
   const storeGroups = getItemsByStore();
   const storeIds = Object.keys(storeGroups);
   const subtotal = getCartTotal();
-  const shippingTotal = storeIds.length * SHIPPING_PER_VENDOR;
+  const shippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
+  const shippableStoreCount = getShippableStoreCount(items);
   const total = subtotal + shippingTotal;
 
   if (items.length === 0) {
@@ -103,9 +105,10 @@ export default function CartPage() {
             {storeIds.map((storeId) => {
               const group = storeGroups[storeId];
               const storeSubtotal = group.items.reduce(
-                (sum, item) => sum + item.price * item.quantity,
+                (sum, item) => sum + getCartLineTotal(item),
                 0,
               );
+              const storeShippingTotal = getStoreShippingTotal(group.items, SHIPPING_PER_VENDOR);
 
               return (
                 <div
@@ -149,8 +152,13 @@ export default function CartPage() {
                             <p className="text-xs text-gray-500 mt-0.5">{item.variant}</p>
                           )}
                           <p className="text-sm font-semibold text-gray-700 mt-1">
-                            {formatPrice(item.price)}
+                            {formatPrice(getCartItemUnitPrice(item))}
                           </p>
+                          {item.wholesale_pricing?.enabled && (
+                            <p className="mt-0.5 text-xs font-semibold text-emerald-700">
+                              Wholesale tier pricing applied by quantity
+                            </p>
+                          )}
                         </div>
 
                         {/* Quantity */}
@@ -175,7 +183,7 @@ export default function CartPage() {
                         {/* Line Total */}
                         <div className="text-right min-w-[100px]">
                           <p className="font-bold text-gray-900">
-                            {formatPrice(item.price * item.quantity)}
+                            {formatPrice(getCartLineTotal(item))}
                           </p>
                         </div>
 
@@ -193,10 +201,10 @@ export default function CartPage() {
                   {/* Store Shipping + Subtotal */}
                   <div className={`px-6 py-3 border-t flex items-center justify-between text-sm ${isAliExpress ? 'border-orange-100 bg-orange-50/60' : 'border-gray-200 bg-gray-50'}`}>
                     <span className="text-gray-500">
-                      {t('cart.shipping')} : {formatPrice(SHIPPING_PER_VENDOR)}
+                      {t('cart.shipping')} : {formatPrice(storeShippingTotal)}
                     </span>
                     <span className="font-semibold text-gray-900">
-                      {t('cart.subtotal')} : {formatPrice(storeSubtotal + SHIPPING_PER_VENDOR)}
+                      {t('cart.subtotal')} : {formatPrice(storeSubtotal + storeShippingTotal)}
                     </span>
                   </div>
                 </div>
@@ -216,7 +224,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">
-                    {t('cart.shipping')} ({storeIds.length})
+                    {t('cart.shipping')} ({shippableStoreCount})
                   </span>
                   <span className="font-medium text-gray-900">{formatPrice(shippingTotal)}</span>
                 </div>

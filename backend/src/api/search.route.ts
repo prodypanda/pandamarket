@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { productService } from '../services/product.service';
 import { asyncHandler } from '../middlewares';
-import { ProductType } from '@pandamarket/types';
+import { ProductType, SellerType } from '@pandamarket/types';
 
 const router = Router();
 
@@ -30,6 +30,9 @@ router.get(
       ? (req.query.type as ProductType)
       : undefined;
     const verifiedOnly = req.query.verified === 'true';
+    const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
+      ? (req.query.seller_type as SellerType)
+      : undefined;
     const sortBy = req.query.sort as string | undefined;
 
     const results = await productService.searchPublished({
@@ -41,6 +44,7 @@ router.get(
       priceMax,
       type,
       verifiedOnly,
+      sellerType,
       sortBy,
     });
     res.status(200).json(results);

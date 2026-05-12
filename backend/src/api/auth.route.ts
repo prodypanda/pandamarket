@@ -1,11 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { UserRole } from '@pandamarket/types';
 import { authService } from '../services/auth.service';
 import { asyncHandler, validate, authRateLimit, requireAuth } from '../middlewares';
 import { incrementBusinessMetric } from '../utils/metrics';
 import { query } from '../db/pool';
+import { PdAuthenticationError, PdErrorCode } from '../errors';
 
 const router = Router();
+const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
 
 // ==========================================================
 // Schemas
@@ -16,7 +19,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   first_name: z.string().min(1),
   last_name: z.string().min(1),
-  role: z.enum(['Customer', 'Vendor']).optional(),
+  role: z.enum(['customer', 'vendor', 'Customer', 'Vendor']).optional(),
   phone: z.string().optional(),
 });
 
@@ -35,28 +38,147 @@ const updateMeSchema = z.object({
   phone: z.string().trim().max(30).optional(),
 });
 
+const twoFactorCodeSchema = z.object({
+  code: z.string().trim().min(4).max(32),
+});
+
+const twoFactorChallengeSchema = twoFactorCodeSchema.extend({
+  challenge_id: z.string().min(16).max(128),
+});
+
+function normalizeRole(role?: string | null): UserRole | null {
+  if (role === 'customer' || role === 'Customer') return UserRole.Customer;
+  if (role === 'vendor' || role === 'Vendor') return UserRole.Vendor;
+  if (role === 'admin' || role === 'Admin') return UserRole.Admin;
+  if (role === 'super_admin' || role === 'SuperAdmin') return UserRole.SuperAdmin;
+  return null;
+}
+
+function normalizeUser<T extends { role: UserRole | string }>(user: T): T {
+  const role = normalizeRole(user.role);
+  return role ? { ...user, role } : user;
+}
+
+function publicUser<T extends {
+  id: string;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  role: UserRole | string;
+  store_id?: string | null;
+  email_verified?: boolean;
+  is_active?: boolean;
+  phone?: string | null;
+  created_at?: Date | string;
+  two_factor_enabled?: boolean;
+}>(user: T) {
+  return {
+    id: user.id,
+    email: user.email,
+    first_name: user.first_name ?? null,
+    last_name: user.last_name ?? null,
+    role: user.role,
+    store_id: user.store_id ?? null,
+    email_verified: user.email_verified,
+    is_active: user.is_active,
+    phone: user.phone ?? null,
+    created_at: user.created_at,
+    two_factor_enabled: Boolean(user.two_factor_enabled),
+  };
+}
+
+function setAccessCookie(res: Response, accessToken: string) {
+  res.cookie('pd_at', accessToken, {
+    httpOnly: true,
+    secure: process.env.PD_NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000,
+  });
+}
+
+function clearSelectedStoreCookie(res: Response) {
+  res.clearCookie(SELECTED_STORE_COOKIE, { path: '/' });
+}
+
+function assertLoginRole(role: UserRole | string, allowedRoles: UserRole[]) {
+  const normalizedRole = normalizeRole(role);
+  if (!normalizedRole || !allowedRoles.includes(normalizedRole)) {
+    throw new PdAuthenticationError(
+      PdErrorCode.AUTH_INVALID_CREDENTIALS,
+      'Invalid email or password',
+    );
+  }
+}
+
+async function loginAndRespond(req: Request, res: Response, allowedRoles?: UserRole[]) {
+  const user = normalizeUser(await authService.login(req.body.email, req.body.password));
+  if (allowedRoles) {
+    assertLoginRole(user.role, allowedRoles);
+  }
+  if (user.two_factor_enabled) {
+    const challenge = await authService.createTwoFactorChallenge(user);
+    res.status(200).json({
+      requires_2fa: true,
+      ...challenge,
+      user: publicUser(user),
+    });
+    return;
+  }
+  const tokens = await authService.issueTokens(user);
+
+  clearSelectedStoreCookie(res);
+  setAccessCookie(res, tokens.access_token);
+
+  res.status(200).json({ user: publicUser(user), tokens });
+}
+
+async function registerAndRespond(req: Request, res: Response, forcedRole?: UserRole) {
+  const requestedRole = normalizeRole(req.body.role);
+  const user = normalizeUser(await authService.register({
+    ...req.body,
+    role: forcedRole ?? requestedRole ?? UserRole.Customer,
+  }));
+  const tokens = await authService.issueTokens(user);
+  incrementBusinessMetric('user_registrations', { role: user.role });
+
+  clearSelectedStoreCookie(res);
+  setAccessCookie(res, tokens.access_token);
+
+  res.status(201).json({ user: publicUser(user), tokens });
+}
+
 // ==========================================================
 // Routes
 // ==========================================================
+
+router.get('/csrf', (_req: Request, res: Response) => {
+  res.status(200).json({ success: true });
+});
 
 router.post(
   '/register',
   authRateLimit,
   validate(registerSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await authService.register(req.body);
-    const tokens = await authService.issueTokens(user);
-    incrementBusinessMetric('user_registrations', { role: user.role });
+    await registerAndRespond(req, res);
+  }),
+);
 
-    // Set cookie for access token (optional, based on design)
-    res.cookie('pd_at', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.PD_NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 mins
-    });
+router.post(
+  '/register/customer',
+  authRateLimit,
+  validate(registerSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await registerAndRespond(req, res, UserRole.Customer);
+  }),
+);
 
-    res.status(201).json({ user, tokens });
+router.post(
+  '/register/vendor',
+  authRateLimit,
+  validate(registerSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await registerAndRespond(req, res, UserRole.Vendor);
   }),
 );
 
@@ -65,17 +187,34 @@ router.post(
   authRateLimit,
   validate(loginSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await authService.login(req.body.email, req.body.password);
-    const tokens = await authService.issueTokens(user);
+    await loginAndRespond(req, res);
+  }),
+);
 
-    res.cookie('pd_at', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.PD_NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000,
-    });
+router.post(
+  '/login/customer',
+  authRateLimit,
+  validate(loginSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await loginAndRespond(req, res, [UserRole.Customer]);
+  }),
+);
 
-    res.status(200).json({ user, tokens });
+router.post(
+  '/login/vendor',
+  authRateLimit,
+  validate(loginSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await loginAndRespond(req, res, [UserRole.Vendor]);
+  }),
+);
+
+router.post(
+  '/login/admin',
+  authRateLimit,
+  validate(loginSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await loginAndRespond(req, res, [UserRole.Admin, UserRole.SuperAdmin]);
   }),
 );
 
@@ -85,14 +224,60 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const tokens = await authService.refresh(req.body.refresh_token);
 
-    res.cookie('pd_at', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.PD_NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000,
-    });
+    setAccessCookie(res, tokens.access_token);
 
     res.status(200).json({ tokens });
+  }),
+);
+
+router.post(
+  '/2fa/verify',
+  authRateLimit,
+  validate(twoFactorChallengeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = normalizeUser(await authService.verifyTwoFactorChallenge(req.body.challenge_id, req.body.code));
+    const tokens = await authService.issueTokens(user);
+    clearSelectedStoreCookie(res);
+    setAccessCookie(res, tokens.access_token);
+    res.status(200).json({ user: publicUser(user), tokens });
+  }),
+);
+
+router.get(
+  '/2fa/status',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const status = await authService.getTwoFactorStatus(req.user!.id);
+    res.status(200).json({ data: status, status });
+  }),
+);
+
+router.post(
+  '/2fa/setup',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const setup = await authService.beginTwoFactorSetup(req.user!.id);
+    res.status(200).json({ data: setup, setup });
+  }),
+);
+
+router.post(
+  '/2fa/confirm',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await authService.confirmTwoFactorSetup(req.user!.id, req.body.code);
+    res.status(200).json({ data: result, ...result });
+  }),
+);
+
+router.post(
+  '/2fa/disable',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const status = await authService.disableTwoFactor(req.user!.id, req.body.code);
+    res.status(200).json({ data: status, status });
   }),
 );
 
@@ -104,6 +289,7 @@ router.post(
       await authService.logout(req.user.id);
     }
     res.clearCookie('pd_at');
+    clearSelectedStoreCookie(res);
     res.status(200).json({ success: true });
   }),
 );
@@ -113,7 +299,8 @@ router.get(
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const { rows } = await query(
-      `SELECT id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at
+      `SELECT id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at,
+              two_factor_enabled
        FROM pd_user
        WHERE id = $1`,
       [req.user!.id],
@@ -135,7 +322,7 @@ router.put(
            phone = COALESCE($4, phone),
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at`,
+       RETURNING id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at, two_factor_enabled`,
       [
         req.user!.id,
         req.body.first_name ?? null,

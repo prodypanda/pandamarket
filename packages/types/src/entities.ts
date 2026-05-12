@@ -15,11 +15,16 @@ import {
   PayoutMode,
   ProductStatus,
   ProductType,
+  ReportEventType,
+  ReportMessageVisibility,
+  ReportPriority,
+  ReportSource,
   ReportStatus,
+  ReportTargetType,
   ReviewStatus,
+  SellerType,
   ShippingMode,
   StoreStatus,
-  SubscriptionPlan,
   SubscriptionType,
   UserRole,
   VerificationStatus,
@@ -67,8 +72,9 @@ export interface IStore {
   id: string;
   name: string;
   status: StoreStatus;
+  seller_type: SellerType;
   is_verified: boolean;
-  subscription_plan: SubscriptionPlan;
+  subscription_plan: string;
   subscription_type: SubscriptionType;
   subdomain: string;
   custom_domain: string | null;
@@ -86,7 +92,7 @@ export interface IStore {
 // =====================================================
 
 export interface ISubscriptionLimits {
-  plan_id: SubscriptionPlan;
+  plan_id: string;
   max_products: number; // -1 = unlimited
   max_images_per_product: number;
   has_ai_seo: boolean;
@@ -98,6 +104,7 @@ export interface ISubscriptionLimits {
   commission_rate: number; // e.g. 0.15 for 15%
   ai_tokens_included: number;
   yearly_price: number; // TND
+  is_enabled?: boolean;
 }
 
 // =====================================================
@@ -269,15 +276,74 @@ export interface IVerificationDocuments {
 export interface IReport {
   id: string;
   reporter_id: string;
-  store_id: string;
+  reporter_email?: string | null;
+  reporter_role?: UserRole | string | null;
+  source: ReportSource;
+  target_type: ReportTargetType;
+  target_user_id: string | null;
+  target_user_email?: string | null;
+  target_user_role?: UserRole | string | null;
+  target_user_is_active?: boolean | null;
+  store_id: string | null;
+  store_name?: string | null;
+  store_subdomain?: string | null;
+  store_status?: string | null;
   order_id: string | null;
+  category: string;
+  priority: ReportPriority;
   reason: string;
   evidence_urls: string[];
   status: ReportStatus;
   admin_notes: string | null;
   resolved_by: string | null;
+  resolver_email?: string | null;
   resolved_at: string | null;
   created_at: string;
+  updated_at?: string | null;
+}
+
+export interface IReportMessage {
+  id: string;
+  report_id: string;
+  author_id: string | null;
+  author_email?: string | null;
+  author_role: UserRole | string;
+  visibility: ReportMessageVisibility;
+  body: string;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface IReportAttachment {
+  id: string;
+  report_id: string;
+  message_id: string | null;
+  uploaded_by: string | null;
+  uploader_email?: string | null;
+  visibility: ReportMessageVisibility;
+  file_url: string | null;
+  file_key: string | null;
+  file_name: string;
+  content_type: string;
+  file_size: number | string | null;
+  created_at: string;
+}
+
+export interface IReportEvent {
+  id: string;
+  report_id: string;
+  actor_id: string | null;
+  actor_email?: string | null;
+  event_type: ReportEventType;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface IReportCase {
+  report: IReport;
+  messages: IReportMessage[];
+  attachments: IReportAttachment[];
+  events: IReportEvent[];
 }
 
 // =====================================================

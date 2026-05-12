@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Menu, Search } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Elegance Theme — Minimalist luxury with generous whitespace.
@@ -104,8 +103,7 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
       {/* Footer */}
       <footer className="border-t border-gray-200/60 py-16 text-center">
         <p className="text-xs text-gray-400 tracking-wide">
-          © {new Date().getFullYear()} {storeName} — Powered by{' '}
-          <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link>
+          © {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" />
         </p>
       </footer>
     </div>

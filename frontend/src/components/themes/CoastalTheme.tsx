@@ -1,10 +1,10 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Waves, Anchor } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Coastal Theme — Beach/resort, blues and sandy tones, relaxed vibe. */
 export function CoastalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -92,7 +92,7 @@ export function CoastalTheme({ theme, storeName, products = [], branding }: Them
 
       {/* Footer */}
       <footer className="border-t py-10 text-center" style={{ borderColor: `${tc.colors.primary}15`, backgroundColor: tc.colors.footerBg }}>
-        <p className="text-xs" style={{ color: `${tc.colors.background}60` }}>© {new Date().getFullYear()} {storeName} — Propulsé par <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs" style={{ color: `${tc.colors.background}60` }}>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

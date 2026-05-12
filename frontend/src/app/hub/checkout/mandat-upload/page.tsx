@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../../hooks/useMarketplaceTheme';
+import { fetchWithCsrf } from '../../../../lib/api';
 
 type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes'];
 
@@ -17,6 +18,7 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,15 +28,59 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !orderId) return;
+    setError('');
     setUploading(true);
 
     try {
-      // Mocking the S3 upload and API registration
-      await new Promise(r => setTimeout(r, 2000));
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        throw new Error('Please upload a JPG or PNG receipt image.');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Receipt image must be smaller than 10 MB.');
+      }
+
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type,
+          file_size: file.size,
+          purpose: 'mandat_proof',
+        }),
+      });
+      if (!presignRes.ok) throw new Error('Failed to prepare upload.');
+      const presignData = await presignRes.json();
+      const uploadUrl = presignData.upload_url as string | undefined;
+      const fileKey = presignData.file_key as string | undefined;
+
+      if (!uploadUrl || !fileKey) {
+        throw new Error('Upload URL was not returned by the server.');
+      }
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error('Upload failed. Please try again.');
+
+      const proofRes = await fetchWithCsrf('/api/pd/payments/mandat/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          order_id: orderId,
+          image_url: fileKey,
+        }),
+      });
+      if (!proofRes.ok) throw new Error('Failed to submit payment proof.');
+
       setSuccess(true);
-    } catch (e) {
-      alert('Upload failed. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -67,6 +113,18 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
         Order ID: <strong className="text-gray-900">{orderId || 'Unknown'}</strong>
       </p>
 
+      {!orderId && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-700">
+          Missing order ID. Please return to checkout and try again.
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className={`${classes.primarySoft} p-4 rounded-2xl flex gap-4 mb-8`}>
         <Info className="w-6 h-6 flex-shrink-0" />
         <p className="text-sm text-gray-800">
@@ -91,15 +149,15 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
           <div>
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="font-bold text-lg text-gray-900">Upload your receipt</h3>
-            <p className="text-sm text-gray-500 mt-1">Accepted formats: JPG, PNG, PDF (Max 5MB)</p>
+            <p className="text-sm text-gray-500 mt-1">Accepted formats: JPG, PNG (Max 10MB)</p>
           </div>
         )}
       </div>
 
-      <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*,.pdf" className="hidden" />
+      <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/jpeg,image/png" className="hidden" />
 
-      <button 
-        disabled={!file || uploading} 
+      <button
+        disabled={!file || !orderId || uploading}
         onClick={handleUpload}
         className={`w-full text-white font-black text-lg py-4 rounded-full transition-all disabled:opacity-50 flex justify-center items-center hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
       >

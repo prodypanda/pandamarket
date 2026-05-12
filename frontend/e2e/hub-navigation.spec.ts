@@ -15,8 +15,6 @@ test.describe('Hub Central Navigation', () => {
     // Should have a search bar
     await expect(page.getByPlaceholder(/rechercher|search/i)).toBeVisible();
 
-    // Should display product cards (trending section)
-    const productCards = page.locator('[data-testid="product-card"], .product-card, article');
     // At least some content should load (even if API is down, skeleton should show)
     await expect(page.locator('main')).toBeVisible();
   });

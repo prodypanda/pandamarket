@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { paymentService } from '../services/payment.service';
 import { mandatService } from '../services/mandat.service';
 import { orderService } from '../services/order.service';
-import { asyncHandler, requireAuth, validate } from '../middlewares';
+import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '../middlewares';
 import { PaymentGateway, MandatUploader } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -14,6 +14,7 @@ const router = Router();
 
 const initPaymentSchema = z.object({
   order_id: z.string(),
+  store_id: z.string().min(1).optional(),
   gateway: z.enum([
     PaymentGateway.Flouci,
     PaymentGateway.Konnect,
@@ -24,7 +25,7 @@ const initPaymentSchema = z.object({
 
 const mandatUploadSchema = z.object({
   order_id: z.string(),
-  image_url: z.string().url(),
+  image_url: z.string().min(1),
 });
 
 // =====================================================
@@ -121,6 +122,44 @@ router.post(
   }),
 );
 
+router.post(
+  '/storefront/init',
+  requireStorefrontCustomer,
+  validate(initPaymentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { order_id, gateway } = req.body;
+    const order = await orderService.getById(order_id);
+
+    if (order.storefront_customer_id !== req.storefrontCustomer!.id) {
+      res.status(403).json({ error: { message: 'Forbidden' } });
+      return;
+    }
+
+    const belongsToStore = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    if (!belongsToStore) {
+      res.status(403).json({ error: { message: 'Forbidden' } });
+      return;
+    }
+
+    const { rows: customerRows } = await dbQuery<{ email: string }>(
+      'SELECT email FROM pd_storefront_customer WHERE id = $1 AND store_id = $2',
+      [req.storefrontCustomer!.id, req.storefrontCustomer!.store_id],
+    );
+    const customerEmail = customerRows[0]?.email ?? '';
+
+    const result = await paymentService.initPayment(
+      order,
+      gateway as PaymentGateway,
+      customerEmail,
+    );
+
+    res.status(200).json({
+      checkout_url: result.redirect_url,
+      gateway_reference: result.gateway_reference,
+      metadata: result.metadata,
+    });
+  }),
+);
 // Upload Mandat Proof
 router.post(
   '/mandat/upload',

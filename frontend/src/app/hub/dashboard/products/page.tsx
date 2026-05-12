@@ -5,6 +5,7 @@ import { ProductDescriptionEditor } from '@/components/product/ProductDescriptio
 import { getHubProductHref } from '@/lib/product-links';
 import { Edit3, Eye, ImageIcon, Images, Loader2, Package, Plus, Search, Sparkles, Tags, Trash2, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocale } from '../../../../contexts/LocaleContext';
 
 interface ProductImage {
   id: string;
@@ -17,6 +18,41 @@ interface ProductImage {
 interface ProductAttribute {
   name: string;
   value: string;
+}
+
+interface WholesalePriceTier {
+  min_quantity: number;
+  unit_price: number;
+}
+
+interface WholesalePricing {
+  enabled?: boolean;
+  min_quantity?: number;
+  price_tiers?: WholesalePriceTier[];
+}
+
+interface WholesalePriceTierForm {
+  min_quantity: string;
+  unit_price: string;
+}
+
+interface ProductVariant {
+  id?: string;
+  sku?: string | null;
+  title: string;
+  price: string | number;
+  inventory_quantity: number;
+  options?: Record<string, string>;
+}
+
+interface ProductVariantForm {
+  id?: string;
+  sku: string;
+  title: string;
+  price: string;
+  inventory_quantity: string;
+  option_name: string;
+  option_value: string;
 }
 
 interface Product {
@@ -41,7 +77,17 @@ interface Product {
   seo_description?: string | null;
   tags?: string[];
   attributes?: ProductAttribute[];
+  metadata?: {
+    wholesale_pricing?: WholesalePricing;
+  } & Record<string, unknown>;
   images?: ProductImage[];
+  max_downloads?: number | null;
+  download_expires_hours?: number | null;
+  digital_file_key?: string | null;
+  digital_file_name?: string | null;
+  digital_file_content_type?: string | null;
+  digital_file_size?: string | number | null;
+  variants?: ProductVariant[];
 }
 
 interface Category {
@@ -78,6 +124,16 @@ interface ProductForm {
   seo_description: string;
   tags: string;
   attributes: ProductAttribute[];
+  max_downloads: string;
+  download_expires_hours: string;
+  digital_file_key: string;
+  digital_file_name: string;
+  digital_file_content_type: string;
+  digital_file_size: string;
+  license_keys: string;
+  wholesale_min_quantity: string;
+  wholesale_price_tiers: WholesalePriceTierForm[];
+  variants: ProductVariantForm[];
   status: string;
 }
 
@@ -97,12 +153,29 @@ const emptyForm: ProductForm = {
   seo_description: '',
   tags: '',
   attributes: [],
+  max_downloads: '5',
+  download_expires_hours: '72',
+  digital_file_key: '',
+  digital_file_name: '',
+  digital_file_content_type: '',
+  digital_file_size: '',
+  license_keys: '',
+  wholesale_min_quantity: '2',
+  wholesale_price_tiers: [{ min_quantity: '2', unit_price: '' }],
+  variants: [],
   status: 'published',
 };
 
 function formatPrice(price: string | number) {
   const amount = Number(price);
   return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
+}
+
+function formatFileSize(size: string | number) {
+  const bytes = Number(size);
+  if (!Number.isFinite(bytes) || bytes <= 0) return '';
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 
@@ -119,6 +192,42 @@ function parseTags(value: string) {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function parseLicenseKeys(value: string) {
+  return Array.from(new Set(value
+    .split(/\r?\n/)
+    .map((key) => key.trim())
+    .filter(Boolean)));
+}
+
+function parseWholesalePriceTiers(tiers: WholesalePriceTierForm[]): WholesalePriceTier[] {
+  return tiers
+    .map((tier) => ({
+      min_quantity: Number(tier.min_quantity),
+      unit_price: Number(tier.unit_price),
+    }))
+    .filter((tier) => Number.isInteger(tier.min_quantity) && tier.min_quantity >= 2 && Number.isFinite(tier.unit_price) && tier.unit_price >= 0)
+    .sort((a, b) => a.min_quantity - b.min_quantity);
+}
+
+function parseProductVariants(variants: ProductVariantForm[]) {
+  return variants
+    .map((variant) => {
+      const options: Record<string, string> = {};
+      if (variant.option_name.trim() && variant.option_value.trim()) {
+        options[variant.option_name.trim()] = variant.option_value.trim();
+      }
+      return {
+        id: variant.id,
+        sku: variant.sku.trim() || null,
+        title: variant.title.trim(),
+        price: Number(variant.price),
+        inventory_quantity: Number(variant.inventory_quantity || 0),
+        options,
+      };
+    })
+    .filter((variant) => variant.title || variant.sku || Object.keys(variant.options).length > 0);
 }
 
 function getStatusColor(status: string) {
@@ -148,6 +257,7 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
 }
 
 export default function ProductsPage() {
+  const { t } = useLocale();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -158,6 +268,7 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
   const [compressingImages, setCompressingImages] = useState(false);
   const [generatingSeo, setGeneratingSeo] = useState(false);
   const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
@@ -171,6 +282,23 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [sellerType, setSellerType] = useState<'retailer' | 'wholesaler' | 'hybrid'>('retailer');
+  const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
+
+  const fetchStore = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const nextSellerType = data.store?.seller_type;
+        if (nextSellerType === 'wholesaler' || nextSellerType === 'hybrid' || nextSellerType === 'retailer') {
+          setSellerType(nextSellerType);
+        }
+      }
+    } catch {
+      setSellerType('retailer');
+    }
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -228,6 +356,10 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    fetchStore();
+  }, [fetchStore]);
 
   useEffect(() => {
     fetchCategories();
@@ -353,6 +485,57 @@ export default function ProductsPage() {
     }
   };
 
+  const handleDigitalFileUpload = async (file: File | null) => {
+    if (!file) return;
+    setError('');
+    setSuccess('');
+    setUploadingDigitalFile(true);
+    try {
+      if (file.size > 100 * 1024 * 1024) {
+        throw new Error('Digital file must be smaller than 100 MB.');
+      }
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type || 'application/octet-stream',
+          purpose: 'digital_product',
+          file_size: file.size,
+        }),
+      });
+      if (!presignRes.ok) {
+        throw new Error(await getErrorMessage(presignRes, 'Failed to prepare digital file upload'));
+      }
+      const data = await presignRes.json();
+      const uploadUrl = data.upload_url as string | undefined;
+      const fileKey = data.file_key as string | undefined;
+      if (!uploadUrl || !fileKey) {
+        throw new Error('Upload URL was not returned by the server.');
+      }
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        throw new Error('Digital file upload failed.');
+      }
+      setForm((current) => ({
+        ...current,
+        digital_file_key: fileKey,
+        digital_file_name: file.name,
+        digital_file_content_type: file.type || 'application/octet-stream',
+        digital_file_size: String(file.size),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Digital file upload failed');
+    } finally {
+      setUploadingDigitalFile(false);
+    }
+  };
+
   const saveGalleryImages = async (productId: string) => {
     const existingUrls = new Set((editingProduct?.images || []).filter((image) => !image.is_thumbnail).map((image) => image.url));
     const newUrls = form.gallery_images.filter((url) => url.trim() && !existingUrls.has(url.trim()));
@@ -414,6 +597,7 @@ export default function ProductsPage() {
 
   const startEdit = (product: Product) => {
     const thumbnailImage = product.images?.find((image) => image.is_thumbnail);
+    const wholesalePricing = product.metadata?.wholesale_pricing;
     setEditingProduct(product);
     setForm({
       type: product.type || 'physical',
@@ -431,6 +615,32 @@ export default function ProductsPage() {
       seo_description: product.seo_description || '',
       tags: (product.tags || []).join(', '),
       attributes: product.attributes || [],
+      max_downloads: String(product.max_downloads ?? 5),
+      download_expires_hours: String(product.download_expires_hours ?? 72),
+      digital_file_key: product.digital_file_key || '',
+      digital_file_name: product.digital_file_name || '',
+      digital_file_content_type: product.digital_file_content_type || '',
+      digital_file_size: product.digital_file_size ? String(product.digital_file_size) : '',
+      license_keys: '',
+      wholesale_min_quantity: String(wholesalePricing?.min_quantity ?? 2),
+      wholesale_price_tiers: wholesalePricing?.price_tiers?.length
+        ? wholesalePricing.price_tiers.map((tier) => ({
+          min_quantity: String(tier.min_quantity),
+          unit_price: String(tier.unit_price),
+        }))
+        : [{ min_quantity: String(wholesalePricing?.min_quantity ?? 2), unit_price: '' }],
+      variants: (product.variants || []).map((variant) => {
+        const firstOption = Object.entries(variant.options || {})[0];
+        return {
+          id: variant.id,
+          sku: variant.sku || '',
+          title: variant.title,
+          price: String(variant.price),
+          inventory_quantity: String(variant.inventory_quantity ?? 0),
+          option_name: firstOption?.[0] || '',
+          option_value: firstOption?.[1] || '',
+        };
+      }),
       status: product.status,
     });
     setShowCreate(true);
@@ -459,11 +669,79 @@ export default function ProductsPage() {
     }));
   };
 
+  const updateWholesaleTier = (index: number, patch: Partial<WholesalePriceTierForm>) => {
+    setForm((current) => ({
+      ...current,
+      wholesale_price_tiers: current.wholesale_price_tiers.map((tier, tierIndex) =>
+        tierIndex === index ? { ...tier, ...patch } : tier,
+      ),
+    }));
+  };
+
+  const addWholesaleTier = () => {
+    setForm((current) => {
+      const lastQuantity = Number(current.wholesale_price_tiers.at(-1)?.min_quantity || current.wholesale_min_quantity || 1);
+      return {
+        ...current,
+        wholesale_price_tiers: [
+          ...current.wholesale_price_tiers,
+          { min_quantity: String(Number.isFinite(lastQuantity) ? lastQuantity + 1 : 2), unit_price: '' },
+        ],
+      };
+    });
+  };
+
+  const removeWholesaleTier = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      wholesale_price_tiers: current.wholesale_price_tiers.filter((_, tierIndex) => tierIndex !== index),
+    }));
+  };
+
+  const updateVariant = (index: number, patch: Partial<ProductVariantForm>) => {
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map((variant, variantIndex) =>
+        variantIndex === index ? { ...variant, ...patch } : variant,
+      ),
+    }));
+  };
+
+  const addVariant = () => {
+    setForm((current) => ({
+      ...current,
+      variants: [
+        ...current.variants,
+        {
+          sku: '',
+          title: '',
+          price: current.price || '0',
+          inventory_quantity: '0',
+          option_name: current.variants[0]?.option_name || 'Size',
+          option_value: '',
+        },
+      ],
+    }));
+  };
+
+  const removeVariant = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.filter((_, variantIndex) => variantIndex !== index),
+    }));
+  };
+
   const handleSave = async () => {
     setError('');
     setSuccess('');
     const price = Number(form.price);
     const inventory = Number(form.inventory_quantity || 0);
+    const maxDownloads = Number(form.max_downloads || 5);
+    const downloadExpiresHours = Number(form.download_expires_hours || 72);
+    const licenseKeys = parseLicenseKeys(form.license_keys);
+    const wholesaleMinQuantity = Number(form.wholesale_min_quantity || 0);
+    const wholesalePriceTiers = parseWholesalePriceTiers(form.wholesale_price_tiers);
+    const variants = parseProductVariants(form.variants);
 
     if (!form.title.trim()) {
       setError('Product title is required');
@@ -475,12 +753,42 @@ export default function ProductsPage() {
       return;
     }
 
+    if ((form.type === 'digital' || form.type === 'serial') && form.status !== 'draft' && !form.digital_file_key) {
+      setError('Downloadable products require a file before publishing.');
+      return;
+    }
+
+    if (form.type === 'serial' && form.status !== 'draft' && !editingProduct && licenseKeys.length === 0) {
+      setError('Serial products require at least one license key before publishing.');
+      return;
+    }
+
+    if (isWholesaleSeller) {
+      if (!Number.isInteger(wholesaleMinQuantity) || wholesaleMinQuantity < 2) {
+        setError('Wholesale minimum quantity must be at least 2.');
+        return;
+      }
+      if (wholesalePriceTiers.length === 0) {
+        setError('Add at least one wholesale price tier.');
+        return;
+      }
+      if (wholesalePriceTiers.some((tier) => tier.min_quantity < wholesaleMinQuantity)) {
+        setError('Wholesale tiers must start at or above the minimum wholesale quantity.');
+        return;
+      }
+    }
+
     const attributes = form.attributes
       .map((attribute) => ({ name: attribute.name.trim(), value: attribute.value.trim() }))
       .filter((attribute) => attribute.name || attribute.value);
 
     if (attributes.some((attribute) => !attribute.name || !attribute.value)) {
       setError('Each product attribute must include both a name and a value');
+      return;
+    }
+
+    if (variants.some((variant) => !variant.title || !Number.isFinite(variant.price) || variant.price < 0 || !Number.isInteger(variant.inventory_quantity) || variant.inventory_quantity < 0)) {
+      setError('Each variation must include a name, valid price, and non-negative stock.');
       return;
     }
 
@@ -506,6 +814,16 @@ export default function ProductsPage() {
           seo_description: form.seo_description.trim() || null,
           tags: parseTags(form.tags),
           attributes,
+          max_downloads: Number.isFinite(maxDownloads) && maxDownloads > 0 ? maxDownloads : 5,
+          download_expires_hours: Number.isFinite(downloadExpiresHours) && downloadExpiresHours > 0 ? downloadExpiresHours : 72,
+          digital_file_key: form.digital_file_key || null,
+          digital_file_name: form.digital_file_name || null,
+          digital_file_content_type: form.digital_file_content_type || null,
+          digital_file_size: form.digital_file_size ? Number(form.digital_file_size) : null,
+          license_keys: form.type === 'serial' ? licenseKeys : undefined,
+          wholesale_min_quantity: isWholesaleSeller ? wholesaleMinQuantity : undefined,
+          wholesale_price_tiers: isWholesaleSeller ? wholesalePriceTiers : undefined,
+          variants,
           status: form.status,
         }),
       });
@@ -837,6 +1155,187 @@ export default function ProductsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
               />
             </div>
+            <div className="md:col-span-2 rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50/60 p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-wide text-indigo-700 ring-1 ring-indigo-100">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Variations
+                  </div>
+                  <h3 className="mt-3 text-lg font-black text-gray-900">Product variations</h3>
+                  <p className="mt-1 text-sm font-semibold text-gray-600">
+                    Add sellable choices like size, color, pack, or material. Each variation can have its own SKU, price, and stock.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#16C784]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add variation
+                </button>
+              </div>
+              <div className="mt-5 space-y-3">
+                {form.variants.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-5 py-8 text-center">
+                    <p className="font-bold text-gray-700">No variations yet.</p>
+                    <p className="mt-1 text-sm text-gray-500">Use variations when one product has multiple choices, prices, or stock levels.</p>
+                  </div>
+                ) : (
+                  form.variants.map((variant, index) => (
+                    <div key={`${variant.id || 'new'}-${index}`} className="rounded-2xl border border-white bg-white p-4 shadow-sm ring-1 ring-gray-100">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">
+                          Variation #{index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(index)}
+                          className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+                        <input
+                          type="text"
+                          value={variant.title}
+                          onChange={(event) => updateVariant(index, { title: event.target.value })}
+                          placeholder="Label, e.g. Large / Red"
+                          className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                        />
+                        <input
+                          type="text"
+                          value={variant.sku}
+                          onChange={(event) => updateVariant(index, { sku: event.target.value })}
+                          placeholder="SKU"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          value={variant.price}
+                          onChange={(event) => updateVariant(index, { price: event.target.value })}
+                          placeholder="Price"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={variant.inventory_quantity}
+                          onChange={(event) => updateVariant(index, { inventory_quantity: event.target.value })}
+                          placeholder="Stock"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                        />
+                        <div className="grid grid-cols-2 gap-2 md:col-span-6">
+                          <input
+                            type="text"
+                            value={variant.option_name}
+                            onChange={(event) => updateVariant(index, { option_name: event.target.value })}
+                            placeholder="Option name, e.g. Size"
+                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          />
+                          <input
+                            type="text"
+                            value={variant.option_value}
+                            onChange={(event) => updateVariant(index, { option_value: event.target.value })}
+                            placeholder="Option value, e.g. XL"
+                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            {isWholesaleSeller && (
+              <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-900">{t('productWholesale.title')}</h3>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {sellerType === 'hybrid'
+                        ? t('productWholesale.hybridDescription')
+                        : t('productWholesale.wholesalerDescription')}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase text-emerald-700">
+                    {sellerType}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">
+                      {sellerType === 'hybrid' ? t('productWholesale.minimumWholesaleQuantity') : t('productWholesale.minimumOrderQuantity')}
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      value={form.wholesale_min_quantity}
+                      onChange={(event) => setForm((current) => ({ ...current, wholesale_min_quantity: event.target.value }))}
+                      className="w-full px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      {sellerType === 'hybrid' ? t('productWholesale.hybridMinimumHelp') : t('productWholesale.wholesalerMinimumHelp')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">{t('productWholesale.oneQuantityPrice')}</label>
+                    <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-gray-900">
+                      {Number(form.price || 0).toFixed(3)} TND
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">{t('productWholesale.basePriceHelp')}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="block text-sm font-semibold text-gray-800">{t('productWholesale.priceTiers')}</label>
+                    <button
+                      type="button"
+                      onClick={addWholesaleTier}
+                      className="inline-flex items-center rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                      {t('productWholesale.addTier')}
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {form.wholesale_price_tiers.map((tier, index) => (
+                      <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+                        <input
+                          type="number"
+                          min="2"
+                          value={tier.min_quantity}
+                          onChange={(event) => updateWholesaleTier(index, { min_quantity: event.target.value })}
+                          placeholder={t('productWholesale.quantityFrom')}
+                          className="px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          value={tier.unit_price}
+                          onChange={(event) => updateWholesaleTier(index, { unit_price: event.target.value })}
+                          placeholder={t('productWholesale.unitPrice')}
+                          className="px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeWholesaleTier(index)}
+                          disabled={form.wholesale_price_tiers.length <= 1}
+                          className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-gray-500 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Tags className="w-4 h-4 text-[#16C784]" />
@@ -903,6 +1402,95 @@ export default function ProductsPage() {
                 <option value="archived">Archived</option>
               </select>
             </div>
+            {(form.type === 'digital' || form.type === 'serial') && (
+              <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">Digital delivery file</label>
+                    <p className="text-xs text-gray-500">Upload the private file customers can download after captured payment.</p>
+                  </div>
+                  <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-emerald-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-emerald-50 cursor-pointer transition-colors">
+                    {uploadingDigitalFile ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2 text-[#16C784]" />
+                    )}
+                    {uploadingDigitalFile ? 'Uploading...' : 'Upload digital file'}
+                    <input
+                      type="file"
+                      accept="application/pdf,application/zip,application/x-zip-compressed,application/octet-stream,text/plain"
+                      disabled={uploadingDigitalFile}
+                      onChange={(event) => handleDigitalFileUpload(event.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {form.digital_file_key ? (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{form.digital_file_name || 'Digital file attached'}</p>
+                      <p className="text-xs text-gray-500">{formatFileSize(form.digital_file_size)} {form.digital_file_content_type}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({
+                        ...current,
+                        digital_file_key: '',
+                        digital_file_name: '',
+                        digital_file_content_type: '',
+                        digital_file_size: '',
+                      }))}
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      Remove file
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+                    No digital file attached.
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">Max downloads per order</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={form.max_downloads}
+                      onChange={(event) => setForm((current) => ({ ...current, max_downloads: event.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">Download link expiry hours</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="8760"
+                      value={form.download_expires_hours}
+                      onChange={(event) => setForm((current) => ({ ...current, download_expires_hours: event.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+                {form.type === 'serial' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">License keys</label>
+                    <textarea
+                      value={form.license_keys}
+                      onChange={(event) => setForm((current) => ({ ...current, license_keys: event.target.value }))}
+                      rows={6}
+                      placeholder="One license key per line"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white font-mono text-sm"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      Existing keys are not displayed. Add new unused keys here when creating or replenishing a serial product.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <div className="flex flex-col lg:flex-row gap-4">
                 <div className="w-full lg:w-40">

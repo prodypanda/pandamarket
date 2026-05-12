@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS pd_subscription_limits (
   commission_rate         DECIMAL(5,4) DEFAULT 0,  -- e.g. 0.1500 = 15 %
   ai_tokens_included      INTEGER DEFAULT 0,       -- -1 = unlimited
   yearly_price            DECIMAL(10,2) DEFAULT 0,
+  is_enabled              BOOLEAN NOT NULL DEFAULT true,
   created_at              TIMESTAMP DEFAULT NOW(),
   updated_at              TIMESTAMP DEFAULT NOW()
 );
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS pd_store (
   name                VARCHAR(150) NOT NULL,
   status              VARCHAR(20) DEFAULT 'unverified',
     -- 'unverified' | 'verified' | 'suspended'
+  seller_type         VARCHAR(20) NOT NULL DEFAULT 'retailer' CHECK (seller_type IN ('wholesaler', 'retailer', 'hybrid')),
   is_verified         BOOLEAN DEFAULT false,
   subscription_plan   VARCHAR(20) NOT NULL DEFAULT 'free' REFERENCES pd_subscription_limits(plan_id),
   subscription_type   VARCHAR(20) NOT NULL DEFAULT 'commission',
@@ -87,6 +89,7 @@ CREATE TABLE IF NOT EXISTS pd_store (
 CREATE INDEX IF NOT EXISTS idx_store_subdomain ON pd_store(subdomain);
 CREATE INDEX IF NOT EXISTS idx_store_custom_domain ON pd_store(custom_domain);
 CREATE INDEX IF NOT EXISTS idx_store_status ON pd_store(status);
+CREATE INDEX IF NOT EXISTS idx_store_seller_type ON pd_store(seller_type);
 CREATE INDEX IF NOT EXISTS idx_store_owner ON pd_store(owner_id);
 
 -- Wire up the user.store_id FK now that pd_store exists

@@ -14,6 +14,7 @@ import { getRedis } from './db/redis';
 
 // Routers
 import authRouter from './api/auth.route';
+import storefrontAuthRouter from './api/storefront-auth.route';
 import storeRouter from './api/store.route';
 import productRouter from './api/product.route';
 import orderRouter from './api/order.route';
@@ -37,6 +38,8 @@ import themeRouter from './api/theme.route';
 import pageBuilderRouter from './api/page-builder.route';
 import reviewRouter from './api/review.route';
 import wishlistRouter from './api/wishlist.route';
+import addressRouter from './api/address.route';
+import chatRouter from './api/chat.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -150,6 +153,7 @@ async function bootstrap() {
   // API Routes
   const apiRouter = express.Router();
   apiRouter.use('/auth', authRouter);
+  apiRouter.use('/storefront/auth', storefrontAuthRouter);
   apiRouter.use('/stores', storeRouter);
   apiRouter.use('/products', productRouter);
   apiRouter.use('/orders', orderRouter);
@@ -173,6 +177,8 @@ async function bootstrap() {
   apiRouter.use('/page-builder', pageBuilderRouter);
   apiRouter.use('/reviews', reviewRouter);
   apiRouter.use('/wishlist', wishlistRouter);
+  apiRouter.use('/addresses', addressRouter);
+  apiRouter.use('/chats', chatRouter);
 
   app.use('/api/pd', apiRouter);
 

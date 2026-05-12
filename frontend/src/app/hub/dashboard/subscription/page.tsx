@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Crown, Check, X, ArrowUp, ArrowDown, AlertCircle, Sparkles } from 'lucide-react';
 
 interface PlanLimits {
@@ -49,20 +49,16 @@ export default function SubscriptionPage() {
   const [success, setSuccess] = useState('');
   const [confirmPlan, setConfirmPlan] = useState<string | null>(null);
 
-  const getErrorMessage = async (res: Response, fallback: string) => {
+  const getErrorMessage = useCallback(async (res: Response, fallback: string) => {
     try {
       const data = await res.json();
       return data.error?.message || data.message || `${fallback} (${res.status})`;
     } catch {
       return `${fallback} (${res.status})`;
     }
-  };
-
-  useEffect(() => {
-    Promise.all([fetchCurrentPlan(), fetchAllPlans()]).finally(() => setLoading(false));
   }, []);
 
-  const fetchCurrentPlan = async () => {
+  const fetchCurrentPlan = useCallback(async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/subscriptions/current', { credentials: 'include' });
       if (res.ok) {
@@ -74,9 +70,9 @@ export default function SubscriptionPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
-  };
+  }, [getErrorMessage]);
 
-  const fetchAllPlans = async () => {
+  const fetchAllPlans = useCallback(async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/subscriptions/plans');
       if (res.ok) {
@@ -88,7 +84,11 @@ export default function SubscriptionPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     }
-  };
+  }, [getErrorMessage]);
+
+  useEffect(() => {
+    Promise.all([fetchCurrentPlan(), fetchAllPlans()]).finally(() => setLoading(false));
+  }, [fetchAllPlans, fetchCurrentPlan]);
 
   const handleChangePlan = async (planId: string) => {
     setError('');
@@ -115,11 +115,10 @@ export default function SubscriptionPage() {
     }
   };
 
-  const planOrder = ['free', 'starter', 'regular', 'agency', 'pro', 'golden', 'platinum'];
-
   const isUpgrade = (planId: string) => {
     if (!currentPlan) return false;
-    return planOrder.indexOf(planId) > planOrder.indexOf(currentPlan.plan);
+    const target = allPlans.find((plan) => plan.plan_id === planId);
+    return Number(target?.yearly_price ?? 0) > Number(currentPlan.limits.yearly_price ?? 0);
   };
 
   if (loading) {

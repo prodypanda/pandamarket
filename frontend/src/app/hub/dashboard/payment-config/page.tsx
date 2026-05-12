@@ -15,6 +15,7 @@ import {
 interface StoreInfo {
   id: string;
   subscription_plan: string;
+  has_direct_payment: boolean;
 }
 
 async function getErrorMessage(res: Response, fallback = 'Request failed') {
@@ -42,15 +43,20 @@ export default function PaymentConfigPage() {
   useEffect(() => {
     async function fetchStore() {
       try {
-        const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
+        const [storeRes, subscriptionRes] = await Promise.all([
+          fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/subscriptions/current', { credentials: 'include' }),
+        ]);
+        if (storeRes.ok) {
+          const data = await storeRes.json();
+          const subscriptionData = subscriptionRes.ok ? await subscriptionRes.json() : null;
           setStore({
             id: data.store?.id || '',
             subscription_plan: data.store?.subscription_plan || 'free',
+            has_direct_payment: Boolean(subscriptionData?.limits?.has_direct_payment),
           });
         } else {
-          setError(await getErrorMessage(res, 'Failed to load store information'));
+          setError(await getErrorMessage(storeRes, 'Failed to load store information'));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Network error');
@@ -60,9 +66,7 @@ export default function PaymentConfigPage() {
     fetchStore();
   }, []);
 
-  const isPlanEligible = store
-    ? ['pro', 'golden', 'platinum'].includes(store.subscription_plan.toLowerCase())
-    : false;
+  const isPlanEligible = Boolean(store?.has_direct_payment);
 
   const handleSave = async () => {
     setError('');

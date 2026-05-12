@@ -78,5 +78,8 @@ export async function presignDownload(opts: {
  * Build the public URL for a public-bucket asset.
  */
 export function publicUrl(key: string): string {
+  if (config.s3.publicBaseUrl === '/pd-product-images') {
+    return `/pd-product-images/${key.replace(/^\//, '')}`;
+  }
   return `${config.s3.publicBaseUrl.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;
 }

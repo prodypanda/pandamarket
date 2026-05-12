@@ -23,6 +23,12 @@ export enum StoreStatus {
   Suspended = 'suspended',
 }
 
+export enum SellerType {
+  Wholesaler = 'wholesaler',
+  Retailer = 'retailer',
+  Hybrid = 'hybrid',
+}
+
 export enum SubscriptionPlan {
   Free = 'free',
   Starter = 'starter',
@@ -139,8 +145,42 @@ export enum WalletTransactionType {
 export enum ReportStatus {
   Open = 'open',
   Investigating = 'investigating',
+  AwaitingBuyer = 'awaiting_buyer',
+  AwaitingSeller = 'awaiting_seller',
   Resolved = 'resolved',
   Dismissed = 'dismissed',
+}
+
+export enum ReportTargetType {
+  Seller = 'seller',
+  Buyer = 'buyer',
+}
+
+export enum ReportSource {
+  Buyer = 'buyer',
+  Admin = 'admin',
+}
+
+export enum ReportPriority {
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+  Critical = 'critical',
+}
+
+export enum ReportMessageVisibility {
+  BuyerAdmin = 'buyer_admin',
+  SellerAdmin = 'seller_admin',
+  AllParties = 'all_parties',
+  AdminInternal = 'admin_internal',
+}
+
+export enum ReportEventType {
+  CaseCreated = 'case_created',
+  MessageAdded = 'message_added',
+  AttachmentAdded = 'attachment_added',
+  StatusChanged = 'status_changed',
+  NoteUpdated = 'note_updated',
 }
 
 // =====================================================

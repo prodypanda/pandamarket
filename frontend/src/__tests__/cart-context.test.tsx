@@ -84,6 +84,29 @@ describe('CartContext', () => {
     expect(getCartTotal(items)).toBe(425);
   });
 
+  it('applies wholesale tier pricing and minimum quantity', () => {
+    let items = addItem([], {
+      ...sampleInput,
+      price: 100,
+      quantity: 1,
+      seller_type: 'wholesaler',
+      wholesale_pricing: {
+        enabled: true,
+        min_quantity: 5,
+        price_tiers: [
+          { min_quantity: 5, unit_price: 80 },
+          { min_quantity: 10, unit_price: 70 },
+        ],
+      },
+    });
+    expect(items[0].quantity).toBe(5);
+    expect(items[0].price).toBe(80);
+    expect(getCartTotal(items)).toBe(400);
+    items = updateItemQuantity(items, 'prod_001', 10);
+    expect(items[0].price).toBe(70);
+    expect(getCartTotal(items)).toBe(700);
+  });
+
   it('removes item when quantity set to 0', () => {
     let items = addItem([], sampleInput);
     items = updateItemQuantity(items, 'prod_001', 0);

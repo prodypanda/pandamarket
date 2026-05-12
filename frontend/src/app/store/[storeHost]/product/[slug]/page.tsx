@@ -13,6 +13,11 @@ import { getMarketplaceSettings } from '../../../../../lib/marketplace-settings'
 import { getStoreRouteContext } from '../../../../../lib/store-routing';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { MarketplaceStoreProductDetail } from '../../../../../components/store/MarketplaceStoreProductDetail';
+import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
+import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
+import { t as translate } from '../../../../../i18n/utils';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
+import { cookies } from 'next/headers';
 
 interface Product {
   id: string;
@@ -30,10 +35,12 @@ interface Product {
   images?: { id: string; url: string; position: number }[];
   tags?: string[];
   attributes?: { name: string; value: string }[];
+  metadata?: Record<string, unknown> | null;
   inventory_quantity?: number;
   store_id: string;
   store_name?: string;
   store_is_verified?: boolean | null;
+  store_seller_type?: string | null;
   store_status?: string | null;
   store_settings?: Record<string, unknown> | null;
   store_created_at?: string | null;
@@ -58,6 +65,7 @@ interface StoreData {
     country?: string;
   };
   is_verified?: boolean;
+  seller_type?: string | null;
   status?: string;
   created_at?: string;
 }
@@ -176,6 +184,10 @@ export default async function StoreProductPage({
 }) {
   const { storeHost, slug } = await params;
   const decodedHost = decodeURIComponent(storeHost);
+  const cookieStore = await cookies();
+  const requestedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale = isValidLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
+  const tx = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
 
   const store = await getStoreByHost(decodedHost);
   if (!store) {
@@ -187,14 +199,14 @@ export default async function StoreProductPage({
     notFound();
   }
 
-  const [relatedProducts, ratingData] = await Promise.all([
+  const [relatedProducts, ratingData, marketplaceSettings] = await Promise.all([
     getStoreProducts(store.id, product.id),
     getProductRating(product.id),
+    getMarketplaceSettings(),
   ]);
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
 
   if (isMarketplaceStoreRoute) {
-    const marketplaceSettings = await getMarketplaceSettings();
     return (
       <MarketplaceStoreProductDetail
         storeHost={storeHost}
@@ -203,6 +215,7 @@ export default async function StoreProductPage({
         relatedProducts={relatedProducts}
         ratingData={ratingData}
         marketplaceSettings={marketplaceSettings}
+        locale={locale}
       />
     );
   }
@@ -218,6 +231,11 @@ export default async function StoreProductPage({
   const cartPrice = Number.isFinite(numericPrice) ? numericPrice : 0;
   const avgRating = ratingData?.average_rating ?? 0;
   const reviewCount = ratingData?.review_count ?? 0;
+  const isPhysicalProduct = product.type === 'physical' || !product.type;
+  const sellerType = product.store_seller_type ?? store.seller_type;
+  const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
+    ? getWholesalePricingFromMetadata(product.metadata)
+    : null;
 
   return (
     <div
@@ -234,7 +252,12 @@ export default async function StoreProductPage({
             <div className="flex items-center gap-4">
               {store.settings?.logo_url ? (
                 <Link href={storePathBase || '/'}>
-                  <img src={store.settings.logo_url} alt={store.name} className="h-8 w-auto" />
+                  <span
+                    aria-label={store.name}
+                    role="img"
+                    className="block h-8 w-28 bg-contain bg-left bg-no-repeat"
+                    style={{ backgroundImage: `url(${store.settings.logo_url})` }}
+                  />
                 </Link>
               ) : (
                 <Link
@@ -308,6 +331,29 @@ export default async function StoreProductPage({
             <p className="text-3xl font-extrabold mb-6" style={{ color: primaryColor }}>
               {formatPrice(product.price)}
             </p>
+            {wholesalePricing && (
+              <div className="mb-6 rounded-2xl border p-5" style={{ backgroundColor: secondaryColor, borderColor }}>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{tx('productWholesale.publicTitle')}</p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: resolvedColors.text }}>
+                  {tx('productWholesale.publicSubtitle')}
+                </p>
+                <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black" style={{ color: primaryColor }}>
+                  {tx('productWholesale.minimumQuantity')}: {wholesalePricing.min_quantity}
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {wholesalePricing.price_tiers?.map((tier) => (
+                    <div key={tier.min_quantity} className="rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-sm" style={{ color: resolvedColors.text }}>
+                      <span className="block text-xs font-black uppercase text-gray-400">
+                        {tx('productWholesale.tierLine', { quantity: tier.min_quantity })}
+                      </span>
+                      <span style={{ color: primaryColor }}>
+                        {tx('productWholesale.unitPriceLine', { price: Number(tier.unit_price).toFixed(3) })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Vendor badge */}
             <div className="mb-6">
@@ -315,6 +361,7 @@ export default async function StoreProductPage({
                 name={store.name}
                 href={storePathBase || '/'}
                 isVerified={product.store_is_verified ?? store.is_verified}
+                sellerType={product.store_seller_type ?? store.seller_type}
                 status={product.store_status ?? store.status}
                 createdAt={product.store_created_at ?? store.created_at}
                 productCount={product.store_product_count}
@@ -337,7 +384,7 @@ export default async function StoreProductPage({
             </div>
 
             {/* Stock */}
-            {product.inventory_quantity !== undefined && (
+            {isPhysicalProduct && product.inventory_quantity !== undefined && (
               <p className="text-sm text-gray-500 mb-6">
                 {product.inventory_quantity > 0
                   ? `${product.inventory_quantity} en stock`
@@ -370,9 +417,12 @@ export default async function StoreProductPage({
                   category: product.category,
                   marketplace_category_slug: product.marketplace_category_slug,
                   price: cartPrice,
+                  seller_type: sellerType,
+                  wholesale_pricing: wholesalePricing,
                   store_id: store.id,
                   store_name: store.name,
                   store_subdomain: store.subdomain,
+                  product_type: product.type,
                   image_url: mainImage || null,
                   inventory_quantity: product.inventory_quantity,
                 }}
@@ -424,10 +474,11 @@ export default async function StoreProductPage({
                 >
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
                     {p.images?.[0]?.url || p.thumbnail ? (
-                      <img
-                        src={p.images?.[0]?.url || p.thumbnail || ''}
-                        alt={p.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      <div
+                        aria-label={p.title}
+                        role="img"
+                        className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                        style={{ backgroundImage: `url(${p.images?.[0]?.url || p.thumbnail || ''})` }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -458,9 +509,15 @@ export default async function StoreProductPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-white/75">
           <p>
             {store.name} — Propulsé par{' '}
-            <Link href="/hub" className="font-medium" style={{ color: primaryColor }}>
-              🐼 PandaMarket
-            </Link>
+            <MarketplaceBrand
+              href="/hub"
+              marketplaceName={marketplaceSettings.marketplace_name}
+              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              className="inline-flex align-middle"
+              imageClassName="inline h-5 max-w-[120px] object-contain"
+              textClassName="font-medium"
+              fallbackMarkClassName="hidden"
+            />
           </p>
         </div>
       </footer>

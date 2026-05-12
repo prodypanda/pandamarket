@@ -17,6 +17,8 @@ import {
   PaymentGateway,
   PaymentStatus,
   ProductStatus,
+  ProductType,
+  SellerType,
 } from '@pandamarket/types';
 import { roundTnd } from '../utils/money';
 import { logger } from '../utils/logger';
@@ -36,11 +38,13 @@ interface PreparedItem {
   unit_price: number;
   quantity: number;
   subtotal: number;
+  product_type: ProductType;
 }
 
 export interface OrderRow {
   id: string;
-  customer_id: string;
+  customer_id: string | null;
+  storefront_customer_id: string | null;
   status: OrderStatus;
   payment_gateway: PaymentGateway;
   payment_status: PaymentStatus;
@@ -56,14 +60,58 @@ export interface OrderRow {
 
 const FLAT_SHIPPING_PER_STORE = 7; // TND — placeholder until Aramex integration
 
+function usesInventory(type: ProductType): boolean {
+  return type === ProductType.Physical;
+}
+
+function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
+  return sellerType === SellerType.Wholesaler || sellerType === SellerType.Hybrid;
+}
+
+function getWholesaleUnitPrice(basePrice: number, quantity: number, sellerType: SellerType | null, metadata: Record<string, unknown> | null): number {
+  if (!isWholesaleCapableSeller(sellerType)) {
+    return basePrice;
+  }
+
+  const wholesalePricing = metadata?.wholesale_pricing as {
+    enabled?: unknown;
+    min_quantity?: unknown;
+    price_tiers?: unknown;
+  } | undefined;
+  if (!wholesalePricing?.enabled || !Array.isArray(wholesalePricing.price_tiers)) {
+    return basePrice;
+  }
+
+  const minQuantity = Number(wholesalePricing.min_quantity);
+  if (sellerType === SellerType.Wholesaler && Number.isInteger(minQuantity) && minQuantity > 1 && quantity < minQuantity) {
+    throw new PdValidationError(`Minimum quantity for this wholesale product is ${minQuantity}`);
+  }
+
+  const tiers = wholesalePricing.price_tiers
+    .map((tier) => {
+      const item = tier as { min_quantity?: unknown; unit_price?: unknown };
+      return {
+        min_quantity: Number(item.min_quantity),
+        unit_price: Number(item.unit_price),
+      };
+    })
+    .filter((tier) => Number.isInteger(tier.min_quantity) && tier.min_quantity > 0 && Number.isFinite(tier.unit_price) && tier.unit_price >= 0)
+    .sort((a, b) => a.min_quantity - b.min_quantity);
+
+  const activeTier = tiers.filter((tier) => quantity >= tier.min_quantity).at(-1);
+  return activeTier ? activeTier.unit_price : basePrice;
+}
+
 export class OrderService {
   /**
    * Create an order from a cart. Splits items per store into separate fulfillments.
    */
   async checkout(opts: {
-    customer_id: string;
+    customer_id?: string | null;
+    storefront_customer_id?: string | null;
+    store_id?: string | null;
     items: CartLine[];
-    shipping_address: IAddress;
+    shipping_address?: IAddress | null;
     payment_gateway: PaymentGateway;
   }): Promise<OrderRow> {
     if (!opts.items || opts.items.length === 0) {
@@ -84,8 +132,15 @@ export class OrderService {
           price: string;
           inventory_quantity: number;
           status: ProductStatus;
+          type: ProductType;
+          metadata: Record<string, unknown> | null;
+          seller_type: SellerType | null;
         }>(
-          'SELECT id, store_id, title, price, inventory_quantity, status FROM pd_product WHERE id = $1',
+          `SELECT p.id, p.store_id, p.title, p.price, p.inventory_quantity, p.status, p.type, p.metadata,
+                  s.seller_type
+           FROM pd_product p
+           JOIN pd_store s ON s.id = p.store_id
+           WHERE p.id = $1`,
           [line.product_id],
         );
         const product = prodRows[0];
@@ -99,12 +154,34 @@ export class OrderService {
             product_id: line.product_id,
           });
         }
-        if (product.inventory_quantity < line.quantity) {
+        if (opts.store_id && product.store_id !== opts.store_id) {
+          throw new PdValidationError('Product does not belong to this storefront', {
+            product_id: line.product_id,
+            store_id: opts.store_id,
+          });
+        }
+        if (usesInventory(product.type) && product.inventory_quantity < line.quantity) {
           throw new PdValidationError('Insufficient stock', {
             code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
             product_id: line.product_id,
             available: product.inventory_quantity,
           });
+        }
+        if (product.type === ProductType.Serial) {
+          const { rows: licenseRows } = await c.query<{ available: string }>(
+            `SELECT COUNT(*)::text AS available
+             FROM pd_license_key
+             WHERE product_id = $1 AND order_id IS NULL AND is_used = false`,
+            [line.product_id],
+          );
+          const available = parseInt(licenseRows[0]?.available ?? '0', 10);
+          if (available < line.quantity) {
+            throw new PdValidationError('Insufficient license keys for serial product', {
+              code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+              product_id: line.product_id,
+              available,
+            });
+          }
         }
 
         let unitPrice = parseFloat(product.price);
@@ -124,7 +201,7 @@ export class OrderService {
           if (!variant || variant.product_id !== product.id) {
             throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Variant not found');
           }
-          if (variant.inventory_quantity < line.quantity) {
+          if (usesInventory(product.type) && variant.inventory_quantity < line.quantity) {
             throw new PdValidationError('Insufficient stock for variant', {
               code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
             });
@@ -132,6 +209,7 @@ export class OrderService {
           unitPrice = parseFloat(variant.price);
           title = `${product.title} — ${variant.title}`;
         }
+        unitPrice = getWholesaleUnitPrice(unitPrice, line.quantity, product.seller_type, product.metadata);
         prepared.push({
           product_id: product.id,
           variant_id: line.variant_id ?? null,
@@ -140,14 +218,23 @@ export class OrderService {
           unit_price: unitPrice,
           quantity: line.quantity,
           subtotal: roundTnd(unitPrice * line.quantity),
+          product_type: product.type,
         });
       }
 
       // ----- Compute totals (one fulfillment per distinct store) -----
       const storeIds = Array.from(new Set(prepared.map((p) => p.store_id)));
+      const shippableStoreIds = Array.from(new Set(prepared.filter((p) => p.product_type === ProductType.Physical).map((p) => p.store_id)));
+      const fulfillmentStoreIds = shippableStoreIds;
       const subtotal = roundTnd(prepared.reduce((s, it) => s + it.subtotal, 0));
-      const shippingTotal = roundTnd(storeIds.length * FLAT_SHIPPING_PER_STORE);
+      const shippingTotal = roundTnd(shippableStoreIds.length * FLAT_SHIPPING_PER_STORE);
       const total = roundTnd(subtotal + shippingTotal);
+      if (shippableStoreIds.length > 0 && !opts.shipping_address) {
+        throw new PdValidationError('Shipping address is required for physical products');
+      }
+      if (opts.payment_gateway === PaymentGateway.Cod && shippableStoreIds.length === 0) {
+        throw new PdValidationError('Cash on delivery is only available for physical products');
+      }
 
       // ----- Create order -----
       const orderId = pdId('order');
@@ -157,22 +244,29 @@ export class OrderService {
           ? OrderStatus.PaymentRequired
           : OrderStatus.Pending;
 
+      const customerId = opts.customer_id ?? null;
+      const storefrontCustomerId = opts.storefront_customer_id ?? null;
+      if (!customerId && !storefrontCustomerId) {
+        throw new PdValidationError('Customer is required');
+      }
+
       const { rows: orderRows } = await c.query<OrderRow>(
         `INSERT INTO pd_order
-          (id, customer_id, status, payment_gateway, subtotal, shipping_total,
-           total, currency, shipping_address)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          (id, customer_id, storefront_customer_id, status, payment_gateway, subtotal,
+           shipping_total, total, currency, shipping_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
           orderId,
-          opts.customer_id,
+          customerId,
+          storefrontCustomerId,
           initialStatus,
           opts.payment_gateway,
           subtotal,
           shippingTotal,
           total,
           config.defaultCurrency,
-          JSON.stringify(opts.shipping_address),
+          opts.shipping_address ? JSON.stringify(opts.shipping_address) : null,
         ],
       );
 
@@ -195,33 +289,56 @@ export class OrderService {
           ],
         );
         // Decrement stock
-        await c.query(
-          `UPDATE pd_product
-           SET inventory_quantity = inventory_quantity - $2
-           WHERE id = $1`,
-          [item.product_id, item.quantity],
-        );
-        if (item.variant_id) {
+        if (usesInventory(item.product_type)) {
           await c.query(
-            `UPDATE pd_product_variant
+            `UPDATE pd_product
              SET inventory_quantity = inventory_quantity - $2
              WHERE id = $1`,
-            [item.variant_id, item.quantity],
+            [item.product_id, item.quantity],
           );
+          if (item.variant_id) {
+            await c.query(
+              `UPDATE pd_product_variant
+               SET inventory_quantity = inventory_quantity - $2
+               WHERE id = $1`,
+              [item.variant_id, item.quantity],
+            );
+          }
+        } else if (item.product_type === ProductType.Serial) {
+          const { rowCount } = await c.query(
+            `UPDATE pd_license_key
+             SET order_id = $1,
+                 assigned_at = NOW()
+             WHERE id IN (
+               SELECT id FROM pd_license_key
+               WHERE product_id = $2 AND store_id = $3 AND order_id IS NULL AND is_used = false
+               ORDER BY created_at ASC
+               LIMIT $4
+               FOR UPDATE SKIP LOCKED
+             )`,
+            [orderId, item.product_id, item.store_id, item.quantity],
+          );
+          if ((rowCount ?? 0) < item.quantity) {
+            throw new PdValidationError('Insufficient license keys for serial product', {
+              code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+              product_id: item.product_id,
+              available: rowCount ?? 0,
+            });
+          }
         }
       }
 
       // ----- Create one fulfillment per store -----
-      for (const sid of storeIds) {
+      for (const sid of fulfillmentStoreIds) {
         await c.query(
           `INSERT INTO pd_fulfillment (id, order_id, store_id, shipping_total)
            VALUES ($1, $2, $3, $4)`,
-          [pdId('ful'), orderId, sid, FLAT_SHIPPING_PER_STORE],
+          [pdId('ful'), orderId, sid, shippableStoreIds.includes(sid) ? FLAT_SHIPPING_PER_STORE : 0],
         );
       }
 
       logger.info(
-        { order_id: orderId, customer_id: opts.customer_id, total, stores: storeIds.length },
+        { order_id: orderId, customer_id: customerId, storefront_customer_id: storefrontCustomerId, total, stores: storeIds.length },
         'Order created',
       );
       return orderRows[0];
@@ -240,50 +357,156 @@ export class OrderService {
   async hasStoreItems(orderId: string, storeId: string): Promise<boolean> {
     const { rows } = await query<{ exists: boolean }>(
       `SELECT EXISTS(
-        SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2
+        SELECT 1 FROM pd_order_item WHERE order_id = $1 AND store_id = $2
       ) AS exists`,
       [orderId, storeId],
     );
     return rows[0]?.exists ?? false;
   }
 
-  async listByCustomer(customerId: string, opts: { page?: number; limit?: number } = {}) {
+  async listByCustomer(
+    customerId: string,
+    opts: { page?: number; limit?: number; status?: OrderStatus } = {},
+  ) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
-    const { rows } = await query<OrderRow>(
-      `SELECT * FROM pd_order WHERE customer_id = $1
-       ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-      [customerId, limit, offset],
+    const params: unknown[] = [customerId];
+    let where = 'customer_id = $1';
+    if (opts.status) {
+      params.push(opts.status);
+      where += ` AND status = $${params.length}`;
+    }
+    params.push(limit, offset);
+    const { rows } = await query<OrderRow & { items: unknown[] }>(
+      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items
+       FROM pd_order o
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'product_id', i.product_id,
+             'product_title', i.title,
+             'quantity', i.quantity,
+             'unit_price', i.unit_price,
+             'subtotal', i.subtotal,
+             'store_id', i.store_id,
+             'store_name', s.name,
+             'product_type', p.type,
+             'has_digital_file', p.digital_file_key IS NOT NULL
+           )
+           ORDER BY i.created_at ASC
+         ) AS items
+         FROM pd_order_item i
+         LEFT JOIN pd_store s ON s.id = i.store_id
+         LEFT JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = o.id
+       ) items ON true
+       WHERE ${where.replaceAll('customer_id', 'o.customer_id').replaceAll('status', 'o.status')}
+       ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
     );
+    const countParams = opts.status ? [customerId, opts.status] : [customerId];
     const { rows: cnt } = await query<{ count: string }>(
-      'SELECT COUNT(*)::text AS count FROM pd_order WHERE customer_id = $1',
-      [customerId],
+      `SELECT COUNT(*)::text AS count FROM pd_order WHERE ${where}`,
+      countParams,
     );
     const total = parseInt(cnt[0].count, 10);
     return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
   }
 
-  /**
-   * List orders that contain at least one item from the given store.
-   */
-  async listByStore(storeId: string, opts: { page?: number; limit?: number } = {}) {
+  async listByStorefrontCustomer(
+    storefrontCustomerId: string,
+    storeId: string,
+    opts: { page?: number; limit?: number; status?: OrderStatus } = {},
+  ) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
+    const params: unknown[] = [storefrontCustomerId, storeId];
+    let where = 'o.storefront_customer_id = $1 AND EXISTS (SELECT 1 FROM pd_order_item oi WHERE oi.order_id = o.id AND oi.store_id = $2)';
+    if (opts.status) {
+      params.push(opts.status);
+      where += ` AND o.status = $${params.length}`;
+    }
+    params.push(limit, offset);
+    const { rows } = await query<OrderRow & { items: unknown[] }>(
+      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items
+       FROM pd_order o
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'product_id', i.product_id,
+             'product_title', i.title,
+             'quantity', i.quantity,
+             'unit_price', i.unit_price,
+             'subtotal', i.subtotal,
+             'store_id', i.store_id,
+             'store_name', s.name,
+             'product_type', p.type,
+             'has_digital_file', p.digital_file_key IS NOT NULL
+           )
+           ORDER BY i.created_at ASC
+         ) AS items
+         FROM pd_order_item i
+         LEFT JOIN pd_store s ON s.id = i.store_id
+         LEFT JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = o.id
+       ) items ON true
+       WHERE ${where}
+       ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+    const countParams = opts.status ? [storefrontCustomerId, storeId, opts.status] : [storefrontCustomerId, storeId];
+    const countWhere = opts.status
+      ? 'o.storefront_customer_id = $1 AND EXISTS (SELECT 1 FROM pd_order_item oi WHERE oi.order_id = o.id AND oi.store_id = $2) AND o.status = $3'
+      : 'o.storefront_customer_id = $1 AND EXISTS (SELECT 1 FROM pd_order_item oi WHERE oi.order_id = o.id AND oi.store_id = $2)';
+    const { rows: cnt } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_order o WHERE ${countWhere}`,
+      countParams,
+    );
+    const total = parseInt(cnt[0].count, 10);
+    return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+  }
+  /**
+   * List orders that contain at least one item from the given store.
+   */
+  async listByStore(
+    storeId: string,
+    opts: { page?: number; limit?: number; status?: OrderStatus; search?: string } = {},
+  ) {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, opts.limit ?? 20);
+    const offset = (page - 1) * limit;
+    const params: unknown[] = [storeId];
+    let where = 'i.store_id = $1';
+    const search = opts.search?.trim();
+    if (opts.status) {
+      params.push(opts.status);
+      where += ` AND o.status = $${params.length}`;
+    }
+    if (search) {
+      params.push(`%${search.toLowerCase()}%`);
+      where += ` AND (
+        LOWER(o.id) LIKE $${params.length}
+        OR LOWER(o.customer_id) LIKE $${params.length}
+        OR LOWER(o.payment_gateway::text) LIKE $${params.length}
+      )`;
+    }
+    params.push(limit, offset);
     const { rows } = await query<OrderRow>(
       `SELECT DISTINCT o.* FROM pd_order o
        JOIN pd_order_item i ON i.order_id = o.id
-       WHERE i.store_id = $1
+       WHERE ${where}
        ORDER BY o.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [storeId, limit, offset],
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
     );
+    const countParams = params.slice(0, -2);
     const { rows: cnt } = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT o.id)::text AS count FROM pd_order o
        JOIN pd_order_item i ON i.order_id = o.id
-       WHERE i.store_id = $1`,
-      [storeId],
+       WHERE ${where}`,
+      countParams,
     );
     const total = parseInt(cnt[0].count, 10);
     return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
@@ -347,18 +570,34 @@ export class OrderService {
         product_id: string;
         variant_id: string | null;
         quantity: number;
-      }>(`SELECT product_id, variant_id, quantity FROM pd_order_item WHERE order_id = $1`, [
+        product_type: ProductType;
+      }>(
+        `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+         FROM pd_order_item i
+         JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = $1`,
+        [
         orderId,
       ]);
       for (const it of items) {
-        await c.query(
-          `UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-          [it.product_id, it.quantity],
-        );
-        if (it.variant_id) {
+        if (usesInventory(it.product_type)) {
           await c.query(
-            `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-            [it.variant_id, it.quantity],
+            `UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
+            [it.product_id, it.quantity],
+          );
+          if (it.variant_id) {
+            await c.query(
+              `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
+              [it.variant_id, it.quantity],
+            );
+          }
+        } else if (it.product_type === ProductType.Serial && order.payment_status !== PaymentStatus.Captured) {
+          await c.query(
+            `UPDATE pd_license_key
+             SET order_id = NULL,
+                 assigned_at = NULL
+             WHERE product_id = $1 AND order_id = $2 AND is_used = false`,
+            [it.product_id, orderId],
           );
         }
       }
@@ -376,7 +615,15 @@ export class OrderService {
        SET payment_status = 'captured',
            payment_gateway = $2,
            payment_reference = $3,
-           status = CASE WHEN status = 'payment_required' THEN 'pending' ELSE status END
+           status = CASE
+             WHEN status IN ('cancelled', 'refunded') THEN status
+             WHEN NOT EXISTS (
+               SELECT 1 FROM pd_fulfillment
+               WHERE order_id = $1 AND status = 'pending'
+             ) THEN 'fulfilled'
+             WHEN status = 'payment_required' THEN 'pending'
+             ELSE status
+           END
        WHERE id = $1 AND payment_status != 'captured'
        RETURNING *`,
       [orderId, gateway, reference],

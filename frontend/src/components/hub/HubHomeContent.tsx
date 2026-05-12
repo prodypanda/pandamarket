@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Truck, Zap } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
+import { normalizePublicAssetUrl } from '../../lib/public-assets';
 
 interface Product {
   id: string;
@@ -47,7 +48,7 @@ function formatPrice(price: Product['price']) {
 }
 
 function getProductImage(product: Product) {
-  return product.images?.[0]?.url || product.thumbnail || '';
+  return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
 function ProductCard({ product, currency }: { product: Product; currency: string }) {
@@ -285,7 +286,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
               className="group relative min-h-[210px] overflow-hidden rounded-3xl bg-slate-950 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-900/15"
             >
               {cat.image_url ? (
-                <img src={cat.image_url} alt={cat.name} className="absolute inset-0 h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105" />
+                <img src={normalizePublicAssetUrl(cat.image_url)} alt={cat.name} className="absolute inset-0 h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105" />
               ) : (
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(22,199,132,0.45),transparent_40%),linear-gradient(135deg,#0f172a,#16C784)]" />
               )}
@@ -384,7 +385,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
               <Link key={category.slug} href={`/hub/search?category=${encodeURIComponent(category.slug)}`} className="group rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1A1A2E]">
                 <div className="mb-5 h-44 overflow-hidden rounded-3xl bg-gray-100 dark:bg-gray-800">
                   {category.image_url ? (
-                    <img src={category.image_url} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <img src={normalizePublicAssetUrl(category.image_url)} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-900 to-[#16C784] text-white">
                       <Grid3X3 className="h-10 w-10" />

@@ -24,14 +24,25 @@ const router = Router();
 // Schemas
 // =====================================================
 
-const addressSchema = z.object({
-  line1: z.string().min(1),
-  line2: z.string().optional(),
+const addressSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const input = value as Record<string, unknown>;
+  return {
+    address_line_1: input.address_line_1 ?? input.line1,
+    address_line_2: input.address_line_2 ?? input.line2,
+    city: input.city,
+    state: input.state,
+    postal_code: input.postal_code,
+    country: input.country ?? 'TN',
+  };
+}, z.object({
+  address_line_1: z.string().min(1),
+  address_line_2: z.string().optional(),
   city: z.string().min(1),
   state: z.string().optional(),
   postal_code: z.string().optional(),
   country: z.string().default('TN'),
-});
+}));
 
 const calculateRatesSchema = z.object({
   origin_city: z.string().min(1),

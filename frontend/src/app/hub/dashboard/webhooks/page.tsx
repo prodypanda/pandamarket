@@ -43,7 +43,8 @@ const AVAILABLE_EVENTS = [
   { value: 'pd.order.fulfilled', label: 'Order Fulfilled', desc: 'When an order is shipped' },
   { value: 'pd.order.cancelled', label: 'Order Cancelled', desc: 'When an order is cancelled' },
   { value: 'pd.payment.captured', label: 'Payment Captured', desc: 'When a payment is confirmed' },
-  { value: 'pd.payment.refunded', label: 'Payment Refunded', desc: 'When a refund is processed' },
+  { value: 'pd.product.created', label: 'Product Created', desc: 'When a product is created' },
+  { value: 'pd.product.published', label: 'Product Published', desc: 'When a product is published' },
   { value: 'pd.stock.low', label: 'Stock Low', desc: 'When product stock falls below threshold' },
 ];
 
@@ -61,6 +62,7 @@ export default function WebhooksPage() {
   const [newUrl, setNewUrl] = useState('');
   const [newEvents, setNewEvents] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [newSecret, setNewSecret] = useState<string | null>(null);
 
   const fetchWebhooks = useCallback(async () => {
     try {
@@ -114,6 +116,8 @@ export default function WebhooksPage() {
         body: JSON.stringify({ url: newUrl, events: newEvents }),
       });
       if (res.ok) {
+        const data = await res.json();
+        setNewSecret(data.secret ?? null);
         setShowCreate(false);
         setNewUrl('');
         setNewEvents([]);
@@ -198,6 +202,22 @@ export default function WebhooksPage() {
           <AlertTriangle className="w-5 h-5" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+
+      {newSecret && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-medium">Webhook signing secret</p>
+              <p className="text-sm mt-1">Copy this secret now. It is shown only once and is used to verify `X-PD-Signature`.</p>
+              <code className="block mt-2 break-all rounded bg-white/70 px-3 py-2 text-xs text-amber-900">
+                {newSecret}
+              </code>
+            </div>
+            <button onClick={() => setNewSecret(null)} className="ml-auto text-amber-700 hover:text-amber-900">×</button>
+          </div>
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, BadgePercent, Flame, Grid3X3, Headphones, Package, Search, ShieldCheck, ShoppingBag, Star, Store, Truck, Zap } from 'lucide-react';
 import { getHubProductHref } from '../../lib/product-links';
+import { normalizePublicAssetUrl } from '../../lib/public-assets';
 
 interface Product {
   id: string;
@@ -46,7 +47,7 @@ function formatPrice(price: Product['price']) {
 }
 
 function getProductImage(product: Product) {
-  return product.images?.[0]?.url || product.thumbnail || '';
+  return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
 function DealCard({ product, currency }: { product: Product; currency: string }) {
@@ -188,7 +189,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
             <Link key={category.slug} href={`/hub/search?category=${encodeURIComponent(category.slug)}`} className="group overflow-hidden rounded-2xl bg-white text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
               <div className="aspect-square bg-orange-50">
                 {category.image_url ? (
-                  <img src={category.image_url} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img src={normalizePublicAssetUrl(category.image_url)} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-orange-300">
                     <Package className="h-8 w-8" />

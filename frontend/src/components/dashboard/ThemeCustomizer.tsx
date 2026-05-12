@@ -25,16 +25,11 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Eye,
 } from 'lucide-react';
 import {
   themes,
   type ThemeId,
-  type ThemeConfig,
   type ThemeCustomization,
-  type LayoutVariation,
-  type GridDensity,
-  type HeroStyle,
   type ColorPreset,
   LAYOUT_VARIATION_LABELS,
   GRID_DENSITY_LABELS,

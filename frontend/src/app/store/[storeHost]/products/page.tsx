@@ -30,6 +30,7 @@ interface StoreData {
   name: string;
   theme_id: ThemeId;
   description?: string;
+  seller_type?: string | null;
   is_verified?: boolean | null;
   status?: string | null;
   created_at?: string | null;

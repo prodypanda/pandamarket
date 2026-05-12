@@ -7,6 +7,11 @@ import {
   PaymentGateway,
   PayoutMode,
   ProductType,
+  ReportMessageVisibility,
+  ReportPriority,
+  ReportStatus,
+  ReportTargetType,
+  SellerType,
   ShippingMode,
   SubscriptionPlan,
 } from './enums';
@@ -48,6 +53,7 @@ export interface AuthResponseDto {
 export interface CreateStoreDto {
   name: string;
   subdomain: string;
+  seller_type?: SellerType;
 }
 
 export interface UpdateStoreDto {
@@ -154,8 +160,43 @@ export interface ReviewMandatDto {
 export interface CreateReportDto {
   store_id: string;
   order_id?: string;
+  category?: string;
   reason: string;
   evidence_urls?: string[];
+}
+
+export interface CreateAdminReportDto {
+  target_type: ReportTargetType;
+  store_id?: string;
+  target_user_id?: string;
+  order_id?: string;
+  category?: string;
+  priority?: ReportPriority;
+  reason: string;
+  evidence_urls?: string[];
+  admin_notes?: string;
+}
+
+export interface UpdateReportStatusDto {
+  status: ReportStatus;
+  admin_notes?: string;
+}
+
+export interface ReportAttachmentInputDto {
+  file_url?: string;
+  file_key?: string;
+  file_name: string;
+  content_type: string;
+  file_size?: number;
+}
+
+export interface CreateReportMessageDto {
+  body: string;
+  attachments?: ReportAttachmentInputDto[];
+}
+
+export interface CreateAdminReportMessageDto extends CreateReportMessageDto {
+  visibility: ReportMessageVisibility;
 }
 
 // =====================================================

@@ -11,7 +11,8 @@ import { query } from '../db/pool';
 import { subscriptionService } from '../services/subscription.service';
 import { notificationService } from '../services/notification.service';
 import { SubscriptionJobData } from '../queues/subscription-queue';
-import { SubscriptionPlan } from '@pandamarket/types';
+
+const FREE_PLAN_ID = 'free';
 
 export function startSubscriptionWorker(): Worker<SubscriptionJobData> {
   const worker = new Worker<SubscriptionJobData>(
@@ -47,7 +48,7 @@ export function startSubscriptionWorker(): Worker<SubscriptionJobData> {
 async function handleCheckExpiry(): Promise<void> {
   const { rows } = await query<{
     id: string;
-    subscription_plan: SubscriptionPlan;
+    subscription_plan: string;
     owner_id: string;
     name: string;
   }>(
@@ -56,7 +57,7 @@ async function handleCheckExpiry(): Promise<void> {
      WHERE subscription_expires_at IS NOT NULL
        AND subscription_expires_at < NOW()
        AND subscription_plan != $1`,
-    [SubscriptionPlan.Free],
+    [FREE_PLAN_ID],
   );
 
   if (rows.length === 0) {
@@ -69,7 +70,7 @@ async function handleCheckExpiry(): Promise<void> {
       await subscriptionService.changePlan(
         store.id,
         store.subscription_plan,
-        SubscriptionPlan.Free,
+        FREE_PLAN_ID,
       );
 
       // Notify the vendor
@@ -81,12 +82,12 @@ async function handleCheckExpiry(): Promise<void> {
         data: {
           store_id: store.id,
           previous_plan: store.subscription_plan,
-          new_plan: SubscriptionPlan.Free,
+          new_plan: FREE_PLAN_ID,
         },
       });
 
       logger.info(
-        { store_id: store.id, from: store.subscription_plan, to: SubscriptionPlan.Free },
+        { store_id: store.id, from: store.subscription_plan, to: FREE_PLAN_ID },
         'Subscription expired — downgraded to Free',
       );
     } catch (err) {
@@ -109,7 +110,7 @@ async function handleSendWarnings(): Promise<void> {
 
   const { rows } = await query<{
     id: string;
-    subscription_plan: SubscriptionPlan;
+    subscription_plan: string;
     subscription_expires_at: Date;
     owner_id: string;
     name: string;
@@ -119,7 +120,7 @@ async function handleSendWarnings(): Promise<void> {
      WHERE subscription_expires_at IS NOT NULL
        AND subscription_expires_at BETWEEN $1 AND $2
        AND subscription_plan != $3`,
-    [sixDaysFromNow.toISOString(), sevenDaysFromNow.toISOString(), SubscriptionPlan.Free],
+    [sixDaysFromNow.toISOString(), sevenDaysFromNow.toISOString(), FREE_PLAN_ID],
   );
 
   for (const store of rows) {

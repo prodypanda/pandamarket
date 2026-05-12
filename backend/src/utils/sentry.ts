@@ -122,7 +122,7 @@ export function sentryRequestHandler() {
  */
 export function sentryErrorHandler() {
   if (!Sentry?.Handlers) {
-    return (_err: unknown, _req: unknown, _res: unknown, next: () => void) => next();
+    return (err: unknown, _req: unknown, _res: unknown, next: (err?: unknown) => void) => next(err);
   }
   return Sentry.Handlers.errorHandler({
     shouldHandleError(error: Error & { httpStatus?: number }) {

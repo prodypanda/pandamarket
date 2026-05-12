@@ -27,8 +27,6 @@ test.describe('Checkout Flow', () => {
 
     // Should show payment method options (at least some of them)
     const content = await page.textContent('main');
-    const hasPaymentOptions =
-      content?.match(/flouci|konnect|mandat|livraison|cod|paiement/i);
     // Checkout page should mention payment methods or show empty cart message
     expect(content).toBeTruthy();
   });

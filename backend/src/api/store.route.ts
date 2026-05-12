@@ -5,8 +5,10 @@ import { categoryService } from '../services/category.service';
 import { productService } from '../services/product.service';
 import { fileAssetService } from '../services/file-asset.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
-import { SubscriptionPlan, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType } from '@pandamarket/types';
+import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType } from '@pandamarket/types';
 import { config } from '../config';
+import { PdValidationError } from '../errors';
+import { normalizePlanId } from '../utils/plan-id';
 
 const router = Router();
 
@@ -17,11 +19,21 @@ const router = Router();
 const createStoreSchema = z.object({
   name: z.string().min(1).max(100),
   subdomain: z.string().min(3).max(63),
-  plan: z.nativeEnum(SubscriptionPlan).optional(),
+  seller_type: z.nativeEnum(SellerType).optional(),
+  plan: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
+});
+
+const selectStoreSchema = z.object({
+  store_id: z.string().min(1),
 });
 
 const updateSettingsSchema = z.object({
   settings: z.record(z.unknown()),
+  seller_type: z.nativeEnum(SellerType).optional(),
+});
+
+const updateSellerTypeSchema = z.object({
+  seller_type: z.nativeEnum(SellerType),
 });
 
 const updateThemeSchema = z.object({
@@ -73,21 +85,81 @@ const storeProductSchema = z.object({
   seo_title: z.string().max(200).nullable().optional(),
   seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
+  status: z.nativeEnum(ProductStatus).optional(),
   attributes: z.array(z.object({
     name: z.string().min(1).max(80),
     value: z.string().min(1).max(300),
   })).optional(),
+  max_downloads: z.number().int().min(1).max(100).nullable().optional(),
+  download_expires_hours: z.number().int().min(1).max(8760).nullable().optional(),
+  digital_file_key: z.string().max(1024).nullable().optional(),
+  digital_file_name: z.string().max(255).nullable().optional(),
+  digital_file_content_type: z.string().max(100).nullable().optional(),
+  digital_file_size: z.number().int().min(0).nullable().optional(),
+  license_keys: z.array(z.string().min(1).max(2000)).max(1000).optional(),
+  wholesale_min_quantity: z.number().int().min(2).nullable().optional(),
+  wholesale_price_tiers: z.array(z.object({
+    min_quantity: z.number().int().min(2),
+    unit_price: z.number().min(0),
+  })).max(20).optional(),
+  variants: z.array(z.object({
+    id: z.string().max(64).optional(),
+    sku: z.string().max(100).nullable().optional(),
+    title: z.string().min(1).max(200),
+    price: z.number().min(0),
+    inventory_quantity: z.number().int().min(0).optional(),
+    options: z.record(z.string()).optional(),
+  })).max(100).optional(),
 });
 
-const updateStoreProductSchema = storeProductSchema.partial().extend({
-  status: z.nativeEnum(ProductStatus).optional(),
-});
+const updateStoreProductSchema = storeProductSchema.partial();
 
 const storeProductImageSchema = z.object({
   url: z.string().url(),
   alt_text: z.string().max(200).optional(),
   is_thumbnail: z.boolean().optional(),
 });
+
+function assertDigitalFileOwnership(payload: { digital_file_key?: string | null }, storeId: string) {
+  if (payload.digital_file_key && !payload.digital_file_key.startsWith(`digital/${storeId}/`)) {
+    throw new PdValidationError('Digital file does not belong to this store');
+  }
+}
+
+const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
+
+function setSelectedStoreCookie(res: Response, storeId: string) {
+  res.cookie(SELECTED_STORE_COOKIE, storeId, {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function publicOwnedStore(store: Awaited<ReturnType<typeof storeService.listByOwner>>[number]) {
+  return {
+    id: store.id,
+    name: store.name,
+    status: store.status,
+    seller_type: store.seller_type,
+    is_verified: store.is_verified,
+    subscription_plan: store.subscription_plan,
+    subscription_type: store.subscription_type,
+    subscription_expires_at: store.subscription_expires_at,
+    subdomain: store.subdomain,
+    custom_domain: store.custom_domain,
+    theme_id: store.theme_id,
+    shipping_mode: store.shipping_mode,
+    created_at: store.created_at,
+    updated_at: store.updated_at,
+  };
+}
+
+function canCreateFreeStore(stores: Awaited<ReturnType<typeof storeService.listByOwner>>) {
+  return !stores.some((store) => store.subscription_plan === SubscriptionPlan.Free);
+}
 
 // ==========================================================
 // Routes
@@ -98,18 +170,57 @@ router.post(
   requireAuth,
   validate(createStoreSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    // Only users without a store can create one
-    if (req.user!.store_id) {
-      res.status(400).json({ error: { message: 'You already own a store' } });
-      return;
-    }
     const store = await storeService.createForUser({
       user_id: req.user!.id,
       name: req.body.name,
       subdomain: req.body.subdomain,
+      seller_type: req.body.seller_type,
       plan: req.body.plan,
     });
-    res.status(201).json({ store });
+    const publicStore = publicOwnedStore(store);
+    setSelectedStoreCookie(res, store.id);
+    res.status(201).json({ store: publicStore, selected_store: publicStore });
+  }),
+);
+
+router.get(
+  '/mine',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const stores = await storeService.listByOwner(req.user!.id);
+    const selectedStoreId = (req as Request & { cookies?: Record<string, string> }).cookies
+      ?.[SELECTED_STORE_COOKIE];
+    const selectedStore = selectedStoreId
+      ? stores.find((store) => store.id === selectedStoreId) ?? null
+      : stores.length === 1
+        ? stores[0]
+        : null;
+    const requiresSelection = stores.length > 1 && !selectedStore;
+    const canCreateFree = canCreateFreeStore(stores);
+    res.status(200).json({
+      stores: stores.map(publicOwnedStore),
+      selected_store: selectedStore ? publicOwnedStore(selectedStore) : null,
+      selected_store_id: selectedStore?.id ?? null,
+      can_create_free_store: canCreateFree,
+      free_store_limit_reached: !canCreateFree,
+      requires_selection: requiresSelection,
+    });
+  }),
+);
+
+router.post(
+  '/select',
+  requireAuth,
+  validate(selectStoreSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.getOwnedById(req.body.store_id, req.user!.id);
+    if (!store) {
+      res.status(404).json({ error: { message: 'Store not found for this account' } });
+      return;
+    }
+    const publicStore = publicOwnedStore(store);
+    setSelectedStoreCookie(res, store.id);
+    res.status(200).json({ store: publicStore, selected_store: publicStore });
   }),
 );
 
@@ -132,7 +243,14 @@ router.get(
       res.status(404).json({ error: { message: 'Store not found for host' } });
       return;
     }
-    res.status(200).json({ store });
+    const score = await storeService.getSellerScore(store.id);
+    res.status(200).json({
+      store: {
+        ...store,
+        seller_score: score.seller_score,
+        seller_review_count: score.review_count,
+      },
+    });
   }),
 );
 
@@ -142,6 +260,35 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.getById(req.user!.store_id!);
     res.status(200).json({ store });
+  }),
+);
+
+// Vendor settings update
+router.put(
+  '/me/settings',
+  requireStore,
+  validate(updateSettingsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const settingsStore = await storeService.updateSettings(req.user!.store_id!, req.body.settings);
+    if (!req.body.seller_type) {
+      res.status(200).json({ store: settingsStore });
+      return;
+    }
+    const result = await storeService.requestSellerTypeChange(req.user!.store_id!, req.body.seller_type);
+    res.status(200).json({
+      store: result.store,
+      auto_approved: result.autoApproved,
+      pending_approval: !result.autoApproved,
+    });
+  }),
+);
+
+router.post(
+  '/me/seller-type-request/cancel',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.cancelSellerTypeChange(req.user!.store_id!);
+    res.status(200).json({ store, cancelled: true });
   }),
 );
 
@@ -163,6 +310,7 @@ router.post(
   validate(storeProductSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.getById(req.user!.store_id!);
+    assertDigitalFileOwnership(req.body, req.user!.store_id!);
     const categories = await categoryService.resolveProductCategories(
       req.user!.store_id!,
       req.body.marketplace_category_id,
@@ -172,6 +320,7 @@ router.post(
       store_id: req.user!.store_id!,
       store_plan: store.subscription_plan,
       store_is_verified: store.is_verified,
+      store_seller_type: store.seller_type,
       ...req.body,
       marketplace_category_id: categories.marketplace.id,
       storefront_category_id: categories.storefront.id,
@@ -189,6 +338,8 @@ router.put(
     await productService.assertOwnership(req.params.id, req.user!.store_id!);
     const store = await storeService.getById(req.user!.store_id!);
     const patch = { ...req.body };
+    patch.store_seller_type = store.seller_type;
+    assertDigitalFileOwnership(patch, req.user!.store_id!);
     if ('marketplace_category_id' in patch || 'storefront_category_id' in patch) {
       const categories = await categoryService.resolveProductCategories(
         req.user!.store_id!,
@@ -308,21 +459,24 @@ router.delete(
   }),
 );
 
+router.put(
+  '/me/seller-type',
+  requireStore,
+  validate(updateSellerTypeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeService.requestSellerTypeChange(req.user!.store_id!, req.body.seller_type);
+    res.status(200).json({
+      store: result.store,
+      auto_approved: result.autoApproved,
+      pending_approval: !result.autoApproved,
+    });
+  }),
+);
+
 router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.getById(req.params.id);
-    res.status(200).json({ store });
-  }),
-);
-
-// Vendor settings update
-router.put(
-  '/me/settings',
-  requireStore,
-  validate(updateSettingsSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const store = await storeService.updateSettings(req.user!.store_id!, req.body.settings);
     res.status(200).json({ store });
   }),
 );

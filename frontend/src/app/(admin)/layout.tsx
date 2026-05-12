@@ -3,7 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -16,11 +16,32 @@ import {
   Crown,
   Sparkles,
   Mail,
+  MessageSquare,
   LogOut,
   Tags,
   Store,
+  Activity,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
+import { LocaleSwitcher } from '../../components/LocaleSwitcher';
+import { MarketplaceBrand } from '../../components/MarketplaceBrand';
+
+interface CurrentUser {
+  role?: string;
+}
+
+interface MarketplaceSettings {
+  marketplace_name?: string;
+  marketplace_logo_url?: string;
+}
+
+function isAdminRole(role?: string) {
+  return role === 'admin' || role === 'super_admin' || role === 'Admin' || role === 'SuperAdmin';
+}
+
+function isVendorRole(role?: string) {
+  return role === 'vendor' || role === 'Vendor';
+}
 
 export default function AdminLayout({
   children,
@@ -30,18 +51,75 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { t } = useLocale();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
+  const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verifyAdminAccess() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/auth/me', { credentials: 'include' });
+        if (!res.ok) {
+          window.location.href = `/login/admin?next=${encodeURIComponent(pathname || '/dashboard')}`;
+          return;
+        }
+
+        const data = await res.json();
+        const user = (data.user || data.data) as CurrentUser | null;
+        if (!isAdminRole(user?.role)) {
+          window.location.href = isVendorRole(user?.role) ? '/hub/dashboard' : '/hub';
+          return;
+        }
+
+        if (!cancelled) {
+          setAuthorized(true);
+        }
+      } catch {
+        window.location.href = `/login/admin?next=${encodeURIComponent(pathname || '/dashboard')}`;
+      }
+    }
+
+    verifyAdminAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchMarketplaceSettings() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/marketplace/settings', { credentials: 'include' });
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setMarketplaceSettings(data.data || {});
+        }
+      } catch {
+        if (!cancelled) setMarketplaceSettings({});
+      }
+    }
+    fetchMarketplaceSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const navItems = [
     { href: '/dashboard', label: t('admin.sidebar.dashboard'), icon: LayoutDashboard },
     { href: '/kyc', label: t('admin.sidebar.kyc'), icon: ShieldCheck },
     { href: '/mandats', label: t('admin.sidebar.mandats'), icon: Receipt },
+    { href: '/messages', label: 'Messages', icon: MessageSquare },
     { href: '/reports', label: t('admin.sidebar.reports'), icon: Flag },
     { href: '/users', label: t('admin.sidebar.vendors'), icon: Users },
+    { href: '/stores', label: 'Stores', icon: Store },
     { href: '/withdrawals', label: t('admin.sidebar.withdrawals'), icon: Wallet },
     { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },
-    { href: '/marketplace-categories', label: 'Marketplace Categories', icon: Tags },
+    { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories'), icon: Tags },
     { href: '/ai-costs', label: t('admin.sidebar.aiCosts'), icon: Sparkles },
     { href: '/audit-log', label: t('admin.sidebar.auditLog'), icon: ScrollText },
+    { href: '/system-logs', label: 'Server Logs', icon: Activity },
     { href: '/smtp-config', label: t('admin.sidebar.smtpConfig'), icon: Mail },
   ];
 
@@ -54,19 +132,32 @@ export default function AdminLayout({
       });
     } finally {
       localStorage.removeItem('pd_access_token');
-      window.location.href = '/login';
+      window.location.href = '/login/admin';
     }
   };
+
+  if (!authorized) {
+    return (
+      <div className="admin-shell min-h-screen flex items-center justify-center bg-slate-100 text-gray-900">
+        <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold shadow-xl">
+          {t('admin.checkingAccess')}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-shell min-h-screen flex bg-[radial-gradient(circle_at_top_left,rgba(22,199,132,0.10),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] text-gray-900">
       {/* Sidebar */}
       <aside className="w-64 bg-[#0F0F23] text-white flex flex-col shadow-2xl shadow-slate-950/20">
         <div className="p-6 border-b border-white/10">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-xl font-black text-[#16C784]">🐼</span>
-            <span className="text-lg font-bold">PandaMarket</span>
-          </Link>
+          <MarketplaceBrand
+            href="/dashboard"
+            marketplaceName={marketplaceSettings.marketplace_name}
+            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+            imageClassName="h-9 max-w-[160px] object-contain"
+            textClassName="text-lg font-bold text-white"
+          />
           <p className="text-xs text-gray-400 mt-1">{t('admin.title')}</p>
         </div>
 
@@ -105,7 +196,7 @@ export default function AdminLayout({
             className="flex items-center gap-3 w-full px-2 py-2 text-sm text-red-300 hover:text-red-200 transition-colors disabled:opacity-60"
           >
             <LogOut className="w-5 h-5" />
-            {loggingOut ? 'Logging out...' : t('nav.logout')}
+            {loggingOut ? t('admin.loggingOut') : t('nav.logout')}
           </button>
         </div>
       </aside>
@@ -115,15 +206,16 @@ export default function AdminLayout({
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-8 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl flex items-center justify-between">
           <div>
             <h2 className="text-lg font-black text-gray-900">{t('admin.title')}</h2>
-            <p className="text-xs font-medium text-gray-500">Control center · marketplace operations</p>
+            <p className="text-xs font-medium text-gray-500">{t('admin.top.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
+            <LocaleSwitcher />
             <Link
               href="/hub"
               className="inline-flex items-center gap-2 rounded-full bg-[#16C784] px-4 py-2 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#14b876]"
             >
               <Store className="h-4 w-4" />
-              Go to Hub
+              {t('admin.top.goToHub')}
             </Link>
             <span className="hidden text-sm font-semibold text-gray-500 lg:inline">admin@pandamarket.tn</span>
             <button
@@ -132,7 +224,7 @@ export default function AdminLayout({
               disabled={loggingOut}
               className="rounded-full px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
             >
-              {loggingOut ? 'Logging out...' : t('nav.logout')}
+              {loggingOut ? t('admin.loggingOut') : t('nav.logout')}
             </button>
             <div className="w-8 h-8 rounded-full bg-[#16C784] flex items-center justify-center text-white text-sm font-bold">
               A

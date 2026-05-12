@@ -2,12 +2,17 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { UserPlus, Store, Eye, EyeOff } from 'lucide-react';
+import { BadgeCheck, BarChart3, Eye, EyeOff, Rocket, ShieldCheck, Store, UserPlus } from 'lucide-react';
+import { useLocale } from '../../../contexts/LocaleContext';
+import { getSellerTypeOptions, type SellerTypeValue } from '../../../lib/seller-type';
 
 export default function RegisterPage() {
+  const { t } = useLocale();
+  const sellerTypes = getSellerTypeOptions(t);
   const [step, setStep] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState('free');
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -16,10 +21,21 @@ export default function RegisterPage() {
     phone: '',
     store_name: '',
     subdomain: '',
+    seller_type: 'retailer' as SellerTypeValue,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const sellerBenefits = [
+    { label: 'Boutique prête', icon: Store },
+    { label: 'Wallet vendeur', icon: BarChart3 },
+    { label: 'Accès sécurisé', icon: ShieldCheck },
+  ];
+
+  useEffect(() => {
+    const plan = new URLSearchParams(window.location.search).get('plan')?.trim().toLowerCase();
+    setSelectedPlan(plan || 'free');
+  }, []);
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -45,7 +61,7 @@ export default function RegisterPage() {
 
     try {
       // Register user
-      const res = await fetchWithCsrf('/api/pd/auth/register', {
+      const res = await fetchWithCsrf('/api/pd/auth/register/vendor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,31 +70,35 @@ export default function RegisterPage() {
           first_name: form.first_name,
           last_name: form.last_name,
           phone: form.phone,
-          role: 'Vendor',
         }),
         credentials: 'include',
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data.error?.message || 'Registration failed');
+        setError(data?.error?.message || 'Registration failed');
         return;
       }
 
-      // Create store
+      const accessToken = data?.tokens?.access_token;
+      const storeHeaders: HeadersInit = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        storeHeaders.Authorization = `Bearer ${accessToken}`;
+      }
+
       const storeRes = await fetchWithCsrf('/api/pd/stores', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${data.tokens.access_token}`,
-        },
+        headers: storeHeaders,
+        credentials: 'include',
         body: JSON.stringify({
           name: form.store_name,
           subdomain: form.subdomain,
+          seller_type: form.seller_type,
+          plan: selectedPlan,
         }),
       });
       if (!storeRes.ok) {
-        const storeData = await storeRes.json();
-        setError(storeData.error?.message || 'Store creation failed');
+        const storeData = await storeRes.json().catch(() => null);
+        setError(storeData?.error?.message || 'Store creation failed');
         return;
       }
 
@@ -91,36 +111,70 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0F0F23] to-[#1A1A2E] px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/hub" className="inline-block">
-            <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#16C784] to-[#1EE69A]">
-              🐼 PandaMarket
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.26),transparent_34%),linear-gradient(135deg,#111827,#431407_54%,#7c2d12)] px-4 py-10 text-white">
+      <div className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="hidden lg:block">
+          <Link href="/hub" className="inline-flex items-center gap-3 rounded-full bg-white/10 px-5 py-3 text-sm font-black backdrop-blur transition hover:bg-white/15">
+            <span className="text-xl">🐼</span>
+            PandaMarket
+          </Link>
+          <div className="mt-10 max-w-xl">
+            <span className="inline-flex rounded-full bg-orange-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-orange-700 ring-1 ring-orange-100">
+              Inscription vendeur
             </span>
+            <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight">
+              Lancez votre boutique marketplace en deux étapes.
+            </h1>
+            <p className="mt-5 text-lg leading-8 text-white/72">
+              Créez votre compte vendeur, réservez votre sous-domaine et commencez à piloter vos produits, commandes et revenus.
+            </p>
+          </div>
+          <div className="mt-10 grid max-w-2xl grid-cols-3 gap-4">
+            {sellerBenefits.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                  <Icon className="h-6 w-6 text-orange-400" />
+                  <p className="mt-4 text-sm font-bold text-white/86">{item.label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="mx-auto w-full max-w-md">
+        {/* Logo */}
+        <div className="mb-7 text-center lg:hidden">
+          <Link href="/hub" className="inline-flex items-center gap-2 text-2xl font-black">
+            <span>🐼</span>
+            PandaMarket
           </Link>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="rounded-[2rem] border border-white/70 bg-white p-7 text-gray-950 shadow-2xl shadow-black/25 sm:p-8">
           {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-6">
-            <div className={`flex-1 h-1 rounded-full ${step >= 1 ? 'bg-[#16C784]' : 'bg-gray-200'}`} />
-            <div className={`flex-1 h-1 rounded-full ${step >= 2 ? 'bg-[#16C784]' : 'bg-gray-200'}`} />
+          <div className="mb-6 flex items-center gap-2">
+            <div className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-orange-500' : 'bg-gray-200'}`} />
+            <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-orange-500' : 'bg-gray-200'}`} />
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">
+            <Rocket className="h-3.5 w-3.5" />
+            {step === 1 ? 'Compte vendeur' : 'Boutique'}
+          </div>
+
+          <h1 className="mb-2 text-3xl font-black text-gray-950">
             {step === 1 ? 'Créer votre compte' : 'Créer votre boutique'}
           </h1>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="mb-6 text-sm text-gray-500">
             {step === 1
               ? 'Étape 1/2 — Informations personnelles'
               : 'Étape 2/2 — Informations de la boutique'}
           </p>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -128,25 +182,25 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {step === 1 ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                    <label className="mb-2 block text-sm font-bold text-gray-700">Prénom</label>
                     <input
                       type="text"
                       value={form.first_name}
                       onChange={(e) => updateField('first_name', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                       placeholder="Mohamed"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <label className="mb-2 block text-sm font-bold text-gray-700">Nom</label>
                     <input
                       type="text"
                       value={form.last_name}
                       onChange={(e) => updateField('last_name', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                       placeholder="Ben Salah"
                       required
                     />
@@ -154,36 +208,36 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="mb-2 block text-sm font-bold text-gray-700">Email</label>
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => updateField('email', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                     placeholder="votre@email.tn"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                  <label className="mb-2 block text-sm font-bold text-gray-700">Téléphone</label>
                   <input
                     type="tel"
                     value={form.phone}
                     onChange={(e) => updateField('phone', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                     placeholder="+216 XX XXX XXX"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                  <label className="mb-2 block text-sm font-bold text-gray-700">Mot de passe</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={form.password}
                       onChange={(e) => updateField('password', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784] pr-10"
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                       placeholder="Min. 8 caractères"
                       required
                       minLength={8}
@@ -191,9 +245,9 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
@@ -201,14 +255,14 @@ export default function RegisterPage() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-2 block text-sm font-bold text-gray-700">
                     Nom de la boutique
                   </label>
                   <input
                     type="text"
                     value={form.store_name}
                     onChange={(e) => updateField('store_name', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                     placeholder="Ma Super Boutique"
                     required
                     minLength={2}
@@ -216,7 +270,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-2 block text-sm font-bold text-gray-700">
                     Sous-domaine
                   </label>
                   <div className="flex items-center">
@@ -229,26 +283,69 @@ export default function RegisterPage() {
                           e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
                         )
                       }
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/30 focus:border-[#16C784]"
+                      className="min-w-0 flex-1 rounded-l-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                       placeholder="ma-boutique"
                       required
                       minLength={3}
                       pattern="^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])?$"
                     />
-                    <span className="px-4 py-3 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg text-sm text-gray-500">
+                    <span className="rounded-r-2xl border border-l-0 border-gray-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700">
                       .pandamarket.tn
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-[#16C784]/5 rounded-lg p-4 border border-[#16C784]/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Store className="w-5 h-5 text-[#16C784]" />
-                    <span className="font-semibold text-gray-900">Plan Gratuit</span>
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                  <label className="mb-3 block text-sm font-bold text-gray-700">
+                    {t('sellerTypes.title')}
+                  </label>
+                  <div className="grid gap-2">
+                    {sellerTypes.map((sellerType) => {
+                      const selected = form.seller_type === sellerType.value;
+                      return (
+                        <label
+                          key={sellerType.value}
+                          className={`cursor-pointer rounded-2xl border p-3 transition-all ${
+                            selected
+                              ? 'border-orange-400 bg-white shadow-lg shadow-orange-500/10 ring-4 ring-orange-100'
+                              : 'border-orange-100 bg-orange-50/50 hover:border-orange-200 hover:bg-white'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="seller_type"
+                            value={sellerType.value}
+                            checked={selected}
+                            onChange={(e) => updateField('seller_type', e.target.value)}
+                            className="sr-only"
+                            required
+                          />
+                          <span className="flex items-start gap-3">
+                            <span
+                              className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                selected ? 'border-orange-500 bg-orange-500' : 'border-orange-200 bg-white'
+                              }`}
+                            >
+                              {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                            </span>
+                            <span>
+                              <span className="block text-sm font-black text-gray-950">{sellerType.label}</span>
+                              <span className="mt-0.5 block text-xs leading-5 text-gray-500">{sellerType.description}</span>
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Store className="h-5 w-5 text-orange-500" />
+                    <span className="font-semibold text-gray-900">Plan sélectionné</span>
                   </div>
                   <p className="text-sm text-gray-600">
-                    Commencez gratuitement avec 10 produits et 15% de commission.
-                    Upgradez à tout moment pour 0% de commission.
+                    Votre boutique sera créée avec le plan {selectedPlan}. Seuls les plans actuellement activés peuvent être choisis.
                   </p>
                 </div>
               </>
@@ -259,7 +356,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  className="rounded-2xl bg-gray-100 px-6 py-3 font-bold text-gray-700 transition-colors hover:bg-gray-200"
                 >
                   Retour
                 </button>
@@ -267,15 +364,15 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-3 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b576] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3 font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:-translate-y-0.5 hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : step === 1 ? (
                   'Continuer →'
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4" />
+                    <UserPlus className="h-4 w-4" />
                     Créer ma boutique
                   </>
                 )}
@@ -286,12 +383,24 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Déjà un compte ?{' '}
-              <Link href="/login" className="text-[#16C784] font-semibold hover:underline">
+              <Link href="/login/seller" className="font-bold text-orange-600 hover:underline">
                 Se connecter
               </Link>
             </p>
+            <p className="mt-2 text-xs text-gray-500">
+              Acheteur ?{' '}
+              <Link href="/register/buyer" className="font-bold text-[#16C784] hover:underline">
+                Créer un compte acheteur
+              </Link>
+              .
+            </p>
           </div>
         </div>
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold text-white/70">
+          <BadgeCheck className="h-4 w-4 text-orange-300" />
+          Compte vendeur sécurisé et isolé
+        </div>
+      </div>
       </div>
     </div>
   );

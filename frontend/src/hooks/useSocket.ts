@@ -60,6 +60,7 @@ const RECONNECT_MAX_DELAY_MS = 30_000;
 
 export function useSocket({ token, enabled = true }: UseSocketOptions): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function useSocket({ token, enabled = true }: UseSocketOptions): UseSocke
         socketRef.current = null;
         setIsConnected(false);
       }
+      setSocket(null);
       return;
     }
 
@@ -107,10 +109,12 @@ export function useSocket({ token, enabled = true }: UseSocketOptions): UseSocke
     });
 
     socketRef.current = socket;
+    setSocket(socket);
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      setSocket(null);
       setIsConnected(false);
     };
   }, [token, enabled]);
@@ -133,6 +137,6 @@ export function useSocket({ token, enabled = true }: UseSocketOptions): UseSocke
   return {
     isConnected,
     on,
-    socket: socketRef.current,
+    socket,
   };
 }

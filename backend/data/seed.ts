@@ -36,6 +36,7 @@ import {
   PayoutMode,
   ProductStatus,
   ProductType,
+  SellerType,
   ShippingMode,
   StoreStatus,
   SubscriptionPlan,
@@ -82,6 +83,7 @@ interface SeedStore {
   owner_id: string;
   name: string;
   subdomain: string;
+  seller_type?: SellerType;
   plan: SubscriptionPlan;
   is_verified: boolean;
 }
@@ -103,13 +105,14 @@ async function upsertStore(c: PoolClient, s: SeedStore): Promise<string> {
 
   await c.query(
     `INSERT INTO pd_store
-       (id, name, status, is_verified, subscription_plan, subscription_type,
+       (id, name, status, seller_type, is_verified, subscription_plan, subscription_type,
         subscription_expires_at, subdomain, theme_id, settings, shipping_mode, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
     [
       id,
       s.name,
       s.is_verified ? StoreStatus.Verified : StoreStatus.Unverified,
+      s.seller_type ?? SellerType.Retailer,
       s.is_verified,
       s.plan,
       subscriptionType,
@@ -163,8 +166,8 @@ async function seedPlans(c: PoolClient): Promise<void> {
       `INSERT INTO pd_subscription_limits
          (plan_id, max_products, max_images_per_product, has_ai_seo, has_image_compression,
           has_custom_domain, has_page_builder, has_direct_payment, has_white_label,
-          commission_rate, ai_tokens_included, yearly_price)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          commission_rate, ai_tokens_included, yearly_price, is_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
        ON CONFLICT (plan_id) DO UPDATE SET
          max_products            = EXCLUDED.max_products,
          max_images_per_product  = EXCLUDED.max_images_per_product,

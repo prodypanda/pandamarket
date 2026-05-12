@@ -54,7 +54,15 @@ export default function KycPage() {
     setUploading: (v: boolean) => void,
   ) => {
     setUploading(true);
+    setError('');
     try {
+      if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+        throw new Error('Format de fichier invalide. Utilisez JPG, PNG ou PDF.');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Le fichier doit être inférieur à 10 MB.');
+      }
+
       // Get presigned URL
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
         method: 'POST',
@@ -63,24 +71,32 @@ export default function KycPage() {
         body: JSON.stringify({
           filename: file.name,
           content_type: file.type,
-          purpose: 'kyc',
+          file_size: file.size,
+          purpose: 'kyc_document',
         }),
       });
       if (!presignRes.ok) {
         throw new Error('Failed to get upload URL');
       }
-      const { url, key, public_url } = await presignRes.json();
+      const { upload_url, file_key } = await presignRes.json();
+
+      if (!upload_url || !file_key) {
+        throw new Error('Upload URL was not returned by the server.');
+      }
 
       // Upload to presigned URL
-      await fetch(url, {
+      const uploadRes = await fetch(upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
       });
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file');
+      }
 
-      setUrl(public_url || key);
-    } catch {
-      setError('Erreur lors de l\'upload du fichier');
+      setUrl(file_key);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'upload du fichier');
     } finally {
       setUploading(false);
     }

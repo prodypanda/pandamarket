@@ -9,12 +9,13 @@ import { useLocale } from '../../../contexts/LocaleContext';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
+import { getCartLineTotal, getShippableStoreCount, getShippingTotalForItems } from '../../../lib/cart-utils';
 
 const SHIPPING_PER_VENDOR = 7;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getCartTotal, getItemsByStore, clearCart } = useCart();
+  const { items, getCartTotal, clearCart } = useCart();
   const { t } = useLocale();
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
   const [selectedGateway, setSelectedGateway] = useState('flouci');
@@ -34,10 +35,10 @@ export default function CheckoutPage() {
     phone: '',
   });
 
-  const storeGroups = getItemsByStore();
-  const storeIds = Object.keys(storeGroups);
   const subtotal = getCartTotal();
-  const shippingTotal = storeIds.length * SHIPPING_PER_VENDOR;
+  const shippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
+  const shippableStoreCount = getShippableStoreCount(items);
+  const hasShippableItems = shippableStoreCount > 0;
   const total = subtotal + shippingTotal;
   const inputClass = `w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-4 outline-none transition ${classes.focus}`;
 
@@ -47,11 +48,12 @@ export default function CheckoutPage() {
     { id: 'manual_mandat', name: t('checkout.payment.mandat'), icon: Banknote, desc: t('checkout.payment.mandatInstructions') },
     { id: 'cod', name: t('checkout.payment.cod'), icon: Truck, desc: t('checkout.payment.codInstructions') },
   ];
+  const availableGateways = gateways.filter((gateway) => hasShippableItems || gateway.id !== 'cod');
 
   const handleCheckout = async () => {
     setError('');
 
-    if (!address.full_name || !address.address_line || !address.city || !address.phone) {
+    if (hasShippableItems && (!address.full_name || !address.address_line || !address.city || !address.phone)) {
       setError(t('errors.forbidden'));
       return;
     }
@@ -61,7 +63,26 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!hasShippableItems && selectedGateway === 'cod') {
+      setError('Cash on delivery is only available for physical products.');
+      return;
+    }
+
     setIsProcessing(true);
+    const normalizedAddress = hasShippableItems
+      ? (() => {
+        const [firstName = '', ...lastNameParts] = address.full_name.trim().split(/\s+/).filter(Boolean);
+        return {
+          first_name: firstName,
+          last_name: lastNameParts.join(' ') || firstName,
+          phone: address.phone.trim(),
+          address_line_1: address.address_line.trim(),
+          city: address.city.trim(),
+          postal_code: address.postal_code.trim(),
+          country: 'TN',
+        };
+      })()
+      : null;
 
     try {
       // Step 1: Create order
@@ -72,10 +93,10 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items: items.map((item) => ({
             product_id: item.product_id,
+            variant_id: item.variant_id,
             quantity: item.quantity,
-            variant: item.variant,
           })),
-          shipping_address: address,
+          shipping_address: normalizedAddress,
           payment_gateway: selectedGateway,
         }),
       });
@@ -202,11 +223,11 @@ export default function CheckoutPage() {
               <span className="text-gray-600">
                 {item.title} x{item.quantity}
               </span>
-              <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+              <span className="font-medium">{formatPrice(getCartLineTotal(item))}</span>
             </div>
           ))}
           <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-600">{t('cart.shipping')} ({storeIds.length})</span>
+            <span className="text-gray-600">{t('cart.shipping')} ({shippableStoreCount})</span>
             <span className="font-medium">{formatPrice(shippingTotal)}</span>
           </div>
           <div className="flex justify-between items-center pt-4 border-t border-gray-100">
@@ -215,65 +236,71 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Shipping Address */}
-        <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
-              <input
-                type="text"
-                value={address.full_name}
-                onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
-              <input
-                type="text"
-                value={address.address_line}
-                onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
-              <input
-                type="text"
-                value={address.city}
-                onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
-              <input
-                type="text"
-                value={address.postal_code}
-                onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
-              <input
-                type="tel"
-                value={address.phone}
-                onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                className={inputClass}
-              />
+        {hasShippableItems ? (
+          <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
+            <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
+                <input
+                  type="text"
+                  value={address.full_name}
+                  onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
+                <input
+                  type="text"
+                  value={address.address_line}
+                  onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
+                <input
+                  type="text"
+                  value={address.city}
+                  onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
+                <input
+                  type="text"
+                  value={address.postal_code}
+                  onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
+                <input
+                  type="tel"
+                  value={address.phone}
+                  onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Digital delivery</h2>
+            <p className="text-sm text-gray-500">No shipping address is required for this cart.</p>
+          </div>
+        )}
 
         {/* Payment Method */}
         <div className={`${classes.panel} p-6 sm:p-8`}>
           <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</h2>
-          
+
           <div className="space-y-4">
-            {gateways.map((g) => (
-              <div 
+            {availableGateways.map((g) => (
+              <div
                 key={g.id}
                 onClick={() => setSelectedGateway(g.id)}
                 className={`relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${

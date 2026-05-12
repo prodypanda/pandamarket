@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Scissors } from 'lucide-react';
+import { Scissors } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Craft Theme — DIY/handmade, rustic textures, warm palette. */
 export function CraftTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -60,7 +59,7 @@ export function CraftTheme({ theme, storeName, products = [], branding }: ThemeP
         </div>
       </main>
       <footer className="border-t-2 border-dashed py-10 text-center" style={{ borderColor: `${rust}20` }}>
-        <p className="text-xs" style={{ color: `${rust}60` }}>© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs" style={{ color: `${rust}60` }}>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../../components/hub/HubFooter';
-import { AddToCartButton } from '../../../../components/hub/AddToCartButton';
 import { ReviewSection } from '../../../../components/hub/ReviewSection';
 import { WishlistButton } from '../../../../components/hub/WishlistButton';
 import { BadgeCheck, ChevronRight, PackageCheck, RotateCcw, ShieldCheck, Star, Truck, Zap } from 'lucide-react';
@@ -10,11 +9,26 @@ import Link from 'next/link';
 import { getHubProductHref } from '../../../../lib/product-links';
 import { ProductDescriptionRenderer } from '../../../../components/product/ProductDescription';
 import { ProductGallery } from '../../../../components/product/ProductGallery';
+import { ProductVariantPurchasePanel } from '../../../../components/product/ProductVariantPurchasePanel';
 import { SellerHoverCard } from '../../../../components/product/SellerHoverCard';
+import { ContactSellerButton } from '../../../../components/chat/ContactSellerButton';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
+import { getWholesalePricingFromMetadata } from '../../../../lib/cart-utils';
+import { t as translate } from '../../../../i18n/utils';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../i18n/config';
+import { cookies } from 'next/headers';
 
 type ProductImage = string | { id?: string; url: string; position?: number };
+
+interface ProductVariant {
+  id: string;
+  sku?: string | null;
+  title: string;
+  price: number | string;
+  inventory_quantity?: number | null;
+  options?: Record<string, string> | null;
+}
 
 interface Product {
   id: string;
@@ -30,16 +44,18 @@ interface Product {
   thumbnail?: string;
   tags?: string[];
   attributes?: { name: string; value: string }[];
+  metadata?: Record<string, unknown> | null;
   inventory_quantity?: number;
   store_id: string;
   store_name?: string;
   store_subdomain?: string | null;
   store_is_verified?: boolean | null;
+  store_seller_type?: string | null;
   store_status?: string | null;
   store_settings?: Record<string, unknown> | null;
   store_created_at?: string | null;
   store_product_count?: string | number | null;
-  variants?: { name: string; values: string[] }[];
+  variants?: ProductVariant[];
   status: string;
 }
 
@@ -151,6 +167,10 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const requestedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale = isValidLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
+  const tx = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
   const product = await getProduct(id);
 
   if (!product) {
@@ -180,7 +200,11 @@ export default async function ProductDetailPage({
 
   const mainImage = product.thumbnail || getImageUrl(product.images?.[0]);
   const numericPrice = toNumber(product.price);
+  const isPhysicalProduct = product.type === 'physical' || !product.type;
   const storeHref = product.store_subdomain ? `/store/${encodeURIComponent(product.store_subdomain)}` : null;
+  const wholesalePricing = product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
+    ? getWholesalePricingFromMetadata(product.metadata)
+    : null;
 
   return (
     <div className={`min-h-screen ${classes.pageSoft}`}>
@@ -277,19 +301,49 @@ export default async function ProductDetailPage({
                 )}
               </div>
             </div>
+            {wholesalePricing && (
+              <div className={`mb-6 rounded-[1.75rem] p-5 ${isAliExpress ? 'border border-orange-100 bg-orange-50/70' : 'border border-emerald-100 bg-emerald-50/70'}`}>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">{tx('productWholesale.publicTitle')}</p>
+                <p className="mt-1 text-sm font-semibold text-gray-700">
+                  {tx('productWholesale.publicSubtitle')}
+                </p>
+                <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700">
+                  {tx('productWholesale.minimumQuantity')}: {wholesalePricing.min_quantity}
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {wholesalePricing.price_tiers?.map((tier) => (
+                    <div key={tier.min_quantity} className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm">
+                      <span className="block text-xs font-black uppercase text-gray-400">
+                        {tx('productWholesale.tierLine', { quantity: tier.min_quantity })}
+                      </span>
+                      <span className={accentText}>
+                        {tx('productWholesale.unitPriceLine', { price: Number(tier.unit_price).toFixed(3) })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Vendor */}
             {product.store_name && (
-              <div className="mb-6">
+              <div className="mb-6 space-y-3">
                 <SellerHoverCard
                   name={product.store_name}
                   href={storeHref}
                   isVerified={product.store_is_verified}
+                  sellerType={product.store_seller_type}
                   status={product.store_status}
                   createdAt={product.store_created_at}
                   productCount={product.store_product_count}
                   settings={product.store_settings}
                   accentColor={accentHex}
+                />
+                <ContactSellerButton
+                  storeId={product.store_id}
+                  productId={product.id}
+                  subject={product.title}
+                  isAliExpress={isAliExpress}
                 />
               </div>
             )}
@@ -322,7 +376,7 @@ export default async function ProductDetailPage({
             </div>
 
             {/* Stock */}
-            {product.inventory_quantity !== undefined && (
+            {isPhysicalProduct && product.inventory_quantity !== undefined && (
               <p className={`mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${product.inventory_quantity > 0 ? accentBgSoft : 'bg-red-50 text-red-600'}`}>
                 <PackageCheck className="h-4 w-4" />
                 {product.inventory_quantity > 0
@@ -345,20 +399,24 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Add to Cart */}
-            <div className={`flex items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
-              <AddToCartButton
-                product_id={product.id}
+            <div className="space-y-3">
+              <ProductVariantPurchasePanel
+                productId={product.id}
                 title={product.title}
                 slug={product.slug}
                 category={product.category}
-                marketplace_category_slug={product.marketplace_category_slug}
-                price={numericPrice}
-                store_id={product.store_id}
-                store_name={product.store_name || 'Store'}
-                store_subdomain={product.store_subdomain}
-                image_url={mainImage || null}
-                maxQuantity={product.inventory_quantity}
+                marketplaceCategorySlug={product.marketplace_category_slug}
+                basePrice={numericPrice}
+                sellerType={product.store_seller_type}
+                wholesalePricing={wholesalePricing}
+                storeId={product.store_id}
+                storeName={product.store_name || 'Store'}
+                storeSubdomain={product.store_subdomain}
+                productType={product.type}
+                imageUrl={mainImage || null}
+                inventoryQuantity={product.inventory_quantity}
+                variants={product.variants}
+                isAliExpress={isAliExpress}
               />
               <WishlistButton productId={product.id} size="md" />
             </div>
@@ -423,17 +481,12 @@ export default async function ProductDetailPage({
                         {p.category}
                       </span>
                     )}
-                    {p.images && p.images[0] ? (
-                      <img
-                        src={getImageUrl(p.images[0]) || p.thumbnail}
-                        alt={p.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : p.thumbnail ? (
-                      <img
-                        src={p.thumbnail}
-                        alt={p.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    {getImageUrl(p.images?.[0]) || p.thumbnail ? (
+                      <div
+                        aria-label={p.title}
+                        role="img"
+                        className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                        style={{ backgroundImage: `url(${getImageUrl(p.images?.[0]) || p.thumbnail})` }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">

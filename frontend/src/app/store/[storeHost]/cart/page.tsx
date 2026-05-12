@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { isMarketplaceHost } from '../../../../lib/store-hosts';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
+import { getCartItemUnitPrice, getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
 
 function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
@@ -33,6 +34,7 @@ export default function StoreCartPage() {
   const { items, removeFromCart, updateQuantity } = useCart();
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [storeError, setStoreError] = useState('');
 
   useEffect(() => {
     if (isMarketplaceHost(window.location.host)) {
@@ -47,9 +49,11 @@ export default function StoreCartPage() {
         if (res.ok) {
           const data = await res.json();
           setStore(data.store);
+        } else {
+          setStoreError('Boutique introuvable ou indisponible.');
         }
       } catch {
-        // ignore
+        setStoreError('Impossible de charger cette boutique.');
       }
       setLoading(false);
     }
@@ -70,8 +74,8 @@ export default function StoreCartPage() {
 
   // Filter items to only this store
   const storeItems = store ? items.filter((item) => item.store_id === store.id) : [];
-  const subtotal = storeItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingTotal = storeItems.length > 0 ? SHIPPING_PER_VENDOR : 0;
+  const subtotal = storeItems.reduce((sum, item) => sum + getCartLineTotal(item), 0);
+  const shippingTotal = getStoreShippingTotal(storeItems, SHIPPING_PER_VENDOR);
   const total = subtotal + shippingTotal;
   const itemCount = storeItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -79,6 +83,27 @@ export default function StoreCartPage() {
     return (
       <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: primaryColor }} />
+      </div>
+    );
+  }
+
+  if (!store) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
+        <div className="max-w-md mx-auto px-6 py-12 text-center">
+          <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Boutique indisponible</h1>
+          <p className="mb-6" style={{ color: mutedTextColor }}>
+            {storeError || 'Cette boutique est introuvable ou temporairement indisponible.'}
+          </p>
+          <Link
+            href="/hub"
+            className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl hover:opacity-90 transition-colors"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Retour au marketplace
+          </Link>
+        </div>
       </div>
     );
   }
@@ -179,8 +204,13 @@ export default function StoreCartPage() {
                         <p className="text-xs mt-0.5" style={{ color: mutedTextColor }}>{item.variant}</p>
                       )}
                       <p className="text-sm font-semibold mt-1" style={{ color: mutedTextColor }}>
-                        {formatPrice(item.price)}
+                        {formatPrice(getCartItemUnitPrice(item))}
                       </p>
+                      {item.wholesale_pricing?.enabled && (
+                        <p className="mt-0.5 text-xs font-semibold" style={{ color: primaryColor }}>
+                          Prix de gros appliqué selon la quantité
+                        </p>
+                      )}
                     </div>
 
                     {/* Quantity */}
@@ -205,7 +235,7 @@ export default function StoreCartPage() {
                     {/* Line Total */}
                     <div className="text-right min-w-[100px]">
                       <p className="font-bold" style={{ color: textColor }}>
-                        {formatPrice(item.price * item.quantity)}
+                        {formatPrice(getCartLineTotal(item))}
                       </p>
                     </div>
 
@@ -223,7 +253,7 @@ export default function StoreCartPage() {
               {/* Shipping */}
               <div className="px-6 py-3 border-t flex items-center justify-between text-sm" style={{ backgroundColor: surfaceColor, borderColor }}>
                 <span style={{ color: mutedTextColor }}>
-                  Livraison : {formatPrice(SHIPPING_PER_VENDOR)}
+                  Livraison : {formatPrice(shippingTotal)}
                 </span>
                 <span className="font-semibold" style={{ color: textColor }}>
                   Sous-total : {formatPrice(subtotal + shippingTotal)}

@@ -1,8 +1,8 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -60,12 +60,20 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [fulfillingId, setFulfillingId] = useState('');
+  const [startingChatId, setStartingChatId] = useState('');
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/orders/store?page=${page}&limit=20`, {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '20',
+      });
+      if (statusFilter) params.set('status', statusFilter);
+      if (search.trim()) params.set('search', search.trim());
+
+      const res = await fetchWithCsrf(`/api/pd/orders/store?${params.toString()}`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -80,24 +88,21 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, search, statusFilter]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const filteredOrders = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return orders.filter((order) => {
-      const matchesSearch =
-        !q ||
-        order.id.toLowerCase().includes(q) ||
-        order.customer_id.toLowerCase().includes(q) ||
-        order.payment_gateway?.toLowerCase().includes(q);
-      const matchesStatus = !statusFilter || order.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [orders, search, statusFilter]);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
 
   const fulfillOrder = async (order: Order) => {
     const carrier = window.prompt('Transporteur (optionnel)', '') || '';
@@ -128,6 +133,29 @@ export default function OrdersPage() {
     }
   };
 
+  const startBuyerChat = async (order: Order) => {
+    setStartingChatId(order.id);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/chats/store/buyer-seller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          order_id: order.id,
+          subject: `Order #${order.id.slice(-8).toUpperCase()}`,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error?.message || 'Impossible de démarrer la conversation');
+      window.location.href = `/hub/dashboard/messages?conversation=${encodeURIComponent(data.conversation.id)}`;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Conversation indisponible');
+    } finally {
+      setStartingChatId('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -151,7 +179,7 @@ export default function OrdersPage() {
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => handleSearchChange(event.target.value)}
               placeholder="Search by order ID or customer..." 
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
             />
@@ -160,7 +188,7 @@ export default function OrdersPage() {
             <Filter className="w-4 h-4 mr-2" />
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => handleStatusChange(event.target.value)}
               className="px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto outline-none"
             >
               <option value="">Tous les statuts</option>
@@ -181,7 +209,7 @@ export default function OrdersPage() {
               <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
               <span className="ml-2 text-gray-500">Chargement des commandes...</span>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500">Aucune commande pour le moment.</p>
             </div>
@@ -198,7 +226,7 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredOrders.map((order) => (
+                {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="px-6 py-4">
                       <span className="text-sm font-bold text-gray-900 group-hover:text-[#16C784] transition-colors">
@@ -232,6 +260,19 @@ export default function OrdersPage() {
                           title="Voir détails"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startBuyerChat(order)}
+                          disabled={startingChatId === order.id}
+                          className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors disabled:opacity-40"
+                          title="Message buyer"
+                        >
+                          {startingChatId === order.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <MessageSquare className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           type="button"

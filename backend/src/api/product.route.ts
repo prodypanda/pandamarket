@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { productService } from '../services/product.service';
 import { storeService } from '../services/store.service';
 import { categoryService } from '../services/category.service';
-import { asyncHandler, validate, requireStore } from '../middlewares';
-import { ProductType, ProductStatus } from '@pandamarket/types';
+import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
+import { ProductType, ProductStatus, SellerType } from '@pandamarket/types';
+import { pdId } from '../utils/crypto';
+import { PdValidationError } from '../errors';
 
 const router = Router();
 
@@ -24,21 +26,46 @@ const createProductSchema = z.object({
   seo_title: z.string().max(200).nullable().optional(),
   seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
+  status: z.nativeEnum(ProductStatus).optional(),
   attributes: z.array(z.object({
     name: z.string().min(1).max(80),
     value: z.string().min(1).max(300),
   })).optional(),
+  max_downloads: z.number().int().min(1).max(100).nullable().optional(),
+  download_expires_hours: z.number().int().min(1).max(8760).nullable().optional(),
+  digital_file_key: z.string().max(1024).nullable().optional(),
+  digital_file_name: z.string().max(255).nullable().optional(),
+  digital_file_content_type: z.string().max(100).nullable().optional(),
+  digital_file_size: z.number().int().min(0).nullable().optional(),
+  license_keys: z.array(z.string().min(1).max(2000)).max(1000).optional(),
+  wholesale_min_quantity: z.number().int().min(2).nullable().optional(),
+  wholesale_price_tiers: z.array(z.object({
+    min_quantity: z.number().int().min(2),
+    unit_price: z.number().min(0),
+  })).max(20).optional(),
+  variants: z.array(z.object({
+    id: z.string().max(64).optional(),
+    sku: z.string().max(100).nullable().optional(),
+    title: z.string().min(1).max(200),
+    price: z.number().min(0),
+    inventory_quantity: z.number().int().min(0).optional(),
+    options: z.record(z.string()).optional(),
+  })).max(100).optional(),
 });
 
-const updateProductSchema = createProductSchema.partial().extend({
-  status: z.nativeEnum(ProductStatus).optional(),
-});
+const updateProductSchema = createProductSchema.partial();
 
 const addProductImageSchema = z.object({
   url: z.string().url(),
   alt_text: z.string().max(200).optional(),
   is_thumbnail: z.boolean().optional(),
 });
+
+function assertDigitalFileOwnership(payload: { digital_file_key?: string | null }, storeId: string) {
+  if (payload.digital_file_key && !payload.digital_file_key.startsWith(`digital/${storeId}/`)) {
+    throw new PdValidationError('Digital file does not belong to this store');
+  }
+}
 
 // Vendor: create product
 router.post(
@@ -49,6 +76,7 @@ router.post(
     // Note: store_plan and store_is_verified should be fetched from store details in a real app
     // For this implementation, we assume defaults or fetch it here.
     const store = await storeService.getById(req.user!.store_id!);
+    assertDigitalFileOwnership(req.body, req.user!.store_id!);
     const categories = await categoryService.resolveProductCategories(
       req.user!.store_id!,
       req.body.marketplace_category_id,
@@ -58,6 +86,7 @@ router.post(
       store_id: req.user!.store_id!,
       store_plan: store.subscription_plan,
       store_is_verified: store.is_verified,
+      store_seller_type: store.seller_type,
       ...req.body,
       marketplace_category_id: categories.marketplace.id,
       storefront_category_id: categories.storefront.id,
@@ -76,7 +105,10 @@ router.get(
     const category = req.query.category as string;
     const marketplaceCategoryId = req.query.marketplace_category_id as string;
     const storeId = req.query.store_id as string;
-    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId });
+    const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
+      ? (req.query.seller_type as SellerType)
+      : undefined;
+    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId, sellerType });
     res.status(200).json(result);
   }),
 );
@@ -189,8 +221,8 @@ router.post(
           tags: item.tags,
         });
         results.created++;
-      } catch (err: any) {
-        results.errors.push(`${item.title}: ${err.message}`);
+      } catch (err: unknown) {
+        results.errors.push(`${item.title}: ${err instanceof Error ? err.message : 'Import failed'}`);
       }
     }
 
@@ -216,6 +248,8 @@ router.put(
     await productService.assertOwnership(req.params.id, req.user!.store_id!);
     const store = await storeService.getById(req.user!.store_id!);
     const patch = { ...req.body };
+    patch.store_seller_type = store.seller_type;
+    assertDigitalFileOwnership(patch, req.user!.store_id!);
     if ('marketplace_category_id' in patch || 'storefront_category_id' in patch) {
       const categories = await categoryService.resolveProductCategories(
         req.user!.store_id!,
@@ -270,60 +304,72 @@ router.delete(
 // Customer: download digital product
 router.get(
   '/:id/download',
+  requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: { code: 'PD_AUTH_TOKEN_INVALID', message: 'Authentication required' } });
-    }
-
     const product = await productService.getById(req.params.id);
+    const customerId = req.user!.id;
 
-    if (product.type !== 'digital') {
-      return res.status(400).json({ error: { code: 'PD_PRODUCT_INVALID_TYPE', message: 'This product is not a digital product' } });
+    if (product.type !== ProductType.Digital && product.type !== ProductType.Serial) {
+      return res.status(400).json({ error: { code: 'PD_PRODUCT_INVALID_TYPE', message: 'This product is not downloadable' } });
     }
 
-    // Verify the customer has purchased this product
+    if (!product.digital_file_key) {
+      return res.status(404).json({ error: { code: 'PD_FILE_NOT_FOUND', message: 'No digital file is attached to this product' } });
+    }
+
     const { query: dbQuery } = await import('../db/pool');
-    const { rows: orderRows } = await dbQuery<{ id: string }>(
-      `SELECT oi.id FROM pd_order_item oi
+    const { rows: orderRows } = await dbQuery<{ id: string; created_at: Date }>(
+      `SELECT o.id, o.created_at FROM pd_order_item oi
        JOIN pd_order o ON o.id = oi.order_id
        WHERE oi.product_id = $1 AND o.customer_id = $2 AND o.payment_status = 'captured'
+       ORDER BY o.created_at DESC
        LIMIT 1`,
-      [req.params.id, req.user.id],
+      [req.params.id, customerId],
     );
+    const order = orderRows[0];
 
-    if (!orderRows[0]) {
+    if (!order) {
       return res.status(403).json({ error: { code: 'PD_PERM_FORBIDDEN', message: 'You have not purchased this product' } });
     }
 
-    // Check download limits
     const maxDownloads = product.max_downloads ?? 5;
-    const downloadCount = product.download_count ?? 0;
-    if (downloadCount >= maxDownloads) {
+    await dbQuery(
+      `INSERT INTO pd_digital_download (id, order_id, product_id, customer_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (order_id, product_id, customer_id) DO NOTHING`,
+      [pdId('dl'), order.id, req.params.id, customerId],
+    );
+    const { rows: quotaRows } = await dbQuery<{ download_count: number }>(
+      `UPDATE pd_digital_download
+       SET download_count = download_count + 1,
+           first_downloaded_at = COALESCE(first_downloaded_at, NOW()),
+           last_downloaded_at = NOW()
+       WHERE order_id = $1 AND product_id = $2 AND customer_id = $3 AND download_count < $4
+       RETURNING download_count`,
+      [order.id, req.params.id, customerId, maxDownloads],
+    );
+    const downloadCount = quotaRows[0]?.download_count;
+    if (!downloadCount) {
       return res.status(403).json({ error: { code: 'PD_PRODUCT_QUOTA_EXCEEDED', message: 'Download limit reached' } });
     }
 
     // Check for license key
     const { rows: licenseRows } = await dbQuery<{ license_key: string }>(
       `SELECT license_key FROM pd_license_key
-       WHERE product_id = $1 AND order_id = (
-         SELECT o.id FROM pd_order o
-         JOIN pd_order_item oi ON oi.order_id = o.id
-         WHERE oi.product_id = $1 AND o.customer_id = $2 AND o.payment_status = 'captured'
-         LIMIT 1
-       )
-       LIMIT 1`,
-      [req.params.id, req.user.id],
+       WHERE product_id = $1 AND order_id = $2
+       ORDER BY assigned_at ASC, created_at ASC`,
+      [req.params.id, order.id],
     );
+    const licenseKeys = licenseRows.map((row) => row.license_key);
 
-    // Generate presigned download URL
     const { presignDownload } = await import('../utils/s3');
+    const { config } = await import('../config');
     const downloadUrl = await presignDownload({
-      bucket: 'pd-private-files',
-      key: `digital/${req.params.id}/${product.slug || 'download'}`,
+      bucket: config.s3.bucketPrivate,
+      key: product.digital_file_key,
       expiresInSeconds: (product.download_expires_hours ?? 72) * 3600,
     });
 
-    // Increment download count
     await dbQuery(
       'UPDATE pd_product SET download_count = COALESCE(download_count, 0) + 1 WHERE id = $1',
       [req.params.id],
@@ -332,8 +378,9 @@ router.get(
     return res.json({
       data: {
         download_url: downloadUrl,
-        license_key: licenseRows[0]?.license_key ?? null,
-        downloads_remaining: maxDownloads - downloadCount - 1,
+        license_key: licenseKeys[0] ?? null,
+        license_keys: licenseKeys,
+        downloads_remaining: maxDownloads - downloadCount,
         expires_in_hours: product.download_expires_hours ?? 72,
       },
     });

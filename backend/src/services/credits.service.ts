@@ -8,8 +8,8 @@ import { PoolClient } from 'pg';
 import { query, transaction } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { PdNotFoundError, PdForbiddenError, PdErrorCode } from '../errors';
-import { IVendorCredits, SubscriptionPlan } from '@pandamarket/types';
-import { isUnlimited, PLAN_DEFAULTS } from '../utils/plans';
+import { IVendorCredits } from '@pandamarket/types';
+import { isUnlimited } from '../utils/plans';
 import { logger } from '../utils/logger';
 
 interface CreditsRow {
@@ -30,14 +30,23 @@ function rowToCredits(r: CreditsRow): IVendorCredits {
   };
 }
 
+async function getPlanTokens(plan: string): Promise<number> {
+  const { rows } = await query<{ ai_tokens_included: number }>(
+    'SELECT ai_tokens_included FROM pd_subscription_limits WHERE plan_id = $1',
+    [plan],
+  );
+  if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Plan not found');
+  return rows[0].ai_tokens_included;
+}
+
 export class CreditsService {
   /**
    * Bootstrap a credits row when a store is created.
    * Initial tokens = plan default (or -1 for unlimited plans).
    */
-  async create(storeId: string, plan: SubscriptionPlan, client?: PoolClient): Promise<IVendorCredits> {
+  async create(storeId: string, plan: string, client?: PoolClient): Promise<IVendorCredits> {
     const id = pdId('credits');
-    const initial = PLAN_DEFAULTS[plan].ai_tokens_included;
+    const initial = await getPlanTokens(plan);
     const sql = `INSERT INTO pd_vendor_credits
                    (id, store_id, ai_tokens, last_refill)
                  VALUES ($1, $2, $3, NOW()) RETURNING *`;
@@ -131,8 +140,8 @@ export class CreditsService {
   /**
    * Set the token quota explicitly (used after plan upgrade/downgrade).
    */
-  async setForPlan(storeId: string, plan: SubscriptionPlan, client?: PoolClient): Promise<void> {
-    const tokens = PLAN_DEFAULTS[plan].ai_tokens_included;
+  async setForPlan(storeId: string, plan: string, client?: PoolClient): Promise<void> {
+    const tokens = await getPlanTokens(plan);
     const sql = `UPDATE pd_vendor_credits
                  SET ai_tokens = $2, last_refill = NOW()
                  WHERE store_id = $1`;

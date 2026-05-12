@@ -43,5 +43,8 @@
     "tunisia"
   ],
   "license": "UNLICENSED",
-  "author": "PandaMarket Team"
+  "author": "PandaMarket Team",
+  "dependencies": {
+    "nodemailer": "^8.0.7"
+  }
 }

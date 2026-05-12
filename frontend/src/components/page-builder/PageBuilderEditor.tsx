@@ -46,7 +46,6 @@ interface PageBuilderEditorProps {
 
 export function PageBuilderEditor({
   pageId,
-  storeId,
   initialData,
   onSave,
   onBack,
@@ -305,7 +304,7 @@ export function PageBuilderEditor({
             </div>
           </div>
           <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #2D2D4A; font-size: 12px;">
-            Propulsé par 🐼 PandaMarket
+            Propulsé par votre marketplace
           </div>
         </footer>
       `,

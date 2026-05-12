@@ -2,7 +2,11 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { aiService } from '../services/ai.service';
 import { creditsService } from '../services/credits.service';
+import { productService } from '../services/product.service';
+import { storeService } from '../services/store.service';
+import { subscriptionService } from '../services/subscription.service';
 import { asyncHandler, validate, requireStore } from '../middlewares';
+import { PdErrorCode, PdForbiddenError } from '../errors';
 
 const router = Router();
 
@@ -16,14 +20,36 @@ const seoGenerateSchema = z.object({
   language: z.enum(['fr', 'ar', 'en']).optional(),
 });
 
+async function assertAiFeature(
+  storeId: string,
+  feature: 'has_image_compression' | 'has_ai_seo',
+): Promise<void> {
+  const store = await storeService.getById(storeId);
+  const limits = await subscriptionService.getLimits(store.subscription_plan);
+  if (!limits[feature]) {
+    throw new PdForbiddenError(
+      PdErrorCode.PERM_PLAN_REQUIRED,
+      feature === 'has_image_compression'
+        ? 'Your current plan does not include image compression'
+        : 'Your current plan does not include AI SEO generation',
+      { current_plan: store.subscription_plan, feature },
+    );
+  }
+}
+
 // Vendor: Queue image compression (1 token)
 router.post(
   '/compress',
   requireStore,
   validate(compressSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_image_compression');
+    if (req.body.product_id) {
+      await productService.assertOwnership(req.body.product_id, storeId);
+    }
     const job = await aiService.queueImageCompression({
-      store_id: req.user!.store_id!,
+      store_id: storeId,
       user_id: req.user!.id,
       image_url: req.body.image_url,
       product_id: req.body.product_id,
@@ -38,8 +64,11 @@ router.post(
   requireStore,
   validate(seoGenerateSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_ai_seo');
+    await productService.assertOwnership(req.body.product_id, storeId);
     const job = await aiService.queueSeoGeneration({
-      store_id: req.user!.store_id!,
+      store_id: storeId,
       user_id: req.user!.id,
       product_id: req.body.product_id,
       language: req.body.language,

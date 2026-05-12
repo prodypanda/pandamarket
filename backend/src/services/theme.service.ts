@@ -38,12 +38,41 @@ export interface ThemePurchaseRow {
   purchased_at: string;
 }
 
+interface ThemeDbRow {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  preview_url: string | null;
+  preview_images: string[] | null;
+  features: string[] | null;
+  is_free: boolean;
+  is_premium: boolean | null;
+  price: string | number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ThemePurchaseDbRow {
+  id: string;
+  store_id: string;
+  theme_id: string;
+  amount_paid: string | number | null;
+  currency: string;
+  payment_reference: string | null;
+  purchased_at: string;
+}
+
+function toNumber(value: string | number | null): number {
+  return typeof value === 'number' ? value : parseFloat(value ?? '0');
+}
+
 export class ThemeService {
   /**
    * List all active themes.
    */
   async listAll(): Promise<ThemeRow[]> {
-    const { rows } = await query(
+    const { rows } = await query<ThemeDbRow>(
       `SELECT * FROM pd_theme WHERE is_active = true ORDER BY is_free DESC, name ASC`,
     );
     return rows.map(this.mapRow);
@@ -53,7 +82,7 @@ export class ThemeService {
    * Get a single theme by slug.
    */
   async getBySlug(slug: string): Promise<ThemeRow> {
-    const { rows } = await query(
+    const { rows } = await query<ThemeDbRow>(
       `SELECT * FROM pd_theme WHERE slug = $1 AND is_active = true`,
       [slug],
     );
@@ -67,7 +96,7 @@ export class ThemeService {
    * Get a single theme by ID.
    */
   async getById(id: string): Promise<ThemeRow> {
-    const { rows } = await query(
+    const { rows } = await query<ThemeDbRow>(
       `SELECT * FROM pd_theme WHERE id = $1`,
       [id],
     );
@@ -108,7 +137,7 @@ export class ThemeService {
     }
 
     // Check if already purchased
-    const { rows: existing } = await query(
+    const { rows: existing } = await query<ThemePurchaseDbRow>(
       `SELECT * FROM pd_theme_purchase WHERE store_id = $1 AND theme_id = $2`,
       [storeId, themeId],
     );
@@ -117,7 +146,7 @@ export class ThemeService {
     }
 
     const id = pdId('thmpurch');
-    const { rows } = await query(
+    const { rows } = await query<ThemePurchaseDbRow>(
       `INSERT INTO pd_theme_purchase (id, store_id, theme_id, amount_paid, payment_reference)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
@@ -136,7 +165,7 @@ export class ThemeService {
    * List all themes purchased by a store.
    */
   async listPurchases(storeId: string): Promise<ThemePurchaseRow[]> {
-    const { rows } = await query(
+    const { rows } = await query<ThemePurchaseDbRow>(
       `SELECT * FROM pd_theme_purchase WHERE store_id = $1 ORDER BY purchased_at DESC`,
       [storeId],
     );
@@ -145,7 +174,7 @@ export class ThemeService {
 
   // ─── Mappers ────────────────────────────────────────────────────
 
-  private mapRow(r: any): ThemeRow {
+  private mapRow(r: ThemeDbRow): ThemeRow {
     return {
       id: r.id,
       slug: r.slug,
@@ -156,18 +185,18 @@ export class ThemeService {
       features: r.features ?? [],
       is_free: r.is_free,
       is_premium: r.is_premium ?? false,
-      price: parseFloat(r.price ?? '0'),
+      price: toNumber(r.price),
       is_active: r.is_active,
       created_at: r.created_at,
     };
   }
 
-  private mapPurchaseRow(r: any): ThemePurchaseRow {
+  private mapPurchaseRow(r: ThemePurchaseDbRow): ThemePurchaseRow {
     return {
       id: r.id,
       store_id: r.store_id,
       theme_id: r.theme_id,
-      amount_paid: parseFloat(r.amount_paid ?? '0'),
+      amount_paid: toNumber(r.amount_paid),
       currency: r.currency,
       payment_reference: r.payment_reference,
       purchased_at: r.purchased_at,

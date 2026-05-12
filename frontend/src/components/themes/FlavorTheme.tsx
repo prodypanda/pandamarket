@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, UtensilsCrossed, Clock, Flame } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Flavor Theme — Food, restaurants, bakeries, gourmet products.
@@ -140,8 +139,7 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
       {/* Footer */}
       <footer className="border-t py-10 text-center" style={{ borderColor: `${accentColor}10` }}>
         <p className="text-xs text-[#2D1B0E]/30">
-          © {new Date().getFullYear()} {storeName} — Propulsé par{' '}
-          <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link>
+          © {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" />
         </p>
       </footer>
     </div>

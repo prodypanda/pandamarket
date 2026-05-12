@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Star } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Medina Theme — Traditional marketplace feel, ornate borders, warm colors.
@@ -70,7 +69,7 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
         </div>
       </main>
       <footer className="py-10 text-center text-white" style={{ backgroundColor: teal }}>
-        <p className="text-xs tracking-wide">{storeName} — Propulsé par <Link href="/" className="hover:underline" style={{ color: gold }}>🐼 PandaMarket</Link></p>
+        <p className="text-xs tracking-wide">{storeName} — <PoweredByMarketplace branding={branding} linkClassName="hover:underline" linkStyle={{ color: gold }} /></p>
       </footer>
     </div>
   );

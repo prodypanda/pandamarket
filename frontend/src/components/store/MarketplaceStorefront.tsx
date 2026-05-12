@@ -3,6 +3,8 @@ import { ArrowRight, BadgeCheck, CalendarDays, Grid3X3, MapPin, Package, Search,
 import { HubNavbar } from '../hub/HubNavbar';
 import { HubFooter } from '../hub/HubFooter';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
+import { SellerTypeText } from '../i18n/SellerTypeText';
+import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 
 export interface MarketplaceStoreData {
   id: string;
@@ -10,8 +12,11 @@ export interface MarketplaceStoreData {
   subdomain?: string | null;
   description?: string | null;
   is_verified?: boolean | null;
+  seller_type?: string | null;
   status?: string | null;
   created_at?: string | null;
+  seller_score?: number | string | null;
+  seller_review_count?: number | string | null;
   settings?: {
     logo_url?: string | null;
     store_description?: string | null;
@@ -92,6 +97,11 @@ function formatSince(value?: string | null): string | null {
   return date.toLocaleDateString('fr-TN', { month: 'short', year: 'numeric' });
 }
 
+function formatSellerScore(value?: number | string | null): string {
+  const score = Number(value);
+  return Number.isFinite(score) && score > 0 ? score.toFixed(1) : 'New';
+}
+
 interface MarketplaceSellerPageProps {
   storeHost: string;
   store: MarketplaceStoreData;
@@ -125,6 +135,7 @@ export function MarketplaceSellerPage({
   const location = storeLocation(store);
   const since = formatSince(store.created_at);
   const productsHref = `/store/${encodeURIComponent(storeHost)}/products`;
+  const sellerScore = formatSellerScore(store.seller_score);
 
   return (
     <div className={`min-h-screen ${classes.pageSoft}`}>
@@ -132,6 +143,7 @@ export function MarketplaceSellerPage({
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
+        showInstantChat={false}
       />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -148,14 +160,21 @@ export function MarketplaceSellerPage({
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/25 bg-white text-gray-900 shadow-xl shadow-black/10">
                 {logoUrl ? (
-                  <img src={logoUrl} alt={store.name} className="h-full w-full object-contain p-3" />
+                  <div
+                    aria-label={store.name}
+                    role="img"
+                    className="h-full w-full bg-contain bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(${logoUrl})` }}
+                  />
                 ) : (
                   <Store className={`h-10 w-10 ${classes.primaryText}`} />
                 )}
               </div>
               <div className="min-w-0">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-white/85">Marketplace seller</span>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-white/85">
+                    <SellerTypeText sellerType={store.seller_type} />
+                  </span>
                   {store.is_verified && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-[#ff4747]">
                       <BadgeCheck className="h-3.5 w-3.5" /> Verified
@@ -182,7 +201,7 @@ export function MarketplaceSellerPage({
                 <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Categories</p>
               </div>
               <div>
-                <p className="text-2xl font-black">4.8</p>
+                <p className="text-2xl font-black">{sellerScore}</p>
                 <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Seller score</p>
               </div>
             </div>
@@ -258,7 +277,12 @@ export function MarketplaceSellerPage({
                         <span className={`absolute left-3 top-3 z-10 rounded-full px-3 py-1 text-[11px] font-black shadow-sm ${isAliExpress ? 'bg-white/95 text-[#ff4747]' : 'bg-white/90 text-gray-700'}`}>{product.category}</span>
                       )}
                       {imageUrl ? (
-                        <img src={imageUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                        <div
+                          aria-label={product.title}
+                          role="img"
+                          className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                          style={{ backgroundImage: `url(${imageUrl})` }}
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-400"><Package className="h-9 w-9" /></div>
                       )}
@@ -283,6 +307,10 @@ export function MarketplaceSellerPage({
       </main>
 
       <HubFooter {...marketplaceSettings} />
+      <InstantChatLauncher
+        marketplaceTheme={marketplaceSettings.marketplace_theme}
+        storeContext={{ storeId: store.id, storeName: store.name }}
+      />
     </div>
   );
 }

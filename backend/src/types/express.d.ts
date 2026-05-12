@@ -3,7 +3,7 @@
  */
 
 import 'express';
-import { UserRole } from '@pandamarket/types';
+import { ApiKeyScope, UserRole } from '@pandamarket/types';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -12,11 +12,15 @@ declare module 'express-serve-static-core' {
       role: UserRole;
       store_id: string | null;
     };
+    storefrontCustomer?: {
+      id: string;
+      store_id: string;
+    };
     requestId?: string;
     apiKey?: {
       id: string;
       store_id: string;
-      scopes: string[];
+      scopes: ApiKeyScope[];
     };
   }
 }

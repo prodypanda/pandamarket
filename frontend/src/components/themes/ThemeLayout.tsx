@@ -11,7 +11,6 @@
  */
 
 import React from 'react';
-import Link from 'next/link';
 import type { ResolvedColors } from '../../lib/themes';
 
 interface ThemeLayoutProps {
@@ -30,7 +29,6 @@ interface ThemeLayoutProps {
 }
 
 export function ThemeLayout({
-  variation,
   layout,
   colors,
   categories = [],

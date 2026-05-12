@@ -9,6 +9,7 @@ import { Search, Filter, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 
 import Link from 'next/link';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
+import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-type';
 
 interface SearchProduct {
   id: string;
@@ -25,6 +26,7 @@ interface SearchProduct {
   thumbnail?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
   rating?: number;
 }
 
@@ -54,6 +56,7 @@ interface MarketplaceSettings {
 
 function SearchContent() {
   const { t } = useLocale();
+  const sellerTypeOptions = getSellerTypeOptions(t);
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || '';
@@ -69,6 +72,7 @@ function SearchContent() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [productType, setProductType] = useState('');
+  const [sellerType, setSellerType] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
@@ -138,6 +142,9 @@ function SearchContent() {
       if (productType) {
         params.set('type', productType);
       }
+      if (sellerType) {
+        params.set('seller_type', sellerType);
+      }
       if (verifiedOnly) {
         params.set('verified', 'true');
       }
@@ -159,7 +166,7 @@ function SearchContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, page, selectedCategories, priceMin, priceMax, productType, verifiedOnly, sortBy]);
+  }, [query, page, selectedCategories, priceMin, priceMax, productType, sellerType, verifiedOnly, sortBy]);
 
   useEffect(() => {
     fetchResults();
@@ -257,6 +264,19 @@ function SearchContent() {
       {/* Verified */}
       <div>
         <h3 className="font-semibold text-gray-900 mb-3">{t('product.vendor')}</h3>
+        <select
+          value={sellerType}
+          onChange={(event) => {
+            setSellerType(event.target.value);
+            setPage(1);
+          }}
+          className={`mb-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-1 ${accentRing}`}
+        >
+          <option value="">{t('sellerTypes.all')}</option>
+          {sellerTypeOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -410,10 +430,11 @@ function SearchContent() {
                           </span>
                         )}
                         {getProductImage(product) ? (
-                          <img
-                            src={getProductImage(product)}
-                            alt={product.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          <div
+                            aria-label={product.title}
+                            role="img"
+                            className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                            style={{ backgroundImage: `url(${getProductImage(product)})` }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -426,7 +447,10 @@ function SearchContent() {
                           {product.title}
                         </h3>
                         {product.store_name && (
-                          <p className="text-xs text-gray-500 mb-2">{product.store_name}</p>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {product.store_name}
+                            {product.store_seller_type ? ` · ${getSellerTypeLabel(product.store_seller_type, t)}` : ''}
+                          </p>
                         )}
                         <div className="mb-2 flex flex-wrap gap-1.5">
                           {product.type && (

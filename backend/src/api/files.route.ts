@@ -8,17 +8,24 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 import { asyncHandler, requireAuth, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
-import { presignUpload, publicUrl } from '../utils/s3';
+import { presignDownload, presignUpload, publicUrl } from '../utils/s3';
 import { config } from '../config';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdErrorCode, PdForbiddenError } from '../errors';
 import { fileAssetService } from '../services/file-asset.service';
+import { reportService } from '../services/report.service';
+import { chatService } from '../services/chat.service';
 import { UserRole } from '@pandamarket/types';
 
 const router = Router();
+
+const fileAccessSchema = z.object({
+  key: z.string().min(1).max(1024),
+});
 
 // Upload rate limit: 10 uploads per 5 minutes per user
 const uploadRateLimit = rateLimit({
@@ -33,19 +40,31 @@ const uploadRateLimit = rateLimit({
 // Allowed MIME types per purpose
 const ALLOWED_TYPES: Record<string, string[]> = {
   product_image: ['image/jpeg', 'image/png', 'image/webp'],
+  digital_product: [
+    'application/pdf',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/octet-stream',
+    'text/plain',
+  ],
   kyc_document: ['image/jpeg', 'image/png', 'application/pdf'],
   mandat_proof: ['image/jpeg', 'image/png'],
   theme_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'],
   marketplace_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'],
+  report_evidence: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/plain'],
+  chat_image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
 };
 
 // Max file sizes per purpose (bytes)
 const MAX_SIZES: Record<string, number> = {
   product_image: 10 * 1024 * 1024,   // 10 MB
+  digital_product: 100 * 1024 * 1024,
   kyc_document: 10 * 1024 * 1024,    // 10 MB
   mandat_proof: 10 * 1024 * 1024,    // 10 MB
   theme_asset: 5 * 1024 * 1024,      // 5 MB
   marketplace_asset: 25 * 1024 * 1024,
+  report_evidence: 20 * 1024 * 1024,
+  chat_image: 5 * 1024 * 1024,
 };
 
 /**
@@ -72,10 +91,13 @@ router.post(
       });
     }
 
-    if (file_size !== undefined && file_size > MAX_SIZES[purpose]) {
+    const chatLimits = purpose === 'chat_image' ? await chatService.getChatLimits() : null;
+    const maxSize = purpose === 'chat_image' ? chatLimits!.maxImageSizeBytes : MAX_SIZES[purpose];
+
+    if (file_size !== undefined && file_size > maxSize) {
       throw new PdValidationError('File is too large for this purpose', {
         code: PdErrorCode.FILE_TOO_LARGE,
-        max_size: MAX_SIZES[purpose],
+        max_size: maxSize,
         provided_size: file_size,
       });
     }
@@ -100,6 +122,13 @@ router.post(
         bucket = config.s3.bucketPublic;
         keyPrefix = `products/${req.user!.store_id ?? req.user!.id}`;
         break;
+      case 'digital_product':
+        if (!req.user!.store_id) {
+          throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only vendors can upload digital products');
+        }
+        bucket = config.s3.bucketPrivate;
+        keyPrefix = `digital/${req.user!.store_id}`;
+        break;
       case 'kyc_document':
         bucket = config.s3.bucketPrivate;
         keyPrefix = `kyc/${req.user!.store_id ?? req.user!.id}`;
@@ -115,6 +144,14 @@ router.post(
       case 'marketplace_asset':
         bucket = config.s3.bucketPublic;
         keyPrefix = `marketplace/${req.user!.id}`;
+        break;
+      case 'report_evidence':
+        bucket = config.s3.bucketPrivate;
+        keyPrefix = `reports/${req.user!.id}`;
+        break;
+      case 'chat_image':
+        bucket = config.s3.bucketPrivate;
+        keyPrefix = `chat/${req.user!.id}`;
         break;
       default:
         throw new PdValidationError('Invalid purpose');
@@ -158,9 +195,45 @@ router.post(
       file_key: fileKey,
       public_url: publicAssetUrl,
       asset,
-      max_size: MAX_SIZES[purpose],
+      max_size: maxSize,
       expires_in: 900,
     });
+  }),
+);
+
+router.get(
+  '/access',
+  requireAuth,
+  validate(fileAccessSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const key = String(req.query.key).replace(/^\/+/, '');
+    const isAdmin = req.user!.role === UserRole.Admin || req.user!.role === UserRole.SuperAdmin;
+    const allowedPrefixes = [
+      `mandats/${req.user!.id}/`,
+      `kyc/${req.user!.store_id ?? req.user!.id}/`,
+    ];
+    const adminAllowed = key.startsWith('kyc/') || key.startsWith('mandats/');
+    const userAllowed = allowedPrefixes.some((prefix) => key.startsWith(prefix));
+    const reportAllowed = await reportService.canAccessAttachmentKey(
+      { id: req.user!.id, role: req.user!.role, store_id: req.user!.store_id },
+      key,
+    );
+    const chatAllowed = await chatService.canAccessAttachmentKey(
+      { id: req.user!.id, role: req.user!.role, store_id: req.user!.store_id },
+      key,
+    );
+
+    if (key.includes('..') || (!reportAllowed && !chatAllowed && ((!isAdmin && !userAllowed) || (isAdmin && !adminAllowed)))) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You cannot access this file');
+    }
+
+    const downloadUrl = await presignDownload({
+      bucket: config.s3.bucketPrivate,
+      key,
+      expiresInSeconds: 900,
+    });
+
+    res.status(200).json({ download_url: downloadUrl, expires_in: 900 });
   }),
 );
 

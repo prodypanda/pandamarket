@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, CheckCheck, Wifi, WifiOff } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { useSocketContext } from '../../contexts/SocketContext';
 
 interface Notification {
@@ -61,10 +61,10 @@ export function NotificationBell() {
     });
 
     return unsubscribe;
-  }, [socketOn, socketConnected, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [socketOn, socketConnected, isOpen]);
 
   // Fetch unread count on mount and periodically (fallback when WS unavailable)
-  const fetchUnreadCountCb = useCallback(fetchUnreadCount, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const fetchUnreadCountCb = useCallback(fetchUnreadCount, []);
   useEffect(() => {
     fetchUnreadCountCb();
     // Use longer polling interval when WebSocket is connected (just a safety net)

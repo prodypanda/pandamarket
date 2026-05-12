@@ -1,10 +1,10 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { Heart, ShoppingBag, User } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /**
  * Boutique Theme — Luxury fashion & lifestyle.
@@ -145,10 +145,7 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
       {/* Footer */}
       <footer className="border-t py-12 text-center" style={{ borderColor: `${goldAccent}20` }}>
         <p className="text-xs tracking-[0.15em] uppercase text-gray-400">
-          {storeName} — Propulsé par{' '}
-          <Link href="/" className="hover:underline" style={{ color: goldAccent }}>
-            🐼 PandaMarket
-          </Link>
+          {storeName} — <PoweredByMarketplace branding={branding} linkClassName="hover:underline" linkStyle={{ color: goldAccent }} />
         </p>
       </footer>
     </div>

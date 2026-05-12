@@ -2,8 +2,10 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
+import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud } from 'lucide-react';
+import { useLocale } from '../../../contexts/LocaleContext';
 
 interface PlatformSettings {
   marketplace_name: string;
@@ -12,11 +14,14 @@ interface PlatformSettings {
   marketplace_theme: 'panda' | 'aliexpress';
   marketplace_support_email: string;
   marketplace_support_phone: string;
+  chat_bubble_enabled: boolean;
+  chat_bubble_position: 'bottom-right' | 'bottom-left';
   marketplace_enabled: boolean;
   vendor_registration_enabled: boolean;
   buyer_registration_enabled: boolean;
   product_moderation_required: boolean;
   product_auto_publish_verified: boolean;
+  seller_type_change_auto_approval: boolean;
   reviews_enabled: boolean;
   review_auto_publish: boolean;
   wishlist_enabled: boolean;
@@ -32,6 +37,10 @@ interface PlatformSettings {
   max_product_images: number;
   max_products_per_store_free: number;
   default_low_stock_threshold: number;
+  chat_message_rate_limit_per_minute: number;
+  chat_max_images_per_message: number;
+  chat_max_image_size_mb: number;
+  chat_max_message_length: number;
   mandat_recipient_name: string;
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
@@ -46,11 +55,14 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   marketplace_theme: 'panda',
   marketplace_support_email: 'support@pandamarket.tn',
   marketplace_support_phone: '',
+  chat_bubble_enabled: true,
+  chat_bubble_position: 'bottom-right',
   marketplace_enabled: true,
   vendor_registration_enabled: true,
   buyer_registration_enabled: true,
   product_moderation_required: true,
   product_auto_publish_verified: true,
+  seller_type_change_auto_approval: false,
   reviews_enabled: true,
   review_auto_publish: true,
   wishlist_enabled: true,
@@ -66,6 +78,10 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   max_product_images: 10,
   max_products_per_store_free: 50,
   default_low_stock_threshold: 5,
+  chat_message_rate_limit_per_minute: 20,
+  chat_max_images_per_message: 4,
+  chat_max_image_size_mb: 5,
+  chat_max_message_length: 5000,
   mandat_recipient_name: 'PandaMarket SARL',
   mandat_recipient_cin: '',
   mandat_recipient_city: 'Tunis',
@@ -107,6 +123,10 @@ const NUMBER_SETTING_KEYS = [
   'max_products_per_store_free',
   'default_low_stock_threshold',
   'platform_commission_rate',
+  'chat_message_rate_limit_per_minute',
+  'chat_max_images_per_message',
+  'chat_max_image_size_mb',
+  'chat_max_message_length',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -115,12 +135,14 @@ const BOOLEAN_SETTING_KEYS = [
   'buyer_registration_enabled',
   'product_moderation_required',
   'product_auto_publish_verified',
+  'seller_type_change_auto_approval',
   'reviews_enabled',
   'review_auto_publish',
   'wishlist_enabled',
   'cart_enabled',
   'shipping_enabled',
   'order_splitting_enabled',
+  'chat_bubble_enabled',
 ] as const satisfies readonly BooleanSettingKey[];
 
 interface ToggleSetting {
@@ -146,6 +168,7 @@ function buildSettingsPayload(current: PlatformSettings): PlatformSettings {
   }
 
   payload.marketplace_theme = payload.marketplace_theme === 'aliexpress' ? 'aliexpress' : 'panda';
+  payload.chat_bubble_position = payload.chat_bubble_position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   payload.default_currency = String(payload.default_currency || DEFAULT_SETTINGS.default_currency).trim().toUpperCase();
 
   return payload;
@@ -194,6 +217,7 @@ function SectionHeader({
 }
 
 export default function AdminSettingsPage() {
+  const { t } = useLocale();
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -394,6 +418,8 @@ export default function AdminSettingsPage() {
       {error && <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
+      <AccountTwoFactorPanel accentClass="bg-slate-950" />
+
       <section className="rounded-xl border border-gray-100 bg-white p-6">
         <SectionHeader
           icon={<Store className="h-5 w-5" />}
@@ -413,7 +439,12 @@ export default function AdminSettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
                   {settings.marketplace_logo_url ? (
-                    <img src={settings.marketplace_logo_url} alt={settings.marketplace_name} className="max-h-full max-w-full object-contain" />
+                    <div
+                      aria-label={settings.marketplace_name}
+                      role="img"
+                      className="h-full w-full bg-contain bg-center bg-no-repeat"
+                      style={{ backgroundImage: `url(${settings.marketplace_logo_url})` }}
+                    />
                   ) : (
                     <ImageIcon className="h-6 w-6 text-gray-300" />
                   )}
@@ -479,6 +510,15 @@ export default function AdminSettingsPage() {
           {[
             { key: 'product_moderation_required' as const, label: 'Product Moderation', description: 'Require admin review before unverified seller products go live.' },
             { key: 'product_auto_publish_verified' as const, label: 'Verified Seller Auto-Publish', description: 'Publish verified seller products without manual approval.' },
+            {
+              key: 'seller_type_change_auto_approval' as const,
+              label: settings.seller_type_change_auto_approval
+                ? t('sellerTypes.approval.autoApproval')
+                : t('sellerTypes.approval.manualApproval'),
+              description: settings.seller_type_change_auto_approval
+                ? t('sellerTypes.approval.autoApprovalDesc')
+                : t('sellerTypes.approval.manualApprovalDesc'),
+            },
             { key: 'reviews_enabled' as const, label: 'Customer Reviews', description: 'Allow customers to submit product reviews.' },
             { key: 'review_auto_publish' as const, label: 'Auto-Publish Reviews', description: 'Publish new reviews immediately after submission.' },
           ].map(renderToggle)}
@@ -556,6 +596,46 @@ export default function AdminSettingsPage() {
           {renderNumberInput('max_product_images', 'Max Product Images', 'images', 1, 50)}
           {renderNumberInput('max_products_per_store_free', 'Free Store Product Limit', 'products', 1, 10000)}
           {renderNumberInput('default_low_stock_threshold', 'Low Stock Threshold', 'units', 0, 1000)}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-100 bg-white p-6">
+        <SectionHeader
+          icon={<MessageSquare className="h-5 w-5" />}
+          title="Chat Security"
+          description="Limit chat message frequency, image count, image size, and text length for all users."
+        />
+        <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-[1fr_2fr]">
+          {renderToggle({
+            key: 'chat_bubble_enabled',
+            label: 'Instant Chat Bubble',
+            description: 'Show or hide the floating chat bubble on marketplace and storefront pages.',
+          })}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Bubble Position</label>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-gray-50 p-2">
+              {(['bottom-right', 'bottom-left'] as const).map((position) => (
+                <button
+                  key={position}
+                  type="button"
+                  onClick={() => updateSetting('chat_bubble_position', position)}
+                  className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                    settings.chat_bubble_position === position
+                      ? 'bg-[#16C784] text-white shadow-sm'
+                      : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {position === 'bottom-right' ? 'Bottom-right corner' : 'Bottom-left corner'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          {renderNumberInput('chat_message_rate_limit_per_minute', 'Messages per Minute', 'messages', 1, 300)}
+          {renderNumberInput('chat_max_images_per_message', 'Images per Message', 'images', 1, 10)}
+          {renderNumberInput('chat_max_image_size_mb', 'Max Chat Image Size', 'MB', 1, 25)}
+          {renderNumberInput('chat_max_message_length', 'Max Message Length', 'chars', 1, 5000)}
         </div>
       </section>
       <MarketplaceAssetPicker

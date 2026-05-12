@@ -27,6 +27,7 @@ import { StoreCartIcon } from '../../../components/store/StoreCartIcon';
 import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../lib/store-routing';
 import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../components/store/MarketplaceStorefront';
+import { MarketplaceBrand } from '../../../components/MarketplaceBrand';
 
 interface StoreBranding {
   store_id?: string;
@@ -37,6 +38,8 @@ interface StoreBranding {
   favicon_url?: string;
   themeCustomization?: ThemeCustomization;
   store_path_base?: string;
+  marketplace_name?: string;
+  marketplace_logo_url?: string;
 }
 
 interface StoreData {
@@ -44,10 +47,19 @@ interface StoreData {
   name: string;
   theme_id: ThemeId;
   description?: string;
+  seller_type?: string | null;
+  is_verified?: boolean | null;
+  status?: string | null;
+  created_at?: string | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
     favicon_url?: string;
+    store_description?: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    country?: string;
     [key: string]: unknown;
   };
 }
@@ -77,15 +89,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
     const data = await res.json();
     return data.store;
   } catch {
-    // Fallback: derive theme from hostname for development
-    let themeId: ThemeId = 'modern';
-    if (host.startsWith('minimal')) themeId = 'minimal';
-    if (host.startsWith('classic')) themeId = 'classic';
-    return {
-      id: `store-${host}`,
-      name: host.split('.')[0].toUpperCase() + ' Store',
-      theme_id: themeId,
-    };
+    return null;
   }
 }
 
@@ -150,13 +154,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { storeHost } = await params;
   const store = await getStoreByHost(decodeURIComponent(storeHost));
+  const marketplaceSettings = await getMarketplaceSettings();
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
 
   if (!store) {
-    return { title: 'Boutique introuvable | PandaMarket' };
+    return { title: `Boutique introuvable | ${marketplaceName}` };
   }
 
   const description = store.description
-    || `Découvrez les produits de ${store.name} sur PandaMarket. Boutique en ligne tunisienne.`;
+    || `Découvrez les produits de ${store.name} sur ${marketplaceName}. Boutique en ligne tunisienne.`;
   const logoUrl = store.settings?.logo_url as string | undefined;
 
   return {
@@ -214,6 +220,7 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   if (homepageOverride && homepageOverride.html) {
     const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
     const logoUrl = store.settings?.logo_url as string | undefined;
+    const marketplaceSettings = await getMarketplaceSettings();
 
     return (
       <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
@@ -224,7 +231,12 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
         >
           <Link href={storePathBase || '/'} className="flex items-center gap-2">
             {logoUrl ? (
-              <img src={logoUrl} alt={store.name} className="h-8 object-contain" />
+              <span
+                aria-label={store.name}
+                role="img"
+                className="block h-8 w-28 bg-contain bg-left bg-no-repeat"
+                style={{ backgroundImage: `url(${logoUrl})` }}
+              />
             ) : (
               <span className="text-lg font-bold" style={{ color: primaryColor }}>
                 {store.name}
@@ -250,17 +262,28 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
 
         {/* Footer */}
         <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
-          Propulsé par{' '}
-          <Link href="/" className="hover:underline" style={{ color: primaryColor }}>
-            🐼 PandaMarket
-          </Link>
+          <span className="inline-flex items-center justify-center gap-1">
+            Propulsé par{' '}
+            <MarketplaceBrand
+              href="/hub"
+              marketplaceName={marketplaceSettings.marketplace_name}
+              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              className="inline-flex align-middle"
+              imageClassName="h-5 max-w-[120px] object-contain"
+              textClassName="font-semibold hover:underline"
+              fallbackMarkClassName="hidden"
+            />
+          </span>
         </footer>
       </div>
     );
   }
 
   // Default: Render the selected theme
-  const products = await getStoreProducts(store.id);
+  const [products, marketplaceSettings] = await Promise.all([
+    getStoreProducts(store.id),
+    getMarketplaceSettings(),
+  ]);
 
   // Use resolved colors as primary_color override for backward compatibility
   const branding: StoreBranding = {
@@ -272,6 +295,8 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
     favicon_url: store.settings?.favicon_url as string | undefined,
     themeCustomization,
     store_path_base: storePathBase,
+    marketplace_name: marketplaceSettings.marketplace_name,
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
   };
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding };

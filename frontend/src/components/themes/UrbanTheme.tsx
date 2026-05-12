@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Flame } from 'lucide-react';
 import Link from 'next/link';
+import { Flame, ShoppingBag } from 'lucide-react';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Urban Theme — Street fashion, bold typography, high contrast. */
 export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -65,7 +64,7 @@ export function UrbanTheme({ theme, storeName, products = [], branding }: ThemeP
         </div>
       </main>
       <footer className="border-t-4 border-black py-10 text-center">
-        <p className="text-xs text-gray-500">© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs text-gray-500">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

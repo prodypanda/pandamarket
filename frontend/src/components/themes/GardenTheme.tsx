@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
 import { ShoppingBag, Leaf } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Garden Theme — Organic/natural products, greens and earth tones. */
 export function GardenTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -61,7 +60,7 @@ export function GardenTheme({ theme, storeName, products = [], branding }: Theme
         </div>
       </main>
       <footer className="border-t py-10 text-center" style={{ borderColor: `${green}15` }}>
-        <p className="text-xs text-green-600/50">© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs text-green-600/50">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

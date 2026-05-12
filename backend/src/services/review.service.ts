@@ -336,17 +336,17 @@ export class ReviewService {
       `INSERT INTO pd_product_rating (product_id, average_rating, review_count,
         rating_1, rating_2, rating_3, rating_4, rating_5, updated_at)
        SELECT
-         $1,
+         $1::varchar,
          COALESCE(AVG(rating)::DECIMAL(3,2), 0),
-         COUNT(*),
-         COUNT(*) FILTER (WHERE rating = 1),
-         COUNT(*) FILTER (WHERE rating = 2),
-         COUNT(*) FILTER (WHERE rating = 3),
-         COUNT(*) FILTER (WHERE rating = 4),
-         COUNT(*) FILTER (WHERE rating = 5),
+         COUNT(*)::int,
+         COUNT(*) FILTER (WHERE rating = 1)::int,
+         COUNT(*) FILTER (WHERE rating = 2)::int,
+         COUNT(*) FILTER (WHERE rating = 3)::int,
+         COUNT(*) FILTER (WHERE rating = 4)::int,
+         COUNT(*) FILTER (WHERE rating = 5)::int,
          NOW()
        FROM pd_review
-       WHERE product_id = $1 AND status = 'published'
+       WHERE product_id = $1::varchar AND status = 'published'
        ON CONFLICT (product_id) DO UPDATE SET
          average_rating = EXCLUDED.average_rating,
          review_count = EXCLUDED.review_count,

@@ -7,8 +7,13 @@ import { ReviewSection } from '../hub/ReviewSection';
 import { ProductDescriptionRenderer } from '../product/ProductDescription';
 import { ProductGallery } from '../product/ProductGallery';
 import { SellerHoverCard } from '../product/SellerHoverCard';
+import { ContactSellerButton } from '../chat/ContactSellerButton';
+import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { getMarketplaceStoreProductHref, type MarketplaceStoreData, type MarketplaceStoreProduct } from './MarketplaceStorefront';
+import { getWholesalePricingFromMetadata } from '../../lib/cart-utils';
+import { t as translate } from '../../i18n/utils';
+import type { Locale } from '../../i18n/config';
 
 interface MarketplaceProductDetail extends MarketplaceStoreProduct {
   type?: string | null;
@@ -16,8 +21,10 @@ interface MarketplaceProductDetail extends MarketplaceStoreProduct {
   product_reference?: string | null;
   tags?: string[];
   attributes?: { name: string; value: string }[];
+  metadata?: Record<string, unknown> | null;
   inventory_quantity?: number;
   store_is_verified?: boolean | null;
+  store_seller_type?: string | null;
   store_status?: string | null;
   store_settings?: Record<string, unknown> | null;
   store_created_at?: string | null;
@@ -32,6 +39,7 @@ interface MarketplaceStoreProductDetailProps {
   relatedProducts: MarketplaceStoreProduct[];
   ratingData: { average_rating: number; review_count: number } | null;
   marketplaceSettings: MarketplaceThemeSettings;
+  locale: Locale;
 }
 
 function toNumber(value: unknown): number {
@@ -60,8 +68,10 @@ export function MarketplaceStoreProductDetail({
   relatedProducts,
   ratingData,
   marketplaceSettings,
+  locale,
 }: MarketplaceStoreProductDetailProps) {
   const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
+  const tx = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
   const isAliExpress = classes.isAliExpress;
   const accentHex = isAliExpress ? '#ff4747' : '#16C784';
   const storeHref = `/store/${encodeURIComponent(storeHost)}`;
@@ -69,9 +79,14 @@ export function MarketplaceStoreProductDetail({
   const categoryHref = product.marketplace_category_slug
     ? `${productsHref}?category=${encodeURIComponent(product.marketplace_category_slug)}`
     : productsHref;
-  const avgRating = ratingData?.average_rating ?? 0;
-  const reviewCount = ratingData?.review_count ?? 0;
+  const numericRating = toNumber(ratingData?.average_rating ?? 0);
+  const reviewCount = toNumber(ratingData?.review_count ?? 0);
+  const isPhysicalProduct = product.type === 'physical' || !product.type;
   const mainImage = product.thumbnail || getImageUrl(product.images?.[0]);
+  const sellerType = product.store_seller_type ?? store.seller_type;
+  const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
+    ? getWholesalePricingFromMetadata(product.metadata)
+    : null;
   const cardClass = isAliExpress
     ? 'rounded-[2rem] border border-orange-100/80 bg-white shadow-xl shadow-orange-900/5'
     : 'rounded-[2rem] border border-gray-100 bg-white shadow-sm';
@@ -85,6 +100,7 @@ export function MarketplaceStoreProductDetail({
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
+        showInstantChat={false}
       />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -120,7 +136,7 @@ export function MarketplaceStoreProductDetail({
             <div className={`mb-5 inline-flex flex-wrap items-center gap-2 rounded-full px-3 py-2 ${isAliExpress ? 'bg-orange-50 text-[#7a2d11]' : 'bg-gray-50 text-gray-600'}`}>
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className={`h-5 w-5 ${star <= Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                  <Star key={star} className={`h-5 w-5 ${star <= Math.round(numericRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                 ))}
               </div>
               <span className="text-sm font-bold">({reviewCount} avis)</span>
@@ -130,17 +146,47 @@ export function MarketplaceStoreProductDetail({
               <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
               <p className={`mt-1 text-4xl font-black sm:text-5xl ${classes.primaryText}`}>{formatPrice(product.price)}</p>
             </div>
+            {wholesalePricing && (
+              <div className={`mb-6 rounded-[1.75rem] p-5 ${isAliExpress ? 'border border-orange-100 bg-orange-50/70' : 'border border-emerald-100 bg-emerald-50/70'}`}>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">{tx('productWholesale.publicTitle')}</p>
+                <p className="mt-1 text-sm font-semibold text-gray-700">
+                  {tx('productWholesale.publicSubtitle')}
+                </p>
+                <p className={`mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black ${classes.primaryText}`}>
+                  {tx('productWholesale.minimumQuantity')}: {wholesalePricing.min_quantity}
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {wholesalePricing.price_tiers?.map((tier) => (
+                    <div key={tier.min_quantity} className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm">
+                      <span className="block text-xs font-black uppercase text-gray-400">
+                        {tx('productWholesale.tierLine', { quantity: tier.min_quantity })}
+                      </span>
+                      <span className={classes.primaryText}>
+                        {tx('productWholesale.unitPriceLine', { price: Number(tier.unit_price).toFixed(3) })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            <div className="mb-6">
+            <div className="mb-6 space-y-3">
               <SellerHoverCard
                 name={store.name}
                 href={storeHref}
                 isVerified={product.store_is_verified ?? store.is_verified}
+                sellerType={product.store_seller_type ?? store.seller_type}
                 status={product.store_status ?? store.status}
                 createdAt={product.store_created_at ?? store.created_at}
                 productCount={product.store_product_count}
                 settings={product.store_settings || store.settings}
                 accentColor={accentHex}
+              />
+              <ContactSellerButton
+                storeId={store.id}
+                productId={product.id}
+                subject={product.title}
+                isAliExpress={isAliExpress}
               />
             </div>
 
@@ -170,7 +216,7 @@ export function MarketplaceStoreProductDetail({
               </div>
             </div>
 
-            {product.inventory_quantity !== undefined && (
+            {isPhysicalProduct && product.inventory_quantity !== undefined && (
               <p className={`mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${product.inventory_quantity > 0 ? classes.primarySoft : 'bg-red-50 text-red-600'}`}>
                 <PackageCheck className="h-4 w-4" />
                 {product.inventory_quantity > 0 ? `${product.inventory_quantity} disponibles` : 'Rupture de stock'}
@@ -193,9 +239,12 @@ export function MarketplaceStoreProductDetail({
                 category={product.category}
                 marketplace_category_slug={product.marketplace_category_slug}
                 price={toNumber(product.price)}
+                seller_type={sellerType}
+                wholesale_pricing={wholesalePricing}
                 store_id={store.id}
                 store_name={store.name}
                 store_subdomain={store.subdomain}
+                product_type={product.type}
                 image_url={mainImage || null}
                 maxQuantity={product.inventory_quantity}
               />
@@ -248,7 +297,12 @@ export function MarketplaceStoreProductDetail({
                   <Link key={relatedProduct.id} href={getMarketplaceStoreProductHref(storeHost, relatedProduct)} className={`group overflow-hidden ${classes.card}`}>
                     <div className={`relative aspect-square overflow-hidden ${isAliExpress ? 'bg-orange-50' : 'bg-gray-100'}`}>
                       {imageUrl ? (
-                        <img src={imageUrl} alt={relatedProduct.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                        <div
+                          aria-label={relatedProduct.title}
+                          role="img"
+                          className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                          style={{ backgroundImage: `url(${imageUrl})` }}
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-400">No Image</div>
                       )}
@@ -266,6 +320,15 @@ export function MarketplaceStoreProductDetail({
       </main>
 
       <HubFooter {...marketplaceSettings} />
+      <InstantChatLauncher
+        marketplaceTheme={marketplaceSettings.marketplace_theme}
+        storeContext={{
+          storeId: store.id,
+          storeName: store.name,
+          productId: product.id,
+          productTitle: product.title,
+        }}
+      />
     </div>
   );
 }

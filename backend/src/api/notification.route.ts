@@ -13,8 +13,11 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { notificationService } from '../services/notification.service';
 import { asyncHandler, requireAuth, validate } from '../middlewares';
+import { query } from '../db/pool';
+import { UserRole } from '@pandamarket/types';
 
 const router = Router();
+const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
 
 // All notification routes require authentication
 router.use(requireAuth);
@@ -28,6 +31,39 @@ const listSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   unread: z.coerce.boolean().optional(),
 });
+
+async function getSelectedNotificationStoreId(req: Request): Promise<string | null> {
+  const user = req.user;
+  if (!user || user.role !== UserRole.Vendor) return null;
+
+  const selectedStoreId = (req as Request & { cookies?: Record<string, string> }).cookies
+    ?.[SELECTED_STORE_COOKIE];
+  if (selectedStoreId) {
+    const { rows } = await query<{ id: string }>(
+      'SELECT id FROM pd_store WHERE id = $1 AND owner_id = $2',
+      [selectedStoreId, user.id],
+    );
+    if (rows[0]) return rows[0].id;
+  }
+
+  if (user.store_id) {
+    const { rows } = await query<{ id: string }>(
+      'SELECT id FROM pd_store WHERE id = $1 AND owner_id = $2',
+      [user.store_id, user.id],
+    );
+    if (rows[0]) return rows[0].id;
+  }
+
+  const { rows } = await query<{ id: string }>(
+    `SELECT id
+     FROM pd_store
+     WHERE owner_id = $1
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [user.id],
+  );
+  return rows[0]?.id ?? null;
+}
 
 // ==========================================================
 // Routes
@@ -46,7 +82,12 @@ router.get(
       limit: number;
       unread?: boolean;
     };
-    const result = await notificationService.list(req.user!.id, { page, limit, unread });
+    const result = await notificationService.list(req.user!.id, {
+      page,
+      limit,
+      unread,
+      storeId: await getSelectedNotificationStoreId(req),
+    });
     res.status(200).json(result);
   }),
 );
@@ -58,7 +99,10 @@ router.get(
 router.get(
   '/unread-count',
   asyncHandler(async (req: Request, res: Response) => {
-    const count = await notificationService.unreadCount(req.user!.id);
+    const count = await notificationService.unreadCount(
+      req.user!.id,
+      await getSelectedNotificationStoreId(req),
+    );
     res.status(200).json({ unread_count: count });
   }),
 );
@@ -71,7 +115,7 @@ router.get(
 router.patch(
   '/read-all',
   asyncHandler(async (req: Request, res: Response) => {
-    await notificationService.markAllRead(req.user!.id);
+    await notificationService.markAllRead(req.user!.id, await getSelectedNotificationStoreId(req));
     res.status(200).json({ success: true, message: 'All notifications marked as read' });
   }),
 );
@@ -83,7 +127,11 @@ router.patch(
 router.patch(
   '/:id/read',
   asyncHandler(async (req: Request, res: Response) => {
-    await notificationService.markRead(req.params.id, req.user!.id);
+    await notificationService.markRead(
+      req.params.id,
+      req.user!.id,
+      await getSelectedNotificationStoreId(req),
+    );
     res.status(200).json({ success: true });
   }),
 );
@@ -91,7 +139,11 @@ router.patch(
 router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    await notificationService.delete(req.params.id, req.user!.id);
+    await notificationService.delete(
+      req.params.id,
+      req.user!.id,
+      await getSelectedNotificationStoreId(req),
+    );
     res.status(200).json({ success: true });
   }),
 );

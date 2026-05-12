@@ -98,6 +98,66 @@
     "noReviews": "No reviews yet."
   },
 
+  "sellerTypes": {
+    "title": "Seller type",
+    "all": "All seller types",
+    "options": {
+      "retailer": "Retailer",
+      "wholesaler": "Wholesaler",
+      "hybrid": "Hybrid"
+    },
+    "descriptions": {
+      "retailer": "Direct sales to end customers.",
+      "wholesaler": "Bulk sales to resellers and professionals.",
+      "hybrid": "Retail and wholesale sales from the same store."
+    },
+    "approval": {
+      "requestSubmitted": "Change request sent for superadmin approval.",
+      "autoApproved": "Seller type updated automatically.",
+      "pendingRequest": "Pending request: seller requested {type}",
+      "pendingDetails": "You cannot request another seller type while this request is pending. You can cancel it, but you must wait 24 hours before requesting again. Approved seller type changes are limited to once every 30 days.",
+      "cancelRequest": "Cancel request",
+      "cancelling": "Cancelling...",
+      "cancelled": "Seller type change request cancelled. You can request again after 24 hours.",
+      "requestLocked": "Request locked",
+      "monthlyLimit": "Approved seller type changes are limited to once every 30 days.",
+      "currentType": "Current type",
+      "requestedType": "Requested type",
+      "approvalMode": "Seller type approval",
+      "autoApproval": "Auto approval",
+      "autoApprovalDesc": "Apply seller requested type changes immediately.",
+      "manualApproval": "Manual approval",
+      "manualApprovalDesc": "Seller requested changes stay pending until superadmin approval.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approving": "Approving...",
+      "directChange": "Change directly",
+      "updating": "Updating...",
+      "updated": "Seller type updated."
+    }
+  },
+
+  "productWholesale": {
+    "title": "Wholesale quantity pricing",
+    "hybridDescription": "Hybrid sellers keep the 1 quantity retail price and add volume prices for wholesale buyers.",
+    "wholesalerDescription": "Wholesaler products require a minimum order quantity and attractive volume prices for bulk buyers.",
+    "minimumWholesaleQuantity": "Minimum wholesale quantity",
+    "minimumOrderQuantity": "Minimum order quantity",
+    "hybridMinimumHelp": "Retail buyers can still buy 1 unit at the normal price.",
+    "wholesalerMinimumHelp": "Buyers cannot checkout below this quantity.",
+    "oneQuantityPrice": "1 quantity price",
+    "basePriceHelp": "This is the base product price above.",
+    "priceTiers": "Price tiers",
+    "addTier": "Add tier",
+    "quantityFrom": "Quantity from",
+    "unitPrice": "Unit price",
+    "publicTitle": "Bulk pricing available",
+    "publicSubtitle": "Buy more units from this seller to unlock better unit prices.",
+    "minimumQuantity": "Minimum quantity",
+    "tierLine": "{quantity}+ units",
+    "unitPriceLine": "{price} TND / unit"
+  },
+
   "cart": {
     "title": "My Cart",
     "empty": "Your cart is empty",
@@ -203,6 +263,7 @@
     "sidebar": {
       "overview": "Overview",
       "products": "Products",
+      "categories": "Categories",
       "orders": "Orders",
       "wallet": "Wallet",
       "aiTools": "AI Tools",
@@ -223,7 +284,12 @@
       "products": "Products",
       "wallet": "Wallet"
     },
-    "recentOrders": "Recent Orders"
+    "recentOrders": "Recent Orders",
+    "checkingAccess": "Checking seller access...",
+    "loggingOut": "Logging out...",
+    "top": {
+      "welcome": "Welcome, {name}"
+    }
   },
 
   "wallet": {
@@ -319,6 +385,12 @@
 
   "admin": {
     "title": "Administration",
+    "checkingAccess": "Checking admin access...",
+    "loggingOut": "Logging out...",
+    "top": {
+      "subtitle": "Control center · marketplace operations",
+      "goToHub": "Go to Hub"
+    },
     "sidebar": {
       "dashboard": "Dashboard",
       "kyc": "KYC Verifications",
@@ -327,6 +399,7 @@
       "vendors": "Vendors",
       "withdrawals": "Withdrawals",
       "plans": "Plans",
+      "marketplaceCategories": "Marketplace Categories",
       "auditLog": "Audit Log",
       "settings": "Settings",
       "aiCosts": "AI Costs",
@@ -336,7 +409,166 @@
     "kycPending": "{count} KYC pending",
     "mandatsPending": "{count} Mandats to validate",
     "productsPending": "{count} Products to approve",
-    "reportsPending": "{count} open report(s)"
+    "reportsPending": "{count} open report(s)",
+    "vendorsPage": {
+      "title": "Vendor Management",
+      "subtitle": "Monitor vendor health, verification, seller type requests, revenue, reports, and operational risk from one control center.",
+      "total": "{count} vendor(s)",
+      "filteredTotal": "Filtered vendors",
+      "sellerTypeFilter": "Seller type",
+      "sellerTypeFilterDesc": "Filter vendors by business model.",
+      "search": "Search vendors",
+      "searchPlaceholder": "Search by store, subdomain, domain, owner name, or email...",
+      "allStatuses": "All statuses",
+      "pendingRequests": "Pending requests",
+      "clearFilters": "Clear filters",
+      "store": "Store",
+      "plan": "Plan",
+      "type": "Type",
+      "status": "Status",
+      "created": "Created",
+      "actions": "Actions",
+      "noVendors": "No vendors found",
+      "metrics": {
+        "total": "Total",
+        "verified": "Verified",
+        "unverified": "Unverified",
+        "suspended": "Suspended",
+        "pendingType": "Type requests",
+        "pendingKyc": "KYC pending"
+      },
+      "statuses": {
+        "verified": "Verified",
+        "unverified": "Unverified",
+        "suspended": "Suspended"
+      },
+      "kyc": {
+        "pending": "KYC pending",
+        "approved": "KYC approved",
+        "rejected": "KYC rejected",
+        "missing": "No KYC"
+      },
+      "openStore": "Open store",
+      "products": "Products",
+      "orders": "Orders",
+      "revenue": "Revenue",
+      "reports": "Reports",
+      "owner": "Owner",
+      "activity": "Activity",
+      "lastLogin": "Last login",
+      "health": "Health",
+      "published": "published",
+      "pendingOrders": "pending orders",
+      "ownerActive": "Owner active",
+      "ownerInactive": "Owner inactive",
+      "requestedAt": "Requested at",
+      "rejectReasonPlaceholder": "Rejection reason...",
+      "sellerTypeApproved": "Seller type request approved.",
+      "sellerTypeRejected": "Seller type request rejected.",
+      "verify": "Verify",
+      "verified": "Vendor verified.",
+      "reactivate": "Reactivate",
+      "reactivated": "Vendor reactivated.",
+      "suspended": "Vendor suspended.",
+      "viewReports": "View reports",
+      "suspend": "Suspend",
+      "reasonPlaceholder": "Reason...",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "previous": "Previous",
+      "next": "Next",
+      "listDensity": "Vendor list density",
+      "listDensityDesc": "Switch to compact rows for quick scanning, then expand any vendor for full controls.",
+      "compactView": "Compact view",
+      "fullView": "Full view",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "pendingSellerTypeShort": "Pending seller type request",
+      "pageOf": "Page {page} of {totalPages}"
+    },
+    "reportsPage": {
+      "title": "Reports Management",
+      "subtitle": "Review buyer complaints, create marketplace risk reports against buyers or sellers, and coordinate resolutions.",
+      "createReport": "Create report",
+      "closeCreate": "Close form",
+      "metrics": {
+        "total": "Total",
+        "open": "Open",
+        "investigating": "Investigating",
+        "highPriority": "High priority",
+        "sellers": "Seller reports",
+        "buyers": "Buyer reports"
+      },
+      "targetType": "Target type",
+      "targetTypes": {
+        "seller": "Seller",
+        "buyer": "Buyer"
+      },
+      "targetSearch": "Find target",
+      "targetSearchPlaceholder": "Search by name, email, store, or phone...",
+      "target": "Target",
+      "selectTarget": "Select a target",
+      "priority": "Priority",
+      "priorities": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "category": "Category",
+      "orderId": "Order ID",
+      "optional": "Optional",
+      "reasonPlaceholder": "Describe the issue, evidence, and expected follow-up...",
+      "notesPlaceholder": "Internal admin notes...",
+      "creating": "Creating...",
+      "submitReport": "Submit report",
+      "searchPlaceholder": "Search reports, orders, stores, buyers, or reporters...",
+      "allStatuses": "All statuses",
+      "statuses": {
+        "open": "Open",
+        "investigating": "Investigating",
+        "awaiting_buyer": "Awaiting buyer",
+        "awaiting_seller": "Awaiting seller",
+        "resolved": "Resolved",
+        "dismissed": "Dismissed"
+      },
+      "allTargets": "All targets",
+      "allSources": "All sources",
+      "sources": {
+        "buyer": "Buyer submitted",
+        "admin": "Marketplace"
+      },
+      "allPriorities": "All priorities",
+      "noReports": "No reports",
+      "noReportsDesc": "No reports match the selected filters.",
+      "unknownTarget": "Unknown target",
+      "reportedBy": "Reported by",
+      "order": "Order",
+      "openStore": "Open store",
+      "openCase": "Open case",
+      "adminNotes": "Admin notes",
+      "status": "Status",
+      "statusUpdated": "Report status updated.",
+      "storeSuspended": "Seller store suspended.",
+      "buyerSuspended": "Buyer account suspended.",
+      "buyerReactivated": "Buyer account reactivated.",
+      "reportCreated": "Marketplace report created.",
+      "updateStatus": "Update status",
+      "updating": "Updating...",
+      "suspendSeller": "Suspend seller",
+      "suspendBuyer": "Suspend buyer",
+      "reactivateBuyer": "Reactivate buyer",
+      "buyerActionHint": "Buyer enforcement actions can be handled from user/account tools; keep notes here for audit trail.",
+      "reportId": "Report ID",
+      "resolvedAt": "Resolved at",
+      "resolvedBy": "Resolved by",
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {totalPages}",
+      "total": "total"
+    }
   },
 
   "store": {
@@ -365,6 +597,19 @@
     },
     "priceRange": "Price Range",
     "verifiedOnly": "Verified sellers only"
+  },
+
+  "sellerCard": {
+    "notProvided": "Not provided",
+    "verifiedSeller": "Verified seller",
+    "marketplaceSeller": "Marketplace seller",
+    "store": "Store",
+    "viewStore": "View store",
+    "visitStore": "Visit store",
+    "memberSince": "Member since",
+    "activeProducts": "Active products",
+    "verifiedProfile": "Profile verified by PandaMarket",
+    "marketplaceProfile": "Marketplace seller profile"
   },
 
   "footer": {

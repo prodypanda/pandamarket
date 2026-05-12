@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Download, Code2 } from 'lucide-react';
+import { Download, Code2 } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Digital Theme — Software/SaaS products, gradient backgrounds, modern. */
 export function DigitalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -69,7 +68,7 @@ export function DigitalTheme({ theme, storeName, products = [], branding }: Them
         </div>
       </main>
       <footer className="border-t border-white/5 py-10 text-center">
-        <p className="text-xs text-gray-600">© {new Date().getFullYear()} {storeName} — Powered by <Link href="/" className="text-[#16C784] hover:underline">🐼 PandaMarket</Link></p>
+        <p className="text-xs text-gray-600">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
       </footer>
     </div>
   );

@@ -2,20 +2,20 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { subscriptionService } from '../services/subscription.service';
 import { asyncHandler, validate, requireStore } from '../middlewares';
-import { SubscriptionPlan } from '@pandamarket/types';
 import { query } from '../db/pool';
+import { normalizePlanId } from '../utils/plan-id';
 
 const router = Router();
 
 const changePlanSchema = z.object({
-  plan: z.nativeEnum(SubscriptionPlan),
+  plan: z.string().transform((value) => normalizePlanId(value)),
 });
 
 // Public: List all available plans
 router.get(
   '/plans',
   asyncHandler(async (_req: Request, res: Response) => {
-    const plans = await subscriptionService.listAll();
+    const plans = await subscriptionService.listAll({ enabledOnly: true });
     res.status(200).json({ plans });
   }),
 );
@@ -26,7 +26,7 @@ router.get(
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
     const { rows } = await query<{
-      subscription_plan: SubscriptionPlan;
+      subscription_plan: string;
       subscription_type: string;
       subscription_expires_at: Date | null;
     }>(
@@ -50,7 +50,7 @@ router.post(
   requireStore,
   validate(changePlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { rows } = await query<{ subscription_plan: SubscriptionPlan }>(
+    const { rows } = await query<{ subscription_plan: string }>(
       'SELECT subscription_plan FROM pd_store WHERE id = $1',
       [req.user!.store_id!],
     );

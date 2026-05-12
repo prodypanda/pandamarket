@@ -1,10 +1,9 @@
 import React from 'react';
-import { ThemeConfig } from '../../lib/themes';
-import { ShoppingBag, Diamond } from 'lucide-react';
+import { Diamond } from 'lucide-react';
 import Link from 'next/link';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
-import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
+import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 /** Luxe Theme — High-end jewelry/watches, dark with gold accents. */
 export function LuxeTheme({ theme, storeName, products = [], branding }: ThemeProps) {
@@ -58,7 +57,7 @@ export function LuxeTheme({ theme, storeName, products = [], branding }: ThemePr
         </div>
       </main>
       <footer className="border-t py-12 text-center" style={{ borderColor: `${gold}15` }}>
-        <p className="text-xs text-gray-600 tracking-wide">{storeName} — Powered by <Link href="/" className="hover:underline" style={{ color: gold }}>🐼 PandaMarket</Link></p>
+        <p className="text-xs text-gray-600 tracking-wide">{storeName} — <PoweredByMarketplace branding={branding} linkClassName="hover:underline" linkStyle={{ color: gold }} /></p>
       </footer>
     </div>
   );

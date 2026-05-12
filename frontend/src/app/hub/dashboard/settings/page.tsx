@@ -2,17 +2,28 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
+import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
+import { useLocale } from '../../../../contexts/LocaleContext';
+import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 
-type Tab = 'store' | 'theme' | 'domain' | 'shipping';
+type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'payments';
 
 interface MediaItem {
   url: string;
   product_id: string;
   product_title: string;
   alt_text?: string | null;
+}
+
+interface SellerTypeChangeRequest {
+  requested_type?: SellerTypeValue;
+  status?: string;
+  requested_at?: string;
+  reviewed_at?: string | null;
+  cancelled_at?: string | null;
 }
 
 async function getErrorMessage(res: Response, fallback = 'Erreur') {
@@ -25,15 +36,22 @@ async function getErrorMessage(res: Response, fallback = 'Erreur') {
 }
 
 export default function SettingsPage() {
+  const { t, dir } = useLocale();
+  const sellerTypeOptions = getSellerTypeOptions(t);
+  const isRtl = dir === 'rtl';
   const [activeTab, setActiveTab] = useState<Tab>('store');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cancellingSellerTypeRequest, setCancellingSellerTypeRequest] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
   // Store settings
   const [storeName, setStoreName] = useState('');
   const [storeDescription, setStoreDescription] = useState('');
+  const [sellerType, setSellerType] = useState<SellerTypeValue>('retailer');
+  const [currentSellerType, setCurrentSellerType] = useState<SellerTypeValue>('retailer');
+  const [pendingSellerTypeRequest, setPendingSellerTypeRequest] = useState<SellerTypeChangeRequest | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -49,7 +67,7 @@ export default function SettingsPage() {
   const [customDomain, setCustomDomain] = useState('');
 
   // Shipping
-  const [shippingMode, setShippingMode] = useState('standard');
+  const [shippingMode, setShippingMode] = useState('self_managed');
 
   const fetchStoreSettings = async () => {
     try {
@@ -57,7 +75,11 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         const store = data.store;
+        const loadedSellerType = (store.seller_type || 'retailer') as SellerTypeValue;
         setStoreName(store.name || '');
+        setSellerType(loadedSellerType);
+        setCurrentSellerType(loadedSellerType);
+        setPendingSellerTypeRequest(store.settings?.seller_type_change_request || null);
         setStoreDescription(store.settings?.store_description || store.settings?.description || '');
         setContactEmail(store.settings?.contact_email || '');
         setContactPhone(store.settings?.contact_phone || '');
@@ -65,7 +87,7 @@ export default function SettingsPage() {
         setSelectedTheme((store.theme_id || 'modern') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
-        setShippingMode(store.shipping_mode || 'standard');
+        setShippingMode(store.shipping_mode || 'self_managed');
       } else {
         setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
       }
@@ -118,6 +140,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          seller_type: sellerType === currentSellerType ? undefined : sellerType,
           settings: {
             name: storeName,
             store_description: storeDescription,
@@ -128,7 +151,23 @@ export default function SettingsPage() {
         }),
       });
       if (res.ok) {
-        showFeedback('Paramètres sauvegardés');
+        const data = await res.json().catch(() => null);
+        const nextStore = data?.store;
+        if (nextStore?.seller_type) {
+          const updatedSellerType = nextStore.seller_type as SellerTypeValue;
+          setSellerType(updatedSellerType);
+          setCurrentSellerType(updatedSellerType);
+        }
+        setPendingSellerTypeRequest(nextStore?.settings?.seller_type_change_request || null);
+        if (sellerType === currentSellerType) {
+          showFeedback('Paramètres sauvegardés');
+          return;
+        }
+        showFeedback(
+          data?.pending_approval
+            ? t('sellerTypes.approval.requestSubmitted')
+            : t('sellerTypes.approval.autoApproved'),
+        );
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
@@ -136,6 +175,29 @@ export default function SettingsPage() {
       showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const cancelSellerTypeRequest = async () => {
+    setCancellingSellerTypeRequest(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/seller-type-request/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        setPendingSellerTypeRequest(data?.store?.settings?.seller_type_change_request || null);
+        setSellerType(currentSellerType);
+        showFeedback(t('sellerTypes.approval.cancelled'));
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+    } finally {
+      setCancellingSellerTypeRequest(false);
     }
   };
 
@@ -269,10 +331,15 @@ export default function SettingsPage() {
 
   const tabs: { id: Tab; label: string; icon: typeof Settings }[] = [
     { id: 'store', label: 'Boutique', icon: Settings },
+    { id: 'security', label: 'Sécurité', icon: ShieldCheck },
     { id: 'theme', label: 'Thème', icon: Palette },
     { id: 'domain', label: 'Domaine', icon: Globe },
     { id: 'shipping', label: 'Livraison', icon: Truck },
   ];
+  const hasPendingSellerTypeRequest = pendingSellerTypeRequest?.status === 'pending' && Boolean(pendingSellerTypeRequest.requested_type);
+  const pendingSellerTypeLabel = hasPendingSellerTypeRequest
+    ? sellerTypeOptions.find((option) => option.value === pendingSellerTypeRequest?.requested_type)?.label || pendingSellerTypeRequest?.requested_type
+    : '';
 
   const themeList: { id: ThemeId; name: string; desc: string; free: boolean }[] = [
     { id: 'minimal', name: 'Minimal', desc: 'Simplicité et élégance', free: true },
@@ -312,7 +379,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
       <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
 
       {/* Feedback */}
@@ -330,7 +397,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -370,6 +437,68 @@ export default function SettingsPage() {
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none resize-none"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sellerTypes.title')}</label>
+              {hasPendingSellerTypeRequest && (
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex gap-3">
+                      <Clock3 className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-bold">
+                          {t('sellerTypes.approval.pendingRequest', { type: String(pendingSellerTypeLabel) })}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-amber-700">
+                          {t('sellerTypes.approval.pendingDetails')}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
+                          <span className="rounded-full bg-white px-3 py-1 text-amber-700">
+                            {t('sellerTypes.approval.currentType')}: {sellerTypeOptions.find((option) => option.value === currentSellerType)?.label || currentSellerType}
+                          </span>
+                          <span className="rounded-full bg-white px-3 py-1 text-amber-700">
+                            {t('sellerTypes.approval.requestedType')}: {pendingSellerTypeLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={cancelSellerTypeRequest}
+                      disabled={cancellingSellerTypeRequest}
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {cancellingSellerTypeRequest ? t('sellerTypes.approval.cancelling') : t('sellerTypes.approval.cancelRequest')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <p className="mb-3 text-xs leading-5 text-gray-500">
+                {t('sellerTypes.approval.monthlyLimit')}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {sellerTypeOptions.map((option) => {
+                  const selected = sellerType === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        if (!hasPendingSellerTypeRequest) setSellerType(option.value);
+                      }}
+                      disabled={hasPendingSellerTypeRequest}
+                      className={`rounded-xl border p-4 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isRtl ? 'text-right' : 'text-left'} ${
+                        selected
+                          ? 'border-[#16C784] bg-emerald-50 shadow-sm ring-2 ring-emerald-100'
+                          : 'border-gray-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'
+                      }`}
+                    >
+                      <span className="block text-sm font-bold text-gray-900">{option.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-gray-500">{option.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email de contact</label>
@@ -396,7 +525,12 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
                     {logoUrl ? (
-                      <img src={logoUrl} alt={storeName || 'Logo boutique'} className="max-h-full max-w-full object-contain" />
+                      <div
+                        aria-label={storeName || 'Logo boutique'}
+                        role="img"
+                        className="h-full w-full bg-contain bg-center bg-no-repeat"
+                        style={{ backgroundImage: `url(${logoUrl})` }}
+                      />
                     ) : (
                       <ImageIcon className="h-7 w-7 text-gray-300" />
                     )}
@@ -450,6 +584,10 @@ export default function SettingsPage() {
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
           </div>
+        )}
+
+        {activeTab === 'security' && (
+          <AccountTwoFactorPanel accentClass="bg-[#16C784]" />
         )}
 
         {/* Theme Tab */}
@@ -561,9 +699,8 @@ export default function SettingsPage() {
             <h2 className="font-semibold text-gray-900 mb-4">Mode de livraison</h2>
             <div className="space-y-3">
               {[
-                { id: 'standard', name: 'Standard', desc: 'Livraison standard 3-5 jours' },
-                { id: 'express', name: 'Express', desc: 'Livraison express 1-2 jours' },
-                { id: 'pickup', name: 'Retrait en magasin', desc: 'Le client récupère sa commande' },
+                { id: 'self_managed', name: 'Gestion vendeur', desc: 'Vous gérez vous-même la livraison et le suivi client.' },
+                { id: 'platform_unified', name: 'Plateforme unifiée', desc: 'Utilise les intégrations PandaMarket pour les bordereaux et le suivi.' },
               ].map((mode) => (
                 <label
                   key={mode.id}
@@ -625,7 +762,12 @@ export default function SettingsPage() {
                       className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#16C784] hover:shadow-md"
                     >
                       <div className="aspect-square bg-gray-100">
-                        <img src={item.url} alt={item.alt_text || item.product_title} className="h-full w-full object-cover" />
+                        <div
+                          aria-label={item.alt_text || item.product_title}
+                          role="img"
+                          className="h-full w-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${item.url})` }}
+                        />
                       </div>
                       <div className="p-2">
                         <p className="truncate text-xs font-medium text-gray-700">{item.product_title}</p>

@@ -97,7 +97,7 @@ export const config = {
     accessKey: required('PD_S3_ACCESS_KEY', 'minioadmin'),
     secretKey: required('PD_S3_SECRET_KEY', 'minioadmin'),
     region: optional('PD_S3_REGION', 'us-east-1')!,
-    publicBaseUrl: optional('PD_S3_PUBLIC_BASE_URL', 'http://localhost:9100/pd-product-images')!,
+    publicBaseUrl: optional('PD_S3_PUBLIC_BASE_URL', '/pd-product-images')!,
   },
 
   // Auth

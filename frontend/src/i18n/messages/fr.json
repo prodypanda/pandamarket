@@ -98,6 +98,66 @@
     "noReviews": "Aucun avis pour le moment."
   },
 
+  "sellerTypes": {
+    "title": "Type de vendeur",
+    "all": "Tous les types de vendeurs",
+    "options": {
+      "retailer": "Détaillant",
+      "wholesaler": "Grossiste",
+      "hybrid": "Hybride"
+    },
+    "descriptions": {
+      "retailer": "Vente directe aux clients finaux.",
+      "wholesaler": "Vente en gros aux revendeurs et professionnels.",
+      "hybrid": "Vente au détail et vente en gros depuis la même boutique."
+    },
+    "approval": {
+      "requestSubmitted": "Demande de changement envoyée pour approbation superadmin.",
+      "autoApproved": "Type de vendeur mis à jour automatiquement.",
+      "pendingRequest": "Demande en attente : le vendeur a demandé {type}",
+      "pendingDetails": "Vous ne pouvez pas envoyer une autre demande tant que celle-ci est en attente. Vous pouvez l'annuler, mais vous devrez attendre 24 heures avant de refaire une demande. Les changements approuvés sont limités à une fois tous les 30 jours.",
+      "cancelRequest": "Annuler la demande",
+      "cancelling": "Annulation...",
+      "cancelled": "Demande de changement annulée. Vous pourrez refaire une demande après 24 heures.",
+      "requestLocked": "Demande verrouillée",
+      "monthlyLimit": "Les changements de type vendeur approuvés sont limités à une fois tous les 30 jours.",
+      "currentType": "Type actuel",
+      "requestedType": "Type demandé",
+      "approvalMode": "Approbation des types de vendeurs",
+      "autoApproval": "Approbation automatique",
+      "autoApprovalDesc": "Appliquer immédiatement les changements de type demandés par les vendeurs.",
+      "manualApproval": "Approbation manuelle",
+      "manualApprovalDesc": "Les changements demandés par les vendeurs restent en attente jusqu'à validation superadmin.",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "approving": "Approbation...",
+      "directChange": "Modifier directement",
+      "updating": "Mise à jour...",
+      "updated": "Type de vendeur mis à jour."
+    }
+  },
+
+  "productWholesale": {
+    "title": "Tarification de gros par quantité",
+    "hybridDescription": "Les vendeurs hybrides gardent le prix pour 1 unité et ajoutent des prix dégressifs pour les acheteurs en gros.",
+    "wholesalerDescription": "Les produits grossistes nécessitent une quantité minimale et des prix dégressifs attractifs pour les achats en volume.",
+    "minimumWholesaleQuantity": "Quantité minimale de gros",
+    "minimumOrderQuantity": "Quantité minimale de commande",
+    "hybridMinimumHelp": "Les acheteurs au détail peuvent toujours acheter 1 unité au prix normal.",
+    "wholesalerMinimumHelp": "Les acheteurs ne peuvent pas finaliser sous cette quantité.",
+    "oneQuantityPrice": "Prix pour 1 unité",
+    "basePriceHelp": "C'est le prix de base du produit indiqué ci-dessus.",
+    "priceTiers": "Paliers de prix",
+    "addTier": "Ajouter un palier",
+    "quantityFrom": "Quantité à partir de",
+    "unitPrice": "Prix unitaire",
+    "publicTitle": "Prix de gros disponible",
+    "publicSubtitle": "Achetez plus d'unités chez ce vendeur pour débloquer de meilleurs prix unitaires.",
+    "minimumQuantity": "Quantité minimale",
+    "tierLine": "{quantity}+ unités",
+    "unitPriceLine": "{price} TND / unité"
+  },
+
   "cart": {
     "title": "Mon Panier",
     "empty": "Votre panier est vide",
@@ -203,6 +263,7 @@
     "sidebar": {
       "overview": "Aperçu",
       "products": "Produits",
+      "categories": "Catégories",
       "orders": "Commandes",
       "wallet": "Wallet",
       "aiTools": "Outils IA",
@@ -223,7 +284,12 @@
       "products": "Produits",
       "wallet": "Wallet"
     },
-    "recentOrders": "Commandes Récentes"
+    "recentOrders": "Commandes Récentes",
+    "checkingAccess": "Vérification de l'accès vendeur...",
+    "loggingOut": "Déconnexion...",
+    "top": {
+      "welcome": "Bienvenue, {name}"
+    }
   },
 
   "wallet": {
@@ -319,6 +385,12 @@
 
   "admin": {
     "title": "Administration",
+    "checkingAccess": "Vérification de l'accès admin...",
+    "loggingOut": "Déconnexion...",
+    "top": {
+      "subtitle": "Centre de contrôle · opérations marketplace",
+      "goToHub": "Aller au Hub"
+    },
     "sidebar": {
       "dashboard": "Dashboard",
       "kyc": "Vérifications KYC",
@@ -327,6 +399,7 @@
       "vendors": "Vendeurs",
       "withdrawals": "Retraits",
       "plans": "Plans",
+      "marketplaceCategories": "Catégories marketplace",
       "auditLog": "Journal d'audit",
       "settings": "Paramètres",
       "aiCosts": "Coûts IA",
@@ -336,7 +409,166 @@
     "kycPending": "{count} KYC en attente",
     "mandatsPending": "{count} Mandats à valider",
     "productsPending": "{count} Produits à approuver",
-    "reportsPending": "{count} Signalement(s) ouvert(s)"
+    "reportsPending": "{count} Signalement(s) ouvert(s)",
+    "vendorsPage": {
+      "title": "Gestion des vendeurs",
+      "subtitle": "Surveillez la santé des vendeurs, la vérification, les demandes de type, les revenus, les signalements et le risque opérationnel depuis un seul centre de contrôle.",
+      "total": "{count} vendeur(s)",
+      "filteredTotal": "Vendeurs filtrés",
+      "sellerTypeFilter": "Type de vendeur",
+      "sellerTypeFilterDesc": "Filtrer les vendeurs par modèle d'activité.",
+      "search": "Rechercher des vendeurs",
+      "searchPlaceholder": "Rechercher par boutique, sous-domaine, domaine, propriétaire ou email...",
+      "allStatuses": "Tous les statuts",
+      "pendingRequests": "Demandes en attente",
+      "clearFilters": "Réinitialiser",
+      "store": "Boutique",
+      "plan": "Plan",
+      "type": "Type",
+      "status": "Statut",
+      "created": "Créé le",
+      "actions": "Actions",
+      "noVendors": "Aucun vendeur trouvé",
+      "metrics": {
+        "total": "Total",
+        "verified": "Vérifiés",
+        "unverified": "Non vérifiés",
+        "suspended": "Suspendus",
+        "pendingType": "Demandes type",
+        "pendingKyc": "KYC en attente"
+      },
+      "statuses": {
+        "verified": "Vérifié",
+        "unverified": "Non vérifié",
+        "suspended": "Suspendu"
+      },
+      "kyc": {
+        "pending": "KYC en attente",
+        "approved": "KYC approuvé",
+        "rejected": "KYC rejeté",
+        "missing": "Pas de KYC"
+      },
+      "openStore": "Ouvrir la boutique",
+      "products": "Produits",
+      "orders": "Commandes",
+      "revenue": "Revenus",
+      "reports": "Signalements",
+      "owner": "Propriétaire",
+      "activity": "Activité",
+      "lastLogin": "Dernière connexion",
+      "health": "Santé",
+      "published": "publiés",
+      "pendingOrders": "commandes en attente",
+      "ownerActive": "Propriétaire actif",
+      "ownerInactive": "Propriétaire inactif",
+      "requestedAt": "Demandé le",
+      "rejectReasonPlaceholder": "Raison du rejet...",
+      "sellerTypeApproved": "Demande de type vendeur approuvée.",
+      "sellerTypeRejected": "Demande de type vendeur rejetée.",
+      "verify": "Vérifier",
+      "verified": "Vendeur vérifié.",
+      "reactivate": "Réactiver",
+      "reactivated": "Vendeur réactivé.",
+      "suspended": "Vendeur suspendu.",
+      "viewReports": "Voir les signalements",
+      "suspend": "Suspendre",
+      "reasonPlaceholder": "Raison...",
+      "confirm": "Confirmer",
+      "cancel": "Annuler",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "listDensity": "Densité de la liste",
+      "listDensityDesc": "Passez en lignes compactes pour parcourir rapidement, puis développez un vendeur pour les contrôles complets.",
+      "compactView": "Vue compacte",
+      "fullView": "Vue complète",
+      "expandAll": "Tout développer",
+      "collapseAll": "Tout réduire",
+      "showDetails": "Afficher les détails",
+      "hideDetails": "Masquer les détails",
+      "pendingSellerTypeShort": "Demande de type en attente",
+      "pageOf": "Page {page} sur {totalPages}"
+    },
+    "reportsPage": {
+      "title": "Gestion des signalements",
+      "subtitle": "Analysez les plaintes acheteurs, créez des signalements marketplace contre acheteurs ou vendeurs, et coordonnez les résolutions.",
+      "createReport": "Créer un signalement",
+      "closeCreate": "Fermer le formulaire",
+      "metrics": {
+        "total": "Total",
+        "open": "Ouverts",
+        "investigating": "En enquête",
+        "highPriority": "Haute priorité",
+        "sellers": "Signalements vendeurs",
+        "buyers": "Signalements acheteurs"
+      },
+      "targetType": "Type de cible",
+      "targetTypes": {
+        "seller": "Vendeur",
+        "buyer": "Acheteur"
+      },
+      "targetSearch": "Trouver une cible",
+      "targetSearchPlaceholder": "Recherche par nom, email, boutique ou téléphone...",
+      "target": "Cible",
+      "selectTarget": "Sélectionner une cible",
+      "priority": "Priorité",
+      "priorities": {
+        "low": "Faible",
+        "medium": "Moyenne",
+        "high": "Élevée",
+        "critical": "Critique"
+      },
+      "category": "Catégorie",
+      "orderId": "ID commande",
+      "optional": "Optionnel",
+      "reasonPlaceholder": "Décrivez le problème, les preuves et le suivi attendu...",
+      "notesPlaceholder": "Notes internes admin...",
+      "creating": "Création...",
+      "submitReport": "Envoyer le signalement",
+      "searchPlaceholder": "Rechercher signalements, commandes, boutiques, acheteurs ou déclarants...",
+      "allStatuses": "Tous les statuts",
+      "statuses": {
+        "open": "Ouvert",
+        "investigating": "En enquête",
+        "awaiting_buyer": "En attente acheteur",
+        "awaiting_seller": "En attente vendeur",
+        "resolved": "Résolu",
+        "dismissed": "Rejeté"
+      },
+      "allTargets": "Toutes les cibles",
+      "allSources": "Toutes les sources",
+      "sources": {
+        "buyer": "Soumis par acheteur",
+        "admin": "Marketplace"
+      },
+      "allPriorities": "Toutes les priorités",
+      "noReports": "Aucun signalement",
+      "noReportsDesc": "Aucun signalement ne correspond aux filtres.",
+      "unknownTarget": "Cible inconnue",
+      "reportedBy": "Signalé par",
+      "order": "Commande",
+      "openStore": "Ouvrir la boutique",
+      "openCase": "Ouvrir le dossier",
+      "adminNotes": "Notes admin",
+      "status": "Statut",
+      "statusUpdated": "Statut du signalement mis à jour.",
+      "storeSuspended": "Boutique vendeur suspendue.",
+      "buyerSuspended": "Compte acheteur suspendu.",
+      "buyerReactivated": "Compte acheteur réactivé.",
+      "reportCreated": "Signalement marketplace créé.",
+      "updateStatus": "Mettre à jour",
+      "updating": "Mise à jour...",
+      "suspendSeller": "Suspendre le vendeur",
+      "suspendBuyer": "Suspendre l’acheteur",
+      "reactivateBuyer": "Réactiver l’acheteur",
+      "buyerActionHint": "Les actions sur l’acheteur peuvent être traitées dans les outils comptes/utilisateurs ; gardez les notes ici pour l’audit.",
+      "reportId": "ID signalement",
+      "resolvedAt": "Résolu le",
+      "resolvedBy": "Résolu par",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "pageOf": "Page {page} sur {totalPages}",
+      "total": "au total"
+    }
   },
 
   "store": {
@@ -365,6 +597,19 @@
     },
     "priceRange": "Fourchette de prix",
     "verifiedOnly": "Vendeurs vérifiés uniquement"
+  },
+
+  "sellerCard": {
+    "notProvided": "Non renseigné",
+    "verifiedSeller": "Vendeur vérifié",
+    "marketplaceSeller": "Vendeur marketplace",
+    "store": "Boutique",
+    "viewStore": "Voir la boutique",
+    "visitStore": "Visiter la boutique",
+    "memberSince": "Membre depuis",
+    "activeProducts": "Produits actifs",
+    "verifiedProfile": "Profil contrôlé par PandaMarket",
+    "marketplaceProfile": "Profil vendeur marketplace"
   },
 
   "footer": {

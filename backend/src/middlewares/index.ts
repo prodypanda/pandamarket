@@ -18,7 +18,11 @@ import {
 } from '../errors';
 import { UserRole } from '@pandamarket/types';
 import { apiKeyService } from '../services/api-key.service';
+import { systemLogService } from '../services/system-log.service';
 import { captureException, setUser } from '../utils/sentry';
+import { query } from '../db/pool';
+
+const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
 
 // =====================================================
 // Request ID + access logging
@@ -64,6 +68,20 @@ function extractAccessToken(req: Request): string | null {
   return cookieToken ?? null;
 }
 
+function extractStorefrontAccessToken(req: Request): string | null {
+  const header = req.headers.authorization;
+  if (header && /^Bearer\s/.test(header)) return header.slice(7);
+  const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies
+    ?.pd_storefront_at;
+  return cookieToken ?? null;
+}
+
+function getRequestedStoreId(req: Request): string | null {
+  const bodyStoreId = typeof req.body?.store_id === 'string' ? req.body.store_id : null;
+  const queryStoreId = typeof req.query.store_id === 'string' ? req.query.store_id : null;
+  return bodyStoreId ?? queryStoreId;
+}
+
 /**
  * Hard-required auth — throws 401 if no/invalid token.
  */
@@ -104,6 +122,36 @@ export const optionalAuth: RequestHandler = (req, _res, next) => {
   next();
 };
 
+export const requireStorefrontCustomer: RequestHandler = (req, _res, next) => {
+  const token = extractStorefrontAccessToken(req);
+  if (!token) {
+    return next(
+      new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Storefront authentication required'),
+    );
+  }
+  try {
+    const payload = verifyAccessToken(token);
+    if (payload.role !== UserRole.Customer || !payload.store_id) {
+      return next(
+        new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid storefront session'),
+      );
+    }
+    const requestedStoreId = getRequestedStoreId(req);
+    if (requestedStoreId && requestedStoreId !== payload.store_id) {
+      return next(
+        new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Storefront session does not match this store'),
+      );
+    }
+    req.storefrontCustomer = {
+      id: payload.sub,
+      store_id: payload.store_id,
+    };
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
 /**
  * Require one of the given roles.
  */
@@ -131,7 +179,7 @@ export const requireVendor: RequestHandler = requireRole(UserRole.Vendor);
 /**
  * Require that the authenticated vendor has a store and return it.
  */
-export const requireStore: RequestHandler = (req, _res, next) => {
+export const requireStore: RequestHandler = async (req, res, next) => {
   if (!req.user) {
     const token = extractAccessToken(req);
     if (!token) return next(new PdAuthenticationError());
@@ -147,12 +195,53 @@ export const requireStore: RequestHandler = (req, _res, next) => {
       return next(err);
     }
   }
-  if (!req.user.store_id) {
-    return next(
-      new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You do not own a store'),
+
+  try {
+    const selectedStoreId = (req as Request & { cookies?: Record<string, string> }).cookies
+      ?.[SELECTED_STORE_COOKIE];
+    if (selectedStoreId) {
+      const { rows } = await query<{ id: string }>(
+        'SELECT id FROM pd_store WHERE id = $1 AND owner_id = $2',
+        [selectedStoreId, req.user.id],
+      );
+      if (rows[0]) {
+        req.user.store_id = rows[0].id;
+        setUser({ id: req.user.id, role: req.user.role, store_id: req.user.store_id });
+        return next();
+      }
+      res.clearCookie(SELECTED_STORE_COOKIE, { path: '/' });
+    }
+
+    if (req.user.store_id) {
+      const { rows } = await query<{ id: string }>(
+        'SELECT id FROM pd_store WHERE id = $1 AND owner_id = $2',
+        [req.user.store_id, req.user.id],
+      );
+      if (rows[0]) {
+        req.user.store_id = rows[0].id;
+        return next();
+      }
+    }
+
+    const { rows } = await query<{ id: string }>(
+      `SELECT id
+       FROM pd_store
+       WHERE owner_id = $1
+       ORDER BY created_at ASC
+       LIMIT 1`,
+      [req.user.id],
     );
+    if (!rows[0]) {
+      return next(
+        new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You do not own a store'),
+      );
+    }
+    req.user.store_id = rows[0].id;
+    setUser({ id: req.user.id, role: req.user.role, store_id: req.user.store_id });
+    return next();
+  } catch (err) {
+    return next(err);
   }
-  next();
 };
 
 // =====================================================
@@ -244,12 +333,18 @@ export const errorHandler = (
   const log = childLogger({ request_id: req.requestId });
   if (err instanceof PdError) {
     res.status(err.httpStatus).json(err.toJSON());
-    if (err.httpStatus >= 500) log.error({ err }, 'Server error');
-    else log.debug({ err: { code: err.code, msg: err.message } }, 'Client error');
+    if (err.httpStatus >= 500) {
+      log.error({ err }, 'Server error');
+      systemLogService.captureError(err, req, err.httpStatus, {
+        handled: true,
+        details: err.details ?? null,
+      });
+    } else log.debug({ err: { code: err.code, msg: err.message } }, 'Client error');
     return;
   }
   // Unknown error — wrap as 500
   log.error({ err }, 'Unhandled error');
+  systemLogService.captureError(err, req, 500, { handled: false });
   captureException(err, { request_id: req.requestId, path: req.originalUrl });
   const wrapped = new PdInternalError('Internal server error', { request_id: req.requestId });
   res.status(500).json(wrapped.toJSON());

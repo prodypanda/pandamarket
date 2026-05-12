@@ -75,6 +75,8 @@ export interface StoreBranding {
   favicon_url?: string;
   themeCustomization?: ThemeCustomization;
   store_path_base?: string;
+  marketplace_name?: string;
+  marketplace_logo_url?: string;
 }
 
 export interface ThemeProps {

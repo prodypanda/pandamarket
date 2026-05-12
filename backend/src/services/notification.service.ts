@@ -21,6 +21,26 @@ interface NotificationRow {
   created_at: Date;
 }
 
+const STORE_SCOPED_NOTIFICATION_TYPES = [
+  'new_order',
+  'payment_captured',
+  'stock_low',
+  'payout_completed',
+  'kyc_approved',
+  'kyc_rejected',
+  'ai_job_completed',
+  'subscription.expired',
+  'subscription.expiring_soon',
+];
+
+const STORE_SCOPED_TYPE_LIST = STORE_SCOPED_NOTIFICATION_TYPES
+  .map((type) => `'${type}'`)
+  .join(', ');
+
+function storeFilterSql(paramIndex: number) {
+  return `(data->>'store_id' = $${paramIndex} OR (data->>'store_id' IS NULL AND type NOT IN (${STORE_SCOPED_TYPE_LIST})))`;
+}
+
 function toPublic(r: NotificationRow): INotification {
   return {
     id: r.id,
@@ -57,13 +77,17 @@ export class NotificationService {
     return notif;
   }
 
-  async list(userId: string, opts: { page?: number; limit?: number; unread?: boolean } = {}) {
+  async list(userId: string, opts: { page?: number; limit?: number; unread?: boolean; storeId?: string | null } = {}) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
     let where = 'user_id = $1';
     const params: unknown[] = [userId];
     if (opts.unread) where += ' AND is_read = false';
+    if (opts.storeId) {
+      params.push(opts.storeId);
+      where += ` AND ${storeFilterSql(params.length)}`;
+    }
     params.push(limit, offset);
     const { rows } = await query<NotificationRow>(
       `SELECT * FROM pd_notifications
@@ -83,37 +107,61 @@ export class NotificationService {
     };
   }
 
-  async unreadCount(userId: string): Promise<number> {
+  async unreadCount(userId: string, storeId?: string | null): Promise<number> {
+    const params: unknown[] = [userId];
+    let storeClause = '';
+    if (storeId) {
+      params.push(storeId);
+      storeClause = ` AND ${storeFilterSql(params.length)}`;
+    }
     const { rows } = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
        FROM pd_notifications
-       WHERE user_id = $1 AND is_read = false`,
-      [userId],
+       WHERE user_id = $1 AND is_read = false${storeClause}`,
+      params,
     );
     return parseInt(rows[0].count, 10);
   }
 
-  async markRead(notifId: string, userId: string): Promise<void> {
+  async markRead(notifId: string, userId: string, storeId?: string | null): Promise<void> {
+    const params: unknown[] = [notifId, userId];
+    let storeClause = '';
+    if (storeId) {
+      params.push(storeId);
+      storeClause = ` AND ${storeFilterSql(params.length)}`;
+    }
     const { rowCount } = await query(
-      `UPDATE pd_notifications SET is_read = true WHERE id = $1 AND user_id = $2`,
-      [notifId, userId],
+      `UPDATE pd_notifications SET is_read = true WHERE id = $1 AND user_id = $2${storeClause}`,
+      params,
     );
     if (!rowCount) {
       throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Notification not found');
     }
   }
 
-  async markAllRead(userId: string): Promise<void> {
+  async markAllRead(userId: string, storeId?: string | null): Promise<void> {
+    const params: unknown[] = [userId];
+    let storeClause = '';
+    if (storeId) {
+      params.push(storeId);
+      storeClause = ` AND ${storeFilterSql(params.length)}`;
+    }
     await query(
-      `UPDATE pd_notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
-      [userId],
+      `UPDATE pd_notifications SET is_read = true WHERE user_id = $1 AND is_read = false${storeClause}`,
+      params,
     );
   }
 
-  async delete(notifId: string, userId: string): Promise<void> {
+  async delete(notifId: string, userId: string, storeId?: string | null): Promise<void> {
+    const params: unknown[] = [notifId, userId];
+    let storeClause = '';
+    if (storeId) {
+      params.push(storeId);
+      storeClause = ` AND ${storeFilterSql(params.length)}`;
+    }
     const { rowCount } = await query(
-      `DELETE FROM pd_notifications WHERE id = $1 AND user_id = $2`,
-      [notifId, userId],
+      `DELETE FROM pd_notifications WHERE id = $1 AND user_id = $2${storeClause}`,
+      params,
     );
     if (!rowCount) {
       throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Notification not found');

@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Image, FileText, Zap, History, RefreshCw, AlertCircle } from 'lucide-react';
+import { Image as ImageIcon, FileText, Zap, History, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface AiJob {
   id: string;
@@ -199,7 +199,7 @@ export default function AiToolsPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Image className="w-5 h-5 text-blue-600" />
+              <ImageIcon className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <h2 className="font-semibold text-gray-900">Compression Image</h2>
@@ -316,7 +316,7 @@ export default function AiToolsPage() {
                     <td className="px-6 py-3 text-sm">
                       <span className="flex items-center gap-1.5">
                         {job.type === 'image_compression' ? (
-                          <Image className="w-4 h-4 text-blue-500" />
+                          <ImageIcon className="w-4 h-4 text-blue-500" />
                         ) : (
                           <FileText className="w-4 h-4 text-purple-500" />
                         )}

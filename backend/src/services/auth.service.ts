@@ -12,7 +12,8 @@ import {
   PdValidationError,
 } from '../errors';
 import { config } from '../config';
-import { pdId, sha256 } from '../utils/crypto';
+import { decrypt, encrypt, pdId, randomHex, sha256 } from '../utils/crypto';
+import { createTotpUri, formatTotpSecret, generateTotpSecret, verifyTotpCode } from '../utils/totp';
 import {
   signAccessToken,
   signRefreshToken,
@@ -24,6 +25,10 @@ import { UserRole } from '@pandamarket/types';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
+const LOGIN_REDIS_TIMEOUT_MS = 750;
+const TWO_FACTOR_SETUP_TTL_SECONDS = 10 * 60;
+const TWO_FACTOR_CHALLENGE_TTL_SECONDS = 5 * 60;
+const TWO_FACTOR_RECOVERY_CODE_COUNT = 8;
 
 export interface UserRow {
   id: string;
@@ -36,11 +41,67 @@ export interface UserRow {
   email_verified: boolean;
   is_active: boolean;
   phone: string | null;
+  two_factor_enabled?: boolean;
+  two_factor_secret?: string | null;
+  two_factor_recovery_codes?: string[] | null;
+  two_factor_enabled_at?: Date | null;
+  two_factor_last_used_at?: Date | null;
 }
 
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;
+}
+
+export interface TwoFactorSetupDetails {
+  secret: string;
+  formatted_secret: string;
+  otpauth_url: string;
+  expires_in: number;
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+  recovery_codes_remaining: number;
+  enabled_at: string | null;
+  last_used_at: string | null;
+}
+
+function normalizeRecoveryCode(code: string): string {
+  return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function createRecoveryCodes(): string[] {
+  return Array.from({ length: TWO_FACTOR_RECOVERY_CODE_COUNT }, () => {
+    const raw = randomHex(5).toUpperCase();
+    return `PM-${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 10)}`;
+  });
+}
+
+async function withLoginRedisTimeout<T>(operation: Promise<T>, fallback: T, action: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((resolve) => {
+        timeout = setTimeout(() => resolve(fallback), LOGIN_REDIS_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (err) {
+    logger.warn({ err, action }, 'Login Redis operation failed');
+    return fallback;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+function getLoginRedisIfReady(action: string) {
+  const redis = getRedis();
+  if (redis.status !== 'ready' && redis.status !== 'connect') {
+    logger.warn({ action, status: redis.status }, 'Skipping login Redis operation because Redis is not ready');
+    return null;
+  }
+  return redis;
 }
 
 export class AuthService {
@@ -102,10 +163,10 @@ export class AuthService {
     const lockoutKey = `pd:login_attempts:${normalizedEmail}`;
 
     // Check if account is locked out
-    const redis = getRedis();
-    const attempts = await redis.get(lockoutKey);
-    if (attempts && parseInt(attempts, 10) >= MAX_LOGIN_ATTEMPTS) {
-      const ttl = await redis.ttl(lockoutKey);
+    const redis = getLoginRedisIfReady('get_login_attempts');
+    const attempts = redis ? await withLoginRedisTimeout(redis.get(lockoutKey), null, 'get_login_attempts') : null;
+    if (redis && attempts && parseInt(attempts, 10) >= MAX_LOGIN_ATTEMPTS) {
+      const ttl = await withLoginRedisTimeout(redis.ttl(lockoutKey), LOCKOUT_DURATION_SECONDS, 'ttl_login_attempts');
       logger.warn({ email: normalizedEmail, attempts }, 'Login attempt on locked account');
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_ACCOUNT_SUSPENDED,
@@ -114,7 +175,9 @@ export class AuthService {
     }
 
     const { rows } = await query<UserRow>(
-      `SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone
+      `SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone,
+              two_factor_enabled, two_factor_secret, two_factor_recovery_codes,
+              two_factor_enabled_at, two_factor_last_used_at
        FROM pd_user
        WHERE email = $1`,
       [normalizedEmail],
@@ -144,18 +207,21 @@ export class AuthService {
     }
 
     // Successful login — clear failed attempts
-    await redis.del(lockoutKey);
+    if (redis) {
+      await withLoginRedisTimeout(redis.del(lockoutKey), 0, 'clear_login_attempts');
+    }
     await query('UPDATE pd_user SET last_login_at = NOW() WHERE id = $1', [user.id]);
     return user;
   }
 
   private async incrementLoginAttempts(key: string): Promise<void> {
     try {
-      const redis = getRedis();
-      const current = await redis.incr(key);
+      const redis = getLoginRedisIfReady('increment_login_attempts');
+      if (!redis) return;
+      const current = await withLoginRedisTimeout(redis.incr(key), 0, 'increment_login_attempts');
       if (current === 1) {
         // First failed attempt — set expiry
-        await redis.expire(key, LOCKOUT_DURATION_SECONDS);
+        await withLoginRedisTimeout(redis.expire(key, LOCKOUT_DURATION_SECONDS), 0, 'expire_login_attempts');
       }
     } catch (err) {
       // Don't block login if Redis is down
@@ -238,6 +304,138 @@ export class AuthService {
       'UPDATE pd_refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
       [userId],
     );
+  }
+
+  async getTwoFactorStatus(userId: string): Promise<TwoFactorStatus> {
+    const { rows } = await query<{
+      two_factor_enabled: boolean;
+      two_factor_recovery_codes: string[] | null;
+      two_factor_enabled_at: Date | null;
+      two_factor_last_used_at: Date | null;
+    }>(
+      `SELECT two_factor_enabled, two_factor_recovery_codes,
+              two_factor_enabled_at, two_factor_last_used_at
+       FROM pd_user
+       WHERE id = $1`,
+      [userId],
+    );
+    const row = rows[0];
+    if (!row) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Authentication required');
+    }
+    return {
+      enabled: row.two_factor_enabled,
+      recovery_codes_remaining: Array.isArray(row.two_factor_recovery_codes) ? row.two_factor_recovery_codes.length : 0,
+      enabled_at: row.two_factor_enabled_at?.toISOString() ?? null,
+      last_used_at: row.two_factor_last_used_at?.toISOString() ?? null,
+    };
+  }
+
+  async beginTwoFactorSetup(userId: string): Promise<TwoFactorSetupDetails> {
+    const { rows } = await query<{ email: string; two_factor_enabled: boolean }>(
+      'SELECT email, two_factor_enabled FROM pd_user WHERE id = $1',
+      [userId],
+    );
+    const user = rows[0];
+    if (!user) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Authentication required');
+    }
+    if (user.two_factor_enabled) {
+      throw new PdValidationError('Two-factor authentication is already enabled');
+    }
+    const secret = generateTotpSecret();
+    const redis = getRedis();
+    await redis.set(`pd:2fa_setup:${userId}`, secret, 'EX', TWO_FACTOR_SETUP_TTL_SECONDS);
+    return {
+      secret,
+      formatted_secret: formatTotpSecret(secret),
+      otpauth_url: createTotpUri({ issuer: 'PandaMarket', accountName: user.email, secret }),
+      expires_in: TWO_FACTOR_SETUP_TTL_SECONDS,
+    };
+  }
+
+  async confirmTwoFactorSetup(userId: string, code: string): Promise<{ status: TwoFactorStatus; recovery_codes: string[] }> {
+    const redis = getRedis();
+    const secret = await redis.get(`pd:2fa_setup:${userId}`);
+    if (!secret) {
+      throw new PdAuthenticationError(
+        PdErrorCode.AUTH_2FA_INVALID,
+        'Two-factor setup expired. Start setup again.',
+      );
+    }
+    if (!verifyTotpCode(secret, code)) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Invalid authentication code');
+    }
+    const recoveryCodes = createRecoveryCodes();
+    const recoveryCodeHashes = recoveryCodes.map((recoveryCode) => sha256(normalizeRecoveryCode(recoveryCode)));
+    await query(
+      `UPDATE pd_user
+       SET two_factor_enabled = true,
+           two_factor_secret = $2,
+           two_factor_recovery_codes = $3::jsonb,
+           two_factor_enabled_at = NOW(),
+           two_factor_last_used_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [userId, encrypt(secret), JSON.stringify(recoveryCodeHashes)],
+    );
+    await redis.del(`pd:2fa_setup:${userId}`);
+    return {
+      status: await this.getTwoFactorStatus(userId),
+      recovery_codes: recoveryCodes,
+    };
+  }
+
+  async disableTwoFactor(userId: string, code: string): Promise<TwoFactorStatus> {
+    const user = await this.getUserWithTwoFactor(userId);
+    await this.verifyTwoFactorForUser(user, code);
+    await query(
+      `UPDATE pd_user
+       SET two_factor_enabled = false,
+           two_factor_secret = NULL,
+           two_factor_recovery_codes = '[]'::jsonb,
+           two_factor_enabled_at = NULL,
+           two_factor_last_used_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [userId],
+    );
+    await this.logout(userId);
+    return this.getTwoFactorStatus(userId);
+  }
+
+  async createTwoFactorChallenge(user: UserRow): Promise<{ challenge_id: string; expires_in: number }> {
+    const challengeId = randomHex(24);
+    const redis = getRedis();
+    await redis.set(`pd:2fa_challenge:${challengeId}`, user.id, 'EX', TWO_FACTOR_CHALLENGE_TTL_SECONDS);
+    return { challenge_id: challengeId, expires_in: TWO_FACTOR_CHALLENGE_TTL_SECONDS };
+  }
+
+  async verifyTwoFactorChallenge(challengeId: string, code: string): Promise<UserRow> {
+    const redis = getRedis();
+    const userId = await redis.get(`pd:2fa_challenge:${challengeId}`);
+    if (!userId) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Two-factor challenge expired');
+    }
+    const user = await this.getUserWithTwoFactor(userId);
+    await this.verifyTwoFactorForUser(user, code);
+    await redis.del(`pd:2fa_challenge:${challengeId}`);
+    return user;
+  }
+
+  async resetTwoFactorForUser(userId: string): Promise<void> {
+    await query(
+      `UPDATE pd_user
+       SET two_factor_enabled = false,
+           two_factor_secret = NULL,
+           two_factor_recovery_codes = '[]'::jsonb,
+           two_factor_enabled_at = NULL,
+           two_factor_last_used_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [userId],
+    );
+    await this.logout(userId);
   }
 
   /**
@@ -359,6 +557,54 @@ export class AuthService {
   // ----------------------------------------------------------------
   // internals
   // ----------------------------------------------------------------
+
+  private async getUserWithTwoFactor(userId: string): Promise<UserRow> {
+    const { rows } = await query<UserRow>(
+      `SELECT id, email, password_hash, first_name, last_name, role, store_id,
+              email_verified, is_active, phone,
+              two_factor_enabled, two_factor_secret, two_factor_recovery_codes,
+              two_factor_enabled_at, two_factor_last_used_at
+       FROM pd_user
+       WHERE id = $1`,
+      [userId],
+    );
+    const user = rows[0];
+    if (!user || !user.is_active) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Authentication required');
+    }
+    if (!user.two_factor_enabled || !user.two_factor_secret) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Two-factor authentication is not enabled');
+    }
+    return user;
+  }
+
+  private async verifyTwoFactorForUser(user: UserRow, code: string): Promise<void> {
+    if (!user.two_factor_secret) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Two-factor authentication is not enabled');
+    }
+    const secret = decrypt(user.two_factor_secret);
+    if (verifyTotpCode(secret, code)) {
+      await query('UPDATE pd_user SET two_factor_last_used_at = NOW() WHERE id = $1', [user.id]);
+      return;
+    }
+
+    const recoveryCodes = Array.isArray(user.two_factor_recovery_codes) ? user.two_factor_recovery_codes : [];
+    const recoveryCodeHash = sha256(normalizeRecoveryCode(code));
+    const recoveryCodeIndex = recoveryCodes.findIndex((hash) => hash === recoveryCodeHash);
+    if (recoveryCodeIndex >= 0) {
+      const remainingCodes = recoveryCodes.filter((_, index) => index !== recoveryCodeIndex);
+      await query(
+        `UPDATE pd_user
+         SET two_factor_recovery_codes = $2::jsonb,
+             two_factor_last_used_at = NOW()
+         WHERE id = $1`,
+        [user.id, JSON.stringify(remainingCodes)],
+      );
+      return;
+    }
+
+    throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Invalid authentication code');
+  }
 
   private async storeRefreshToken(
     userId: string,
