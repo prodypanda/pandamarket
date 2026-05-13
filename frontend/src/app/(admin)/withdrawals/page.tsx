@@ -55,8 +55,7 @@ export default function AdminWithdrawalsPage() {
 
   useEffect(() => {
     void fetchWithdrawals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, fetchWithdrawals]);
 
   return (
     <div className="space-y-6">

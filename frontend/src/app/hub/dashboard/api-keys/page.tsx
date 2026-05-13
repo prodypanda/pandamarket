@@ -70,8 +70,7 @@ export default function ApiKeysPage() {
 
   useEffect(() => {
     void fetchKeys();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchKeys]);
 
   const handleCreate = async () => {
     setCreateError('');

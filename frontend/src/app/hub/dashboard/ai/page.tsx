@@ -65,8 +65,7 @@ export default function AiToolsPage() {
 
   useEffect(() => {
     void Promise.all([fetchCredits(), fetchJobs()]).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchCredits, fetchJobs]);
 
   const showFeedback = (msg: string, isError = false) => {
     if (isError) {

@@ -111,8 +111,7 @@ export default function AdminSmtpConfigPage() {
 
   useEffect(() => {
     void loadConfig();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadConfig]);
 
   function updateField<K extends keyof SmtpFormData>(key: K, value: SmtpFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
