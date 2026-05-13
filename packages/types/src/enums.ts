@@ -21,6 +21,7 @@ export enum StoreStatus {
   Unverified = 'unverified',
   Verified = 'verified',
   Suspended = 'suspended',
+  Maintenance = 'maintenance',
 }
 
 export enum SellerType {

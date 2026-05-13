@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2 } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
@@ -89,6 +89,11 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHeaderImage, setUploadingHeaderImage] = useState(false);
 
+  // Maintenance mode
+  const [storeStatus, setStoreStatus] = useState('verified');
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+
   // Theme
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('modern');
   const [themeCustomization, setThemeCustomization] = useState<ThemeCustomization>({});
@@ -127,6 +132,8 @@ export default function SettingsPage() {
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
         setShippingMode(store.shipping_mode || 'self_managed');
+        setStoreStatus(store.status || 'verified');
+        setMaintenanceMessage(store.settings?.maintenance_message || '');
       } else {
         setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
       }
@@ -809,6 +816,78 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Maintenance Mode Toggle */}
+            {(storeStatus === 'verified' || storeStatus === 'maintenance') && (
+              <div className={`rounded-xl border p-4 ${storeStatus === 'maintenance' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div className="flex items-start gap-3">
+                  <Construction className={`mt-0.5 h-5 w-5 ${storeStatus === 'maintenance' ? 'text-amber-600' : 'text-gray-400'}`} />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-gray-900">Mode maintenance</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {storeStatus === 'maintenance'
+                        ? 'Votre boutique est actuellement en maintenance et inaccessible aux visiteurs.'
+                        : 'Activez le mode maintenance pour rendre votre boutique temporairement inaccessible.'}
+                    </p>
+                    {storeStatus === 'maintenance' && (
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Message de maintenance</label>
+                        <textarea
+                          value={maintenanceMessage}
+                          onChange={(e) => setMaintenanceMessage(e.target.value)}
+                          placeholder="Message affiché aux visiteurs pendant la maintenance..."
+                          rows={2}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                        />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={togglingMaintenance}
+                      onClick={async () => {
+                        setTogglingMaintenance(true);
+                        try {
+                          const enabling = storeStatus !== 'maintenance';
+                          const res = await fetchWithCsrf('/api/pd/stores/me/maintenance', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              enabled: enabling,
+                              maintenance_message: enabling ? maintenanceMessage : undefined,
+                            }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setStoreStatus(data.store?.status || (enabling ? 'maintenance' : 'verified'));
+                            showFeedback(enabling ? 'Mode maintenance activé' : 'Boutique remise en ligne');
+                          } else {
+                            showFeedback(await getErrorMessage(res), true);
+                          }
+                        } catch (err) {
+                          showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+                        } finally {
+                          setTogglingMaintenance(false);
+                        }
+                      }}
+                      className={`mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                        storeStatus === 'maintenance'
+                          ? 'bg-[#16C784] text-white hover:bg-[#14b876]'
+                          : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      }`}
+                    >
+                      {storeStatus === 'maintenance' && <AlertTriangle className="h-4 w-4" />}
+                      {togglingMaintenance
+                        ? 'En cours...'
+                        : storeStatus === 'maintenance'
+                          ? 'Remettre en ligne'
+                          : 'Activer la maintenance'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={saveStoreSettings}
               disabled={saving}

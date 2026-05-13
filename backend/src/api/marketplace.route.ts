@@ -14,6 +14,11 @@ const PUBLIC_SETTING_DEFAULTS = {
   chat_bubble_enabled: 'true',
   chat_bubble_position: 'bottom-right',
   default_currency: 'TND',
+  maintenance_enabled: 'false',
+  maintenance_title: 'Maintenance en cours',
+  maintenance_message: 'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.',
+  maintenance_eta: '',
+  maintenance_block_storefronts: 'false',
 };
 
 const PUBLIC_SETTING_KEYS = Object.keys(PUBLIC_SETTING_DEFAULTS);

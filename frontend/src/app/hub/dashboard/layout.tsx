@@ -26,6 +26,7 @@ import {
   Plus,
   ImageIcon,
   CheckCircle2,
+  BarChart3,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -204,6 +205,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
+    { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
     { name: 'Media', href: '/hub/dashboard/media', icon: ImageIcon },

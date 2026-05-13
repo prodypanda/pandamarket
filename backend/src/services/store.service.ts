@@ -676,6 +676,21 @@ export class StoreService {
     return rows[0];
   }
 
+  async updateStatus(storeId: string, status: string): Promise<StoreRow> {
+    const { rows } = await query<StoreRow>(
+      `UPDATE pd_store
+       SET status = $2,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [storeId, status],
+    );
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
+    }
+    return rows[0];
+  }
+
   /**
    * List all stores (paginated). Used by Hub homepage and admin panel.
    */

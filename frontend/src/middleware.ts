@@ -118,7 +118,29 @@ function redirectToLogin(req: NextRequest, loginPath = '/login/buyer') {
   return NextResponse.redirect(loginUrl);
 }
 
-export function middleware(req: NextRequest) {
+interface MaintenanceStatus {
+  maintenance_enabled: boolean;
+  maintenance_block_storefronts: boolean;
+}
+
+async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {
+      next: { revalidate: 15 },
+    });
+    if (!res.ok) return { maintenance_enabled: false, maintenance_block_storefronts: false };
+    const data = await res.json();
+    return {
+      maintenance_enabled: data.data?.maintenance_enabled === 'true',
+      maintenance_block_storefronts: data.data?.maintenance_block_storefronts === 'true',
+    };
+  } catch {
+    return { maintenance_enabled: false, maintenance_block_storefronts: false };
+  }
+}
+
+export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get('host') || 'pandamarket.local:3000';
 
@@ -128,6 +150,10 @@ export function middleware(req: NextRequest) {
   // 1. Hub central (pandamarket.tn)
   if (isHubHost(hostname)) {
     if (url.pathname === '/store' || url.pathname.startsWith('/store/')) {
+      return NextResponse.next();
+    }
+
+    if (url.pathname === '/maintenance') {
       return NextResponse.next();
     }
 
@@ -142,6 +168,16 @@ export function middleware(req: NextRequest) {
             ? '/login/seller'
             : '/login/buyer';
         return redirectToLogin(req, loginPath);
+      }
+    }
+
+    // Maintenance check for hub — bypass admin routes, auth routes, and authenticated admin users
+    const isAdminRoute = matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES);
+    const isAuthRoute = matchesRoutePrefix(url.pathname, AUTH_ROUTE_PREFIXES);
+    if (!isAdminRoute && !isAuthRoute) {
+      const maintenance = await getMaintenanceStatus();
+      if (maintenance.maintenance_enabled) {
+        return NextResponse.rewrite(new URL('/maintenance', req.url));
       }
     }
 
@@ -181,6 +217,12 @@ export function middleware(req: NextRequest) {
   //    The storefront page will resolve the store via the API using the full hostname
   if (!storeHost) {
     storeHost = hostname;
+  }
+
+  // Maintenance check for storefronts
+  const maintenance = await getMaintenanceStatus();
+  if (maintenance.maintenance_enabled && maintenance.maintenance_block_storefronts) {
+    return NextResponse.rewrite(new URL('/maintenance', req.url));
   }
 
   // Rewrite to the storefront route — the page fetches store data by hostname

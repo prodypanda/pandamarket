@@ -4,7 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { type ReactNode, useEffect, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 
 interface PlatformSettings {
@@ -41,6 +41,12 @@ interface PlatformSettings {
   chat_max_images_per_message: number;
   chat_max_image_size_mb: number;
   chat_max_message_length: number;
+  maintenance_enabled: boolean;
+  maintenance_title: string;
+  maintenance_message: string;
+  maintenance_eta: string;
+  maintenance_allowed_ips: string;
+  maintenance_block_storefronts: boolean;
   mandat_recipient_name: string;
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
@@ -87,6 +93,12 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   mandat_recipient_city: 'Tunis',
   platform_commission_rate: 15,
   default_currency: 'TND',
+  maintenance_enabled: false,
+  maintenance_title: 'Maintenance en cours',
+  maintenance_message: 'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.',
+  maintenance_eta: '',
+  maintenance_allowed_ips: '',
+  maintenance_block_storefronts: false,
 };
 
 type BooleanSettingKey = {
@@ -110,6 +122,10 @@ const TEXT_SETTING_KEYS = [
   'mandat_recipient_name',
   'mandat_recipient_cin',
   'mandat_recipient_city',
+  'maintenance_title',
+  'maintenance_message',
+  'maintenance_eta',
+  'maintenance_allowed_ips',
 ] as const satisfies readonly StringSettingKey[];
 
 const NUMBER_SETTING_KEYS = [
@@ -143,6 +159,8 @@ const BOOLEAN_SETTING_KEYS = [
   'shipping_enabled',
   'order_splitting_enabled',
   'chat_bubble_enabled',
+  'maintenance_enabled',
+  'maintenance_block_storefronts',
 ] as const satisfies readonly BooleanSettingKey[];
 
 interface ToggleSetting {
@@ -419,6 +437,66 @@ export default function AdminSettingsPage() {
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
       <AccountTwoFactorPanel accentClass="bg-slate-950" />
+
+      {/* ========== Maintenance Mode Section ========== */}
+      <section className={`rounded-xl border p-6 ${
+        settings.maintenance_enabled
+          ? 'border-amber-300 bg-amber-50'
+          : 'border-gray-100 bg-white'
+      }`}>
+        <SectionHeader
+          icon={<Construction className="h-5 w-5" />}
+          title="Maintenance Mode"
+          description="Put the entire marketplace under maintenance. Admins bypass automatically."
+        />
+
+        {settings.maintenance_enabled && (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-100 p-4">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Maintenance mode is ACTIVE</p>
+              <p className="text-xs text-amber-700">The marketplace is currently unavailable to non-admin users.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {renderToggle({
+            key: 'maintenance_enabled',
+            label: 'Enable Maintenance Mode',
+            description: 'Block all non-admin access to the marketplace.',
+          })}
+          {renderToggle({
+            key: 'maintenance_block_storefronts',
+            label: 'Block Storefronts Too',
+            description: 'Also block access to all vendor storefronts (subdomains + custom domains).',
+          })}
+          <div className="md:col-span-2">
+            {renderTextInput('maintenance_title', 'Maintenance Title', 'Maintenance en cours')}
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Maintenance Message</label>
+            <textarea
+              value={settings.maintenance_message}
+              onChange={(e) => updateSetting('maintenance_message', e.target.value)}
+              placeholder="Enter a message to display during maintenance..."
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#16C784] focus:outline-none focus:ring-2 focus:ring-[#16C784]/20"
+            />
+          </div>
+          {renderTextInput('maintenance_eta', 'Estimated Return (ISO date)', '2026-01-15T14:00:00Z')}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Allowed IPs (comma-separated)</label>
+            <textarea
+              value={settings.maintenance_allowed_ips}
+              onChange={(e) => updateSetting('maintenance_allowed_ips', e.target.value)}
+              placeholder="192.168.1.1, 10.0.0.5"
+              rows={2}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-[#16C784] focus:outline-none focus:ring-2 focus:ring-[#16C784]/20"
+            />
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-gray-100 bg-white p-6">
         <SectionHeader

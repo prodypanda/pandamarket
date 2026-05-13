@@ -283,6 +283,44 @@ router.put(
   }),
 );
 
+const updateMaintenanceSchema = z.object({
+  enabled: z.boolean(),
+  maintenance_message: z.string().max(2000).optional(),
+});
+
+router.put(
+  '/me/maintenance',
+  requireStore,
+  validate(updateMaintenanceSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    const current = await storeService.getById(storeId);
+
+    if (current.status === 'suspended') {
+      res.status(403).json({ error: { message: 'Suspended stores cannot toggle maintenance mode' } });
+      return;
+    }
+    if (current.status === 'unverified') {
+      res.status(403).json({ error: { message: 'Unverified stores cannot toggle maintenance mode' } });
+      return;
+    }
+
+    const newStatus = req.body.enabled ? 'maintenance' : 'verified';
+    await storeService.updateStatus(storeId, newStatus);
+
+    if (req.body.maintenance_message !== undefined) {
+      const existingSettings = (current.settings && typeof current.settings === 'object') ? current.settings : {};
+      await storeService.updateSettings(storeId, {
+        ...existingSettings,
+        maintenance_message: req.body.maintenance_message,
+      });
+    }
+
+    const updated = await storeService.getById(storeId);
+    res.status(200).json({ store: updated });
+  }),
+);
+
 router.post(
   '/me/seller-type-request/cancel',
   requireStore,
