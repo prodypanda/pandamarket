@@ -12,6 +12,7 @@ import {
   requireAdmin,
   validate,
 } from '../middlewares';
+import { invalidateMaintenanceCache } from '../middlewares/maintenance.middleware';
 import { auditLog } from '../middlewares/audit-log.middleware';
 import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
@@ -1292,6 +1293,12 @@ const globalSettingsSchema = z.object({
   chat_max_images_per_message: z.coerce.number().int().min(1).max(10).optional(),
   chat_max_image_size_mb: z.coerce.number().int().min(1).max(25).optional(),
   chat_max_message_length: z.coerce.number().int().min(1).max(5000).optional(),
+  maintenance_enabled: z.boolean().optional(),
+  maintenance_title: z.coerce.string().max(200).optional(),
+  maintenance_message: z.coerce.string().max(2000).optional(),
+  maintenance_eta: z.coerce.string().max(100).optional(),
+  maintenance_allowed_ips: z.coerce.string().max(2000).optional(),
+  maintenance_block_storefronts: z.boolean().optional(),
 });
 
 const booleanGlobalSettingKeys = new Set([
@@ -1308,6 +1315,8 @@ const booleanGlobalSettingKeys = new Set([
   'shipping_enabled',
   'order_splitting_enabled',
   'chat_bubble_enabled',
+  'maintenance_enabled',
+  'maintenance_block_storefronts',
 ]);
 
 const numericGlobalSettingKeys = new Set([
@@ -1375,6 +1384,10 @@ router.put(
       { admin_id: req.user!.id, keys: entries.map(([k]) => k) },
       'Admin updated platform settings',
     );
+
+    if (entries.some(([k]) => k.startsWith('maintenance_'))) {
+      invalidateMaintenanceCache();
+    }
 
     res.status(200).json({ success: true, message: 'Settings updated' });
   }),

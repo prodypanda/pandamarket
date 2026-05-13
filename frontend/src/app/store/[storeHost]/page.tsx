@@ -30,6 +30,7 @@ import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../compon
 import { MarketplaceBrand } from '../../../components/MarketplaceBrand';
 import { StorefrontSocialLinks } from '../../../components/themes/StorefrontSocialLinks';
 import type { StoreSocialLinks } from '../../../components/themes/shared';
+import { StorefrontMaintenancePage } from '../../../components/store/StorefrontMaintenancePage';
 
 interface StoreBranding {
   store_id?: string;
@@ -202,6 +203,28 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   const store = await getStoreByHost(decodedHost);
   if (!store) {
     notFound();
+  }
+
+  // Per-store maintenance mode
+  if (store.status === 'maintenance') {
+    const marketplaceSettings = await getMarketplaceSettings();
+    const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
+    const activeTheme = themes[store.theme_id] || themes.classic;
+    const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+    const pColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
+    return (
+      <StorefrontMaintenancePage
+        storeName={store.name}
+        logoUrl={store.settings?.logo_url as string | undefined}
+        primaryColor={pColor}
+        maintenanceMessage={store.settings?.maintenance_message as string | undefined}
+        social={store.settings?.social}
+        contactEmail={store.settings?.contact_email}
+        contactPhone={store.settings?.contact_phone}
+        marketplaceName={marketplaceSettings.marketplace_name}
+        marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+      />
+    );
   }
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
