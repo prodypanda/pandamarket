@@ -1294,6 +1294,14 @@ const auditLogListSchema = z.object({
 });
 
 const auditLogSummarySchema = auditLogListSchema.omit({ page: true, limit: true });
+const auditLogExportSchema = auditLogSummarySchema.extend({
+  format: z.enum(['csv', 'json']).default('csv'),
+});
+
+const auditLogClearSchema = z.object({
+  confirm: z.literal('CLEAR LOGS'),
+  older_than_days: z.number().int().min(1).max(3650),
+});
 
 type AuditLogFilters = {
   action?: string;
@@ -1678,6 +1686,116 @@ router.get(
       })),
       meta: { page, limit, total, total_pages: totalPages, totalPages },
     });
+  }),
+);
+
+router.post(
+  '/audit-log/clear',
+  validate(auditLogClearSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const body = req.body as z.infer<typeof auditLogClearSchema>;
+    const { rows } = await query<{ deleted: string }>(
+      `WITH deleted AS (
+         DELETE FROM pd_audit_log
+         WHERE created_at < NOW() - ($1 || ' days')::interval
+         RETURNING id
+       )
+       SELECT COUNT(*)::text AS deleted FROM deleted`,
+      [body.older_than_days.toString()],
+    );
+    const deleted = parseInt(rows[0]?.deleted ?? '0', 10);
+    logger.warn({ admin_id: req.user!.id, older_than_days: body.older_than_days, deleted_count: deleted }, 'Admin cleared audit logs');
+    res.status(200).json({ success: true, deleted });
+  }),
+);
+
+router.get(
+  '/audit-log/export',
+  validate(auditLogExportSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { format, ...filters } = req.query as unknown as { format: 'csv' | 'json' } & AuditLogFilters;
+    const { whereClause, params, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+
+    const { rows } = await query<{
+      id: string;
+      actor_id: string | null;
+      actor_email: string | null;
+      actor_role: string | null;
+      action: string;
+      resource_type: string | null;
+      resource_id: string | null;
+      method: string | null;
+      status_code: number | null;
+      duration_ms: number | null;
+      path: string | null;
+      ip: string | null;
+      user_agent: string | null;
+      metadata: Record<string, unknown> | null;
+      created_at: Date;
+    }>(
+      `SELECT a.id,
+              a.actor_id,
+              u.email AS actor_email,
+              a.actor_role,
+              a.action,
+              a.resource_type,
+              a.resource_id,
+              ${methodExpr} AS method,
+              ${statusExpr} AS status_code,
+              CASE WHEN a.metadata->>'duration_ms' ~ '^\\d+$' THEN (a.metadata->>'duration_ms')::int ELSE NULL END AS duration_ms,
+              COALESCE(a.metadata->>'path', a.action) AS path,
+              a.ip::text AS ip,
+              a.user_agent,
+              a.metadata,
+              a.created_at
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.actor_id
+       ${whereClause}
+       ORDER BY a.created_at DESC
+       LIMIT 5000`, // Reasonable limit for exports to prevent OOM
+      params,
+    );
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.json"');
+      res.status(200).json(rows);
+      return;
+    }
+
+    // CSV Format
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
+
+    const headers = [
+      'Date',
+      'Action',
+      'Actor Email',
+      'Actor Role',
+      'Resource Type',
+      'Resource ID',
+      'Method',
+      'Status',
+      'IP Address',
+    ].join(',');
+
+    const csvRows = rows.map((r) => {
+      return [
+        r.created_at.toISOString(),
+        r.action || '',
+        r.actor_email || r.actor_id || 'System',
+        r.actor_role || '',
+        r.resource_type || '',
+        r.resource_id || '',
+        r.method || '',
+        r.status_code?.toString() || '',
+        r.ip || '',
+      ]
+        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+        .join(',');
+    });
+
+    res.status(200).send([headers, ...csvRows].join('\n'));
   }),
 );
 

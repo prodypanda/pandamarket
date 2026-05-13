@@ -18,6 +18,8 @@ import {
   Search,
   Shield,
   Terminal,
+  Download,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -159,6 +161,11 @@ export default function AuditLogPage() {
   const [actorRole, setActorRole] = useState('all');
   const [method, setMethod] = useState('all');
   const [statusCode, setStatusCode] = useState('');
+
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgeDays, setPurgeDays] = useState('30');
+  const [isPurging, setIsPurging] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
@@ -236,6 +243,76 @@ export default function AuditLogPage() {
 
   const hasActiveFilters = Boolean(search || actionFilter !== 'all' || resourceType || actorRole !== 'all' || method !== 'all' || statusCode || fromDate || toDate);
 
+  const handleExport = async (format: 'csv' | 'json') => {
+    setIsExporting(true);
+    setError('');
+    try {
+      const exportParams = new URLSearchParams({ format });
+      applyFiltersToParams(exportParams);
+
+      const queryParams = exportParams.toString();
+      const res = await fetchWithCsrf(`/api/pd/admin/audit-log/export${queryParams ? `?${queryParams}` : ''}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, 'Failed to export audit logs'));
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `audit-logs.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to export audit logs');
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePurgeLogs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const days = parseInt(purgeDays, 10);
+    if (isNaN(days) || days < 1) return;
+
+    setIsPurging(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/audit-log/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirm: 'CLEAR LOGS',
+          older_than_days: days,
+        }),
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to clear audit logs'));
+
+      setIsPurgeModalOpen(false);
+      void fetchAuditLog();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to clear audit logs');
+      }
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSearch(searchInput.trim());
@@ -284,6 +361,26 @@ export default function AuditLogPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void handleExport('csv')}
+              disabled={loading || isExporting}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-800/50 px-4 py-3 text-sm font-bold text-slate-300 transition-all hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className={`h-4 w-4 ${isExporting ? 'animate-bounce' : 'text-blue-400'}`} />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPurgeModalOpen(true)}
+              disabled={loading || isExporting}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-800/50 px-4 py-3 text-sm font-bold text-slate-300 transition-all hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4 text-red-400" />
+              Purge Logs
+            </button>
+          </div>
         </div>
       </div>
 
@@ -587,6 +684,75 @@ export default function AuditLogPage() {
           </div>
         </aside>
       </div>
+
+      {isPurgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => !isPurging && setIsPurgeModalOpen(false)} />
+          <div className="relative w-full max-w-md animate-modal-in rounded-[2rem] border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="flex items-center gap-2 text-xl font-black text-white">
+                <Trash2 className="h-5 w-5 text-red-500" />
+                Purge Audit Logs
+              </h3>
+              <button
+                onClick={() => !isPurging && setIsPurgeModalOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePurgeLogs} className="mt-6 space-y-6">
+              <div>
+                <p className="text-sm text-slate-300">
+                  Delete all audit logs older than the specified number of days. This action is irreversible.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-slate-300">Older than (days)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="3650"
+                  value={purgeDays}
+                  onChange={(e) => setPurgeDays(e.target.value)}
+                  className="w-full rounded-2xl border-2 border-slate-800 bg-slate-950 px-4 py-3 text-white transition-colors focus:border-[#16C784] focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsPurgeModalOpen(false)}
+                  disabled={isPurging}
+                  className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-300 transition-colors hover:text-white disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPurging}
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-black text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPurging ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Purging...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Confirm Purge
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
