@@ -78,6 +78,22 @@ export interface StoreOrderDetailRow extends StoreOrderRow {
   items: unknown[];
 }
 
+export interface StoreOrderSummary {
+  total_orders: number;
+  open_orders: number;
+  to_ship: number;
+  shipped: number;
+  delivered: number;
+  cancelled: number;
+  refunded: number;
+  captured_orders: number;
+  captured_revenue: number;
+  revenue_today: number;
+  revenue_7d: number;
+  revenue_30d: number;
+  average_order_value: number;
+}
+
 const FLAT_SHIPPING_PER_STORE = 7; // TND — placeholder until Aramex integration
 
 function usesInventory(type: ProductType): boolean {
@@ -550,7 +566,16 @@ export class OrderService {
    */
   async listByStore(
     storeId: string,
-    opts: { page?: number; limit?: number; status?: OrderStatus; search?: string } = {},
+    opts: {
+      page?: number;
+      limit?: number;
+      status?: OrderStatus;
+      paymentStatus?: PaymentStatus;
+      fulfillmentStatus?: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+    } = {},
   ) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
@@ -561,6 +586,22 @@ export class OrderService {
     if (opts.status) {
       params.push(opts.status);
       where += ` AND o.status = $${params.length}`;
+    }
+    if (opts.paymentStatus) {
+      params.push(opts.paymentStatus);
+      where += ` AND o.payment_status = $${params.length}`;
+    }
+    if (opts.fulfillmentStatus) {
+      params.push(opts.fulfillmentStatus);
+      where += ` AND f.status = $${params.length}`;
+    }
+    if (opts.dateFrom) {
+      params.push(opts.dateFrom);
+      where += ` AND o.created_at >= $${params.length}::date`;
+    }
+    if (opts.dateTo) {
+      params.push(opts.dateTo);
+      where += ` AND o.created_at < ($${params.length}::date + INTERVAL '1 day')`;
     }
     if (search) {
       params.push(`%${search.toLowerCase()}%`);
@@ -615,8 +656,65 @@ export class OrderService {
        WHERE ${where}`,
       countParams,
     );
+    const { rows: summaryRows } = await query<{
+      total_orders: string;
+      open_orders: string;
+      to_ship: string;
+      shipped: string;
+      delivered: string;
+      cancelled: string;
+      refunded: string;
+      captured_orders: string;
+      captured_revenue: string;
+      revenue_today: string;
+      revenue_7d: string;
+      revenue_30d: string;
+      average_order_value: string;
+    }>(
+      `SELECT
+         COUNT(*)::text AS total_orders,
+         COUNT(*) FILTER (WHERE o.status IN ('payment_required', 'pending', 'processing'))::text AS open_orders,
+         COUNT(*) FILTER (WHERE f.status = 'pending')::text AS to_ship,
+         COUNT(*) FILTER (WHERE f.status = 'shipped')::text AS shipped,
+         COUNT(*) FILTER (WHERE f.status = 'delivered')::text AS delivered,
+         COUNT(*) FILTER (WHERE o.status = 'cancelled' OR f.status = 'cancelled')::text AS cancelled,
+         COUNT(*) FILTER (WHERE o.status = 'refunded' OR o.payment_status = 'refunded')::text AS refunded,
+         COUNT(*) FILTER (WHERE o.payment_status = 'captured')::text AS captured_orders,
+         COALESCE(SUM(CASE WHEN o.payment_status = 'captured' THEN COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0) ELSE 0 END), 0)::text AS captured_revenue,
+         COALESCE(SUM(CASE WHEN o.payment_status = 'captured' AND o.created_at >= CURRENT_DATE THEN COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0) ELSE 0 END), 0)::text AS revenue_today,
+         COALESCE(SUM(CASE WHEN o.payment_status = 'captured' AND o.created_at >= NOW() - INTERVAL '7 days' THEN COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0) ELSE 0 END), 0)::text AS revenue_7d,
+         COALESCE(SUM(CASE WHEN o.payment_status = 'captured' AND o.created_at >= NOW() - INTERVAL '30 days' THEN COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0) ELSE 0 END), 0)::text AS revenue_30d,
+         COALESCE(AVG(CASE WHEN o.payment_status = 'captured' THEN COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0) END), 0)::text AS average_order_value
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $1
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(i.subtotal), 0) AS store_subtotal
+         FROM pd_order_item i
+         WHERE i.order_id = o.id AND i.store_id = $1
+       ) store_totals ON true
+       WHERE ${where}`,
+      countParams,
+    );
     const total = parseInt(cnt[0].count, 10);
-    return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    const summaryRow = summaryRows[0];
+    const summary: StoreOrderSummary = {
+      total_orders: parseInt(summaryRow.total_orders, 10),
+      open_orders: parseInt(summaryRow.open_orders, 10),
+      to_ship: parseInt(summaryRow.to_ship, 10),
+      shipped: parseInt(summaryRow.shipped, 10),
+      delivered: parseInt(summaryRow.delivered, 10),
+      cancelled: parseInt(summaryRow.cancelled, 10),
+      refunded: parseInt(summaryRow.refunded, 10),
+      captured_orders: parseInt(summaryRow.captured_orders, 10),
+      captured_revenue: parseFloat(summaryRow.captured_revenue),
+      revenue_today: parseFloat(summaryRow.revenue_today),
+      revenue_7d: parseFloat(summaryRow.revenue_7d),
+      revenue_30d: parseFloat(summaryRow.revenue_30d),
+      average_order_value: parseFloat(summaryRow.average_order_value),
+    };
+    return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit), summary } };
   }
 
   /**

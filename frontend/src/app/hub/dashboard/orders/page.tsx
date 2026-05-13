@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X } from 'lucide-react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -58,6 +58,30 @@ interface OrderItem {
   variant_title?: string | null;
 }
 
+interface OrderSummary {
+  total_orders: number;
+  open_orders: number;
+  to_ship: number;
+  shipped: number;
+  delivered: number;
+  cancelled: number;
+  refunded: number;
+  captured_orders: number;
+  captured_revenue: number;
+  revenue_today: number;
+  revenue_7d: number;
+  revenue_30d: number;
+  average_order_value: number;
+}
+
+interface OrderMeta {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  summary?: OrderSummary;
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
@@ -80,6 +104,25 @@ const statusLabel = (status: string) => {
     cancelled: 'Annulé',
   };
   return labels[status] || status;
+};
+
+const paymentStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    pending: 'En attente',
+    captured: 'Payé',
+    failed: 'Échec',
+    refunded: 'Remboursé',
+  };
+  return labels[status] || status || '—';
+};
+
+const paymentStatusColor = (status: string) => {
+  switch (status) {
+    case 'captured': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'failed': return 'bg-red-50 text-red-700 border-red-200';
+    case 'refunded': return 'bg-slate-100 text-slate-700 border-slate-200';
+    default: return 'bg-amber-50 text-amber-700 border-amber-200';
+  }
 };
 
 async function getErrorMessage(res: Response, fallback = 'Erreur') {
@@ -135,8 +178,13 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [meta, setMeta] = useState<OrderMeta>({ page: 1, limit: 20, total: 0, total_pages: 1 });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
+  const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loadingOrderDetail, setLoadingOrderDetail] = useState(false);
@@ -155,6 +203,10 @@ export default function OrdersPage() {
         limit: '20',
       });
       if (statusFilter) params.set('status', statusFilter);
+      if (paymentStatusFilter) params.set('payment_status', paymentStatusFilter);
+      if (fulfillmentStatusFilter) params.set('fulfillment_status', fulfillmentStatusFilter);
+      if (dateFrom) params.set('date_from', dateFrom);
+      if (dateTo) params.set('date_to', dateTo);
       if (search.trim()) params.set('search', search.trim());
 
       const res = await fetchWithCsrf(`/api/pd/orders/store?${params.toString()}`, {
@@ -164,6 +216,7 @@ export default function OrdersPage() {
         const data = await res.json();
         setOrders(data.data || []);
         setTotalPages(data.meta?.total_pages || 1);
+        setMeta(data.meta || { page, limit: 20, total: 0, total_pages: 1 });
       } else {
         setError(await getErrorMessage(res, 'Erreur lors du chargement des commandes'));
       }
@@ -172,7 +225,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [dateFrom, dateTo, fulfillmentStatusFilter, page, paymentStatusFilter, search, statusFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -185,6 +238,36 @@ export default function OrdersPage() {
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
+    setPage(1);
+  };
+
+  const handlePaymentStatusChange = (value: string) => {
+    setPaymentStatusFilter(value);
+    setPage(1);
+  };
+
+  const handleFulfillmentStatusChange = (value: string) => {
+    setFulfillmentStatusFilter(value);
+    setPage(1);
+  };
+
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value);
+    setPage(1);
+  };
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value);
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+    setPaymentStatusFilter('');
+    setFulfillmentStatusFilter('');
+    setDateFrom('');
+    setDateTo('');
     setPage(1);
   };
 
@@ -270,6 +353,10 @@ export default function OrdersPage() {
     }
   };
 
+  const summary = meta.summary;
+  const hasActiveFilters = Boolean(search || statusFilter || paymentStatusFilter || fulfillmentStatusFilter || dateFrom || dateTo);
+  const activeFilterCount = [search, statusFilter, paymentStatusFilter, fulfillmentStatusFilter, dateFrom, dateTo].filter(Boolean).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -277,6 +364,15 @@ export default function OrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-500 text-sm mt-1">Manage and fulfill your customer orders.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => void fetchOrders()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </button>
       </div>
 
       {error && (
@@ -285,34 +381,114 @@ export default function OrdersPage() {
         </div>
       )}
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {[
+          { label: 'Revenu 30j', value: formatMoney(summary?.revenue_30d ?? 0), icon: TrendingUp, tone: 'bg-emerald-50 text-emerald-700' },
+          { label: 'Aujourd’hui', value: formatMoney(summary?.revenue_today ?? 0), icon: CalendarDays, tone: 'bg-blue-50 text-blue-700' },
+          { label: 'À expédier', value: String(summary?.to_ship ?? 0), icon: PackageCheck, tone: 'bg-amber-50 text-amber-700' },
+          { label: 'AOV', value: formatMoney(summary?.average_order_value ?? 0), icon: CreditCard, tone: 'bg-purple-50 text-purple-700' },
+          { label: 'Commandes', value: String(summary?.total_orders ?? meta.total), icon: Truck, tone: 'bg-slate-50 text-slate-700' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className={`mb-4 inline-flex rounded-2xl p-3 ${item.tone}`}>
+              <item.icon className="h-5 w-5" />
+            </div>
+            <p className="text-2xl font-black text-gray-900">{item.value}</p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">{item.label}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50">
-          <div className="relative w-full sm:w-96">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Search by order ID or customer..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
-            />
+        <div className="space-y-4 border-b border-gray-100 bg-gray-50/50 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => handleSearchChange(event.target.value)}
+                placeholder="Search by order ID or customer..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16C784] focus:border-transparent outline-none transition-shadow"
+              />
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+              <Filter className="w-4 h-4 mr-2" />
+              <select
+                value={statusFilter}
+                onChange={(event) => handleStatusChange(event.target.value)}
+                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+              >
+                <option value="">Tous les statuts</option>
+                <option value="pending">En attente</option>
+                <option value="payment_required">Paiement requis</option>
+                <option value="processing">En cours</option>
+                <option value="fulfilled">Expédié</option>
+                <option value="delivered">Livré</option>
+                <option value="cancelled">Annulé</option>
+              </select>
+              <select
+                value={paymentStatusFilter}
+                onChange={(event) => handlePaymentStatusChange(event.target.value)}
+                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+              >
+                <option value="">Tous paiements</option>
+                <option value="pending">En attente</option>
+                <option value="captured">Payé</option>
+                <option value="failed">Échec</option>
+                <option value="refunded">Remboursé</option>
+              </select>
+              <select
+                value={fulfillmentStatusFilter}
+                onChange={(event) => handleFulfillmentStatusChange(event.target.value)}
+                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+              >
+                <option value="">Tous fulfillment</option>
+                <option value="pending">À expédier</option>
+                <option value="shipped">Expédié</option>
+                <option value="delivered">Livré</option>
+                <option value="cancelled">Annulé</option>
+              </select>
+            </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Filter className="w-4 h-4 mr-2" />
-            <select
-              value={statusFilter}
-              onChange={(event) => handleStatusChange(event.target.value)}
-              className="px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto outline-none"
-            >
-              <option value="">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="payment_required">Paiement requis</option>
-              <option value="processing">En cours</option>
-              <option value="fulfilled">Expédié</option>
-              <option value="delivered">Livré</option>
-              <option value="cancelled">Annulé</option>
-            </select>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid gap-3 sm:grid-cols-2 lg:flex">
+              <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
+                <CalendarDays className="h-4 w-4 text-gray-400" />
+                <span>Du</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(event) => handleDateFromChange(event.target.value)}
+                  className="min-w-0 outline-none"
+                />
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
+                <CalendarDays className="h-4 w-4 text-gray-400" />
+                <span>Au</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(event) => handleDateToChange(event.target.value)}
+                  className="min-w-0 outline-none"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                {meta.total} résultat{meta.total !== 1 ? 's' : ''}{hasActiveFilters ? ` · ${activeFilterCount} filtre${activeFilterCount > 1 ? 's' : ''}` : ''}
+              </span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:border-[#16C784] hover:text-[#16C784]"
+                >
+                  Réinitialiser
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -360,8 +536,13 @@ export default function OrdersPage() {
                       <p className="font-semibold text-gray-900">{customerName(order)}</p>
                       {order.customer_email && <p className="text-xs text-gray-500">{order.customer_email}</p>}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 capitalize">
-                      {order.payment_gateway?.replace('_', ' ') || '—'}
+                    <td className="px-6 py-4 text-sm">
+                      <p className="font-semibold capitalize text-gray-700">
+                        {order.payment_gateway?.replace('_', ' ') || '—'}
+                      </p>
+                      <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentStatusColor(order.payment_status)}`}>
+                        {paymentStatusLabel(order.payment_status)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {formatMoney(order.store_total ?? order.total, order.currency || 'TND')}

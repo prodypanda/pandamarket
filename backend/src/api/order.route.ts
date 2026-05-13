@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { orderService } from '../services/order.service';
 import { asyncHandler, validate, requireAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
-import { OrderStatus, PaymentGateway } from '@pandamarket/types';
+import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
 
 const router = Router();
 
@@ -55,6 +55,10 @@ const storeOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.nativeEnum(OrderStatus).optional(),
+  payment_status: z.nativeEnum(PaymentStatus).optional(),
+  fulfillment_status: z.enum(['pending', 'shipped', 'delivered', 'cancelled']).optional(),
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   search: z.string().trim().max(100).optional(),
 });
 
@@ -130,13 +134,26 @@ router.get(
   requireStore,
   validate(storeOrdersQuerySchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, status, search } = req.query as unknown as {
+    const { page, limit, status, payment_status, fulfillment_status, date_from, date_to, search } = req.query as unknown as {
       page: number;
       limit: number;
       status?: OrderStatus;
+      payment_status?: PaymentStatus;
+      fulfillment_status?: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+      date_from?: string;
+      date_to?: string;
       search?: string;
     };
-    const result = await orderService.listByStore(req.user!.store_id!, { page, limit, status, search });
+    const result = await orderService.listByStore(req.user!.store_id!, {
+      page,
+      limit,
+      status,
+      paymentStatus: payment_status,
+      fulfillmentStatus: fulfillment_status,
+      dateFrom: date_from,
+      dateTo: date_to,
+      search,
+    });
     res.status(200).json(result);
   }),
 );
