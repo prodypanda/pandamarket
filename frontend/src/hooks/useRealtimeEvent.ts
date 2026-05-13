@@ -46,6 +46,5 @@ export function useRealtimeEvent(
     });
 
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event, isConnected, on, ...deps]);
 }
