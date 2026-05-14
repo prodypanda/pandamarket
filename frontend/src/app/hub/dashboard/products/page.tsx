@@ -379,10 +379,20 @@ export default function ProductsPage() {
     );
   }, [products, search]);
 
-  const publishedCount = products.filter((product) => product.status === 'published').length;
-  const draftCount = products.filter((product) => product.status === 'draft').length;
-  const lowStockCount = products.filter((product) => product.inventory_quantity < 10).length;
-  const inventoryCount = products.reduce((total, product) => total + (product.inventory_quantity || 0), 0);
+  // ⚡ Bolt Optimization: Combine 4 array iterations into a single O(n) pass
+  // and memoize to prevent recalculation on unrelated state updates (like search typing)
+  const { publishedCount, draftCount, lowStockCount, inventoryCount } = useMemo(() => {
+    return products.reduce(
+      (acc, product) => {
+        if (product.status === 'published') acc.publishedCount++;
+        if (product.status === 'draft') acc.draftCount++;
+        if (product.inventory_quantity < 10) acc.lowStockCount++;
+        acc.inventoryCount += product.inventory_quantity || 0;
+        return acc;
+      },
+      { publishedCount: 0, draftCount: 0, lowStockCount: 0, inventoryCount: 0 },
+    );
+  }, [products]);
 
   const saveProductImage = async (productId: string, thumbnail: string) => {
     if (!thumbnail.trim()) return;
