@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { Search, Filter, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
@@ -74,6 +75,12 @@ function SearchContent() {
   const [productType, setProductType] = useState('');
   const [sellerType, setSellerType] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+
+  const debouncedPriceMin = useDebounce(priceMin, 500);
+  const debouncedPriceMax = useDebounce(priceMax, 500);
+
+  const debouncedProductType = useDebounce(productType, 500);
+  const debouncedSellerType = useDebounce(sellerType, 500);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
@@ -133,17 +140,17 @@ function SearchContent() {
       if (selectedCategories.length > 0) {
         params.set('category', selectedCategories[0]);
       }
-      if (priceMin.trim()) {
-        params.set('price_min', priceMin.trim());
+      if (debouncedPriceMin.trim()) {
+        params.set('price_min', debouncedPriceMin.trim());
       }
-      if (priceMax.trim()) {
-        params.set('price_max', priceMax.trim());
+      if (debouncedPriceMax.trim()) {
+        params.set('price_max', debouncedPriceMax.trim());
       }
-      if (productType) {
-        params.set('type', productType);
+      if (debouncedProductType) {
+        params.set('type', debouncedProductType);
       }
-      if (sellerType) {
-        params.set('seller_type', sellerType);
+      if (debouncedSellerType) {
+        params.set('seller_type', debouncedSellerType);
       }
       if (verifiedOnly) {
         params.set('verified', 'true');
@@ -166,7 +173,7 @@ function SearchContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, page, selectedCategories, priceMin, priceMax, productType, sellerType, verifiedOnly, sortBy]);
+  }, [query, page, selectedCategories, debouncedPriceMin, debouncedPriceMax, debouncedProductType, debouncedSellerType, verifiedOnly, sortBy]);
 
   useEffect(() => {
     fetchResults();
