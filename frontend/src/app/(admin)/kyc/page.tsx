@@ -128,7 +128,7 @@ export default function AdminKycPage() {
           </div>
         ) : queue.length === 0 ? (
           <div className="rounded-xl border border-gray-100 bg-white p-12 text-center">
-            <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-[#16C784]" />
+            <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-[#B91C1C]" />
             <h3 className="text-lg font-semibold text-gray-900">No pending verifications</h3>
             <p className="mt-1 text-sm text-gray-500">All KYC submissions have been reviewed.</p>
           </div>
@@ -164,7 +164,7 @@ export default function AdminKycPage() {
                   <button
                     type="button"
                     onClick={() => openDocument(kyc.rc_document_url)}
-                    className="text-sm font-medium text-[#16C784] hover:underline flex items-center gap-1"
+                    className="text-sm font-medium text-[#B91C1C] hover:underline flex items-center gap-1"
                   >
                     <Eye className="w-3 h-3" /> View Document
                   </button>
@@ -177,7 +177,7 @@ export default function AdminKycPage() {
                   <button
                     type="button"
                     onClick={() => openDocument(kyc.cin_document_url)}
-                    className="text-sm font-medium text-[#16C784] hover:underline flex items-center gap-1"
+                    className="text-sm font-medium text-[#B91C1C] hover:underline flex items-center gap-1"
                   >
                     <Eye className="w-3 h-3" /> View Document
                   </button>
@@ -190,7 +190,7 @@ export default function AdminKycPage() {
                   <p className="text-sm font-medium">
                     {kyc.phone_number}{' '}
                     {kyc.phone_verified ? (
-                      <span className="text-[#16C784]">✓ Verified</span>
+                      <span className="text-[#B91C1C]">✓ Verified</span>
                     ) : (
                       <span className="text-yellow-600">Pending</span>
                     )}
@@ -203,7 +203,7 @@ export default function AdminKycPage() {
               <button
                 onClick={() => approveKyc(kyc.id)}
                 disabled={actionId === kyc.id}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-[#16C784] text-white rounded-lg text-sm font-medium hover:bg-[#14b576] transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-[#B91C1C] text-white rounded-lg text-sm font-medium hover:bg-[#14b576] transition-colors disabled:opacity-50"
               >
                 <Check className="w-4 h-4" /> Approve
               </button>

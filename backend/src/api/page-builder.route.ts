@@ -35,6 +35,12 @@ const createPageSchema = z.object({
   html: z.string().max(2 * 1024 * 1024).optional(),
   css: z.string().max(512 * 1024).optional(),
   is_homepage: z.boolean().optional(),
+  seo_title: z.string().max(200).nullable().optional(),
+  seo_description: z.string().max(320).nullable().optional(),
+  og_image: z.string().max(2048).nullable().optional(),
+  noindex: z.boolean().optional(),
+  show_in_navigation: z.boolean().optional(),
+  show_in_footer: z.boolean().optional(),
 });
 
 const updatePageSchema = z.object({
@@ -50,6 +56,12 @@ const updatePageSchema = z.object({
   css: z.string().max(512 * 1024).optional(),
   is_published: z.boolean().optional(),
   is_homepage: z.boolean().optional(),
+  seo_title: z.string().max(200).nullable().optional(),
+  seo_description: z.string().max(320).nullable().optional(),
+  og_image: z.string().max(2048).nullable().optional(),
+  noindex: z.boolean().optional(),
+  show_in_navigation: z.boolean().optional(),
+  show_in_footer: z.boolean().optional(),
   sort_order: z.number().int().min(0).max(999).optional(),
 });
 
@@ -67,8 +79,9 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
+      const limits = await pageBuilderService.getPageBuilderLimits(storeId);
       const pages = await pageBuilderService.listPages(storeId);
-      res.json({ data: pages, count: pages.length });
+      res.json({ data: pages, count: pages.length, limits });
     } catch (err) {
       next(err);
     }
@@ -132,8 +145,56 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
-      const page = await pageBuilderService.updatePage(req.params.id, storeId, req.body);
+      const page = await pageBuilderService.updatePage(req.params.id, storeId, req.body, req.user!.id);
       res.json({ page });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.get(
+  '/pages/:id/versions',
+  requireAuth,
+  requireVendor,
+  requireStore,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const storeId = req.user!.store_id!;
+      const versions = await pageBuilderService.listVersions(req.params.id, storeId);
+      res.json({ data: versions, count: versions.length });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/pages/:id/versions/:versionId/restore',
+  requireAuth,
+  requireVendor,
+  requireStore,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const storeId = req.user!.store_id!;
+      const page = await pageBuilderService.restoreVersion(req.params.id, storeId, req.params.versionId);
+      res.json({ page });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/pages/:id/preview',
+  requireAuth,
+  requireVendor,
+  requireStore,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const storeId = req.user!.store_id!;
+      const preview = await pageBuilderService.createPreviewToken(req.params.id, storeId, req.user!.id);
+      res.json(preview);
     } catch (err) {
       next(err);
     }

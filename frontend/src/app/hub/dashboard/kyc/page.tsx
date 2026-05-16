@@ -158,8 +158,8 @@ export default function KycPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-900">Vérification de Compte</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-[#16C784]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-[#16C784]" />
+          <div className="w-16 h-16 bg-[#B91C1C]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-[#B91C1C]" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Compte Vérifié ✓</h2>
           <p className="text-gray-500 mb-4">
@@ -194,13 +194,13 @@ export default function KycPage() {
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-xs font-semibold text-gray-500 mb-1">Registre de Commerce</p>
-              <p className="text-sm text-[#16C784] flex items-center gap-1">
+              <p className="text-sm text-[#B91C1C] flex items-center gap-1">
                 <FileText className="w-4 h-4" /> Uploadé
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-xs font-semibold text-gray-500 mb-1">Carte d&apos;Identité</p>
-              <p className="text-sm text-[#16C784] flex items-center gap-1">
+              <p className="text-sm text-[#B91C1C] flex items-center gap-1">
                 <FileText className="w-4 h-4" /> Uploadé
               </p>
             </div>
@@ -233,8 +233,8 @@ export default function KycPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[#16C784]/10 rounded-full flex items-center justify-center">
-            <Shield className="w-5 h-5 text-[#16C784]" />
+          <div className="w-10 h-10 bg-[#B91C1C]/10 rounded-full flex items-center justify-center">
+            <Shield className="w-5 h-5 text-[#B91C1C]" />
           </div>
           <div>
             <h2 className="font-bold text-gray-900">Complétez votre vérification</h2>
@@ -265,8 +265,8 @@ export default function KycPage() {
             </label>
             {rcDocUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                <FileText className="w-5 h-5 text-[#16C784]" />
-                <span className="text-sm text-[#16C784] font-medium">Document uploadé</span>
+                <FileText className="w-5 h-5 text-[#B91C1C]" />
+                <span className="text-sm text-[#B91C1C] font-medium">Document uploadé</span>
                 <button
                   onClick={() => setRcDocUrl('')}
                   className="ml-auto text-xs text-gray-500 hover:text-gray-700"
@@ -275,7 +275,7 @@ export default function KycPage() {
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#16C784] transition-colors">
+              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#B91C1C] transition-colors">
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
                   {uploadingRc ? 'Upload en cours...' : 'Cliquez pour uploader votre RC'}
@@ -301,8 +301,8 @@ export default function KycPage() {
             </label>
             {cinDocUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                <FileText className="w-5 h-5 text-[#16C784]" />
-                <span className="text-sm text-[#16C784] font-medium">Document uploadé</span>
+                <FileText className="w-5 h-5 text-[#B91C1C]" />
+                <span className="text-sm text-[#B91C1C] font-medium">Document uploadé</span>
                 <button
                   onClick={() => setCinDocUrl('')}
                   className="ml-auto text-xs text-gray-500 hover:text-gray-700"
@@ -311,7 +311,7 @@ export default function KycPage() {
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#16C784] transition-colors">
+              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#B91C1C] transition-colors">
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
                   {uploadingCin ? 'Upload en cours...' : 'Cliquez pour uploader votre CIN'}
@@ -340,7 +340,7 @@ export default function KycPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+216 XX XXX XXX"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
             <p className="text-xs text-gray-400 mt-1">
               Notre équipe vous contactera pour vérification téléphonique.
@@ -350,7 +350,7 @@ export default function KycPage() {
           <button
             onClick={handleSubmit}
             disabled={submitting || !rcDocUrl || !cinDocUrl || !phone}
-            className="w-full py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-[#B91C1C] text-white font-semibold rounded-xl hover:bg-[#991B1B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Envoi en cours...' : 'Soumettre pour vérification'}
           </button>

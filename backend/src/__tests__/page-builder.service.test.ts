@@ -41,7 +41,7 @@ function setupTransaction() {
   mockTransaction.mockImplementation(async (fn) => fn(mockClient));
 }
 
-function setupPlanCheck(hasPageBuilder: boolean, plan = 'regular') {
+function setupPlanCheck(hasPageBuilder: boolean, plan = 'regular', maxPageBuilderPages = 20) {
   // First call: get store's plan
   mockQuery.mockResolvedValueOnce({
     rows: [{ subscription_plan: plan }],
@@ -49,7 +49,9 @@ function setupPlanCheck(hasPageBuilder: boolean, plan = 'regular') {
   // Second call: get plan limits
   mockGetLimits.mockResolvedValueOnce({
     has_page_builder: hasPageBuilder,
+    has_ai_seo: hasPageBuilder,
     max_products: 100,
+    max_page_builder_pages: maxPageBuilderPages,
   });
 }
 
@@ -117,6 +119,36 @@ describe('PageBuilderService', () => {
         ['store_1'],
       );
     });
+
+    it('should include 30-day analytics aggregates for dashboard page cards', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          slug: 'about',
+          title: 'About',
+          is_published: true,
+          views_30d: 12,
+          cta_clicks_30d: 3,
+          product_clicks_30d: 4,
+        }],
+      });
+
+      const result = await pageBuilderService.listPages('store_1');
+      const sql = mockQuery.mock.calls[0][0] as string;
+
+      expect(result[0]).toMatchObject({
+        views_30d: 12,
+        cta_clicks_30d: 3,
+        product_clicks_30d: 4,
+      });
+      expect(sql).toContain('pd_store_page_analytics_event');
+      expect(sql).toContain('views_30d');
+      expect(sql).toContain('cta_clicks_30d');
+      expect(sql).toContain('product_clicks_30d');
+      expect(sql).toContain('WHERE store_id = $1');
+      expect(sql).toContain('stats.page_id = pd_store_page.id');
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ['store_1']);
+    });
   });
 
   describe('listPublishedPages()', () => {
@@ -163,6 +195,71 @@ describe('PageBuilderService', () => {
     });
   });
 
+  describe('draft preview', () => {
+    it('should create a scoped preview token for a page', async () => {
+      setupPlanCheck(true);
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          store_id: 'store_1',
+          slug: 'about',
+          title: 'About',
+          is_homepage: false,
+          builder_data: { pages: [] },
+        }],
+      });
+
+      const result = await pageBuilderService.createPreviewToken('p1', 'store_1', 'user_1');
+
+      expect(result.token).toEqual(expect.any(String));
+      expect(result.page).toEqual({ id: 'p1', slug: 'about', title: 'About', is_homepage: false });
+      expect(Date.parse(result.expires_at)).toBeGreaterThan(Date.now());
+    });
+
+    it('should return draft HTML/CSS for a valid preview token', async () => {
+      setupPlanCheck(true);
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          store_id: 'store_1',
+          slug: 'about',
+          title: 'About',
+          is_homepage: false,
+          builder_data: { pages: [] },
+        }],
+      });
+      const preview = await pageBuilderService.createPreviewToken('p1', 'store_1', 'user_1');
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', slug: 'about', html: '<h1>Draft</h1>', css: 'h1{color:green}', is_homepage: false }],
+      });
+
+      const result = await pageBuilderService.getDraftPreviewPage('store_1', preview.token, { slug: 'about' });
+
+      expect(result?.html).toBe('<h1>Draft</h1>');
+      expect(result?.css).toBe('h1{color:green}');
+      const previewQuery = mockQuery.mock.calls.at(-1)?.[0] as string;
+      expect(previewQuery).toContain('COALESCE(draft_html, html)');
+    });
+
+    it('should reject preview tokens used for a different slug', async () => {
+      setupPlanCheck(true);
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          store_id: 'store_1',
+          slug: 'about',
+          title: 'About',
+          is_homepage: false,
+          builder_data: { pages: [] },
+        }],
+      });
+      const preview = await pageBuilderService.createPreviewToken('p1', 'store_1', 'user_1');
+
+      await expect(
+        pageBuilderService.getDraftPreviewPage('store_1', preview.token, { slug: 'contact' }),
+      ).rejects.toThrow('Invalid page preview token');
+    });
+  });
   describe('getPublishedPageBySlug()', () => {
     it('should return published page by slug', async () => {
       const mockPage = { id: 'p1', slug: 'about', html: '<h1>About</h1>', css: 'h1{color:red}' };
@@ -214,9 +311,9 @@ describe('PageBuilderService', () => {
       ).rejects.toThrow('slug');
     });
 
-    it('should enforce 20-page limit', async () => {
-      setupPlanCheck(true);
-      mockQuery.mockResolvedValueOnce({ rows: [{ count: 20 }] });
+    it('should enforce configured page limit', async () => {
+      setupPlanCheck(true, 'regular', 5);
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 5 }] });
 
       await expect(
         pageBuilderService.createPage({
@@ -224,7 +321,70 @@ describe('PageBuilderService', () => {
           slug: 'new-page',
           title: 'New Page',
         }),
-      ).rejects.toThrow('Limite de 20 pages atteinte');
+      ).rejects.toThrow('Limite de 5 pages atteinte');
+    });
+
+    it('should persist SEO and navigation settings on create', async () => {
+      setupPlanCheck(true);
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ id: 'pd_page_new', seo_title: 'Promo SEO' }],
+      });
+
+      await pageBuilderService.createPage({
+        store_id: 'store_1',
+        slug: 'promo',
+        title: 'Promo',
+        seo_title: '  Promo SEO  ',
+        seo_description: 'Description SEO',
+        og_image: 'javascript:alert(1)',
+        noindex: true,
+        show_in_navigation: true,
+        show_in_footer: true,
+      });
+
+      const insertCall = mockClient.query.mock.calls[0];
+      const params = insertCall[1] as unknown[];
+      expect(insertCall[0]).toContain('seo_title');
+      expect(params[8]).toBe('Promo SEO');
+      expect(params[9]).toBe('Description SEO');
+      expect(params[10]).toBeNull();
+      expect(params[11]).toBe(true);
+      expect(params[12]).toBe(true);
+      expect(params[13]).toBe(true);
+    });
+
+    it('should sanitize stored page html and css on create', async () => {
+      setupPlanCheck(true);
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ id: 'pd_page_new' }],
+      });
+
+      await pageBuilderService.createPage({
+        store_id: 'store_1',
+        slug: 'secure-page',
+        title: 'Secure Page',
+        html: '<style>.bad{color:red}</style><img src="vbscript:alert(1)" srcset="javascript:alert(1) 1x, /pd-product-images/safe.jpg 2x" onerror="alert(1)" style="background:url(javascript:alert(1));color:red;behavior:url(x)" /><form><input /></form><iframe src="https://evil.test"></iframe>',
+        css: '@import url("https://evil.test/x.css"); section{background:url(data:text/html,<svg>);behavior:url(x);-moz-binding:url(x);color:red}',
+      });
+
+      const params = mockClient.query.mock.calls[0][1] as unknown[];
+      const html = params[5] as string;
+      const css = params[6] as string;
+      expect(html).toContain('/pd-product-images/safe.jpg 2x');
+      expect(html).toContain('data-pd-form-placeholder');
+      expect(html).not.toContain('<style');
+      expect(html).not.toContain('<iframe');
+      expect(html).not.toContain('<form');
+      expect(html).not.toContain('onerror');
+      expect(html).not.toContain('javascript:alert');
+      expect(html).not.toContain('vbscript:alert');
+      expect(html).not.toContain('behavior:url');
+      expect(css).not.toContain('@import');
+      expect(css).not.toContain('data:text/html');
+      expect(css).not.toContain('behavior');
+      expect(css).not.toContain('-moz-binding');
     });
 
     it('should unset existing homepage when creating new homepage', async () => {
@@ -312,6 +472,94 @@ describe('PageBuilderService', () => {
       expect(result.title).toBe('Updated Title');
     });
 
+    it('should save content changes into draft fields only', async () => {
+      setupPlanCheck(true);
+      mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'p1' }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ id: 'p1', draft_html: '<h1>Draft</h1>', html: '<h1>Live</h1>' }],
+      });
+
+      await pageBuilderService.updatePage('p1', 'store_1', {
+        builder_data: { pages: [] },
+        html: '<h1>Draft</h1>',
+        css: 'h1{color:green}',
+      });
+
+      const updateCall = mockClient.query.mock.calls[1];
+      const sql = updateCall[0] as string;
+      expect(sql).toContain('draft_builder_data');
+      expect(sql).toContain('draft_html');
+      expect(sql).toContain('draft_css');
+      expect(sql).not.toMatch(/(^|, )builder_data =/);
+      expect(sql).not.toMatch(/(^|, )html =/);
+      expect(sql).not.toMatch(/(^|, )css =/);
+    });
+
+    it('should copy draft content into public fields when publishing', async () => {
+      setupPlanCheck(true);
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          builder_data: { live: true },
+          html: '<h1>Live</h1>',
+          css: 'h1{color:black}',
+          draft_builder_data: { draft: true },
+          draft_html: '<h1>Draft</h1>',
+          draft_css: 'h1{color:green}',
+          draft_seo_title: 'Draft SEO',
+          draft_seo_description: 'Draft description',
+          draft_og_image: '/pd-product-images/draft.jpg',
+          draft_noindex: true,
+          draft_show_in_navigation: true,
+          draft_show_in_footer: true,
+          draft_sort_order: 7,
+        }],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{
+          id: 'p1',
+          store_id: 'store_1',
+          slug: 'about',
+          title: 'About',
+          builder_data: { draft: true },
+          html: '<h1>Draft</h1>',
+          css: 'h1{color:green}',
+          seo_title: 'Draft SEO',
+          seo_description: 'Draft description',
+          og_image: '/pd-product-images/draft.jpg',
+          noindex: true,
+          show_in_navigation: true,
+          show_in_footer: true,
+          sort_order: 7,
+          published_at: new Date('2026-05-15T12:00:00Z'),
+          is_published: true,
+        }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [{ version_number: 1 }] });
+      mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'pd_page_version_1', version_number: 1 }] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      await pageBuilderService.updatePage('p1', 'store_1', { is_published: true });
+
+      const updateCall = mockClient.query.mock.calls[1];
+      const sql = updateCall[0] as string;
+      const params = updateCall[1] as unknown[];
+      expect(sql).toContain('builder_data');
+      expect(sql).toContain('html');
+      expect(sql).toContain('css');
+      expect(sql).toContain('published_at');
+      expect(sql).toContain('is_published');
+      expect(params[0]).toBe(JSON.stringify({ draft: true }));
+      expect(params[1]).toBe('<h1>Draft</h1>');
+      expect(params[2]).toBe('h1{color:green}');
+      expect(params[3]).toBe('Draft SEO');
+      expect(params[6]).toBe(true);
+      expect(params[7]).toBe(true);
+      expect(params[8]).toBe(true);
+      expect(params[9]).toBe(7);
+      expect(mockClient.query.mock.calls[2][0]).toContain('FROM pd_store_page_version');
+      expect(mockClient.query.mock.calls[3][0]).toContain('INSERT INTO pd_store_page_version');
+    });
     it('should reject update for wrong store (tenant isolation)', async () => {
       setupPlanCheck(true);
       // Ownership check returns empty
@@ -406,13 +654,32 @@ describe('PageBuilderService', () => {
       pgError.constraint = 'uq_store_page_slug';
       mockTransaction.mockImplementationOnce(async () => { throw pgError; });
 
-      await expect(
-        pageBuilderService.createPage({
-          store_id: 'store_1',
-          slug: 'about',
-          title: 'About',
-        }),
-      ).rejects.toThrow('existe déjà');
+      const result = pageBuilderService.createPage({
+        store_id: 'store_1',
+        slug: 'about',
+        title: 'About',
+      });
+
+      await expect(result).rejects.toThrow('existe déjà');
+      await expect(result).rejects.toMatchObject({
+        details: { field: 'slug', slug: 'about', resource: 'page_builder_page' },
+      });
+    });
+
+    it('should expose slug conflict details on update', async () => {
+      setupPlanCheck(true);
+      mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'p1' }] });
+      const pgError = new Error('duplicate key') as any;
+      pgError.code = '23505';
+      pgError.constraint = 'uq_store_page_slug';
+      mockClient.query.mockRejectedValueOnce(pgError);
+
+      const result = pageBuilderService.updatePage('p1', 'store_1', { slug: 'about' });
+
+      await expect(result).rejects.toThrow('existe déjà');
+      await expect(result).rejects.toMatchObject({
+        details: { field: 'slug', slug: 'about', resource: 'page_builder_page' },
+      });
     });
   });
 

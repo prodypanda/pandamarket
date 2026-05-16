@@ -7,6 +7,7 @@ import { logger } from './utils/logger';
 import { accessLog, apiRateLimit, errorHandler, requestId } from './middlewares';
 import { csrfProtection } from './middlewares/csrf.middleware';
 import { maintenanceMiddleware } from './middlewares/maintenance.middleware';
+import { auditLog } from './middlewares/audit-log.middleware';
 import { initSentry, sentryRequestHandler, sentryErrorHandler } from './utils/sentry';
 import { metricsMiddleware, metricsRouter, logMetricsStatus } from './utils/metrics';
 
@@ -42,6 +43,7 @@ import wishlistRouter from './api/wishlist.route';
 import addressRouter from './api/address.route';
 import chatRouter from './api/chat.route';
 import analyticsRouter from './api/analytics.route';
+import emailTemplateRouter from './api/email-template.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -152,6 +154,7 @@ async function bootstrap() {
   app.use(apiRateLimit);
   app.use(csrfProtection);
   app.use(maintenanceMiddleware());
+  app.use(auditLog);
 
   // API Routes
   const apiRouter = express.Router();
@@ -183,6 +186,7 @@ async function bootstrap() {
   apiRouter.use('/addresses', addressRouter);
   apiRouter.use('/chats', chatRouter);
   apiRouter.use('/analytics', analyticsRouter);
+  apiRouter.use('/email-templates', emailTemplateRouter);
 
   app.use('/api/pd', apiRouter);
 

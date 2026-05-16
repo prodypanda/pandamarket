@@ -7,16 +7,24 @@ import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../lib/marketplace-theme';
 import { fetchEnabledSubscriptionPlans } from '../../../lib/subscription-plans';
 
-export const metadata: Metadata = {
-  title: 'Tarifs — Choisissez votre plan',
-  description: 'Comparez les 7 plans PandaMarket : Free (0 TND, 15% commission), Starter (300 TND/an), Regular, Agency, Pro, Golden, Platinum. 0% commission dès le plan Starter.',
-  openGraph: {
-    title: 'Tarifs PandaMarket — Des plans pour chaque ambition',
-    description: 'Commencez gratuitement avec 15% de commission, ou choisissez un abonnement annuel à 0% de commission.',
-    type: 'website',
-    url: '/hub/pricing',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marketplaceSettings = await getMarketplaceSettings();
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const description = `Comparez les plans ${marketplaceName} : Free, Starter, Regular, Agency, Pro, Golden et Platinum.`;
+
+  return {
+    title: `Tarifs — ${marketplaceName}`,
+    description,
+    openGraph: {
+      title: `Tarifs ${marketplaceName} — Des plans pour chaque ambition`,
+      description,
+      type: 'website',
+      url: '/hub/pricing',
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `Tarifs ${marketplaceName}` }],
+    },
+  };
+}
 
 const features = [
   { label: 'Produits max', key: 'products' },
@@ -70,7 +78,7 @@ export default async function PricingPage() {
       <div className="lg:hidden space-y-4 mb-12">
         {plans.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm font-semibold text-gray-500">
-            Aucun plan n'est disponible actuellement.
+            Aucun plan n&apos;est disponible actuellement.
           </div>
         ) : plans.map((plan) => (
           <div
@@ -132,7 +140,7 @@ export default async function PricingPage() {
       <div className="hidden lg:block overflow-x-auto mb-12">
         {plans.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm font-semibold text-gray-500">
-            Aucun plan n'est disponible actuellement.
+            Aucun plan n&apos;est disponible actuellement.
           </div>
         ) : (
         <table className="w-full border-collapse">

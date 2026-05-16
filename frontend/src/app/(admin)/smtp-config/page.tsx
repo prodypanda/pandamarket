@@ -225,8 +225,8 @@ export default function AdminSmtpConfigPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#16C784]/10 rounded-lg">
-            <Mail className="h-6 w-6 text-[#16C784]" />
+          <div className="p-2 bg-[#B91C1C]/10 rounded-lg">
+            <Mail className="h-6 w-6 text-[#B91C1C]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Email Configuration</h1>
@@ -238,7 +238,7 @@ export default function AdminSmtpConfigPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#16C784] text-white rounded-lg text-sm font-medium hover:bg-[#14b876] transition-all active:scale-[0.98] disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#B91C1C] text-white rounded-lg text-sm font-medium hover:bg-[#991B1B] transition-all active:scale-[0.98] disabled:opacity-50"
         >
           {saving ? (
             <RotateCcw className="h-4 w-4 animate-spin" />
@@ -263,10 +263,10 @@ export default function AdminSmtpConfigPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-lg ${form.smtp_enabled ? 'bg-[#16C784]/10' : 'bg-gray-100'}`}
+              className={`p-2 rounded-lg ${form.smtp_enabled ? 'bg-[#B91C1C]/10' : 'bg-gray-100'}`}
             >
               <Shield
-                className={`h-5 w-5 ${form.smtp_enabled ? 'text-[#16C784]' : 'text-gray-400'}`}
+                className={`h-5 w-5 ${form.smtp_enabled ? 'text-[#B91C1C]' : 'text-gray-400'}`}
               />
             </div>
             <div>
@@ -281,7 +281,7 @@ export default function AdminSmtpConfigPage() {
           <button
             onClick={() => updateField('smtp_enabled', !form.smtp_enabled)}
             className={`relative w-12 h-6 rounded-full transition-colors ${
-              form.smtp_enabled ? 'bg-[#16C784]' : 'bg-gray-300'
+              form.smtp_enabled ? 'bg-[#B91C1C]' : 'bg-gray-300'
             }`}
           >
             <span
@@ -306,7 +306,7 @@ export default function AdminSmtpConfigPage() {
               onClick={() => applyPreset(key)}
               className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
                 selectedPreset === key
-                  ? 'border-[#16C784] bg-[#16C784]/5 text-[#16C784]'
+                  ? 'border-[#B91C1C] bg-[#B91C1C]/5 text-[#B91C1C]'
                   : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -331,7 +331,7 @@ export default function AdminSmtpConfigPage() {
                 value={form.smtp_host}
                 onChange={(e) => updateField('smtp_host', e.target.value)}
                 placeholder="smtp.example.com"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
               />
             </div>
             <div>
@@ -342,7 +342,7 @@ export default function AdminSmtpConfigPage() {
                 max={65535}
                 value={form.smtp_port}
                 onChange={(e) => updateField('smtp_port', parseInt(e.target.value) || 587)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
               />
             </div>
           </div>
@@ -354,7 +354,7 @@ export default function AdminSmtpConfigPage() {
               value={form.smtp_user}
               onChange={(e) => updateField('smtp_user', e.target.value)}
               placeholder="your-api-key or email"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
             />
           </div>
 
@@ -362,7 +362,7 @@ export default function AdminSmtpConfigPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password / Secret
               {existingPassSet && !form.smtp_pass && (
-                <span className="ml-2 text-xs text-[#16C784] font-normal">
+                <span className="ml-2 text-xs text-[#B91C1C] font-normal">
                   ✓ Password is set (leave empty to keep current)
                 </span>
               )}
@@ -373,7 +373,7 @@ export default function AdminSmtpConfigPage() {
                 value={form.smtp_pass}
                 onChange={(e) => updateField('smtp_pass', e.target.value)}
                 placeholder={existingPassSet ? '••••••••••••' : 'Enter password or API secret'}
-                className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+                className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
               />
               <button
                 type="button"
@@ -395,7 +395,7 @@ export default function AdminSmtpConfigPage() {
             <button
               onClick={() => updateField('smtp_secure', !form.smtp_secure)}
               className={`relative w-12 h-6 rounded-full transition-colors ${
-                form.smtp_secure ? 'bg-[#16C784]' : 'bg-gray-300'
+                form.smtp_secure ? 'bg-[#B91C1C]' : 'bg-gray-300'
               }`}
             >
               <span
@@ -422,7 +422,7 @@ export default function AdminSmtpConfigPage() {
               value={form.smtp_from_name}
               onChange={(e) => updateField('smtp_from_name', e.target.value)}
               placeholder="PandaMarket"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
             />
           </div>
           <div>
@@ -432,7 +432,7 @@ export default function AdminSmtpConfigPage() {
               value={form.smtp_from_email}
               onChange={(e) => updateField('smtp_from_email', e.target.value)}
               placeholder="noreply@pandamarket.tn"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
             />
           </div>
         </div>
@@ -461,7 +461,7 @@ export default function AdminSmtpConfigPage() {
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
               placeholder="admin@pandamarket.tn"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16C784]/20 focus:border-[#16C784] transition-colors"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
             />
           </div>
           <button
@@ -482,7 +482,7 @@ export default function AdminSmtpConfigPage() {
           <div
             className={`mt-4 flex items-start gap-2 p-3 rounded-lg text-sm ${
               testStatus === 'success'
-                ? 'bg-[#16C784]/5 border border-[#16C784]/20 text-[#16C784]'
+                ? 'bg-[#B91C1C]/5 border border-[#B91C1C]/20 text-[#B91C1C]'
                 : 'bg-red-50 border border-red-100 text-red-700'
             }`}
           >
@@ -501,23 +501,23 @@ export default function AdminSmtpConfigPage() {
         <h4 className="text-sm font-semibold text-gray-900 mb-2">How it works</h4>
         <ul className="space-y-1.5 text-xs text-gray-600">
           <li className="flex items-start gap-2">
-            <span className="text-[#16C784] mt-0.5">•</span>
+            <span className="text-[#B91C1C] mt-0.5">•</span>
             The email worker reads this configuration dynamically — no restart needed.
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-[#16C784] mt-0.5">•</span>
+            <span className="text-[#B91C1C] mt-0.5">•</span>
             Password is encrypted at rest using AES-256-GCM and never exposed in the UI.
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-[#16C784] mt-0.5">•</span>
+            <span className="text-[#B91C1C] mt-0.5">•</span>
             When disabled, emails are logged to the console (useful for development).
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-[#16C784] mt-0.5">•</span>
+            <span className="text-[#B91C1C] mt-0.5">•</span>
             Environment variables (PD_SMTP_*) are used as fallback if no DB config is set.
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-[#16C784] mt-0.5">•</span>
+            <span className="text-[#B91C1C] mt-0.5">•</span>
             Recommended providers for Tunisia: Brevo (free tier: 300 emails/day) or Resend.
           </li>
         </ul>

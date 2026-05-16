@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { isAliExpressTheme } from '@/lib/marketplace-theme';
 import { useState, useEffect, useCallback } from 'react';
 import { Star, ThumbsUp, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
@@ -28,7 +29,7 @@ interface ProductRating {
 
 interface ReviewSectionProps {
   productId: string;
-  marketplaceTheme?: 'panda' | 'aliexpress';
+  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
 function StarRating({
@@ -122,7 +123,7 @@ async function getResponseErrorMessage(res: Response, fallback: string) {
 }
 
 export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewSectionProps) {
-  const isAliExpress = marketplaceTheme === 'aliexpress';
+  const isAliExpress = isAliExpressTheme(marketplaceTheme);
   const primaryButtonClass = isAliExpress
     ? 'bg-[#ff4747] hover:bg-[#e63f00]'
     : 'bg-[#16C784] hover:bg-[#14b576]';

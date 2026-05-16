@@ -153,7 +153,7 @@ export default function VendorReportDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center rounded-2xl bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-[#16C784]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#B91C1C]" />
       </div>
     );
   }
@@ -224,7 +224,7 @@ export default function VendorReportDetailPage() {
               onChange={(event) => setBody(event.target.value)}
               rows={4}
               placeholder="Respond to marketplace, explain your side, add tracking proof, refund proof, delivery evidence..."
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
             />
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50">
@@ -232,7 +232,7 @@ export default function VendorReportDetailPage() {
                 Attach files
                 <input type="file" multiple className="hidden" onChange={onFileChange} accept="image/*,application/pdf,text/plain" />
               </label>
-              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#16C784] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
+              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Send response
               </button>

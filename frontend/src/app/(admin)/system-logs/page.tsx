@@ -222,8 +222,8 @@ export default function SystemLogsPage() {
     { label: 'Errors', value: summary.errors, icon: ServerCrash, tone: 'from-red-500 to-rose-600 text-white' },
     { label: 'Warnings', value: summary.warnings, icon: AlertTriangle, tone: 'from-amber-400 to-orange-500 text-white' },
     { label: 'Fatal', value: summary.fatal, icon: FileWarning, tone: 'from-rose-950 to-black text-white' },
-    { label: 'Last hour', value: summary.last_hour ?? 0, icon: Clock, tone: 'from-blue-500 to-cyan-500 text-white' },
-    { label: 'Manual logs', value: summary.manual_logs ?? 0, icon: ShieldAlert, tone: 'from-violet-500 to-indigo-600 text-white' },
+    { label: 'Last hour', value: summary.last_hour ?? 0, icon: Clock, tone: 'from-[#B91C1C] to-amber-500 text-white' },
+    { label: 'Manual logs', value: summary.manual_logs ?? 0, icon: ShieldAlert, tone: 'from-amber-500 to-red-600 text-white' },
   ], [summary]);
 
   const resetFilters = () => {
@@ -381,10 +381,10 @@ export default function SystemLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-6 text-white shadow-2xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-red-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-amber-100">
               <ServerCrash className="h-4 w-4" />
               Backend observability
             </div>
@@ -490,7 +490,7 @@ export default function SystemLogsPage() {
             </div>
             <div className="lg:col-span-2">
               <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Stack trace</label>
-              <textarea value={createForm.stack} onChange={(event) => updateCreateField('stack', event.target.value)} rows={7} placeholder="Optional stack trace or diagnostic text" className="font-mono w-full rounded-2xl border border-gray-200 bg-slate-950 px-4 py-3 text-xs text-red-100 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" />
+              <textarea value={createForm.stack} onChange={(event) => updateCreateField('stack', event.target.value)} rows={7} placeholder="Optional stack trace or diagnostic text" className="font-mono w-full rounded-2xl border border-gray-200 bg-slate-950 px-4 py-3 text-xs text-amber-100 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" />
             </div>
           </div>
 
@@ -621,7 +621,7 @@ export default function SystemLogsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ring-1 ${levelStyles[entry.level]}`}>{entry.level}</span>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-slate-200">{entry.event_type}</span>
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-100">{entry.source}</span>
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-[#7F1D1D] ring-1 ring-amber-100">{entry.source}</span>
                       {entry.status_code && <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 ring-1 ring-red-100">HTTP {entry.status_code}</span>}
                       {entry.request_id && <span className="font-mono text-xs font-bold text-gray-400">req:{entry.request_id}</span>}
                     </div>
@@ -659,7 +659,7 @@ export default function SystemLogsPage() {
                   {entry.stack && (
                     <div className="rounded-2xl border border-gray-100 bg-white p-4 lg:col-span-2">
                       <p className="text-xs font-black uppercase tracking-wide text-gray-400">Stack trace</p>
-                      <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs leading-5 text-red-100">{entry.stack}</pre>
+                      <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs leading-5 text-amber-100">{entry.stack}</pre>
                     </div>
                   )}
                 </div>

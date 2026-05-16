@@ -35,5 +35,6 @@ export function useMarketplaceTheme(initialSettings: MarketplaceThemeSettings = 
     theme,
     classes,
     isAliExpress: classes.isAliExpress,
+    isAliExpress2: theme === 'aliexpress2',
   };
 }

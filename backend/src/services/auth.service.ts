@@ -150,6 +150,20 @@ export class AuthService {
     );
 
     logger.info({ user_id: id, role }, 'User registered');
+    if (role === UserRole.Customer) {
+      const hubDomain = config.hubDomain?.startsWith('http')
+        ? config.hubDomain
+        : `https://${config.hubDomain || 'pandamarket.tn'}`;
+      emailQueue.add('welcome_customer', {
+        to: email,
+        template: 'welcome_customer',
+        variables: {
+          name: opts.first_name,
+          store_url: hubDomain,
+        },
+        scope: 'marketplace',
+      }).catch((err) => logger.warn({ err, user_id: id }, 'Marketplace welcome email enqueue failed'));
+    }
     return rows[0];
   }
 

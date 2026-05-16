@@ -143,7 +143,7 @@ export default function NotificationsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Bell className="w-6 h-6 text-[#16C784]" />
+            <Bell className="w-6 h-6 text-[#B91C1C]" />
             Notifications
             {unreadCount > 0 && (
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -165,7 +165,7 @@ export default function NotificationsPage() {
             <button
               onClick={markAllAsRead}
               disabled={markingAll}
-              className="flex items-center px-3 py-2 text-sm bg-[#16C784] text-white rounded-lg hover:bg-[#14b576] transition-colors disabled:opacity-50"
+              className="flex items-center px-3 py-2 text-sm bg-[#B91C1C] text-white rounded-lg hover:bg-[#14b576] transition-colors disabled:opacity-50"
             >
               {markingAll ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -188,7 +188,7 @@ export default function NotificationsPage() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
+            <Loader2 className="w-6 h-6 text-[#B91C1C] animate-spin" />
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-16">
@@ -201,7 +201,7 @@ export default function NotificationsPage() {
               <div
                 key={notif.id}
                 className={`p-4 sm:p-5 flex items-start gap-4 hover:bg-gray-50/50 transition-colors cursor-pointer ${
-                  !notif.is_read ? 'bg-[#16C784]/5 border-l-4 border-l-[#16C784]' : ''
+                  !notif.is_read ? 'bg-[#B91C1C]/5 border-l-4 border-l-[#B91C1C]' : ''
                 }`}
                 onClick={() => !notif.is_read && markAsRead(notif.id)}
               >
@@ -214,7 +214,7 @@ export default function NotificationsPage() {
                       {notif.title}
                     </h3>
                     {!notif.is_read && (
-                      <span className="w-2 h-2 bg-[#16C784] rounded-full flex-shrink-0" />
+                      <span className="w-2 h-2 bg-[#B91C1C] rounded-full flex-shrink-0" />
                     )}
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
@@ -230,7 +230,7 @@ export default function NotificationsPage() {
                 {!notif.is_read && (
                   <button
                     onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
-                    className="p-1.5 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/10 rounded-lg transition-colors flex-shrink-0"
+                    className="p-1.5 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/10 rounded-lg transition-colors flex-shrink-0"
                     title="Marquer comme lu"
                   >
                     <Check className="w-4 h-4" />

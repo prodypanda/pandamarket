@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { isAliExpressTheme } from '@/lib/marketplace-theme';
 import { Loader2, MessageCircle, Send, ShieldCheck, Store, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,7 +21,7 @@ interface InstantChatStoreContext {
 
 interface InstantChatLauncherProps {
   storeContext?: InstantChatStoreContext;
-  marketplaceTheme?: 'panda' | 'aliexpress';
+  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
 type ChatTarget = 'marketplace' | 'store';
@@ -58,7 +59,7 @@ export function InstantChatLauncher({ storeContext, marketplaceTheme = 'panda' }
   const [mounted, setMounted] = useState(false);
   const [existingConversationId, setExistingConversationId] = useState<string | null>(null);
   const [bubbleSettings, setBubbleSettings] = useState<ChatBubbleSettings | null>(null);
-  const isAliExpress = marketplaceTheme === 'aliexpress';
+  const isAliExpress = isAliExpressTheme(marketplaceTheme);
   const role = roleOf(currentUser);
   const isAdmin = role === 'admin' || role === 'super_admin';
   const isSeller = role === 'vendor';

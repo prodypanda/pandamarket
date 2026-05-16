@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getMarketplacePublicUrl, getMarketplaceSettings } from '../lib/marketplace-settings';
 
 interface SitemapProduct {
   id: string;
@@ -14,7 +15,8 @@ function productUrl(baseUrl: string, product: SitemapProduct): string {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_HUB_URL || 'https://pandamarket.tn';
+  const marketplaceSettings = await getMarketplaceSettings();
+  const baseUrl = getMarketplacePublicUrl(marketplaceSettings);
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

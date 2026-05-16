@@ -6,6 +6,7 @@ import { PdAuthenticationError, PdConflictError, PdErrorCode, PdNotFoundError, P
 import { pdId } from '../utils/crypto';
 import { signAccessToken } from '../utils/jwt';
 import { logger } from '../utils/logger';
+import { emailQueue } from '../queues/email-queue';
 
 export interface StorefrontCustomerRow {
   id: string;
@@ -87,6 +88,16 @@ export class StorefrontAuthService {
     );
 
     logger.info({ storefront_customer_id: id, store_id: storeId }, 'Storefront customer registered');
+    emailQueue.add('welcome_customer', {
+      to: email,
+      template: 'welcome_customer',
+      variables: {
+        name: opts.first_name,
+        store_url: `https://pandamarket.tn/store/${storeId}`,
+      },
+      scope: 'store',
+      store_id: storeId,
+    }).catch((err) => logger.warn({ err, store_id: storeId }, 'Storefront welcome email enqueue failed'));
     return toPublicCustomer(rows[0]);
   }
 

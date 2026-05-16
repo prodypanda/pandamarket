@@ -17,7 +17,7 @@ interface WalletData {
   pending_balance: number | string | null;
   total_earned: number | string | null;
   total_withdrawn: number | string | null;
-  payout_mode: 'manual' | 'automatic';
+  payout_mode: 'on_demand' | 'automatic';
 }
 
 interface Transaction {
@@ -48,7 +48,7 @@ export default function WalletPage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
   const [withdrawSuccess, setWithdrawSuccess] = useState('');
-  const [payoutMode, setPayoutMode] = useState<'manual' | 'automatic'>('manual');
+  const [payoutMode, setPayoutMode] = useState<'on_demand' | 'automatic'>('on_demand');
   const [savingMode, setSavingMode] = useState(false);
   const [loadError, setLoadError] = useState('');
 
@@ -130,7 +130,7 @@ export default function WalletPage() {
     }
   };
 
-  const handlePayoutModeChange = async (mode: 'manual' | 'automatic') => {
+  const handlePayoutModeChange = async (mode: 'on_demand' | 'automatic') => {
     setWithdrawError('');
     setWithdrawSuccess('');
     setSavingMode(true);
@@ -139,7 +139,7 @@ export default function WalletPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({ payout_mode: mode }),
       });
       if (res.ok) {
         setPayoutMode(mode);
@@ -182,7 +182,7 @@ export default function WalletPage() {
 
       {/* Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-[#16C784] to-[#14b876] rounded-xl p-6 text-white">
+        <div className="bg-gradient-to-br from-[#B91C1C] to-[#991B1B] rounded-xl p-6 text-white">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="w-5 h-5 opacity-80" />
             <span className="text-sm font-medium opacity-80">Disponible</span>
@@ -201,7 +201,7 @@ export default function WalletPage() {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-2">
-            <ArrowDownLeft className="w-5 h-5 text-[#16C784]" />
+            <ArrowDownLeft className="w-5 h-5 text-[#B91C1C]" />
             <span className="text-sm font-medium text-gray-500">Total gagné</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
@@ -224,12 +224,12 @@ export default function WalletPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Mode de versement</h2>
           <div className="space-y-3">
-            {(['manual', 'automatic'] as const).map((mode) => (
+            {(['on_demand', 'automatic'] as const).map((mode) => (
               <label
                 key={mode}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                   payoutMode === mode
-                    ? 'border-[#16C784] bg-[#16C784]/5'
+                    ? 'border-[#B91C1C] bg-[#B91C1C]/5'
                     : 'border-gray-200 hover:bg-gray-50'
                 }`}
               >
@@ -239,14 +239,14 @@ export default function WalletPage() {
                   checked={payoutMode === mode}
                   onChange={() => handlePayoutModeChange(mode)}
                   disabled={savingMode}
-                  className="text-[#16C784] focus:ring-[#16C784]"
+                  className="text-[#B91C1C] focus:ring-[#B91C1C]"
                 />
                 <div>
                   <p className="font-medium text-gray-900 text-sm">
-                    {mode === 'manual' ? 'Manuel' : 'Automatique'}
+                    {mode === 'on_demand' ? 'Manuel' : 'Automatique'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {mode === 'manual'
+                    {mode === 'on_demand'
                       ? 'Demandez vos retraits manuellement'
                       : 'Versement automatique chaque semaine'}
                   </p>
@@ -277,7 +277,7 @@ export default function WalletPage() {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="Min. 20 TND"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
             <div>
@@ -287,14 +287,14 @@ export default function WalletPage() {
                 value={withdrawNotes}
                 onChange={(e) => setWithdrawNotes(e.target.value)}
                 placeholder="Référence, commentaire..."
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
           </div>
           <button
             onClick={handleWithdraw}
             disabled={withdrawing}
-            className="mt-4 px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+            className="mt-4 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
           >
             {withdrawing ? 'Envoi...' : 'Demander le retrait'}
           </button>
@@ -341,7 +341,7 @@ export default function WalletPage() {
                       <td className="px-6 py-3 text-sm text-gray-700 capitalize">{tx.type}</td>
                       <td
                         className={`px-6 py-3 text-sm font-semibold ${
-                          txAmount >= 0 ? 'text-[#16C784]' : 'text-red-500'
+                          txAmount >= 0 ? 'text-[#B91C1C]' : 'text-red-500'
                         }`}
                       >
                         {txAmount >= 0 ? '+' : ''}

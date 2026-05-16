@@ -170,7 +170,7 @@ export default function WebhooksPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-panda-green)]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#B91C1C]" />
       </div>
     );
   }
@@ -181,7 +181,7 @@ export default function WebhooksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Webhook className="w-6 h-6 text-[var(--color-panda-green)]" />
+            <Webhook className="w-6 h-6 text-[#B91C1C]" />
             Webhooks
           </h1>
           <p className="text-gray-500 mt-1">
@@ -190,7 +190,7 @@ export default function WebhooksPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-panda-green)] text-white rounded-lg hover:opacity-90 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:opacity-90 transition"
         >
           <Plus className="w-4 h-4" />
           Add Webhook
@@ -233,7 +233,7 @@ export default function WebhooksPage() {
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               placeholder="https://your-server.com/webhooks/pandamarket"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-panda-green)] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#B91C1C] focus:border-transparent"
             />
           </div>
 
@@ -245,7 +245,7 @@ export default function WebhooksPage() {
                   key={event.value}
                   className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                     newEvents.includes(event.value)
-                      ? 'border-[var(--color-panda-green)] bg-green-50'
+                      ? 'border-[#B91C1C] bg-amber-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -253,7 +253,7 @@ export default function WebhooksPage() {
                     type="checkbox"
                     checked={newEvents.includes(event.value)}
                     onChange={() => toggleEvent(event.value)}
-                    className="mt-0.5 accent-[var(--color-panda-green)]"
+                    className="mt-0.5 accent-[#B91C1C]"
                   />
                   <div>
                     <div className="font-medium text-sm">{event.label}</div>
@@ -268,7 +268,7 @@ export default function WebhooksPage() {
             <button
               onClick={handleCreate}
               disabled={creating || !newUrl || newEvents.length === 0}
-              className="px-4 py-2 bg-[var(--color-panda-green)] text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Create Webhook
@@ -298,7 +298,7 @@ export default function WebhooksPage() {
             <div
               key={wh.id}
               className={`bg-white border rounded-xl p-5 ${
-                selectedWebhook === wh.id ? 'border-[var(--color-panda-green)] ring-1 ring-[var(--color-panda-green)]' : 'border-gray-200'
+                selectedWebhook === wh.id ? 'border-[#B91C1C] ring-1 ring-[#B91C1C]' : 'border-gray-200'
               }`}
             >
               <div className="flex items-start justify-between">
@@ -360,7 +360,7 @@ export default function WebhooksPage() {
                     title={wh.is_active ? 'Disable' : 'Enable'}
                   >
                     {wh.is_active ? (
-                      <ToggleRight className="w-5 h-5 text-[var(--color-panda-green)]" />
+                      <ToggleRight className="w-5 h-5 text-[#B91C1C]" />
                     ) : (
                       <ToggleLeft className="w-5 h-5" />
                     )}

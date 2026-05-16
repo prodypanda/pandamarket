@@ -96,12 +96,14 @@ export interface ISubscriptionLimits {
   plan_id: string;
   max_products: number; // -1 = unlimited
   max_images_per_product: number;
+  max_page_builder_pages: number; // -1 = unlimited
   has_ai_seo: boolean;
   has_image_compression: boolean;
   has_custom_domain: boolean;
   has_page_builder: boolean;
   has_direct_payment: boolean;
   has_white_label: boolean;
+  has_own_ai_provider: boolean;
   commission_rate: number; // e.g. 0.15 for 15%
   ai_tokens_included: number;
   yearly_price: number; // TND

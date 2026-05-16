@@ -21,12 +21,14 @@ export interface SubscriptionLimitsRow {
   plan_id: string;
   max_products: number;
   max_images_per_product: number;
+  max_page_builder_pages: number;
   has_ai_seo: boolean;
   has_image_compression: boolean;
   has_custom_domain: boolean;
   has_page_builder: boolean;
   has_direct_payment: boolean;
   has_white_label: boolean;
+  has_own_ai_provider: boolean;
   commission_rate: string; // numeric → string in pg by default
   ai_tokens_included: number;
   yearly_price: string;

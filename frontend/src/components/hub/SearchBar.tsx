@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
+import { isAliExpressTheme } from '../../lib/marketplace-theme';
 
 interface SearchResult {
   id: string;
@@ -18,7 +19,7 @@ interface SearchResult {
 }
 
 interface SearchBarProps {
-  marketplaceTheme?: 'panda' | 'aliexpress';
+  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
 function formatResultPrice(price: SearchResult['price'], currency: string) {
@@ -29,7 +30,7 @@ function formatResultPrice(price: SearchResult['price'], currency: string) {
 export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
   const router = useRouter();
   const { t } = useLocale();
-  const isAliExpress = marketplaceTheme === 'aliexpress';
+  const isAliExpress = isAliExpressTheme(marketplaceTheme);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);

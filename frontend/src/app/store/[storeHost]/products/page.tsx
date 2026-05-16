@@ -111,6 +111,25 @@ function toThemeProducts(products: MarketplaceStoreProduct[]): ThemeStoreProduct
   }));
 }
 
+function slugSegment(value?: string | null): string {
+  return (value || 'non-categorized-products')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'non-categorized-products';
+}
+
+function filterProductsByCategory(products: MarketplaceStoreProduct[], category?: string): MarketplaceStoreProduct[] {
+  if (!category) return products;
+  const selected = slugSegment(category);
+  return products.filter((product) => [
+    product.category,
+    product.marketplace_category_slug,
+    product.storefront_category_slug,
+    product.storefront_parent_category_slug,
+  ].some((value) => slugSegment(value) === selected));
+}
+
 export default async function StoreProductsPage({
   params,
   searchParams,
@@ -166,7 +185,8 @@ export default async function StoreProductsPage({
     map_embed_url: store.settings?.map_embed_url,
     social: store.settings?.social,
   };
-  const themeProps: ThemeProps = { theme: activeTheme, storeName: store.name, products: toThemeProducts(products), branding };
+  const visibleProducts = filterProductsByCategory(products, category);
+  const themeProps: ThemeProps = { theme: activeTheme, storeName: store.name, products: toThemeProducts(visibleProducts), branding };
   const themeComponents: Record<string, React.FC<ThemeProps>> = {
     minimal: MinimalTheme,
     classic: ClassicTheme,

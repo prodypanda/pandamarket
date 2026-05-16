@@ -203,9 +203,9 @@ export default function StorefrontCategoriesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-[#16C784] via-[#13b777] to-slate-950 p-6 sm:p-8 text-white shadow-xl shadow-emerald-900/10">
+      <div className="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-br from-[#B91C1C] via-[#13b777] to-slate-950 p-6 sm:p-8 text-white shadow-xl shadow-amber-900/10">
         <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-20 left-16 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="absolute -bottom-20 left-16 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl" />
         <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white/90">
@@ -253,7 +253,7 @@ export default function StorefrontCategoriesPage() {
             </div>
             <div className="flex gap-2">
               <label className="inline-flex flex-1 items-center justify-center px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
-                {uploadingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" /> : <Upload className="w-4 h-4 mr-2 text-[#16C784]" />}
+                {uploadingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#B91C1C]" /> : <Upload className="w-4 h-4 mr-2 text-[#B91C1C]" />}
                 Upload picture
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImage} onChange={(event) => handleNewImageUpload(event.target.files?.[0] || null)} className="hidden" />
               </label>
@@ -265,25 +265,25 @@ export default function StorefrontCategoriesPage() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Name</label>
-              <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Example: Summer collection" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-2 focus:ring-[#16C784]/15 outline-none" />
+              <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Example: Summer collection" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Parent category</label>
-              <select value={form.parent_id} onChange={(event) => setForm((current) => ({ ...current, parent_id: event.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-2 focus:ring-[#16C784]/15 outline-none bg-white">
+              <select value={form.parent_id} onChange={(event) => setForm((current) => ({ ...current, parent_id: event.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none bg-white">
               <option value="">Top level</option>
               {categories.filter((category) => !category.parent_id).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Short description</label>
-              <input value={form.short_description} onChange={(event) => setForm((current) => ({ ...current, short_description: event.target.value }))} placeholder="Shown in category teasers" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-2 focus:ring-[#16C784]/15 outline-none" />
+              <input value={form.short_description} onChange={(event) => setForm((current) => ({ ...current, short_description: event.target.value }))} placeholder="Shown in category teasers" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Long description</label>
-              <textarea value={form.long_description} onChange={(event) => setForm((current) => ({ ...current, long_description: event.target.value }))} placeholder="Detailed category content" rows={4} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-2 focus:ring-[#16C784]/15 outline-none resize-none" />
+              <textarea value={form.long_description} onChange={(event) => setForm((current) => ({ ...current, long_description: event.target.value }))} placeholder="Detailed category content" rows={4} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none resize-none" />
             </div>
-            <input value={form.image_url} onChange={(event) => setForm((current) => ({ ...current, image_url: event.target.value }))} placeholder="Picture URL" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-2 focus:ring-[#16C784]/15 outline-none" />
-            <button type="button" onClick={createCategory} disabled={savingId === 'new' || !form.name.trim()} className="inline-flex items-center justify-center px-4 py-3 bg-[#16C784] text-white font-bold rounded-xl hover:bg-[#14b876] shadow-lg shadow-[#16C784]/20 disabled:opacity-50 disabled:shadow-none">
+            <input value={form.image_url} onChange={(event) => setForm((current) => ({ ...current, image_url: event.target.value }))} placeholder="Picture URL" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none" />
+            <button type="button" onClick={createCategory} disabled={savingId === 'new' || !form.name.trim()} className="inline-flex items-center justify-center px-4 py-3 bg-[#B91C1C] text-white font-bold rounded-xl hover:bg-[#991B1B] shadow-lg shadow-[#B91C1C]/20 disabled:opacity-50 disabled:shadow-none">
               {savingId === 'new' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               Add category
             </button>
@@ -301,7 +301,7 @@ export default function StorefrontCategoriesPage() {
             </div>
           </div>
           {loading ? (
-            <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 text-[#16C784] animate-spin" /></div>
+            <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 text-[#B91C1C] animate-spin" /></div>
           ) : categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Tags className="w-12 h-12 text-gray-300 mb-3" />
@@ -332,7 +332,7 @@ export default function StorefrontCategoriesPage() {
                   <input value={category.image_url || ''} onChange={(event) => setCategories((current) => current.map((item) => item.id === category.id ? { ...item, image_url: event.target.value } : item))} placeholder="Picture URL" className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-xl" />
                   <div className="md:col-span-2 flex items-center gap-3 text-xs text-gray-500">
                     <span className="rounded-full bg-gray-100 px-2 py-1 font-mono">/{category.slug}</span>
-                    <span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{category.product_count} product(s)</span>
+                    <span className="rounded-full bg-amber-50 px-2 py-1 font-semibold text-amber-700">{category.product_count} product(s)</span>
                     {category.is_default && <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">Default</span>}
                   </div>
                 </div>
@@ -342,7 +342,7 @@ export default function StorefrontCategoriesPage() {
                       {category.is_active ? 'Active' : 'Inactive'}
                     </button>
                   )}
-                  <button type="button" onClick={() => updateCategory(category)} disabled={savingId === category.id} className="inline-flex items-center justify-center px-3 py-2 bg-[#16C784] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                  <button type="button" onClick={() => updateCategory(category)} disabled={savingId === category.id} className="inline-flex items-center justify-center px-3 py-2 bg-[#B91C1C] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
                     {savingId === category.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   </button>
                   {!category.is_default && (

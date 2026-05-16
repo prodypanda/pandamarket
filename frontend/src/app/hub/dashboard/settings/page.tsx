@@ -1,15 +1,16 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 
-type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'payments';
+type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
 
 type SocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';
 
@@ -67,6 +68,7 @@ export default function SettingsPage() {
   const [cancellingSellerTypeRequest, setCancellingSellerTypeRequest] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
 
   // Store settings
   const [storeName, setStoreName] = useState('');
@@ -103,6 +105,9 @@ export default function SettingsPage() {
 
   // Shipping
   const [shippingMode, setShippingMode] = useState('self_managed');
+  const [shippingPolicy, setShippingPolicy] = useState('');
+  const [returnsPolicy, setReturnsPolicy] = useState('');
+  const [paymentPolicy, setPaymentPolicy] = useState('');
 
   const fetchStoreSettings = async () => {
     try {
@@ -132,6 +137,9 @@ export default function SettingsPage() {
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
         setShippingMode(store.shipping_mode || 'self_managed');
+        setShippingPolicy(store.settings?.shipping_policy || '');
+        setReturnsPolicy(store.settings?.returns_policy || '');
+        setPaymentPolicy(store.settings?.payment_policy || '');
         setStoreStatus(store.status || 'verified');
         setMaintenanceMessage(store.settings?.maintenance_message || '');
       } else {
@@ -143,6 +151,24 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    async function fetchMarketplaceSettings() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/marketplace/settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setMarketplaceName(data.data?.marketplace_name || 'PandaMarket');
+      } catch {
+        if (active) setMarketplaceName('PandaMarket');
+      }
+    }
+    fetchMarketplaceSettings();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     fetchStoreSettings();
@@ -211,6 +237,9 @@ export default function SettingsPage() {
             social: cleanSocialLinks(),
             logo_url: logoUrl,
             marketplace_header_image_url: marketplaceHeaderImageUrl,
+            shipping_policy: shippingPolicy,
+            returns_policy: returnsPolicy,
+            payment_policy: paymentPolicy,
           },
         }),
       });
@@ -425,11 +454,29 @@ export default function SettingsPage() {
         credentials: 'include',
         body: JSON.stringify({ shipping_mode: shippingMode }),
       });
-      if (res.ok) {
-        showFeedback('Mode de livraison mis à jour');
-      } else {
+      if (!res.ok) {
         showFeedback(await getErrorMessage(res), true);
+        return;
       }
+
+      const policyRes = await fetchWithCsrf('/api/pd/stores/me/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          settings: {
+            shipping_policy: shippingPolicy,
+            returns_policy: returnsPolicy,
+            payment_policy: paymentPolicy,
+          },
+        }),
+      });
+      if (!policyRes.ok) {
+        showFeedback(await getErrorMessage(policyRes), true);
+        return;
+      }
+
+      showFeedback('Livraison et politiques publiques mises à jour');
     } catch (err) {
       showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
@@ -443,6 +490,7 @@ export default function SettingsPage() {
     { id: 'theme', label: 'Thème', icon: Palette },
     { id: 'domain', label: 'Domaine', icon: Globe },
     { id: 'shipping', label: 'Livraison', icon: Truck },
+    { id: 'emails', label: 'Emails', icon: Mail },
   ];
   const hasPendingSellerTypeRequest = pendingSellerTypeRequest?.status === 'pending' && Boolean(pendingSellerTypeRequest.requested_type);
   const pendingSellerTypeLabel = hasPendingSellerTypeRequest
@@ -488,7 +536,19 @@ export default function SettingsPage() {
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
-      <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
+      <div className="relative overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-xl shadow-red-950/10">
+        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-300/25 blur-3xl" />
+        <div className="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative">
+          <span className="inline-flex rounded-full border border-amber-200/30 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-amber-100">
+            Seller dashboard
+          </span>
+          <h1 className="mt-4 text-3xl font-black tracking-tight">Paramètres</h1>
+          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white/75">
+            Gérez votre identité boutique, vos visuels, votre thème, votre domaine et vos politiques publiques dans une interface claire.
+          </p>
+        </div>
+      </div>
 
       {/* Feedback */}
       {success && (
@@ -505,15 +565,15 @@ export default function SettingsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-amber-100 bg-amber-50/60 p-1.5 shadow-sm">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex-1 justify-center ${
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors flex-1 ${
               activeTab === tab.id
-                ? 'bg-white text-[#16C784] shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-[#B91C1C] shadow-sm ring-1 ring-amber-100'
+                : 'text-slate-500 hover:bg-white/60 hover:text-[#7F1D1D]'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -522,18 +582,21 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="rounded-[2rem] border border-slate-200/70 bg-white p-6 shadow-xl shadow-slate-200/40">
         {/* Store Settings Tab */}
         {activeTab === 'store' && (
-          <div className="space-y-4">
-            <h2 className="font-semibold text-gray-900 mb-4">Informations de la boutique</h2>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 via-white to-red-50/40 p-5">
+              <h2 className="text-lg font-black text-slate-950">Informations de la boutique</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique</label>
               <input
                 type="text"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
             <div>
@@ -542,7 +605,7 @@ export default function SettingsPage() {
                 value={storeDescription}
                 onChange={(e) => setStoreDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none resize-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none resize-none"
               />
             </div>
             <div>
@@ -596,8 +659,8 @@ export default function SettingsPage() {
                       disabled={hasPendingSellerTypeRequest}
                       className={`rounded-xl border p-4 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isRtl ? 'text-right' : 'text-left'} ${
                         selected
-                          ? 'border-[#16C784] bg-emerald-50 shadow-sm ring-2 ring-emerald-100'
-                          : 'border-gray-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'
+                          ? 'border-[#B91C1C] bg-amber-50 shadow-sm ring-2 ring-amber-100'
+                          : 'border-gray-200 bg-white hover:border-amber-200 hover:bg-amber-50/40'
                       }`}
                     >
                       <span className="block text-sm font-bold text-gray-900">{option.label}</span>
@@ -614,7 +677,7 @@ export default function SettingsPage() {
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                 />
               </div>
               <div>
@@ -623,13 +686,13 @@ export default function SettingsPage() {
                   type="tel"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                 />
               </div>
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
               <div className="mb-4 flex items-start gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 text-[#16C784]" />
+                <MapPin className="mt-0.5 h-5 w-5 text-[#B91C1C]" />
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">Adresse & carte</h3>
                   <p className="text-xs text-gray-500">Ces informations apparaissent sur votre page vendeur et dans le pied de page de votre boutique.</p>
@@ -642,7 +705,7 @@ export default function SettingsPage() {
                     type="text"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                   />
                 </div>
                 <div>
@@ -651,7 +714,7 @@ export default function SettingsPage() {
                     type="text"
                     value={city}
                     onChange={(event) => setCity(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                   />
                 </div>
                 <div>
@@ -660,7 +723,7 @@ export default function SettingsPage() {
                     type="text"
                     value={country}
                     onChange={(event) => setCountry(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -670,7 +733,7 @@ export default function SettingsPage() {
                     value={mapEmbedUrl}
                     onChange={(event) => setMapEmbedUrl(event.target.value)}
                     placeholder="https://www.google.com/maps/embed?pb=..."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                   />
                   <p className="mt-1 text-xs text-gray-400">Utilisez uniquement une URL d&apos;intégration Google Maps.</p>
                 </div>
@@ -678,7 +741,7 @@ export default function SettingsPage() {
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
               <div className="mb-4 flex items-start gap-3">
-                <Share2 className="mt-0.5 h-5 w-5 text-[#16C784]" />
+                <Share2 className="mt-0.5 h-5 w-5 text-[#B91C1C]" />
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">Réseaux sociaux</h3>
                   <p className="text-xs text-gray-500">Ajoutez vos profils publics pour rassurer les clients et générer du trafic.</p>
@@ -695,7 +758,7 @@ export default function SettingsPage() {
                         value={socialLinks[platform.key]}
                         onChange={(event) => updateSocialLink(platform.key, event.target.value)}
                         placeholder={platform.placeholder}
-                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784]"
+                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
                       />
                     </div>
                   </div>
@@ -739,12 +802,12 @@ export default function SettingsPage() {
                       setShowLogoPicker(true);
                       void fetchMediaItems();
                     }}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#16C784] hover:text-[#16C784]"
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
                   >
                     <ImageIcon className="h-4 w-4" />
                     Galerie
                   </button>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#16C784] px-4 py-2 text-sm font-semibold text-white hover:bg-[#14b876]">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#991B1B]">
                     <UploadCloud className="h-4 w-4" />
                     {uploadingLogo ? 'Upload...' : 'Uploader'}
                     <input
@@ -796,12 +859,12 @@ export default function SettingsPage() {
                         setShowHeaderImagePicker(true);
                         void fetchMediaItems();
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#16C784] hover:text-[#16C784]"
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <ImageIcon className="h-4 w-4" />
                       Galerie
                     </button>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#16C784] px-4 py-2 text-sm font-semibold text-white hover:bg-[#14b876]">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#991B1B]">
                       <UploadCloud className="h-4 w-4" />
                       {uploadingHeaderImage ? 'Upload...' : 'Uploader'}
                       <input
@@ -837,7 +900,7 @@ export default function SettingsPage() {
                           onChange={(e) => setMaintenanceMessage(e.target.value)}
                           placeholder="Message affiché aux visiteurs pendant la maintenance..."
                           rows={2}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                         />
                       </div>
                     )}
@@ -872,7 +935,7 @@ export default function SettingsPage() {
                       }}
                       className={`mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
                         storeStatus === 'maintenance'
-                          ? 'bg-[#16C784] text-white hover:bg-[#14b876]'
+                          ? 'bg-[#B91C1C] text-white hover:bg-[#991B1B]'
                           : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
                       }`}
                     >
@@ -891,7 +954,7 @@ export default function SettingsPage() {
             <button
               onClick={saveStoreSettings}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
@@ -900,7 +963,7 @@ export default function SettingsPage() {
         )}
 
         {activeTab === 'security' && (
-          <AccountTwoFactorPanel accentClass="bg-[#16C784]" />
+          <AccountTwoFactorPanel accentClass="bg-[#B91C1C]" />
         )}
 
         {/* Theme Tab */}
@@ -920,7 +983,7 @@ export default function SettingsPage() {
                       onClick={() => setSelectedTheme(t.id)}
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
                         selectedTheme === t.id
-                          ? 'border-[#16C784] bg-[#16C784]/5'
+                          ? 'border-[#B91C1C] bg-[#B91C1C]/5'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -950,7 +1013,7 @@ export default function SettingsPage() {
               <button
                 onClick={saveTheme}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 mt-4 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 mt-4 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Sauvegarde...' : 'Appliquer le thème'}
@@ -963,7 +1026,7 @@ export default function SettingsPage() {
             {/* Theme Customizer */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-[#16C784]" />
+                <Sparkles className="w-4 h-4 text-[#B91C1C]" />
                 <h2 className="font-semibold text-gray-900">Personnalisation avancée</h2>
               </div>
               <ThemeCustomizer
@@ -989,16 +1052,16 @@ export default function SettingsPage() {
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 placeholder="www.maboutique.tn"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Ajoutez un enregistrement CNAME pointant vers pandamarket.tn
+                Ajoutez un enregistrement CNAME pointant vers le domaine fourni par {marketplaceName}.
               </p>
             </div>
             <button
               onClick={saveDomain}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Sauvegarde...' : 'Sauvegarder le domaine'}
@@ -1013,13 +1076,13 @@ export default function SettingsPage() {
             <div className="space-y-3">
               {[
                 { id: 'self_managed', name: 'Gestion vendeur', desc: 'Vous gérez vous-même la livraison et le suivi client.' },
-                { id: 'platform_unified', name: 'Plateforme unifiée', desc: 'Utilise les intégrations PandaMarket pour les bordereaux et le suivi.' },
+                { id: 'platform_unified', name: 'Plateforme unifiée', desc: `Utilise les intégrations ${marketplaceName} pour les bordereaux et le suivi.` },
               ].map((mode) => (
                 <label
                   key={mode.id}
                   className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
                     shippingMode === mode.id
-                      ? 'border-[#16C784] bg-[#16C784]/5'
+                      ? 'border-[#B91C1C] bg-[#B91C1C]/5'
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
@@ -1028,7 +1091,7 @@ export default function SettingsPage() {
                     name="shipping_mode"
                     checked={shippingMode === mode.id}
                     onChange={() => setShippingMode(mode.id)}
-                    className="text-[#16C784] focus:ring-[#16C784]"
+                    className="text-[#B91C1C] focus:ring-[#B91C1C]"
                   />
                   <div>
                     <p className="font-medium text-gray-900">{mode.name}</p>
@@ -1037,15 +1100,61 @@ export default function SettingsPage() {
                 </label>
               ))}
             </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <h3 className="text-sm font-semibold text-gray-900">Politiques publiques</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Ces textes peuvent être affichés dans les blocs dynamiques Page Builder. Ne saisissez pas de clés API ou d&apos;informations privées.
+              </p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Politique de livraison</label>
+                  <textarea
+                    value={shippingPolicy}
+                    onChange={(event) => setShippingPolicy(event.target.value)}
+                    rows={4}
+                    placeholder="Délais estimés, zones desservies, suivi, frais ou conditions spécifiques..."
+                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Retours & échanges</label>
+                  <textarea
+                    value={returnsPolicy}
+                    onChange={(event) => setReturnsPolicy(event.target.value)}
+                    rows={4}
+                    placeholder="Conditions de retour, délais, produits exclus, procédure de contact..."
+                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Information paiement publique</label>
+                  <textarea
+                    value={paymentPolicy}
+                    onChange={(event) => setPaymentPolicy(event.target.value)}
+                    rows={4}
+                    placeholder="Modes acceptés, paiement à la livraison, Mandat Minute ou consignes publiques..."
+                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                  />
+                </div>
+              </div>
+            </div>
             <button
               onClick={saveShipping}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
           </div>
+        )}
+
+        {activeTab === 'emails' && (
+          <EmailTemplateManager
+            scope="storefront"
+            title="Emails de la boutique"
+            description="Personnalisez les emails envoyés à vos clients storefront, comme l'inscription acheteur, la commande placée et le paiement confirmé."
+          />
         )}
       </div>
       {showLogoPicker && (
@@ -1072,7 +1181,7 @@ export default function SettingsPage() {
                         setShowLogoPicker(false);
                         showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
                       }}
-                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#16C784] hover:shadow-md"
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"
                     >
                       <div className="aspect-square bg-gray-100">
                         <div
@@ -1121,7 +1230,7 @@ export default function SettingsPage() {
                         setShowHeaderImagePicker(false);
                         showFeedback('Image sélectionnée. Cliquez sur Sauvegarder pour appliquer.');
                       }}
-                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#16C784] hover:shadow-md"
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"
                     >
                       <div className="aspect-square bg-gray-100">
                         <div

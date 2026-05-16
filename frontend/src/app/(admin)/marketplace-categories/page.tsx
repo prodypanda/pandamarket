@@ -164,226 +164,276 @@ export default function MarketplaceCategoriesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Marketplace Categories</h1>
-          <p className="text-gray-500 mt-1">Manage Hub categories used by products across PandaMarket.</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#16C784]/10 text-[#0f9f6e] rounded-lg text-sm font-medium">
-          <Tags className="w-4 h-4" />
-          {categories.length} categories
+    <div className="space-y-8">
+      {/* Premium Hero Header */}
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-8 text-white shadow-2xl shadow-slate-950/20">
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay" />
+        <div className="absolute -right-12 -top-16 h-64 w-64 rounded-full bg-amber-500/20 blur-[80px] animate-pulse" />
+        <div className="absolute right-48 top-20 h-48 w-48 rounded-full bg-amber-300/20 blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200/30 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-100 backdrop-blur-md">
+              <Tags className="h-3.5 w-3.5" />
+              Taxonomy Management
+            </span>
+            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Marketplace Categories</h1>
+            <p className="mt-4 text-sm font-medium leading-relaxed text-white/75">
+              Manage the central Hub categories. These determine how products are organized and discovered across the entire PandaMarket ecosystem.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-md shadow-lg">
+              <div className="rounded-full bg-amber-500/20 p-2 text-amber-100">
+                <Tags className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white">{categories.length}</p>
+                <p className="text-xs font-medium text-amber-100">Active Categories</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">{error}</div>}
       {success && <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-100">{success}</div>}
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Add category</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Category name"
-            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
-          />
-          <input
-            type="text"
-            value={shortDescription}
-            onChange={(event) => setShortDescription(event.target.value)}
-            placeholder="Short description"
-            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
-          />
-          <textarea
-            value={longDescription}
-            onChange={(event) => setLongDescription(event.target.value)}
-            placeholder="Long description"
-            rows={3}
-            className="md:col-span-2 px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none resize-none"
-          />
-          <div className="md:col-span-2 flex flex-col gap-2 sm:flex-row">
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white p-6 shadow-2xl shadow-slate-200/50">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-[#B91C1C]">
+            <Plus className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Add New Category</h2>
+            <p className="text-sm font-medium text-slate-500">Create a new top-level classification.</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Category Name</label>
             <input
-              type="url"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="Picture URL"
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Electronics, Fashion"
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Short Description</label>
+            <input
+              type="text"
+              value={shortDescription}
+              onChange={(event) => setShortDescription(event.target.value)}
+              placeholder="Brief summary for listings"
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all text-sm text-slate-700"
+            />
+          </div>
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Detailed Description</label>
+            <textarea
+              value={longDescription}
+              onChange={(event) => setLongDescription(event.target.value)}
+              placeholder="Extensive details for SEO and category page headers..."
+              rows={3}
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none resize-none transition-all text-sm text-slate-700"
+            />
+          </div>
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Hero Image</label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(event) => setImageUrl(event.target.value)}
+                placeholder="https://..."
+                className="flex-1 px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all text-sm text-slate-700"
+              />
+              <button
+                type="button"
+                onClick={() => setAssetPickerTarget('new')}
+                className="inline-flex items-center justify-center px-5 py-3 border-2 border-amber-100 text-[#B91C1C] font-bold rounded-xl hover:bg-amber-50 hover:border-amber-200 transition-all"
+              >
+                <ImagePlus className="w-5 h-5 mr-2" />
+                Gallery
+              </button>
+            </div>
+          </div>
+          <div className="md:col-span-2 pt-2">
             <button
               type="button"
-              onClick={() => setAssetPickerTarget('new')}
-              className="inline-flex items-center justify-center px-4 py-2.5 border border-[#16C784]/30 text-[#0f9f6e] font-semibold rounded-lg hover:bg-[#16C784]/5"
+              onClick={createCategory}
+              disabled={savingId === 'new' || !name.trim()}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 bg-[#B91C1C] text-white font-black rounded-xl hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-lg hover:shadow-red-900/25 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
-              <ImagePlus className="w-4 h-4 mr-2" />
-              Choose image
+              {savingId === 'new' ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Plus className="w-5 h-5 mr-2" />}
+              Publish Category
             </button>
           </div>
-          <button
-            type="button"
-            onClick={createCategory}
-            disabled={savingId === 'new' || !name.trim()}
-            className="md:col-span-2 inline-flex items-center justify-center px-4 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] disabled:opacity-50"
-          >
-            {savingId === 'new' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-            Add category
-          </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="rounded-[2rem] border border-slate-200/60 bg-white shadow-xl shadow-slate-200/40 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 text-[#16C784] animate-spin" /></div>
+          <div className="flex items-center justify-center py-24"><Loader2 className="w-10 h-10 text-[#B91C1C] animate-spin" /></div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="space-y-2">
-                      {category.image_url ? (
-                        <img src={category.image_url} alt={category.name} className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
-                      ) : (
-                        <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6 text-gray-300" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Category Details</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Inventory</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Order</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {categories.map((category) => (
+                  <tr key={category.id} className="group hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className="flex gap-5">
+                        <div className="relative shrink-0">
+                          {category.image_url ? (
+                            <img src={category.image_url} alt={category.name} className="h-24 w-24 object-cover rounded-2xl border border-slate-200 shadow-sm" />
+                          ) : (
+                            <div className="h-24 w-24 rounded-2xl border border-slate-200 bg-slate-100 flex items-center justify-center shadow-sm">
+                              <ImageIcon className="w-8 h-8 text-slate-300" />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setAssetPickerTarget(category.id)}
+                            className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-md ring-1 ring-slate-200 transition-all hover:bg-[#B91C1C] hover:text-white hover:ring-[#B91C1C] opacity-0 group-hover:opacity-100"
+                            title="Update Image"
+                          >
+                            <ImagePlus className="h-4 w-4" />
+                          </button>
                         </div>
-                      )}
+                        <div className="flex-1 space-y-2.5 min-w-[300px]">
+                          <div className="flex items-center justify-between gap-4">
+                            <input
+                              type="text"
+                              value={category.name}
+                              disabled={category.is_default}
+                              onChange={(event) =>
+                                setCategories((current) =>
+                                  current.map((item) =>
+                                    item.id === category.id ? { ...item, name: event.target.value } : item,
+                                  ),
+                                )
+                              }
+                              className="w-full px-3 py-1.5 border border-transparent hover:border-slate-300 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 bg-transparent rounded-lg text-lg font-black text-slate-900 transition-all disabled:opacity-60 outline-none"
+                            />
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md shrink-0">/{category.slug}</p>
+                          </div>
+                          
+                          <input
+                            type="text"
+                            value={category.short_description || category.description || ''}
+                            onChange={(event) =>
+                              setCategories((current) =>
+                                current.map((item) =>
+                                  item.id === category.id ? { ...item, short_description: event.target.value, description: event.target.value } : item,
+                                ),
+                              )
+                            }
+                            placeholder="Add a short summary..."
+                            className="w-full px-3 py-1.5 border border-transparent hover:border-slate-300 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 bg-transparent rounded-lg text-sm text-slate-500 transition-all outline-none"
+                          />
+                          <textarea
+                            value={category.long_description || ''}
+                            onChange={(event) =>
+                              setCategories((current) =>
+                                current.map((item) =>
+                                  item.id === category.id ? { ...item, long_description: event.target.value } : item,
+                                ),
+                              )
+                            }
+                            placeholder="Add detailed description..."
+                            rows={2}
+                            className="w-full px-3 py-1.5 border border-transparent hover:border-slate-300 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 bg-transparent rounded-lg text-xs text-slate-500 transition-all resize-none outline-none"
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 align-top">
+                      <div className="inline-flex flex-col items-center justify-center rounded-xl bg-slate-100/50 px-4 py-3 border border-slate-200/50">
+                        <span className="text-xl font-black text-slate-700">{category.product_count}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Items</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 align-top">
                       <input
-                        type="text"
-                        value={category.name}
-                        disabled={category.is_default}
+                        type="number"
+                        value={category.position}
                         onChange={(event) =>
                           setCategories((current) =>
                             current.map((item) =>
-                              item.id === category.id ? { ...item, name: event.target.value } : item,
+                              item.id === category.id ? { ...item, position: parseInt(event.target.value, 10) || 0 } : item,
                             ),
                           )
                         }
-                        className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 disabled:bg-gray-50 disabled:text-gray-500"
+                        className="w-20 px-4 py-2 border border-slate-200 bg-white rounded-xl text-sm font-bold text-slate-700 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all text-center"
                       />
-                      <input
-                        type="text"
-                        value={category.short_description || category.description || ''}
-                        onChange={(event) =>
-                          setCategories((current) =>
-                            current.map((item) =>
-                              item.id === category.id ? { ...item, short_description: event.target.value, description: event.target.value } : item,
-                            ),
-                          )
-                        }
-                        placeholder="Short description"
-                        className="w-full max-w-sm px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600"
-                      />
-                      <textarea
-                        value={category.long_description || ''}
-                        onChange={(event) =>
-                          setCategories((current) =>
-                            current.map((item) =>
-                              item.id === category.id ? { ...item, long_description: event.target.value } : item,
-                            ),
-                          )
-                        }
-                        placeholder="Long description"
-                        rows={2}
-                        className="w-full max-w-sm px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 resize-none"
-                      />
-                      <div className="flex max-w-sm flex-col gap-2 sm:flex-row">
-                        <input
-                          type="url"
-                          value={category.image_url || ''}
-                          onChange={(event) =>
-                            setCategories((current) =>
-                              current.map((item) =>
-                                item.id === category.id ? { ...item, image_url: event.target.value } : item,
-                              ),
-                            )
-                          }
-                          placeholder="Picture URL"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600"
-                        />
+                    </td>
+                    <td className="px-6 py-5 align-top">
+                      {category.is_default ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-[#B91C1C] shadow-sm">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Default
+                        </span>
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => setAssetPickerTarget(category.id)}
-                          className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:border-[#16C784] hover:text-[#0f9f6e]"
+                          onClick={() => updateCategory(category, { is_active: !category.is_active })}
+                          disabled={savingId === category.id}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-wider shadow-sm transition-all hover:-translate-y-0.5 ${
+                            category.is_active 
+                              ? 'border-emerald-200 bg-amber-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-red-900/20' 
+                              : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                          }`}
                         >
-                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                          Pick
+                          <span className={`h-1.5 w-1.5 rounded-full ${category.is_active ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} />
+                          {category.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-6 py-5 align-top text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateCategory(category, {
+                            name: category.name,
+                            short_description: category.short_description || undefined,
+                            long_description: category.long_description || undefined,
+                            image_url: category.image_url || null,
+                            position: category.position,
+                          })}
+                          disabled={savingId === category.id}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:bg-amber-50 hover:text-[#B91C1C] hover:ring-amber-200"
+                          title="Save Changes"
+                        >
+                          {savingId === category.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => requestDelete(category)}
+                          disabled={category.is_default || deletingId === category.id}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:bg-red-50 hover:text-red-600 hover:ring-red-200 disabled:opacity-40 disabled:hover:translate-y-0"
+                          title={category.is_default ? 'Default category cannot be deleted' : 'Delete'}
+                        >
+                          {deletingId === category.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500">/{category.slug}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{category.product_count}</td>
-                  <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      value={category.position}
-                      onChange={(event) =>
-                        setCategories((current) =>
-                          current.map((item) =>
-                            item.id === category.id ? { ...item, position: parseInt(event.target.value, 10) || 0 } : item,
-                          ),
-                        )
-                      }
-                      className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700"
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    {category.is_default ? (
-                      <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">Default</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => updateCategory(category, { is_active: !category.is_active })}
-                        disabled={savingId === category.id}
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${category.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}
-                      >
-                        {category.is_active ? 'Active' : 'Inactive'}
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateCategory(category, {
-                          name: category.name,
-                          short_description: category.short_description || undefined,
-                          long_description: category.long_description || undefined,
-                          image_url: category.image_url || null,
-                          position: category.position,
-                        })}
-                        disabled={savingId === category.id}
-                        className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors"
-                        title="Save"
-                      >
-                        {savingId === category.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => requestDelete(category)}
-                        disabled={category.is_default || deletingId === category.id}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
-                        title={category.is_default ? 'Default category cannot be deleted' : 'Delete'}
-                      >
-                        {deletingId === category.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

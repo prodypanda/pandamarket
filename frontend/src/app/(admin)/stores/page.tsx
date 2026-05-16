@@ -106,23 +106,23 @@ const defaultSummary: VendorSummary = {
 
 const planColors: Record<string, string> = {
   free: 'bg-gray-100 text-gray-700 ring-gray-200',
-  starter: 'bg-blue-50 text-blue-700 ring-blue-100',
-  regular: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
-  agency: 'bg-purple-50 text-purple-700 ring-purple-100',
-  pro: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  starter: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
+  regular: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
+  agency: 'bg-red-50 text-[#7F1D1D] ring-red-100',
+  pro: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
   golden: 'bg-yellow-50 text-yellow-700 ring-yellow-100',
   platinum: 'bg-slate-900 text-white ring-slate-800',
 };
 
 const statusColors: Record<string, string> = {
-  verified: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  verified: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
   unverified: 'bg-amber-50 text-amber-700 ring-amber-100',
   suspended: 'bg-red-50 text-red-700 ring-red-100',
 };
 
 const kycColors: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 ring-amber-100',
-  approved: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  approved: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
   rejected: 'bg-red-50 text-red-700 ring-red-100',
   missing: 'bg-gray-100 text-gray-600 ring-gray-200',
 };
@@ -339,19 +339,19 @@ function AdminStoresContent() {
 
   const metricCards = [
     { label: t('admin.vendorsPage.metrics.total'), value: summary.total, icon: Users, tone: 'from-slate-900 to-slate-700 text-white' },
-    { label: t('admin.vendorsPage.metrics.verified'), value: summary.verified, icon: ShieldCheck, tone: 'from-emerald-500 to-teal-500 text-white' },
+    { label: t('admin.vendorsPage.metrics.verified'), value: summary.verified, icon: ShieldCheck, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
     { label: t('admin.vendorsPage.metrics.unverified'), value: summary.unverified, icon: Clock3, tone: 'from-amber-400 to-orange-500 text-white' },
     { label: t('admin.vendorsPage.metrics.suspended'), value: summary.suspended, icon: Ban, tone: 'from-red-500 to-rose-600 text-white' },
-    { label: t('admin.vendorsPage.metrics.pendingType'), value: summary.pending_seller_type_requests, icon: AlertTriangle, tone: 'from-violet-500 to-indigo-600 text-white' },
-    { label: t('admin.vendorsPage.metrics.pendingKyc'), value: summary.pending_kyc, icon: FileCheck, tone: 'from-blue-500 to-cyan-500 text-white' },
+    { label: t('admin.vendorsPage.metrics.pendingType'), value: summary.pending_seller_type_requests, icon: AlertTriangle, tone: 'from-amber-500 to-red-600 text-white' },
+    { label: t('admin.vendorsPage.metrics.pendingKyc'), value: summary.pending_kyc, icon: FileCheck, tone: 'from-[#B91C1C] to-amber-500 text-white' },
   ];
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-2xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-emerald-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-amber-100">
               <Store className="h-4 w-4" />
               Store management
             </div>
@@ -385,18 +385,18 @@ function AdminStoresContent() {
 
       {(success || error) && (
         <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
-          error ? 'border-red-100 bg-red-50 text-red-700' : 'border-emerald-100 bg-emerald-50 text-emerald-700'
+          error ? 'border-red-100 bg-red-50 text-red-700' : 'border-emerald-100 bg-amber-50 text-emerald-700'
         }`}>
           {error || success}
         </div>
       )}
 
       {ownerId && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-[#7F1D1D] sm:flex-row sm:items-center sm:justify-between">
           <span>
             Showing stores for {ownerName || ownerId}
           </span>
-          <Link href="/stores" className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-black text-indigo-700 ring-1 ring-indigo-100 transition hover:bg-indigo-100">
+          <Link href="/stores" className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#B91C1C] ring-1 ring-amber-100 transition hover:bg-amber-100">
             Show all stores
           </Link>
         </div>
@@ -427,7 +427,7 @@ function AdminStoresContent() {
                   setPage(1);
                 }}
                 placeholder={t('admin.vendorsPage.searchPlaceholder')}
-                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10 ${isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'}`}
+                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 ${isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'}`}
               />
             </div>
           </div>
@@ -443,7 +443,7 @@ function AdminStoresContent() {
                   setStatus(event.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
               >
                 <option value="">{t('admin.vendorsPage.allStatuses')}</option>
                 <option value="verified">{t('admin.vendorsPage.statuses.verified')}</option>
@@ -462,7 +462,7 @@ function AdminStoresContent() {
                   setSellerType(event.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
               >
                 <option value="">{t('sellerTypes.all')}</option>
                 {sellerTypeOptions.map((option) => (
@@ -562,20 +562,20 @@ function AdminStoresContent() {
                   <div className={showFullVendor ? 'p-5 sm:p-6' : 'p-4 sm:p-5'}>
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex gap-4">
-                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#16C784] to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7F1D1D] to-[#B91C1C] text-white shadow-lg shadow-red-900/20">
                           <Store className="h-7 w-7" />
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-xl font-black text-gray-900">{vendor.name}</h2>
-                            {vendor.is_verified && <BadgeCheck className="h-5 w-5 text-[#16C784]" />}
+                            {vendor.is_verified && <BadgeCheck className="h-5 w-5 text-[#B91C1C]" />}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500">
                             <span>{vendor.subdomain}</span>
                             <span>· Store ID: {vendor.id}</span>
                             <span>· Owner ID: {vendor.owner_id}</span>
                             {vendor.custom_domain && <span>· {vendor.custom_domain}</span>}
-                            <Link href={storefrontHref} className="inline-flex items-center gap-1 text-[#16C784] hover:underline">
+                            <Link href={storefrontHref} className="inline-flex items-center gap-1 text-[#B91C1C] hover:underline">
                               {t('admin.vendorsPage.openStore')} <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </div>
@@ -592,11 +592,11 @@ function AdminStoresContent() {
                             <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${kycColors[kycKey] || kycColors.missing}`}>
                               {t(`admin.vendorsPage.kyc.${kycKey}`)}
                             </span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${vendor.owner_two_factor_enabled ? 'bg-violet-50 text-violet-700 ring-violet-100' : 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${vendor.owner_two_factor_enabled ? 'bg-amber-50 text-[#7F1D1D] ring-amber-100' : 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
                               2FA {vendor.owner_two_factor_enabled ? 'on' : 'off'}
                             </span>
                             {vendor.payment_config_set && (
-                              <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-700 ring-1 ring-cyan-100">
+                              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-[#7F1D1D] ring-1 ring-amber-100">
                                 Payments set
                               </span>
                             )}
@@ -697,10 +697,10 @@ function AdminStoresContent() {
                           <span className={`rounded-full px-2.5 py-1 ${vendor.owner_is_active === false ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             {vendor.owner_is_active === false ? t('admin.vendorsPage.ownerInactive') : t('admin.vendorsPage.ownerActive')}
                           </span>
-                          <span className={`rounded-full px-2.5 py-1 ${vendor.owner_two_factor_enabled ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`rounded-full px-2.5 py-1 ${vendor.owner_two_factor_enabled ? 'bg-amber-100 text-[#7F1D1D]' : 'bg-gray-100 text-gray-600'}`}>
                             2FA {vendor.owner_two_factor_enabled ? 'enabled' : 'disabled'}
                           </span>
-                          <span className={`rounded-full px-2.5 py-1 ${vendor.payment_config_set ? 'bg-cyan-100 text-cyan-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`rounded-full px-2.5 py-1 ${vendor.payment_config_set ? 'bg-amber-100 text-[#7F1D1D]' : 'bg-gray-100 text-gray-600'}`}>
                             Payment {vendor.payment_config_set ? 'configured' : 'not configured'}
                           </span>
                         </div>
@@ -761,7 +761,7 @@ function AdminStoresContent() {
                                   successMessage: t('admin.vendorsPage.sellerTypeApproved'),
                                 })}
                                 disabled={activeAction === `${actionBase}-approve-type`}
-                                className="inline-flex items-center gap-2 rounded-xl bg-[#16C784] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-500/20 disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white shadow-lg shadow-red-900/20 disabled:opacity-60"
                               >
                                 <CheckCircle2 className="h-4 w-4" />
                                 {t('sellerTypes.approval.approve')}
@@ -795,7 +795,7 @@ function AdminStoresContent() {
                             successMessage: t('sellerTypes.approval.updated'),
                           })}
                           disabled={activeAction === `${actionBase}-seller-type`}
-                          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 disabled:opacity-60"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-60"
                         >
                           {sellerTypeOptions.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -811,7 +811,7 @@ function AdminStoresContent() {
                           <select
                             value={subscriptionOverride.plan}
                             onChange={(event) => updateSubscriptionOverride(vendor, { plan: event.target.value })}
-                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                           >
                             {availableSubscriptionPlans.map((plan) => (
                               <option key={plan} value={plan}>{plan}</option>
@@ -820,7 +820,7 @@ function AdminStoresContent() {
                           <select
                             value={subscriptionOverride.type}
                             onChange={(event) => updateSubscriptionOverride(vendor, { type: event.target.value })}
-                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                           >
                             {subscriptionTypes.map((type) => (
                               <option key={type} value={type}>{type}</option>
@@ -830,7 +830,7 @@ function AdminStoresContent() {
                             type="date"
                             value={subscriptionOverride.expiresAt}
                             onChange={(event) => updateSubscriptionOverride(vendor, { expiresAt: event.target.value })}
-                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                           />
                           <button
                             type="button"
@@ -856,7 +856,7 @@ function AdminStoresContent() {
                           type="button"
                           onClick={() => void startStoreChat(vendor)}
                           disabled={activeAction === `${actionBase}-chat`}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 disabled:opacity-60"
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-900/20 disabled:opacity-60"
                         >
                           <MessageSquare className="h-4 w-4" />
                           Chat store owner
@@ -868,7 +868,7 @@ function AdminStoresContent() {
                               successMessage: t('admin.vendorsPage.verified'),
                             })}
                             disabled={activeAction === `${actionBase}-verify`}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/20 disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-900/20 transition hover:bg-[#991B1B] disabled:opacity-60"
                           >
                             <ShieldCheck className="h-4 w-4" />
                             {t('admin.vendorsPage.verify')}
@@ -881,7 +881,7 @@ function AdminStoresContent() {
                               successMessage: t('admin.vendorsPage.reactivated'),
                             })}
                             disabled={activeAction === `${actionBase}-reactivate`}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-900/20 transition hover:bg-[#991B1B] disabled:opacity-60"
                           >
                             <RotateCcw className="h-4 w-4" />
                             {t('admin.vendorsPage.reactivate')}
@@ -943,7 +943,7 @@ function AdminStoresContent() {
                               successMessage: 'Vendor owner reactivated',
                             })}
                             disabled={activeAction === `${actionBase}-owner-reactivate`}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
                           >
                             <RotateCcw className="h-4 w-4" />
                             Reactivate owner
@@ -968,7 +968,7 @@ function AdminStoresContent() {
                             successMessage: 'Vendor owner 2FA reset',
                           })}
                           disabled={activeAction === `${actionBase}-owner-2fa` || !vendor.owner_two_factor_enabled}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-violet-100 bg-white px-4 py-3 text-sm font-black text-violet-700 transition hover:bg-violet-50 disabled:opacity-50"
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                         >
                           <KeyRound className="h-4 w-4" />
                           Reset owner 2FA
@@ -980,7 +980,7 @@ function AdminStoresContent() {
                             successMessage: 'Payment config cleared',
                           })}
                           disabled={activeAction === `${actionBase}-payment-clear` || !vendor.payment_config_set}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-100 bg-white px-4 py-3 text-sm font-black text-cyan-700 transition hover:bg-cyan-50 disabled:opacity-50"
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                         >
                           <CreditCard className="h-4 w-4" />
                           Clear payments
@@ -1001,7 +1001,7 @@ function AdminStoresContent() {
 
                       <Link
                         href={`/reports?store=${encodeURIComponent(vendor.id)}`}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#16C784] hover:text-[#16C784]"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
                       >
                         <AlertTriangle className="h-4 w-4" />
                         {t('admin.vendorsPage.viewReports')}

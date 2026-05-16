@@ -1,7 +1,9 @@
 import { MetadataRoute } from 'next';
+import { getMarketplacePublicUrl, getMarketplaceSettings } from '../lib/marketplace-settings';
 
-export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_HUB_URL || 'https://pandamarket.tn';
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const marketplaceSettings = await getMarketplaceSettings();
+  const baseUrl = getMarketplacePublicUrl(marketplaceSettings);
 
   return {
     rules: [

@@ -52,10 +52,11 @@ async function onOrderPlaced(orderId: string): Promise<void> {
     id: string;
     customer_id: string | null;
     storefront_customer_id: string | null;
+    storefront_store_id: string | null;
     total: string;
     customer_email: string | null;
   }>(
-    `SELECT o.id, o.customer_id, o.storefront_customer_id, o.total::text,
+    `SELECT o.id, o.customer_id, o.storefront_customer_id, sc.store_id AS storefront_store_id, o.total::text,
             COALESCE(u.email, sc.email) AS customer_email
      FROM pd_order o
      LEFT JOIN pd_user u ON u.id = o.customer_id
@@ -80,7 +81,15 @@ async function onOrderPlaced(orderId: string): Promise<void> {
     await emailQueue.add('order_confirmed', {
       to: order.customer_email,
       template: 'order_confirmed',
-      variables: { order_id: order.id, total: order.total },
+      variables: {
+        order_id: order.id,
+        total: order.total,
+        order_url: order.storefront_store_id
+          ? `https://pandamarket.tn/store/orders/${order.id}`
+          : `https://pandamarket.tn/hub/orders`,
+      },
+      scope: order.storefront_store_id ? 'store' : 'marketplace',
+      store_id: order.storefront_store_id,
     });
   }
 
@@ -183,10 +192,11 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
   const { rows: orderRows } = await query<{
     customer_id: string | null;
     storefront_customer_id: string | null;
+    storefront_store_id: string | null;
     customer_email: string | null;
     total: string;
   }>(
-    `SELECT o.customer_id, o.storefront_customer_id,
+    `SELECT o.customer_id, o.storefront_customer_id, sc.store_id AS storefront_store_id,
             COALESCE(u.email, sc.email) AS customer_email,
             o.total::text
        FROM pd_order o
@@ -211,6 +221,8 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
         to: c.customer_email,
         template: 'payment_captured',
         variables: { order_id: orderId, amount: c.total, method: 'PandaMarket' },
+        scope: c.storefront_store_id ? 'store' : 'marketplace',
+        store_id: c.storefront_store_id,
       });
     }
   }

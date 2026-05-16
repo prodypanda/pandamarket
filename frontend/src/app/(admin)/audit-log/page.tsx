@@ -11,6 +11,7 @@ import {
   Clock,
   Copy,
   Database,
+  Download,
   Eye,
   Filter,
   RefreshCw,
@@ -18,6 +19,7 @@ import {
   Search,
   Shield,
   Terminal,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -112,7 +114,7 @@ function actionTone(entry: AuditEntry) {
   if (action.includes('approve') || action.includes('unsuspend')) return 'bg-emerald-50 text-emerald-700 ring-emerald-100';
   if (action.includes('reject') || action.includes('suspend') || action.includes('delete')) return 'bg-red-50 text-red-700 ring-red-100';
   if (action.includes('patch') || action.includes('put') || action.includes('update')) return 'bg-amber-50 text-amber-700 ring-amber-100';
-  if (action.includes('post') || action.includes('create')) return 'bg-blue-50 text-blue-700 ring-blue-100';
+  if (action.includes('post') || action.includes('create')) return 'bg-amber-50 text-[#7F1D1D] ring-amber-100';
   return 'bg-slate-100 text-slate-700 ring-slate-200';
 }
 
@@ -124,7 +126,7 @@ function methodTone(method: string | null) {
     case 'PUT':
       return 'bg-amber-100 text-amber-800';
     case 'POST':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-amber-100 text-[#7F1D1D]';
     default:
       return 'bg-slate-100 text-slate-600';
   }
@@ -162,6 +164,10 @@ export default function AuditLogPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [purgeDays, setPurgeDays] = useState(30);
+  const [isPurging, setIsPurging] = useState(false);
 
   const applyFiltersToParams = useCallback((params: URLSearchParams) => {
     if (search.trim()) params.set('search', search.trim());
@@ -178,8 +184,8 @@ export default function AuditLogPage() {
     setLoading(true);
     setError('');
     try {
-      const listParams = new URLSearchParams({ page: String(page), limit: '25' });
-      const summaryParams = new URLSearchParams();
+      const listParams = new URLSearchParams({ page: String(page), limit: '25', log_type: 'admin' });
+      const summaryParams = new URLSearchParams({ log_type: 'admin' });
       applyFiltersToParams(listParams);
       applyFiltersToParams(summaryParams);
 
@@ -217,6 +223,55 @@ export default function AuditLogPage() {
     void fetchAuditLog();
   }, [fetchAuditLog]);
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({ log_type: 'admin' });
+      applyFiltersToParams(params);
+      const query = params.toString();
+
+      const res = await fetchWithCsrf(`/api/pd/admin/audit-log/export${query ? `?${query}` : ''}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to export audit log'));
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export audit log');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePurge = async () => {
+    setIsPurging(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/audit-log/purge', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ older_than_days: purgeDays, log_type: 'admin' }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to purge audit log'));
+
+      await res.json();
+      setShowPurgeModal(false);
+      void fetchAuditLog();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to purge audit log');
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   const actionOptions = useMemo(() => {
     const dynamicActions = actions.map((row) => row.action || '').filter(Boolean);
     return uniqueOptions([
@@ -228,10 +283,10 @@ export default function AuditLogPage() {
 
   const cards = useMemo(() => [
     { label: 'Total events', value: summary.total, icon: Shield, tone: 'from-slate-950 to-slate-700 text-white' },
-    { label: 'Last 24h', value: summary.last_24h, icon: Clock, tone: 'from-blue-500 to-cyan-500 text-white' },
+    { label: 'Last 24h', value: summary.last_24h, icon: Clock, tone: 'from-[#B91C1C] to-amber-500 text-white' },
     { label: 'Failed actions', value: summary.failed, icon: AlertTriangle, tone: 'from-red-500 to-rose-600 text-white' },
-    { label: 'Active actors', value: summary.actors, icon: Users, tone: 'from-violet-500 to-indigo-600 text-white' },
-    { label: 'Write actions', value: summary.writes, icon: Activity, tone: 'from-emerald-500 to-teal-600 text-white' },
+    { label: 'Active actors', value: summary.actors, icon: Users, tone: 'from-amber-500 to-red-600 text-white' },
+    { label: 'Write actions', value: summary.writes, icon: Activity, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
   ], [summary]);
 
   const hasActiveFilters = Boolean(search || actionFilter !== 'all' || resourceType || actorRole !== 'all' || method !== 'all' || statusCode || fromDate || toDate);
@@ -262,28 +317,47 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-8 text-white shadow-2xl shadow-slate-900/20">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(22,199,132,0.22),transparent_65%)]" />
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-8 text-white shadow-2xl shadow-slate-900/20">
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.22),transparent_65%)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-100">
               <Shield className="h-3.5 w-3.5" />
               Compliance center
             </div>
-            <h1 className="text-3xl font-black tracking-tight md:text-4xl">Audit Log</h1>
+            <h1 className="text-3xl font-black tracking-tight md:text-4xl">Administration Audit Log</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
               Review every superadmin write action, failed operation, actor identity, affected resource, request metadata, and security context.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void fetchAuditLog()}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPurgeModal(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900/50 px-4 py-3 text-sm font-black text-white shadow-lg shadow-black/20 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" />
+              Purge
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExport()}
+              disabled={isExporting}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900/50 px-4 py-3 text-sm font-black text-white shadow-lg shadow-black/20 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isExporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => void fetchAuditLog()}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -305,7 +379,7 @@ export default function AuditLogPage() {
       <form onSubmit={handleSearchSubmit} className="rounded-[1.75rem] border border-white/70 bg-white/90 p-5 shadow-xl shadow-slate-900/5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-black text-gray-900">
-            <Filter className="h-4 w-4 text-[#16C784]" />
+            <Filter className="h-4 w-4 text-[#B91C1C]" />
             Filters and investigation scope
           </div>
           {hasActiveFilters && (
@@ -327,13 +401,13 @@ export default function AuditLogPage() {
               placeholder="Search actor, action, resource, IP, metadata..."
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-gray-900 outline-none transition focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+              className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-gray-900 outline-none transition focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
           </div>
           <select
             value={actionFilter}
             onChange={(event) => { setActionFilter(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           >
             <option value="all">All actions</option>
             {actionOptions.map((action) => (
@@ -345,12 +419,12 @@ export default function AuditLogPage() {
             placeholder="Resource type"
             value={resourceType}
             onChange={(event) => { setResourceType(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           />
           <select
             value={method}
             onChange={(event) => { setMethod(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           >
             {methodOptions.map((option) => (
               <option key={option} value={option}>{option === 'all' ? 'All methods' : option}</option>
@@ -358,7 +432,7 @@ export default function AuditLogPage() {
           </select>
           <button
             type="submit"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:bg-[#14b876] lg:col-span-2"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-900/15 transition hover:-translate-y-0.5 hover:bg-[#991B1B] lg:col-span-2"
           >
             <Search className="h-4 w-4" />
             Search
@@ -366,7 +440,7 @@ export default function AuditLogPage() {
           <select
             value={actorRole}
             onChange={(event) => { setActorRole(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           >
             {actorRoleOptions.map((option) => (
               <option key={option} value={option}>{option === 'all' ? 'All actor roles' : option}</option>
@@ -379,19 +453,19 @@ export default function AuditLogPage() {
             placeholder="HTTP status"
             value={statusCode}
             onChange={(event) => { setStatusCode(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           />
           <input
             type="datetime-local"
             value={fromDate}
             onChange={(event) => { setFromDate(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           />
           <input
             type="datetime-local"
             value={toDate}
             onChange={(event) => { setToDate(event.target.value); setPage(1); }}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10 lg:col-span-2"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 lg:col-span-2"
           />
         </div>
       </form>
@@ -492,7 +566,7 @@ export default function AuditLogPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedEntry(entry)}
-                          className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-[#16C784]"
+                          className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-[#B91C1C]"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           Details
@@ -536,7 +610,7 @@ export default function AuditLogPage() {
         <aside className="space-y-4">
           <div className="rounded-[1.5rem] border border-white/70 bg-white p-5 shadow-xl shadow-slate-900/5">
             <div className="mb-4 flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-[#16C784]" />
+              <Terminal className="h-4 w-4 text-[#B91C1C]" />
               <h3 className="text-sm font-black text-gray-900">Top actions</h3>
             </div>
             <div className="space-y-2">
@@ -557,7 +631,7 @@ export default function AuditLogPage() {
 
           <div className="rounded-[1.5rem] border border-white/70 bg-white p-5 shadow-xl shadow-slate-900/5">
             <div className="mb-4 flex items-center gap-2">
-              <Database className="h-4 w-4 text-[#16C784]" />
+              <Database className="h-4 w-4 text-[#B91C1C]" />
               <h3 className="text-sm font-black text-gray-900">Top resources</h3>
             </div>
             <div className="space-y-2">
@@ -588,12 +662,67 @@ export default function AuditLogPage() {
         </aside>
       </div>
 
+      {showPurgeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-6">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-red-500">Danger Zone</p>
+                <h2 className="mt-1 text-xl font-black text-gray-900">Purge old logs</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPurgeModal(false)}
+                className="rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="mb-4 text-sm font-medium text-gray-600">
+                Select the retention period. Logs older than this will be permanently deleted. This action cannot be undone.
+              </p>
+              <select
+                value={purgeDays}
+                onChange={(e) => setPurgeDays(Number(e.target.value))}
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+              >
+                <option value={30}>Older than 30 days</option>
+                <option value={60}>Older than 60 days</option>
+                <option value={90}>Older than 90 days</option>
+                <option value={180}>Older than 180 days</option>
+                <option value={365}>Older than 1 year</option>
+              </select>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPurgeModal(false)}
+                  className="rounded-full px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePurge()}
+                  disabled={isPurging}
+                  className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:-translate-y-0.5 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPurging ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Confirm Purge
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-6">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#16C784]">Audit event</p>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#B91C1C]">Audit event</p>
                 <h2 className="mt-1 text-xl font-black text-gray-900">{selectedEntry.action}</h2>
                 <p className="mt-1 text-xs font-medium text-gray-500">{formatDate(selectedEntry.created_at)}</p>
               </div>

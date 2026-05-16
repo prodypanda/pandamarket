@@ -5,11 +5,14 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   AlertCircle,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   Clock3,
   CreditCard,
   DollarSign,
+  ExternalLink,
   Package,
+  Plus,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -72,6 +75,16 @@ function getOrderTotal(order: Order): number {
   return toNumber(order.total_amount ?? order.total);
 }
 
+const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  pending: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'En attente' },
+  processing: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'En cours' },
+  payment_required: { bg: 'bg-red-50', text: 'text-red-700', label: 'Paiement requis' },
+  fulfilled: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Expédié' },
+  delivered: { bg: 'bg-green-50', text: 'text-green-700', label: 'Livré' },
+  cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Annulé' },
+  refunded: { bg: 'bg-violet-50', text: 'text-violet-700', label: 'Remboursé' },
+};
+
 /** Build last-30-day sales data from orders */
 function buildSalesChart(orders: Order[]): DailySales[] {
   const days: DailySales[] = [];
@@ -107,11 +120,16 @@ export default function DashboardOverview() {
   useEffect(() => {
     async function fetchData() {
       try {
+        // Calculate date_from for 30-day chart
+        const dateFrom = new Date();
+        dateFrom.setDate(dateFrom.getDate() - 30);
+        const dateFromStr = dateFrom.toISOString().slice(0, 10);
+
         const [walletRes, productsRes, ordersRes, chartOrdersRes, storeRes, verificationRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/orders/store?limit=5', { credentials: 'include' }),
-          fetchWithCsrf('/api/pd/orders/store?limit=200&days=30', { credentials: 'include' }),
+          fetchWithCsrf(`/api/pd/orders/store?limit=200&date_from=${dateFromStr}`, { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
         ]);
@@ -193,6 +211,7 @@ export default function DashboardOverview() {
     },
   ];
   const completedSetupSteps = setupSteps.filter((step) => step.completed).length;
+  const setupPercent = Math.round((completedSetupSteps / setupSteps.length) * 100);
 
   const stats = [
     {
@@ -200,94 +219,134 @@ export default function DashboardOverview() {
       value: loading ? '—' : formatPrice(wallet?.total_earned),
       hint: `${formatPrice(totalRevenue30d)} in last 30 days`,
       icon: DollarSign,
-      color: 'bg-[#16C784]/10 text-[#16C784]',
+      gradient: 'from-amber-500 to-teal-600',
     },
     {
       name: 'Active Products',
       value: loading ? '—' : String(productCount),
       hint: productCount > 0 ? 'Catalog available' : 'Add your first listing',
       icon: Package,
-      color: 'bg-[#16C784]/10 text-[#16C784]',
+      gradient: 'from-blue-500 to-indigo-600',
     },
     {
       name: 'Total Orders',
       value: loading ? '—' : String(orderCount),
       hint: `${totalOrders30d} in last 30 days`,
       icon: ShoppingCart,
-      color: 'bg-[#16C784]/10 text-[#16C784]',
+      gradient: 'from-violet-500 to-purple-600',
     },
     {
       name: 'Available Balance',
       value: loading ? '—' : formatPrice(wallet?.balance),
       hint: `${formatPrice(wallet?.pending_balance)} pending`,
       icon: Wallet,
-      color: 'bg-[#16C784]/10 text-[#16C784]',
+      gradient: 'from-amber-500 to-orange-600',
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-2xl shadow-slate-900/10">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-emerald-100">
-              <Store className="h-4 w-4" />
-              Seller command center
+          <div className="flex items-center gap-5">
+            {/* Store logo */}
+            {store?.settings?.logo_url ? (
+              <div className="hidden h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white shadow-xl sm:flex">
+                <img src={store.settings.logo_url} alt="" className="h-full w-full object-contain" />
+              </div>
+            ) : (
+              <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 sm:flex">
+                <Store className="h-7 w-7 text-amber-200" />
+              </div>
+            )}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
+                <Store className="h-4 w-4" />
+                Seller command center
+                {store?.status === 'active' && (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Live
+                  </span>
+                )}
+              </div>
+              <h1 className="mt-3 text-3xl font-black tracking-tight">{store?.name || 'Overview'}</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-amber-50/70">Track store readiness, sales, orders, wallet balance, and next actions.</p>
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight">{store?.name || 'Overview'}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/80">Track store readiness, sales, orders, wallet balance, and the next actions that help you launch faster.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-emerald-50">
-              View storefront <ArrowRight className="h-4 w-4" />
+            <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-amber-50">
+              View storefront <ExternalLink className="h-4 w-4" />
             </Link>
-            <Link href="/hub/dashboard/products" className="inline-flex items-center gap-2 rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#14b876]">
-              Add product <Package className="h-4 w-4" />
+            <Link href="/hub/dashboard/products" className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#991B1B]">
+              Add product <Plus className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: 'Products', icon: Package, href: '/hub/dashboard/products', color: 'text-blue-600 bg-blue-50' },
+          { label: 'Orders', icon: ShoppingCart, href: '/hub/dashboard/orders', color: 'text-violet-600 bg-violet-50' },
+          { label: 'Analytics', icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-amber-600 bg-amber-50' },
+          { label: 'Settings', icon: Settings, href: '/hub/dashboard/settings', color: 'text-gray-600 bg-gray-100' },
+        ].map((action) => (
+          <Link key={action.label} href={action.href} className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+            <div className={`rounded-xl p-2.5 ${action.color} transition-transform group-hover:scale-110`}>
+              <action.icon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-bold text-gray-700">{action.label}</span>
+            <ArrowRight className="ml-auto h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
+          </Link>
+        ))}
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <div key={stat.name} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div key={stat.name} className="group relative overflow-hidden bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-0.5">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-gray-500">{stat.name}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{stat.name}</p>
                 {loading ? (
-                  <div className="h-9 w-24 bg-gray-100 rounded animate-pulse mt-2" />
+                  <div className="h-9 w-28 bg-gray-100 rounded-lg animate-pulse mt-2" />
                 ) : (
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                  <p className="text-2xl font-black text-gray-900 mt-2">{stat.value}</p>
                 )}
-                <p className="mt-2 text-xs font-semibold text-gray-400">{stat.hint}</p>
+                <p className="mt-2 text-[11px] font-semibold text-gray-400">{stat.hint}</p>
               </div>
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="h-6 w-6" />
+              <div className={`rounded-xl bg-gradient-to-br ${stat.gradient} p-3 text-white shadow-lg`}>
+                <stat.icon className="h-5 w-5" />
               </div>
             </div>
+            <div className={`absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${stat.gradient} opacity-0 transition-opacity group-hover:opacity-100`} />
           </div>
         ))}
       </div>
 
+      {/* Launch Readiness + Store Health */}
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-black text-gray-900">Launch readiness</h3>
               <p className="mt-1 text-sm font-semibold text-gray-500">{completedSetupSteps} of {setupSteps.length} steps completed</p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-black text-[#16C784]">{Math.round((completedSetupSteps / setupSteps.length) * 100)}%</p>
-              <p className="text-xs font-black uppercase tracking-wide text-gray-400">Ready</p>
+              <p className={`text-3xl font-black ${setupPercent === 100 ? 'text-[#B91C1C]' : 'text-amber-500'}`}>{setupPercent}%</p>
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">{setupPercent === 100 ? '🎉 Ready!' : 'In progress'}</p>
             </div>
           </div>
-          <div className="mt-5 h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-[#16C784]" style={{ width: `${Math.round((completedSetupSteps / setupSteps.length) * 100)}%` }} />
+          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-gray-100">
+            <div className={`h-full rounded-full transition-all duration-700 ${setupPercent === 100 ? 'bg-[#B91C1C]' : 'bg-gradient-to-r from-amber-400 to-amber-500'}`} style={{ width: `${setupPercent}%` }} />
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {setupSteps.map((step) => (
-              <Link key={step.label} href={step.href} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#16C784]/30 hover:bg-emerald-50/40">
-                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${step.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              <Link key={step.label} href={step.href} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#B91C1C]/30 hover:bg-amber-50/40">
+                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${step.completed ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'}`}>
                   {step.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
                 </span>
                 <span>
@@ -299,18 +358,18 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-black text-gray-900">Store health</h3>
           <div className="mt-5 space-y-3">
             <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
               <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><ShieldCheck className="h-4 w-4 text-gray-400" /> Verification</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${verification?.status === 'approved' || store?.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${verification?.status === 'approved' || store?.is_verified ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'}`}>
                 {verification?.status === 'approved' || store?.is_verified ? 'Approved' : verification?.status || 'Not submitted'}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
               <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><CreditCard className="h-4 w-4 text-gray-400" /> Payments</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${store?.payment_config ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${store?.payment_config ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>
                 {store?.payment_config ? 'Configured' : 'Marketplace default'}
               </span>
             </div>
@@ -328,64 +387,78 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      {/* Sales Chart + Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Sales (30 days)</h3>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-[#16C784]">
-                <TrendingUp className="h-4 w-4" />
-                <span className="font-semibold">{formatPrice(totalRevenue30d)}</span>
-              </div>
-              <span className="text-gray-400">{totalOrders30d} orders</span>
+            <div>
+              <h3 className="text-lg font-black text-gray-900">Sales (30 days)</h3>
+              <p className="mt-0.5 text-xs text-gray-400">{totalOrders30d} orders • {formatPrice(totalRevenue30d)}</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-bold text-[#B91C1C]">
+              <TrendingUp className="h-4 w-4" />
+              {formatPrice(totalRevenue30d)}
             </div>
           </div>
           {loading ? (
-            <div className="h-48 bg-gray-50 rounded-lg animate-pulse" />
+            <div className="h-52 bg-gray-50 rounded-lg animate-pulse" />
           ) : (
-            <div className="h-48 flex items-end gap-[2px]">
-              {salesData.map((day, i) => {
-                const height = maxSales > 0 ? (day.total / maxSales) * 100 : 0;
-                const isToday = i === salesData.length - 1;
-                return (
-                  <div
-                    key={day.date}
-                    className="flex-1 group relative"
-                    title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
-                  >
+            <>
+              <div className="relative h-52 flex items-end gap-[2px]">
+                {/* Horizontal grid lines */}
+                {[0.25, 0.5, 0.75, 1].map((pct) => (
+                  <div key={pct} className="pointer-events-none absolute left-0 right-0 border-t border-gray-100" style={{ bottom: `${pct * 100}%` }} />
+                ))}
+                {salesData.map((day, i) => {
+                  const height = maxSales > 0 ? (day.total / maxSales) * 100 : 0;
+                  const isToday = i === salesData.length - 1;
+                  return (
                     <div
-                      className={`w-full rounded-t transition-all duration-300 ${
-                        isToday ? 'bg-[#16C784]' : 'bg-[#16C784]/40 group-hover:bg-[#16C784]/70'
-                      }`}
-                      style={{ height: `${Math.max(height, 2)}%` }}
-                    />
-                    {/* Tooltip on hover */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                      <div className="bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                        <p className="font-medium">{new Date(day.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</p>
-                        <p className="text-[#16C784]">{formatPrice(day.total)}</p>
-                        <p className="text-gray-400">{day.count} order{day.count !== 1 ? 's' : ''}</p>
+                      key={day.date}
+                      className="flex-1 group relative"
+                      title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
+                    >
+                      <div
+                        className={`w-full rounded-t-sm transition-all duration-300 ${
+                          isToday
+                            ? 'bg-gradient-to-t from-[#B91C1C] to-[#1EE69A] shadow-sm shadow-amber-500/20'
+                            : 'bg-[#B91C1C]/30 group-hover:bg-[#B91C1C]/60'
+                        }`}
+                        style={{ height: `${Math.max(height, 2)}%` }}
+                      />
+                      {/* Tooltip on hover */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                        <div className="bg-gray-900 text-white text-xs rounded-xl px-3 py-2 whitespace-nowrap shadow-xl">
+                          <p className="font-bold">{new Date(day.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</p>
+                          <p className="text-[#B91C1C] font-black">{formatPrice(day.total)}</p>
+                          <p className="text-gray-400">{day.count} order{day.count !== 1 ? 's' : ''}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {/* X-axis labels */}
+              <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
+                <span>{salesData[0] && new Date(salesData[0].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
+                <span>{salesData[14] && new Date(salesData[14].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
+                <span>Today</span>
+              </div>
+            </>
           )}
-          {/* X-axis labels */}
-          <div className="flex justify-between mt-2 text-[10px] text-gray-400">
-            <span>{new Date(salesData[0]?.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
-            <span>{new Date(salesData[14]?.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
-            <span>Today</span>
-          </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Orders</h3>
+
+        {/* Recent Orders */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-black text-gray-900">Recent Orders</h3>
+            <Link href="/hub/dashboard/orders" className="text-xs font-bold text-[#B91C1C] hover:underline">View all →</Link>
+          </div>
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-gray-100 rounded-lg animate-pulse" />
+                  <div className="h-10 w-10 bg-gray-100 rounded-xl animate-pulse" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
                     <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
@@ -394,37 +467,43 @@ export default function DashboardOverview() {
               ))}
             </div>
           ) : recentOrders.length > 0 ? (
-            <ul className="space-y-4">
-              {recentOrders.map((order) => (
-                <li key={order.id} className="flex items-center justify-between pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 font-medium text-xs">
-                      #{order.id.slice(-4)}
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        {order.customer_email || 'Customer'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(order.created_at).toLocaleDateString('fr-TN')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-sm font-bold text-gray-900">
-                    {formatPrice(getOrderTotal(order))}
-                  </div>
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {recentOrders.map((order) => {
+                const statusInfo = ORDER_STATUS_COLORS[order.status] || { bg: 'bg-gray-100', text: 'text-gray-600', label: order.status };
+                return (
+                  <li key={order.id}>
+                    <Link href={`/hub/dashboard/orders/${order.id}`} className="flex items-center justify-between rounded-xl p-3 transition-all hover:bg-gray-50 group">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 font-mono text-[10px] font-bold">
+                          #{order.id.slice(-4)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-[#B91C1C] transition-colors">
+                            {order.customer_email || 'Customer'}
+                          </p>
+                          <p className="text-[11px] text-gray-400">
+                            {new Date(order.created_at).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusInfo.bg} ${statusInfo.text}`}>
+                          {statusInfo.label}
+                        </span>
+                        <span className="text-sm font-black text-gray-900">{formatPrice(getOrderTotal(order))}</span>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-8">No orders yet</p>
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <ShoppingCart className="mb-3 h-10 w-10 text-gray-200" />
+              <p className="text-sm font-semibold text-gray-400">No orders yet</p>
+              <p className="mt-1 text-xs text-gray-300">Orders will appear here when customers purchase</p>
+            </div>
           )}
-          <Link
-            href="/hub/dashboard/orders"
-            className="block mt-4 text-center text-sm font-medium text-[#16C784] hover:text-[#14b876]"
-          >
-            View all orders →
-          </Link>
         </div>
       </div>
     </div>

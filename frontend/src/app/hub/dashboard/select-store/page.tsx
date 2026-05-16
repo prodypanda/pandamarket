@@ -78,8 +78,8 @@ export default function SelectStorePage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-8 text-white shadow-2xl shadow-slate-900/15">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-100 ring-1 ring-white/10">
+      <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 p-8 text-white shadow-2xl shadow-slate-900/15">
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10">
           <Store className="h-4 w-4" />
           Store selector
         </div>
@@ -107,7 +107,7 @@ export default function SelectStorePage() {
           <Store className="mx-auto h-12 w-12 text-gray-300" />
           <h2 className="mt-4 text-2xl font-black text-gray-900">No stores yet</h2>
           <p className="mt-2 text-sm text-gray-500">Create your first storefront to start selling.</p>
-          <Link href="/hub/dashboard/create-store" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#16C784] px-5 py-3 text-sm font-black text-white">
+          <Link href="/hub/dashboard/create-store" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-5 py-3 text-sm font-black text-white">
             <Plus className="h-4 w-4" />
             Create store
           </Link>
@@ -120,11 +120,11 @@ export default function SelectStorePage() {
             return (
               <div key={store.id} className="rounded-[1.75rem] border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#16C784] ring-1 ring-emerald-100">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C] ring-1 ring-amber-100">
                     <Store className="h-6 w-6" />
                   </div>
                   {isSelected && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Selected
                     </span>
@@ -150,7 +150,7 @@ export default function SelectStorePage() {
                   {store.subdomain && (
                     <Link
                       href={`/store/${encodeURIComponent(store.subdomain)}`}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#16C784] hover:text-[#16C784]"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <ExternalLink className="h-4 w-4" />
                       View store
@@ -164,7 +164,7 @@ export default function SelectStorePage() {
       )}
 
       <div className="flex justify-center">
-        <Link href="/hub/dashboard/create-store" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-700 shadow-sm transition hover:border-[#16C784] hover:text-[#16C784]">
+        <Link href="/hub/dashboard/create-store" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-700 shadow-sm transition hover:border-[#B91C1C] hover:text-[#B91C1C]">
           <Plus className="h-4 w-4" />
           Create another store
         </Link>

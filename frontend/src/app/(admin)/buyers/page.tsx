@@ -247,19 +247,19 @@ export default function AdminBuyersPage() {
 
   const metricCards = [
     { label: 'Buyer accounts', value: summary.total, icon: Users, tone: 'from-slate-950 to-slate-700 text-white' },
-    { label: 'Active buyers', value: summary.active, icon: ShieldCheck, tone: 'from-emerald-500 to-teal-500 text-white' },
+    { label: 'Active buyers', value: summary.active, icon: ShieldCheck, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
     { label: 'Inactive buyers', value: summary.inactive, icon: Ban, tone: 'from-red-500 to-rose-600 text-white' },
-    { label: 'Email verified', value: summary.email_verified, icon: CheckCircle2, tone: 'from-violet-500 to-indigo-600 text-white' },
-    { label: 'With orders', value: summary.with_orders, icon: ShoppingBag, tone: 'from-blue-500 to-cyan-500 text-white' },
+    { label: 'Email verified', value: summary.email_verified, icon: CheckCircle2, tone: 'from-amber-500 to-red-600 text-white' },
+    { label: 'With orders', value: summary.with_orders, icon: ShoppingBag, tone: 'from-[#B91C1C] to-amber-500 text-white' },
     { label: 'Total orders', value: summary.total_orders, icon: WalletCards, tone: 'from-amber-400 to-orange-500 text-white' },
   ];
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-2xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-blue-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-amber-100">
               <UserRound className="h-4 w-4" />
               Buyer management
             </div>
@@ -277,7 +277,7 @@ export default function AdminBuyersPage() {
 
       {(success || error) && (
         <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
-          error ? 'border-red-100 bg-red-50 text-red-700' : 'border-emerald-100 bg-emerald-50 text-emerald-700'
+          error ? 'border-red-100 bg-red-50 text-red-700' : 'border-amber-100 bg-amber-50 text-[#7F1D1D]'
         }`}>
           {error || success}
         </div>
@@ -306,7 +306,7 @@ export default function AdminBuyersPage() {
                   setPage(1);
                 }}
                 placeholder="Search by buyer name, email, or phone"
-                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10 ${isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'}`}
+                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 ${isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'}`}
               />
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function AdminBuyersPage() {
                   setStatus(event.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
               >
                 <option value="">All statuses</option>
                 <option value="active">Active</option>
@@ -335,7 +335,7 @@ export default function AdminBuyersPage() {
                   setEmailVerified(event.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
               >
                 <option value="">All emails</option>
                 <option value="true">Verified</option>
@@ -388,19 +388,19 @@ export default function AdminBuyersPage() {
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex gap-4">
-                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-red-600 text-white shadow-lg shadow-red-900/20">
                           <UserRound className="h-7 w-7" />
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-xl font-black text-gray-900">{getBuyerName(buyer)}</h2>
-                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.is_active === false ? 'bg-red-50 text-red-700 ring-red-100' : 'bg-emerald-50 text-emerald-700 ring-emerald-100'}`}>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.is_active === false ? 'bg-red-50 text-red-700 ring-red-100' : 'bg-amber-50 text-[#B91C1C] ring-amber-100'}`}>
                               {buyer.is_active === false ? 'Inactive' : 'Active'}
                             </span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.email_verified ? 'bg-blue-50 text-blue-700 ring-blue-100' : 'bg-amber-50 text-amber-700 ring-amber-100'}`}>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.email_verified ? 'bg-amber-50 text-[#B91C1C] ring-amber-100' : 'bg-amber-50 text-amber-700 ring-amber-100'}`}>
                               Email {buyer.email_verified ? 'verified' : 'unverified'}
                             </span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.two_factor_enabled ? 'bg-violet-50 text-violet-700 ring-violet-100' : 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${buyer.two_factor_enabled ? 'bg-amber-50 text-[#7F1D1D] ring-amber-100' : 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
                               2FA {buyer.two_factor_enabled ? 'on' : 'off'}
                             </span>
                           </div>
@@ -470,7 +470,7 @@ export default function AdminBuyersPage() {
                         type="button"
                         onClick={() => void startBuyerChat(buyer)}
                         disabled={activeAction === `${actionBase}-chat`}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
                       >
                         <MessageSquare className="h-4 w-4" />
                         Start / open support chat
@@ -479,7 +479,7 @@ export default function AdminBuyersPage() {
                         type="button"
                         onClick={() => void updateEmailVerification(buyer, !buyer.email_verified)}
                         disabled={activeAction === `${actionBase}-email-verification`}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-black text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#B91C1C] transition hover:bg-amber-50 disabled:opacity-60"
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         {buyer.email_verified ? 'Mark email unverified' : 'Mark email verified'}
@@ -489,7 +489,7 @@ export default function AdminBuyersPage() {
                           type="button"
                           onClick={() => void runAction(buyer.id, 'reactivate')}
                           disabled={activeAction === `${actionBase}-reactivate`}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
                         >
                           <RotateCcw className="h-4 w-4" />
                           Reactivate account
@@ -509,7 +509,7 @@ export default function AdminBuyersPage() {
                         type="button"
                         onClick={() => void runAction(buyer.id, 'reset-2fa')}
                         disabled={activeAction === `${actionBase}-reset-2fa` || !buyer.two_factor_enabled}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-100 bg-white px-4 py-3 text-sm font-black text-violet-700 transition hover:bg-violet-50 disabled:opacity-50"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                       >
                         <KeyRound className="h-4 w-4" />
                         Reset account 2FA

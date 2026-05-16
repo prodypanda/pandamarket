@@ -3,42 +3,68 @@
 import { useState, useMemo, useCallback } from 'react';
 import { X, Search, LayoutTemplate, Sparkles, Monitor, Tablet, Smartphone } from 'lucide-react';
 import {
+  applyTemplateBranding,
   PAGE_TEMPLATES,
   TEMPLATE_CATEGORIES,
+  TEMPLATE_SELLER_TYPES,
   type PageTemplate,
   type TemplateCategory,
+  type TemplateBranding,
+  type TemplateSellerType,
 } from './templates';
 
 interface Props {
   onSelect: (t: PageTemplate) => void;
   onClose: () => void;
+  storeBranding?: TemplateBranding;
 }
 
-export function TemplatePicker({ onSelect, onClose }: Props) {
+export function TemplatePicker({ onSelect, onClose, storeBranding }: Props) {
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState<TemplateCategory | 'all'>('all');
+  const preferredSellerType = normalizeTemplateSellerType(storeBranding?.sellerType);
+  const [activeSellerType, setActiveSellerType] = useState<TemplateSellerType | 'all'>(preferredSellerType || 'all');
   const [preview, setPreview] = useState<PageTemplate | null>(null);
+  const templates = useMemo(
+    () => PAGE_TEMPLATES.map((template) => applyTemplateBranding(template, storeBranding)),
+    [storeBranding],
+  );
 
   const filtered = useMemo(() => {
-    let t = PAGE_TEMPLATES;
+    let t = templates;
     if (activeCat !== 'all') t = t.filter((x) => x.category === activeCat);
+    if (activeSellerType !== 'all') {
+      t = t.filter((x) => {
+        const sellerTypes = x.sellerTypes || ['general'];
+        return sellerTypes.includes(activeSellerType) || sellerTypes.includes('general');
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       t = t.filter(
-        (x) => x.name.toLowerCase().includes(q) || x.description.toLowerCase().includes(q),
+        (x) =>
+          x.name.toLowerCase().includes(q) ||
+          x.description.toLowerCase().includes(q) ||
+          (x.sections || []).some((section) => section.toLowerCase().includes(q)),
       );
     }
     return t;
-  }, [search, activeCat]);
+  }, [search, activeCat, activeSellerType, templates]);
 
   const cats = Object.entries(TEMPLATE_CATEGORIES) as [
     TemplateCategory,
     { label: string; icon: string },
   ][];
+  const sellerTypes = Object.entries(TEMPLATE_SELLER_TYPES) as [
+    TemplateSellerType,
+    { label: string; icon: string },
+  ][];
 
   const catBtnClass = (active: boolean) =>
-    `px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-      active ? 'bg-[#16C784] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+    `rounded-full border px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+      active
+        ? 'border-[#1A1A2E] bg-[#1A1A2E] text-white'
+        : 'border-[#E4D8C6] bg-white text-[#6B7280] hover:border-[#D6B779] hover:text-[#1A1A2E]'
     }`;
 
   // Preview sub-view with isolated iframe rendering + device size toggle
@@ -55,48 +81,58 @@ export function TemplatePicker({ onSelect, onClose }: Props) {
   // Main picker grid
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col overflow-hidden rounded-3xl border border-[#E4D8C6] bg-[#FBF8F1] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E4D8C6] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#16C784]/10 rounded-xl flex items-center justify-center">
-              <LayoutTemplate className="w-5 h-5 text-[#16C784]" />
+            <div className="w-10 h-10 bg-[#F4EDE2] rounded-xl flex items-center justify-center">
+              <LayoutTemplate className="w-5 h-5 text-[#8A6F3D]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Choisir un template</h2>
-              <p className="text-xs text-gray-500">
-                {PAGE_TEMPLATES.length} templates disponibles
+              <h2 className="text-lg font-bold text-[#1A1A2E]">Choisir un template</h2>
+              <p className="text-xs text-[#7C7468]">
+                {PAGE_TEMPLATES.length} templates disponibles · couleurs boutique appliquées
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            className="p-2 text-[#7C7468] hover:text-[#1A1A2E] rounded-lg hover:bg-[#F4EDE2]"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search + Filters */}
-        <div className="px-6 py-3 border-b border-gray-100 flex-shrink-0">
+        <div className="px-6 py-3 border-b border-[#E4D8C6] flex-shrink-0">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[180px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8174]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher..."
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-[#E4D8C6] rounded-xl bg-white text-[#1A1A2E] focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20 outline-none"
               />
             </div>
             <div className="flex items-center gap-1 overflow-x-auto">
               <button onClick={() => setActiveCat('all')} className={catBtnClass(activeCat === 'all')}>
                 Tous
               </button>
-              {cats.map(([key, { label, icon }]) => (
+              {cats.map(([key, { label }]) => (
                 <button key={key} onClick={() => setActiveCat(key)} className={catBtnClass(activeCat === key)}>
-                  {icon} {label}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto">
+              <button onClick={() => setActiveSellerType('all')} className={catBtnClass(activeSellerType === 'all')}>
+                Tous vendeurs
+              </button>
+              {sellerTypes.map(([key, { label }]) => (
+                <button key={key} onClick={() => setActiveSellerType(key)} className={catBtnClass(activeSellerType === key)}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -104,10 +140,10 @@ export function TemplatePicker({ onSelect, onClose }: Props) {
         </div>
 
         {/* Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-[#FFFDF8]">
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-400 text-sm">Aucun template trouvé.</p>
+              <p className="text-[#7C7468] text-sm">Aucun template trouvé.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -127,10 +163,10 @@ export function TemplatePicker({ onSelect, onClose }: Props) {
 function TemplateCard({ template: tpl, onClick }: { template: PageTemplate; onClick: () => void }) {
   return (
     <div
-      className="group border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-[#16C784]/30 transition-all cursor-pointer"
+      className="group overflow-hidden rounded-2xl border border-[#E4D8C6] bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#D6B779] hover:shadow-lg cursor-pointer"
       onClick={onClick}
     >
-      <div className="h-48 bg-gray-50 relative overflow-hidden">
+      <div className="h-48 bg-[#F6F3ED] relative overflow-hidden">
         {/* Scaled-down miniature preview — CSS omitted intentionally to avoid leaking
             global styles into the parent document. At 18% scale, hover/responsive
             styles are invisible anyway. */}
@@ -145,28 +181,48 @@ function TemplateCard({ template: tpl, onClick }: { template: PageTemplate; onCl
           dangerouslySetInnerHTML={{ __html: tpl.html }}
         />
         {/* Gradient fade at bottom so the preview doesn't look cut off */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-50 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#F6F3ED] to-transparent" />
         {/* Hover overlay with CTA */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-          <span className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity bg-[#16C784] px-4 py-2 rounded-lg shadow-lg">
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-[#1A1A2E]/35 transition-colors flex items-center justify-center">
+          <span className="text-white text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-[#16C784] px-4 py-2 rounded-full shadow-lg">
             Aperçu
           </span>
         </div>
       </div>
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">{tpl.icon}</span>
-          <h3 className="font-semibold text-sm text-gray-900 truncate">{tpl.name}</h3>
+          <h3 className="font-bold text-sm text-[#1A1A2E] truncate">{tpl.name}</h3>
         </div>
-        <p className="text-xs text-gray-500 line-clamp-2">{tpl.description}</p>
+        <p className="text-xs text-[#7C7468] line-clamp-2">{tpl.description}</p>
         <div className="mt-2">
-          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-medium rounded-full">
-            {TEMPLATE_CATEGORIES[tpl.category].icon} {TEMPLATE_CATEGORIES[tpl.category].label}
+          <span className="inline-block px-2 py-0.5 bg-[#F4EDE2] text-[#7C7468] text-[10px] font-bold rounded-full">
+            {TEMPLATE_CATEGORIES[tpl.category].label}
           </span>
+          {tpl.isHomepage && (
+            <span className="ml-1 inline-block rounded-full bg-[#16C784]/10 px-2 py-0.5 text-[10px] font-bold text-[#16C784]">
+              Accueil
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function normalizeTemplateSellerType(value?: string | null): TemplateSellerType | null {
+  if (value === 'wholesaler' || value === 'hybrid') return 'wholesale';
+  if (
+    value === 'general' ||
+    value === 'fashion' ||
+    value === 'electronics' ||
+    value === 'food' ||
+    value === 'services' ||
+    value === 'digital' ||
+    value === 'wholesale'
+  ) {
+    return value;
+  }
+  return null;
 }
 
 // ─── Preview Modal (full-size with iframe isolation + device toggle) ─────
@@ -215,27 +271,29 @@ function PreviewModal({
     (d: DeviceSize) =>
       `p-1.5 rounded-md transition-colors ${
         device === d
-          ? 'bg-[#16C784]/15 text-[#16C784]'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+          ? 'bg-[#1A1A2E] text-white'
+          : 'text-[#7C7468] hover:text-[#1A1A2E] hover:bg-white'
       }`,
     [device],
   );
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="w-full max-w-5xl mx-4 max-h-[92vh] flex flex-col overflow-hidden rounded-3xl border border-[#E4D8C6] bg-[#FBF8F1] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[#E4D8C6] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{template.icon}</span>
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#F4EDE2] text-[#8A6F3D]">
+              <LayoutTemplate className="h-5 w-5" />
+            </div>
             <div>
-              <h3 className="font-bold text-gray-900">{template.name}</h3>
-              <p className="text-xs text-gray-500">/{template.slug}</p>
+              <h3 className="font-bold text-[#1A1A2E]">{template.name}</h3>
+              <p className="text-xs text-[#7C7468]">/{template.slug}</p>
             </div>
           </div>
 
           {/* Device toggle */}
-          <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+          <div className="flex items-center gap-1 rounded-full border border-[#E4D8C6] bg-[#F4EDE2] p-1">
             <button
               onClick={() => setDevice('desktop')}
               className={deviceBtnClass('desktop')}
@@ -262,14 +320,14 @@ function PreviewModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onSelect}
-              className="flex items-center gap-2 px-5 py-2 bg-[#16C784] text-white text-sm font-semibold rounded-lg hover:bg-[#14b876] transition-colors"
+              className="flex items-center gap-2 rounded-full bg-[#16C784] px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-[#14b876]"
             >
               <Sparkles className="w-4 h-4" />
               Utiliser ce template
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              className="p-2 text-[#7C7468] hover:text-[#1A1A2E] rounded-lg hover:bg-[#F4EDE2]"
             >
               <X className="w-5 h-5" />
             </button>
@@ -277,7 +335,7 @@ function PreviewModal({
         </div>
 
         {/* Iframe preview — fully isolated from parent CSS */}
-        <div className="flex-1 overflow-auto bg-gray-100 flex justify-center p-4">
+        <div className="flex-1 overflow-auto bg-[#ECE7DD] flex justify-center p-4">
           <div
             className="transition-all duration-300 ease-in-out"
             style={{
@@ -288,7 +346,7 @@ function PreviewModal({
             <iframe
               srcDoc={iframeSrcDoc}
               title={`Aperçu: ${template.name}`}
-              className="w-full bg-white rounded-lg shadow-sm border border-gray-200"
+              className="w-full bg-white rounded-2xl shadow-sm border border-[#E4D8C6]"
               style={{
                 height: '70vh',
                 border: 'none',

@@ -2,12 +2,14 @@ export interface SubscriptionPlanLimits {
   plan_id: string;
   max_products: number;
   max_images_per_product: number;
+  max_page_builder_pages: number;
   has_ai_seo: boolean;
   has_image_compression: boolean;
   has_custom_domain: boolean;
   has_page_builder: boolean;
   has_direct_payment: boolean;
   has_white_label: boolean;
+  has_own_ai_provider: boolean;
   commission_rate: number;
   ai_tokens_included: number;
   yearly_price: number;
@@ -95,12 +97,14 @@ export function normalizeSubscriptionPlan(raw: Record<string, unknown>): Subscri
     plan_id: String(raw.plan_id || ''),
     max_products: toNumber(raw.max_products),
     max_images_per_product: toNumber(raw.max_images_per_product),
+    max_page_builder_pages: toNumber(raw.max_page_builder_pages),
     has_ai_seo: Boolean(raw.has_ai_seo),
     has_image_compression: Boolean(raw.has_image_compression),
     has_custom_domain: Boolean(raw.has_custom_domain),
     has_page_builder: Boolean(raw.has_page_builder),
     has_direct_payment: Boolean(raw.has_direct_payment),
     has_white_label: Boolean(raw.has_white_label),
+    has_own_ai_provider: Boolean(raw.has_own_ai_provider),
     commission_rate: commissionRate <= 1 ? Number((commissionRate * 100).toFixed(2)) : commissionRate,
     ai_tokens_included: toNumber(raw.ai_tokens_included),
     yearly_price: toNumber(raw.yearly_price),
@@ -123,7 +127,9 @@ export function toDisplayPlan(plan: SubscriptionPlanLimits, highlightPlanId = 'p
   if (plan.has_ai_seo) features.push(plan.ai_tokens_included === -1 ? 'IA illimitée' : 'Outils IA');
   else notIncluded.push('Outils IA');
 
-  if (plan.has_page_builder) features.push('Page Builder');
+  if (plan.has_own_ai_provider) features.push('Clé IA vendeur');
+
+  if (plan.has_page_builder) features.push(formatLimit(plan.max_page_builder_pages, 'pages builder'));
   else notIncluded.push('Page Builder');
 
   if (plan.has_direct_payment) features.push('Paiement direct');

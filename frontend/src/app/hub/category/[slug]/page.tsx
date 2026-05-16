@@ -5,6 +5,7 @@ import { HubFooter } from '../../../../components/hub/HubFooter';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { getHubProductHref } from '../../../../lib/product-links';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
+import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
 
 interface Product {
   id: string;
@@ -55,14 +56,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const name = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
+  const marketplaceSettings = await getMarketplaceSettings();
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const description = `Découvrez les meilleurs produits ${name.toLowerCase()} sur ${marketplaceName}. Comparez les prix et achetez auprès de vendeurs tunisiens vérifiés.`;
   return {
     title: `${name} — Produits`,
-    description: `Découvrez les meilleurs produits ${name.toLowerCase()} sur PandaMarket. Comparez les prix et achetez auprès de vendeurs tunisiens vérifiés.`,
+    description,
     openGraph: {
-      title: `${name} — PandaMarket`,
-      description: `Découvrez les meilleurs produits ${name.toLowerCase()} sur PandaMarket.`,
+      title: `${name} — ${marketplaceName}`,
+      description,
       type: 'website',
       url: `/hub/category/${slug}`,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${name} — ${marketplaceName}` }],
     },
   };
 }
@@ -87,7 +93,8 @@ export default async function CategoryPage({
     getCategoryProducts(slug, page),
     getMarketplaceSettings(),
   ]);
-  const isAliExpress = marketplaceSettings.marketplace_theme === 'aliexpress';
+  const isAliExpress = isAliExpressTheme(marketplaceSettings.marketplace_theme);
+  const isAliExpress2 = marketplaceSettings.marketplace_theme === 'aliexpress2';
   const accentText = isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]';
   const accentBg = isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]';
   const accentHoverBg = isAliExpress ? 'hover:bg-[#f03d3d]' : 'hover:bg-[#14b576]';
@@ -138,7 +145,7 @@ export default async function CategoryPage({
         </nav>
 
         {/* Category Header */}
-        <div className={`mb-8 flex items-center justify-between ${isAliExpress ? 'rounded-3xl bg-gradient-to-r from-[#ff4747] to-[#ff8a00] p-6 text-white shadow-lg shadow-orange-900/10' : ''}`}>
+        <div className={`mb-8 flex items-center justify-between ${isAliExpress ? (isAliExpress2 ? 'rounded-xl bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] p-6 text-white shadow-xl shadow-orange-900/10' : 'rounded-3xl bg-gradient-to-r from-[#ff4747] to-[#ff8a00] p-6 text-white shadow-lg shadow-orange-900/10') : ''}`}>
           <div>
             <h1 className={`text-3xl font-bold ${isAliExpress ? 'text-white' : 'text-gray-900'}`}>{category.name}</h1>
             <p className={`mt-1 ${isAliExpress ? 'text-white/80' : 'text-gray-500'}`}>
@@ -172,7 +179,7 @@ export default async function CategoryPage({
                 <Link
                   key={product.id}
                   href={getHubProductHref(product)}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300"
+                  className={`bg-white border-gray-100 overflow-hidden group transition-all duration-300 block ${isAliExpress2 ? 'rounded-lg border shadow-md hover:shadow-xl hover:-translate-y-1 hover:border-orange-200/50' : isAliExpress ? 'rounded-2xl border shadow-sm hover:shadow-lg hover:-translate-y-1' : 'rounded-xl border hover:shadow-lg'}`}
                 >
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
                     {imageUrl ? (

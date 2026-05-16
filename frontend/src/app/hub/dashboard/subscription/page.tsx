@@ -8,12 +8,14 @@ interface PlanLimits {
   plan_id: string;
   max_products: number;
   max_images_per_product: number;
+  max_page_builder_pages: number;
   has_ai_seo: boolean;
   has_image_compression: boolean;
   has_custom_domain: boolean;
   has_page_builder: boolean;
   has_direct_payment: boolean;
   has_white_label: boolean;
+  has_own_ai_provider: boolean;
   commission_rate: number;
   ai_tokens_included: number;
   yearly_price: number;
@@ -35,7 +37,7 @@ const PLAN_DISPLAY: Record<string, { name: string; color: string }> = {
   starter: { name: 'Starter', color: 'bg-blue-100 text-blue-700' },
   regular: { name: 'Regular', color: 'bg-indigo-100 text-indigo-700' },
   agency: { name: 'Agency', color: 'bg-purple-100 text-purple-700' },
-  pro: { name: 'Pro', color: 'bg-[#16C784]/10 text-[#16C784]' },
+  pro: { name: 'Pro', color: 'bg-[#B91C1C]/10 text-[#B91C1C]' },
   golden: { name: 'Golden', color: 'bg-yellow-100 text-yellow-700' },
   platinum: { name: 'Platinum', color: 'bg-gray-900 text-white' },
 };
@@ -157,15 +159,13 @@ export default function SubscriptionPage() {
 
       {/* Current Plan */}
       {currentPlan && (
-        <div className="bg-gradient-to-r from-[#16C784] to-[#14b876] rounded-xl p-6 text-white">
+        <div className="bg-gradient-to-r from-[#B91C1C] to-[#991B1B] rounded-xl p-6 text-white">
           <div className="flex items-center gap-3 mb-3">
             <Crown className="w-6 h-6" />
             <h2 className="text-lg font-bold">Plan actuel</h2>
           </div>
           <div className="flex items-center gap-3">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-bold ${PLAN_DISPLAY[currentPlan.plan]?.color || 'bg-white/20 text-white'}`}
-            >
+            <span className="rounded-full bg-white px-3 py-1 text-sm font-black text-[#B91C1C] shadow-sm ring-1 ring-white/40">
               {PLAN_DISPLAY[currentPlan.plan]?.name || currentPlan.plan}
             </span>
             {currentPlan.expires_at && (
@@ -192,11 +192,11 @@ export default function SubscriptionPage() {
               <p className="font-bold">{currentPlan.limits.commission_rate}%</p>
             </div>
             <div>
-              <p className="opacity-70">Tokens IA</p>
+              <p className="opacity-70">Pages builder</p>
               <p className="font-bold">
-                {currentPlan.limits.ai_tokens_included === -1
+                {currentPlan.limits.max_page_builder_pages === -1
                   ? '∞'
-                  : currentPlan.limits.ai_tokens_included}
+                  : currentPlan.limits.max_page_builder_pages}
               </p>
             </div>
           </div>
@@ -215,20 +215,20 @@ export default function SubscriptionPage() {
               key={plan.plan_id}
               className={`bg-white rounded-xl border-2 p-5 transition-all ${
                 isCurrent
-                  ? 'border-[#16C784] shadow-lg shadow-[#16C784]/10'
+                  ? 'border-[#B91C1C] shadow-lg shadow-[#B91C1C]/10'
                   : isPro
-                    ? 'border-[#16C784]/50'
+                    ? 'border-[#B91C1C]/50'
                     : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               {isPro && !isCurrent && (
-                <div className="flex items-center gap-1 text-xs font-bold text-[#16C784] mb-2">
+                <div className="flex items-center gap-1 text-xs font-bold text-[#B91C1C] mb-2">
                   <Sparkles className="w-3.5 h-3.5" />
                   Populaire
                 </div>
               )}
               {isCurrent && (
-                <div className="text-xs font-bold text-[#16C784] mb-2">✓ Plan actuel</div>
+                <div className="text-xs font-bold text-[#B91C1C] mb-2">✓ Plan actuel</div>
               )}
 
               <h3 className="font-bold text-gray-900 text-lg">{display.name}</h3>
@@ -238,22 +238,22 @@ export default function SubscriptionPage() {
 
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#16C784]" />
+                  <Check className="w-4 h-4 text-[#B91C1C]" />
                   <span>
                     {plan.max_products === -1 ? 'Produits illimités' : `${plan.max_products} produits`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#16C784]" />
+                  <Check className="w-4 h-4 text-[#B91C1C]" />
                   <span>{plan.max_images_per_product} images/produit</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#16C784]" />
+                  <Check className="w-4 h-4 text-[#B91C1C]" />
                   <span>{plan.commission_rate}% commission</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.has_custom_domain ? (
-                    <Check className="w-4 h-4 text-[#16C784]" />
+                    <Check className="w-4 h-4 text-[#B91C1C]" />
                   ) : (
                     <X className="w-4 h-4 text-gray-300" />
                   )}
@@ -263,17 +263,19 @@ export default function SubscriptionPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.has_page_builder ? (
-                    <Check className="w-4 h-4 text-[#16C784]" />
+                    <Check className="w-4 h-4 text-[#B91C1C]" />
                   ) : (
                     <X className="w-4 h-4 text-gray-300" />
                   )}
                   <span className={!plan.has_page_builder ? 'text-gray-400' : ''}>
-                    Page Builder
+                    {plan.has_page_builder
+                      ? plan.max_page_builder_pages === -1 ? 'Pages builder illimitées' : `${plan.max_page_builder_pages} pages builder`
+                      : 'Page Builder'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.has_ai_seo ? (
-                    <Check className="w-4 h-4 text-[#16C784]" />
+                    <Check className="w-4 h-4 text-[#B91C1C]" />
                   ) : (
                     <X className="w-4 h-4 text-gray-300" />
                   )}
@@ -281,7 +283,7 @@ export default function SubscriptionPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.has_direct_payment ? (
-                    <Check className="w-4 h-4 text-[#16C784]" />
+                    <Check className="w-4 h-4 text-[#B91C1C]" />
                   ) : (
                     <X className="w-4 h-4 text-gray-300" />
                   )}
@@ -291,7 +293,7 @@ export default function SubscriptionPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {plan.has_white_label ? (
-                    <Check className="w-4 h-4 text-[#16C784]" />
+                    <Check className="w-4 h-4 text-[#B91C1C]" />
                   ) : (
                     <X className="w-4 h-4 text-gray-300" />
                   )}
@@ -318,7 +320,7 @@ export default function SubscriptionPage() {
                       <button
                         onClick={() => handleChangePlan(plan.plan_id)}
                         disabled={changing}
-                        className="flex-1 py-2 bg-[#16C784] text-white font-medium rounded-lg text-sm hover:bg-[#14b876] disabled:opacity-50"
+                        className="flex-1 py-2 bg-[#B91C1C] text-white font-medium rounded-lg text-sm hover:bg-[#991B1B] disabled:opacity-50"
                       >
                         {changing ? '...' : 'Oui'}
                       </button>
@@ -335,7 +337,7 @@ export default function SubscriptionPage() {
                     onClick={() => setConfirmPlan(plan.plan_id)}
                     className={`w-full py-2.5 font-medium rounded-lg text-sm transition-colors ${
                       isUpgrade(plan.plan_id)
-                        ? 'bg-[#16C784] text-white hover:bg-[#14b876]'
+                        ? 'bg-[#B91C1C] text-white hover:bg-[#991B1B]'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >

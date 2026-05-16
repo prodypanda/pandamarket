@@ -134,7 +134,7 @@ export default function PaymentConfigPage() {
           </p>
           <a
             href="/hub/dashboard/subscription"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#B91C1C] text-white font-semibold rounded-xl hover:bg-[#991B1B] transition-colors"
           >
             <Crown className="w-4 h-4" />
             Upgrade Plan
@@ -198,7 +198,7 @@ export default function PaymentConfigPage() {
               value={flouciAppToken}
               onChange={(e) => setFlouciAppToken(e.target.value)}
               placeholder="Enter your Flouci app token"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
           </div>
           <div>
@@ -208,7 +208,7 @@ export default function PaymentConfigPage() {
               value={flouciAppSecret}
               onChange={(e) => setFlouciAppSecret(e.target.value)}
               placeholder="Enter your Flouci app secret"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function PaymentConfigPage() {
               value={konnectApiKey}
               onChange={(e) => setKonnectApiKey(e.target.value)}
               placeholder="Enter your Konnect API key"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
           </div>
           <div>
@@ -243,7 +243,7 @@ export default function PaymentConfigPage() {
               value={konnectReceiverWallet}
               onChange={(e) => setKonnectReceiverWallet(e.target.value)}
               placeholder="Enter your Konnect wallet ID"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function PaymentConfigPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-[#16C784] text-white font-semibold rounded-xl hover:bg-[#14b876] transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-[#B91C1C] text-white font-semibold rounded-xl hover:bg-[#991B1B] transition-colors disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Configuration'}

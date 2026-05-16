@@ -13,11 +13,7 @@ import { aiQueue } from '../queues/ai-queue';
 import { PdNotFoundError, PdValidationError, PdErrorCode } from '../errors';
 import { AiJobStatus, AiJobType } from '@pandamarket/types';
 import { logger } from '../utils/logger';
-
-const COSTS: Record<AiJobType, number> = {
-  [AiJobType.ImageCompression]: 1,
-  [AiJobType.SeoGeneration]: 2,
-};
+import { aiConfigService } from './ai-config.service';
 
 interface AiJobRow {
   id: string;
@@ -34,6 +30,13 @@ interface AiJobRow {
   created_at: Date;
   started_at: Date | null;
   completed_at: Date | null;
+}
+
+interface AiJobListOptions {
+  page?: number;
+  limit?: number;
+  type?: AiJobType;
+  status?: AiJobStatus;
 }
 
 export class AiService {
@@ -74,22 +77,58 @@ export class AiService {
     });
   }
 
+  async startInlineJob(opts: {
+    type: AiJobType.PageCopy | AiJobType.ProductDescription;
+    store_id: string;
+    user_id: string;
+    input_meta: Record<string, unknown>;
+  }): Promise<AiJobRow> {
+    const cost = await aiConfigService.getFeaturePrice(opts.type);
+    await creditsService.assertEnough(opts.store_id, cost);
+    const id = pdId('aijob');
+    const { rows } = await query<AiJobRow>(
+      `INSERT INTO pd_ai_jobs
+        (id, store_id, user_id, type, status, input_meta, started_at)
+       VALUES ($1, $2, $3, $4, 'processing', $5, NOW())
+       RETURNING *`,
+      [id, opts.store_id, opts.user_id, opts.type, JSON.stringify(opts.input_meta)],
+    );
+    logger.info({ ai_job_id: id, type: opts.type }, 'AI inline job started');
+    return rows[0];
+  }
+
   async getById(id: string): Promise<AiJobRow> {
     const { rows } = await query<AiJobRow>('SELECT * FROM pd_ai_jobs WHERE id = $1', [id]);
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.AI_JOB_NOT_FOUND, 'AI job not found');
     return rows[0];
   }
 
-  async listByStore(storeId: string, opts: { page?: number; limit?: number } = {}) {
+  async listByStore(storeId: string, opts: AiJobListOptions = {}) {
     const page = Math.max(1, opts.page ?? 1);
-    const limit = Math.min(100, opts.limit ?? 20);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
     const offset = (page - 1) * limit;
+    const params: unknown[] = [storeId];
+    let where = 'store_id = $1';
+    if (opts.type) {
+      params.push(opts.type);
+      where += ` AND type = $${params.length}`;
+    }
+    if (opts.status) {
+      params.push(opts.status);
+      where += ` AND status = $${params.length}`;
+    }
+    params.push(limit, offset);
     const { rows } = await query<AiJobRow>(
-      `SELECT * FROM pd_ai_jobs WHERE store_id = $1
-       ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-      [storeId, limit, offset],
+      `SELECT * FROM pd_ai_jobs WHERE ${where}
+       ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
     );
-    return rows;
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_ai_jobs WHERE ${where}`,
+      params.slice(0, -2),
+    );
+    const total = parseInt(countRows[0].count, 10);
+    return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
   }
 
   /**
@@ -136,7 +175,7 @@ export class AiService {
     input_url: string | null;
     input_meta: Record<string, unknown>;
   }): Promise<AiJobRow> {
-    const cost = COSTS[opts.type];
+    const cost = await aiConfigService.getFeaturePrice(opts.type);
     await creditsService.assertEnough(opts.store_id, cost);
 
     const id = pdId('aijob');

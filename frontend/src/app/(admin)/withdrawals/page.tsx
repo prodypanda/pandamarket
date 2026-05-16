@@ -74,7 +74,7 @@ export default function AdminWithdrawalsPage() {
           >
             <RefreshCw className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium">
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-[#B91C1C] rounded-lg text-sm font-medium">
             <Wallet className="w-4 h-4" />
             {total} withdrawal{total !== 1 ? 's' : ''}
           </div>

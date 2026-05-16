@@ -129,7 +129,7 @@ export default function AdminMandatsPage() {
           </div>
         ) : mandats.length === 0 ? (
           <div className="rounded-xl border border-gray-100 bg-white p-12 text-center">
-            <Receipt className="mx-auto mb-3 h-12 w-12 text-[#16C784]" />
+            <Receipt className="mx-auto mb-3 h-12 w-12 text-[#B91C1C]" />
             <h3 className="text-lg font-semibold text-gray-900">No pending mandat proofs</h3>
             <p className="mt-1 text-sm text-gray-500">All Mandat Minute proofs have been reviewed.</p>
           </div>
@@ -155,7 +155,7 @@ export default function AdminMandatsPage() {
                   })}
                 </p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-[#16C784]/10 text-[#16C784] rounded-full text-sm font-bold">
+              <div className="flex items-center gap-2 px-3 py-1 bg-[#B91C1C]/10 text-[#B91C1C] rounded-full text-sm font-bold">
                 <DollarSign className="w-4 h-4" />
                 {amountExpected.toFixed(3)} TND
               </div>
@@ -168,7 +168,7 @@ export default function AdminMandatsPage() {
                   <button
                     type="button"
                     onClick={() => openProof(mandat.image_url)}
-                    className="flex items-center gap-2 text-sm font-medium text-[#16C784] hover:underline"
+                    className="flex items-center gap-2 text-sm font-medium text-[#B91C1C] hover:underline"
                   >
                     <Eye className="w-4 h-4" /> View Full Image
                   </button>
@@ -189,7 +189,7 @@ export default function AdminMandatsPage() {
               <button
                 onClick={() => approveMandat(mandat.id)}
                 disabled={actionId === mandat.id}
-                className="flex items-center gap-2 px-4 py-2 bg-[#16C784] text-white rounded-lg text-sm font-medium hover:bg-[#14b576] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-[#B91C1C] text-white rounded-lg text-sm font-medium hover:bg-[#14b576] transition-colors disabled:opacity-50"
               >
                 <Check className="w-4 h-4" /> Approve
               </button>

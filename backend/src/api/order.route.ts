@@ -51,6 +51,14 @@ const fulfillSchema = z.object({
   tracking_number: z.string().optional(),
 });
 
+const storeOrderNoteSchema = z.object({
+  body: z.string().trim().max(5000).default(''),
+});
+
+const cancelStoreFulfillmentSchema = z.object({
+  reason: z.string().trim().min(1, 'Cancellation reason is required').max(500),
+});
+
 const storeOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -167,6 +175,21 @@ router.get(
   }),
 );
 
+router.put(
+  '/store/:id/note',
+  requireStore,
+  validate(storeOrderNoteSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await orderService.upsertStoreOrderNote({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      user_id: req.user!.id,
+      body: req.body.body,
+    });
+    res.status(200).json({ note });
+  }),
+);
+
 // Get single order (tenant-isolated: customer sees own orders, vendor sees store orders)
 router.get(
   '/:id',
@@ -198,6 +221,32 @@ router.post(
       order_id: req.params.id,
       store_id: req.user!.store_id!,
       ...req.body,
+    });
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/:id/deliver',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await orderService.markStoreFulfillmentDelivered({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+    });
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/:id/fulfillment/cancel',
+  requireStore,
+  validate(cancelStoreFulfillmentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await orderService.cancelStoreFulfillment({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      reason: req.body.reason,
     });
     res.status(200).json({ success: true });
   }),

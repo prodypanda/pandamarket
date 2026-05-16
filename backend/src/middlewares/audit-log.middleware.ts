@@ -59,11 +59,6 @@ export const auditLog: RequestHandler = (req: Request, res: Response, next: Next
     return next();
   }
 
-  // Only log if user is authenticated
-  if (!req.user?.id) {
-    return next();
-  }
-
   // Capture the original end method to log after response
   const originalEnd = res.end;
   const startTime = Date.now();
@@ -71,11 +66,20 @@ export const auditLog: RequestHandler = (req: Request, res: Response, next: Next
   res.end = function (this: Response, ...args: Parameters<typeof originalEnd>) {
     const duration = Date.now() - startTime;
 
+    // Only log if user is authenticated and is an admin or vendor
+    const actorId = req.user?.id || req.storefrontCustomer?.id;
+    const actorRole = req.user?.role || (req.storefrontCustomer ? 'customer' : null);
+
+    // Only log if user is authenticated and has an allowed role
+    if (!actorId || !['admin', 'super_admin', 'vendor', 'customer'].includes(actorRole || '')) {
+      return originalEnd.apply(this, args);
+    }
+
     // Fire and forget — don't block the response
     const logEntry = {
       id: pdId('audit'),
-      actor_id: req.user!.id,
-      actor_role: req.user!.role ?? null,
+      actor_id: actorId,
+      actor_role: actorRole,
       action: `${req.method} ${req.originalUrl}`,
       resource_type: extractResourceType(req.originalUrl),
       resource_id: extractResourceId(req.originalUrl),

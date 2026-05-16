@@ -6,8 +6,7 @@
 import { Job, Worker } from 'bullmq';
 import sharp from 'sharp';
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getRedis } from '../db/redis';
 import { aiService } from '../services/ai.service';
 import { creditsService } from '../services/credits.service';
@@ -18,6 +17,7 @@ import { eventBus, PdEvent } from '../events/event-bus';
 import { AiJobType } from '@pandamarket/types';
 import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
+import { aiConfigService } from '../services/ai-config.service';
 
 interface AiJobData {
   job_id: string;
@@ -28,10 +28,72 @@ interface AiJobData {
   language?: 'fr' | 'ar' | 'en';
 }
 
-const TOKEN_COSTS: Record<AiJobType, number> = {
-  [AiJobType.ImageCompression]: 1,
-  [AiJobType.SeoGeneration]: 2,
-};
+async function streamToBuffer(body: unknown): Promise<Buffer> {
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (!body || typeof (body as { transformToByteArray?: unknown }).transformToByteArray !== 'function') {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body as AsyncIterable<Buffer | Uint8Array | string>) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+  return Buffer.from(bytes);
+}
+
+function resolvePublicBucketKey(inputUrl: string): string | null {
+  const value = inputUrl.trim();
+  if (value.startsWith('/pd-product-images/')) {
+    return decodeURIComponent(value.replace(/^\/pd-product-images\//, ''));
+  }
+  try {
+    const url = new URL(value);
+    const publicBase = config.s3.publicBaseUrl;
+    if (publicBase.startsWith('http')) {
+      const base = new URL(publicBase);
+      if (url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, '')}/`)) {
+        return decodeURIComponent(url.pathname.slice(base.pathname.replace(/\/$/, '').length + 1));
+      }
+    }
+    const endpoint = new URL(config.s3.endpoint);
+    const publicBucketPath = `/${config.s3.bucketPublic}/`;
+    if (url.origin === endpoint.origin && url.pathname.startsWith(publicBucketPath)) {
+      return decodeURIComponent(url.pathname.slice(publicBucketPath.length));
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function loadImageBuffer(inputUrl: string): Promise<Buffer> {
+  const publicKey = resolvePublicBucketKey(inputUrl);
+  if (publicKey) {
+    const object = await getS3().send(
+      new GetObjectCommand({
+        Bucket: config.s3.bucketPublic,
+        Key: publicKey,
+      }),
+    );
+    return streamToBuffer(object.Body);
+  }
+
+  const parsed = new URL(inputUrl);
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Image URL must be an HTTP(S) URL or a public PandaMarket asset path');
+  }
+  const response = await axios.get<ArrayBuffer>(inputUrl, {
+    responseType: 'arraybuffer',
+    timeout: 30_000,
+    maxContentLength: 15 * 1024 * 1024,
+    headers: { Accept: 'image/*' },
+  });
+  const contentType = String(response.headers['content-type'] || '');
+  if (contentType && !contentType.startsWith('image/')) {
+    throw new Error('Image URL did not return an image');
+  }
+  return Buffer.from(response.data);
+}
 
 // ----------------------------------------------------
 // Image compression
@@ -42,11 +104,7 @@ async function compressImage(job: Job<AiJobData>) {
   if (!input_url) throw new Error('Missing input_url');
 
   // 1. download
-  const response = await axios.get<ArrayBuffer>(input_url, {
-    responseType: 'arraybuffer',
-    timeout: 30_000,
-  });
-  const original = Buffer.from(response.data);
+  const original = await loadImageBuffer(input_url);
 
   // 2. compress (preserve format, max 2000px wide)
   const meta = await sharp(original).metadata();
@@ -99,11 +157,8 @@ async function compressImage(job: Job<AiJobData>) {
 // ----------------------------------------------------
 
 async function generateSeo(job: Job<AiJobData>) {
-  const { product_id, language = 'fr' } = job.data;
+  const { product_id, language = 'fr', store_id } = job.data;
   if (!product_id) throw new Error('Missing product_id');
-  if (!config.gemini.apiKey) {
-    throw new Error('Gemini API key not configured (PD_GEMINI_API_KEY)');
-  }
 
   const { rows } = await query<{
     title: string;
@@ -127,10 +182,8 @@ Product:
 - Category: ${product.category ?? 'unspecified'}
 - Description: ${product.description ?? '(no description provided)'}`;
 
-  const ai = new GoogleGenerativeAI(config.gemini.apiKey);
-  const model = ai.getGenerativeModel({ model: config.gemini.model });
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const result = await aiConfigService.generateText(prompt, store_id);
+  const text = result.text;
 
   // Try to parse JSON out of the LLM response
   let parsed: { title: string; description: string; tags: string[] };
@@ -171,10 +224,12 @@ export function startAiWorker(): Worker<AiJobData> {
           case AiJobType.SeoGeneration:
             output = await generateSeo(job);
             break;
+          case AiJobType.PageCopy:
+            throw new Error('Page copy jobs are processed inline by the API');
           default:
             throw new Error(`Unknown job type: ${job.data.type}`);
         }
-        const cost = TOKEN_COSTS[job.data.type];
+        const cost = await aiConfigService.getFeaturePrice(job.data.type);
         await creditsService.consume(job.data.store_id, cost);
         await aiService.markCompleted(job.data.job_id, output, cost);
         eventBus.emit(PdEvent.AI_JOB_COMPLETED, {

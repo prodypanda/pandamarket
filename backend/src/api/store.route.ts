@@ -606,6 +606,28 @@ router.get(
   }),
 );
 
+router.get(
+  '/:storeId/page-builder-preview',
+  asyncHandler(async (req: Request, res: Response) => {
+    const token = typeof req.query.token === 'string' ? req.query.token : '';
+    if (!token) {
+      throw new PdValidationError('Preview token is required');
+    }
+    const slug = typeof req.query.slug === 'string' ? req.query.slug : undefined;
+    const homepage = req.query.homepage === 'true' || req.query.homepage === '1';
+    const page = await pageBuilderService.getDraftPreviewPage(
+      req.params.storeId,
+      token,
+      { slug, homepage },
+    );
+    if (!page) {
+      return res.status(404).json({ error: { code: 'PD_NOT_FOUND', message: 'Page introuvable' } });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ page });
+  }),
+);
+
 /**
  * GET /api/pd/stores/:storeId/homepage
  * Get the homepage override for a store (if any).

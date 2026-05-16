@@ -13,7 +13,6 @@ import {
   validate,
 } from '../middlewares';
 import { invalidateMaintenanceCache } from '../middlewares/maintenance.middleware';
-import { auditLog } from '../middlewares/audit-log.middleware';
 import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
@@ -37,16 +36,20 @@ import {
   SubscriptionType,
   SellerType,
   StoreStatus,
+  AiJobType,
 } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { smtpConfigService } from '../services/smtp-config.service';
+import { creditsService } from '../services/credits.service';
+import { aiConfigService } from '../services/ai-config.service';
+import type { AiProvider } from '../services/ai-config.service';
 import { PdErrorCode, PdNotFoundError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
 
 const router = Router();
 
-// All admin routes require authentication + admin role + audit logging
-router.use(requireAuth, requireAdmin, auditLog);
+// All admin routes require authentication + admin role
+router.use(requireAuth, requireAdmin);
 
 const assetListQuerySchema = z.object({
   type: z.enum(['image', 'document']).optional(),
@@ -940,12 +943,14 @@ router.get(
 const updatePlanSchema = z.object({
   max_products: z.coerce.number().int().min(-1),
   max_images_per_product: z.coerce.number().int().min(1),
+  max_page_builder_pages: z.coerce.number().int().min(-1),
   has_ai_seo: z.boolean(),
   has_image_compression: z.boolean(),
   has_custom_domain: z.boolean(),
   has_page_builder: z.boolean(),
   has_direct_payment: z.boolean(),
   has_white_label: z.boolean(),
+  has_own_ai_provider: z.boolean().optional().default(false),
   commission_rate: z.coerce.number().min(0).max(100),
   ai_tokens_included: z.coerce.number().int().min(-1),
   yearly_price: z.coerce.number().min(0),
@@ -999,29 +1004,33 @@ router.post(
          plan_id,
          max_products,
          max_images_per_product,
+         max_page_builder_pages,
          has_ai_seo,
          has_image_compression,
          has_custom_domain,
          has_page_builder,
          has_direct_payment,
          has_white_label,
+         has_own_ai_provider,
          commission_rate,
          ai_tokens_included,
          yearly_price,
          is_enabled
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         planId,
         req.body.max_products,
         req.body.max_images_per_product,
+        req.body.max_page_builder_pages,
         req.body.has_ai_seo,
         req.body.has_image_compression,
         req.body.has_custom_domain,
         req.body.has_page_builder,
         req.body.has_direct_payment,
         req.body.has_white_label,
+        req.body.has_own_ai_provider,
         commissionRate,
         req.body.ai_tokens_included,
         req.body.yearly_price,
@@ -1047,16 +1056,18 @@ router.put(
       `UPDATE pd_subscription_limits
        SET max_products = $2,
            max_images_per_product = $3,
-           has_ai_seo = $4,
-           has_image_compression = $5,
-           has_custom_domain = $6,
-           has_page_builder = $7,
-           has_direct_payment = $8,
-           has_white_label = $9,
-           commission_rate = $10,
-           ai_tokens_included = $11,
-           yearly_price = $12,
-           is_enabled = $13,
+           max_page_builder_pages = $4,
+           has_ai_seo = $5,
+           has_image_compression = $6,
+           has_custom_domain = $7,
+           has_page_builder = $8,
+           has_direct_payment = $9,
+           has_white_label = $10,
+           has_own_ai_provider = $11,
+           commission_rate = $12,
+           ai_tokens_included = $13,
+           yearly_price = $14,
+           is_enabled = $15,
            updated_at = NOW()
        WHERE plan_id = $1
        RETURNING *`,
@@ -1064,12 +1075,14 @@ router.put(
         planId,
         req.body.max_products,
         req.body.max_images_per_product,
+        req.body.max_page_builder_pages,
         req.body.has_ai_seo,
         req.body.has_image_compression,
         req.body.has_custom_domain,
         req.body.has_page_builder,
         req.body.has_direct_payment,
         req.body.has_white_label,
+        req.body.has_own_ai_provider,
         commissionRate,
         req.body.ai_tokens_included,
         req.body.yearly_price,
@@ -1083,7 +1096,8 @@ router.put(
     }
 
     subscriptionService.invalidateCache();
-    logger.info({ admin_id: req.user!.id, plan_id: planId }, 'Admin updated subscription plan');
+    const syncedWallets = await creditsService.syncForPlan(planId, req.body.ai_tokens_included);
+    logger.info({ admin_id: req.user!.id, plan_id: planId, synced_wallets: syncedWallets }, 'Admin updated subscription plan');
     res.status(200).json({ data: rows[0], plan: rows[0] });
   }),
 );
@@ -1254,13 +1268,35 @@ router.get(
 // Global Platform Settings
 // =====================================================
 
+const publicLinkSettingSchema = z.coerce.string().trim().max(2048).refine(
+  (value) => value === '' || (/^\/(?!\/)/.test(value)) || /^https?:\/\//i.test(value),
+  'Must be a relative path or http(s) URL',
+);
+
 const globalSettingsSchema = z.object({
   marketplace_name: z.coerce.string().min(1).max(120).optional(),
   marketplace_tagline: z.coerce.string().max(255).optional(),
   marketplace_logo_url: z.coerce.string().max(2048).optional(),
-  marketplace_theme: z.enum(['panda', 'aliexpress']).optional(),
+  marketplace_favicon_url: publicLinkSettingSchema.optional(),
+  marketplace_og_image_url: publicLinkSettingSchema.optional(),
+  marketplace_public_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_theme: z.enum(['panda', 'aliexpress', 'aliexpress2']).optional(),
   marketplace_support_email: z.union([z.coerce.string().email(), z.literal('')]).optional(),
   marketplace_support_phone: z.coerce.string().max(40).optional(),
+  marketplace_facebook_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_instagram_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_x_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_tiktok_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_youtube_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_linkedin_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_whatsapp_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_telegram_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_pinterest_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_snapchat_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
+  marketplace_help_url: publicLinkSettingSchema.optional(),
+  marketplace_terms_url: publicLinkSettingSchema.optional(),
+  marketplace_privacy_url: publicLinkSettingSchema.optional(),
+  marketplace_contact_url: publicLinkSettingSchema.optional(),
   chat_bubble_enabled: z.boolean().optional(),
   chat_bubble_position: z.enum(['bottom-right', 'bottom-left']).optional(),
   marketplace_enabled: z.boolean().optional(),
@@ -1398,6 +1434,7 @@ router.put(
 // =====================================================
 
 const auditLogListSchema = z.object({
+  log_type: z.enum(['admin', 'seller', 'buyer']).optional().default('admin'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   action: z.string().trim().max(160).optional(),
@@ -1413,6 +1450,7 @@ const auditLogListSchema = z.object({
 const auditLogSummarySchema = auditLogListSchema.omit({ page: true, limit: true });
 
 type AuditLogFilters = {
+  log_type?: 'admin' | 'seller' | 'buyer';
   action?: string;
   resource_type?: string;
   actor_role?: string;
@@ -1430,6 +1468,14 @@ function buildAuditLogWhere(filters: AuditLogFilters) {
 
   const statusExpr = "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
   const methodExpr = "UPPER(COALESCE(a.metadata->>'method', split_part(a.action, ' ', 1)))";
+
+  if (filters.log_type === 'buyer') {
+    conditions.push(`a.actor_role = 'customer'`);
+  } else if (filters.log_type === 'seller') {
+    conditions.push(`a.actor_role = 'vendor'`);
+  } else {
+    conditions.push(`a.actor_role IN ('admin', 'super_admin')`);
+  }
 
   if (filters.action) {
     conditions.push(`a.action = $${paramIdx++}`);
@@ -1798,12 +1844,93 @@ router.get(
   }),
 );
 
+const auditLogPurgeSchema = z.object({
+  log_type: z.enum(['admin', 'seller', 'buyer']).optional().default('admin'),
+  older_than_days: z.number().int().min(1).max(3650),
+});
+
+router.get(
+  '/audit-log/export',
+  validate(auditLogSummarySchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const filters = req.query as unknown as AuditLogFilters;
+    const { whereClause, params, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+
+    const { rows } = await query<{
+      id: string;
+      actor_email: string | null;
+      actor_role: string | null;
+      action: string;
+      resource_type: string | null;
+      method: string | null;
+      status_code: number | null;
+      ip: string | null;
+      created_at: Date;
+    }>(
+      `SELECT a.id,
+              u.email AS actor_email,
+              a.actor_role,
+              a.action,
+              a.resource_type,
+              ${methodExpr} AS method,
+              ${statusExpr} AS status_code,
+              a.ip::text AS ip,
+              a.created_at
+       FROM pd_audit_log a
+       LEFT JOIN pd_user u ON u.id = a.actor_id
+       ${whereClause}
+       ORDER BY a.created_at DESC
+       LIMIT 10000`,
+      params,
+    );
+
+    const csvHeader = 'id,actor_email,actor_role,action,resource_type,method,status_code,ip,created_at\\n';
+    const csvRows = rows
+      .map((r) =>
+        [
+          r.id,
+          `"${(r.actor_email || '').replace(/"/g, '""')}"`,
+          r.actor_role || '',
+          `"${(r.action || '').replace(/"/g, '""')}"`,
+          r.resource_type || '',
+          r.method || '',
+          r.status_code || '',
+          r.ip || '',
+          r.created_at.toISOString(),
+        ].join(','),
+      )
+      .join('\\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="audit-log-${Date.now()}.csv"`,
+    );
+    res.send(csvHeader + csvRows);
+  }),
+);
+
+router.delete(
+  '/audit-log/purge',
+  validate(auditLogPurgeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
+    const roleFilter = log_type === 'buyer' ? "'customer'" : log_type === 'seller' ? "'vendor'" : "'admin', 'super_admin'";
+
+    const { rowCount } = await query(
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+    );
+
+    res.status(200).json({ deleted: rowCount });
+  }),
+);
+
 // =====================================================
 // AI Cost Dashboard
 // =====================================================
 
 const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
-  const [summary, topConsumers, dailyUsage, byType] = await Promise.all([
+  const [summary, topConsumers, dailyUsage, byType, byStatus, recentFailures, creditWallets] = await Promise.all([
     query<{
       total_jobs: string;
       total_tokens_consumed: string;
@@ -1811,13 +1938,21 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
       tokens_today: string;
       compression_jobs: string;
       seo_jobs: string;
+      page_copy_jobs: string;
+      failed_jobs: string;
+      processing_jobs: string;
+      queued_jobs: string;
     }>(
       `SELECT COUNT(*)::text AS total_jobs,
               COALESCE(SUM(tokens_consumed), 0)::text AS total_tokens_consumed,
               COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::text AS jobs_today,
               COALESCE(SUM(tokens_consumed) FILTER (WHERE created_at >= CURRENT_DATE), 0)::text AS tokens_today,
               COUNT(*) FILTER (WHERE type = 'image_compression')::text AS compression_jobs,
-              COUNT(*) FILTER (WHERE type = 'seo_generation')::text AS seo_jobs
+              COUNT(*) FILTER (WHERE type = 'seo_generation')::text AS seo_jobs,
+              COUNT(*) FILTER (WHERE type = 'page_copy')::text AS page_copy_jobs,
+              COUNT(*) FILTER (WHERE status = 'failed')::text AS failed_jobs,
+              COUNT(*) FILTER (WHERE status = 'processing')::text AS processing_jobs,
+              COUNT(*) FILTER (WHERE status = 'queued')::text AS queued_jobs
        FROM pd_ai_jobs`,
     ),
     query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
@@ -1848,6 +1983,35 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
        GROUP BY type
        ORDER BY count DESC`,
     ),
+    query<{ status: string; count: string }>(
+      `SELECT status, COUNT(*)::text AS count
+       FROM pd_ai_jobs
+       GROUP BY status
+       ORDER BY count DESC`,
+    ),
+    query<{
+      id: string;
+      store_id: string;
+      store_name: string;
+      type: string;
+      error_message: string | null;
+      created_at: Date;
+      completed_at: Date | null;
+    }>(
+      `SELECT j.id, j.store_id, s.name AS store_name, j.type, j.error_message, j.created_at, j.completed_at
+       FROM pd_ai_jobs j
+       JOIN pd_store s ON s.id = j.store_id
+       WHERE j.status = 'failed'
+       ORDER BY COALESCE(j.completed_at, j.created_at) DESC
+       LIMIT 8`,
+    ),
+    query<{ active_wallets: string; unlimited_wallets: string; finite_tokens_remaining: string; tokens_used: string }>(
+      `SELECT COUNT(*)::text AS active_wallets,
+              COUNT(*) FILTER (WHERE ai_tokens = -1)::text AS unlimited_wallets,
+              COALESCE(SUM(ai_tokens) FILTER (WHERE ai_tokens >= 0), 0)::text AS finite_tokens_remaining,
+              COALESCE(SUM(tokens_used), 0)::text AS tokens_used
+       FROM pd_vendor_credits`,
+    ),
   ]);
 
   const row = summary.rows[0];
@@ -1861,11 +2025,39 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
     tokens_today: parseInt(row.tokens_today, 10),
     compression_jobs: parseInt(row.compression_jobs, 10),
     seo_jobs: parseInt(row.seo_jobs, 10),
+    page_copy_jobs: parseInt(row.page_copy_jobs, 10),
+    failed_jobs: parseInt(row.failed_jobs, 10),
+    processing_jobs: parseInt(row.processing_jobs, 10),
+    queued_jobs: parseInt(row.queued_jobs, 10),
     estimated_cost_tnd: totalTokens * 0.005,
+    credits: creditWallets.rows[0] ? {
+      active_wallets: parseInt(creditWallets.rows[0].active_wallets, 10),
+      unlimited_wallets: parseInt(creditWallets.rows[0].unlimited_wallets, 10),
+      finite_tokens_remaining: parseInt(creditWallets.rows[0].finite_tokens_remaining, 10),
+      tokens_used: parseInt(creditWallets.rows[0].tokens_used, 10),
+    } : {
+      active_wallets: 0,
+      unlimited_wallets: 0,
+      finite_tokens_remaining: 0,
+      tokens_used: 0,
+    },
     by_type: byType.rows.map((r) => ({
       type: r.type,
       count: parseInt(r.count, 10),
       tokens: parseInt(r.tokens, 10),
+    })),
+    by_status: byStatus.rows.map((r) => ({
+      status: r.status,
+      count: parseInt(r.count, 10),
+    })),
+    recent_failures: recentFailures.rows.map((r) => ({
+      id: r.id,
+      store_id: r.store_id,
+      store_name: r.store_name,
+      type: r.type,
+      error_message: r.error_message,
+      created_at: r.created_at,
+      completed_at: r.completed_at,
     })),
     top_consumers: topConsumers.rows.map((r) => ({
       store_id: r.store_id,
@@ -1885,6 +2077,94 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
 
 router.get('/ai-costs', aiStatsHandler);
 router.get('/ai-stats', aiStatsHandler);
+
+const aiProviderConfigSchema = z.object({
+  provider: z.enum(['gemini', 'openai', 'claude', 'custom']),
+  label: z.string().trim().min(1).max(120),
+  model: z.string().trim().min(1).max(160),
+  base_url: z.string().trim().max(2048).optional().nullable(),
+  api_key: z.string().trim().max(4096).optional(),
+  is_enabled: z.boolean().default(true),
+  is_default: z.boolean().default(false),
+  priority: z.coerce.number().int().min(1).max(9999).default(100),
+});
+
+const aiProviderParamSchema = z.object({
+  id: z.string().min(1).max(64),
+});
+
+const aiPricingSchema = z.object({
+  prices: z.array(z.object({
+    job_type: z.nativeEnum(AiJobType),
+    tokens_required: z.coerce.number().int().min(0).max(10000),
+  })).min(1).max(20),
+});
+
+router.get(
+  '/ai-config',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const [providers, pricing] = await Promise.all([
+      aiConfigService.listProviders(),
+      aiConfigService.listPricing(),
+    ]);
+    res.status(200).json({ providers, pricing });
+  }),
+);
+
+router.post(
+  '/ai-providers',
+  validate(aiProviderConfigSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = await aiConfigService.createProvider({
+      provider: req.body.provider as AiProvider,
+      label: req.body.label,
+      model: req.body.model,
+      base_url: req.body.base_url || null,
+      api_key: req.body.api_key || undefined,
+      is_enabled: req.body.is_enabled,
+      is_default: req.body.is_default,
+      priority: req.body.priority,
+    });
+    res.status(201).json({ provider });
+  }),
+);
+
+router.put(
+  '/ai-providers/:id',
+  validate(aiProviderParamSchema, 'params'),
+  validate(aiProviderConfigSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = await aiConfigService.updateProvider(req.params.id, {
+      provider: req.body.provider as AiProvider,
+      label: req.body.label,
+      model: req.body.model,
+      base_url: req.body.base_url || null,
+      api_key: req.body.api_key || undefined,
+      is_enabled: req.body.is_enabled,
+      is_default: req.body.is_default,
+      priority: req.body.priority,
+    });
+    res.status(200).json({ provider });
+  }),
+);
+
+router.delete(
+  '/ai-providers/:id',
+  validate(aiProviderParamSchema, 'params'),
+  asyncHandler(async (req: Request, res: Response) => {
+    await aiConfigService.deleteProvider(req.params.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.put(
+  '/ai-pricing',
+  validate(aiPricingSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const pricing = await aiConfigService.updatePricing(req.body.prices);
+    res.status(200).json({ pricing });
+  }),
+);
 
 // =====================================================
 // SMTP Email Configuration

@@ -89,15 +89,15 @@ const defaultSummary: ReportSummary = {
 const statusColors: Record<ReportStatus, string> = {
   open: 'bg-red-50 text-red-700 ring-red-100',
   investigating: 'bg-yellow-50 text-yellow-700 ring-yellow-100',
-  awaiting_buyer: 'bg-blue-50 text-blue-700 ring-blue-100',
-  awaiting_seller: 'bg-purple-50 text-purple-700 ring-purple-100',
+  awaiting_buyer: 'bg-amber-50 text-[#7F1D1D] ring-amber-100',
+  awaiting_seller: 'bg-red-50 text-[#7F1D1D] ring-red-100',
   resolved: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
   dismissed: 'bg-gray-100 text-gray-600 ring-gray-200',
 };
 
 const priorityColors: Record<ReportPriority, string> = {
   low: 'bg-gray-100 text-gray-600 ring-gray-200',
-  medium: 'bg-blue-50 text-blue-700 ring-blue-100',
+  medium: 'bg-amber-50 text-[#7F1D1D] ring-amber-100',
   high: 'bg-orange-50 text-orange-700 ring-orange-100',
   critical: 'bg-red-600 text-white ring-red-600',
 };
@@ -212,9 +212,9 @@ export default function AdminReportsPage() {
     { label: t('admin.reportsPage.metrics.total'), value: summary.total, icon: Flag, tone: 'from-slate-900 to-slate-700 text-white' },
     { label: t('admin.reportsPage.metrics.open'), value: summary.open, icon: AlertTriangle, tone: 'from-red-500 to-rose-600 text-white' },
     { label: t('admin.reportsPage.metrics.investigating'), value: summary.investigating, icon: Clock, tone: 'from-yellow-400 to-orange-500 text-white' },
-    { label: t('admin.reportsPage.metrics.highPriority'), value: summary.high_priority, icon: ShieldAlert, tone: 'from-purple-600 to-indigo-700 text-white' },
-    { label: t('admin.reportsPage.metrics.sellers'), value: summary.seller_reports, icon: Store, tone: 'from-emerald-500 to-teal-600 text-white' },
-    { label: t('admin.reportsPage.metrics.buyers'), value: summary.buyer_reports, icon: User, tone: 'from-blue-500 to-cyan-600 text-white' },
+    { label: t('admin.reportsPage.metrics.highPriority'), value: summary.high_priority, icon: ShieldAlert, tone: 'from-amber-500 to-red-700 text-white' },
+    { label: t('admin.reportsPage.metrics.sellers'), value: summary.seller_reports, icon: Store, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
+    { label: t('admin.reportsPage.metrics.buyers'), value: summary.buyer_reports, icon: User, tone: 'from-[#B91C1C] to-amber-500 text-white' },
   ], [summary, t]);
 
   const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleString(locale) : t('sellerCard.notProvided'));
@@ -326,10 +326,10 @@ export default function AdminReportsPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-6 text-white shadow-2xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-red-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-amber-100">
               <Flag className="h-4 w-4" />
               {t('admin.sidebar.reports')}
             </div>
@@ -347,7 +347,7 @@ export default function AdminReportsPage() {
       </div>
 
       {(error || success) && (
-        <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${error ? 'border-red-100 bg-red-50 text-red-700' : 'border-emerald-100 bg-emerald-50 text-emerald-700'}`}>
+        <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${error ? 'border-red-100 bg-red-50 text-red-700' : 'border-amber-100 bg-amber-50 text-[#7F1D1D]'}`}>
           {error || success}
         </div>
       )}
@@ -373,7 +373,7 @@ export default function AdminReportsPage() {
                   setTargetType(event.target.value as ReportTargetType);
                   setSelectedTargetId('');
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               >
                 <option value="seller">{t('admin.reportsPage.targetTypes.seller')}</option>
                 <option value="buyer">{t('admin.reportsPage.targetTypes.buyer')}</option>
@@ -385,7 +385,7 @@ export default function AdminReportsPage() {
                 value={targetSearch}
                 onChange={(event) => setTargetSearch(event.target.value)}
                 placeholder={t('admin.reportsPage.targetSearchPlaceholder')}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               />
             </div>
             <div>
@@ -393,7 +393,7 @@ export default function AdminReportsPage() {
               <select
                 value={selectedTargetId}
                 onChange={(event) => setSelectedTargetId(event.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               >
                 <option value="">{t('admin.reportsPage.selectTarget')}</option>
                 {targets.map((target) => (
@@ -406,7 +406,7 @@ export default function AdminReportsPage() {
               <select
                 value={createPriority}
                 onChange={(event) => setCreatePriority(event.target.value as ReportPriority)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               >
                 {(['low', 'medium', 'high', 'critical'] as ReportPriority[]).map((priority) => (
                   <option key={priority} value={priority}>{t(`admin.reportsPage.priorities.${priority}`)}</option>
@@ -418,7 +418,7 @@ export default function AdminReportsPage() {
               <input
                 value={createCategory}
                 onChange={(event) => setCreateCategory(event.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               />
             </div>
             <div>
@@ -427,7 +427,7 @@ export default function AdminReportsPage() {
                 value={createOrderId}
                 onChange={(event) => setCreateOrderId(event.target.value)}
                 placeholder={t('admin.reportsPage.optional')}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
               />
             </div>
           </div>
@@ -437,14 +437,14 @@ export default function AdminReportsPage() {
               onChange={(event) => setCreateReason(event.target.value)}
               placeholder={t('admin.reportsPage.reasonPlaceholder')}
               rows={4}
-              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
             />
             <textarea
               value={createNotes}
               onChange={(event) => setCreateNotes(event.target.value)}
               placeholder={t('admin.reportsPage.notesPlaceholder')}
               rows={4}
-              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
             />
           </div>
           <button
@@ -469,24 +469,24 @@ export default function AdminReportsPage() {
                 setPage(1);
               }}
               placeholder={t('admin.reportsPage.searchPlaceholder')}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold text-gray-800 outline-none focus:border-[#16C784]"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold text-gray-800 outline-none focus:border-[#B91C1C]"
             />
           </div>
-          <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as 'all' | ReportStatus); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]">
+          <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as 'all' | ReportStatus); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]">
             <option value="all">{t('admin.reportsPage.allStatuses')}</option>
             {reportStatuses.map((status) => <option key={status} value={status}>{t(`admin.reportsPage.statuses.${status}`)}</option>)}
           </select>
-          <select value={targetFilter} onChange={(event) => { setTargetFilter(event.target.value as 'all' | ReportTargetType); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]">
+          <select value={targetFilter} onChange={(event) => { setTargetFilter(event.target.value as 'all' | ReportTargetType); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]">
             <option value="all">{t('admin.reportsPage.allTargets')}</option>
             <option value="seller">{t('admin.reportsPage.targetTypes.seller')}</option>
             <option value="buyer">{t('admin.reportsPage.targetTypes.buyer')}</option>
           </select>
-          <select value={sourceFilter} onChange={(event) => { setSourceFilter(event.target.value as 'all' | ReportSource); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]">
+          <select value={sourceFilter} onChange={(event) => { setSourceFilter(event.target.value as 'all' | ReportSource); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]">
             <option value="all">{t('admin.reportsPage.allSources')}</option>
             <option value="buyer">{t('admin.reportsPage.sources.buyer')}</option>
             <option value="admin">{t('admin.reportsPage.sources.admin')}</option>
           </select>
-          <select value={priorityFilter} onChange={(event) => { setPriorityFilter(event.target.value as 'all' | ReportPriority); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]">
+          <select value={priorityFilter} onChange={(event) => { setPriorityFilter(event.target.value as 'all' | ReportPriority); setPage(1); }} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]">
             <option value="all">{t('admin.reportsPage.allPriorities')}</option>
             {(['low', 'medium', 'high', 'critical'] as ReportPriority[]).map((priority) => <option key={priority} value={priority}>{t(`admin.reportsPage.priorities.${priority}`)}</option>)}
           </select>
@@ -500,7 +500,7 @@ export default function AdminReportsPage() {
           </div>
         ) : reports.length === 0 ? (
           <div className="rounded-[2rem] border border-gray-100 bg-white p-12 text-center shadow-sm">
-            <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[#16C784]" />
+            <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[#B91C1C]" />
             <h3 className="text-lg font-black text-gray-900">{t('admin.reportsPage.noReports')}</h3>
             <p className="mt-1 text-sm text-gray-500">{t('admin.reportsPage.noReportsDesc')}</p>
           </div>
@@ -537,7 +537,7 @@ export default function AdminReportsPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {report.store_subdomain && (
-                        <Link href={`/store/${encodeURIComponent(report.store_subdomain)}`} className="rounded-2xl border border-gray-200 px-4 py-2 text-xs font-black text-gray-600 hover:text-[#16C784]">
+                        <Link href={`/store/${encodeURIComponent(report.store_subdomain)}`} className="rounded-2xl border border-gray-200 px-4 py-2 text-xs font-black text-gray-600 hover:text-[#B91C1C]">
                           {t('admin.reportsPage.openStore')}
                         </Link>
                       )}
@@ -557,7 +557,7 @@ export default function AdminReportsPage() {
                       value={notesDrafts[report.id] || ''}
                       onChange={(event) => setNotesDrafts((current) => ({ ...current, [report.id]: event.target.value }))}
                       rows={3}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
                     />
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export default function AdminReportsPage() {
                       <select
                         value={statusDrafts[report.id] || report.status}
                         onChange={(event) => setStatusDrafts((current) => ({ ...current, [report.id]: event.target.value as ReportStatus }))}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#16C784]"
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C]"
                       >
                         {reportStatuses.map((status) => (
                           <option key={status} value={status}>{t(`admin.reportsPage.statuses.${status}`)}</option>
@@ -580,7 +580,7 @@ export default function AdminReportsPage() {
                       type="button"
                       onClick={() => updateStatus(report.id)}
                       disabled={activeAction === `${report.id}-status`}
-                      className="w-full rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white transition hover:bg-[#14b576] disabled:opacity-60"
+                      className="w-full rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#14b576] disabled:opacity-60"
                     >
                       {activeAction === `${report.id}-status` ? t('admin.reportsPage.updating') : t('admin.reportsPage.updateStatus')}
                     </button>

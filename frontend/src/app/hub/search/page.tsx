@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
 import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-type';
+import { isAliExpressTheme } from '../../../lib/marketplace-theme';
 
 interface SearchProduct {
   id: string;
@@ -51,7 +52,7 @@ interface MarketplaceCategory {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
-  marketplace_theme?: 'panda' | 'aliexpress';
+  marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
 function SearchContent() {
@@ -79,7 +80,8 @@ function SearchContent() {
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
 
   const limit = 20;
-  const isAliExpress = marketplaceSettings.marketplace_theme === 'aliexpress';
+  const isAliExpress = isAliExpressTheme(marketplaceSettings.marketplace_theme);
+  const isAliExpress2 = marketplaceSettings.marketplace_theme === 'aliexpress2';
   const accentText = isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]';
   const accentBg = isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]';
   const accentRing = isAliExpress ? 'focus:border-[#ff4747] focus:ring-[#ff4747]/15' : 'focus:border-[#16C784] focus:ring-[#16C784]/15';
@@ -421,7 +423,7 @@ function SearchContent() {
                     <Link
                       key={product.id}
                       href={getHubProductHref(product)}
-                      className="bg-white rounded-3xl border border-gray-100 overflow-hidden group hover:shadow-2xl hover:shadow-slate-900/10 hover:-translate-y-1 transition-all duration-300"
+                      className={`bg-white border-gray-100 overflow-hidden group transition-all duration-300 block ${isAliExpress2 ? 'rounded-lg border shadow-md hover:shadow-xl hover:-translate-y-1 hover:border-orange-200/50' : isAliExpress ? 'rounded-2xl border shadow-sm hover:shadow-lg hover:-translate-y-1' : 'rounded-3xl border hover:shadow-2xl hover:shadow-slate-900/10 hover:-translate-y-1'}`}
                     >
                       <div className="aspect-square bg-gray-100 relative overflow-hidden">
                         {product.category && (

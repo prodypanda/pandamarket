@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS pd_subscription_limits (
     -- 'free' | 'starter' | 'regular' | 'agency' | 'pro' | 'golden' | 'platinum'
   max_products            INTEGER NOT NULL,    -- -1 = unlimited
   max_images_per_product  INTEGER NOT NULL,
+  max_page_builder_pages  INTEGER NOT NULL DEFAULT 20, -- -1 = unlimited
   has_ai_seo              BOOLEAN DEFAULT false,
   has_image_compression   BOOLEAN DEFAULT false,
   has_custom_domain       BOOLEAN DEFAULT false,

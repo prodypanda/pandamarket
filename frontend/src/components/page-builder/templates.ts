@@ -27,7 +27,29 @@ export interface PageTemplate {
   icon: string;
   html: string;
   css: string;
+  sellerTypes?: TemplateSellerType[];
+  sections?: TemplateSection[];
+  isHomepage?: boolean;
 }
+
+export type TemplateSellerType =
+  | 'general'
+  | 'fashion'
+  | 'electronics'
+  | 'food'
+  | 'services'
+  | 'digital'
+  | 'wholesale';
+
+export type TemplateSection =
+  | 'hero'
+  | 'products'
+  | 'faq'
+  | 'testimonials'
+  | 'policies'
+  | 'contact'
+  | 'banner'
+  | 'collections';
 
 export type TemplateCategory =
   | 'marketing'
@@ -44,6 +66,16 @@ export const TEMPLATE_CATEGORIES: Record<TemplateCategory, { label: string; icon
   utility: { label: 'Utilitaire', icon: '⚙️' },
 };
 
+export const TEMPLATE_SELLER_TYPES: Record<TemplateSellerType, { label: string; icon: string }> = {
+  general: { label: 'Tous', icon: '✨' },
+  fashion: { label: 'Mode', icon: '👗' },
+  electronics: { label: 'Électronique', icon: '💻' },
+  food: { label: 'Food', icon: '🍽️' },
+  services: { label: 'Services', icon: '🧰' },
+  digital: { label: 'Digital', icon: '⬇️' },
+  wholesale: { label: 'Wholesale', icon: '📦' },
+};
+
 // ─── Shared CSS reset applied to all templates ──────────────
 
 const BASE_FONT = "font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;";
@@ -56,6 +88,102 @@ const BTN_PRIMARY = 'display: inline-block; padding: 14px 32px; background: #16C
 const BTN_OUTLINE = 'display: inline-block; padding: 14px 32px; background: transparent; color: #16C784; border: 2px solid #16C784; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 16px; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;';
 const CARD = 'background: white; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease;';
 const CARD_SHADOW = 'background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease;';
+
+interface TemplateMetadata {
+  sellerTypes?: TemplateSellerType[];
+  sections?: TemplateSection[];
+  isHomepage?: boolean;
+}
+
+export interface TemplateBranding {
+  storeName?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  sellerType?: TemplateSellerType | string | null;
+}
+
+const TEMPLATE_METADATA: Record<string, TemplateMetadata> = {
+  'tpl-landing': { sellerTypes: ['general', 'fashion', 'electronics', 'food', 'digital'], sections: ['hero', 'products', 'testimonials', 'banner'] },
+  'tpl-about': { sellerTypes: ['general', 'services'], sections: ['hero', 'testimonials'] },
+  'tpl-contact': { sellerTypes: ['general', 'services'], sections: ['hero', 'contact'] },
+  'tpl-faq': { sellerTypes: ['general', 'services', 'digital'], sections: ['hero', 'faq', 'policies'] },
+  'tpl-sale': { sellerTypes: ['general', 'fashion', 'electronics', 'food', 'wholesale'], sections: ['hero', 'products', 'banner'] },
+  'tpl-lookbook': { sellerTypes: ['fashion'], sections: ['hero', 'products', 'collections'] },
+  'tpl-shipping': { sellerTypes: ['general', 'wholesale'], sections: ['hero', 'policies'] },
+  'tpl-size-guide': { sellerTypes: ['fashion'], sections: ['policies'] },
+  'tpl-collection': { sellerTypes: ['fashion', 'electronics', 'food', 'wholesale'], sections: ['hero', 'products', 'collections'] },
+  'tpl-seasonal': { sellerTypes: ['general', 'fashion', 'food'], sections: ['hero', 'products', 'banner'] },
+  'tpl-testimonials': { sellerTypes: ['general', 'services'], sections: ['hero', 'testimonials'] },
+  'tpl-loyalty': { sellerTypes: ['general', 'fashion', 'electronics', 'food'], sections: ['hero', 'banner'] },
+  'tpl-gift-cards': { sellerTypes: ['fashion', 'food', 'services', 'digital'], sections: ['hero', 'products'] },
+  'tpl-homepage-dynamic': { sellerTypes: ['general', 'fashion', 'electronics', 'food', 'services', 'digital', 'wholesale'], sections: ['hero', 'products', 'collections', 'testimonials', 'policies', 'contact'], isHomepage: true },
+};
+
+function isHexColor(value?: string | null): value is string {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function escapeTemplateText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function applyColorBranding(value: string, primaryColor: string, secondaryColor: string): string {
+  return value
+    .replace(/#16C784/g, primaryColor)
+    .replace(/#14b876/g, primaryColor)
+    .replace(/#1A1A2E/g, secondaryColor);
+}
+
+function brandLockup(branding: TemplateBranding): string {
+  const storeName = branding.storeName?.trim();
+  const logoUrl = branding.logoUrl?.trim();
+  if (!storeName && !logoUrl) return '';
+  const name = escapeTemplateText(storeName || 'Votre boutique');
+  const logo = logoUrl
+    ? `<img src="${escapeTemplateText(logoUrl)}" alt="${name}" style="height: 38px; width: auto; max-width: 160px; object-fit: contain;" />`
+    : `<span style="display: inline-flex; width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.14); align-items: center; justify-content: center; font-weight: 800;">${name.slice(0, 1).toUpperCase()}</span>`;
+  return `<div style="display: inline-flex; align-items: center; gap: 12px; margin-bottom: 28px; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);">${logo}<span style="font-size: 14px; font-weight: 700;">${name}</span></div>`;
+}
+
+function applyBrandLockup(html: string, branding: TemplateBranding): string {
+  const lockup = brandLockup(branding);
+  if (!lockup) return html;
+  const container = `<div style="${MAX_W}">`;
+  if (html.includes(container)) {
+    return html.replace(container, `${container}\n    ${lockup}`);
+  }
+  return `${lockup}\n${html}`;
+}
+
+function withTemplateMetadata(templates: PageTemplate[]): PageTemplate[] {
+  return templates.map((template) => ({
+    ...template,
+    ...(TEMPLATE_METADATA[template.id] || { sellerTypes: ['general'] }),
+  }));
+}
+
+export function applyTemplateBranding(template: PageTemplate, branding: TemplateBranding = {}): PageTemplate {
+  const primaryColor = isHexColor(branding.primaryColor) ? branding.primaryColor : '#16C784';
+  const secondaryColor = isHexColor(branding.secondaryColor) ? branding.secondaryColor : '#1A1A2E';
+  const storeName = branding.storeName?.trim();
+  let html = applyColorBranding(template.html, primaryColor, secondaryColor);
+  const css = applyColorBranding(template.css, primaryColor, secondaryColor);
+  if (storeName) {
+    html = html
+      .replace(/Votre boutique/g, escapeTemplateText(storeName))
+      .replace(/votre boutique/g, escapeTemplateText(storeName))
+      .replace(/Notre Boutique/g, escapeTemplateText(storeName))
+      .replace(/Notre boutique/g, escapeTemplateText(storeName))
+      .replace(/notre boutique/g, escapeTemplateText(storeName));
+  }
+  html = applyBrandLockup(html, branding);
+  return { ...template, html, css };
+}
 
 /**
  * Shared responsive CSS injected into every template via the `css` field.
@@ -252,7 +380,7 @@ div[style*="aspect-ratio"][style*="background: #E5E7EB"] {
 
 // ─── Templates ──────────────────────────────────────────────
 
-export const PAGE_TEMPLATES: PageTemplate[] = [
+export const PAGE_TEMPLATES: PageTemplate[] = withTemplateMetadata([
   // ═══════════════════════════════════════════════════════════
   // 1. LANDING PAGE (Product Launch)
   // ═══════════════════════════════════════════════════════════
@@ -1613,6 +1741,63 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     `.trim(),
   },
 
+  {
+    id: 'tpl-homepage-dynamic',
+    name: 'Accueil Boutique Dynamique',
+    slug: 'accueil',
+    category: 'e-commerce',
+    description: 'Homepage complète connectée aux produits, collections, politiques et coordonnées réelles de la boutique.',
+    icon: '🏪',
+    css: RESPONSIVE_CSS,
+    html: `
+<section data-pd-block="store-hero" data-pd-title="Bienvenue" data-pd-subtitle="Découvrez nos nouveautés, collections et engagements." data-pd-image-url="" data-pd-image-position="center center" data-pd-image-fit="cover" style="${SECTION_PAD} text-align: center; background: linear-gradient(135deg, #1A1A2E 0%, #16213E 55%, #16C784 140%); color: white;">
+  <div style="${MAX_W}">
+    <p style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.15em; color: #16C784; margin-bottom: 16px; font-weight: 800;">Homepage dynamique</p>
+    <h1 style="font-size: 52px; font-weight: 800; ${BASE_FONT} margin-bottom: 20px; line-height: 1.1;">Votre boutique, prête à vendre</h1>
+    <p style="font-size: 18px; color: #D1D5DB; margin-bottom: 34px; max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.6;">Ce modèle utilise automatiquement vos produits publiés, collections, couleurs et informations boutique.</p>
+    <a href="#catalogue" style="display: inline-block; padding: 14px 32px; background: #16C784; color: white; border-radius: 999px; font-weight: 800; text-decoration: none; font-size: 16px;">Explorer le catalogue</a>
+  </div>
+</section>
+
+<section id="catalogue" data-pd-block="featured-products" data-pd-title="Produits sélectionnés" data-pd-subtitle="Les articles à mettre en avant dès maintenant." data-pd-limit="4" style="${SECTION_PAD_SM} background: #FFFFFF;">
+  <div style="${MAX_W}">
+    <p style="color: #16C784; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px;">Catalogue réel</p>
+    <h2 style="${H2_STYLE}">Produits mis en avant</h2>
+    <p style="${SUBTITLE}">Le rendu public affichera vos produits publiés avec prix et images réels.</p>
+  </div>
+</section>
+
+<section data-pd-block="category-showcase" data-pd-title="Collections populaires" data-pd-limit="6" style="${SECTION_PAD_SM} background: #F9FAFB;">
+  <div style="${MAX_W}">
+    <p style="color: #16C784; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px;">Collections</p>
+    <h2 style="${H2_STYLE}">Parcourez nos univers</h2>
+  </div>
+</section>
+
+<section style="${SECTION_PAD_SM}">
+  <div style="${MAX_W}">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+      <div style="${CARD_SHADOW} padding: 28px;"><p style="font-size: 30px; margin-bottom: 10px;">⚡</p><h3 style="font-weight: 800; margin-bottom: 8px;">Rapide</h3><p style="font-size: 14px; color: #6B7280;">Navigation simple et sections prêtes à convertir.</p></div>
+      <div style="${CARD_SHADOW} padding: 28px;"><p style="font-size: 30px; margin-bottom: 10px;">🛡️</p><h3 style="font-weight: 800; margin-bottom: 8px;">Fiable</h3><p style="font-size: 14px; color: #6B7280;">Politiques et informations rassurantes pour vos clients.</p></div>
+      <div style="${CARD_SHADOW} padding: 28px;"><p style="font-size: 30px; margin-bottom: 10px;">📱</p><h3 style="font-weight: 800; margin-bottom: 8px;">Mobile</h3><p style="font-size: 14px; color: #6B7280;">Structure responsive adaptée aux acheteurs mobiles.</p></div>
+    </div>
+  </div>
+</section>
+
+<section data-pd-block="store-policies" data-pd-title="Pourquoi commander chez nous ?" data-pd-subtitle="Livraison, retours et paiement expliqués clairement." style="${SECTION_PAD_SM} background: #F9FAFB;">
+  <div style="${MAX_W}">
+    <h2 style="${H2_STYLE} text-align: center;">Informations essentielles</h2>
+  </div>
+</section>
+
+<section data-pd-block="store-contact" data-pd-title="Besoin d’aide ?" style="${SECTION_PAD_SM}">
+  <div style="${MAX_W}">
+    <h2 style="${H2_STYLE} text-align: center;">Contact boutique</h2>
+  </div>
+</section>
+    `.trim(),
+  },
+
   // ═══════════════════════════════════════════════════════════
   // 20. BLANK STARTER
   // ═══════════════════════════════════════════════════════════
@@ -1635,4 +1820,4 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
 </section>
     `.trim(),
   },
-];
+]);

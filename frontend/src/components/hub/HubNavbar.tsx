@@ -20,14 +20,14 @@ interface CurrentUser {
 interface HubNavbarProps {
   marketplaceName?: string;
   marketplaceLogoUrl?: string;
-  marketplaceTheme?: 'panda' | 'aliexpress';
+  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
   showInstantChat?: boolean;
 }
 
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
-  marketplace_theme?: 'panda' | 'aliexpress';
+  marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
 export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceTheme, showInstantChat = true }: HubNavbarProps) {
@@ -37,7 +37,8 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
   const resolvedMarketplaceName = marketplaceName || marketplaceSettings.marketplace_name || 'PandaMarket';
   const resolvedMarketplaceLogoUrl = normalizePublicAssetUrl(marketplaceLogoUrl || marketplaceSettings.marketplace_logo_url);
   const resolvedMarketplaceTheme = marketplaceTheme || marketplaceSettings.marketplace_theme || 'panda';
-  const isAliExpress = resolvedMarketplaceTheme === 'aliexpress';
+  const isAliExpress = resolvedMarketplaceTheme === 'aliexpress' || resolvedMarketplaceTheme === 'aliexpress2';
+  const isAliExpress2 = resolvedMarketplaceTheme === 'aliexpress2';
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const cartCount = getItemCount();
@@ -100,9 +101,18 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
 
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur-sm ${
-      isAliExpress ? 'border-orange-100 bg-white/95 shadow-sm shadow-orange-900/5 dark:bg-[#1A1A2E]/95' : 'border-gray-100 bg-white/95 dark:border-white/10 dark:bg-[#1A1A2E]/95'
+      isAliExpress2 ? 'border-white/[0.06] bg-[#09090b]/90 backdrop-blur-2xl shadow-2xl shadow-black/50' : isAliExpress ? 'border-orange-100 bg-white/95 shadow-sm shadow-orange-900/5 dark:bg-[#1A1A2E]/95' : 'border-gray-100 bg-white/95 dark:border-white/10 dark:bg-[#1A1A2E]/95'
     }`}>
-      {isAliExpress && (
+      {isAliExpress2 ? (
+        <div className="hidden bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white shadow-md shadow-orange-900/20 backdrop-blur-lg border-b border-white/20 md:block">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-[10px] uppercase tracking-widest font-black sm:px-6 lg:px-8">
+            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-white animate-pulse" /> Super Deals Active · Buyer Protection</span>
+            <Link href="/hub/search" className="rounded-lg bg-white/20 px-4 py-1 hover:bg-white/30 transition-all">
+              Shop Now
+            </Link>
+          </div>
+        </div>
+      ) : isAliExpress ? (
         <div className="hidden bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-xs font-black sm:px-6 lg:px-8">
             <span>AliExpress Style · Flash Deals · Buyer Protection</span>
@@ -111,7 +121,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
             </Link>
           </div>
         </div>
-      )}
+      ) : null}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -136,25 +146,25 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
 
           {/* Navigation Items */}
           <div className="flex items-center space-x-4">
-            <Link href="/hub/dashboard" className={`text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors hidden lg:block ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
+            <Link href="/hub/dashboard" className={`text-sm font-medium transition-colors hidden lg:block ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
               {t('nav.createStore')}
             </Link>
-            <div className="h-6 w-px bg-gray-200 dark:bg-white/10 hidden lg:block" />
+            <div className={`h-6 w-px hidden lg:block ${isAliExpress2 ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`} />
             <LocaleSwitcher />
             <ThemeToggle />
-            <Link href={accountHref} className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
+            <Link href={accountHref} className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
               <User className="w-5 h-5" strokeWidth={1.75} />
               <span className="ms-2 text-sm font-medium hidden sm:block">
                 {currentUser ? 'Mon compte' : t('nav.login')}
               </span>
             </Link>
-            <Link href="/hub/wishlist" className="flex items-center text-gray-600 dark:text-gray-300 hover:text-red-400 transition-colors">
+            <Link href="/hub/wishlist" className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:text-red-400'}`}>
               <Heart className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <Link href="/hub/messages" className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
+            <Link href="/hub/messages" className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
               <MessageSquare className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <Link href="/hub/cart" className={`flex items-center text-gray-600 dark:text-gray-300 transition-colors relative ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
+            <Link href="/hub/cart" className={`flex items-center transition-colors relative ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
               <ShoppingBag className="w-5 h-5" strokeWidth={1.75} />
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                 {cartCount}

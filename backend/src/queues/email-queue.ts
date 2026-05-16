@@ -10,6 +10,8 @@ export interface EmailJobData {
   template: string;          // template id (see notifications-system.md)
   variables: Record<string, unknown>;
   subject?: string;          // optional override
+  scope?: 'marketplace' | 'store';
+  store_id?: string | null;
 }
 
 export const emailQueue = new Queue<EmailJobData>('pd_email_queue', {

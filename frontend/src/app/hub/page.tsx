@@ -2,19 +2,30 @@ import type { Metadata } from 'next';
 import { HubNavbar } from '../../components/hub/HubNavbar';
 import { HubHomeContent } from '../../components/hub/HubHomeContent';
 import { AliExpressHomeContent } from '../../components/hub/AliExpressHomeContent';
+import { AliExpress2HomeContent } from '../../components/hub/AliExpress2HomeContent';
 import { HubFooter } from '../../components/hub/HubFooter';
 import { getMarketplaceSettings } from '../../lib/marketplace-settings';
+import { resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 
-export const metadata: Metadata = {
-  title: 'Hub — Explorez des milliers de produits',
-  description: 'Parcourez le Hub central PandaMarket : des milliers de produits de vendeurs tunisiens indépendants. Électronique, mode, maison, gaming et plus.',
-  openGraph: {
-    title: 'PandaMarket Hub — La marketplace tunisienne #1',
-    description: 'Parcourez le Hub central PandaMarket : des milliers de produits de vendeurs tunisiens indépendants.',
-    type: 'website',
-    url: '/hub',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marketplaceSettings = await getMarketplaceSettings();
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const tagline = marketplaceSettings.marketplace_tagline || 'La marketplace tunisienne pour boutiques modernes';
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const description = `Parcourez ${marketplaceName} : ${tagline}`;
+
+  return {
+    title: `Hub — ${marketplaceName}`,
+    description,
+    openGraph: {
+      title: `${marketplaceName} Hub`,
+      description,
+      type: 'website',
+      url: '/hub',
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${marketplaceName} Hub` }],
+    },
+  };
+}
 
 interface Product {
   id: string;
@@ -74,28 +85,37 @@ export default async function HubHomepage() {
     getMarketplaceCategories(),
     getMarketplaceSettings(),
   ]);
-  const marketplaceTheme = marketplaceSettings.marketplace_theme || 'panda';
+  const marketplaceTheme = resolveMarketplaceTheme(marketplaceSettings.marketplace_theme);
+
+  const homeContent =
+    marketplaceTheme === 'aliexpress2' ? (
+      <AliExpress2HomeContent
+        trendingProducts={trendingProducts}
+        categories={categories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    ) : marketplaceTheme === 'aliexpress' ? (
+      <AliExpressHomeContent
+        trendingProducts={trendingProducts}
+        categories={categories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    ) : (
+      <HubHomeContent
+        trendingProducts={trendingProducts}
+        categories={categories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F0F23]">
+    <div className={`min-h-screen ${marketplaceTheme === 'aliexpress2' ? 'bg-[#09090b]' : 'bg-white dark:bg-[#0F0F23]'}`}>
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
         marketplaceTheme={marketplaceTheme}
       />
-      {marketplaceTheme === 'aliexpress' ? (
-        <AliExpressHomeContent
-          trendingProducts={trendingProducts}
-          categories={categories}
-          marketplaceSettings={marketplaceSettings}
-        />
-      ) : (
-        <HubHomeContent
-          trendingProducts={trendingProducts}
-          categories={categories}
-          marketplaceSettings={marketplaceSettings}
-        />
-      )}
+      {homeContent}
       <HubFooter {...marketplaceSettings} />
     </div>
   );

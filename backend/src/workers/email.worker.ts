@@ -14,6 +14,7 @@ import { getRedis } from '../db/redis';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { EmailJobData } from '../queues/email-queue';
+import { emailTemplateService } from '../services/email-template.service';
 
 // ----------------------------------------------------------------
 // Template renderer
@@ -68,7 +69,8 @@ function v(vars: Record<string, unknown>, key: string, fallback = ''): string {
   return String(value);
 }
 
-function render(template: string, vars: Record<string, unknown>): RenderedEmail {
+async function render(template: string, vars: Record<string, unknown>, opts: { scope?: 'marketplace' | 'store'; store_id?: string | null } = {}): Promise<RenderedEmail> {
+  let rendered: RenderedEmail;
   switch (template) {
     case 'welcome_customer': {
       const subject = `Bienvenue sur PandaMarket, ${v(vars, 'name', '')} !`;
@@ -76,7 +78,8 @@ function render(template: string, vars: Record<string, unknown>): RenderedEmail 
         <p>Bonjour ${v(vars, 'name')},</p>
         <p>Votre compte est prêt. Découvrez les milliers de produits proposés par les vendeurs tunisiens.</p>
         ${cta('Explorer le Hub', 'https://pandamarket.tn')}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      break;
     }
 
     case 'welcome_vendor': {
@@ -96,7 +99,8 @@ function render(template: string, vars: Record<string, unknown>): RenderedEmail 
       const body = `<h1 style="margin-top:0;">Merci pour votre commande !</h1>
         <p>Votre commande <strong>#${v(vars, 'order_id')}</strong> d'un montant de <strong>${v(vars, 'total')} TND</strong> a bien été reçue.</p>
         ${cta('Voir ma commande', `https://pandamarket.tn/orders/${v(vars, 'order_id')}`)}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      break;
     }
 
     case 'payment_captured': {
@@ -104,7 +108,8 @@ function render(template: string, vars: Record<string, unknown>): RenderedEmail 
       const body = `<h1 style="margin-top:0;">Paiement confirmé ✅</h1>
         <p>Nous avons bien reçu votre paiement de <strong>${v(vars, 'amount')} TND</strong> via ${v(vars, 'method')}.</p>
         <p>La commande <strong>#${v(vars, 'order_id')}</strong> est désormais en cours de préparation.</p>`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      break;
     }
 
     case 'mandat_approved': {
@@ -219,6 +224,15 @@ function render(template: string, vars: Record<string, unknown>): RenderedEmail 
       const body = `<p>${v(vars, 'message', 'Vous avez une nouvelle notification.')}</p>`;
       return { subject, html: layout(subject, body), text: stripTags(body) };
     }
+  }
+  try {
+    return await emailTemplateService.apply(template, vars, rendered, {
+      scope: opts.scope,
+      storeId: opts.store_id,
+    });
+  } catch (err) {
+    logger.warn({ err, template }, 'Email template override failed, using built-in template');
+    return rendered;
   }
 }
 
@@ -395,8 +409,8 @@ export function startEmailWorker(): Worker<EmailJobData> {
   const worker = new Worker<EmailJobData>(
     'pd_email_queue',
     async (job: Job<EmailJobData>) => {
-      const { to, template, variables, subject } = job.data;
-      const rendered = render(template, variables);
+      const { to, template, variables, subject, scope, store_id } = job.data;
+      const rendered = await render(template, variables, { scope, store_id });
       if (subject) rendered.subject = subject;
       try {
         const transport = await pickTransport();

@@ -19,19 +19,21 @@ import {
   Zap,
 } from 'lucide-react';
 
-type FeatureKey = 'has_ai_seo' | 'has_image_compression' | 'has_custom_domain' | 'has_page_builder' | 'has_direct_payment' | 'has_white_label';
+type FeatureKey = 'has_ai_seo' | 'has_image_compression' | 'has_custom_domain' | 'has_page_builder' | 'has_direct_payment' | 'has_white_label' | 'has_own_ai_provider';
 
 interface PlanLimits {
   id?: string;
   plan_id: string;
   max_products: number;
   max_images_per_product: number;
+  max_page_builder_pages: number;
   has_ai_seo: boolean;
   has_image_compression: boolean;
   has_custom_domain: boolean;
   has_page_builder: boolean;
   has_direct_payment: boolean;
   has_white_label: boolean;
+  has_own_ai_provider: boolean;
   commission_rate: number;
   ai_tokens_included: number;
   yearly_price: number;
@@ -45,8 +47,8 @@ const canonicalPlanOrder = ['free', 'starter', 'regular', 'agency', 'pro', 'gold
 
 const planTones = [
   'from-slate-500 to-slate-700',
-  'from-emerald-500 to-teal-600',
-  'from-blue-500 to-indigo-600',
+  'from-amber-500 to-red-600',
+  'from-red-700 to-amber-600',
   'from-purple-500 to-fuchsia-600',
   'from-orange-500 to-red-500',
   'from-amber-400 to-yellow-600',
@@ -62,18 +64,21 @@ const featureFields: Array<{ key: FeatureKey; label: string; description: string
   { key: 'has_page_builder', label: 'Builder', description: 'Accès au constructeur de pages.' },
   { key: 'has_direct_payment', label: 'Paiement direct', description: 'Paiement vendeur direct.' },
   { key: 'has_white_label', label: 'White label', description: 'Suppression de la marque PandaMarket.' },
+  { key: 'has_own_ai_provider', label: 'Clé IA vendeur', description: 'Permet au vendeur d’utiliser son propre fournisseur IA.' },
 ];
 
 const emptyPlan: PlanLimits = {
   plan_id: '',
   max_products: 50,
   max_images_per_product: 5,
+  max_page_builder_pages: 20,
   has_ai_seo: true,
   has_image_compression: true,
   has_custom_domain: false,
   has_page_builder: false,
   has_direct_payment: false,
   has_white_label: false,
+  has_own_ai_provider: false,
   commission_rate: 0,
   ai_tokens_included: 50,
   yearly_price: 300,
@@ -121,12 +126,14 @@ function normalizePlan(raw: Record<string, unknown>): PlanLimits {
     plan_id: String(raw.plan_id || ''),
     max_products: toNumber(raw.max_products),
     max_images_per_product: toNumber(raw.max_images_per_product),
+    max_page_builder_pages: toNumber(raw.max_page_builder_pages),
     has_ai_seo: Boolean(raw.has_ai_seo),
     has_image_compression: Boolean(raw.has_image_compression),
     has_custom_domain: Boolean(raw.has_custom_domain),
     has_page_builder: Boolean(raw.has_page_builder),
     has_direct_payment: Boolean(raw.has_direct_payment),
     has_white_label: Boolean(raw.has_white_label),
+    has_own_ai_provider: Boolean(raw.has_own_ai_provider),
     commission_rate: commission <= 1 ? Number((commission * 100).toFixed(2)) : commission,
     ai_tokens_included: toNumber(raw.ai_tokens_included),
     yearly_price: toNumber(raw.yearly_price),
@@ -149,12 +156,14 @@ function planSignature(plan: PlanLimits) {
   return JSON.stringify({
     max_products: plan.max_products,
     max_images_per_product: plan.max_images_per_product,
+    max_page_builder_pages: plan.max_page_builder_pages,
     has_ai_seo: plan.has_ai_seo,
     has_image_compression: plan.has_image_compression,
     has_custom_domain: plan.has_custom_domain,
     has_page_builder: plan.has_page_builder,
     has_direct_payment: plan.has_direct_payment,
     has_white_label: plan.has_white_label,
+    has_own_ai_provider: plan.has_own_ai_provider,
     commission_rate: Number(plan.commission_rate),
     ai_tokens_included: plan.ai_tokens_included,
     yearly_price: Number(plan.yearly_price),
@@ -241,12 +250,14 @@ export default function AdminPlansPage() {
   const buildPayload = (plan: PlanLimits) => ({
     max_products: Number(plan.max_products),
     max_images_per_product: Number(plan.max_images_per_product),
+    max_page_builder_pages: Number(plan.max_page_builder_pages),
     has_ai_seo: Boolean(plan.has_ai_seo),
     has_image_compression: Boolean(plan.has_image_compression),
     has_custom_domain: Boolean(plan.has_custom_domain),
     has_page_builder: Boolean(plan.has_page_builder),
     has_direct_payment: Boolean(plan.has_direct_payment),
     has_white_label: Boolean(plan.has_white_label),
+    has_own_ai_provider: Boolean(plan.has_own_ai_provider),
     commission_rate: Number(plan.commission_rate),
     ai_tokens_included: Number(plan.ai_tokens_included),
     yearly_price: Number(plan.yearly_price),
@@ -370,21 +381,21 @@ export default function AdminPlansPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-[#16C784]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#B91C1C]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
+      <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-100 ring-1 ring-white/15">
+            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-100 ring-1 ring-white/15">
               Superadmin
             </span>
             <h1 className="mt-4 flex items-center gap-3 text-3xl font-black sm:text-4xl">
-              <Settings className="h-8 w-8 text-[#16C784]" />
+              <Settings className="h-8 w-8 text-amber-100" />
               Gestion des Plans
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-medium text-white/70">
@@ -392,7 +403,7 @@ export default function AdminPlansPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setShowCreateForm((value) => !value)} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-50">
+            <button type="button" onClick={() => setShowCreateForm((value) => !value)} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-50">
               <Plus className="h-4 w-4" />
               Ajouter un plan
             </button>
@@ -404,7 +415,7 @@ export default function AdminPlansPage() {
               <RotateCcw className="h-4 w-4" />
               Annuler
             </button>
-            <button type="button" onClick={() => void saveAll()} disabled={dirtyPlanIds.length === 0 || saving !== null} className="inline-flex items-center gap-2 rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/20 transition hover:bg-[#14b876] disabled:cursor-not-allowed disabled:bg-gray-300">
+            <button type="button" onClick={() => void saveAll()} disabled={dirtyPlanIds.length === 0 || saving !== null} className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-900/20 transition hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:bg-gray-300">
               {saving === 'all' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Enregistrer tout
             </button>
@@ -444,7 +455,7 @@ export default function AdminPlansPage() {
               <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-600 transition hover:bg-gray-50">
                 Fermer
               </button>
-              <button type="button" onClick={() => void createPlan()} disabled={saving !== null} className="inline-flex items-center gap-2 rounded-2xl bg-[#16C784] px-4 py-2 text-sm font-black text-white transition hover:bg-[#14b876] disabled:cursor-not-allowed disabled:bg-gray-300">
+              <button type="button" onClick={() => void createPlan()} disabled={saving !== null} className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-2 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:bg-gray-300">
                 {saving === 'create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 Créer le plan
               </button>
@@ -459,7 +470,7 @@ export default function AdminPlansPage() {
           <div>
             <p className="text-sm font-black text-amber-900">Attention</p>
             <p className="mt-1 text-sm font-semibold text-amber-700">
-              Modifier les limites affecte tous les vendeurs liés au plan. Désactiver un plan le retire des nouvelles inscriptions et changements d'abonnement sans impacter les boutiques existantes. Un plan avec boutiques peut être supprimé uniquement avec un plan de remplacement. Le plan Free est protégé.
+              Modifier les limites affecte tous les vendeurs liés au plan. Désactiver un plan le retire des nouvelles inscriptions et changements d&apos;abonnement sans impacter les boutiques existantes. Un plan avec boutiques peut être supprimé uniquement avec un plan de remplacement. Le plan Free est protégé.
             </p>
           </div>
         </div>
@@ -521,7 +532,7 @@ export default function AdminPlansPage() {
                       <Trash2 className="h-4 w-4" />
                       Supprimer
                     </button>
-                    <button type="button" onClick={() => void savePlan(plan)} disabled={!dirty || saving !== null} className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-[#16C784] px-4 py-2 text-sm font-black text-white transition hover:bg-[#14b876] disabled:cursor-not-allowed disabled:bg-gray-300">
+                    <button type="button" onClick={() => void savePlan(plan)} disabled={!dirty || saving !== null} className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-2 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:bg-gray-300">
                       {saving === plan.plan_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Enregistrer
                     </button>
@@ -539,7 +550,7 @@ export default function AdminPlansPage() {
 function Feedback({ tone, message }: { tone: 'success' | 'error'; message: string }) {
   const success = tone === 'success';
   return (
-    <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold ${success ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+    <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold ${success ? 'border-emerald-100 bg-amber-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
       {success ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
       {message}
     </div>
@@ -571,9 +582,9 @@ function PlanEditor({
   onChange: <K extends keyof PlanLimits>(field: K, value: PlanLimits[K]) => void;
   onPlanIdChange?: (value: string) => void;
 }) {
-  const headerTone = tone || 'from-slate-900 to-emerald-800';
+  const headerTone = tone || 'from-[#3B0D0D] to-[#B91C1C]';
   return (
-    <section className={`overflow-hidden rounded-[2rem] border bg-white shadow-sm transition ${dirty ? 'border-[#16C784]/40 shadow-emerald-900/10' : 'border-gray-100'}`}>
+    <section className={`overflow-hidden rounded-[2rem] border bg-white shadow-sm transition ${dirty ? 'border-[#B91C1C]/40 shadow-red-900/10' : 'border-gray-100'}`}>
       <div className={`bg-gradient-to-r ${headerTone} p-5 text-white`}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -586,7 +597,7 @@ function PlanEditor({
             </div>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <span className={'rounded-full px-3 py-1 text-xs font-black ring-1 ' + (plan.is_enabled ? 'bg-emerald-400/20 text-emerald-50 ring-emerald-200/25' : 'bg-red-400/20 text-red-50 ring-red-200/25')}>
+            <span className={'rounded-full px-3 py-1 text-xs font-black ring-1 ' + (plan.is_enabled ? 'bg-amber-300/20 text-amber-50 ring-amber-200/25' : 'bg-red-400/20 text-red-50 ring-red-200/25')}>
               {plan.is_enabled ? 'Activé' : 'Désactivé'}
             </span>
             {dirty && <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/20">Modifié</span>}
@@ -602,27 +613,27 @@ function PlanEditor({
             <p className="mt-1 text-sm font-black">{formatLimit(plan.max_products, '')}</p>
           </div>
           <div className="rounded-2xl bg-white/12 p-3 ring-1 ring-white/10">
-            <p className="text-[10px] font-black uppercase text-white/55">Tokens IA</p>
-            <p className="mt-1 text-sm font-black">{formatLimit(plan.ai_tokens_included, '')}</p>
+            <p className="text-[10px] font-black uppercase text-white/55">Pages builder</p>
+            <p className="mt-1 text-sm font-black">{formatLimit(plan.max_page_builder_pages, '')}</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-5 p-5">
         {helper && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">{helper}</p>}
-        <button type="button" onClick={() => onChange('is_enabled', !plan.is_enabled)} disabled={saving} className={'flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-70 ' + (plan.is_enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-100 bg-red-50 text-red-700')}>
+        <button type="button" onClick={() => onChange('is_enabled', !plan.is_enabled)} disabled={saving} className={'flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-70 ' + (plan.is_enabled ? 'border-amber-200 bg-amber-50 text-[#7F1D1D]' : 'border-red-100 bg-red-50 text-red-700')}>
           <span>
             <span className="block text-sm font-black">{plan.is_enabled ? 'Disponible aux inscriptions' : 'Désactivé pour les nouveaux choix'}</span>
-            <span className="mt-1 block text-xs font-semibold opacity-75">Les boutiques existantes conservent ce plan, mais il n'apparaît plus dans les sélecteurs publics quand il est désactivé.</span>
+            <span className="mt-1 block text-xs font-semibold opacity-75">Les boutiques existantes conservent ce plan, mais il n&apos;apparaît plus dans les sélecteurs publics quand il est désactivé.</span>
           </span>
-          <span className={'h-6 w-11 rounded-full p-0.5 transition ' + (plan.is_enabled ? 'bg-[#16C784]' : 'bg-red-300')}>
+          <span className={'h-6 w-11 rounded-full p-0.5 transition ' + (plan.is_enabled ? 'bg-[#B91C1C]' : 'bg-red-300')}>
             <span className={'block h-5 w-5 rounded-full bg-white transition ' + (plan.is_enabled ? 'translate-x-5' : '')} />
           </span>
         </button>
         {allowPlanIdEdit && (
           <label className="block">
             <span className="mb-1 block text-xs font-black uppercase tracking-[0.12em] text-gray-400">Identifiant du plan</span>
-            <input value={plan.plan_id} onChange={(event) => onPlanIdChange?.(event.target.value)} placeholder="business-plus" className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-black text-gray-900 outline-none focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10" />
+            <input value={plan.plan_id} onChange={(event) => onPlanIdChange?.(event.target.value)} placeholder="business-plus" className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-black text-gray-900 outline-none focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10" />
           </label>
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -630,6 +641,7 @@ function PlanEditor({
           <NumberField label="Commission" suffix="%" value={plan.commission_rate} min={0} max={100} step={0.1} onChange={(value) => onChange('commission_rate', value)} />
           <NumberField label="Max produits" suffix="-1 = ∞" value={plan.max_products} min={-1} onChange={(value) => onChange('max_products', Math.trunc(value))} />
           <NumberField label="Images / produit" suffix="images" value={plan.max_images_per_product} min={1} onChange={(value) => onChange('max_images_per_product', Math.max(1, Math.trunc(value)))} />
+          <NumberField label="Pages builder" suffix="-1 = ∞" value={plan.max_page_builder_pages} min={-1} onChange={(value) => onChange('max_page_builder_pages', Math.trunc(value))} />
           <NumberField label="Tokens IA inclus" suffix="-1 = ∞" value={plan.ai_tokens_included} min={-1} onChange={(value) => onChange('ai_tokens_included', Math.trunc(value))} />
         </div>
 
@@ -637,10 +649,10 @@ function PlanEditor({
           <p className="mb-3 text-sm font-black text-gray-900">Fonctionnalités incluses</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {featureFields.map((feature) => (
-              <button key={feature.key} type="button" onClick={() => onChange(feature.key, !plan[feature.key])} disabled={saving} className={`rounded-2xl border p-4 text-left transition ${plan[feature.key] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'} disabled:cursor-not-allowed disabled:opacity-70`}>
+              <button key={feature.key} type="button" onClick={() => onChange(feature.key, !plan[feature.key])} disabled={saving} className={`rounded-2xl border p-4 text-left transition ${plan[feature.key] ? 'border-amber-200 bg-amber-50 text-[#7F1D1D]' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'} disabled:cursor-not-allowed disabled:opacity-70`}>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-black">{feature.label}</span>
-                  <span className={`h-5 w-9 rounded-full p-0.5 transition ${plan[feature.key] ? 'bg-[#16C784]' : 'bg-gray-300'}`}>
+                  <span className={`h-5 w-9 rounded-full p-0.5 transition ${plan[feature.key] ? 'bg-[#B91C1C]' : 'bg-gray-300'}`}>
                     <span className={`block h-4 w-4 rounded-full bg-white transition ${plan[feature.key] ? 'translate-x-4' : ''}`} />
                   </span>
                 </div>
@@ -675,7 +687,7 @@ function NumberField({
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-black uppercase tracking-[0.12em] text-gray-400">{label}</span>
-      <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 focus-within:border-[#16C784] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#16C784]/10">
+      <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 focus-within:border-[#B91C1C] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#B91C1C]/10">
         <input type="number" value={Number.isFinite(value) ? value : 0} min={min} max={max} step={step} onChange={(event) => onChange(toNumber(event.target.value))} className="min-w-0 flex-1 bg-transparent text-sm font-black text-gray-900 outline-none" />
         <span className="whitespace-nowrap text-[11px] font-bold text-gray-400">{suffix}</span>
       </div>

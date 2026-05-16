@@ -88,7 +88,7 @@ interface ChatInboxProps {
 const modeConfig: Record<ChatMode, { accent: string; soft: string; label: string }> = {
   buyer: { accent: 'bg-[#16C784] text-white', soft: 'bg-emerald-50 text-emerald-700 ring-emerald-100', label: 'Buyer inbox' },
   seller: { accent: 'bg-slate-950 text-white', soft: 'bg-slate-100 text-slate-700 ring-slate-200', label: 'Seller inbox' },
-  admin: { accent: 'bg-indigo-600 text-white', soft: 'bg-indigo-50 text-indigo-700 ring-indigo-100', label: 'Admin support' },
+  admin: { accent: 'bg-[#B91C1C] text-white', soft: 'bg-amber-50 text-[#B91C1C] ring-amber-100', label: 'Superadmin messages' },
 };
 
 function listEndpoint(mode: ChatMode) {
@@ -222,6 +222,15 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
   const [loadingTargets, setLoadingTargets] = useState(false);
   const pendingImagesRef = useRef<PendingImage[]>([]);
   const activeConversation = active?.conversation;
+  const adminMode = mode === 'admin';
+  const primaryActionClass = adminMode
+    ? 'bg-[#B91C1C] text-white shadow-lg shadow-red-900/15 hover:bg-[#991B1B]'
+    : 'bg-slate-950 text-white hover:bg-[#16C784]';
+  const activePillClass = adminMode ? 'bg-[#B91C1C] text-white shadow-sm shadow-red-900/15' : config.accent;
+  const inputFocusClass = adminMode
+    ? 'focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10'
+    : 'focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/10';
+  const loadingAccentClass = adminMode ? 'text-[#B91C1C]' : 'text-[#16C784]';
 
   useEffect(() => {
     let activeRequest = true;
@@ -482,23 +491,27 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
+    <div className={adminMode ? 'mx-auto max-w-7xl space-y-7 pb-8' : 'space-y-6'}>
+      <section className={`overflow-hidden rounded-[2rem] p-6 text-white shadow-xl sm:p-8 ${
+        adminMode
+          ? 'border border-amber-100 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] shadow-red-950/10'
+          : 'bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 shadow-slate-900/10'
+      }`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-100 ring-1 ring-white/15">
+            <span className={`inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ring-1 ring-white/15 ${adminMode ? 'text-amber-100' : 'text-emerald-100'}`}>
               {config.label}
             </span>
             <h1 className="mt-4 text-3xl font-black sm:text-4xl">{title}</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium text-white/70">{subtitle}</p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:min-w-[260px]">
-            <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
-              <p className="text-xs font-black uppercase text-white/50">Open</p>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+              <p className={adminMode ? 'text-xs font-black uppercase text-amber-100' : 'text-xs font-black uppercase text-white/50'}>Open</p>
               <p className="mt-1 text-2xl font-black">{stats.open}</p>
             </div>
-            <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
-              <p className="text-xs font-black uppercase text-white/50">Unread</p>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+              <p className={adminMode ? 'text-xs font-black uppercase text-amber-100' : 'text-xs font-black uppercase text-white/50'}>Unread</p>
               <p className="mt-1 text-2xl font-black">{stats.unread}</p>
             </div>
           </div>
@@ -512,16 +525,20 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
         </div>
       )}
 
-      <div className="grid min-h-[650px] overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm lg:grid-cols-[360px_1fr]">
-        <aside className="border-b border-gray-100 bg-gray-50/70 lg:border-b-0 lg:border-r">
-          <div className="space-y-3 border-b border-gray-100 bg-white p-4">
+      <div className={`grid min-h-[650px] overflow-hidden rounded-[2rem] bg-white ${
+        adminMode
+          ? 'border border-slate-200/70 shadow-2xl shadow-slate-200/50 lg:grid-cols-[390px_1fr]'
+          : 'border border-gray-100 shadow-sm lg:grid-cols-[360px_1fr]'
+      }`}>
+        <aside className={adminMode ? 'border-b border-amber-100 bg-stone-50/80 lg:border-b-0 lg:border-r lg:border-amber-100' : 'border-b border-gray-100 bg-gray-50/70 lg:border-b-0 lg:border-r'}>
+          <div className={adminMode ? 'space-y-3 border-b border-amber-100 bg-white p-5' : 'space-y-3 border-b border-gray-100 bg-white p-4'}>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search conversations..."
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:bg-white ${inputFocusClass}`}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -530,7 +547,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                   key={item}
                   type="button"
                   onClick={() => setStatus(item)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-black transition ${status === item ? config.accent : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-black transition ${status === item ? activePillClass : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}`}
                 >
                   {item === 'all' ? 'All' : item}
                 </button>
@@ -543,7 +560,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     key={item}
                     type="button"
                     onClick={() => setType(item as 'all' | ChatType)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-black transition ${type === item ? config.accent : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-black transition ${type === item ? activePillClass : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}`}
                   >
                     {item === 'all' ? 'All chats' : typeLabel(item as ChatType)}
                   </button>
@@ -554,7 +571,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
               <button
                 type="button"
                 onClick={() => setShowCreateAdmin(true)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-[#16C784]"
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition ${primaryActionClass}`}
               >
                 <PlusCircle className="h-4 w-4" />
                 {mode === 'buyer' ? 'Contact marketplace support' : mode === 'admin' ? 'Open a chat' : 'New admin support chat'}
@@ -564,10 +581,10 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
 
           <div className="max-h-[520px] overflow-y-auto p-3">
             {loadingList ? (
-              <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#16C784]" /></div>
+              <div className="flex h-40 items-center justify-center"><Loader2 className={`h-6 w-6 animate-spin ${loadingAccentClass}`} /></div>
             ) : conversations.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-8 text-center">
-                <Inbox className="mx-auto mb-3 h-9 w-9 text-gray-300" />
+              <div className={adminMode ? 'rounded-3xl border border-dashed border-amber-200 bg-white p-8 text-center shadow-sm' : 'rounded-3xl border border-dashed border-gray-200 bg-white p-8 text-center'}>
+                <Inbox className={adminMode ? 'mx-auto mb-3 h-9 w-9 text-amber-300' : 'mx-auto mb-3 h-9 w-9 text-gray-300'} />
                 <p className="font-black text-gray-800">No conversations yet</p>
                 <p className="mt-1 text-sm text-gray-500">Messages will appear here.</p>
               </div>
@@ -581,12 +598,20 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                       key={conversation.id}
                       type="button"
                       onClick={() => setActiveId(conversation.id)}
-                      className={`w-full rounded-3xl border p-4 text-left transition ${selected ? 'border-slate-950 bg-white shadow-sm' : 'border-transparent bg-white/80 hover:border-gray-200 hover:bg-white'}`}
+                      className={`w-full rounded-3xl border p-4 text-left transition ${
+                        selected
+                          ? adminMode
+                            ? 'border-[#B91C1C]/35 bg-gradient-to-br from-white to-amber-50 shadow-md shadow-red-900/10'
+                            : 'border-slate-950 bg-white shadow-sm'
+                          : adminMode
+                            ? 'border-transparent bg-white/85 hover:border-amber-200 hover:bg-white hover:shadow-sm'
+                            : 'border-transparent bg-white/80 hover:border-gray-200 hover:bg-white'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            {conversation.type === 'seller_admin' || conversation.type === 'buyer_admin' ? <ShieldCheck className="h-4 w-4 text-indigo-500" /> : conversation.type === 'seller_seller' || mode === 'buyer' ? <Store className="h-4 w-4 text-emerald-500" /> : <UserRound className="h-4 w-4 text-slate-500" />}
+                            {conversation.type === 'seller_admin' || conversation.type === 'buyer_admin' ? <ShieldCheck className={`h-4 w-4 ${adminMode ? 'text-[#B91C1C]' : 'text-indigo-500'}`} /> : conversation.type === 'seller_seller' || mode === 'buyer' ? <Store className="h-4 w-4 text-emerald-500" /> : <UserRound className="h-4 w-4 text-slate-500" />}
                             <p className="truncate text-sm font-black text-gray-900">{participantLabel(mode, conversation)}</p>
                           </div>
                           <p className="mt-1 truncate text-xs font-bold text-gray-500">{conversation.subject}</p>
@@ -610,30 +635,30 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
 
         <section className="flex min-h-[650px] flex-col bg-white">
           {!activeConversation ? (
-            <div className="flex flex-1 items-center justify-center p-8 text-center">
-              <div>
-                <MessageSquare className="mx-auto mb-4 h-14 w-14 text-gray-200" />
+            <div className={adminMode ? 'flex flex-1 items-center justify-center bg-gradient-to-br from-white via-stone-50 to-amber-50/70 p-8 text-center' : 'flex flex-1 items-center justify-center p-8 text-center'}>
+              <div className={adminMode ? 'rounded-[2rem] border border-amber-100 bg-white/85 p-8 shadow-xl shadow-slate-200/50' : ''}>
+                <MessageSquare className={adminMode ? 'mx-auto mb-4 h-14 w-14 text-amber-300' : 'mx-auto mb-4 h-14 w-14 text-gray-200'} />
                 <h2 className="text-xl font-black text-gray-900">Select a conversation</h2>
                 <p className="mt-2 text-sm text-gray-500">Choose a thread from the inbox to view messages.</p>
               </div>
             </div>
           ) : (
             <>
-              <div className="border-b border-gray-100 p-5">
+              <div className={adminMode ? 'border-b border-amber-100 bg-gradient-to-br from-white to-stone-50 p-5' : 'border-b border-gray-100 p-5'}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${config.soft}`}>{typeLabel(activeConversation.type)}</span>
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">{activeConversation.status}</span>
+                      <span className={adminMode ? 'rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-amber-100' : 'rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600'}>{activeConversation.status}</span>
                     </div>
                     <h2 className="mt-3 text-xl font-black text-gray-900">{activeConversation.subject}</h2>
                     <p className="mt-1 text-sm font-semibold text-gray-500">{participantLabel(mode, activeConversation)} {activeConversation.order_id ? `· Order #${activeConversation.order_id.slice(-8).toUpperCase()}` : ''}</p>
                     {mode === 'admin' && (
-                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black text-gray-500">
-                        {activeConversation.buyer_id && <span className="rounded-full bg-gray-100 px-2.5 py-1">Buyer ID: {activeConversation.buyer_id}</span>}
-                        {activeConversation.seller_id && <span className="rounded-full bg-gray-100 px-2.5 py-1">Seller ID: {activeConversation.seller_id}</span>}
-                        {activeConversation.store_id && <span className="rounded-full bg-gray-100 px-2.5 py-1">Store: {activeConversation.store_name || activeConversation.store_id}</span>}
-                        {activeConversation.store_subdomain && <span className="rounded-full bg-gray-100 px-2.5 py-1">Subdomain: {activeConversation.store_subdomain}</span>}
+                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black text-slate-500">
+                        {activeConversation.buyer_id && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[#7F1D1D] ring-1 ring-amber-100">Buyer ID: {activeConversation.buyer_id}</span>}
+                        {activeConversation.seller_id && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[#7F1D1D] ring-1 ring-amber-100">Seller ID: {activeConversation.seller_id}</span>}
+                        {activeConversation.store_id && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[#7F1D1D] ring-1 ring-amber-100">Store: {activeConversation.store_name || activeConversation.store_id}</span>}
+                        {activeConversation.store_subdomain && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[#7F1D1D] ring-1 ring-amber-100">Subdomain: {activeConversation.store_subdomain}</span>}
                       </div>
                     )}
                   </div>
@@ -642,7 +667,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                       type="button"
                       onClick={() => void updateConversationStatus(activeConversation.status === 'open' ? 'closed' : 'open')}
                       disabled={sending}
-                      className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-black text-gray-600 transition hover:border-red-100 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={adminMode ? 'rounded-full border border-amber-100 bg-white px-3 py-1.5 text-xs font-black text-[#7F1D1D] transition hover:border-[#B91C1C]/30 hover:bg-red-50 hover:text-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60' : 'rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-black text-gray-600 transition hover:border-red-100 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60'}
                     >
                       {activeConversation.status === 'open' ? 'Close chat' : 'Reopen chat'}
                     </button>
@@ -651,16 +676,20 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                 </div>
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto bg-gradient-to-b from-gray-50 to-white p-5">
+              <div className={adminMode ? 'flex-1 space-y-4 overflow-y-auto bg-gradient-to-b from-stone-50 via-white to-amber-50/40 p-5' : 'flex-1 space-y-4 overflow-y-auto bg-gradient-to-b from-gray-50 to-white p-5'}>
                 {loadingConversation ? (
-                  <div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#16C784]" /></div>
+                  <div className="flex h-full items-center justify-center"><Loader2 className={`h-6 w-6 animate-spin ${loadingAccentClass}`} /></div>
                 ) : active.messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-sm font-semibold text-gray-400">No messages yet.</div>
                 ) : active.messages.map((message) => {
                   const mine = roleIsMine(mode, message.sender_role);
                   return (
                     <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[78%] rounded-[1.5rem] px-4 py-3 shadow-sm ${mine ? 'bg-slate-950 text-white' : 'border border-gray-100 bg-white text-gray-800'}`}>
+                      <div className={`max-w-[78%] rounded-[1.5rem] px-4 py-3 shadow-sm ${
+                        mine
+                          ? adminMode ? 'bg-[#7F1D1D] text-white shadow-red-900/15' : 'bg-slate-950 text-white'
+                          : adminMode ? 'border border-amber-100 bg-white text-slate-800 shadow-slate-200/50' : 'border border-gray-100 bg-white text-gray-800'
+                      }`}>
                         <div className={`mb-1 text-[11px] font-black uppercase tracking-wide ${mine ? 'text-white/50' : 'text-gray-400'}`}>
                           {mine ? 'You' : message.sender_name || message.sender_email || message.sender_role}
                         </div>
@@ -679,7 +708,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                 })}
               </div>
 
-              <div className="border-t border-gray-100 bg-white p-4">
+              <div className={adminMode ? 'border-t border-amber-100 bg-white p-4' : 'border-t border-gray-100 bg-white p-4'}>
                 {pendingImages.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {pendingImages.map((image, index) => (
@@ -702,7 +731,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                   </div>
                 )}
                 <div className="flex items-end gap-3">
-                  <label className={`inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500 transition hover:border-[#16C784] hover:text-[#16C784] ${activeConversation.status === 'closed' ? 'pointer-events-none opacity-50' : ''}`}>
+                  <label className={`inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500 transition ${adminMode ? 'hover:border-[#B91C1C] hover:text-[#B91C1C]' : 'hover:border-[#16C784] hover:text-[#16C784]'} ${activeConversation.status === 'closed' ? 'pointer-events-none opacity-50' : ''}`}>
                     <ImageIcon className="h-5 w-5" />
                     <input
                       type="file"
@@ -720,7 +749,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     disabled={activeConversation.status === 'closed'}
                     rows={2}
                     maxLength={chatLimits.max_message_length}
-                    className="min-h-[56px] flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={`min-h-[56px] flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:bg-white disabled:cursor-not-allowed disabled:opacity-60 ${inputFocusClass}`}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && !event.shiftKey) {
                         event.preventDefault();
@@ -732,7 +761,9 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     type="button"
                     onClick={sendMessage}
                     disabled={sending || (!draft.trim() && pendingImages.length === 0) || activeConversation.status === 'closed'}
-                    className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#16C784] text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#12ad72] disabled:cursor-not-allowed disabled:bg-gray-300"
+                    className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg transition disabled:cursor-not-allowed disabled:bg-gray-300 ${
+                      adminMode ? 'bg-[#B91C1C] shadow-red-900/15 hover:bg-[#991B1B]' : 'bg-[#16C784] shadow-emerald-900/10 hover:bg-[#12ad72]'
+                    }`}
                   >
                     {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </button>
@@ -745,7 +776,9 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
 
       {showCreateAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
+          <div className={adminMode ? 'w-full max-w-xl overflow-hidden rounded-[2rem] border border-amber-100 bg-white shadow-2xl shadow-red-950/20' : 'w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl'}>
+            <div className={adminMode ? 'bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] px-6 py-5 text-white' : 'hidden'} />
+            <div className={adminMode ? 'p-6' : ''}>
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-black text-gray-900">{mode === 'buyer' ? 'Contact marketplace support' : 'Start admin support chat'}</h2>
@@ -755,7 +788,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
             </div>
             <div className="space-y-3">
               {mode === 'admin' && (
-                <div className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-3">
+                <div className="space-y-3 rounded-2xl border border-amber-100 bg-stone-50 p-3">
                   <div className="grid grid-cols-2 gap-2">
                     {(['seller', 'buyer'] as const).map((item) => (
                       <button
@@ -766,7 +799,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                           setAdminTargetId('');
                           setAdminTargetSearch('');
                         }}
-                        className={`rounded-xl px-3 py-2 text-xs font-black transition ${adminTargetType === item ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200'}`}
+                        className={`rounded-xl px-3 py-2 text-xs font-black transition ${adminTargetType === item ? 'bg-[#B91C1C] text-white shadow-sm shadow-red-900/15' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:text-[#B91C1C]'}`}
                       >
                         {item === 'seller' ? 'Seller / Store' : 'Buyer'}
                       </button>
@@ -776,12 +809,12 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     value={adminTargetSearch}
                     onChange={(event) => setAdminTargetSearch(event.target.value)}
                     placeholder={adminTargetType === 'seller' ? 'Search stores by name, subdomain, owner email...' : 'Search buyers by name, email, or user ID...'}
-                    className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                    className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                   />
                   <div className="space-y-2">
                     {loadingTargets ? (
                       <div className="flex items-center justify-center rounded-2xl bg-white py-4">
-                        <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-[#B91C1C]" />
                       </div>
                     ) : adminTargets.length === 0 ? (
                       <div className="rounded-2xl bg-white px-3 py-3 text-xs font-bold text-gray-400">No matching targets found.</div>
@@ -795,7 +828,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                             setAdminTargetId(target.id);
                             setAdminTargetSearch(adminTargetType === 'seller' ? target.name || target.subdomain || target.id : target.name || target.email || target.id);
                           }}
-                          className={`w-full rounded-2xl p-3 text-left transition ${selected ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-100 hover:ring-indigo-100'}`}
+                          className={`w-full rounded-2xl p-3 text-left transition ${selected ? 'bg-[#B91C1C] text-white shadow-sm shadow-red-900/15' : 'bg-white text-gray-700 ring-1 ring-gray-100 hover:ring-amber-200'}`}
                         >
                           <span className="block text-sm font-black">
                             {adminTargetType === 'seller' ? target.name || 'Store' : target.name || target.email || 'Buyer'}
@@ -810,7 +843,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     })}
                   </div>
                   {adminTargetId && (
-                    <div className="rounded-2xl bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">
+                    <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-black text-[#7F1D1D] ring-1 ring-amber-100">
                       Selected {adminTargetType === 'seller' ? 'store' : 'buyer'} ID: {adminTargetId}
                     </div>
                   )}
@@ -820,24 +853,25 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                 value={newSubject}
                 onChange={(event) => setNewSubject(event.target.value)}
                 placeholder="Subject"
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+                className={`w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:bg-white ${inputFocusClass}`}
               />
               <textarea
                 value={newBody}
                 onChange={(event) => setNewBody(event.target.value)}
                 placeholder="Describe what you need help with..."
                 rows={5}
-                className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+                className={`w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:bg-white ${inputFocusClass}`}
               />
               <button
                 type="button"
                 onClick={createAdminConversation}
                 disabled={sending || !newSubject.trim() || !newBody.trim() || (mode === 'admin' && !adminTargetId.trim())}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-[#16C784] disabled:cursor-not-allowed disabled:bg-gray-300"
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition disabled:cursor-not-allowed disabled:bg-gray-300 ${primaryActionClass}`}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {mode === 'buyer' ? 'Send to marketplace support' : 'Send to admin'}
               </button>
+            </div>
             </div>
           </div>
         </div>

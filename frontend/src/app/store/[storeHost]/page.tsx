@@ -24,8 +24,13 @@ import { DigitalTheme } from '../../../components/themes/DigitalTheme';
 import { KidsTheme } from '../../../components/themes/KidsTheme';
 import { SafePageRenderer } from '../../../components/page-builder/SafePageRenderer';
 import { StoreCartIcon } from '../../../components/store/StoreCartIcon';
-import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
-import { getStoreRouteContext } from '../../../lib/store-routing';
+import { getMarketplaceSettings } from '@/lib/marketplace-settings';
+import { getStoreRouteContext } from '@/lib/store-routing';
+import {
+  PAGE_BUILDER_REVALIDATE_SECONDS,
+  pageBuilderHomepageTag,
+  pageBuilderStoreTag,
+} from '@/lib/page-builder-cache';
 import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../components/store/MarketplaceStorefront';
 import { MarketplaceBrand } from '../../../components/MarketplaceBrand';
 import { StorefrontSocialLinks } from '../../../components/themes/StorefrontSocialLinks';
@@ -61,6 +66,7 @@ interface StoreData {
   is_verified?: boolean | null;
   status?: string | null;
   created_at?: string | null;
+  shipping_mode?: string | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
@@ -113,13 +119,30 @@ interface HomepageOverride {
   slug?: string;
   html: string;
   css: string;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  og_image?: string | null;
+  noindex?: boolean;
+  show_in_navigation?: boolean;
+  show_in_footer?: boolean;
+  sort_order?: number | null;
+}
+
+type PageSearchParams = Record<string, string | string[] | undefined>;
+
+function getSearchParam(params: PageSearchParams | undefined, key: string): string | undefined {
+  const value = params?.[key];
+  return Array.isArray(value) ? value[0] : value;
 }
 
 async function getHomepageOverride(storeId: string): Promise<HomepageOverride | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/${storeId}/homepage`, {
-      next: { revalidate: 30 },
+      next: {
+        revalidate: PAGE_BUILDER_REVALIDATE_SECONDS,
+        tags: [pageBuilderStoreTag(storeId), pageBuilderHomepageTag(storeId)],
+      },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -129,6 +152,38 @@ async function getHomepageOverride(storeId: string): Promise<HomepageOverride | 
   }
 }
 
+async function getDraftPreviewHomepage(storeId: string, token: string): Promise<HomepageOverride | null> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const query = new URLSearchParams({ token, homepage: '1' });
+    const res = await fetch(
+      `${backendUrl}/api/pd/stores/${storeId}/page-builder-preview?${query.toString()}`,
+      { cache: 'no-store' },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.page || null;
+  } catch {
+    return null;
+  }
+}
+
+async function getPublishedPages(storeId: string): Promise<HomepageOverride[]> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/stores/${storeId}/pages`, {
+      next: {
+        revalidate: PAGE_BUILDER_REVALIDATE_SECONDS,
+        tags: [pageBuilderStoreTag(storeId)],
+      },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}
 async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
@@ -163,10 +218,14 @@ async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
  */
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeHost: string }>;
+  searchParams?: Promise<PageSearchParams>;
 }): Promise<Metadata> {
   const { storeHost } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const previewToken = getSearchParam(resolvedSearchParams, 'pb_preview');
   const store = await getStoreByHost(decodeURIComponent(storeHost));
   const marketplaceSettings = await getMarketplaceSettings();
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
@@ -175,29 +234,45 @@ export async function generateMetadata({
     return { title: `Boutique introuvable | ${marketplaceName}` };
   }
 
-  const description = store.description
+  const fallbackDescription = store.description
     || `Découvrez les produits de ${store.name} sur ${marketplaceName}. Boutique en ligne tunisienne.`;
   const logoUrl = store.settings?.logo_url as string | undefined;
+  const homepageOverride = previewToken
+    ? await getDraftPreviewHomepage(store.id, previewToken)
+    : await getHomepageOverride(store.id);
+  const title = homepageOverride?.seo_title || `${store.name} — Boutique en ligne`;
+  const description = homepageOverride?.seo_description || fallbackDescription;
+  const imageUrl = homepageOverride?.og_image || logoUrl;
 
   return {
-    title: `${store.name} — Boutique en ligne`,
+    title,
     description: description.slice(0, 160),
+    robots: previewToken || homepageOverride?.noindex ? { index: false, follow: false } : undefined,
     openGraph: {
-      title: store.name,
+      title,
       description,
       type: 'website',
-      ...(logoUrl ? { images: [{ url: logoUrl, width: 400, height: 400, alt: store.name }] } : {}),
+      ...(imageUrl ? { images: [{ url: imageUrl, width: 400, height: 400, alt: title }] } : {}),
     },
     twitter: {
-      card: 'summary',
-      title: store.name,
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title,
       description: description.slice(0, 160),
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   };
 }
 
-export default async function StorePage({ params }: { params: Promise<{ storeHost: string }> }) {
+export default async function StorePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeHost: string }>;
+  searchParams?: Promise<PageSearchParams>;
+}) {
   const { storeHost } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const previewToken = getSearchParam(resolvedSearchParams, 'pb_preview');
   const decodedHost = decodeURIComponent(storeHost);
 
   const store = await getStoreByHost(decodedHost);
@@ -206,7 +281,7 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   }
 
   // Per-store maintenance mode
-  if (store.status === 'maintenance') {
+  if (store.status === 'maintenance' && !previewToken) {
     const marketplaceSettings = await getMarketplaceSettings();
     const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
     const activeTheme = themes[store.theme_id] || themes.classic;
@@ -229,7 +304,7 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
 
-  if (isMarketplaceStoreRoute) {
+  if (isMarketplaceStoreRoute && !previewToken) {
     const [products, categories, marketplaceSettings] = await Promise.all([
       getStoreProducts(store.id),
       getMarketplaceCategories(),
@@ -252,11 +327,20 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
   const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
 
   // Check for Page Builder homepage override (Regular+ plans)
-  const homepageOverride = await getHomepageOverride(store.id);
-  if (homepageOverride && homepageOverride.html) {
+  const homepageOverride = previewToken
+    ? await getDraftPreviewHomepage(store.id, previewToken)
+    : await getHomepageOverride(store.id);
+  if (previewToken && !homepageOverride) {
+    notFound();
+  }
+  if (homepageOverride && (homepageOverride.html || previewToken)) {
     const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
     const logoUrl = store.settings?.logo_url as string | undefined;
-    const marketplaceSettings = await getMarketplaceSettings();
+    const [marketplaceSettings, products, pageLinks] = await Promise.all([
+      getMarketplaceSettings(),
+      getStoreProducts(store.id),
+      getPublishedPages(store.id),
+    ]);
     const footerBranding: StoreBranding = {
       marketplace_name: marketplaceSettings.marketplace_name,
       marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
@@ -268,6 +352,8 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
       map_embed_url: store.settings?.map_embed_url,
       social: store.settings?.social,
     };
+    const navigationPages = pageLinks.filter((link) => link.show_in_navigation && link.id !== homepageOverride.id);
+    const footerPages = pageLinks.filter((link) => link.show_in_footer && link.id !== homepageOverride.id);
 
     return (
       <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
@@ -298,17 +384,61 @@ export default async function StorePage({ params }: { params: Promise<{ storeHos
             >
               Accueil
             </Link>
+            {navigationPages.map((link) => (
+              <Link
+                key={link.id}
+                href={`${storePathBase || ''}/pages/${link.slug}`}
+                className="transition-colors hover:opacity-80"
+                style={{ color: resolvedColors.text }}
+              >
+                {link.title}
+              </Link>
+            ))}
             <StoreCartIcon storeId={store.id} storeHost={storeHost} primaryColor={primaryColor} storePathBase={storePathBase} iconColor={resolvedColors.text} className="inline-flex items-center gap-2 transition-colors hover:opacity-80" label="Panier" />
           </nav>
         </header>
 
-        {/* Page Builder Content (sanitized) */}
+        {previewToken && (
+          <div className="border-b border-amber-300 bg-amber-100 px-6 py-2 text-center text-sm font-semibold text-amber-900">
+            Aperçu brouillon — cette version n’est pas publiée.
+          </div>
+        )}
         <main>
-          <SafePageRenderer html={homepageOverride.html} css={homepageOverride.css} />
+          <SafePageRenderer
+            html={homepageOverride.html}
+            css={homepageOverride.css}
+            analytics={previewToken ? undefined : { storeId: store.id, pageId: homepageOverride.id, enabled: true }}
+            dynamicContext={{
+              storeName: store.name,
+              storeDescription: store.description || store.settings?.store_description || store.settings?.description,
+              storePathBase,
+              primaryColor,
+              logoUrl,
+              contactEmail: store.settings?.contact_email,
+              contactPhone: store.settings?.contact_phone,
+              address: store.settings?.address,
+              city: store.settings?.city,
+              country: store.settings?.country,
+              shippingMode: store.shipping_mode,
+              shippingPolicy: typeof store.settings?.shipping_policy === 'string' ? store.settings.shipping_policy : undefined,
+              returnsPolicy: typeof store.settings?.returns_policy === 'string' ? store.settings.returns_policy : undefined,
+              paymentPolicy: typeof store.settings?.payment_policy === 'string' ? store.settings.payment_policy : undefined,
+              products,
+            }}
+          />
         </main>
 
         {/* Footer */}
         <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
+          {footerPages.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
+              {footerPages.map((link) => (
+                <Link key={link.id} href={`${storePathBase || ''}/pages/${link.slug}`} className="font-semibold hover:underline">
+                  {link.title}
+                </Link>
+              ))}
+            </div>
+          )}
           <StorefrontSocialLinks
             branding={footerBranding}
             showContact

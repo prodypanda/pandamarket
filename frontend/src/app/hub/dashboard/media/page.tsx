@@ -146,19 +146,19 @@ export default function SellerMediaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-2xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-emerald-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
               <ImageIcon className="h-4 w-4" />
               Store media library
             </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight">Media</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/80">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-50/80">
               Upload and reuse store images for products, categories, logos, marketplace headers, and storefront content.
             </p>
           </div>
-          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50">
+          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-amber-50">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
             {uploading ? 'Uploading...' : 'Upload image'}
             <input
@@ -173,7 +173,7 @@ export default function SellerMediaPage() {
       </div>
 
       {(success || error) && (
-        <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${error ? 'border-red-100 bg-red-50 text-red-700' : 'border-emerald-100 bg-emerald-50 text-emerald-700'}`}>
+        <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${error ? 'border-red-100 bg-red-50 text-red-700' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
           {error || success}
         </div>
       )}
@@ -200,14 +200,14 @@ export default function SellerMediaPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search images by product, filename, or URL"
-            className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+            className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
           />
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center rounded-[2rem] border border-gray-100 bg-white py-16 shadow-sm">
-          <Loader2 className="h-8 w-8 animate-spin text-[#16C784]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#B91C1C]" />
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="rounded-[2rem] border border-dashed border-gray-200 bg-white px-6 py-16 text-center text-gray-500">
@@ -246,7 +246,7 @@ export default function SellerMediaPage() {
                   <Link
                     href={item.url}
                     target="_blank"
-                    className="inline-flex items-center justify-center rounded-xl bg-[#16C784] px-3 py-2 text-xs font-black text-white transition hover:bg-[#14b876]"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#B91C1C] px-3 py-2 text-xs font-black text-white transition hover:bg-[#991B1B]"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Link>
@@ -294,7 +294,7 @@ export default function SellerMediaPage() {
                 <button
                   type="button"
                   onClick={() => void copyUrl(selectedItem.url)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#16C784] px-4 py-3 text-sm font-black text-white transition hover:bg-[#14b876]"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]"
                 >
                   <Copy className="h-4 w-4" />
                   Copy media URL

@@ -62,8 +62,8 @@ interface CaseDetails {
 const statusConfig: Record<ReportStatus, { label: string; className: string; icon: typeof AlertTriangle }> = {
   open: { label: 'Open', className: 'bg-red-50 text-red-700 ring-red-100', icon: AlertTriangle },
   investigating: { label: 'Investigating', className: 'bg-yellow-50 text-yellow-700 ring-yellow-100', icon: Clock },
-  awaiting_buyer: { label: 'Awaiting buyer', className: 'bg-blue-50 text-blue-700 ring-blue-100', icon: MessageSquare },
-  awaiting_seller: { label: 'Awaiting seller', className: 'bg-purple-50 text-purple-700 ring-purple-100', icon: ShieldAlert },
+  awaiting_buyer: { label: 'Awaiting buyer', className: 'bg-amber-50 text-[#7F1D1D] ring-amber-100', icon: MessageSquare },
+  awaiting_seller: { label: 'Awaiting seller', className: 'bg-red-50 text-[#7F1D1D] ring-red-100', icon: ShieldAlert },
   resolved: { label: 'Resolved', className: 'bg-emerald-50 text-emerald-700 ring-emerald-100', icon: CheckCircle },
   dismissed: { label: 'Dismissed', className: 'bg-gray-100 text-gray-600 ring-gray-200', icon: XCircle },
 };
@@ -83,8 +83,8 @@ function formatSize(size: number | string | null) {
 }
 
 function visibilityClass(visibility: ReportMessageVisibility) {
-  if (visibility === 'buyer_admin') return 'bg-blue-50 text-blue-700 ring-blue-100';
-  if (visibility === 'seller_admin') return 'bg-purple-50 text-purple-700 ring-purple-100';
+  if (visibility === 'buyer_admin') return 'bg-amber-50 text-[#7F1D1D] ring-amber-100';
+  if (visibility === 'seller_admin') return 'bg-red-50 text-[#7F1D1D] ring-red-100';
   if (visibility === 'all_parties') return 'bg-emerald-50 text-emerald-700 ring-emerald-100';
   return 'bg-slate-900 text-white ring-slate-900';
 }
@@ -185,7 +185,7 @@ export default function AdminReportCasePage() {
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center rounded-[2rem] bg-white shadow-sm">
-        <Loader2 className="h-8 w-8 animate-spin text-[#16C784]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#B91C1C]" />
       </div>
     );
   }
@@ -219,7 +219,7 @@ export default function AdminReportCasePage() {
               <p><span className="font-black text-gray-900">Created:</span> {new Date(report.created_at).toLocaleString('fr-TN')}</p>
             </div>
             <div className="mt-5 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-700">{report.reason}</div>
-            {report.admin_notes && <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">{report.admin_notes}</div>}
+            {report.admin_notes && <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-[#7F1D1D]">{report.admin_notes}</div>}
           </section>
 
           <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
@@ -268,7 +268,7 @@ export default function AdminReportCasePage() {
             {feedback && <div className="mb-4 rounded-2xl bg-white p-3 text-sm font-bold text-gray-600 ring-1 ring-gray-100">{feedback}</div>}
             <div className="mb-4 grid gap-3 md:grid-cols-2">
               {visibilityOptions.map((option) => (
-                <label key={option.value} className={`cursor-pointer rounded-2xl border p-4 transition ${visibility === option.value ? 'border-[#16C784] bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <label key={option.value} className={`cursor-pointer rounded-2xl border p-4 transition ${visibility === option.value ? 'border-[#B91C1C] bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                   <input type="radio" className="sr-only" value={option.value} checked={visibility === option.value} onChange={() => setVisibility(option.value)} />
                   <span className="block text-sm font-black text-gray-900">{option.label}</span>
                   <span className="mt-1 block text-xs font-semibold text-gray-500">{option.helper}</span>
@@ -280,7 +280,7 @@ export default function AdminReportCasePage() {
               onChange={(event) => setBody(event.target.value)}
               rows={4}
               placeholder="Write an update, request more information, or add an internal note..."
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#16C784]"
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
             />
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50">
@@ -288,7 +288,7 @@ export default function AdminReportCasePage() {
                 Attach files
                 <input type="file" multiple className="hidden" onChange={onFileChange} accept="image/*,application/pdf,text/plain" />
               </label>
-              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#16C784] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
+              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Add message
               </button>

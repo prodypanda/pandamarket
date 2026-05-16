@@ -191,6 +191,8 @@ export enum ReportEventType {
 export enum AiJobType {
   ImageCompression = 'image_compression',
   SeoGeneration = 'seo_generation',
+  PageCopy = 'page_copy',
+  ProductDescription = 'product_description',
 }
 
 export enum AiJobStatus {

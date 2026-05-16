@@ -72,10 +72,26 @@ export interface StoreOrderRow extends OrderRow {
   customer_first_name: string | null;
   customer_last_name: string | null;
   customer_phone: string | null;
+  store_name: string | null;
+  store_subdomain: string | null;
+  store_custom_domain: string | null;
+  store_settings: Record<string, unknown> | null;
+}
+
+export interface StoreOrderNoteRow {
+  id: string;
+  order_id: string;
+  store_id: string;
+  body: string;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface StoreOrderDetailRow extends StoreOrderRow {
   items: unknown[];
+  seller_note: StoreOrderNoteRow | null;
 }
 
 export interface StoreOrderSummary {
@@ -403,11 +419,27 @@ export class OrderService {
               COALESCE(u.first_name, sc.first_name) AS customer_first_name,
               COALESCE(u.last_name, sc.last_name) AS customer_last_name,
               COALESCE(u.phone, sc.phone) AS customer_phone,
-              COALESCE(items.items, '[]'::json) AS items
+              s.name AS store_name,
+              s.subdomain AS store_subdomain,
+              s.custom_domain AS store_custom_domain,
+              s.settings AS store_settings,
+              COALESCE(items.items, '[]'::json) AS items,
+              CASE WHEN note.id IS NULL THEN NULL ELSE json_build_object(
+                'id', note.id,
+                'order_id', note.order_id,
+                'store_id', note.store_id,
+                'body', note.body,
+                'created_by', note.created_by,
+                'updated_by', note.updated_by,
+                'created_at', note.created_at,
+                'updated_at', note.updated_at
+              ) END AS seller_note
        FROM pd_order o
        LEFT JOIN pd_user u ON u.id = o.customer_id
        LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_store s ON s.id = $2
        LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $2
+       LEFT JOIN pd_store_order_note note ON note.order_id = o.id AND note.store_id = $2
        LEFT JOIN LATERAL (
          SELECT COALESCE(SUM(i.subtotal), 0) AS store_subtotal
          FROM pd_order_item i
@@ -442,6 +474,31 @@ export class OrderService {
       [orderId, storeId],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+    return rows[0];
+  }
+
+  async upsertStoreOrderNote(opts: {
+    order_id: string;
+    store_id: string;
+    user_id: string;
+    body: string;
+  }): Promise<StoreOrderNoteRow> {
+    const hasItems = await this.hasStoreItems(opts.order_id, opts.store_id);
+    if (!hasItems) {
+      throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+    }
+
+    const { rows } = await query<StoreOrderNoteRow>(
+      `INSERT INTO pd_store_order_note (id, order_id, store_id, body, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $5)
+       ON CONFLICT (order_id, store_id)
+       DO UPDATE SET body = EXCLUDED.body,
+                     updated_by = EXCLUDED.updated_by,
+                     updated_at = NOW()
+       RETURNING *`,
+      [pdId('ordnote'), opts.order_id, opts.store_id, opts.body, opts.user_id],
+    );
+
     return rows[0];
   }
 
@@ -751,6 +808,129 @@ export class OrderService {
       );
     }
     logger.info(opts, 'Fulfillment shipped');
+  }
+
+  async markStoreFulfillmentDelivered(opts: {
+    order_id: string;
+    store_id: string;
+  }): Promise<void> {
+    const { rowCount } = await query(
+      `UPDATE pd_fulfillment
+       SET status = 'delivered',
+           delivered_at = NOW(),
+           updated_at = NOW()
+       WHERE order_id = $1 AND store_id = $2 AND status = 'shipped'`,
+      [opts.order_id, opts.store_id],
+    );
+    if (!rowCount) {
+      throw new PdConflictError(
+        PdErrorCode.ORDER_ALREADY_FULFILLED,
+        'Fulfillment not found or not shipped',
+      );
+    }
+
+    const { rows } = await query<{ active: string; delivered: string }>(
+      `SELECT
+         COUNT(*) FILTER (WHERE status IN ('pending', 'shipped'))::text AS active,
+         COUNT(*) FILTER (WHERE status = 'delivered')::text AS delivered
+       FROM pd_fulfillment
+       WHERE order_id = $1`,
+      [opts.order_id],
+    );
+    if (rows[0].active === '0' && rows[0].delivered !== '0') {
+      await query(
+        `UPDATE pd_order SET status = 'delivered' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
+        [opts.order_id],
+      );
+    }
+    logger.info(opts, 'Fulfillment delivered');
+  }
+
+  async cancelStoreFulfillment(opts: {
+    order_id: string;
+    store_id: string;
+    reason: string;
+  }): Promise<void> {
+    await transaction(async (c) => {
+      const { rowCount } = await c.query(
+        `UPDATE pd_fulfillment
+         SET status = 'cancelled',
+             updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2 AND status = 'pending'`,
+        [opts.order_id, opts.store_id],
+      );
+      if (!rowCount) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          'Fulfillment not found or cannot be cancelled',
+        );
+      }
+
+      const { rows: items } = await c.query<{
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        product_type: ProductType;
+      }>(
+        `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+         FROM pd_order_item i
+         JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = $1 AND i.store_id = $2`,
+        [opts.order_id, opts.store_id],
+      );
+      for (const it of items) {
+        if (usesInventory(it.product_type)) {
+          await c.query(
+            `UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
+            [it.product_id, it.quantity],
+          );
+          if (it.variant_id) {
+            await c.query(
+              `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
+              [it.variant_id, it.quantity],
+            );
+          }
+        }
+      }
+
+      const { rows } = await c.query<{
+        pending: string;
+        shipped: string;
+        delivered: string;
+        active: string;
+      }>(
+        `SELECT
+           COUNT(*) FILTER (WHERE status = 'pending')::text AS pending,
+           COUNT(*) FILTER (WHERE status = 'shipped')::text AS shipped,
+           COUNT(*) FILTER (WHERE status = 'delivered')::text AS delivered,
+           COUNT(*) FILTER (WHERE status IN ('pending', 'shipped', 'delivered'))::text AS active
+         FROM pd_fulfillment
+         WHERE order_id = $1`,
+        [opts.order_id],
+      );
+      const counts = rows[0];
+      if (counts.active === '0') {
+        await c.query(
+          `UPDATE pd_order
+           SET status = 'cancelled',
+               cancelled_at = NOW(),
+               cancelled_reason = $2
+           WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
+          [opts.order_id, opts.reason],
+        );
+      } else if (counts.pending === '0' && counts.shipped === '0' && counts.delivered !== '0') {
+        await c.query(
+          `UPDATE pd_order SET status = 'delivered' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
+          [opts.order_id],
+        );
+      } else if (counts.pending === '0' && counts.shipped !== '0') {
+        await c.query(
+          `UPDATE pd_order SET status = 'fulfilled' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
+          [opts.order_id],
+        );
+      }
+    });
+    logger.info(opts, 'Store fulfillment cancelled');
   }
 
   async cancel(orderId: string, reason: string): Promise<void> {

@@ -271,6 +271,7 @@ export default function ProductsPage() {
   const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
   const [compressingImages, setCompressingImages] = useState(false);
   const [generatingSeo, setGeneratingSeo] = useState(false);
+  const [enhancingDescription, setEnhancingDescription] = useState(false);
   const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
   const [storefrontCategories, setStorefrontCategories] = useState<Category[]>([]);
   const [newStorefrontCategory, setNewStorefrontCategory] = useState('');
@@ -283,6 +284,7 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [sellerType, setSellerType] = useState<'retailer' | 'wholesaler' | 'hybrid'>('retailer');
+  const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
 
   const fetchStore = useCallback(async () => {
@@ -368,6 +370,24 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchMediaItems();
   }, [fetchMediaItems]);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchMarketplaceSettings() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/marketplace/settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setMarketplaceName(data.data?.marketplace_name || 'PandaMarket');
+      } catch {
+        if (active) setMarketplaceName('PandaMarket');
+      }
+    }
+    fetchMarketplaceSettings();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -946,13 +966,55 @@ export default function ProductsPage() {
     }
     const marketCategory = marketplaceCategories.find((category) => category.id === form.marketplace_category_id)?.name;
     const seoTitle = `${title}${marketCategory ? ` | ${marketCategory}` : ''}`.slice(0, 70);
-    const seoDescription = (form.description.trim() || `Découvrez ${title} sur PandaMarket.`).slice(0, 160);
+    const seoDescription = (form.description.trim() || `Découvrez ${title} sur ${marketplaceName}.`).slice(0, 160);
     setForm((current) => ({
       ...current,
       seo_title: current.seo_title || seoTitle,
       seo_description: current.seo_description || seoDescription,
     }));
     setSuccess('SEO fields generated locally. Save the product to keep them.');
+  };
+
+  const handleEnhanceDescription = async () => {
+    const title = form.title.trim();
+    if (!title) {
+      setError('Enter a product title before enhancing the description.');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setEnhancingDescription(true);
+    try {
+      const marketCategory = marketplaceCategories.find((category) => category.id === form.marketplace_category_id)?.name;
+      const res = await fetchWithCsrf('/api/pd/ai/product-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_id: editingProduct?.id,
+          title,
+          current_description: form.description.trim() || undefined,
+          category: marketCategory || undefined,
+          attributes: form.attributes
+            .map((attribute) => ({ name: attribute.name.trim(), value: attribute.value.trim() }))
+            .filter((attribute) => attribute.name && attribute.value),
+          language: 'fr',
+          tone: 'friendly',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, 'Failed to enhance product description'));
+      }
+      const data = await res.json();
+      const description = data.description?.description_html;
+      if (!description) throw new Error('AI did not return a product description.');
+      setForm((current) => ({ ...current, description }));
+      setSuccess('Product description enhanced with AI. Review it, then save the product.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to enhance product description');
+    } finally {
+      setEnhancingDescription(false);
+    }
   };
 
   const handleDelete = async (productId: string) => {
@@ -1000,8 +1062,8 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-slate-950 via-slate-900 to-[#16C784] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10">
-        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#16C784]/30 blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-br from-slate-950 via-slate-900 to-[#B91C1C] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10">
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#B91C1C]/30 blur-3xl" />
         <div className="absolute -bottom-24 left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
           <div>
@@ -1036,7 +1098,7 @@ export default function ProductsPage() {
         <button
           type="button"
           onClick={() => (showCreate ? resetForm() : setShowCreate(true))}
-          className="relative mt-6 inline-flex items-center px-5 py-3 bg-white text-slate-950 font-bold rounded-2xl shadow-lg shadow-black/10 hover:bg-emerald-50 hover:-translate-y-0.5 transition-all"
+          className="relative mt-6 inline-flex items-center px-5 py-3 bg-white text-slate-950 font-bold rounded-2xl shadow-lg shadow-black/10 hover:bg-amber-50 hover:-translate-y-0.5 transition-all"
         >
           {showCreate ? <X className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
           {showCreate ? 'Cancel' : 'Add Product'}
@@ -1060,7 +1122,7 @@ export default function ProductsPage() {
 
       {showCreate && (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-emerald-50/50 px-6 py-5">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-amber-50/50 px-6 py-5">
             <div>
               <h2 className="text-xl font-black text-gray-900">
                 {editingProduct ? 'Edit product' : 'New product'}
@@ -1079,7 +1141,7 @@ export default function ProductsPage() {
                 value={form.title}
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                 placeholder="Example: Handmade leather bag"
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
               />
             </div>
             <div>
@@ -1089,9 +1151,9 @@ export default function ProductsPage() {
                 value={form.slug}
                 onChange={(event) => setForm((current) => ({ ...current, slug: normalizePermalink(event.target.value) }))}
                 placeholder={normalizePermalink(form.title) || 'auto-generated-from-title'}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
               />
-              <p className="mt-1 text-xs text-gray-500">Leave empty to generate it from the product title. If it already exists, PandaMarket adds a number.</p>
+              <p className="mt-1 text-xs text-gray-500">Leave empty to generate it from the product title. If it already exists, {marketplaceName} adds a number.</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Price</label>
@@ -1102,7 +1164,7 @@ export default function ProductsPage() {
                 step="0.001"
                 onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
                 placeholder="0.000"
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
               />
             </div>
             <div>
@@ -1110,7 +1172,7 @@ export default function ProductsPage() {
               <select
                 value={form.type}
                 onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
               >
                 <option value="physical">Physical</option>
                 <option value="digital">Digital</option>
@@ -1125,7 +1187,7 @@ export default function ProductsPage() {
                 value={form.product_reference}
                 onChange={(event) => setForm((current) => ({ ...current, product_reference: event.target.value }))}
                 placeholder="SKU, supplier ref, serial family..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
               />
             </div>
             <div>
@@ -1133,7 +1195,7 @@ export default function ProductsPage() {
               <select
                 value={form.marketplace_category_id}
                 onChange={(event) => setForm((current) => ({ ...current, marketplace_category_id: event.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
               >
                 <option value="">Non categorized products</option>
                 {marketplaceCategories.map((category) => (
@@ -1142,7 +1204,7 @@ export default function ProductsPage() {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">Used by the PandaMarket Hub. Managed by the super admin.</p>
+              <p className="mt-1 text-xs text-gray-500">Used by the {marketplaceName} Hub. Managed by the super admin.</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Inventory</label>
@@ -1152,10 +1214,10 @@ export default function ProductsPage() {
                 min="0"
                 onChange={(event) => setForm((current) => ({ ...current, inventory_quantity: event.target.value }))}
                 placeholder="Inventory"
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
               />
             </div>
-            <div className="md:col-span-2 rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50/60 p-5 shadow-sm">
+            <div className="md:col-span-2 rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-amber-50/60 p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-wide text-indigo-700 ring-1 ring-indigo-100">
@@ -1170,7 +1232,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={addVariant}
-                  className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#16C784]"
+                  className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#B91C1C]"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add variation
@@ -1203,14 +1265,14 @@ export default function ProductsPage() {
                           value={variant.title}
                           onChange={(event) => updateVariant(index, { title: event.target.value })}
                           placeholder="Label, e.g. Large / Red"
-                          className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                         />
                         <input
                           type="text"
                           value={variant.sku}
                           onChange={(event) => updateVariant(index, { sku: event.target.value })}
                           placeholder="SKU"
-                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                         />
                         <input
                           type="number"
@@ -1219,7 +1281,7 @@ export default function ProductsPage() {
                           value={variant.price}
                           onChange={(event) => updateVariant(index, { price: event.target.value })}
                           placeholder="Price"
-                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                         />
                         <input
                           type="number"
@@ -1227,7 +1289,7 @@ export default function ProductsPage() {
                           value={variant.inventory_quantity}
                           onChange={(event) => updateVariant(index, { inventory_quantity: event.target.value })}
                           placeholder="Stock"
-                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                         />
                         <div className="grid grid-cols-2 gap-2 md:col-span-6">
                           <input
@@ -1235,14 +1297,14 @@ export default function ProductsPage() {
                             value={variant.option_name}
                             onChange={(event) => updateVariant(index, { option_name: event.target.value })}
                             placeholder="Option name, e.g. Size"
-                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                           />
                           <input
                             type="text"
                             value={variant.option_value}
                             onChange={(event) => updateVariant(index, { option_value: event.target.value })}
                             placeholder="Option value, e.g. XL"
-                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/15"
+                            className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/15"
                           />
                         </div>
                       </div>
@@ -1252,7 +1314,7 @@ export default function ProductsPage() {
               </div>
             </div>
             {isWholesaleSeller && (
-              <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 space-y-4">
+              <div className="md:col-span-2 rounded-2xl border border-amber-100 bg-amber-50/60 p-5 space-y-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h3 className="font-bold text-gray-900">{t('productWholesale.title')}</h3>
@@ -1262,7 +1324,7 @@ export default function ProductsPage() {
                         : t('productWholesale.wholesalerDescription')}
                     </p>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase text-emerald-700">
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase text-amber-700">
                     {sellerType}
                   </span>
                 </div>
@@ -1276,7 +1338,7 @@ export default function ProductsPage() {
                       min="2"
                       value={form.wholesale_min_quantity}
                       onChange={(event) => setForm((current) => ({ ...current, wholesale_min_quantity: event.target.value }))}
-                      className="w-full px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                      className="w-full px-4 py-3 border border-amber-200 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       {sellerType === 'hybrid' ? t('productWholesale.hybridMinimumHelp') : t('productWholesale.wholesalerMinimumHelp')}
@@ -1284,7 +1346,7 @@ export default function ProductsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-1">{t('productWholesale.oneQuantityPrice')}</label>
-                    <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-gray-900">
+                    <div className="rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-bold text-gray-900">
                       {Number(form.price || 0).toFixed(3)} TND
                     </div>
                     <p className="mt-1 text-xs text-gray-500">{t('productWholesale.basePriceHelp')}</p>
@@ -1296,7 +1358,7 @@ export default function ProductsPage() {
                     <button
                       type="button"
                       onClick={addWholesaleTier}
-                      className="inline-flex items-center rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                      className="inline-flex items-center rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50"
                     >
                       <Plus className="mr-1.5 h-3.5 w-3.5" />
                       {t('productWholesale.addTier')}
@@ -1311,7 +1373,7 @@ export default function ProductsPage() {
                           value={tier.min_quantity}
                           onChange={(event) => updateWholesaleTier(index, { min_quantity: event.target.value })}
                           placeholder={t('productWholesale.quantityFrom')}
-                          className="px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                          className="px-4 py-3 border border-amber-200 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                         />
                         <input
                           type="number"
@@ -1320,13 +1382,13 @@ export default function ProductsPage() {
                           value={tier.unit_price}
                           onChange={(event) => updateWholesaleTier(index, { unit_price: event.target.value })}
                           placeholder={t('productWholesale.unitPrice')}
-                          className="px-4 py-3 border border-emerald-200 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                          className="px-4 py-3 border border-amber-200 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                         />
                         <button
                           type="button"
                           onClick={() => removeWholesaleTier(index)}
                           disabled={form.wholesale_price_tiers.length <= 1}
-                          className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-gray-500 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-white px-4 py-3 text-gray-500 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -1338,7 +1400,7 @@ export default function ProductsPage() {
             )}
             <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Tags className="w-4 h-4 text-[#16C784]" />
+                <Tags className="w-4 h-4 text-[#B91C1C]" />
                 <h3 className="font-bold text-gray-900">Category mapping</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1347,7 +1409,7 @@ export default function ProductsPage() {
                   <select
                     value={form.storefront_category_id}
                     onChange={(event) => setForm((current) => ({ ...current, storefront_category_id: event.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                   >
                     <option value="">Non categorized products</option>
                     {storefrontCategories.map((category) => (
@@ -1366,12 +1428,12 @@ export default function ProductsPage() {
                       value={newStorefrontCategory}
                       onChange={(event) => setNewStorefrontCategory(event.target.value)}
                       placeholder="New category name"
-                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                     />
                     <select
                       value={newStorefrontParent}
                       onChange={(event) => setNewStorefrontParent(event.target.value)}
-                      className="px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                      className="px-3 py-2.5 border border-gray-300 rounded-xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                     >
                       <option value="">Top level</option>
                       {storefrontCategories.filter((category) => !category.parent_id).map((category) => (
@@ -1395,7 +1457,7 @@ export default function ProductsPage() {
               <select
                 value={form.status}
                 onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
               >
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
@@ -1403,17 +1465,17 @@ export default function ProductsPage() {
               </select>
             </div>
             {(form.type === 'digital' || form.type === 'serial') && (
-              <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 space-y-4">
+              <div className="md:col-span-2 rounded-2xl border border-amber-100 bg-amber-50/60 p-5 space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-1">Digital delivery file</label>
                     <p className="text-xs text-gray-500">Upload the private file customers can download after captured payment.</p>
                   </div>
-                  <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-emerald-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-emerald-50 cursor-pointer transition-colors">
+                  <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-amber-50 cursor-pointer transition-colors">
                     {uploadingDigitalFile ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#B91C1C]" />
                     ) : (
-                      <Upload className="w-4 h-4 mr-2 text-[#16C784]" />
+                      <Upload className="w-4 h-4 mr-2 text-[#B91C1C]" />
                     )}
                     {uploadingDigitalFile ? 'Uploading...' : 'Upload digital file'}
                     <input
@@ -1426,7 +1488,7 @@ export default function ProductsPage() {
                   </label>
                 </div>
                 {form.digital_file_key ? (
-                  <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-bold text-gray-900">{form.digital_file_name || 'Digital file attached'}</p>
                       <p className="text-xs text-gray-500">{formatFileSize(form.digital_file_size)} {form.digital_file_content_type}</p>
@@ -1446,7 +1508,7 @@ export default function ProductsPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+                  <div className="rounded-2xl border border-dashed border-amber-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
                     No digital file attached.
                   </div>
                 )}
@@ -1459,7 +1521,7 @@ export default function ProductsPage() {
                       max="100"
                       value={form.max_downloads}
                       onChange={(event) => setForm((current) => ({ ...current, max_downloads: event.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                     />
                   </div>
                   <div>
@@ -1470,7 +1532,7 @@ export default function ProductsPage() {
                       max="8760"
                       value={form.download_expires_hours}
                       onChange={(event) => setForm((current) => ({ ...current, download_expires_hours: event.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                     />
                   </div>
                 </div>
@@ -1482,7 +1544,7 @@ export default function ProductsPage() {
                       onChange={(event) => setForm((current) => ({ ...current, license_keys: event.target.value }))}
                       rows={6}
                       placeholder="One license key per line"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white font-mono text-sm"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white font-mono text-sm"
                     />
                     <p className="mt-2 text-xs text-gray-500">
                       Existing keys are not displayed. Add new unused keys here when creating or replenishing a serial product.
@@ -1510,9 +1572,9 @@ export default function ProductsPage() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
                       {uploadingImage ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" />
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#B91C1C]" />
                       ) : (
-                        <Upload className="w-4 h-4 mr-2 text-[#16C784]" />
+                        <Upload className="w-4 h-4 mr-2 text-[#B91C1C]" />
                       )}
                       {uploadingImage ? 'Uploading...' : 'Upload image'}
                       <input
@@ -1528,7 +1590,7 @@ export default function ProductsPage() {
                       onClick={() => openMediaPicker('thumbnail')}
                       className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                      <Images className="w-4 h-4 mr-2 text-[#B91C1C]" />
                       Choose from library
                     </button>
                     {form.thumbnail && (
@@ -1546,7 +1608,7 @@ export default function ProductsPage() {
                     value={form.thumbnail}
                     onChange={(event) => setForm((current) => ({ ...current, thumbnail: event.target.value }))}
                     placeholder="Or paste a thumbnail image URL"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
                   />
                 </div>
               </div>
@@ -1559,7 +1621,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
-                    <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                    <Images className="w-4 h-4 mr-2 text-[#B91C1C]" />
                     Upload gallery
                     <input
                       type="file"
@@ -1575,7 +1637,7 @@ export default function ProductsPage() {
                     onClick={() => openMediaPicker('gallery')}
                     className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
-                    <Images className="w-4 h-4 mr-2 text-[#16C784]" />
+                    <Images className="w-4 h-4 mr-2 text-[#B91C1C]" />
                     Choose existing
                   </button>
                   <button
@@ -1584,7 +1646,7 @@ export default function ProductsPage() {
                     disabled={compressingImages || uploadingImage}
                     className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >
-                    {compressingImages ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#16C784]" />}
+                    {compressingImages ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#B91C1C]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#B91C1C]" />}
                     Compress images
                   </button>
                 </div>
@@ -1614,7 +1676,18 @@ export default function ProductsPage() {
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Product description</label>
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="block text-sm font-semibold text-gray-800">Product description</label>
+                <button
+                  type="button"
+                  onClick={handleEnhanceDescription}
+                  disabled={enhancingDescription || !form.title.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-black text-[#B91C1C] transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {enhancingDescription ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Enhance with AI
+                </button>
+              </div>
               <ProductDescriptionEditor
                 value={form.description}
                 onChange={(description) => setForm((current) => ({ ...current, description }))}
@@ -1623,7 +1696,7 @@ export default function ProductsPage() {
             </div>
             <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <Tags className="w-4 h-4 text-[#16C784]" />
+                <Tags className="w-4 h-4 text-[#B91C1C]" />
                 <h3 className="font-bold text-gray-900">Product metadata</h3>
               </div>
               <div>
@@ -1633,7 +1706,7 @@ export default function ProductsPage() {
                   value={form.tags}
                   onChange={(event) => setForm((current) => ({ ...current, tags: event.target.value }))}
                   placeholder="Comma separated tags: handmade, leather, gift"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                 />
                 <p className="mt-1 text-xs text-gray-500">Tags improve Hub search and filtering.</p>
               </div>
@@ -1645,7 +1718,7 @@ export default function ProductsPage() {
                     onClick={addAttribute}
                     className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                   >
-                    <Plus className="mr-1.5 h-3.5 w-3.5 text-[#16C784]" />
+                    <Plus className="mr-1.5 h-3.5 w-3.5 text-[#B91C1C]" />
                     Add attribute
                   </button>
                 </div>
@@ -1662,14 +1735,14 @@ export default function ProductsPage() {
                           value={attribute.name}
                           onChange={(event) => updateAttribute(index, { name: event.target.value })}
                           placeholder="Name, e.g. Material"
-                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                         />
                         <input
                           type="text"
                           value={attribute.value}
                           onChange={(event) => updateAttribute(index, { value: event.target.value })}
                           placeholder="Value, e.g. Genuine leather"
-                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                          className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                         />
                         <button
                           type="button"
@@ -1696,7 +1769,7 @@ export default function ProductsPage() {
                   disabled={generatingSeo}
                   className="inline-flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {generatingSeo ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#16C784]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#16C784]" />}
+                  {generatingSeo ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#B91C1C]" /> : <Sparkles className="w-4 h-4 mr-2 text-[#B91C1C]" />}
                   SEO Automatique
                 </button>
               </div>
@@ -1709,7 +1782,7 @@ export default function ProductsPage() {
                     maxLength={200}
                     onChange={(event) => setForm((current) => ({ ...current, seo_title: event.target.value }))}
                     placeholder="SEO title"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                   />
                 </div>
                 <div>
@@ -1720,7 +1793,7 @@ export default function ProductsPage() {
                     maxLength={300}
                     onChange={(event) => setForm((current) => ({ ...current, seo_description: event.target.value }))}
                     placeholder="SEO description"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 outline-none bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none bg-white"
                   />
                 </div>
               </div>
@@ -1732,7 +1805,7 @@ export default function ProductsPage() {
               type="button"
               onClick={handleSave}
               disabled={creating || uploadingImage}
-              className="inline-flex items-center justify-center px-6 py-3 bg-[#16C784] text-white font-bold rounded-2xl hover:bg-[#14b876] shadow-lg shadow-[#16C784]/20 transition-all disabled:opacity-50 disabled:shadow-none"
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#B91C1C] text-white font-bold rounded-2xl hover:bg-[#991B1B] shadow-lg shadow-[#B91C1C]/20 transition-all disabled:opacity-50 disabled:shadow-none"
             >
               {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {uploadingImage ? 'Uploading image...' : creating ? 'Saving...' : editingProduct ? 'Save changes' : 'Create product'}
@@ -1750,7 +1823,7 @@ export default function ProductsPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search products..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#16C784]/15 focus:border-[#16C784] outline-none transition-all bg-white"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#B91C1C]/15 focus:border-[#B91C1C] outline-none transition-all bg-white"
             />
           </div>
         </div>
@@ -1758,7 +1831,7 @@ export default function ProductsPage() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-[#16C784] animate-spin" />
+              <Loader2 className="w-6 h-6 text-[#B91C1C] animate-spin" />
               <span className="ml-2 text-gray-500">Loading products...</span>
             </div>
           ) : visibleProducts.length === 0 ? (
@@ -1780,7 +1853,7 @@ export default function ProductsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {visibleProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-emerald-50/30 transition-colors group">
+                  <tr key={product.id} className="hover:bg-amber-50/30 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="h-14 w-14 flex-shrink-0 bg-gray-100 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-200">
@@ -1791,7 +1864,7 @@ export default function ProductsPage() {
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 group-hover:text-[#16C784] transition-colors">
+                          <div className="text-sm font-medium text-gray-900 group-hover:text-[#B91C1C] transition-colors">
                             {product.title}
                           </div>
                           <div className="text-xs text-gray-400">{product.id}</div>
@@ -1826,7 +1899,7 @@ export default function ProductsPage() {
                         <a
                           href={getHubProductHref(product)}
                           target="_blank"
-                          className="p-2 text-gray-400 hover:text-[#16C784] hover:bg-[#16C784]/5 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/5 rounded-lg transition-colors"
                         >
                           <Eye className="w-4 h-4" />
                         </a>
@@ -1911,7 +1984,7 @@ export default function ProductsPage() {
                       type="button"
                       key={`${item.url}-${item.product_id}`}
                       onClick={() => selectMediaItem(item.url)}
-                      className="text-left rounded-2xl border border-gray-200 overflow-hidden bg-white hover:border-[#16C784] hover:shadow-md transition-all"
+                      className="text-left rounded-2xl border border-gray-200 overflow-hidden bg-white hover:border-[#B91C1C] hover:shadow-md transition-all"
                     >
                       <div className="aspect-square bg-gray-100">
                         <img src={item.url} alt={item.alt_text || item.product_title} className="h-full w-full object-cover" />

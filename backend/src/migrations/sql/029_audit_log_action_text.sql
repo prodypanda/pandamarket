@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS pd_audit_log
+  ALTER COLUMN action TYPE TEXT;

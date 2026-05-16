@@ -177,7 +177,7 @@ export default function ApiKeysPage() {
             setShowCreate(true);
             setNewlyCreatedKey(null);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors"
         >
           <Plus className="w-4 h-4" />
           Create Key
@@ -241,7 +241,7 @@ export default function ApiKeysPage() {
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder="e.g., My ERP Integration"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
             <div>
@@ -252,7 +252,7 @@ export default function ApiKeysPage() {
                     key={scope.value}
                     className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                       newScopes.includes(scope.value)
-                        ? 'border-[#16C784] bg-[#16C784]/5'
+                        ? 'border-[#B91C1C] bg-[#B91C1C]/5'
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
@@ -260,7 +260,7 @@ export default function ApiKeysPage() {
                       type="checkbox"
                       checked={newScopes.includes(scope.value)}
                       onChange={() => toggleScope(scope.value)}
-                      className="mt-0.5 text-[#16C784] focus:ring-[#16C784]"
+                      className="mt-0.5 text-[#B91C1C] focus:ring-[#B91C1C]"
                     />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{scope.label}</p>
@@ -279,14 +279,14 @@ export default function ApiKeysPage() {
                 value={newExpiresAt}
                 onChange={(e) => setNewExpiresAt(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="px-6 py-2.5 bg-[#16C784] text-white font-semibold rounded-lg hover:bg-[#14b876] transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
               >
                 {creating ? 'Creating...' : 'Create API Key'}
               </button>

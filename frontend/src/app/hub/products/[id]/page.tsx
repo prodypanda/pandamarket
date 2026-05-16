@@ -118,13 +118,16 @@ export async function generateMetadata({
 
   const imageUrl = getImageUrl(product.images?.[0]) || product.thumbnail;
   const formattedPrice = formatPrice(product.price);
+  const marketplaceSettings = await getMarketplaceSettings();
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const description = product.description?.slice(0, 160) || `Achetez ${product.title} sur ${marketplaceName} — ${formattedPrice}`;
 
   return {
     title: product.title,
-    description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket — ${formattedPrice}`,
+    description,
     openGraph: {
       title: `${product.title} — ${formattedPrice}`,
-      description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
+      description,
       type: 'website',
       url: getHubProductHref(product),
       ...(imageUrl && {
@@ -134,7 +137,7 @@ export async function generateMetadata({
     twitter: {
       card: 'summary_large_image',
       title: `${product.title} — ${formattedPrice}`,
-      description: product.description?.slice(0, 160) || `Achetez ${product.title} sur PandaMarket`,
+      description,
       ...(imageUrl && { images: [imageUrl] }),
     },
   };

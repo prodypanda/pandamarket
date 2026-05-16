@@ -121,7 +121,7 @@ export default function VendorReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-[#16C784] p-6 text-white shadow-xl shadow-slate-950/10">
+      <div className="rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-[#B91C1C] p-6 text-white shadow-xl shadow-slate-950/10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-white/80">
@@ -172,7 +172,7 @@ export default function VendorReportsPage() {
             onClick={() => selectFilter(status)}
             className={`rounded-full px-4 py-2 text-sm font-black transition-colors ${
               filter === status
-                ? 'bg-[#16C784] text-white'
+                ? 'bg-[#B91C1C] text-white'
                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -200,7 +200,7 @@ export default function VendorReportsPage() {
         </div>
       ) : reports.length === 0 ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-          <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[#16C784]" />
+          <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[#B91C1C]" />
           <h3 className="mb-2 text-lg font-bold text-gray-900">No reports</h3>
           <p className="text-sm text-gray-500">
             {filter === 'all'
@@ -251,14 +251,14 @@ export default function VendorReportsPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedReport(report)}
-                      className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 hover:border-[#16C784] hover:text-[#16C784]"
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <Eye className="h-4 w-4" />
                       Quick view
                     </button>
                     <Link
                       href={`/hub/dashboard/reports/${report.id}`}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#16C784] px-4 py-2 text-sm font-black text-white hover:bg-[#14b876]"
+                      className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-2 text-sm font-black text-white hover:bg-[#991B1B]"
                     >
                       Open case
                       <ArrowRight className="h-4 w-4" />
@@ -387,7 +387,7 @@ export default function VendorReportsPage() {
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <Link
                 href={`/hub/dashboard/reports/${selectedReport.id}`}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#16C784] px-4 py-2.5 text-sm font-black text-white hover:bg-[#14b876]"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-sm font-black text-white hover:bg-[#991B1B]"
               >
                 Open full case
                 <ArrowRight className="h-4 w-4" />

@@ -1,3 +1,4 @@
+import { randomUUID, createHash } from 'node:crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool';
@@ -15,9 +16,75 @@ const analyticsQuerySchema = z.object({
   }).default(30),
 });
 
+const pageBuilderEventSchema = z.object({
+  store_id: z.string().min(1).max(64),
+  page_id: z.string().min(1).max(64),
+  event_type: z.enum(['page_view', 'cta_click', 'product_click']),
+  product_id: z.string().max(64).nullable().optional(),
+  target_url: z.string().max(2048).nullable().optional(),
+  target_label: z.string().max(200).nullable().optional(),
+  page_path: z.string().max(2048).nullable().optional(),
+  visitor_id: z.string().max(128).nullable().optional(),
+});
+
+function pageBuilderAnalyticsId(): string {
+  return `pd_pbevt_${Date.now().toString(36)}${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+}
+
+function hashVisitor(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function textOrNull(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function requestVisitorHash(req: Request, visitorId: string | null | undefined): string {
+  const raw = visitorId?.trim() || `${req.ip || ''}|${req.get('user-agent') || ''}`;
+  return hashVisitor(raw);
+}
+
 // ==========================================================
 // GET /store — Vendor store analytics
 // ==========================================================
+
+router.post(
+  '/page-builder/event',
+  validate(pageBuilderEventSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const payload = req.body as z.infer<typeof pageBuilderEventSchema>;
+    const userAgent = textOrNull(req.get('user-agent'))?.slice(0, 512) || null;
+    const referrer = textOrNull(req.get('referer'))?.slice(0, 2048) || null;
+
+    const result = await query(
+      `INSERT INTO pd_store_page_analytics_event (
+         id, store_id, page_id, event_type, product_id, target_url,
+         target_label, page_path, referrer, visitor_hash, user_agent
+       )
+       SELECT $1, p.store_id, p.id, $4, $5, $6, $7, $8, $9, $10, $11
+       FROM pd_store_page p
+       WHERE p.id = $2
+         AND p.store_id = $3
+         AND p.is_published = true`,
+      [
+        pageBuilderAnalyticsId(),
+        payload.page_id,
+        payload.store_id,
+        payload.event_type,
+        textOrNull(payload.product_id),
+        textOrNull(payload.target_url),
+        textOrNull(payload.target_label),
+        textOrNull(payload.page_path),
+        referrer,
+        requestVisitorHash(req, payload.visitor_id),
+        userAgent,
+      ],
+    );
+
+    res.status(202).json({ success: true, tracked: (result.rowCount ?? 0) > 0 });
+  }),
+);
 
 router.get(
   '/store',

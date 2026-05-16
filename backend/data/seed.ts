@@ -164,19 +164,21 @@ async function seedPlans(c: PoolClient): Promise<void> {
   for (const [planId, def] of plans) {
     await c.query(
       `INSERT INTO pd_subscription_limits
-         (plan_id, max_products, max_images_per_product, has_ai_seo, has_image_compression,
-          has_custom_domain, has_page_builder, has_direct_payment, has_white_label,
+         (plan_id, max_products, max_images_per_product, max_page_builder_pages, has_ai_seo, has_image_compression,
+          has_custom_domain, has_page_builder, has_direct_payment, has_white_label, has_own_ai_provider,
           commission_rate, ai_tokens_included, yearly_price, is_enabled)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true)
        ON CONFLICT (plan_id) DO UPDATE SET
          max_products            = EXCLUDED.max_products,
          max_images_per_product  = EXCLUDED.max_images_per_product,
+         max_page_builder_pages  = EXCLUDED.max_page_builder_pages,
          has_ai_seo              = EXCLUDED.has_ai_seo,
          has_image_compression   = EXCLUDED.has_image_compression,
          has_custom_domain       = EXCLUDED.has_custom_domain,
          has_page_builder        = EXCLUDED.has_page_builder,
          has_direct_payment      = EXCLUDED.has_direct_payment,
          has_white_label         = EXCLUDED.has_white_label,
+         has_own_ai_provider     = EXCLUDED.has_own_ai_provider,
          commission_rate         = EXCLUDED.commission_rate,
          ai_tokens_included      = EXCLUDED.ai_tokens_included,
          yearly_price            = EXCLUDED.yearly_price,
@@ -185,12 +187,14 @@ async function seedPlans(c: PoolClient): Promise<void> {
         planId,
         def.max_products,
         def.max_images_per_product,
+        def.max_page_builder_pages,
         def.has_ai_seo,
         def.has_image_compression,
         def.has_custom_domain,
         def.has_page_builder,
         def.has_direct_payment,
         def.has_white_label,
+        def.has_own_ai_provider,
         def.commission_rate,
         def.ai_tokens_included,
         def.yearly_price,

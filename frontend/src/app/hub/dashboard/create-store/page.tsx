@@ -102,7 +102,7 @@ export default function CreateStorePage() {
       </Link>
 
       <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
-        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
+        <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
           <Store className="h-4 w-4" />
           New store
         </div>
@@ -129,7 +129,7 @@ export default function CreateStorePage() {
             <input
               value={form.name}
               onChange={(event) => updateField('name', event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
               placeholder="My second store"
               required
             />
@@ -137,7 +137,7 @@ export default function CreateStorePage() {
 
           <div>
             <label className="mb-2 block text-sm font-black text-gray-700">Subdomain</label>
-            <div className="flex overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 focus-within:border-[#16C784] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#16C784]/10">
+            <div className="flex overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 focus-within:border-[#B91C1C] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#B91C1C]/10">
               <input
                 value={form.subdomain}
                 onChange={(event) => updateField('subdomain', event.target.value)}
@@ -154,7 +154,7 @@ export default function CreateStorePage() {
             <select
               value={form.seller_type}
               onChange={(event) => updateField('seller_type', event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#16C784] focus:bg-white focus:ring-4 focus:ring-[#16C784]/10"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
             >
               {sellerTypes.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -165,7 +165,7 @@ export default function CreateStorePage() {
           <button
             type="submit"
             disabled={saving || canCreateFreeStore === false || !form.name.trim() || !form.subdomain.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#16C784] px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-[#16C784]/20 transition hover:-translate-y-0.5 hover:bg-[#14b876] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-[#B91C1C]/20 transition hover:-translate-y-0.5 hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Create and open dashboard

@@ -27,6 +27,7 @@ import {
   ImageIcon,
   CheckCircle2,
   BarChart3,
+  ReceiptText,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -212,6 +213,7 @@ export default function DashboardLayout({
     { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
     { name: 'Messages', href: '/hub/dashboard/messages', icon: MessageSquare },
     { name: t('dashboard.sidebar.wallet'), href: '/hub/dashboard/wallet', icon: Wallet },
+    { name: 'Financial', href: '/hub/dashboard/financial', icon: ReceiptText },
     { name: t('dashboard.sidebar.pageBuilder'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
     { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
     { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
@@ -220,7 +222,6 @@ export default function DashboardLayout({
     { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
     { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
     { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
-    { name: t('dashboard.sidebar.notifications'), href: '/hub/dashboard/notifications', icon: Bell },
     { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
   ];
 
@@ -270,7 +271,7 @@ export default function DashboardLayout({
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
               imageClassName="h-10 max-w-[170px] object-contain"
-              textClassName="text-xl font-bold text-[#16C784]"
+              textClassName="text-xl font-bold text-[#B91C1C]"
             />
             <button
               type="button"
@@ -300,7 +301,7 @@ export default function DashboardLayout({
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
             imageClassName="h-10 max-w-[170px] object-contain"
-            textClassName="text-xl font-bold text-[#16C784]"
+            textClassName="text-xl font-bold text-[#B91C1C]"
           />
         </div>
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -313,8 +314,8 @@ export default function DashboardLayout({
                   href={item.href}
                   className={`flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                     active
-                      ? 'bg-[#16C784]/12 text-[#0f9f6e] ring-1 ring-[#16C784]/15'
-                      : 'text-slate-700 hover:bg-[#16C784]/10 hover:text-[#0f9f6e]'
+                      ? 'bg-[#B91C1C]/12 text-[#B91C1C] ring-1 ring-[#B91C1C]/15'
+                      : 'text-slate-700 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C]'
                   }`}
                 >
                   <item.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
@@ -343,14 +344,14 @@ export default function DashboardLayout({
       {/* Main Content */}
       <main className="flex-1 md:ml-64 flex flex-col">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900">{t('dashboard.title')}</h2>
           <div className="flex items-center space-x-4">
             <LocaleSwitcher />
             {storeCount > 1 && (
               <Link
                 href="/hub/dashboard/select-store"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-[#16C784] hover:text-[#0f9f6e]"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
               >
                 <ArrowLeftRight className="h-4 w-4" />
                 Switch store
@@ -359,23 +360,34 @@ export default function DashboardLayout({
             {storeCount === 1 && canCreateFreeStore && (
               <Link
                 href="/hub/dashboard/create-store"
-                className="inline-flex items-center gap-2 rounded-full bg-[#16C784] px-3 py-2 text-xs font-black text-white transition hover:bg-[#14b876]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white transition hover:bg-[#991B1B]"
               >
                 <Plus className="h-4 w-4" />
                 Create free store
               </Link>
             )}
+            <Link
+              href="/hub/dashboard/notifications"
+              aria-label={t('dashboard.sidebar.notifications')}
+              className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                pathname.startsWith('/hub/dashboard/notifications')
+                  ? 'border-[#B91C1C]/20 bg-[#B91C1C]/10 text-[#B91C1C]'
+                  : 'border-slate-200 text-slate-500 hover:border-[#B91C1C]/30 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C]'
+              }`}
+            >
+              <Bell className="h-5 w-5" />
+            </Link>
             <div className="text-sm font-medium text-slate-600">{t('dashboard.top.welcome', { name: displayName })}</div>
-            <div className="h-8 w-8 rounded-full bg-[#16C784]/15 flex items-center justify-center text-[#0f9f6e] font-bold">
+            <div className="h-8 w-8 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold">
               {initials}
             </div>
           </div>
         </header>
         {setupPercentage < 100 && (
-          <div className="sticky top-16 z-10 border-b border-emerald-100 bg-white/95 px-8 py-3 backdrop-blur">
+          <div className="sticky top-16 z-20 border-b border-amber-100 bg-white/95 px-8 py-3 backdrop-blur">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3 text-sm">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#16C784]/10 text-[#0f9f6e]">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#B91C1C]/10 text-[#B91C1C]">
                   <CheckCircle2 className="h-4 w-4" />
                 </span>
                 <div>
@@ -385,16 +397,16 @@ export default function DashboardLayout({
               </div>
               <div className="flex items-center gap-3 lg:w-80">
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-[#16C784]" style={{ width: `${setupPercentage}%` }} />
+                  <div className="h-full rounded-full bg-[#B91C1C]" style={{ width: `${setupPercentage}%` }} />
                 </div>
-                <span className="text-xs font-black text-[#0f9f6e]">{setupPercentage}%</span>
+                <span className="text-xs font-black text-[#B91C1C]">{setupPercentage}%</span>
               </div>
             </div>
           </div>
         )}
-        
+
         {/* Page Content */}
-        <div className="p-8 flex-1 overflow-auto bg-slate-100 text-slate-900">
+        <div className="p-8 pt-2 flex-1 overflow-auto bg-slate-100 text-slate-900">
           {children}
         </div>
       </main>

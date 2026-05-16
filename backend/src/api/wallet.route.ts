@@ -11,8 +11,16 @@ const withdrawSchema = z.object({
   notes: z.string().optional(),
 });
 
+const payoutModeValueSchema = z.preprocess(
+  (value) => (value === 'manual' ? PayoutMode.OnDemand : value),
+  z.nativeEnum(PayoutMode),
+);
+
 const payoutModeSchema = z.object({
-  mode: z.nativeEnum(PayoutMode),
+  mode: payoutModeValueSchema.optional(),
+  payout_mode: payoutModeValueSchema.optional(),
+}).refine((body) => body.mode || body.payout_mode, {
+  message: 'Payout mode is required',
 });
 
 // Vendor: Get wallet summary
@@ -58,7 +66,7 @@ router.put(
   requireStore,
   validate(payoutModeSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const wallet = await walletService.setPayoutMode(req.user!.store_id!, req.body.mode);
+    const wallet = await walletService.setPayoutMode(req.user!.store_id!, req.body.payout_mode ?? req.body.mode);
     res.status(200).json({ wallet });
   }),
 );
