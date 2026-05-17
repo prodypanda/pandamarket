@@ -307,8 +307,8 @@ router.put(
       res.status(403).json({ error: { message: 'Suspended stores cannot toggle maintenance mode' } });
       return;
     }
-    if (current.status === 'unverified') {
-      res.status(403).json({ error: { message: 'Unverified stores cannot toggle maintenance mode' } });
+    if (!req.body.enabled && !current.is_verified) {
+      res.status(403).json({ error: { message: 'Store must be verified before publishing' } });
       return;
     }
 

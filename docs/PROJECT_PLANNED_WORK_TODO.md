@@ -133,7 +133,7 @@
 - [x] Add middleware handling for Hub maintenance with admin/health exceptions.
 - [x] Add optional toggle to also block all vendor storefronts.
 - [x] Add per-storefront maintenance status and page support.
-- [ ] Default new stores to maintenance until seller publishes if business rule is approved.
+- [x] Default new stores to maintenance until seller publishes if business rule is approved.
 - [x] Let sellers edit a Page Builder-driven maintenance page.
 - [x] Ensure custom domains render the maintenance page correctly.
 
@@ -148,7 +148,7 @@
 - [x] Add buyer/seller Security page with active sessions and recent login history.
 - [x] Add revoke-session and revoke-all-other-sessions actions.
 - [x] Add email alerts for new device/IP login.
-- [ ] Add superadmin per-user activity timeline and anomaly flags.
+- [x] Add superadmin per-user activity timeline and anomaly flags.
 
 ### High-impact seller and buyer UX
 
@@ -173,8 +173,8 @@
 
 **Source:** `docs/pandamarket-enhancements-todo.md` §11
 
-- [ ] Add first-time seller welcome modal.
-- [ ] Guide through seller type, language, country.
+- [x] Add first-time seller welcome modal.
+- [x] Guide through seller type, language, country.
 - [ ] Guide through store basics: name, subdomain, logos, colors.
 - [ ] Guide through theme picker.
 - [ ] Prompt KYC upload.
