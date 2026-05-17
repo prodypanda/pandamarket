@@ -63,6 +63,8 @@ export const updateStoreSettingsSchema = z.object({
     })
     .optional(),
   logo_url: z.string().url().optional(),
+  logo_light_url: z.string().url().optional(),
+  logo_dark_url: z.string().url().optional(),
   favicon_url: z.string().url().optional(),
   store_name: z.string().max(150).optional(),
   store_description: z.string().max(1000).optional(),
@@ -310,6 +312,6 @@ export const presignUploadSchema = z.object({
     .string()
     .regex(/^[a-z]+\/[a-z0-9.+-]+$/i)
     .max(100),
-  purpose: z.enum(['product_image', 'digital_product', 'kyc_document', 'mandat_proof', 'theme_asset', 'marketplace_asset', 'report_evidence', 'chat_image']),
+  purpose: z.enum(['product_image', 'digital_product', 'kyc_document', 'mandat_proof', 'theme_asset', 'marketplace_asset', 'report_evidence', 'chat_image', 'delivery_proof']),
   file_size: z.number().int().min(0).optional(),
 });

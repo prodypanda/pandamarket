@@ -104,6 +104,8 @@ export function MarketplaceStoreProductDetail({
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
         showInstantChat={false}
       />

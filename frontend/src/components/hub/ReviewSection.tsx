@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { isAliExpressTheme } from '@/lib/marketplace-theme';
+import { useMarketplaceTheme } from '@/hooks/useMarketplaceTheme';
 import { useState, useEffect, useCallback } from 'react';
 import { Star, ThumbsUp, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
@@ -123,6 +124,8 @@ async function getResponseErrorMessage(res: Response, fallback: string) {
 }
 
 export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewSectionProps) {
+  const { settings } = useMarketplaceTheme({ marketplace_theme: marketplaceTheme });
+  const reviewsEnabled = settings.reviews_enabled !== false;
   const isAliExpress = isAliExpressTheme(marketplaceTheme);
   const primaryButtonClass = isAliExpress
     ? 'bg-[#ff4747] hover:bg-[#e63f00]'
@@ -150,13 +153,23 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const fetchRating = useCallback(async () => {
+    if (!reviewsEnabled) {
+      setRating(null);
+      return;
+    }
     try {
       const res = await fetch(`/api/pd/reviews/products/${productId}/rating`);
       if (res.ok) setRating(await res.json());
     } catch { /* ignore */ }
-  }, [productId]);
+  }, [productId, reviewsEnabled]);
 
   const fetchReviews = useCallback(async () => {
+    if (!reviewsEnabled) {
+      setReviews([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(
@@ -169,7 +182,7 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [productId, page, sort]);
+  }, [productId, page, reviewsEnabled, sort]);
 
   useEffect(() => {
     fetchRating();
@@ -274,6 +287,14 @@ export function ReviewSection({ productId, marketplaceTheme = 'panda' }: ReviewS
   const rating3 = toNumber(rating?.rating_3);
   const rating4 = toNumber(rating?.rating_4);
   const rating5 = toNumber(rating?.rating_5);
+
+  if (!reviewsEnabled) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm font-semibold text-gray-500">
+        Les avis clients sont désactivés pour le moment.
+      </div>
+    );
+  }
 
   return (
     <div>

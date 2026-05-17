@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
+import { AccountSecurityActivityPanel } from '../../../../components/AccountSecurityActivityPanel';
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
@@ -84,9 +85,11 @@ export default function SettingsPage() {
   const [mapEmbedUrl, setMapEmbedUrl] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(emptySocialLinks);
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoLightUrl, setLogoLightUrl] = useState('');
+  const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [marketplaceHeaderImageUrl, setMarketplaceHeaderImageUrl] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [showLogoPicker, setShowLogoPicker] = useState(false);
+  const [logoPickerTarget, setLogoPickerTarget] = useState<'default' | 'light' | 'dark' | null>(null);
   const [showHeaderImagePicker, setShowHeaderImagePicker] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHeaderImage, setUploadingHeaderImage] = useState(false);
@@ -132,6 +135,8 @@ export default function SettingsPage() {
           ...(store.settings?.social || {}),
         });
         setLogoUrl(store.settings?.logo_url || '');
+        setLogoLightUrl(store.settings?.logo_light_url || '');
+        setLogoDarkUrl(store.settings?.logo_dark_url || '');
         setMarketplaceHeaderImageUrl(store.settings?.marketplace_header_image_url || '');
         setSelectedTheme((store.theme_id || 'modern') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
@@ -236,6 +241,8 @@ export default function SettingsPage() {
             map_embed_url: mapEmbedUrl,
             social: cleanSocialLinks(),
             logo_url: logoUrl,
+            logo_light_url: logoLightUrl,
+            logo_dark_url: logoDarkUrl,
             marketplace_header_image_url: marketplaceHeaderImageUrl,
             shipping_policy: shippingPolicy,
             returns_policy: returnsPolicy,
@@ -294,7 +301,19 @@ export default function SettingsPage() {
     }
   };
 
-  const uploadStoreLogo = async (file: File | null) => {
+  const updateLogoTarget = (target: 'default' | 'light' | 'dark', url: string) => {
+    if (target === 'light') {
+      setLogoLightUrl(url);
+      return;
+    }
+    if (target === 'dark') {
+      setLogoDarkUrl(url);
+      return;
+    }
+    setLogoUrl(url);
+  };
+
+  const uploadStoreLogo = async (file: File | null, target: 'default' | 'light' | 'dark' = 'default') => {
     if (!file) return;
     setUploadingLogo(true);
     try {
@@ -328,7 +347,7 @@ export default function SettingsPage() {
       });
       if (!uploadRes.ok) throw new Error('Upload impossible');
 
-      setLogoUrl(publicUrl);
+      updateLogoTarget(target, publicUrl);
       await fetchMediaItems();
       showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
     } catch (err) {
@@ -766,59 +785,66 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la boutique</label>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
-                    {logoUrl ? (
-                      <div
-                        aria-label={storeName || 'Logo boutique'}
-                        role="img"
-                        className="h-full w-full bg-contain bg-center bg-no-repeat"
-                        style={{ backgroundImage: `url(${logoUrl})` }}
-                      />
-                    ) : (
-                      <ImageIcon className="h-7 w-7 text-gray-300" />
-                    )}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Logos de la boutique</label>
+              <p className="mb-4 text-xs text-gray-500">Le logo sombre est utilisé sur fond clair. Le logo clair est utilisé sur fond sombre. Le logo principal reste le fallback.</p>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {[
+                  { key: 'default' as const, label: 'Logo principal', value: logoUrl, setter: setLogoUrl, previewClass: 'bg-white' },
+                  { key: 'dark' as const, label: 'Logo sombre', value: logoDarkUrl, setter: setLogoDarkUrl, previewClass: 'bg-white' },
+                  { key: 'light' as const, label: 'Logo clair', value: logoLightUrl, setter: setLogoLightUrl, previewClass: 'bg-slate-950' },
+                ].map((logo) => (
+                  <div key={logo.key} className="rounded-2xl border border-gray-200 bg-white p-4">
+                    <div className={`flex h-24 items-center justify-center overflow-hidden rounded-xl border border-gray-200 ${logo.previewClass}`}>
+                      {logo.value ? (
+                        <div
+                          aria-label={`${storeName || 'Logo boutique'} ${logo.label}`}
+                          role="img"
+                          className="h-full w-full bg-contain bg-center bg-no-repeat"
+                          style={{ backgroundImage: `url(${logo.value})` }}
+                        />
+                      ) : (
+                        <ImageIcon className="h-7 w-7 text-gray-300" />
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-sm font-semibold text-gray-800">{logo.label}</p>
+                      <p className="text-xs text-gray-500">{logo.value ? 'Image sélectionnée' : 'Aucune image'}</p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {logo.value && (
+                        <button
+                          type="button"
+                          onClick={() => logo.setter('')}
+                          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                        >
+                          Retirer
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLogoPickerTarget(logo.key);
+                          void fetchMediaItems();
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        Galerie
+                      </button>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-3 py-2 text-xs font-semibold text-white hover:bg-[#991B1B]">
+                        <UploadCloud className="h-4 w-4" />
+                        {uploadingLogo ? 'Upload...' : 'Uploader'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={uploadingLogo}
+                          onChange={(event) => void uploadStoreLogo(event.target.files?.[0] || null, logo.key)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">{logoUrl ? 'Logo sélectionné' : 'Aucun logo'}</p>
-                    <p className="text-xs text-gray-500">Téléversez un logo ou choisissez une image de votre galerie.</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {logoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setLogoUrl('')}
-                      className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
-                    >
-                      Retirer
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLogoPicker(true);
-                      void fetchMediaItems();
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                    Galerie
-                  </button>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#991B1B]">
-                    <UploadCloud className="h-4 w-4" />
-                    {uploadingLogo ? 'Upload...' : 'Uploader'}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      disabled={uploadingLogo}
-                      onChange={(event) => void uploadStoreLogo(event.target.files?.[0] || null)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
+                ))}
               </div>
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -963,7 +989,10 @@ export default function SettingsPage() {
         )}
 
         {activeTab === 'security' && (
-          <AccountTwoFactorPanel accentClass="bg-[#B91C1C]" />
+          <div className="space-y-6">
+            <AccountTwoFactorPanel accentClass="bg-[#B91C1C]" />
+            <AccountSecurityActivityPanel accentClass="bg-[#B91C1C]" compact />
+          </div>
         )}
 
         {/* Theme Tab */}
@@ -1157,7 +1186,7 @@ export default function SettingsPage() {
           />
         )}
       </div>
-      {showLogoPicker && (
+      {logoPickerTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
@@ -1165,7 +1194,7 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-bold text-gray-900">Galerie de la boutique</h2>
                 <p className="text-sm text-gray-500">Choisissez une image déjà uploadée pour votre logo.</p>
               </div>
-              <button type="button" onClick={() => setShowLogoPicker(false)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+              <button type="button" onClick={() => setLogoPickerTarget(null)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1177,8 +1206,8 @@ export default function SettingsPage() {
                       type="button"
                       key={`${item.url}-${item.product_id}`}
                       onClick={() => {
-                        setLogoUrl(item.url);
-                        setShowLogoPicker(false);
+                        updateLogoTarget(logoPickerTarget, item.url);
+                        setLogoPickerTarget(null);
                         showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
                       }}
                       className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"

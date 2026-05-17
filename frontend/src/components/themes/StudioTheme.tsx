@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -9,6 +9,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function StudioTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const accent = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Fine Art Print — Sunset', price: 180, images: [], category: 'Prints' },
     { id: '2', title: 'Canvas — Abstract Blue', price: 350, images: [], category: 'Canvas' },
@@ -23,7 +24,7 @@ export function StudioTheme({ theme, storeName, products = [], branding }: Theme
       <header className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
               <div className="flex items-center gap-3"><Camera className="w-5 h-5" style={{ color: accent }} /><h1 className="text-xl font-medium tracking-wide">{storeName}</h1></div>
             )}
           </Link>

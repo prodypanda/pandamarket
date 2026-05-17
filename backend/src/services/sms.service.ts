@@ -21,6 +21,7 @@ import { logger } from '../utils/logger';
 import { PdValidationError, PdRateLimitError } from '../errors';
 import { randomInt } from 'node:crypto';
 import axios from 'axios';
+import { platformConfigService, type PlatformSettings } from './platform-config.service';
 
 const OTP_TTL_SECONDS = 600; // 10 minutes
 const OTP_MAX_ATTEMPTS = 5;
@@ -69,6 +70,19 @@ function normalisePhone(phone: string): string {
   return cleaned;
 }
 
+type SmsProvider = 'twilio' | 'infobip' | 'console';
+
+function configuredSmsProvider(settings: PlatformSettings): SmsProvider {
+  const provider = String(settings.notifications_sms_provider || 'environment');
+  if (provider === 'twilio' || provider === 'infobip' || provider === 'console') return provider;
+  return config.sms.provider;
+}
+
+function configuredSmsSender(settings: PlatformSettings): string {
+  const sender = String(settings.notifications_sms_sender_name || '').trim();
+  return sender || 'PandaMarket';
+}
+
 export class SmsService {
   /**
    * Send an OTP to the given phone number.
@@ -80,6 +94,12 @@ export class SmsService {
     // Validate format
     if (!/^\+216\d{8}$/.test(normalised)) {
       throw new PdValidationError('Invalid Tunisian phone number. Expected format: +216XXXXXXXX');
+    }
+
+    const settings = await platformConfigService.getSettings();
+    if (!settings.notifications_sms_enabled) {
+      logger.info({ phone: normalised.slice(0, 7) + '****' }, 'SMS OTP skipped by platform settings');
+      return { sent: false, message: 'SMS verification is disabled by platform settings' };
     }
 
     const redis = getRedis();
@@ -101,7 +121,9 @@ export class SmsService {
     // Send via configured provider
     const sent = await this.dispatchSms(
       normalised,
-      `PandaMarket: Votre code de vérification est ${otp}. Valide pendant 10 minutes.`,
+      `${configuredSmsSender(settings)}: Votre code de vérification est ${otp}. Valide pendant 10 minutes.`,
+      configuredSmsProvider(settings),
+      configuredSmsSender(settings),
     );
 
     if (sent) {
@@ -163,14 +185,12 @@ export class SmsService {
   /**
    * Dispatch SMS via the configured provider.
    */
-  private async dispatchSms(to: string, message: string): Promise<boolean> {
-    const provider = config.sms.provider;
-
+  private async dispatchSms(to: string, message: string, provider: SmsProvider, sender: string): Promise<boolean> {
     switch (provider) {
       case 'twilio':
         return this.sendViaTwilio(to, message);
       case 'infobip':
-        return this.sendViaInfobip(to, message);
+        return this.sendViaInfobip(to, message, sender);
       case 'console':
       default:
         // Development fallback — log to console
@@ -206,7 +226,7 @@ export class SmsService {
     }
   }
 
-  private async sendViaInfobip(to: string, message: string): Promise<boolean> {
+  private async sendViaInfobip(to: string, message: string, sender: string): Promise<boolean> {
     try {
       const apiKey = config.sms.infobipApiKey;
       const baseUrl = config.sms.infobipBaseUrl;
@@ -222,7 +242,7 @@ export class SmsService {
           messages: [
             {
               destinations: [{ to }],
-              from: 'PandaMarket',
+              from: sender,
               text: message,
             },
           ],

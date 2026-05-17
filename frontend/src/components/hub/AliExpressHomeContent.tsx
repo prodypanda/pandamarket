@@ -6,6 +6,8 @@ import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { getMarketplaceThemeClasses, resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 
+type MarketplaceThemeClasses = ReturnType<typeof getMarketplaceThemeClasses>;
+
 interface Product {
   id: string;
   title: string;
@@ -35,6 +37,11 @@ interface MarketplaceSettings {
   marketplace_tagline?: string;
   default_currency?: string;
   marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
+  hub_homepage_banner_title?: string;
+  hub_homepage_banner_subtitle?: string;
+  hub_homepage_banner_cta_label?: string;
+  hub_homepage_banner_cta_url?: string;
+  hub_homepage_banner_image_url?: string;
 }
 
 interface AliExpressHomeContentProps {
@@ -52,7 +59,7 @@ function getProductImage(product: Product) {
   return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
-function DealCard({ product, currency, themeClasses, isAliExpress2 }: { product: Product; currency: string; themeClasses: any; isAliExpress2: boolean }) {
+function DealCard({ product, currency, themeClasses, isAliExpress2 }: { product: Product; currency: string; themeClasses: MarketplaceThemeClasses; isAliExpress2: boolean }) {
   const image = getProductImage(product);
 
   return (
@@ -88,6 +95,11 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
   const currency = marketplaceSettings?.default_currency || 'TND';
   const marketplaceName = marketplaceSettings?.marketplace_name || 'PandaMarket';
   const tagline = marketplaceSettings?.marketplace_tagline || 'Des milliers de produits, prix malins, vendeurs tunisiens.';
+  const bannerTitle = marketplaceSettings?.hub_homepage_banner_title?.trim() || `${marketplaceName} deals, direct from local sellers`;
+  const bannerSubtitle = marketplaceSettings?.hub_homepage_banner_subtitle?.trim() || tagline;
+  const bannerCtaLabel = marketplaceSettings?.hub_homepage_banner_cta_label?.trim() || 'Search';
+  const bannerCtaUrl = marketplaceSettings?.hub_homepage_banner_cta_url?.trim() || '/hub/search';
+  const bannerImage = normalizePublicAssetUrl(marketplaceSettings?.hub_homepage_banner_image_url || '');
   const theme = resolveMarketplaceTheme(marketplaceSettings?.marketplace_theme);
   const themeClasses = getMarketplaceThemeClasses(theme);
   const isAliExpress2 = theme === 'aliexpress2';
@@ -126,19 +138,20 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
           <div className={`overflow-hidden ${isAliExpress2 ? 'rounded-xl shadow-xl shadow-orange-900/10' : 'rounded-3xl shadow-sm'}`}>
             <div className={`relative min-h-[420px] overflow-hidden ${isAliExpress2 ? 'bg-gradient-to-br from-[#ff4747] via-[#ff5f2e] to-[#ff8a00]' : 'bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.42),transparent_32%),linear-gradient(135deg,#ff4747_0%,#ff7a00_52%,#ffd36d_100%)]'} p-6 text-white md:p-10`}>
               <div className="absolute -right-14 bottom-0 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
+              {bannerImage && <img src={bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
               <div className="relative max-w-2xl">
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
                   <BadgePercent className="h-4 w-4" />
                   AliExpress style marketplace
                 </span>
                 <h1 className="mt-5 text-4xl font-black tracking-tight md:text-6xl">
-                  {marketplaceName} deals, direct from local sellers
+                  {bannerTitle}
                 </h1>
-                <p className="mt-5 max-w-xl text-lg font-medium text-white/85">{tagline}</p>
-                <Link href="/hub/search" className="mt-8 flex max-w-xl items-center gap-3 rounded-full bg-white p-2 pl-5 text-left text-gray-500 shadow-2xl shadow-orange-950/20 transition hover:scale-[1.01]">
+                <p className="mt-5 max-w-xl text-lg font-medium text-white/85">{bannerSubtitle}</p>
+                <Link href={bannerCtaUrl} className="mt-8 flex max-w-xl items-center gap-3 rounded-full bg-white p-2 pl-5 text-left text-gray-500 shadow-2xl shadow-orange-950/20 transition hover:scale-[1.01]">
                   <Search className="h-5 w-5 text-gray-400" />
                   <span className="flex-1 text-sm">Search products, stores, categories...</span>
-                  <span className={`px-5 py-3 text-sm ${themeClasses.primary}`}>Search</span>
+                  <span className={`px-5 py-3 text-sm ${themeClasses.primary}`}>{bannerCtaLabel}</span>
                 </Link>
                 <div className="mt-7 grid max-w-xl grid-cols-3 gap-3">
                   {[{ label: 'Flash deals', value: `${flashProducts.length}+` }, { label: 'Categories', value: `${publicCategories.length}+` }, { label: 'Local sellers', value: 'Verified' }].map((item) => (

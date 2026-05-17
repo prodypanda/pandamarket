@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, Waves, Anchor } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
@@ -9,6 +9,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 /** Coastal Theme — Beach/resort, blues and sandy tones, relaxed vibe. */
 export function CoastalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Linen Beach Shirt', price: 95, images: [], category: 'Clothing' },
     { id: '2', title: 'Straw Sun Hat', price: 45, images: [], category: 'Accessories' },
@@ -27,7 +28,7 @@ export function CoastalTheme({ theme, storeName, products = [], branding }: Them
       <header className="border-b" style={{ borderColor: `${tc.colors.primary}20`, backgroundColor: tc.colors.headerBg }}>
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
               <div className="flex items-center gap-2"><Anchor className="w-5 h-5" style={{ color: tc.colors.primary }} /><h1 className="text-2xl font-semibold tracking-wide">{storeName}</h1></div>
             )}
           </Link>

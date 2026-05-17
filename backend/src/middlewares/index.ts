@@ -98,6 +98,7 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
       id: payload.sub,
       role: payload.role,
       store_id: payload.store_id,
+      session_id: payload.session_id ?? null,
     };
     // Set Sentry user context for error attribution
     setUser({ id: payload.sub, role: payload.role, store_id: payload.store_id });
@@ -115,7 +116,7 @@ export const optionalAuth: RequestHandler = (req, _res, next) => {
   if (!token) return next();
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, role: payload.role, store_id: payload.store_id };
+    req.user = { id: payload.sub, role: payload.role, store_id: payload.store_id, session_id: payload.session_id ?? null };
   } catch {
     // ignore — anonymous request
   }
@@ -189,6 +190,7 @@ export const requireStore: RequestHandler = async (req, res, next) => {
         id: payload.sub,
         role: payload.role,
         store_id: payload.store_id,
+        session_id: payload.session_id ?? null,
       };
       setUser({ id: payload.sub, role: payload.role, store_id: payload.store_id });
     } catch (err) {

@@ -9,8 +9,15 @@ import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, Produc
 import { config } from '../config';
 import { PdValidationError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
+import { pageBuilderService } from '../services/page-builder.service';
+import { platformConfigService } from '../services/platform-config.service';
 
 const router = Router();
+
+async function pageBuilderEnabled() {
+  const settings = await platformConfigService.getSettings();
+  return Boolean(settings.page_builder_enabled);
+}
 
 // ==========================================================
 // Schemas
@@ -574,8 +581,6 @@ router.put(
 // Public Page Builder Endpoints (Storefront Rendering)
 // ==========================================================
 
-import { pageBuilderService } from '../services/page-builder.service';
-
 /**
  * GET /api/pd/stores/:storeId/pages
  * List published pages for a store (public, no auth required).
@@ -583,6 +588,10 @@ import { pageBuilderService } from '../services/page-builder.service';
 router.get(
   '/:storeId/pages',
   asyncHandler(async (req: Request, res: Response) => {
+    if (!(await pageBuilderEnabled())) {
+      res.json({ data: [], count: 0 });
+      return;
+    }
     const pages = await pageBuilderService.listPublishedPages(req.params.storeId);
     res.json({ data: pages, count: pages.length });
   }),
@@ -595,6 +604,9 @@ router.get(
 router.get(
   '/:storeId/pages/:slug',
   asyncHandler(async (req: Request, res: Response) => {
+    if (!(await pageBuilderEnabled())) {
+      return res.status(404).json({ error: { code: 'PD_NOT_FOUND', message: 'Page introuvable' } });
+    }
     const page = await pageBuilderService.getPublishedPageBySlug(
       req.params.storeId,
       req.params.slug,
@@ -609,6 +621,9 @@ router.get(
 router.get(
   '/:storeId/page-builder-preview',
   asyncHandler(async (req: Request, res: Response) => {
+    if (!(await pageBuilderEnabled())) {
+      throw new PdValidationError('Page Builder is disabled by platform settings');
+    }
     const token = typeof req.query.token === 'string' ? req.query.token : '';
     if (!token) {
       throw new PdValidationError('Preview token is required');
@@ -635,6 +650,10 @@ router.get(
 router.get(
   '/:storeId/homepage',
   asyncHandler(async (req: Request, res: Response) => {
+    if (!(await pageBuilderEnabled())) {
+      res.json({ page: null });
+      return;
+    }
     const page = await pageBuilderService.getHomepageOverride(req.params.storeId);
     res.json({ page }); // null if no homepage override
   }),

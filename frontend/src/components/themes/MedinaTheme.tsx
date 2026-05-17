@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, Star } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -13,6 +13,7 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
   const tc = useThemeCustomization(theme, branding);
   const gold = tc.colors.primary;
   const teal = tc.colors.accent;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Zellige Tiles Set', price: 180, images: [], category: 'Decor' },
     { id: '2', title: 'Copper Tea Set', price: 220, images: [], category: 'Kitchen' },
@@ -30,7 +31,7 @@ export function MedinaTheme({ theme, storeName, products = [], branding }: Theme
       <header className="border-b" style={{ borderColor: `${gold}30` }}>
         <div className="max-w-7xl mx-auto px-6 py-8 text-center">
           <Link href={branding?.store_path_base || '/'} className="inline-block">
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-12 mx-auto object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-12 mx-auto object-contain" /> : (
               <h1 className="text-3xl font-serif font-bold tracking-wide" style={{ color: teal }}>{storeName}</h1>
             )}
           </Link>

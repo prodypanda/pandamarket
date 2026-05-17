@@ -15,6 +15,7 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { EmailJobData } from '../queues/email-queue';
 import { emailTemplateService } from '../services/email-template.service';
+import { platformConfigService, type PlatformSettings } from '../services/platform-config.service';
 
 // ----------------------------------------------------------------
 // Template renderer
@@ -29,7 +30,68 @@ interface RenderedEmail {
 const PRIMARY = '#16C784';
 const BLACK = '#1A1A2E';
 
-function layout(title: string, body: string): string {
+interface EmailBranding {
+  name: string;
+  publicUrl: string;
+  displayHost: string;
+  logoUrl: string;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character] || character));
+}
+
+function stringSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback = ''): string {
+  const value = settings[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeHttpUrl(value: string, fallback: string): string {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString().replace(/\/$/, '') : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function absoluteAssetUrl(value: string, publicUrl: string): string {
+  if (!value) return '';
+  try {
+    const url = new URL(value, `${publicUrl}/`);
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+function resolveEmailBranding(settings: PlatformSettings): EmailBranding {
+  const name = stringSetting(settings, 'marketplace_name', 'PandaMarket');
+  const publicUrl = normalizeHttpUrl(stringSetting(settings, 'marketplace_public_url', 'https://pandamarket.tn'), 'https://pandamarket.tn');
+  const logoUrl = absoluteAssetUrl(
+    stringSetting(settings, 'marketplace_logo_light_url')
+    || stringSetting(settings, 'marketplace_logo_url')
+    || stringSetting(settings, 'marketplace_logo_dark_url'),
+    publicUrl,
+  );
+  const displayHost = new URL(publicUrl).host.replace(/^www\./, '');
+  return { name, publicUrl, displayHost, logoUrl };
+}
+
+function layout(title: string, body: string, branding: EmailBranding): string {
+  const brandName = escapeHtml(branding.name);
+  const publicUrl = escapeHtml(branding.publicUrl);
+  const displayHost = escapeHtml(branding.displayHost);
+  const logoUrl = escapeHtml(branding.logoUrl);
+  const headerBrand = logoUrl
+    ? `<img src="${logoUrl}" alt="${brandName}" width="180" style="display:block;max-width:180px;max-height:48px;width:auto;height:auto;">`
+    : `<span style="font-size:20px;font-weight:700;">🐼 ${brandName}</span>`;
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -42,15 +104,15 @@ function layout(title: string, body: string): string {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
         <tr><td style="background:${BLACK};padding:24px;color:#fff;">
-          <span style="font-size:20px;font-weight:700;">🐼 PandaMarket</span>
+          ${headerBrand}
         </td></tr>
         <tr><td style="padding:32px 24px;font-size:16px;line-height:1.6;color:${BLACK};">
           ${body}
         </td></tr>
         <tr><td style="padding:16px 24px;font-size:12px;color:#6B7280;border-top:1px solid #F3F4F6;text-align:center;">
-          PandaMarket SARL · <a href="https://pandamarket.tn" style="color:${PRIMARY};text-decoration:none;">pandamarket.tn</a><br>
-          <a href="https://pandamarket.tn/help" style="color:#6B7280;">Aide</a> ·
-          <a href="https://pandamarket.tn/cgu" style="color:#6B7280;">CGU</a>
+          ${brandName} · <a href="${publicUrl}" style="color:${PRIMARY};text-decoration:none;">${displayHost}</a><br>
+          <a href="${publicUrl}/help" style="color:#6B7280;">Aide</a> ·
+          <a href="${publicUrl}/cgu" style="color:#6B7280;">CGU</a>
         </td></tr>
       </table>
     </td></tr>
@@ -70,15 +132,16 @@ function v(vars: Record<string, unknown>, key: string, fallback = ''): string {
 }
 
 async function render(template: string, vars: Record<string, unknown>, opts: { scope?: 'marketplace' | 'store'; store_id?: string | null } = {}): Promise<RenderedEmail> {
+  const branding = resolveEmailBranding(await platformConfigService.getSettings());
   let rendered: RenderedEmail;
   switch (template) {
     case 'welcome_customer': {
-      const subject = `Bienvenue sur PandaMarket, ${v(vars, 'name', '')} !`;
+      const subject = `Bienvenue sur ${branding.name}, ${v(vars, 'name', '')} !`;
       const body = `<h1 style="margin-top:0;">Bienvenue 👋</h1>
         <p>Bonjour ${v(vars, 'name')},</p>
         <p>Votre compte est prêt. Découvrez les milliers de produits proposés par les vendeurs tunisiens.</p>
         ${cta('Explorer le Hub', 'https://pandamarket.tn')}`;
-      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
       break;
     }
 
@@ -91,7 +154,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
         <p><a href="${url}" style="color:${PRIMARY};">${url}</a></p>
         <p>Connectez-vous au dashboard pour ajouter vos produits et personnaliser votre boutique.</p>
         ${cta('Aller au dashboard', 'https://pandamarket.tn/dashboard')}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'order_confirmed': {
@@ -99,7 +162,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Merci pour votre commande !</h1>
         <p>Votre commande <strong>#${v(vars, 'order_id')}</strong> d'un montant de <strong>${v(vars, 'total')} TND</strong> a bien été reçue.</p>
         ${cta('Voir ma commande', `https://pandamarket.tn/orders/${v(vars, 'order_id')}`)}`;
-      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
       break;
     }
 
@@ -108,7 +171,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Paiement confirmé ✅</h1>
         <p>Nous avons bien reçu votre paiement de <strong>${v(vars, 'amount')} TND</strong> via ${v(vars, 'method')}.</p>
         <p>La commande <strong>#${v(vars, 'order_id')}</strong> est désormais en cours de préparation.</p>`;
-      rendered = { subject, html: layout(subject, body), text: stripTags(body) };
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
       break;
     }
 
@@ -117,7 +180,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Mandat validé ✅</h1>
         <p>Votre preuve de Mandat Minute pour <strong>${v(vars, 'amount')} TND</strong> a été approuvée par notre équipe.</p>
         <p>La commande <strong>#${v(vars, 'order_id')}</strong> est maintenant en cours de traitement.</p>`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'mandat_rejected': {
@@ -126,7 +189,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
         <p>Votre preuve a été rejetée pour la raison suivante :</p>
         <blockquote style="background:#F3F4F6;padding:12px 16px;border-left:4px solid #EA3943;margin:16px 0;">${v(vars, 'reason')}</blockquote>
         ${cta('Renvoyer une preuve', v(vars, 'reupload_url', 'https://pandamarket.tn'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'order_shipped': {
@@ -134,7 +197,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">En cours de livraison 🚚</h1>
         <p>Votre commande a été expédiée${vars.carrier ? ` via <strong>${v(vars, 'carrier')}</strong>` : ''}.</p>
         ${vars.tracking_number ? `<p>N° de suivi : <strong>${v(vars, 'tracking_number')}</strong></p>` : ''}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'kyc_approved': {
@@ -143,7 +206,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
         <p>Bonjour ${v(vars, 'name')},</p>
         <p>Votre boutique <strong>${v(vars, 'store_name')}</strong> est désormais vérifiée. Vos prochains produits seront publiés instantanément, sans validation préalable.</p>
         ${cta('Aller au dashboard', 'https://pandamarket.tn/dashboard')}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'kyc_rejected': {
@@ -153,7 +216,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
         <p>Vos documents n'ont pas pu être validés :</p>
         <blockquote style="background:#F3F4F6;padding:12px 16px;border-left:4px solid #EA3943;margin:16px 0;">${v(vars, 'reason')}</blockquote>
         ${cta('Soumettre à nouveau', v(vars, 'resubmit_url', 'https://pandamarket.tn/dashboard/verification'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'product_approved': {
@@ -161,7 +224,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Produit en ligne ✅</h1>
         <p>Votre produit <strong>${v(vars, 'product_name')}</strong> a été approuvé et publié sur la plateforme.</p>
         ${cta('Voir le produit', v(vars, 'product_url', 'https://pandamarket.tn'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'product_rejected': {
@@ -169,7 +232,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Produit refusé ❌</h1>
         <p>Votre produit <strong>${v(vars, 'product_name')}</strong> a été refusé :</p>
         <blockquote style="background:#F3F4F6;padding:12px 16px;border-left:4px solid #EA3943;margin:16px 0;">${v(vars, 'reason')}</blockquote>`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'new_order_vendor': {
@@ -177,7 +240,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Nouvelle commande !</h1>
         <p>Vous avez reçu une nouvelle commande d'un montant de <strong>${v(vars, 'total')} TND</strong>.</p>
         ${cta('Voir la commande', `https://pandamarket.tn/dashboard/orders/${v(vars, 'order_id')}`)}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'wallet_available': {
@@ -185,14 +248,14 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Fonds débloqués 💰</h1>
         <p>Bonjour ${v(vars, 'name')}, <strong>${v(vars, 'amount')} TND</strong> sont désormais disponibles dans votre wallet.</p>
         ${cta('Demander un retrait', v(vars, 'wallet_url', 'https://pandamarket.tn/dashboard/wallet'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'payout_completed': {
       const subject = `Retrait de ${v(vars, 'amount')} TND effectué`;
       const body = `<h1 style="margin-top:0;">Retrait effectué ✅</h1>
         <p>Votre demande de retrait de <strong>${v(vars, 'amount')} TND</strong> a été traitée avec succès${vars.method ? ` via ${v(vars, 'method')}` : ''}.</p>`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'stock_low': {
@@ -200,7 +263,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Stock faible</h1>
         <p>Le produit <strong>${v(vars, 'product_name')}</strong> n'a plus que <strong>${v(vars, 'quantity')}</strong> en stock.</p>
         ${cta('Mettre à jour le stock', 'https://pandamarket.tn/dashboard/products')}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'subscription_expiring': {
@@ -208,7 +271,7 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Renouvellement à venir</h1>
         <p>Bonjour ${v(vars, 'name')}, votre plan <strong>${v(vars, 'plan')}</strong> expire le <strong>${v(vars, 'expiry_date')}</strong>.</p>
         ${cta('Renouveler', v(vars, 'renew_url', 'https://pandamarket.tn/dashboard/subscription'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
 
     case 'subscription_expired': {
@@ -216,13 +279,30 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
       const body = `<h1 style="margin-top:0;">Abonnement expiré</h1>
         <p>Votre plan <strong>${v(vars, 'plan')}</strong> a expiré. Vous êtes basculé sur le plan Free (15% de commission).</p>
         ${cta('Réactiver', v(vars, 'renew_url', 'https://pandamarket.tn/dashboard/subscription'))}`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
+    }
+
+    case 'new_device_login': {
+      const subject = `Nouvelle connexion à votre compte ${branding.name}`;
+      const manageUrl = new URL(v(vars, 'manage_url', '/hub/profile'), `${branding.publicUrl}/`).toString();
+      const body = `<h1 style="margin-top:0;">Nouvelle connexion détectée</h1>
+        <p>Bonjour ${v(vars, 'name')},</p>
+        <p>Une connexion à votre compte a été effectuée depuis un nouvel appareil ou une nouvelle adresse IP.</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0;width:100%;background:#F8F9FC;border-radius:12px;border:1px solid #E5E7EB;">
+          <tr><td style="padding:12px 16px;color:#6B7280;">Appareil</td><td style="padding:12px 16px;font-weight:700;">${v(vars, 'device_label', 'Appareil inconnu')}</td></tr>
+          <tr><td style="padding:12px 16px;color:#6B7280;">Adresse IP</td><td style="padding:12px 16px;font-weight:700;">${v(vars, 'ip', 'N/A')}</td></tr>
+          <tr><td style="padding:12px 16px;color:#6B7280;">Date</td><td style="padding:12px 16px;font-weight:700;">${v(vars, 'login_time', '')}</td></tr>
+        </table>
+        <p>Si c'était vous, aucune action n'est nécessaire. Sinon, révoquez vos sessions et modifiez votre mot de passe.</p>
+        ${cta('Gérer la sécurité du compte', manageUrl)}`;
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
+      break;
     }
 
     default: {
-      const subject = vars.subject ? String(vars.subject) : 'Notification PandaMarket';
+      const subject = vars.subject ? String(vars.subject) : `Notification ${branding.name}`;
       const body = `<p>${v(vars, 'message', 'Vous avez une nouvelle notification.')}</p>`;
-      return { subject, html: layout(subject, body), text: stripTags(body) };
+      return { subject, html: layout(subject, body, branding), text: stripTags(body) };
     }
   }
   try {
@@ -258,6 +338,15 @@ class ConsoleTransport implements MailTransport {
     logger.info(
       { to: opts.to, from: opts.from, subject: opts.subject, body_preview: opts.text.slice(0, 200) },
       '[email] (no SMTP configured) would send',
+    );
+  }
+}
+
+class DisabledTransport implements MailTransport {
+  async send(opts: { to: string; from: string; subject: string; html: string; text: string }) {
+    logger.info(
+      { to: opts.to, from: opts.from, subject: opts.subject },
+      '[email] skipped by platform settings',
     );
   }
 }
@@ -380,9 +469,20 @@ class SmtpTransport implements MailTransport {
 }
 
 const consoleTransport = new ConsoleTransport();
+const disabledTransport = new DisabledTransport();
 const smtpTransport = new SmtpTransport();
 
 async function pickTransport(): Promise<MailTransport> {
+  try {
+    const { platformConfigService } = await import('../services/platform-config.service');
+    const settings = await platformConfigService.getSettings();
+    if (!settings.notifications_email_enabled) {
+      return disabledTransport;
+    }
+  } catch (err) {
+    logger.debug({ err: err instanceof Error ? err.message : String(err) }, 'Could not load platform email notification setting');
+  }
+
   // Check if SMTP is configured (DB or env)
   try {
     const { smtpConfigService } = await import('../services/smtp-config.service');

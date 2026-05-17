@@ -6,10 +6,11 @@ import { productService } from '../services/product.service';
 import { storeService } from '../services/store.service';
 import { subscriptionService } from '../services/subscription.service';
 import { asyncHandler, validate, requireStore } from '../middlewares';
-import { PdErrorCode, PdForbiddenError } from '../errors';
+import { PdErrorCode, PdForbiddenError, PdValidationError } from '../errors';
 import { AiJobStatus, AiJobType } from '@pandamarket/types';
 import { aiConfigService } from '../services/ai-config.service';
 import type { AiProvider } from '../services/ai-config.service';
+import { platformConfigService } from '../services/platform-config.service';
 
 const router = Router();
 
@@ -54,6 +55,14 @@ const aiProviderSchema = z.object({
   base_url: z.string().trim().max(2048).optional().nullable(),
   api_key: z.string().trim().max(4096).optional(),
   is_enabled: z.boolean().default(true),
+});
+
+const requireAiToolsEnabled = asyncHandler(async (_req: Request, _res: Response, next) => {
+  const settings = await platformConfigService.getSettings();
+  if (!settings.ai_tools_enabled) {
+    throw new PdValidationError('AI tools are disabled by platform settings');
+  }
+  next();
 });
 
 function parsePageCopyResponse(text: string, fallbackTitle: string): {
@@ -126,6 +135,7 @@ async function assertAiFeature(
 router.post(
   '/compress',
   requireStore,
+  requireAiToolsEnabled,
   validate(compressSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = req.user!.store_id!;
@@ -147,6 +157,7 @@ router.post(
 router.post(
   '/seo-generate',
   requireStore,
+  requireAiToolsEnabled,
   validate(seoGenerateSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = req.user!.store_id!;
@@ -165,6 +176,7 @@ router.post(
 router.post(
   '/page-copy-helper',
   requireStore,
+  requireAiToolsEnabled,
   validate(pageCopySchema),
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = req.user!.store_id!;
@@ -207,6 +219,7 @@ router.post(
 router.post(
   '/product-description',
   requireStore,
+  requireAiToolsEnabled,
   validate(productDescriptionSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = req.user!.store_id!;
@@ -254,6 +267,7 @@ router.post(
 router.get(
   '/jobs/:id',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     const job = await aiService.getById(req.params.id);
     // Tenant isolation: ensure the job belongs to the vendor's store
@@ -269,6 +283,7 @@ router.get(
 router.get(
   '/history',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
@@ -287,6 +302,7 @@ router.get(
 router.get(
   '/credits',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     const credits = await creditsService.getByStore(req.user!.store_id!);
     res.status(200).json({ credits });
@@ -296,6 +312,7 @@ router.get(
 router.get(
   '/pricing',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (_req: Request, res: Response) => {
     const pricing = await aiConfigService.listPricing();
     res.status(200).json({ pricing });
@@ -305,6 +322,7 @@ router.get(
 router.get(
   '/token-packs',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (_req: Request, res: Response) => {
     const packs = await creditsService.listTokenPacks();
     res.status(200).json({ packs });
@@ -314,6 +332,7 @@ router.get(
 router.get(
   '/token-purchases',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
@@ -325,6 +344,7 @@ router.get(
 router.post(
   '/buy-tokens',
   requireStore,
+  requireAiToolsEnabled,
   validate(buyTokenPackSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await creditsService.buyPackFromWallet(req.user!.store_id!, req.body.pack_id);
@@ -335,6 +355,7 @@ router.post(
 router.get(
   '/provider-config',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     const data = await aiConfigService.getStoreProvider(req.user!.store_id!);
     res.status(200).json(data);
@@ -344,6 +365,7 @@ router.get(
 router.put(
   '/provider-config',
   requireStore,
+  requireAiToolsEnabled,
   validate(aiProviderSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const data = await aiConfigService.saveStoreProvider(req.user!.store_id!, {
@@ -360,6 +382,7 @@ router.put(
 router.delete(
   '/provider-config',
   requireStore,
+  requireAiToolsEnabled,
   asyncHandler(async (req: Request, res: Response) => {
     await aiConfigService.deleteStoreProvider(req.user!.store_id!);
     res.status(200).json({ success: true });

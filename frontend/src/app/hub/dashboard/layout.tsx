@@ -50,6 +50,8 @@ interface CurrentStore {
   subscription_plan?: string | null;
   settings?: {
     logo_url?: string | null;
+    logo_light_url?: string | null;
+    logo_dark_url?: string | null;
     store_description?: string | null;
   } | null;
   payment_config?: unknown;
@@ -60,6 +62,8 @@ interface CurrentStore {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
 }
 
 function isAdminRole(role?: string) {
@@ -270,6 +274,9 @@ export default function DashboardLayout({
               href="/hub"
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="light"
               imageClassName="h-10 max-w-[170px] object-contain"
               textClassName="text-xl font-bold text-[#B91C1C]"
             />
@@ -300,6 +307,9 @@ export default function DashboardLayout({
             href="/hub/dashboard"
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+            logoSurface="light"
             imageClassName="h-10 max-w-[170px] object-contain"
             textClassName="text-xl font-bold text-[#B91C1C]"
           />

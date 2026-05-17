@@ -1,7 +1,7 @@
 import React from 'react';
 import { Heart, ShoppingBag, User } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
@@ -14,6 +14,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function BoutiqueTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const goldAccent = tc.colors.accent;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0
     ? products
     : [
@@ -47,8 +48,8 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding }: The
 
           <div className="text-center flex-1 md:flex-none">
             <Link href={branding?.store_path_base || '/'}>
-              {branding?.logo_url ? (
-                <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" />
+              {logoUrl ? (
+                <img src={logoUrl} alt={storeName} className="h-10 mx-auto object-contain" />
               ) : (
                 <h1
                   className="text-2xl md:text-3xl font-light tracking-[0.2em] uppercase font-serif"

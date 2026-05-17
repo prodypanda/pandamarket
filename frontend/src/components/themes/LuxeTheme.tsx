@@ -1,7 +1,7 @@
 import React from 'react';
 import { Diamond } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -9,6 +9,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function LuxeTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const gold = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Diamond Pendant', price: 2800, images: [], category: 'Necklaces' },
     { id: '2', title: 'Swiss Chronograph', price: 4500, images: [], category: 'Watches' },
@@ -22,7 +23,7 @@ export function LuxeTheme({ theme, storeName, products = [], branding }: ThemePr
         <div className="max-w-6xl mx-auto px-6 py-10 text-center">
           <div className="flex items-center justify-center gap-5">
             <Link href={branding?.store_path_base || '/'} className="inline-block">
-              {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 mx-auto object-contain" /> : (
+              {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 mx-auto object-contain" /> : (
                 <div className="flex items-center justify-center gap-3">
                   <Diamond className="w-5 h-5" style={{ color: gold }} />
                   <h1 className="text-2xl font-serif font-light tracking-[0.3em] uppercase">{storeName}</h1>

@@ -53,6 +53,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   marketplace_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'],
   report_evidence: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/plain'],
   chat_image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  delivery_proof: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
 };
 
 // Max file sizes per purpose (bytes)
@@ -65,6 +66,7 @@ const MAX_SIZES: Record<string, number> = {
   marketplace_asset: 25 * 1024 * 1024,
   report_evidence: 20 * 1024 * 1024,
   chat_image: 5 * 1024 * 1024,
+  delivery_proof: 10 * 1024 * 1024,
 };
 
 /**
@@ -153,6 +155,13 @@ router.post(
         bucket = config.s3.bucketPrivate;
         keyPrefix = `chat/${req.user!.id}`;
         break;
+      case 'delivery_proof':
+        if (!req.user!.store_id) {
+          throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only vendors can upload delivery proof');
+        }
+        bucket = config.s3.bucketPrivate;
+        keyPrefix = `delivery-proofs/${req.user!.store_id}`;
+        break;
       default:
         throw new PdValidationError('Invalid purpose');
     }
@@ -211,6 +220,7 @@ router.get(
     const allowedPrefixes = [
       `mandats/${req.user!.id}/`,
       `kyc/${req.user!.store_id ?? req.user!.id}/`,
+      `delivery-proofs/${req.user!.store_id}/`,
     ];
     const adminAllowed = key.startsWith('kyc/') || key.startsWith('mandats/');
     const userAllowed = allowedPrefixes.some((prefix) => key.startsWith(prefix));

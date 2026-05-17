@@ -16,6 +16,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth, validate } from '../middlewares';
 import { wishlistService } from '../services/wishlist.service';
 import { z } from 'zod';
+import { PdValidationError } from '../errors';
+import { platformConfigService } from '../services/platform-config.service';
 
 const router = Router();
 
@@ -32,12 +34,27 @@ const batchCheckSchema = z.object({
   product_ids: z.array(z.string().min(1)).min(1).max(100),
 });
 
+async function wishlistEnabled() {
+  const settings = await platformConfigService.getSettings();
+  return Boolean(settings.wishlist_enabled);
+}
+
+async function assertWishlistEnabled() {
+  if (!(await wishlistEnabled())) {
+    throw new PdValidationError('Wishlist is disabled by platform settings');
+  }
+}
+
 // ─── List wishlist ──────────────────────────────────────────────────
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
+    if (!(await wishlistEnabled())) {
+      res.json({ items: [], total: 0, page, limit, pages: 0 });
+      return;
+    }
 
     const result = await wishlistService.list(req.user!.id, { page, limit });
 
@@ -60,6 +77,7 @@ router.post(
   validate(toggleSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertWishlistEnabled();
       const result = await wishlistService.toggle(req.user!.id, req.body.product_id);
       res.json(result);
     } catch (err) {
@@ -75,6 +93,7 @@ router.post(
   validate(toggleSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertWishlistEnabled();
       const item = await wishlistService.add(req.user!.id, req.body.product_id);
       res.status(201).json(item);
     } catch (err) {
@@ -89,6 +108,7 @@ router.delete(
   '/:productId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertWishlistEnabled();
       await wishlistService.remove(req.user!.id, req.params.productId);
       res.json({ success: true });
     } catch (err) {
@@ -103,6 +123,10 @@ router.get(
   '/check/:productId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!(await wishlistEnabled())) {
+        res.json({ in_wishlist: false });
+        return;
+      }
       const inWishlist = await wishlistService.isInWishlist(
         req.user!.id,
         req.params.productId,
@@ -121,6 +145,14 @@ router.post(
   validate(batchCheckSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!(await wishlistEnabled())) {
+        res.json({
+          wishlisted: Object.fromEntries(
+            req.body.product_ids.map((id: string) => [id, false]),
+          ),
+        });
+        return;
+      }
       const wishlisted = await wishlistService.getWishlistStatus(
         req.user!.id,
         req.body.product_ids,
@@ -140,6 +172,10 @@ router.post(
 
 router.get('/count', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!(await wishlistEnabled())) {
+      res.json({ count: 0 });
+      return;
+    }
     const count = await wishlistService.count(req.user!.id);
     res.json({ count });
   } catch (err) {

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Search, Menu, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 export function ClassicTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.primary, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0
     ? products
     : [
@@ -32,8 +33,8 @@ export function ClassicTheme({ theme, storeName, products = [], branding }: Them
           <div className="flex items-center space-x-4">
             <Menu className="w-6 h-6 lg:hidden" />
             <Link href={branding?.store_path_base || '/'}>
-              {branding?.logo_url ? (
-                <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
+              {logoUrl ? (
+                <img src={logoUrl} alt={storeName} className="h-8 object-contain" />
               ) : (
                 <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
               )}

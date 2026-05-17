@@ -24,6 +24,8 @@ interface StoreData {
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
     themeCustomization?: ThemeCustomization;
   };
 }
@@ -31,6 +33,8 @@ interface StoreData {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
 }
 
 export default function StoreCheckoutPage() {
@@ -506,6 +510,9 @@ export default function StoreCheckoutPage() {
               href="/hub"
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="dark"
               className="inline-flex align-middle"
               imageClassName="inline h-5 max-w-[120px] object-contain"
               textClassName="font-medium"

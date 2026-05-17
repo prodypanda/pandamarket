@@ -20,6 +20,8 @@ interface CurrentUser {
 interface HubNavbarProps {
   marketplaceName?: string;
   marketplaceLogoUrl?: string;
+  marketplaceLogoLightUrl?: string;
+  marketplaceLogoDarkUrl?: string;
   marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
   showInstantChat?: boolean;
 }
@@ -27,15 +29,19 @@ interface HubNavbarProps {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
   marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
-export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceTheme, showInstantChat = true }: HubNavbarProps) {
+export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogoLightUrl, marketplaceLogoDarkUrl, marketplaceTheme, showInstantChat = true }: HubNavbarProps) {
   const { t } = useLocale();
   const { getItemCount } = useCart();
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const resolvedMarketplaceName = marketplaceName || marketplaceSettings.marketplace_name || 'PandaMarket';
   const resolvedMarketplaceLogoUrl = normalizePublicAssetUrl(marketplaceLogoUrl || marketplaceSettings.marketplace_logo_url);
+  const resolvedMarketplaceLogoLightUrl = normalizePublicAssetUrl(marketplaceLogoLightUrl || marketplaceSettings.marketplace_logo_light_url);
+  const resolvedMarketplaceLogoDarkUrl = normalizePublicAssetUrl(marketplaceLogoDarkUrl || marketplaceSettings.marketplace_logo_dark_url);
   const resolvedMarketplaceTheme = marketplaceTheme || marketplaceSettings.marketplace_theme || 'panda';
   const isAliExpress = resolvedMarketplaceTheme === 'aliexpress' || resolvedMarketplaceTheme === 'aliexpress2';
   const isAliExpress2 = resolvedMarketplaceTheme === 'aliexpress2';
@@ -54,7 +60,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
   useEffect(() => {
     let cancelled = false;
 
-    if (marketplaceName || marketplaceLogoUrl || marketplaceTheme) return;
+    if (marketplaceName || marketplaceLogoUrl || marketplaceLogoLightUrl || marketplaceLogoDarkUrl || marketplaceTheme) return;
 
     async function fetchMarketplaceSettings() {
       try {
@@ -73,7 +79,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
     return () => {
       cancelled = true;
     };
-  }, [marketplaceLogoUrl, marketplaceName, marketplaceTheme]);
+  }, [marketplaceLogoDarkUrl, marketplaceLogoLightUrl, marketplaceLogoUrl, marketplaceName, marketplaceTheme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +136,9 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceThem
               href="/hub"
               marketplaceName={resolvedMarketplaceName}
               marketplaceLogoUrl={resolvedMarketplaceLogoUrl}
+              marketplaceLogoLightUrl={resolvedMarketplaceLogoLightUrl}
+              marketplaceLogoDarkUrl={resolvedMarketplaceLogoDarkUrl}
+              logoSurface={isAliExpress2 ? 'dark' : 'light'}
               className="flex items-center gap-3"
               imageClassName="h-10 max-w-[150px] object-contain"
               textClassName={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${

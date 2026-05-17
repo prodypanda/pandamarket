@@ -11,6 +11,7 @@ declare module 'express-serve-static-core' {
       id: string;
       role: UserRole;
       store_id: string | null;
+      session_id?: string | null;
     };
     storefrontCustomer?: {
       id: string;

@@ -18,6 +18,7 @@ import {
 } from '../errors';
 import { ReviewStatus } from '@pandamarket/types';
 import { logger } from '../utils/logger';
+import { platformConfigService } from './platform-config.service';
 
 export interface ReviewRow {
   id: string;
@@ -59,6 +60,10 @@ export class ReviewService {
     body?: string;
     order_id?: string;
   }): Promise<ReviewRow> {
+    const settings = await platformConfigService.getSettings();
+    if (!settings.reviews_enabled) {
+      throw new PdValidationError('Reviews are disabled by platform settings');
+    }
     if (opts.rating < 1 || opts.rating > 5) {
       throw new PdValidationError('Rating must be between 1 and 5');
     }
@@ -90,8 +95,8 @@ export class ReviewService {
       const review = await transaction(async (client) => {
         const { rows } = await client.query<ReviewRow>(
           `INSERT INTO pd_review
-            (id, product_id, customer_id, store_id, order_id, rating, title, body, is_verified_purchase)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (id, product_id, customer_id, store_id, order_id, rating, title, body, is_verified_purchase, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING *`,
           [
             id,
@@ -103,6 +108,7 @@ export class ReviewService {
             opts.title ?? null,
             opts.body ?? null,
             is_verified_purchase,
+            settings.review_auto_publish ? ReviewStatus.Published : ReviewStatus.Pending,
           ],
         );
 

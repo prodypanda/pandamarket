@@ -18,7 +18,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { pageBuilderService } from '../services/page-builder.service';
-import { requireAuth, requireVendor, requireStore, validate } from '../middlewares';
+import { asyncHandler, requireAuth, requireVendor, requireStore, validate } from '../middlewares';
+import { PdValidationError } from '../errors';
+import { platformConfigService } from '../services/platform-config.service';
 
 const router = Router();
 
@@ -65,6 +67,14 @@ const updatePageSchema = z.object({
   sort_order: z.number().int().min(0).max(999).optional(),
 });
 
+const requirePageBuilderEnabled = asyncHandler(async (_req: Request, _res: Response, next) => {
+  const settings = await platformConfigService.getSettings();
+  if (!settings.page_builder_enabled) {
+    throw new PdValidationError('Page Builder is disabled by platform settings');
+  }
+  next();
+});
+
 // ─── Vendor Endpoints (Authenticated) ───────────────────────
 
 /**
@@ -76,6 +86,7 @@ router.get(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -97,6 +108,7 @@ router.get(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -117,6 +129,7 @@ router.post(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   validate(createPageSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -141,6 +154,7 @@ router.put(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   validate(updatePageSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -158,6 +172,7 @@ router.get(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -174,6 +189,7 @@ router.post(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -190,6 +206,7 @@ router.post(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -210,6 +227,7 @@ router.delete(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;
@@ -230,6 +248,7 @@ router.post(
   requireAuth,
   requireVendor,
   requireStore,
+  requirePageBuilderEnabled,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const storeId = req.user!.store_id!;

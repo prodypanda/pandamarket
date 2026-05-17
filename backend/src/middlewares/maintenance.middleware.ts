@@ -9,6 +9,7 @@ interface MaintenanceConfig {
   maintenance_enabled: boolean;
   maintenance_title: string;
   maintenance_message: string;
+  maintenance_illustration_url: string;
   maintenance_eta: string;
   maintenance_allowed_ips: string;
   maintenance_block_storefronts: boolean;
@@ -18,6 +19,7 @@ const MAINTENANCE_KEYS = [
   'maintenance_enabled',
   'maintenance_title',
   'maintenance_message',
+  'maintenance_illustration_url',
   'maintenance_eta',
   'maintenance_allowed_ips',
   'maintenance_block_storefronts',
@@ -27,6 +29,7 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
   maintenance_enabled: false,
   maintenance_title: 'Maintenance en cours',
   maintenance_message: 'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.',
+  maintenance_illustration_url: '',
   maintenance_eta: '',
   maintenance_allowed_ips: '',
   maintenance_block_storefronts: false,
@@ -61,17 +64,43 @@ async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
   return config;
 }
 
-function isAllowedIp(clientIp: string | undefined, allowedIps: string): boolean {
+export function getRequestIp(req: Request): string {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const forwardedValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+  const cfIp = req.headers['cf-connecting-ip'];
+  const realIp = req.headers['x-real-ip'];
+  const candidate = forwardedValue?.split(',')[0]?.trim()
+    || (Array.isArray(cfIp) ? cfIp[0] : cfIp)
+    || (Array.isArray(realIp) ? realIp[0] : realIp)
+    || req.ip
+    || '';
+  return candidate.replace(/^::ffff:/, '');
+}
+
+export function isMaintenanceAllowedIp(clientIp: string | undefined, allowedIps: string): boolean {
   if (!clientIp || !allowedIps.trim()) return false;
   const normalizedClient = clientIp.replace(/^::ffff:/, '');
   const allowed = allowedIps.split(',').map((ip) => ip.trim()).filter(Boolean);
   return allowed.some((ip) => ip === normalizedClient || ip === clientIp);
 }
 
+function isStorefrontApiPath(path: string): boolean {
+  return path.startsWith('/api/pd/stores/by-host/')
+    || /^\/api\/pd\/stores\/[^/]+\/(homepage|pages|page-builder-preview)(?:\/|$)/.test(path)
+    || path.startsWith('/api/pd/products/public')
+    || path.startsWith('/api/pd/products/by-store/')
+    || path.startsWith('/api/pd/categories')
+    || path.startsWith('/api/pd/reviews/products/')
+    || path.startsWith('/api/pd/storefront/')
+    || path.startsWith('/api/pd/orders/storefront/')
+    || path.startsWith('/api/pd/payments/storefront/');
+}
+
 const BYPASS_PATH_PREFIXES = [
   '/api/pd/admin/',
   '/api/pd/auth/',
   '/api/pd/marketplace/settings',
+  '/api/pd/marketplace/maintenance',
   '/health',
   '/ready',
   '/metrics',
@@ -97,12 +126,16 @@ export function maintenanceMiddleware() {
       return next();
     }
 
+    if (!config.maintenance_block_storefronts && isStorefrontApiPath(path)) {
+      return next();
+    }
+
     const userRole = req.user?.role;
     if (userRole === 'admin' || userRole === 'super_admin') {
       return next();
     }
 
-    if (isAllowedIp(req.ip, config.maintenance_allowed_ips)) {
+    if (isMaintenanceAllowedIp(getRequestIp(req), config.maintenance_allowed_ips)) {
       return next();
     }
 
@@ -111,6 +144,7 @@ export function maintenanceMiddleware() {
         code: 'MAINTENANCE_MODE',
         title: config.maintenance_title,
         message: config.maintenance_message,
+        illustration_url: config.maintenance_illustration_url || null,
         eta: config.maintenance_eta || null,
         block_storefronts: config.maintenance_block_storefronts,
       },

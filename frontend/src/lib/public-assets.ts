@@ -21,3 +21,22 @@ export function normalizePublicAssetUrl(url?: string | null): string {
 
   return value;
 }
+
+export type LogoSurface = 'light' | 'dark';
+
+export interface LogoSet {
+  logo_url?: string | null;
+  logo_light_url?: string | null;
+  logo_dark_url?: string | null;
+  marketplace_logo_url?: string | null;
+  marketplace_logo_light_url?: string | null;
+  marketplace_logo_dark_url?: string | null;
+}
+
+export function selectLogoForSurface(logos?: LogoSet | null, surface: LogoSurface = 'light'): string {
+  const preferred = surface === 'dark'
+    ? logos?.logo_light_url || logos?.marketplace_logo_light_url
+    : logos?.logo_dark_url || logos?.marketplace_logo_dark_url;
+  const fallback = logos?.logo_url || logos?.marketplace_logo_url;
+  return normalizePublicAssetUrl(preferred || fallback);
+}

@@ -14,7 +14,8 @@ import {
   Store,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { MarketplaceBrand } from '../MarketplaceBrand';
 
 type LoginVariant = 'seller' | 'admin';
 
@@ -28,6 +29,13 @@ interface RoleScopedLoginPageProps {
   registerLabel?: string;
   allowedNextPrefixes: string[];
   variant?: LoginVariant;
+}
+
+interface MarketplaceSettings {
+  marketplace_name?: string;
+  marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
 }
 
 function getSafeNext(allowedPrefixes: string[]): string | null {
@@ -55,6 +63,7 @@ export function RoleScopedLoginPage({
   const [error, setError] = useState('');
   const [twoFactorChallengeId, setTwoFactorChallengeId] = useState<string | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const isAdmin = variant === 'admin';
   const accent = isAdmin ? '#7C3AED' : '#F97316';
   const accentSoft = isAdmin ? 'bg-violet-50 text-violet-700 ring-violet-100' : 'bg-orange-50 text-orange-700 ring-orange-100';
@@ -76,6 +85,24 @@ export function RoleScopedLoginPage({
       { label: 'Revenus & wallet', icon: BarChart3 },
       { label: 'Outils vendeurs', icon: Sparkles },
     ];
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchMarketplaceSettings() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/marketplace/settings', { credentials: 'include' });
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setMarketplaceSettings(data.data || {});
+        }
+      } catch {
+        if (!cancelled) setMarketplaceSettings({});
+      }
+    }
+    fetchMarketplaceSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -147,13 +174,19 @@ export function RoleScopedLoginPage({
 
         <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col">
           <div className="flex items-center justify-between gap-4">
-            <Link href={logoHref} className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.08] px-5 py-3 text-sm font-black shadow-2xl shadow-violet-950/30 backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.12] hover:shadow-cyan-950/30">
-              <span className="text-xl">🐼</span>
-              <span>PandaMarket</span>
-              <span className="hidden rounded-full bg-violet-400/15 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-violet-100 sm:inline">
-                Vault
-              </span>
-            </Link>
+            <MarketplaceBrand
+              href={logoHref}
+              marketplaceName={marketplaceSettings.marketplace_name}
+              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="dark"
+              className="rounded-full border border-white/10 bg-white/[0.08] px-5 py-3 text-sm font-black shadow-2xl shadow-violet-950/30 backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.12] hover:shadow-cyan-950/30"
+              imageClassName="h-8 max-w-[160px] object-contain"
+              textClassName="text-sm font-black text-white"
+              fallbackMarkClassName="text-xl"
+              showTextWithLogo
+            />
             <div className="hidden items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-200 shadow-lg shadow-emerald-950/20 backdrop-blur-xl sm:flex">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)]" />
               Secure channel armed
@@ -303,10 +336,19 @@ export function RoleScopedLoginPage({
     <div className={`min-h-screen px-4 py-10 text-white ${pageBg}`}>
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden lg:block">
-          <Link href={logoHref} className="inline-flex items-center gap-3 rounded-full bg-white/10 px-5 py-3 text-sm font-black backdrop-blur transition hover:bg-white/15">
-            <span className="text-xl">🐼</span>
-            PandaMarket
-          </Link>
+          <MarketplaceBrand
+            href={logoHref}
+            marketplaceName={marketplaceSettings.marketplace_name}
+            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+            logoSurface="dark"
+            className="rounded-full bg-white/10 px-5 py-3 text-sm font-black backdrop-blur transition hover:bg-white/15"
+            imageClassName="h-8 max-w-[160px] object-contain"
+            textClassName="text-sm font-black text-white"
+            fallbackMarkClassName="text-xl"
+            showTextWithLogo
+          />
           <div className="mt-10 max-w-xl">
             <span className={`inline-flex rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ring-1 ${accentSoft}`}>
               {isAdmin ? 'Superadmin' : 'Vendeur'}
@@ -329,10 +371,19 @@ export function RoleScopedLoginPage({
 
         <div className="mx-auto w-full max-w-md">
           <div className="mb-7 text-center lg:hidden">
-            <Link href={logoHref} className="inline-flex items-center gap-2 text-2xl font-black">
-              <span>🐼</span>
-              PandaMarket
-            </Link>
+            <MarketplaceBrand
+              href={logoHref}
+              marketplaceName={marketplaceSettings.marketplace_name}
+              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="dark"
+              className="inline-flex justify-center text-2xl font-black"
+              imageClassName="h-10 max-w-[180px] object-contain"
+              textClassName="text-2xl font-black text-white"
+              fallbackMarkClassName="text-2xl"
+              showTextWithLogo
+            />
           </div>
 
           <div className="rounded-[2rem] border border-white/70 bg-white p-7 text-gray-950 shadow-2xl shadow-black/25 sm:p-8">

@@ -33,6 +33,11 @@ interface MarketplaceCategory {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_tagline?: string;
+  hub_homepage_banner_title?: string;
+  hub_homepage_banner_subtitle?: string;
+  hub_homepage_banner_cta_label?: string;
+  hub_homepage_banner_cta_url?: string;
+  hub_homepage_banner_image_url?: string;
   default_currency?: string;
 }
 
@@ -106,6 +111,11 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const categoryShowcase = publicCategories.slice(0, 3);
   const currency = marketplaceSettings?.default_currency || t('common.currency');
   const tagline = marketplaceSettings?.marketplace_tagline || t('common.tagline');
+  const bannerTitle = marketplaceSettings?.hub_homepage_banner_title?.trim() || t('hub.hero.title');
+  const bannerSubtitle = marketplaceSettings?.hub_homepage_banner_subtitle?.trim() || t('hub.hero.subtitle');
+  const bannerCtaLabel = marketplaceSettings?.hub_homepage_banner_cta_label?.trim() || t('nav.explore');
+  const bannerCtaUrl = marketplaceSettings?.hub_homepage_banner_cta_url?.trim() || '/hub/search';
+  const bannerImage = normalizePublicAssetUrl(marketplaceSettings?.hub_homepage_banner_image_url || '');
   const marketplaceStats = [
     { label: 'Produits actifs', value: `${trendingProducts.length}+` },
     { label: 'Catégories', value: `${publicCategories.length}+` },
@@ -170,24 +180,25 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
 
             <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-8 text-white shadow-2xl shadow-emerald-950/20 md:p-10">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(22,199,132,0.55),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.18),transparent_28%)]" />
+              {bannerImage && <img src={bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
               <div className="relative max-w-2xl">
                 <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white shadow-sm backdrop-blur">
                   <ShieldCheck className="h-4 w-4 text-[#1EE69A]" />
                   {tagline}
                 </div>
                 <h1 className="mb-5 text-4xl font-black tracking-tight md:text-6xl">
-                  {t('hub.hero.title')}
+                  {bannerTitle}
                 </h1>
                 <p className="mb-8 max-w-xl text-lg leading-relaxed text-white/75">
-                  {t('hub.hero.subtitle')}
+                  {bannerSubtitle}
                 </p>
                 <Link
-                  href="/hub/search"
+                  href={bannerCtaUrl}
                   className="flex max-w-xl items-center gap-3 rounded-full border border-white/15 bg-white p-2 pl-5 text-left text-gray-500 shadow-2xl shadow-black/20 transition-all hover:border-[#16C784]/40"
                 >
                   <Search className="h-5 w-5 text-gray-400" />
                   <span className="flex-1 text-sm">{t('common.search')}</span>
-                  <span className="rounded-full bg-[#16C784] px-5 py-3 text-sm font-bold text-white">{t('nav.explore')}</span>
+                  <span className="rounded-full bg-[#16C784] px-5 py-3 text-sm font-bold text-white">{bannerCtaLabel}</span>
                 </Link>
                 <div className="mt-8 grid grid-cols-3 gap-3">
                   {marketplaceStats.map((stat) => (

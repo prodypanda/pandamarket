@@ -6,6 +6,7 @@ import { ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { getHubProductHref } from '../../../../lib/product-links';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
+import { selectLogoForSurface } from '../../../../lib/public-assets';
 
 interface Product {
   id: string;
@@ -58,7 +59,12 @@ export async function generateMetadata({
   const name = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
   const marketplaceSettings = await getMarketplaceSettings();
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
-  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const logoImageUrl = selectLogoForSurface({
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
+  }, 'light');
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || logoImageUrl || '/og-image.png';
   const description = `Découvrez les meilleurs produits ${name.toLowerCase()} sur ${marketplaceName}. Comparez les prix et achetez auprès de vendeurs tunisiens vérifiés.`;
   return {
     title: `${name} — Produits`,
@@ -105,6 +111,8 @@ export default async function CategoryPage({
         <HubNavbar
           marketplaceName={marketplaceSettings.marketplace_name}
           marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+          marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+          marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
           marketplaceTheme={marketplaceSettings.marketplace_theme}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
@@ -131,6 +139,8 @@ export default async function CategoryPage({
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
       />
 

@@ -29,6 +29,7 @@ import {
   List,
   BarChart3,
   MousePointerClick,
+  Construction,
 } from 'lucide-react';
 import { PageBuilderEditor } from '../../../../components/page-builder/PageBuilderEditor';
 import { TemplatePicker } from '../../../../components/page-builder/TemplatePicker';
@@ -88,6 +89,39 @@ interface PageBuilderLimits {
 }
 
 const PAGE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/;
+const MAINTENANCE_PAGE_SLUG = 'maintenance';
+const MAINTENANCE_PAGE_TEMPLATE_HTML = `
+<section class="pd-maintenance-template">
+  <div data-pd-block="store-hero" data-pd-title="Maintenance en cours" data-pd-subtitle="Notre boutique se refait une beauté. Nous revenons très bientôt avec une meilleure expérience."></div>
+  <div class="pd-maintenance-note">
+    <p>Merci pour votre patience. Vous pouvez nous contacter si vous avez une commande en cours ou une question urgente.</p>
+  </div>
+  <div data-pd-block="store-contact" data-pd-title="Nous contacter"></div>
+</section>`;
+const MAINTENANCE_PAGE_TEMPLATE_CSS = `
+.pd-maintenance-template {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+}
+.pd-maintenance-note {
+  max-width: 760px;
+  margin: -28px auto 0;
+  position: relative;
+  z-index: 2;
+  padding: 0 24px;
+}
+.pd-maintenance-note p {
+  margin: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  padding: 24px;
+  color: #4b5563;
+  font-size: 16px;
+  line-height: 1.7;
+  text-align: center;
+}`;
 
 export default function PageBuilderDashboard() {
   const [view, setView] = useState<View>('list');
@@ -111,6 +145,7 @@ export default function PageBuilderDashboard() {
   const [editorInitialNotice, setEditorInitialNotice] = useState('');
 
   const existingSlugs = useMemo(() => new Set(pages.map((page) => page.slug)), [pages]);
+  const maintenancePage = useMemo(() => pages.find((page) => page.slug === MAINTENANCE_PAGE_SLUG) || null, [pages]);
   const slugValidationMessage = useMemo(() => {
     if (!newPageSlug.trim()) return '';
     if (!PAGE_SLUG_PATTERN.test(newPageSlug)) {
@@ -375,6 +410,50 @@ export default function PageBuilderDashboard() {
     }
   };
 
+  const handleMaintenancePage = async () => {
+    if (maintenancePage) {
+      await openEditor(maintenancePage);
+      return;
+    }
+    if (hasReachedPageLimit) {
+      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setCreating(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/page-builder/pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: 'Page maintenance',
+          slug: MAINTENANCE_PAGE_SLUG,
+          html: MAINTENANCE_PAGE_TEMPLATE_HTML,
+          css: MAINTENANCE_PAGE_TEMPLATE_CSS,
+          noindex: true,
+          show_in_navigation: false,
+          show_in_footer: false,
+        }),
+      });
+      if (!res.ok) {
+        setError(await getErrorMessage(res, 'Erreur lors de la création de la page maintenance'));
+        return;
+      }
+      const data = await res.json();
+      setEditorInitialNotice('Page maintenance créée. Personnalisez-la, puis publiez-la pour remplacer la page maintenance standard.');
+      setEditingPage(data.page);
+      setView('editor');
+      setSuccess('Page maintenance créée.');
+      fetchPages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création de la page maintenance');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   // Auto-generate slug from title
   const handleTitleChange = (title: string) => {
     setNewPageTitle(title);
@@ -511,6 +590,55 @@ export default function PageBuilderDashboard() {
             <Plus className="w-4 h-4" />
             Page vierge
           </button>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-[#FBF8F1] p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-4">
+            <div className="grid h-12 w-12 flex-shrink-0 place-items-center rounded-2xl border border-amber-200 bg-white text-[#B91C1C] shadow-sm">
+              <Construction className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">Page spéciale</p>
+              <h2 className="mt-1 text-lg font-black text-[#1A1A2E]">Page maintenance de la boutique</h2>
+              <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[#7C7468]">
+                Créez une page Page Builder avec le slug réservé <span className="font-bold text-[#1A1A2E]">/maintenance</span>. Quand votre boutique passe en maintenance, cette page publiée remplace automatiquement l’écran standard.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full border border-[#E4D8C6] bg-white px-3 py-1 text-xs font-bold text-[#7C7468]">
+                  {maintenancePage ? 'Configurée' : 'Non configurée'}
+                </span>
+                {maintenancePage && (
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${maintenancePage.is_published ? 'bg-amber-100 text-amber-800' : 'bg-[#F4EDE2] text-[#7C7468]'}`}>
+                    {maintenancePage.is_published ? 'Publiée' : 'Brouillon'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <button
+              type="button"
+              onClick={() => void handleMaintenancePage()}
+              disabled={creating || (!maintenancePage && hasReachedPageLimit)}
+              className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-amber-900/10 transition-colors hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+              {maintenancePage ? 'Éditer la page' : 'Créer la page'}
+            </button>
+            {maintenancePage?.is_published && store?.subdomain && (
+              <a
+                href={`/store/${store.subdomain}/pages/${MAINTENANCE_PAGE_SLUG}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#D6B779] bg-white px-4 py-2.5 text-sm font-bold text-[#8A6F3D] shadow-sm transition-colors hover:bg-[#FFF8E8]"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Voir la page
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

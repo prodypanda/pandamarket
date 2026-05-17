@@ -1,7 +1,7 @@
 import React from 'react';
 import { Scissors } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -9,6 +9,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function CraftTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const rust = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Hand-Knit Scarf', price: 75, images: [], category: 'Knitting' },
     { id: '2', title: 'Pottery Vase', price: 120, images: [], category: 'Ceramics' },
@@ -23,7 +24,7 @@ export function CraftTheme({ theme, storeName, products = [], branding }: ThemeP
       <header className="border-b-2 border-dashed" style={{ borderColor: `${rust}30` }}>
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
               <div className="flex items-center gap-2"><Scissors className="w-5 h-5" style={{ color: rust }} /><h1 className="text-2xl font-serif font-bold">{storeName}</h1></div>
             )}
           </Link>

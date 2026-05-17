@@ -1,13 +1,14 @@
 import React from 'react';
 import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
 export function MinimalTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0
     ? products
     : [
@@ -33,8 +34,8 @@ export function MinimalTheme({ theme, storeName, products = [], branding }: Them
       >
         <div className={tc.layout.container + ' w-full flex justify-between items-center'}>
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+            {logoUrl ? (
+              <img src={logoUrl} alt={storeName} className="h-10 object-contain" />
             ) : (
               <h1 className={`text-3xl ${theme.typography.headingStyle}`} style={{ color: tc.colors.text }}>
                 {storeName}

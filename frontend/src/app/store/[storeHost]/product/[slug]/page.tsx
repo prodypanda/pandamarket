@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronRight, Star, Heart, ArrowLeft } from 'lucide-react';
 import { AddToCartButton } from '../../../../../components/store/AddToCartButton';
 import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
-import { getStorefrontProductPath } from '../../../../../components/themes/shared';
+import { getStorefrontProductPath, getStoreThemeLogoSurface } from '../../../../../components/themes/shared';
 import { ReviewSection } from '../../../../../components/hub/ReviewSection';
 import { ProductDescriptionRenderer } from '../../../../../components/product/ProductDescription';
 import { ProductGallery } from '../../../../../components/product/ProductGallery';
@@ -21,6 +21,7 @@ import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
 import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
 import { cookies } from 'next/headers';
+import { selectLogoForSurface } from '../../../../../lib/public-assets';
 
 interface Product {
   id: string;
@@ -60,6 +61,8 @@ interface StoreData {
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
     favicon_url?: string;
     themeCustomization?: ThemeCustomization;
     store_description?: string;
@@ -164,7 +167,13 @@ export async function generateMetadata({
   const product = await getProduct(slug, store.id);
   if (!product) return { title: 'Produit introuvable' };
 
-  const imageUrl = product.images?.[0]?.url || product.thumbnail;
+  const activeTheme = themes[store.theme_id] || themes.classic;
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url,
+    logo_light_url: store.settings?.logo_light_url,
+    logo_dark_url: store.settings?.logo_dark_url,
+  }, getStoreThemeLogoSurface(activeTheme.id));
+  const imageUrl = product.images?.[0]?.url || product.thumbnail || logoUrl;
   const description = product.description?.slice(0, 160)
     || `Achetez ${product.title} chez ${store.name} — ${formatPrice(product.price)}`;
 
@@ -181,6 +190,7 @@ export async function generateMetadata({
       card: imageUrl ? 'summary_large_image' : 'summary',
       title: `${product.title} — ${store.name}`,
       description,
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   };
 }
@@ -248,7 +258,16 @@ export default async function StoreProductPage({
   const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
     ? getWholesalePricingFromMetadata(product.metadata)
     : null;
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url,
+    logo_light_url: store.settings?.logo_light_url,
+    logo_dark_url: store.settings?.logo_dark_url,
+  }, getStoreThemeLogoSurface(activeTheme.id));
   const footerBranding: StoreBranding = {
+    marketplace_name: marketplaceSettings.marketplace_name,
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
     contact_email: store.settings?.contact_email,
     contact_phone: store.settings?.contact_phone,
     address: store.settings?.address,
@@ -271,13 +290,13 @@ export default async function StoreProductPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              {store.settings?.logo_url ? (
+              {logoUrl ? (
                 <Link href={storePathBase || '/'}>
                   <span
                     aria-label={store.name}
                     role="img"
                     className="block h-8 w-28 bg-contain bg-left bg-no-repeat"
-                    style={{ backgroundImage: `url(${store.settings.logo_url})` }}
+                    style={{ backgroundImage: `url(${logoUrl})` }}
                   />
                 </Link>
               ) : (
@@ -541,6 +560,9 @@ export default async function StoreProductPage({
               href="/hub"
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="dark"
               className="inline-flex align-middle"
               imageClassName="inline h-5 max-w-[120px] object-contain"
               textClassName="font-medium"

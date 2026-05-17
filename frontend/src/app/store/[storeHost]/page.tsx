@@ -34,8 +34,9 @@ import {
 import { MarketplaceSellerPage, type MarketplaceCategory } from '../../../components/store/MarketplaceStorefront';
 import { MarketplaceBrand } from '../../../components/MarketplaceBrand';
 import { StorefrontSocialLinks } from '../../../components/themes/StorefrontSocialLinks';
-import type { StoreSocialLinks } from '../../../components/themes/shared';
+import { getStoreThemeLogoSurface, type StoreSocialLinks } from '../../../components/themes/shared';
 import { StorefrontMaintenancePage } from '../../../components/store/StorefrontMaintenancePage';
+import { selectLogoForSurface } from '../../../lib/public-assets';
 
 interface StoreBranding {
   store_id?: string;
@@ -43,11 +44,15 @@ interface StoreBranding {
   primary_color?: string;
   secondary_color?: string;
   logo_url?: string;
+  logo_light_url?: string;
+  logo_dark_url?: string;
   favicon_url?: string;
   themeCustomization?: ThemeCustomization;
   store_path_base?: string;
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
   contact_email?: string | null;
   contact_phone?: string | null;
   address?: string | null;
@@ -70,6 +75,8 @@ interface StoreData {
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
     favicon_url?: string;
     store_description?: string;
     description?: string;
@@ -236,7 +243,12 @@ export async function generateMetadata({
 
   const fallbackDescription = store.description
     || `Découvrez les produits de ${store.name} sur ${marketplaceName}. Boutique en ligne tunisienne.`;
-  const logoUrl = store.settings?.logo_url as string | undefined;
+  const activeTheme = themes[store.theme_id] || themes.classic;
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url as string | undefined,
+    logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+    logo_light_url: store.settings?.logo_light_url as string | undefined,
+  }, getStoreThemeLogoSurface(activeTheme.id));
   const homepageOverride = previewToken
     ? await getDraftPreviewHomepage(store.id, previewToken)
     : await getHomepageOverride(store.id);
@@ -290,7 +302,11 @@ export default async function StorePage({
     return (
       <StorefrontMaintenancePage
         storeName={store.name}
-        logoUrl={store.settings?.logo_url as string | undefined}
+        logoUrl={selectLogoForSurface({
+          logo_url: store.settings?.logo_url as string | undefined,
+          logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+          logo_light_url: store.settings?.logo_light_url as string | undefined,
+        }, 'light')}
         primaryColor={pColor}
         maintenanceMessage={store.settings?.maintenance_message as string | undefined}
         social={store.settings?.social}
@@ -298,6 +314,8 @@ export default async function StorePage({
         contactPhone={store.settings?.contact_phone}
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
       />
     );
   }
@@ -335,7 +353,11 @@ export default async function StorePage({
   }
   if (homepageOverride && (homepageOverride.html || previewToken)) {
     const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
-    const logoUrl = store.settings?.logo_url as string | undefined;
+    const logoUrl = selectLogoForSurface({
+      logo_url: store.settings?.logo_url as string | undefined,
+      logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+      logo_light_url: store.settings?.logo_light_url as string | undefined,
+    }, getStoreThemeLogoSurface(activeTheme.id));
     const [marketplaceSettings, products, pageLinks] = await Promise.all([
       getMarketplaceSettings(),
       getStoreProducts(store.id),
@@ -344,6 +366,8 @@ export default async function StorePage({
     const footerBranding: StoreBranding = {
       marketplace_name: marketplaceSettings.marketplace_name,
       marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+      marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+      marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
       contact_email: store.settings?.contact_email,
       contact_phone: store.settings?.contact_phone,
       address: store.settings?.address,
@@ -451,6 +475,9 @@ export default async function StorePage({
               href="/hub"
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="dark"
               className="inline-flex align-middle"
               imageClassName="h-5 max-w-[120px] object-contain"
               textClassName="font-semibold hover:underline"
@@ -474,12 +501,20 @@ export default async function StorePage({
     store_host: storeHost,
     primary_color: store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary,
     secondary_color: store.settings?.colors?.secondary || themeCustomization?.customColors?.secondary || resolvedColors.secondary,
-    logo_url: store.settings?.logo_url as string | undefined,
+    logo_url: selectLogoForSurface({
+      logo_url: store.settings?.logo_url as string | undefined,
+      logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+      logo_light_url: store.settings?.logo_light_url as string | undefined,
+    }, getStoreThemeLogoSurface(activeTheme.id)),
+    logo_light_url: store.settings?.logo_light_url as string | undefined,
+    logo_dark_url: store.settings?.logo_dark_url as string | undefined,
     favicon_url: store.settings?.favicon_url as string | undefined,
     themeCustomization,
     store_path_base: storePathBase,
     marketplace_name: marketplaceSettings.marketplace_name,
     marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
     contact_email: store.settings?.contact_email,
     contact_phone: store.settings?.contact_phone,
     address: store.settings?.address,

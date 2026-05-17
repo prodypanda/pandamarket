@@ -235,6 +235,14 @@ function buildWholesalePricingMetadata(input: {
   return { enabled: true, min_quantity: minQuantity, price_tiers: priceTiers };
 }
 
+function publicProductOrderBy(sortBy?: string) {
+  if (sortBy === 'oldest') return 'p.created_at ASC';
+  if (sortBy === 'price_asc') return 'p.price ASC, p.created_at DESC';
+  if (sortBy === 'price_desc') return 'p.price DESC, p.created_at DESC';
+  if (sortBy === 'title_asc') return 'LOWER(p.title) ASC, p.created_at DESC';
+  return 'p.created_at DESC';
+}
+
 export class ProductService {
   /**
    * Create a product. Status depends on the vendor's verification status:
@@ -625,7 +633,7 @@ export class ProductService {
   /**
    * List published products across the platform (Hub homepage / category browsing).
    */
-  async listPublished(opts: { page?: number; limit?: number; category?: string; marketplaceCategoryId?: string; storeId?: string; sellerType?: SellerType } = {}) {
+  async listPublished(opts: { page?: number; limit?: number; category?: string; marketplaceCategoryId?: string; storeId?: string; sellerType?: SellerType; sortBy?: string } = {}) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
@@ -647,6 +655,7 @@ export class ProductService {
       params.push(opts.sellerType);
       where += ` AND s.seller_type = $${params.length}`;
     }
+    const orderBy = publicProductOrderBy(opts.sortBy);
     params.push(limit, offset);
     const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string }>(
       `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain,
@@ -663,7 +672,7 @@ export class ProductService {
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
        WHERE ${where}
-       ORDER BY p.created_at DESC
+       ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
@@ -733,10 +742,7 @@ export class ProductService {
       where += ` AND s.seller_type = $${params.length}`;
     }
 
-    let orderBy = 'p.created_at DESC';
-    if (opts.sortBy === 'price_asc') orderBy = 'p.price ASC';
-    if (opts.sortBy === 'price_desc') orderBy = 'p.price DESC';
-    if (opts.sortBy === 'date') orderBy = 'p.created_at DESC';
+    const orderBy = publicProductOrderBy(opts.sortBy);
 
     params.push(limit, offset);
     const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string }>(

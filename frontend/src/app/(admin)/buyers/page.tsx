@@ -23,6 +23,7 @@ import {
   Users,
   WalletCards,
 } from 'lucide-react';
+import { AdminUserSecurityActivityPanel } from '../../../components/admin/AdminUserSecurityActivityPanel';
 import { useLocale } from '../../../contexts/LocaleContext';
 
 interface BuyerAccount {
@@ -462,6 +463,8 @@ export default function AdminBuyersPage() {
                         </p>
                       </div>
                     </div>
+
+                    <AdminUserSecurityActivityPanel userId={buyer.id} accentClass="bg-[#B91C1C]" />
                   </div>
 
                   <div className="border-t border-gray-100 bg-slate-50 p-5 xl:border-l xl:border-t-0">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, Sun } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -13,6 +13,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function SaharaTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const accent = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Handwoven Rug', price: 350, images: [], category: 'Decor' },
     { id: '2', title: 'Ceramic Tagine', price: 85, images: [], category: 'Kitchen' },
@@ -27,7 +28,7 @@ export function SaharaTheme({ theme, storeName, products = [], branding }: Theme
       <header className="border-b-2" style={{ borderColor: `${accent}30` }}>
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
               <div className="flex items-center gap-2"><Sun className="w-6 h-6" style={{ color: accent }} /><h1 className="text-2xl font-bold tracking-wide">{storeName}</h1></div>
             )}
           </Link>

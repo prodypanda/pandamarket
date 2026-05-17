@@ -80,6 +80,14 @@ const DEFAULT_TEMPLATES: Record<string, { label: string; subject: string; title:
     title: 'Paiement confirmé ✅',
     body_html: '<p>Nous avons bien reçu votre paiement de <strong>{{amount}} TND</strong> via {{method}}.</p><p>La commande <strong>#{{order_id}}</strong> est désormais en cours de préparation.</p>',
   },
+  new_device_login: {
+    label: 'New device login alert',
+    subject: 'Nouvelle connexion à votre compte PandaMarket',
+    title: 'Nouvelle connexion détectée',
+    body_html: '<p>Bonjour {{name}},</p><p>Une connexion à votre compte a été effectuée depuis <strong>{{device_label}}</strong> avec l’adresse IP <strong>{{ip}}</strong> le {{login_time}}.</p><p>Si ce n’était pas vous, révoquez vos sessions et modifiez votre mot de passe.</p>',
+    cta_label: 'Gérer la sécurité du compte',
+    cta_url: '{{manage_url}}',
+  },
 };
 
 function safeColor(value: string | null | undefined, fallback: string): string {

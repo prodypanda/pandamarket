@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, MapPin, Star } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -13,6 +13,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function ArtisanTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const earthBrown = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0
     ? products
     : [
@@ -32,8 +33,8 @@ export function ArtisanTheme({ theme, storeName, products = [], branding }: Them
       <header className="border-b" style={{ backgroundColor: tc.colors.headerBg, borderColor: `${earthBrown}20` }}>
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'} className="flex items-center gap-3">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+            {logoUrl ? (
+              <img src={logoUrl} alt={storeName} className="h-10 object-contain" />
             ) : (
               <div className="flex items-center gap-2">
                 <div

@@ -6,11 +6,17 @@ import { HubFooter } from '../../../components/hub/HubFooter';
 import { getMarketplaceSettings } from '../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../lib/marketplace-theme';
 import { fetchEnabledSubscriptionPlans } from '../../../lib/subscription-plans';
+import { selectLogoForSurface } from '../../../lib/public-assets';
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketplaceSettings = await getMarketplaceSettings();
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
-  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const logoImageUrl = selectLogoForSurface({
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
+  }, 'light');
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || logoImageUrl || '/og-image.png';
   const description = `Comparez les plans ${marketplaceName} : Free, Starter, Regular, Agency, Pro, Golden et Platinum.`;
 
   return {
@@ -58,6 +64,8 @@ export default async function PricingPage() {
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
       />
       <main className="max-w-7xl mx-auto px-4 py-12">

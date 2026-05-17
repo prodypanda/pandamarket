@@ -3,15 +3,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Construction, RefreshCw, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { MarketplaceBrand } from '../../components/MarketplaceBrand';
 
 interface MaintenanceSettings {
-  maintenance_enabled: string;
+  maintenance_enabled: boolean;
+  maintenance_active_for_request: boolean;
   maintenance_title: string;
   maintenance_message: string;
+  maintenance_illustration_url: string;
   maintenance_eta: string;
-  maintenance_block_storefronts: string;
+  maintenance_block_storefronts: boolean;
   marketplace_name: string;
   marketplace_logo_url: string;
+  marketplace_logo_light_url: string;
+  marketplace_logo_dark_url: string;
+  marketplace_public_url: string;
 }
 
 function CountdownTimer({ eta }: { eta: string }) {
@@ -61,12 +67,12 @@ export default function MaintenancePage() {
 
   const checkMaintenance = useCallback(async () => {
     try {
-      const res = await fetch('/api/pd/marketplace/settings');
+      const res = await fetch('/api/pd/marketplace/maintenance');
       if (!res.ok) return;
       const data = await res.json();
       const s = data.data as MaintenanceSettings | undefined;
       if (!s) return;
-      if (s.maintenance_enabled !== 'true') {
+      if (!s.maintenance_active_for_request) {
         router.replace('/');
         return;
       }
@@ -88,6 +94,8 @@ export default function MaintenancePage() {
     'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.';
   const eta = settings?.maintenance_eta || '';
   const marketplaceName = settings?.marketplace_name || 'PandaMarket';
+  const marketplaceHref = settings?.marketplace_public_url || '/hub';
+  const illustrationUrl = settings?.maintenance_illustration_url || '';
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0f1c]">
@@ -128,10 +136,31 @@ export default function MaintenancePage() {
 
       {/* Main card */}
       <div className="relative z-10 mx-4 w-full max-w-lg text-center" style={{ animation: 'rise-in 0.6s ease-out' }}>
-        {/* Panda icon */}
-        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl" style={{ animation: 'breathing-glow 3s ease-in-out infinite' }}>
-          <Construction className="h-12 w-12 text-[#16C784]" />
+        <div className="mb-6 flex justify-center">
+          <MarketplaceBrand
+            href={marketplaceHref}
+            marketplaceName={marketplaceName}
+            marketplaceLogoUrl={settings?.marketplace_logo_url}
+            marketplaceLogoLightUrl={settings?.marketplace_logo_light_url}
+            marketplaceLogoDarkUrl={settings?.marketplace_logo_dark_url}
+            logoSurface="dark"
+            className="rounded-full border border-white/10 bg-white/[0.08] px-5 py-3 backdrop-blur-xl"
+            imageClassName="h-9 max-w-[180px] object-contain"
+            textClassName="text-lg font-black text-white"
+            fallbackMarkClassName="text-xl"
+            showTextWithLogo
+          />
         </div>
+
+        {illustrationUrl ? (
+          <div className="mx-auto mb-6 h-36 w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl">
+            <img src={illustrationUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+        ) : (
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl" style={{ animation: 'breathing-glow 3s ease-in-out infinite' }}>
+            <Construction className="h-12 w-12 text-[#16C784]" />
+          </div>
+        )}
 
         {/* Content */}
         <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">

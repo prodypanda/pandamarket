@@ -51,6 +51,7 @@ const PLATFORM_BASES = [
 ];
 
 const AUTH_ROUTE_PREFIXES = ['/login', '/register', '/forgot-password', '/reset-password'];
+const OPERATIONAL_ROUTE_PREFIXES = ['/health', '/ready', '/metrics'];
 
 const PROTECTED_HUB_ROUTE_PREFIXES = [
   '/hub/account',
@@ -123,24 +124,71 @@ function redirectToLogin(req: NextRequest, loginPath = '/login/buyer') {
 
 interface MaintenanceStatus {
   maintenance_enabled: boolean;
+  maintenance_active_for_request: boolean;
   maintenance_block_storefronts: boolean;
 }
 
-async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+interface StorefrontStatus {
+  status?: string | null;
+}
+
+function getClientIp(req: NextRequest) {
+  return req.headers.get('cf-connecting-ip')
+    || req.headers.get('x-real-ip')
+    || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || '';
+}
+
+function forwardedIpHeaders(req: NextRequest) {
+  const clientIp = getClientIp(req);
+  return clientIp ? { 'x-forwarded-for': clientIp } : undefined;
+}
+
+async function getMaintenanceStatus(req: NextRequest): Promise<MaintenanceStatus> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {
-      next: { revalidate: 15 },
+    const res = await fetch(`${backendUrl}/api/pd/marketplace/maintenance`, {
+      headers: forwardedIpHeaders(req),
+      cache: 'no-store',
     });
-    if (!res.ok) return { maintenance_enabled: false, maintenance_block_storefronts: false };
+    if (!res.ok) return { maintenance_enabled: false, maintenance_active_for_request: false, maintenance_block_storefronts: false };
     const data = await res.json();
+    const enabled = data.data?.maintenance_enabled === true || data.data?.maintenance_enabled === 'true';
+    const activeForRequest = data.data?.maintenance_active_for_request === true || data.data?.maintenance_active_for_request === 'true';
+    const blockStorefronts = data.data?.maintenance_block_storefronts === true || data.data?.maintenance_block_storefronts === 'true';
     return {
-      maintenance_enabled: data.data?.maintenance_enabled === 'true',
-      maintenance_block_storefronts: data.data?.maintenance_block_storefronts === 'true',
+      maintenance_enabled: enabled,
+      maintenance_active_for_request: activeForRequest,
+      maintenance_block_storefronts: blockStorefronts,
     };
   } catch {
-    return { maintenance_enabled: false, maintenance_block_storefronts: false };
+    return { maintenance_enabled: false, maintenance_active_for_request: false, maintenance_block_storefronts: false };
   }
+}
+
+async function getStorefrontStatus(storeHost: string, req: NextRequest): Promise<StorefrontStatus | null> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`, {
+      headers: forwardedIpHeaders(req),
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { status: data.store?.status };
+  } catch {
+    return null;
+  }
+}
+
+function getStoreHostFromMarketplacePath(pathname: string) {
+  const segments = pathname.split('/').filter(Boolean);
+  return segments[0] === 'store' && segments[1] ? decodeURIComponent(segments[1]) : null;
+}
+
+function isStoreMaintenancePath(pathname: string) {
+  const segments = pathname.split('/').filter(Boolean);
+  return segments[0] === 'store' && segments[2] === 'maintenance';
 }
 
 export async function middleware(req: NextRequest) {
@@ -153,10 +201,25 @@ export async function middleware(req: NextRequest) {
   // 1. Hub central (pandamarket.tn)
   if (isHubHost(hostname)) {
     if (url.pathname === '/store' || url.pathname.startsWith('/store/')) {
+      const maintenance = await getMaintenanceStatus(req);
+      if (maintenance.maintenance_active_for_request && maintenance.maintenance_block_storefronts) {
+        return NextResponse.rewrite(new URL('/maintenance', req.url));
+      }
+      const storeRouteHost = getStoreHostFromMarketplacePath(url.pathname);
+      if (storeRouteHost && !isStoreMaintenancePath(url.pathname) && !url.searchParams.has('pb_preview')) {
+        const storeStatus = await getStorefrontStatus(storeRouteHost, req);
+        if (storeStatus?.status === 'maintenance') {
+          return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeRouteHost)}/maintenance`, req.url));
+        }
+      }
       return NextResponse.next();
     }
 
     if (url.pathname === '/maintenance') {
+      return NextResponse.next();
+    }
+
+    if (matchesRoutePrefix(url.pathname, OPERATIONAL_ROUTE_PREFIXES)) {
       return NextResponse.next();
     }
 
@@ -178,8 +241,8 @@ export async function middleware(req: NextRequest) {
     const isAdminRoute = matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES);
     const isAuthRoute = matchesRoutePrefix(url.pathname, AUTH_ROUTE_PREFIXES);
     if (!isAdminRoute && !isAuthRoute) {
-      const maintenance = await getMaintenanceStatus();
-      if (maintenance.maintenance_enabled) {
+      const maintenance = await getMaintenanceStatus(req);
+      if (maintenance.maintenance_active_for_request) {
         return NextResponse.rewrite(new URL('/maintenance', req.url));
       }
     }
@@ -223,9 +286,16 @@ export async function middleware(req: NextRequest) {
   }
 
   // Maintenance check for storefronts
-  const maintenance = await getMaintenanceStatus();
-  if (maintenance.maintenance_enabled && maintenance.maintenance_block_storefronts) {
+  const maintenance = await getMaintenanceStatus(req);
+  if (maintenance.maintenance_active_for_request && maintenance.maintenance_block_storefronts) {
     return NextResponse.rewrite(new URL('/maintenance', req.url));
+  }
+
+  if (url.pathname !== '/maintenance' && !url.searchParams.has('pb_preview')) {
+    const storeStatus = await getStorefrontStatus(storeHost, req);
+    if (storeStatus?.status === 'maintenance') {
+      return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeHost)}/maintenance`, req.url));
+    }
   }
 
   // Rewrite to the storefront route — the page fetches store data by hostname

@@ -18,6 +18,7 @@ INSERT INTO pd_platform_config (key, value) VALUES
   ('maintenance_enabled', 'false'),
   ('maintenance_title', 'Maintenance en cours'),
   ('maintenance_message', 'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.'),
+  ('maintenance_illustration_url', ''),
   ('maintenance_eta', ''),
   ('maintenance_allowed_ips', ''),
   ('maintenance_block_storefronts', 'false')

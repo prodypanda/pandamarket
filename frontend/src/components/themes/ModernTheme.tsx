@@ -1,11 +1,12 @@
 import React from 'react';
 import { Sparkles, ArrowRight, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 
 export function ModernTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const tags = ['New Arrival', 'Trending', 'Pro', 'Best Seller'];
   const displayProducts = products.length > 0
     ? products
@@ -27,8 +28,8 @@ export function ModernTheme({ theme, storeName, products = [], branding }: Theme
       )}
       <header className="relative z-10 px-6 lg:px-12 py-6 flex justify-between items-center">
         <Link href={branding?.store_path_base || '/'}>
-          {branding?.logo_url ? (
-            <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" />
+          {logoUrl ? (
+            <img src={logoUrl} alt={storeName} className="h-10 object-contain" />
           ) : (
             <h1 className={`text-2xl ${theme.typography.headingStyle}`} style={{ color: tc.colors.accent }}>
               {storeName}

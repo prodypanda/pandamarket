@@ -13,7 +13,10 @@ interface StorefrontMaintenanceProps {
   contactEmail?: string | null;
   contactPhone?: string | null;
   marketplaceName?: string;
+  marketplaceHref?: string;
   marketplaceLogoUrl?: string;
+  marketplaceLogoLightUrl?: string;
+  marketplaceLogoDarkUrl?: string;
 }
 
 export function StorefrontMaintenancePage({
@@ -25,7 +28,10 @@ export function StorefrontMaintenancePage({
   contactEmail,
   contactPhone,
   marketplaceName,
+  marketplaceHref = '/hub',
   marketplaceLogoUrl,
+  marketplaceLogoLightUrl,
+  marketplaceLogoDarkUrl,
 }: StorefrontMaintenanceProps) {
   const message =
     maintenanceMessage ||
@@ -101,7 +107,7 @@ export function StorefrontMaintenancePage({
         {/* Back to marketplace */}
         <div className="mt-6 flex flex-col items-center gap-3">
           <Link
-            href="/hub"
+            href={marketplaceHref}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -111,9 +117,12 @@ export function StorefrontMaintenancePage({
           <span className="inline-flex items-center justify-center gap-1 text-xs text-gray-400">
             Propulsé par{' '}
             <MarketplaceBrand
-              href="/hub"
+              href={marketplaceHref}
               marketplaceName={marketplaceName}
               marketplaceLogoUrl={marketplaceLogoUrl}
+              marketplaceLogoLightUrl={marketplaceLogoLightUrl}
+              marketplaceLogoDarkUrl={marketplaceLogoDarkUrl}
+              logoSurface="light"
               className="inline-flex align-middle"
               imageClassName="h-4 max-w-[100px] object-contain"
               textClassName="font-semibold hover:underline"

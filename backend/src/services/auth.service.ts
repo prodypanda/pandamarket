@@ -22,6 +22,8 @@ import {
 import { emailQueue } from '../queues/email-queue';
 import { logger } from '../utils/logger';
 import { UserRole } from '@pandamarket/types';
+import { platformConfigService, type PlatformSettings } from './platform-config.service';
+import { accountSecurityService, type AccountSecurityContext } from './account-security.service';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
@@ -51,6 +53,7 @@ export interface UserRow {
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;
+  session_id?: string | null;
 }
 
 export interface TwoFactorSetupDetails {
@@ -104,6 +107,50 @@ function getLoginRedisIfReady(action: string) {
   return redis;
 }
 
+function numericSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: number) {
+  const value = Number(settings[key]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function configuredLoginMaxAttempts(settings: PlatformSettings) {
+  return Math.min(20, Math.max(3, Math.trunc(numericSetting(settings, 'security_login_max_attempts', MAX_LOGIN_ATTEMPTS))));
+}
+
+function configuredLockoutSeconds(settings: PlatformSettings) {
+  const minutes = Math.min(1440, Math.max(1, Math.trunc(numericSetting(settings, 'security_login_lockout_minutes', LOCKOUT_DURATION_SECONDS / 60))));
+  return minutes * 60;
+}
+
+function validatePasswordPolicy(password: string, settings: PlatformSettings) {
+  const minLength = Math.min(72, Math.max(8, Math.trunc(numericSetting(settings, 'security_password_min_length', 8))));
+  if (password.length < minLength) {
+    throw new PdValidationError(`Password must be at least ${minLength} characters`, {
+      field: 'password',
+      min_length: minLength,
+    });
+  }
+
+  const requirements: string[] = [];
+  if (settings.security_password_require_uppercase && !/[A-Z]/.test(password)) requirements.push('uppercase letter');
+  if (settings.security_password_require_lowercase && !/[a-z]/.test(password)) requirements.push('lowercase letter');
+  if (settings.security_password_require_number && !/\d/.test(password)) requirements.push('number');
+  if (settings.security_password_require_symbol && !/[^A-Za-z0-9]/.test(password)) requirements.push('symbol');
+
+  if (requirements.length > 0) {
+    throw new PdValidationError(`Password must include ${requirements.join(', ')}`, {
+      field: 'password',
+      requirements,
+    });
+  }
+}
+
+function configuredRequiredTwoFactorRoles(settings: PlatformSettings) {
+  return String(settings.security_2fa_required_roles || '')
+    .split(',')
+    .map((role) => role.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export class AuthService {
   /**
    * Register a new user (customer or vendor).
@@ -121,12 +168,8 @@ export class AuthService {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       throw new PdValidationError('Invalid email format', { field: 'email' });
     }
-    if (opts.password.length < 8) {
-      throw new PdValidationError('Password must be at least 8 characters', {
-        field: 'password',
-        min_length: 8,
-      });
-    }
+    const settings = await platformConfigService.getSettings();
+    validatePasswordPolicy(opts.password, settings);
 
     const exists = await query('SELECT id FROM pd_user WHERE email = $1', [email]);
     if (exists.rowCount && exists.rowCount > 0) {
@@ -175,12 +218,15 @@ export class AuthService {
   async login(email: string, password: string): Promise<UserRow> {
     const normalizedEmail = email.trim().toLowerCase();
     const lockoutKey = `pd:login_attempts:${normalizedEmail}`;
+    const settings = await platformConfigService.getSettings();
+    const maxLoginAttempts = configuredLoginMaxAttempts(settings);
+    const lockoutDurationSeconds = configuredLockoutSeconds(settings);
 
     // Check if account is locked out
     const redis = getLoginRedisIfReady('get_login_attempts');
     const attempts = redis ? await withLoginRedisTimeout(redis.get(lockoutKey), null, 'get_login_attempts') : null;
-    if (redis && attempts && parseInt(attempts, 10) >= MAX_LOGIN_ATTEMPTS) {
-      const ttl = await withLoginRedisTimeout(redis.ttl(lockoutKey), LOCKOUT_DURATION_SECONDS, 'ttl_login_attempts');
+    if (redis && attempts && parseInt(attempts, 10) >= maxLoginAttempts) {
+      const ttl = await withLoginRedisTimeout(redis.ttl(lockoutKey), lockoutDurationSeconds, 'ttl_login_attempts');
       logger.warn({ email: normalizedEmail, attempts }, 'Login attempt on locked account');
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_ACCOUNT_SUSPENDED,
@@ -199,7 +245,7 @@ export class AuthService {
     const user = rows[0];
     if (!user) {
       // Increment failed attempts even for non-existent users (prevent enumeration)
-      await this.incrementLoginAttempts(lockoutKey);
+      await this.incrementLoginAttempts(lockoutKey, lockoutDurationSeconds);
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_INVALID_CREDENTIALS,
         'Invalid email or password',
@@ -213,7 +259,7 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
-      await this.incrementLoginAttempts(lockoutKey);
+      await this.incrementLoginAttempts(lockoutKey, lockoutDurationSeconds);
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_INVALID_CREDENTIALS,
         'Invalid email or password',
@@ -228,14 +274,19 @@ export class AuthService {
     return user;
   }
 
-  private async incrementLoginAttempts(key: string): Promise<void> {
+  async isTwoFactorRequired(user: UserRow): Promise<boolean> {
+    const settings = await platformConfigService.getSettings();
+    return configuredRequiredTwoFactorRoles(settings).includes(user.role);
+  }
+
+  private async incrementLoginAttempts(key: string, lockoutDurationSeconds: number): Promise<void> {
     try {
       const redis = getLoginRedisIfReady('increment_login_attempts');
       if (!redis) return;
       const current = await withLoginRedisTimeout(redis.incr(key), 0, 'increment_login_attempts');
       if (current === 1) {
         // First failed attempt — set expiry
-        await withLoginRedisTimeout(redis.expire(key, LOCKOUT_DURATION_SECONDS), 0, 'expire_login_attempts');
+        await withLoginRedisTimeout(redis.expire(key, lockoutDurationSeconds), 0, 'expire_login_attempts');
       }
     } catch (err) {
       // Don't block login if Redis is down
@@ -246,35 +297,46 @@ export class AuthService {
   /**
    * Issue access + refresh tokens for a user.
    */
-  async issueTokens(user: UserRow): Promise<AuthTokens> {
+  async issueTokens(user: UserRow, context?: AccountSecurityContext): Promise<AuthTokens> {
+    const sessionId = pdId('session');
     const accessToken = signAccessToken({
       sub: user.id,
       role: user.role,
       store_id: user.store_id,
+      session_id: sessionId,
     });
     const refreshToken = signRefreshToken(user.id);
-    await this.storeRefreshToken(user.id, refreshToken);
-    return { access_token: accessToken, refresh_token: refreshToken };
+    const { tokenId, expiresAt } = await this.storeRefreshToken(user.id, refreshToken, undefined, sessionId);
+    await accountSecurityService.createSession({
+      session_id: sessionId,
+      user,
+      refresh_token_id: tokenId,
+      expires_at: expiresAt,
+      context,
+    });
+    return { access_token: accessToken, refresh_token: refreshToken, session_id: sessionId };
   }
 
   /**
    * Validate a refresh token and rotate it (return new pair).
    */
-  async refresh(refreshToken: string): Promise<AuthTokens> {
+  async refresh(refreshToken: string, context?: AccountSecurityContext): Promise<AuthTokens> {
     const payload = verifyRefreshToken(refreshToken);
     const tokenHash = sha256(refreshToken);
 
     return transaction(async (client) => {
       const { rows: tokenRows } = await client.query(
-        `SELECT id, expires_at, revoked_at
-         FROM pd_refresh_tokens
-         WHERE token_hash = $1 AND user_id = $2`,
+        `SELECT rt.id, rt.expires_at, rt.revoked_at, rt.session_id,
+                us.revoked_at AS session_revoked_at
+         FROM pd_refresh_tokens rt
+         LEFT JOIN pd_user_session us ON us.id = rt.session_id
+         WHERE rt.token_hash = $1 AND rt.user_id = $2`,
         [tokenHash, payload.sub],
       );
       const tokenRow = tokenRows[0] as
-        | { id: string; expires_at: Date; revoked_at: Date | null }
+        | { id: string; expires_at: Date; revoked_at: Date | null; session_id: string | null; session_revoked_at: Date | null }
         | undefined;
-      if (!tokenRow || tokenRow.revoked_at) {
+      if (!tokenRow || tokenRow.revoked_at || tokenRow.session_revoked_at) {
         throw new PdAuthenticationError(
           PdErrorCode.AUTH_REFRESH_EXPIRED,
           'Refresh token revoked',
@@ -299,14 +361,37 @@ export class AuthService {
       if (!user || !user.is_active) {
         throw new PdAuthenticationError();
       }
+      const sessionId = tokenRow.session_id || pdId('session');
       const accessToken = signAccessToken({
         sub: user.id,
         role: user.role,
         store_id: user.store_id,
+        session_id: sessionId,
       });
       const newRefresh = signRefreshToken(user.id);
-      await this.storeRefreshToken(user.id, newRefresh, client);
-      return { access_token: accessToken, refresh_token: newRefresh };
+      const { tokenId, expiresAt } = await this.storeRefreshToken(user.id, newRefresh, client, sessionId);
+      if (!tokenRow.session_id) {
+        await accountSecurityService.createSession({
+          session_id: sessionId,
+          user,
+          refresh_token_id: tokenId,
+          expires_at: expiresAt,
+          context,
+        });
+      } else {
+        await accountSecurityService.touchSession(sessionId, context, 'refresh', tokenId, client);
+      }
+      await accountSecurityService.recordEvent({
+        ...context,
+        user_id: user.id,
+        email: user.email,
+        role: user.role,
+        store_id: user.store_id,
+        session_id: sessionId,
+        event_type: 'refresh',
+        success: true,
+      });
+      return { access_token: accessToken, refresh_token: newRefresh, session_id: sessionId };
     });
   }
 
@@ -318,6 +403,7 @@ export class AuthService {
       'UPDATE pd_refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
       [userId],
     );
+    await accountSecurityService.revokeUserSessions(userId, 'logout');
   }
 
   async getTwoFactorStatus(userId: string): Promise<TwoFactorStatus> {
@@ -456,7 +542,7 @@ export class AuthService {
    * Generate a password reset token and store its hash in Redis.
    * In production, this would also queue an email via the email worker.
    */
-  async forgotPassword(email: string): Promise<void> {
+  async forgotPassword(email: string, context?: AccountSecurityContext): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
     const { rows } = await query<{ id: string }>(
       'SELECT id FROM pd_user WHERE email = $1 AND is_active = true',
@@ -468,6 +554,13 @@ export class AuthService {
       return;
     }
     const userId = rows[0].id;
+    await accountSecurityService.recordEvent({
+      ...context,
+      user_id: userId,
+      email: normalizedEmail,
+      event_type: 'password_reset_requested',
+      success: true,
+    });
     const { randomBytes } = await import('node:crypto');
     const token = randomBytes(32).toString('hex');
     const tokenHash = sha256(token);
@@ -493,13 +586,9 @@ export class AuthService {
   /**
    * Validate a reset token and update the user's password.
    */
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    if (newPassword.length < 8) {
-      throw new PdValidationError('Password must be at least 8 characters', {
-        field: 'password',
-        min_length: 8,
-      });
-    }
+  async resetPassword(token: string, newPassword: string, context?: AccountSecurityContext): Promise<void> {
+    const settings = await platformConfigService.getSettings();
+    validatePasswordPolicy(newPassword, settings);
     const tokenHash = sha256(token);
     const redis = getRedis();
     const userId = await redis.get(`pd:reset_token:${tokenHash}`);
@@ -515,6 +604,12 @@ export class AuthService {
     await redis.del(`pd:reset_token:${tokenHash}`);
     // Revoke all refresh tokens (force re-login)
     await this.logout(userId);
+    await accountSecurityService.recordEvent({
+      ...context,
+      user_id: userId,
+      event_type: 'password_reset',
+      success: true,
+    });
     logger.info({ user_id: userId }, 'Password reset successfully');
   }
 
@@ -624,19 +719,21 @@ export class AuthService {
     userId: string,
     token: string,
     client?: import('pg').PoolClient,
-  ): Promise<void> {
+    sessionId?: string | null,
+  ): Promise<{ tokenId: string; expiresAt: Date }> {
     const id = pdId('rtok');
     const tokenHash = sha256(token);
     // 7d default; we trust the JWT exp
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    const sql = `INSERT INTO pd_refresh_tokens (id, user_id, token_hash, expires_at)
-                 VALUES ($1, $2, $3, $4)`;
-    const params = [id, userId, tokenHash, expiresAt];
+    const sql = `INSERT INTO pd_refresh_tokens (id, user_id, token_hash, expires_at, session_id)
+                 VALUES ($1, $2, $3, $4, $5)`;
+    const params = [id, userId, tokenHash, expiresAt, sessionId ?? null];
     if (client) {
       await client.query(sql, params);
     } else {
       await query(sql, params);
     }
+    return { tokenId: id, expiresAt };
   }
 }
 

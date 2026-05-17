@@ -12,6 +12,7 @@ export interface AccessTokenPayload extends JwtPayload {
   sub: string; // user id
   role: UserRole;
   store_id: string | null;
+  session_id?: string | null;
 }
 
 export interface RefreshTokenPayload extends JwtPayload {

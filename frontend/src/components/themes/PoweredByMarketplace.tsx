@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { normalizePublicAssetUrl } from '../../lib/public-assets';
+import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets';
 import type { StoreBranding } from './shared';
 import { StorefrontSocialLinks } from './StorefrontSocialLinks';
 
@@ -11,6 +11,7 @@ interface PoweredByMarketplaceProps {
   linkClassName?: string;
   linkStyle?: CSSProperties;
   imageClassName?: string;
+  logoSurface?: LogoSurface;
 }
 
 export function PoweredByMarketplace({
@@ -19,9 +20,14 @@ export function PoweredByMarketplace({
   linkClassName,
   linkStyle,
   imageClassName = 'inline h-5 max-w-[120px] object-contain align-middle',
+  logoSurface = 'dark',
 }: PoweredByMarketplaceProps) {
   const name = branding?.marketplace_name?.trim() || 'PandaMarket';
-  const logoUrl = normalizePublicAssetUrl(branding?.marketplace_logo_url);
+  const logoUrl = selectLogoForSurface({
+    marketplace_logo_url: branding?.marketplace_logo_url,
+    marketplace_logo_light_url: branding?.marketplace_logo_light_url,
+    marketplace_logo_dark_url: branding?.marketplace_logo_dark_url,
+  }, logoSurface);
 
   return (
     <span className={className}>

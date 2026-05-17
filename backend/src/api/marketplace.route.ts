@@ -1,59 +1,39 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middlewares';
-import { query } from '../db/pool';
+import { platformConfigService } from '../services/platform-config.service';
+import { getRequestIp, isMaintenanceAllowedIp } from '../middlewares/maintenance.middleware';
 
 const router = Router();
-
-const PUBLIC_SETTING_DEFAULTS = {
-  marketplace_name: 'PandaMarket',
-  marketplace_tagline: 'Le marketplace tunisien pour boutiques modernes',
-  marketplace_logo_url: '',
-  marketplace_favicon_url: '/favicon.ico',
-  marketplace_og_image_url: '/og-image.png',
-  marketplace_public_url: 'https://pandamarket.tn',
-  marketplace_theme: 'panda',
-  marketplace_support_email: 'support@pandamarket.tn',
-  marketplace_support_phone: '',
-  marketplace_facebook_url: '',
-  marketplace_instagram_url: '',
-  marketplace_x_url: '',
-  marketplace_tiktok_url: '',
-  marketplace_youtube_url: '',
-  marketplace_linkedin_url: '',
-  marketplace_whatsapp_url: '',
-  marketplace_telegram_url: '',
-  marketplace_pinterest_url: '',
-  marketplace_snapchat_url: '',
-  marketplace_help_url: '/hub/search',
-  marketplace_terms_url: '/hub/search',
-  marketplace_privacy_url: '/hub/search',
-  marketplace_contact_url: '/hub/search',
-  chat_bubble_enabled: 'true',
-  chat_bubble_position: 'bottom-right',
-  default_currency: 'TND',
-  maintenance_enabled: 'false',
-  maintenance_title: 'Maintenance en cours',
-  maintenance_message: 'Notre plateforme est en cours de maintenance. Nous serons de retour très bientôt.',
-  maintenance_eta: '',
-  maintenance_block_storefronts: 'false',
-};
-
-const PUBLIC_SETTING_KEYS = Object.keys(PUBLIC_SETTING_DEFAULTS);
 
 router.get(
   '/settings',
   asyncHandler(async (_req: Request, res: Response) => {
-    const { rows } = await query<{ key: string; value: string }>(
-      `SELECT key, value FROM pd_platform_config WHERE key = ANY($1::text[])`,
-      [PUBLIC_SETTING_KEYS],
-    );
+    res.status(200).json({ data: await platformConfigService.getPublicSettings() });
+  }),
+);
 
-    const settings: Record<string, string> = { ...PUBLIC_SETTING_DEFAULTS };
-    for (const row of rows) {
-      settings[row.key] = row.value;
-    }
-
-    res.status(200).json({ data: settings });
+router.get(
+  '/maintenance',
+  asyncHandler(async (req: Request, res: Response) => {
+    const settings = await platformConfigService.getSettings();
+    const maintenanceEnabled = Boolean(settings.maintenance_enabled);
+    const clientAllowed = isMaintenanceAllowedIp(getRequestIp(req), String(settings.maintenance_allowed_ips || ''));
+    res.status(200).json({
+      data: {
+        maintenance_enabled: maintenanceEnabled,
+        maintenance_active_for_request: maintenanceEnabled && !clientAllowed,
+        maintenance_title: String(settings.maintenance_title || ''),
+        maintenance_message: String(settings.maintenance_message || ''),
+        maintenance_illustration_url: String(settings.maintenance_illustration_url || ''),
+        maintenance_eta: String(settings.maintenance_eta || ''),
+        maintenance_block_storefronts: Boolean(settings.maintenance_block_storefronts),
+        marketplace_name: String(settings.marketplace_name || ''),
+        marketplace_logo_url: String(settings.marketplace_logo_url || ''),
+        marketplace_logo_light_url: String(settings.marketplace_logo_light_url || ''),
+        marketplace_logo_dark_url: String(settings.marketplace_logo_dark_url || ''),
+        marketplace_public_url: String(settings.marketplace_public_url || ''),
+      },
+    });
   }),
 );
 

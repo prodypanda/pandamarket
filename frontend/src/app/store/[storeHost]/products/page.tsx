@@ -20,10 +20,11 @@ import { FreshTheme } from '../../../../components/themes/FreshTheme';
 import { CraftTheme } from '../../../../components/themes/CraftTheme';
 import { DigitalTheme } from '../../../../components/themes/DigitalTheme';
 import { KidsTheme } from '../../../../components/themes/KidsTheme';
-import type { StoreProduct as ThemeStoreProduct, ThemeProps, StoreSocialLinks } from '../../../../components/themes/shared';
+import { getStoreThemeLogoSurface, type StoreProduct as ThemeStoreProduct, type ThemeProps, type StoreSocialLinks } from '../../../../components/themes/shared';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../lib/store-routing';
-import { MarketplaceSellerPage, type MarketplaceCategory, type MarketplaceStoreProduct } from '../../../../components/store/MarketplaceStorefront';
+import { type MarketplaceCategory, type MarketplaceStoreProduct, MarketplaceSellerPage } from '../../../../components/store/MarketplaceStorefront';
+import { selectLogoForSurface } from '../../../../lib/public-assets';
 
 interface StoreData {
   id: string;
@@ -37,6 +38,8 @@ interface StoreData {
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
     favicon_url?: string;
     themeCustomization?: ThemeCustomization;
     store_description?: string;
@@ -173,7 +176,13 @@ export default async function StoreProductsPage({
     store_host: storeHost,
     primary_color: store.settings?.colors?.primary || resolvedColors.primary,
     secondary_color: store.settings?.colors?.secondary || resolvedColors.secondary,
-    logo_url: store.settings?.logo_url,
+    logo_url: selectLogoForSurface({
+      logo_url: store.settings?.logo_url,
+      logo_light_url: store.settings?.logo_light_url,
+      logo_dark_url: store.settings?.logo_dark_url,
+    }, getStoreThemeLogoSurface(activeTheme.id)),
+    logo_light_url: store.settings?.logo_light_url,
+    logo_dark_url: store.settings?.logo_dark_url,
     favicon_url: store.settings?.favicon_url,
     themeCustomization,
     store_path_base: storePathBase,

@@ -34,6 +34,11 @@ interface MarketplaceSettings {
   marketplace_tagline?: string;
   default_currency?: string;
   marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
+  hub_homepage_banner_title?: string;
+  hub_homepage_banner_subtitle?: string;
+  hub_homepage_banner_cta_label?: string;
+  hub_homepage_banner_cta_url?: string;
+  hub_homepage_banner_image_url?: string;
 }
 
 interface AliExpress2HomeContentProps {
@@ -114,6 +119,11 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
   const currency = marketplaceSettings?.default_currency || 'TND';
   const marketplaceName = marketplaceSettings?.marketplace_name || 'PandaMarket';
   const tagline = marketplaceSettings?.marketplace_tagline || 'Des milliers de produits, prix malins, vendeurs tunisiens.';
+  const bannerTitle = marketplaceSettings?.hub_homepage_banner_title?.trim() || marketplaceName;
+  const bannerSubtitle = marketplaceSettings?.hub_homepage_banner_subtitle?.trim() || tagline;
+  const bannerCtaLabel = marketplaceSettings?.hub_homepage_banner_cta_label?.trim() || 'Search';
+  const bannerCtaUrl = marketplaceSettings?.hub_homepage_banner_cta_url?.trim() || '/hub/search';
+  const bannerImage = normalizePublicAssetUrl(marketplaceSettings?.hub_homepage_banner_image_url || '');
 
   return (
     <main className="bg-[#09090b] text-white">
@@ -126,6 +136,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
         <div className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#ff4747]/20 blur-[120px] animate-pulse" />
         <div className="pointer-events-none absolute -right-20 top-20 h-[400px] w-[400px] rounded-full bg-[#ff8a00]/15 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-[#ff5f2e]/10 blur-[80px]" />
+        {bannerImage && <img src={bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10" />}
 
         <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -141,20 +152,20 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
               </div>
 
               <h1 className="text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
-                <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">{marketplaceName}</span>
+                <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">{bannerTitle}</span>
                 <br />
                 <span className="bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] bg-clip-text text-transparent">Super Deals</span>
               </h1>
 
-              <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-white/50">{tagline}</p>
+              <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-white/50">{bannerSubtitle}</p>
 
               {/* Search bar */}
               <div className="mt-8 max-w-xl">
-                <Link href="/hub/search" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-2 pl-5 backdrop-blur-xl transition-all hover:border-[#ff4747]/30 hover:bg-white/10">
+                <Link href={bannerCtaUrl} className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-2 pl-5 backdrop-blur-xl transition-all hover:border-[#ff4747]/30 hover:bg-white/10">
                   <Search className="h-5 w-5 text-white/30" />
                   <span className="flex-1 text-sm text-white/30">Search products, stores, categories...</span>
                   <span className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#ff4747] to-[#ff8a00] px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-900/30 transition-transform group-hover:scale-[1.03]">
-                    <Search className="h-4 w-4" /> Search
+                    <Search className="h-4 w-4" /> {bannerCtaLabel}
                   </span>
                 </Link>
               </div>

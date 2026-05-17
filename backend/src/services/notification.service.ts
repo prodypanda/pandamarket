@@ -9,6 +9,7 @@ import { PdNotFoundError, PdErrorCode } from '../errors';
 import { INotification } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { socketGateway } from '../realtime/socket-gateway';
+import { platformConfigService } from './platform-config.service';
 
 interface NotificationRow {
   id: string;
@@ -64,7 +65,13 @@ export class NotificationService {
     title: string;
     message: string;
     data?: Record<string, unknown>;
-  }): Promise<INotification> {
+  }): Promise<INotification | null> {
+    const settings = await platformConfigService.getSettings();
+    if (!settings.notifications_in_app_enabled) {
+      logger.debug({ user_id: opts.user_id, type: opts.type }, 'In-app notification skipped by platform settings');
+      return null;
+    }
+
     const id = pdId('notif');
     const { rows } = await query<NotificationRow>(
       `INSERT INTO pd_notifications (id, user_id, type, title, message, data)
@@ -72,7 +79,9 @@ export class NotificationService {
       [id, opts.user_id, opts.type, opts.title, opts.message, JSON.stringify(opts.data ?? {})],
     );
     const notif = toPublic(rows[0]);
-    socketGateway.emitToUser(opts.user_id, 'notification', notif);
+    if (settings.notifications_realtime_enabled) {
+      socketGateway.emitToUser(opts.user_id, 'notification', notif);
+    }
     logger.debug({ user_id: opts.user_id, type: opts.type }, 'Notification created');
     return notif;
   }

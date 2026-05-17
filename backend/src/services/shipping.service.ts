@@ -18,8 +18,10 @@ import {
   PdNotFoundError,
   PdInternalError,
   PdErrorCode,
+  PdValidationError,
 } from '../errors';
 import { IAddress } from '@pandamarket/types';
+import { platformConfigService, type PlatformSettings } from './platform-config.service';
 
 // =====================================================
 // Types
@@ -31,7 +33,7 @@ export interface ShippingRateRequest {
   destination: IAddress;
   weight_kg: number;
   dimensions?: { length_cm: number; width_cm: number; height_cm: number };
-  provider?: 'aramex' | 'laposte' | 'auto';
+  provider?: 'aramex' | 'laposte' | 'platform' | 'auto';
 }
 
 export interface ShippingRate {
@@ -88,6 +90,60 @@ export interface TrackingInfo {
   estimated_delivery: string | null;
 }
 
+type ShippingRateProvider = NonNullable<ShippingRateRequest['provider']>;
+
+function numberSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: number) {
+  const value = Number(settings[key]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function stringSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: string) {
+  const value = settings[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeCity(value?: string | null) {
+  return (value || '').trim().toLowerCase();
+}
+
+function configuredCities(value: string) {
+  return value.split(',').map(normalizeCity).filter(Boolean);
+}
+
+function configuredProvider(settings: PlatformSettings, requested?: ShippingRateProvider): ShippingRateProvider {
+  const value = requested ?? stringSetting(settings, 'shipping_default_provider', 'auto');
+  return value === 'aramex' || value === 'laposte' || value === 'platform' ? value : 'auto';
+}
+
+function configuredPlatformRate(settings: PlatformSettings, destinationCity?: string | null) {
+  const city = normalizeCity(destinationCity);
+  const remoteCities = configuredCities(stringSetting(settings, 'shipping_remote_zone_cities', ''));
+  const domesticCities = configuredCities(stringSetting(settings, 'shipping_domestic_zone_cities', ''));
+  if (city && remoteCities.includes(city)) return numberSetting(settings, 'shipping_remote_zone_rate_tnd', 12);
+  if (city && domesticCities.includes(city)) return numberSetting(settings, 'shipping_domestic_zone_rate_tnd', 7);
+  return numberSetting(settings, 'shipping_platform_flat_rate_tnd', 7);
+}
+
+function configuredShipmentProvider(settings: PlatformSettings, requested?: ShipmentRequest['provider']): NonNullable<ShipmentRequest['provider']> {
+  if (requested) return requested;
+  const preferred = stringSetting(settings, 'shipping_default_provider', 'auto');
+  if (preferred === 'laposte') return 'laposte';
+  if (preferred === 'aramex') return 'aramex';
+  return settings.shipping_aramex_enabled ? 'aramex' : 'laposte';
+}
+
+function assertShipmentProviderEnabled(provider: NonNullable<ShipmentRequest['provider']>, settings: PlatformSettings) {
+  if (!settings.shipping_enabled || !settings.shipping_platform_unified_enabled) {
+    throw new PdValidationError('Platform shipping is disabled');
+  }
+  if (provider === 'aramex' && !settings.shipping_aramex_enabled) {
+    throw new PdValidationError('Aramex shipping is disabled');
+  }
+  if (provider === 'laposte' && !settings.shipping_laposte_enabled) {
+    throw new PdValidationError('La Poste shipping is disabled');
+  }
+}
+
 // =====================================================
 // Aramex API Client (simplified)
 // =====================================================
@@ -124,10 +180,15 @@ export class ShippingService {
    * Returns rates from available providers.
    */
   async calculateRates(req: ShippingRateRequest): Promise<ShippingRate[]> {
-    const rates: ShippingRate[] = [];
-    const provider = req.provider ?? 'auto';
+    const settings = await platformConfigService.getSettings();
+    if (!settings.shipping_enabled || !settings.shipping_platform_unified_enabled) {
+      throw new PdValidationError('Platform shipping is disabled');
+    }
 
-    if (provider === 'aramex' || provider === 'auto') {
+    const rates: ShippingRate[] = [];
+    const provider = configuredProvider(settings, req.provider);
+
+    if ((provider === 'aramex' || provider === 'auto') && settings.shipping_aramex_enabled) {
       try {
         const aramexRate = await this.getAramexRate(req);
         if (aramexRate) rates.push(aramexRate);
@@ -136,18 +197,16 @@ export class ShippingService {
       }
     }
 
-    if (provider === 'laposte' || provider === 'auto') {
-      // La Poste TN — flat rate based on weight (no stable API)
+    if ((provider === 'laposte' || provider === 'auto') && settings.shipping_laposte_enabled) {
       rates.push(this.getLaPosteRate(req));
     }
 
-    // Always include a fallback flat rate
-    if (rates.length === 0) {
+    if ((provider === 'platform' || provider === 'auto' || rates.length === 0) && settings.shipping_platform_fallback_enabled) {
       rates.push({
         provider: 'platform',
         service_type: 'standard',
         estimated_days: 5,
-        price_tnd: 7.0,
+        price_tnd: configuredPlatformRate(settings, req.destination.city),
         currency: 'TND',
       });
     }
@@ -159,7 +218,9 @@ export class ShippingService {
    * Create a shipment and generate an AWB (Air Waybill).
    */
   async createShipment(req: ShipmentRequest): Promise<ShipmentResult> {
-    const provider = req.provider ?? 'aramex';
+    const settings = await platformConfigService.getSettings();
+    const provider = configuredShipmentProvider(settings, req.provider);
+    assertShipmentProviderEnabled(provider, settings);
     const id = pdId('ship');
 
     let trackingNumber: string;

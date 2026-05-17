@@ -4,14 +4,20 @@ import { HubHomeContent } from '../../components/hub/HubHomeContent';
 import { AliExpressHomeContent } from '../../components/hub/AliExpressHomeContent';
 import { AliExpress2HomeContent } from '../../components/hub/AliExpress2HomeContent';
 import { HubFooter } from '../../components/hub/HubFooter';
-import { getMarketplaceSettings } from '../../lib/marketplace-settings';
+import { getMarketplaceSettings, type MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveMarketplaceTheme } from '../../lib/marketplace-theme';
+import { selectLogoForSurface } from '../../lib/public-assets';
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketplaceSettings = await getMarketplaceSettings();
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
   const tagline = marketplaceSettings.marketplace_tagline || 'La marketplace tunisienne pour boutiques modernes';
-  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || '/og-image.png';
+  const logoImageUrl = selectLogoForSurface({
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
+  }, 'light');
+  const ogImageUrl = marketplaceSettings.marketplace_og_image_url || logoImageUrl || '/og-image.png';
   const description = `Parcourez ${marketplaceName} : ${tagline}`;
 
   return {
@@ -51,10 +57,39 @@ interface MarketplaceCategory {
   product_count?: number;
 }
 
-async function getTrendingProducts(): Promise<Product[]> {
+function resolveCatalogSort(value?: string) {
+  if (value === 'oldest') return 'oldest';
+  if (value === 'price_asc') return 'price_asc';
+  if (value === 'price_desc') return 'price_desc';
+  if (value === 'title_asc') return 'title_asc';
+  return 'newest';
+}
+
+function resolveHomepageLayout(value?: string) {
+  if (value === 'classic') return 'classic';
+  if (value === 'deals') return 'deals';
+  if (value === 'premium_deals') return 'premium_deals';
+  return 'theme_default';
+}
+
+function prioritizeFeaturedCategories(categories: MarketplaceCategory[], settings: MarketplaceSettings) {
+  const featuredSlugs = (settings.catalog_featured_category_slugs || '')
+    .split(',')
+    .map((slug) => slug.trim().toLowerCase())
+    .filter(Boolean);
+  if (featuredSlugs.length === 0) return categories;
+
+  const bySlug = new Map(categories.map((category) => [category.slug.toLowerCase(), category]));
+  const featured = featuredSlugs.map((slug) => bySlug.get(slug)).filter((category): category is MarketplaceCategory => Boolean(category));
+  const featuredIds = new Set(featured.map((category) => category.id));
+  return [...featured, ...categories.filter((category) => !featuredIds.has(category.id))];
+}
+
+async function getTrendingProducts(sortBy?: string): Promise<Product[]> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=16`, {
+    const params = new URLSearchParams({ page: '1', limit: '16', sort: resolveCatalogSort(sortBy) });
+    const res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
       next: { revalidate: 120 },
     });
     if (!res.ok) return [];
@@ -80,30 +115,32 @@ async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
 }
 
 export default async function HubHomepage() {
-  const [trendingProducts, categories, marketplaceSettings] = await Promise.all([
-    getTrendingProducts(),
+  const marketplaceSettings = await getMarketplaceSettings();
+  const [trendingProducts, categories] = await Promise.all([
+    getTrendingProducts(marketplaceSettings.catalog_default_sort),
     getMarketplaceCategories(),
-    getMarketplaceSettings(),
   ]);
+  const orderedCategories = prioritizeFeaturedCategories(categories, marketplaceSettings);
   const marketplaceTheme = resolveMarketplaceTheme(marketplaceSettings.marketplace_theme);
+  const homepageLayout = resolveHomepageLayout(marketplaceSettings.hub_homepage_layout);
 
   const homeContent =
-    marketplaceTheme === 'aliexpress2' ? (
+    homepageLayout === 'premium_deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress2') ? (
       <AliExpress2HomeContent
         trendingProducts={trendingProducts}
-        categories={categories}
+        categories={orderedCategories}
         marketplaceSettings={marketplaceSettings}
       />
-    ) : marketplaceTheme === 'aliexpress' ? (
+    ) : homepageLayout === 'deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress') ? (
       <AliExpressHomeContent
         trendingProducts={trendingProducts}
-        categories={categories}
+        categories={orderedCategories}
         marketplaceSettings={marketplaceSettings}
       />
     ) : (
       <HubHomeContent
         trendingProducts={trendingProducts}
-        categories={categories}
+        categories={orderedCategories}
         marketplaceSettings={marketplaceSettings}
       />
     );
@@ -113,6 +150,8 @@ export default async function HubHomepage() {
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceTheme}
       />
       {homeContent}

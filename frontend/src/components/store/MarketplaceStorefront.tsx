@@ -8,6 +8,7 @@ import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
 import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
 import type { StoreBranding, StoreSocialLinks } from '../themes/shared';
+import { selectLogoForSurface } from '../../lib/public-assets';
 
 export interface MarketplaceStoreData {
   id: string;
@@ -23,6 +24,8 @@ export interface MarketplaceStoreData {
   seller_review_count?: number | string | null;
   settings?: {
     logo_url?: string | null;
+    logo_light_url?: string | null;
+    logo_dark_url?: string | null;
     marketplace_header_image_url?: string | null;
     store_description?: string | null;
     description?: string | null;
@@ -151,7 +154,11 @@ export function MarketplaceSellerPage({
     return acc;
   }, {});
   const selectedCategory = visibleCategories.find((category) => category.slug === selectedCategorySlug);
-  const logoUrl = store.settings?.logo_url || '';
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url,
+    logo_light_url: store.settings?.logo_light_url,
+    logo_dark_url: store.settings?.logo_dark_url,
+  }, 'dark');
   const headerImageUrl = store.settings?.marketplace_header_image_url || '';
   const location = storeLocation(store);
   const since = formatSince(store.created_at);
@@ -177,6 +184,8 @@ export function MarketplaceSellerPage({
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceSettings.marketplace_theme}
         showInstantChat={false}
       />

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { asyncHandler, requireAdmin, requireStore, validate } from '../middlewares';
+import { asyncHandler, requireAdmin, requireAuth, requireStore, validate } from '../middlewares';
 import { emailTemplateService } from '../services/email-template.service';
 
 const router = Router();
@@ -46,6 +46,7 @@ router.put(
 
 router.get(
   '/marketplace',
+  requireAuth,
   requireAdmin,
   asyncHandler(async (_req: Request, res: Response) => {
     const templates = await emailTemplateService.list('marketplace');
@@ -55,6 +56,7 @@ router.get(
 
 router.put(
   '/marketplace/:templateKey',
+  requireAuth,
   requireAdmin,
   validate(templateSchema),
   asyncHandler(async (req: Request, res: Response) => {

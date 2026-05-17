@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { productService } from '../services/product.service';
+import { platformConfigService } from '../services/platform-config.service';
 import { asyncHandler } from '../middlewares';
 import { ProductType, SellerType } from '@pandamarket/types';
 
@@ -33,7 +34,8 @@ router.get(
     const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
       ? (req.query.seller_type as SellerType)
       : undefined;
-    const sortBy = req.query.sort as string | undefined;
+    const settings = await platformConfigService.getSettings();
+    const sortBy = (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
 
     const results = await productService.searchPublished({
       query: q,

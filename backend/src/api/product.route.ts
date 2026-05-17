@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { productService } from '../services/product.service';
 import { storeService } from '../services/store.service';
 import { categoryService } from '../services/category.service';
+import { platformConfigService } from '../services/platform-config.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
 import { ProductType, ProductStatus, SellerType } from '@pandamarket/types';
 import { pdId } from '../utils/crypto';
@@ -108,7 +109,9 @@ router.get(
     const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
       ? (req.query.seller_type as SellerType)
       : undefined;
-    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId, sellerType });
+    const settings = await platformConfigService.getSettings();
+    const sortBy = (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
+    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId, sellerType, sortBy });
     res.status(200).json(result);
   }),
 );

@@ -59,14 +59,36 @@ const cancelStoreFulfillmentSchema = z.object({
   reason: z.string().trim().min(1, 'Cancellation reason is required').max(500),
 });
 
+const storeRefundSchema = z.object({
+  amount: z.coerce.number().positive().max(999999),
+  reason_code: z.enum(['customer_request', 'out_of_stock', 'damaged_item', 'late_delivery', 'duplicate_order', 'goodwill', 'other']),
+  reason: z.string().trim().max(1000).optional(),
+});
+
+const storeShipmentSchema = z.object({
+  provider: z.enum(['aramex', 'laposte']).optional(),
+}).default({});
+
+const deliveryProofSchema = z.object({
+  proof_url: z.string().trim().max(2000).optional(),
+  received_by: z.string().trim().max(200).optional(),
+  note: z.string().trim().max(1000).optional(),
+}).default({});
+
 const storeOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.nativeEnum(OrderStatus).optional(),
+  payment_gateway: z.nativeEnum(PaymentGateway).optional(),
   payment_status: z.nativeEnum(PaymentStatus).optional(),
   fulfillment_status: z.enum(['pending', 'shipped', 'delivered', 'cancelled']).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  customer: z.string().trim().max(100).optional(),
+  product: z.string().trim().max(100).optional(),
+  country: z.string().trim().max(2).optional(),
+  channel: z.enum(['marketplace', 'storefront']).optional(),
+  has_dispute: z.coerce.boolean().optional(),
   search: z.string().trim().max(100).optional(),
 });
 
@@ -142,24 +164,36 @@ router.get(
   requireStore,
   validate(storeOrdersQuerySchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, status, payment_status, fulfillment_status, date_from, date_to, search } = req.query as unknown as {
+    const { page, limit, status, payment_gateway, payment_status, fulfillment_status, date_from, date_to, customer, product, country, channel, has_dispute, search } = req.query as unknown as {
       page: number;
       limit: number;
       status?: OrderStatus;
+      payment_gateway?: PaymentGateway;
       payment_status?: PaymentStatus;
       fulfillment_status?: 'pending' | 'shipped' | 'delivered' | 'cancelled';
       date_from?: string;
       date_to?: string;
+      customer?: string;
+      product?: string;
+      country?: string;
+      channel?: 'marketplace' | 'storefront';
+      has_dispute?: boolean;
       search?: string;
     };
     const result = await orderService.listByStore(req.user!.store_id!, {
       page,
       limit,
       status,
+      paymentGateway: payment_gateway,
       paymentStatus: payment_status,
       fulfillmentStatus: fulfillment_status,
       dateFrom: date_from,
       dateTo: date_to,
+      customer,
+      product,
+      country,
+      channel,
+      hasDispute: has_dispute,
       search,
     });
     res.status(200).json(result);
@@ -187,6 +221,37 @@ router.put(
       body: req.body.body,
     });
     res.status(200).json({ note });
+  }),
+);
+
+router.post(
+  '/store/:id/refunds',
+  requireStore,
+  validate(storeRefundSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const refund = await orderService.requestStoreRefund({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      requested_by: req.user!.id,
+      amount: req.body.amount,
+      reason_code: req.body.reason_code,
+      reason: req.body.reason,
+    });
+    res.status(201).json({ refund });
+  }),
+);
+
+router.post(
+  '/store/:id/shipments',
+  requireStore,
+  validate(storeShipmentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const shipment = await orderService.createStoreShipment({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      provider: req.body.provider,
+    });
+    res.status(201).json({ shipment });
   }),
 );
 
@@ -229,10 +294,15 @@ router.post(
 router.post(
   '/:id/deliver',
   requireStore,
+  validate(deliveryProofSchema),
   asyncHandler(async (req: Request, res: Response) => {
     await orderService.markStoreFulfillmentDelivered({
       order_id: req.params.id,
       store_id: req.user!.store_id!,
+      delivered_by: req.user!.id,
+      proof_url: req.body.proof_url,
+      received_by: req.body.received_by,
+      note: req.body.note,
     });
     res.status(200).json({ success: true });
   }),

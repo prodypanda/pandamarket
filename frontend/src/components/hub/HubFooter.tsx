@@ -6,6 +6,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { useMarketplaceTheme } from '../../hooks/useMarketplaceTheme';
 import type { MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
+import { MarketplaceBrand } from '../MarketplaceBrand';
 
 function safeFooterHref(value?: string) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -26,11 +27,16 @@ export function HubFooter(props: MarketplaceThemeSettings) {
   const helpUrl = safeFooterHref(settings.marketplace_help_url);
   const termsUrl = safeFooterHref(settings.marketplace_terms_url);
   const privacyUrl = safeFooterHref(settings.marketplace_privacy_url);
+  const refundUrl = settings.marketplace_refund_url ? safeFooterHref(settings.marketplace_refund_url) : '';
+  const cookiePolicyUrl = settings.marketplace_cookie_policy_url ? safeFooterHref(settings.marketplace_cookie_policy_url) : '';
   const contactUrl = safeFooterHref(settings.marketplace_contact_url);
   const socialLinkClass = `text-xs font-bold transition-colors ${isAliExpress2 ? 'text-white/30 hover:text-[#ff6b6b]' : 'text-gray-400'} ${classes.primaryTextHover}`;
   const marketplaceBranding = {
     contact_email: settings.marketplace_support_email,
     contact_phone: settings.marketplace_support_phone,
+    address: settings.marketplace_address,
+    city: settings.marketplace_city,
+    country: settings.marketplace_country,
     social: {
       facebook: settings.marketplace_facebook_url,
       instagram: settings.marketplace_instagram_url,
@@ -101,9 +107,17 @@ export function HubFooter(props: MarketplaceThemeSettings) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/hub" className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${isAliExpress ? 'from-[#ff4747] to-[#ff8a00]' : 'from-[#16C784] to-[#1EE69A]'}`}>
-              {marketplaceName}
-            </Link>
+            <MarketplaceBrand
+              href="/hub"
+              marketplaceName={marketplaceName}
+              marketplaceLogoUrl={settings.marketplace_logo_url}
+              marketplaceLogoLightUrl={settings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={settings.marketplace_logo_dark_url}
+              logoSurface="dark"
+              imageClassName="h-9 max-w-[160px] object-contain"
+              textClassName={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${isAliExpress ? 'from-[#ff4747] to-[#ff8a00]' : 'from-[#16C784] to-[#1EE69A]'}`}
+              showTextWithLogo
+            />
             <p className={`mt-3 text-sm leading-relaxed ${isAliExpress2 ? 'text-white/20' : 'text-gray-400'}`}>
               {tagline}
             </p>
@@ -145,6 +159,8 @@ export function HubFooter(props: MarketplaceThemeSettings) {
               <li><Link href={helpUrl} className={linkClass}>{t('footer.help')}</Link></li>
               <li><Link href={termsUrl} className={linkClass}>{t('footer.terms')}</Link></li>
               <li><Link href={privacyUrl} className={linkClass}>{t('footer.privacy')}</Link></li>
+              {refundUrl && <li><Link href={refundUrl} className={linkClass}>Refund Policy</Link></li>}
+              {cookiePolicyUrl && <li><Link href={cookiePolicyUrl} className={linkClass}>Cookie Policy</Link></li>}
               <li><Link href={contactUrl} className={linkClass}>{t('footer.contact')}</Link></li>
             </ul>
           </div>

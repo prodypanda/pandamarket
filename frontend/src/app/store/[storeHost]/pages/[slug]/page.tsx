@@ -12,8 +12,9 @@ import {
 } from '@/lib/page-builder-cache';
 import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
 import { StorefrontSocialLinks } from '../../../../../components/themes/StorefrontSocialLinks';
-import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
+import { getStoreThemeLogoSurface, type StoreBranding, type StoreSocialLinks } from '../../../../../components/themes/shared';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
+import { selectLogoForSurface } from '../../../../../lib/public-assets';
 
 /**
  * Storefront Custom Page Renderer
@@ -52,6 +53,8 @@ interface StoreData {
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
     themeCustomization?: ThemeCustomization;
     store_description?: string | null;
     description?: string | null;
@@ -192,6 +195,13 @@ export async function generateMetadata({
 
   const title = page.seo_title || `${page.title} — ${store.name}`;
   const description = page.seo_description || store.description || `Découvrez ${page.title} chez ${store.name}.`;
+  const activeTheme = themes[store.theme_id] || themes.classic;
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url,
+    logo_light_url: store.settings?.logo_light_url,
+    logo_dark_url: store.settings?.logo_dark_url,
+  }, getStoreThemeLogoSurface(activeTheme.id));
+  const imageUrl = page.og_image || logoUrl;
 
   return {
     title,
@@ -201,13 +211,13 @@ export async function generateMetadata({
       title,
       description,
       type: 'website',
-      ...(page.og_image ? { images: [{ url: page.og_image, alt: title }] } : {}),
+      ...(imageUrl ? { images: [{ url: imageUrl, alt: title }] } : {}),
     },
     twitter: {
-      card: page.og_image ? 'summary_large_image' : 'summary',
+      card: imageUrl ? 'summary_large_image' : 'summary',
       title,
       description,
-      ...(page.og_image ? { images: [page.og_image] } : {}),
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   };
 }
@@ -239,13 +249,21 @@ export default async function CustomStorePage({
   const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
   const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
   const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
-  const logoUrl = store.settings?.logo_url as string | undefined;
+  const logoUrl = selectLogoForSurface({
+    logo_url: store.settings?.logo_url as string | undefined,
+    logo_light_url: store.settings?.logo_light_url as string | undefined,
+    logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+  }, getStoreThemeLogoSurface(activeTheme.id));
   const [marketplaceSettings, products, pageLinks] = await Promise.all([
     getMarketplaceSettings(),
     getStoreProducts(store.id),
     getPublishedPages(store.id),
   ]);
   const footerBranding: StoreBranding = {
+    marketplace_name: marketplaceSettings.marketplace_name,
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
     contact_email: store.settings?.contact_email,
     contact_phone: store.settings?.contact_phone,
     address: store.settings?.address,
@@ -349,6 +367,9 @@ export default async function CustomStorePage({
             href="/hub"
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+            logoSurface="dark"
             className="inline-flex align-middle"
             imageClassName="h-5 max-w-[120px] object-contain"
             textClassName="font-semibold hover:underline"

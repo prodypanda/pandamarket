@@ -56,7 +56,7 @@ const calculateRatesSchema = z.object({
       height_cm: z.number().positive(),
     })
     .optional(),
-  provider: z.enum(['aramex', 'laposte', 'auto']).default('auto'),
+  provider: z.enum(['aramex', 'laposte', 'platform', 'auto']).default('auto'),
 });
 
 const createShipmentSchema = z.object({

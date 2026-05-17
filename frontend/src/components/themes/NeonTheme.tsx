@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, Gamepad2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -13,6 +13,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function NeonTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const neon = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0
     ? products
     : [
@@ -32,8 +33,8 @@ export function NeonTheme({ theme, storeName, products = [], branding }: ThemePr
       <header className="border-b" style={{ borderColor: `${neon}15` }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-8 object-contain" />
+            {logoUrl ? (
+              <img src={logoUrl} alt={storeName} className="h-8 object-contain" />
             ) : (
               <div className="flex items-center gap-2">
                 <Gamepad2 className="w-6 h-6" style={{ color: neon }} />

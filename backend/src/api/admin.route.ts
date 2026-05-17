@@ -18,6 +18,7 @@ import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
 import { storeService } from '../services/store.service';
 import { authService } from '../services/auth.service';
+import { accountSecurityService } from '../services/account-security.service';
 import { systemLogService } from '../services/system-log.service';
 import { productService } from '../services/product.service';
 import { categoryService } from '../services/category.service';
@@ -43,6 +44,12 @@ import { smtpConfigService } from '../services/smtp-config.service';
 import { creditsService } from '../services/credits.service';
 import { aiConfigService } from '../services/ai-config.service';
 import type { AiProvider } from '../services/ai-config.service';
+import {
+  platformConfigService,
+  type PlatformSettingKey,
+  type PlatformSettingSection,
+  type PlatformSettingValue,
+} from '../services/platform-config.service';
 import { PdErrorCode, PdNotFoundError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
 
@@ -50,6 +57,19 @@ const router = Router();
 
 // All admin routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
+
+const userSecurityActivityParamsSchema = z.object({
+  id: z.string().min(8).max(100),
+});
+
+router.get(
+  '/users/:id/security-activity',
+  validate(userSecurityActivityParamsSchema, 'params'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const activity = await accountSecurityService.listAdminUserSecurityActivity(req.params.id);
+    res.status(200).json({ data: activity, ...activity });
+  }),
+);
 
 const assetListQuerySchema = z.object({
   type: z.enum(['image', 'document']).optional(),
@@ -1273,16 +1293,35 @@ const publicLinkSettingSchema = z.coerce.string().trim().max(2048).refine(
   'Must be a relative path or http(s) URL',
 );
 
+const hexColorSettingSchema = z.coerce.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color like #B91C1C');
+const ga4MeasurementIdSchema = z.coerce.string().trim().regex(/^(|G-[A-Z0-9]{4,20})$/, 'Must be blank or a GA4 measurement ID like G-XXXXXXXXXX');
+const gtmContainerIdSchema = z.coerce.string().trim().regex(/^(|GTM-[A-Z0-9]{4,20})$/, 'Must be blank or a GTM container ID like GTM-XXXXXXX');
+const metaPixelIdSchema = z.coerce.string().trim().regex(/^(|\d{5,30})$/, 'Must be blank or a numeric Meta Pixel ID');
+const searchConsoleVerificationSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+const cloudflareIdentifierSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+
 const globalSettingsSchema = z.object({
   marketplace_name: z.coerce.string().min(1).max(120).optional(),
   marketplace_tagline: z.coerce.string().max(255).optional(),
   marketplace_logo_url: z.coerce.string().max(2048).optional(),
+  marketplace_logo_light_url: z.coerce.string().max(2048).optional(),
+  marketplace_logo_dark_url: z.coerce.string().max(2048).optional(),
   marketplace_favicon_url: publicLinkSettingSchema.optional(),
   marketplace_og_image_url: publicLinkSettingSchema.optional(),
   marketplace_public_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
   marketplace_theme: z.enum(['panda', 'aliexpress', 'aliexpress2']).optional(),
+  marketplace_primary_color: hexColorSettingSchema.optional(),
+  marketplace_secondary_color: hexColorSettingSchema.optional(),
+  marketplace_default_locale: z.enum(['fr', 'en', 'ar']).optional(),
+  marketplace_supported_locales: z.coerce.string().trim().max(40).optional(),
+  marketplace_rtl_enabled: z.boolean().optional(),
   marketplace_support_email: z.union([z.coerce.string().email(), z.literal('')]).optional(),
   marketplace_support_phone: z.coerce.string().max(40).optional(),
+  marketplace_support_whatsapp: z.coerce.string().max(80).optional(),
+  marketplace_address: z.coerce.string().max(255).optional(),
+  marketplace_city: z.coerce.string().max(100).optional(),
+  marketplace_country: z.coerce.string().max(100).optional(),
+  marketplace_business_hours: z.coerce.string().max(255).optional(),
   marketplace_facebook_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
   marketplace_instagram_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
   marketplace_x_url: z.union([z.coerce.string().url(), z.literal('')]).optional(),
@@ -1296,7 +1335,28 @@ const globalSettingsSchema = z.object({
   marketplace_help_url: publicLinkSettingSchema.optional(),
   marketplace_terms_url: publicLinkSettingSchema.optional(),
   marketplace_privacy_url: publicLinkSettingSchema.optional(),
+  marketplace_refund_url: publicLinkSettingSchema.optional(),
+  marketplace_cookie_policy_url: publicLinkSettingSchema.optional(),
   marketplace_contact_url: publicLinkSettingSchema.optional(),
+  catalog_featured_category_slugs: z.coerce.string().trim().max(1000).optional(),
+  catalog_default_sort: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc']).optional(),
+  hub_homepage_layout: z.enum(['theme_default', 'classic', 'deals', 'premium_deals']).optional(),
+  hub_homepage_banner_title: z.coerce.string().trim().max(160).optional(),
+  hub_homepage_banner_subtitle: z.coerce.string().trim().max(320).optional(),
+  hub_homepage_banner_cta_label: z.coerce.string().trim().max(80).optional(),
+  hub_homepage_banner_cta_url: publicLinkSettingSchema.optional(),
+  hub_homepage_banner_image_url: publicLinkSettingSchema.optional(),
+  analytics_ga4_enabled: z.boolean().optional(),
+  analytics_ga4_measurement_id: ga4MeasurementIdSchema.optional(),
+  analytics_gtm_enabled: z.boolean().optional(),
+  analytics_gtm_container_id: gtmContainerIdSchema.optional(),
+  analytics_meta_pixel_enabled: z.boolean().optional(),
+  analytics_meta_pixel_id: metaPixelIdSchema.optional(),
+  search_console_verification: searchConsoleVerificationSchema.optional(),
+  cloudflare_integration_enabled: z.boolean().optional(),
+  cloudflare_account_id: cloudflareIdentifierSchema.optional(),
+  cloudflare_zone_id: cloudflareIdentifierSchema.optional(),
+  cloudflare_custom_hostnames_enabled: z.boolean().optional(),
   chat_bubble_enabled: z.boolean().optional(),
   chat_bubble_position: z.enum(['bottom-right', 'bottom-left']).optional(),
   marketplace_enabled: z.boolean().optional(),
@@ -1308,16 +1368,47 @@ const globalSettingsSchema = z.object({
   reviews_enabled: z.boolean().optional(),
   review_auto_publish: z.boolean().optional(),
   wishlist_enabled: z.boolean().optional(),
+  ai_tools_enabled: z.boolean().optional(),
+  page_builder_enabled: z.boolean().optional(),
+  plugins_marketplace_enabled: z.boolean().optional(),
+  email_marketing_enabled: z.boolean().optional(),
   cart_enabled: z.boolean().optional(),
   shipping_enabled: z.boolean().optional(),
+  shipping_self_managed_enabled: z.boolean().optional(),
+  shipping_platform_unified_enabled: z.boolean().optional(),
+  shipping_default_provider: z.enum(['auto', 'aramex', 'laposte', 'platform']).optional(),
+  shipping_aramex_enabled: z.boolean().optional(),
+  shipping_laposte_enabled: z.boolean().optional(),
+  shipping_platform_fallback_enabled: z.boolean().optional(),
+  shipping_default_origin_city: z.coerce.string().trim().min(1).max(100).optional(),
+  shipping_default_origin_country: z.coerce.string().trim().min(2).max(2).optional(),
+  shipping_domestic_zone_cities: z.coerce.string().trim().max(2000).optional(),
+  shipping_remote_zone_cities: z.coerce.string().trim().max(2000).optional(),
+  shipping_platform_flat_rate_tnd: z.coerce.number().min(0).max(1000).optional(),
+  shipping_domestic_zone_rate_tnd: z.coerce.number().min(0).max(1000).optional(),
+  shipping_remote_zone_rate_tnd: z.coerce.number().min(0).max(1000).optional(),
+  shipping_free_shipping_threshold_tnd: z.coerce.number().min(0).max(100000).optional(),
   order_splitting_enabled: z.boolean().optional(),
+  tax_mode: z.enum(['none', 'included', 'exclusive']).optional(),
+  default_tax_rate: z.coerce.number().min(0).max(100).optional(),
+  price_rounding_mode: z.enum(['none', 'nearest_0_001', 'nearest_0_010', 'nearest_0_100']).optional(),
+  auto_cancel_unpaid_enabled: z.boolean().optional(),
+  auto_cancel_unpaid_minutes: z.coerce.number().int().min(5).max(10080).optional(),
   retention_days_flouci: z.coerce.number().int().min(1).max(90).optional(),
   retention_days_konnect: z.coerce.number().int().min(1).max(90).optional(),
   retention_days_mandat: z.coerce.number().int().min(1).max(90).optional(),
   retention_days_cod: z.coerce.number().int().min(1).max(90).optional(),
+  payout_schedule: z.enum(['manual', 'daily', 'weekly', 'biweekly', 'monthly']).optional(),
   min_withdrawal_tnd: z.coerce.number().min(1).optional(),
   platform_commission_rate: z.coerce.number().min(0).max(100).optional(),
   default_currency: z.string().min(3).max(3).optional(),
+  payment_sandbox_mode: z.boolean().optional(),
+  payment_flouci_enabled: z.boolean().optional(),
+  payment_konnect_enabled: z.boolean().optional(),
+  payment_mandat_enabled: z.boolean().optional(),
+  payment_cod_enabled: z.boolean().optional(),
+  payment_vendor_direct_enabled: z.boolean().optional(),
+  payment_platform_credentials_source: z.enum(['environment', 'platform_config', 'vendor_direct_only']).optional(),
   mandat_recipient_name: z.coerce.string().max(200).optional(),
   mandat_recipient_cin: z.coerce.string().max(20).optional(),
   mandat_recipient_city: z.coerce.string().max(100).optional(),
@@ -1329,48 +1420,201 @@ const globalSettingsSchema = z.object({
   chat_max_images_per_message: z.coerce.number().int().min(1).max(10).optional(),
   chat_max_image_size_mb: z.coerce.number().int().min(1).max(25).optional(),
   chat_max_message_length: z.coerce.number().int().min(1).max(5000).optional(),
+  notifications_in_app_enabled: z.boolean().optional(),
+  notifications_realtime_enabled: z.boolean().optional(),
+  notifications_email_enabled: z.boolean().optional(),
+  notifications_sms_enabled: z.boolean().optional(),
+  notifications_sms_provider: z.enum(['environment', 'console', 'twilio', 'infobip']).optional(),
+  notifications_sms_sender_name: z.coerce.string().trim().min(1).max(30).optional(),
+  security_login_max_attempts: z.coerce.number().int().min(3).max(20).optional(),
+  security_login_lockout_minutes: z.coerce.number().int().min(1).max(1440).optional(),
+  security_password_min_length: z.coerce.number().int().min(8).max(72).optional(),
+  security_password_require_uppercase: z.boolean().optional(),
+  security_password_require_lowercase: z.boolean().optional(),
+  security_password_require_number: z.boolean().optional(),
+  security_password_require_symbol: z.boolean().optional(),
+  security_2fa_required_roles: z.coerce.string().trim().max(120).optional(),
+  security_custom_domains_enabled: z.boolean().optional(),
+  security_custom_domain_allowed_suffixes: z.coerce.string().trim().max(1000).optional(),
+  security_custom_domain_blocked_suffixes: z.coerce.string().trim().max(1000).optional(),
   maintenance_enabled: z.boolean().optional(),
   maintenance_title: z.coerce.string().max(200).optional(),
   maintenance_message: z.coerce.string().max(2000).optional(),
+  maintenance_illustration_url: publicLinkSettingSchema.optional(),
   maintenance_eta: z.coerce.string().max(100).optional(),
   maintenance_allowed_ips: z.coerce.string().max(2000).optional(),
   maintenance_block_storefronts: z.boolean().optional(),
 });
 
-const booleanGlobalSettingKeys = new Set([
-  'marketplace_enabled',
-  'vendor_registration_enabled',
-  'buyer_registration_enabled',
-  'product_moderation_required',
-  'product_auto_publish_verified',
-  'seller_type_change_auto_approval',
-  'reviews_enabled',
-  'review_auto_publish',
-  'wishlist_enabled',
-  'cart_enabled',
-  'shipping_enabled',
-  'order_splitting_enabled',
-  'chat_bubble_enabled',
-  'maintenance_enabled',
-  'maintenance_block_storefronts',
-]);
+const marketplaceSettingsSchema = globalSettingsSchema.pick({
+  marketplace_name: true,
+  marketplace_tagline: true,
+  marketplace_logo_url: true,
+  marketplace_logo_light_url: true,
+  marketplace_logo_dark_url: true,
+  marketplace_favicon_url: true,
+  marketplace_og_image_url: true,
+  marketplace_public_url: true,
+  marketplace_theme: true,
+  marketplace_primary_color: true,
+  marketplace_secondary_color: true,
+  marketplace_default_locale: true,
+  marketplace_supported_locales: true,
+  marketplace_rtl_enabled: true,
+  marketplace_support_email: true,
+  marketplace_support_phone: true,
+  marketplace_support_whatsapp: true,
+  marketplace_address: true,
+  marketplace_city: true,
+  marketplace_country: true,
+  marketplace_business_hours: true,
+  marketplace_facebook_url: true,
+  marketplace_instagram_url: true,
+  marketplace_x_url: true,
+  marketplace_tiktok_url: true,
+  marketplace_youtube_url: true,
+  marketplace_linkedin_url: true,
+  marketplace_whatsapp_url: true,
+  marketplace_telegram_url: true,
+  marketplace_pinterest_url: true,
+  marketplace_snapchat_url: true,
+  marketplace_help_url: true,
+  marketplace_terms_url: true,
+  marketplace_privacy_url: true,
+  marketplace_refund_url: true,
+  marketplace_cookie_policy_url: true,
+  marketplace_contact_url: true,
+  catalog_featured_category_slugs: true,
+  catalog_default_sort: true,
+  hub_homepage_layout: true,
+  hub_homepage_banner_title: true,
+  hub_homepage_banner_subtitle: true,
+  hub_homepage_banner_cta_label: true,
+  hub_homepage_banner_cta_url: true,
+  hub_homepage_banner_image_url: true,
+}).strict();
 
-const numericGlobalSettingKeys = new Set([
-  'retention_days_flouci',
-  'retention_days_konnect',
-  'retention_days_mandat',
-  'retention_days_cod',
-  'min_withdrawal_tnd',
-  'platform_commission_rate',
-  'max_upload_size_mb',
-  'max_product_images',
-  'max_products_per_store_free',
-  'default_low_stock_threshold',
-  'chat_message_rate_limit_per_minute',
-  'chat_max_images_per_message',
-  'chat_max_image_size_mb',
-  'chat_max_message_length',
-]);
+const commerceSettingsSchema = globalSettingsSchema.pick({
+  marketplace_enabled: true,
+  vendor_registration_enabled: true,
+  buyer_registration_enabled: true,
+  product_moderation_required: true,
+  product_auto_publish_verified: true,
+  seller_type_change_auto_approval: true,
+  reviews_enabled: true,
+  review_auto_publish: true,
+  wishlist_enabled: true,
+  ai_tools_enabled: true,
+  page_builder_enabled: true,
+  plugins_marketplace_enabled: true,
+  email_marketing_enabled: true,
+  cart_enabled: true,
+  shipping_enabled: true,
+  shipping_self_managed_enabled: true,
+  shipping_platform_unified_enabled: true,
+  shipping_default_provider: true,
+  shipping_aramex_enabled: true,
+  shipping_laposte_enabled: true,
+  shipping_platform_fallback_enabled: true,
+  shipping_default_origin_city: true,
+  shipping_default_origin_country: true,
+  shipping_domestic_zone_cities: true,
+  shipping_remote_zone_cities: true,
+  shipping_platform_flat_rate_tnd: true,
+  shipping_domestic_zone_rate_tnd: true,
+  shipping_remote_zone_rate_tnd: true,
+  shipping_free_shipping_threshold_tnd: true,
+  order_splitting_enabled: true,
+  tax_mode: true,
+  default_tax_rate: true,
+  price_rounding_mode: true,
+  auto_cancel_unpaid_enabled: true,
+  auto_cancel_unpaid_minutes: true,
+}).strict();
+
+const financeSettingsSchema = globalSettingsSchema.pick({
+  retention_days_flouci: true,
+  retention_days_konnect: true,
+  retention_days_mandat: true,
+  retention_days_cod: true,
+  payout_schedule: true,
+  min_withdrawal_tnd: true,
+  platform_commission_rate: true,
+  default_currency: true,
+  payment_sandbox_mode: true,
+  payment_flouci_enabled: true,
+  payment_konnect_enabled: true,
+  payment_mandat_enabled: true,
+  payment_cod_enabled: true,
+  payment_vendor_direct_enabled: true,
+  payment_platform_credentials_source: true,
+  mandat_recipient_name: true,
+  mandat_recipient_cin: true,
+  mandat_recipient_city: true,
+}).strict();
+
+const operationsSettingsSchema = globalSettingsSchema.pick({
+  chat_bubble_enabled: true,
+  chat_bubble_position: true,
+  max_upload_size_mb: true,
+  max_product_images: true,
+  max_products_per_store_free: true,
+  default_low_stock_threshold: true,
+  chat_message_rate_limit_per_minute: true,
+  chat_max_images_per_message: true,
+  chat_max_image_size_mb: true,
+  chat_max_message_length: true,
+  notifications_in_app_enabled: true,
+  notifications_realtime_enabled: true,
+  notifications_email_enabled: true,
+  notifications_sms_enabled: true,
+  notifications_sms_provider: true,
+  notifications_sms_sender_name: true,
+  security_login_max_attempts: true,
+  security_login_lockout_minutes: true,
+  security_password_min_length: true,
+  security_password_require_uppercase: true,
+  security_password_require_lowercase: true,
+  security_password_require_number: true,
+  security_password_require_symbol: true,
+  security_2fa_required_roles: true,
+  security_custom_domains_enabled: true,
+  security_custom_domain_allowed_suffixes: true,
+  security_custom_domain_blocked_suffixes: true,
+  maintenance_enabled: true,
+  maintenance_title: true,
+  maintenance_message: true,
+  maintenance_illustration_url: true,
+  maintenance_eta: true,
+  maintenance_allowed_ips: true,
+  maintenance_block_storefronts: true,
+}).strict();
+
+const integrationsSettingsSchema = globalSettingsSchema.pick({
+  analytics_ga4_enabled: true,
+  analytics_ga4_measurement_id: true,
+  analytics_gtm_enabled: true,
+  analytics_gtm_container_id: true,
+  analytics_meta_pixel_enabled: true,
+  analytics_meta_pixel_id: true,
+  search_console_verification: true,
+  cloudflare_integration_enabled: true,
+  cloudflare_account_id: true,
+  cloudflare_zone_id: true,
+  cloudflare_custom_hostnames_enabled: true,
+}).strict();
+
+const settingsSectionParamSchema = z.object({
+  section: z.enum(['marketplace', 'commerce', 'finance', 'operations', 'integrations']),
+});
+
+const settingsSectionSchemas: Record<PlatformSettingSection, z.ZodTypeAny> = {
+  marketplace: marketplaceSettingsSchema,
+  commerce: commerceSettingsSchema,
+  finance: financeSettingsSchema,
+  operations: operationsSettingsSchema,
+  integrations: integrationsSettingsSchema,
+};
 
 /**
  * GET /admin/settings — Retrieve current platform settings.
@@ -1380,20 +1624,7 @@ const numericGlobalSettingKeys = new Set([
 router.get(
   '/settings',
   asyncHandler(async (_req: Request, res: Response) => {
-    const { rows } = await query<{ key: string; value: string }>(
-      `SELECT key, value FROM pd_platform_config ORDER BY key`,
-    );
-
-    const settings: Record<string, string | number | boolean> = {};
-    for (const row of rows) {
-      if (booleanGlobalSettingKeys.has(row.key)) settings[row.key] = row.value === 'true';
-      else if (numericGlobalSettingKeys.has(row.key)) {
-        const numericValue = Number(row.value);
-        settings[row.key] = Number.isFinite(numericValue) ? numericValue : row.value;
-      } else settings[row.key] = row.value;
-    }
-
-    res.status(200).json({ data: settings });
+    res.status(200).json(await platformConfigService.getGroupedSettings());
   }),
 );
 
@@ -1405,27 +1636,53 @@ router.put(
   '/settings',
   validate(globalSettingsSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const entries = Object.entries(req.body).filter(([, v]) => v !== undefined);
-
-    for (const [key, value] of entries) {
-      await query(
-        `INSERT INTO pd_platform_config (key, value, updated_by, updated_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (key) DO UPDATE SET value = $2, updated_by = $3, updated_at = NOW()`,
-        [key, String(value), req.user!.id],
-      );
-    }
+    const updatedKeys = await platformConfigService.updateSettings(
+      req.body as Partial<Record<PlatformSettingKey, PlatformSettingValue>>,
+      req.user!.id,
+    );
 
     logger.info(
-      { admin_id: req.user!.id, keys: entries.map(([k]) => k) },
+      { admin_id: req.user!.id, keys: updatedKeys },
       'Admin updated platform settings',
     );
 
-    if (entries.some(([k]) => k.startsWith('maintenance_'))) {
+    if (updatedKeys.some((key) => key.startsWith('maintenance_'))) {
       invalidateMaintenanceCache();
     }
 
-    res.status(200).json({ success: true, message: 'Settings updated' });
+    res.status(200).json({
+      success: true,
+      message: 'Settings updated',
+      updated_keys: updatedKeys,
+      ...(await platformConfigService.getGroupedSettings()),
+    });
+  }),
+);
+
+router.put(
+  '/settings/:section',
+  validate(settingsSectionParamSchema, 'params'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { section } = req.params as { section: PlatformSettingSection };
+    const parsed = settingsSectionSchemas[section].parse(req.body) as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
+    const updatedKeys = await platformConfigService.updateSectionSettings(section, parsed, req.user!.id);
+
+    logger.info(
+      { admin_id: req.user!.id, section, keys: updatedKeys },
+      'Admin updated platform settings section',
+    );
+
+    if (updatedKeys.some((key) => key.startsWith('maintenance_'))) {
+      invalidateMaintenanceCache();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Settings section updated',
+      section,
+      updated_keys: updatedKeys,
+      ...(await platformConfigService.getGroupedSettings()),
+    });
   }),
 );
 

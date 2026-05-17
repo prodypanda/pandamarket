@@ -18,12 +18,17 @@ export function WishlistButton({
   showLabel = false,
   className = '',
 }: WishlistButtonProps) {
-  const { isAliExpress } = useMarketplaceTheme();
+  const { isAliExpress, settings } = useMarketplaceTheme();
   const [inWishlist, setInWishlist] = useState(false);
   const [loading, setLoading] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const wishlistEnabled = settings.wishlist_enabled !== false;
 
   useEffect(() => {
+    if (!wishlistEnabled) {
+      setInWishlist(false);
+      return;
+    }
     fetch(`/api/pd/wishlist/check/${productId}`, {
       credentials: 'include',
     })
@@ -32,11 +37,12 @@ export function WishlistButton({
         if (data) setInWishlist(data.in_wishlist);
       })
       .catch(() => {});
-  }, [productId]);
+  }, [productId, wishlistEnabled]);
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!wishlistEnabled) return;
 
     setLoading(true);
     setAnimating(true);
@@ -79,6 +85,8 @@ export function WishlistButton({
     md: 'w-5 h-5',
     lg: 'w-6 h-6',
   };
+
+  if (!wishlistEnabled) return null;
 
   return (
     <button

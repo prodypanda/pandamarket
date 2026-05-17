@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star, Heart } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -10,6 +10,7 @@ export function KidsTheme({ theme, storeName, products = [], branding }: ThemePr
   const tc = useThemeCustomization(theme, branding);
   const primary = tc.colors.primary;
   const yellow = '#FFD93D';
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const dp = products.length > 0 ? products : [
     { id: '1', title: 'Plush Panda Bear', price: 35, images: [], category: 'Toys' },
     { id: '2', title: 'Wooden Block Set', price: 45, images: [], category: 'Educational' },
@@ -29,7 +30,7 @@ export function KidsTheme({ theme, storeName, products = [], branding }: ThemePr
       <header className="border-b-4" style={{ borderColor: yellow }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'}>
-            {branding?.logo_url ? <img src={branding.logo_url} alt={storeName} className="h-10 object-contain" /> : (
+            {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
               <h1 className="text-2xl font-black" style={{ color: primary }}>{storeName} <Star className="w-5 h-5 inline" style={{ color: yellow }} /></h1>
             )}
           </Link>

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { UserRole } from '@pandamarket/types';
-import { authService } from '../services/auth.service';
+import { authService, type UserRow } from '../services/auth.service';
 import { asyncHandler, validate, authRateLimit, requireAuth } from '../middlewares';
 import { incrementBusinessMetric } from '../utils/metrics';
 import { query } from '../db/pool';
 import { PdAuthenticationError, PdErrorCode } from '../errors';
+import { accountSecurityService } from '../services/account-security.service';
 
 const router = Router();
 const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
@@ -44,6 +45,10 @@ const twoFactorCodeSchema = z.object({
 
 const twoFactorChallengeSchema = twoFactorCodeSchema.extend({
   challenge_id: z.string().min(16).max(128),
+});
+
+const revokeSessionSchema = z.object({
+  session_id: z.string().min(8).max(100),
 });
 
 function normalizeRole(role?: string | null): UserRole | null {
@@ -111,20 +116,55 @@ function assertLoginRole(role: UserRole | string, allowedRoles: UserRole[]) {
 }
 
 async function loginAndRespond(req: Request, res: Response, allowedRoles?: UserRole[]) {
-  const user = normalizeUser(await authService.login(req.body.email, req.body.password));
-  if (allowedRoles) {
-    assertLoginRole(user.role, allowedRoles);
+  const context = accountSecurityService.fromRequest(req, { auth_flow: 'password' });
+  let user: UserRow;
+  try {
+    user = normalizeUser(await authService.login(req.body.email, req.body.password));
+    if (allowedRoles) {
+      assertLoginRole(user.role, allowedRoles);
+    }
+  } catch (err) {
+    await accountSecurityService.recordLoginFailureByEmail(req.body.email, context, err instanceof Error ? err.message : 'login_failed');
+    throw err;
   }
+  const twoFactorRequired = await authService.isTwoFactorRequired(user);
   if (user.two_factor_enabled) {
     const challenge = await authService.createTwoFactorChallenge(user);
+    await accountSecurityService.recordEvent({
+      ...context,
+      user_id: user.id,
+      email: user.email,
+      role: user.role,
+      store_id: user.store_id,
+      event_type: 'login_2fa_challenge',
+      success: true,
+    });
     res.status(200).json({
       requires_2fa: true,
+      two_factor_required: twoFactorRequired,
       ...challenge,
       user: publicUser(user),
     });
     return;
   }
-  const tokens = await authService.issueTokens(user);
+  if (twoFactorRequired) {
+    throw new PdAuthenticationError(
+      PdErrorCode.AUTH_2FA_REQUIRED,
+      'Two-factor authentication is required for this account role. Set up 2FA before signing in.',
+      { role: user.role },
+    );
+  }
+  const tokens = await authService.issueTokens(user, context);
+  await accountSecurityService.recordEvent({
+    ...context,
+    user_id: user.id,
+    email: user.email,
+    role: user.role,
+    store_id: user.store_id,
+    session_id: tokens.session_id,
+    event_type: 'login_success',
+    success: true,
+  });
 
   clearSelectedStoreCookie(res);
   setAccessCookie(res, tokens.access_token);
@@ -134,12 +174,23 @@ async function loginAndRespond(req: Request, res: Response, allowedRoles?: UserR
 
 async function registerAndRespond(req: Request, res: Response, forcedRole?: UserRole) {
   const requestedRole = normalizeRole(req.body.role);
+  const context = accountSecurityService.fromRequest(req, { auth_flow: 'register' });
   const user = normalizeUser(await authService.register({
     ...req.body,
     role: forcedRole ?? requestedRole ?? UserRole.Customer,
   }));
-  const tokens = await authService.issueTokens(user);
+  const tokens = await authService.issueTokens(user, context);
   incrementBusinessMetric('user_registrations', { role: user.role });
+  await accountSecurityService.recordEvent({
+    ...context,
+    user_id: user.id,
+    email: user.email,
+    role: user.role,
+    store_id: user.store_id,
+    session_id: tokens.session_id,
+    event_type: 'register_login',
+    success: true,
+  });
 
   clearSelectedStoreCookie(res);
   setAccessCookie(res, tokens.access_token);
@@ -222,7 +273,7 @@ router.post(
   '/refresh',
   validate(refreshSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const tokens = await authService.refresh(req.body.refresh_token);
+    const tokens = await authService.refresh(req.body.refresh_token, accountSecurityService.fromRequest(req, { auth_flow: 'refresh' }));
 
     setAccessCookie(res, tokens.access_token);
 
@@ -235,8 +286,19 @@ router.post(
   authRateLimit,
   validate(twoFactorChallengeSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const context = accountSecurityService.fromRequest(req, { auth_flow: '2fa' });
     const user = normalizeUser(await authService.verifyTwoFactorChallenge(req.body.challenge_id, req.body.code));
-    const tokens = await authService.issueTokens(user);
+    const tokens = await authService.issueTokens(user, context);
+    await accountSecurityService.recordEvent({
+      ...context,
+      user_id: user.id,
+      email: user.email,
+      role: user.role,
+      store_id: user.store_id,
+      session_id: tokens.session_id,
+      event_type: 'login_2fa_success',
+      success: true,
+    });
     clearSelectedStoreCookie(res);
     setAccessCookie(res, tokens.access_token);
     res.status(200).json({ user: publicUser(user), tokens });
@@ -267,6 +329,13 @@ router.post(
   validate(twoFactorCodeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.confirmTwoFactorSetup(req.user!.id, req.body.code);
+    await accountSecurityService.recordEvent({
+      ...accountSecurityService.fromRequest(req),
+      user_id: req.user!.id,
+      session_id: req.user!.session_id,
+      event_type: '2fa_enabled',
+      success: true,
+    });
     res.status(200).json({ data: result, ...result });
   }),
 );
@@ -277,6 +346,13 @@ router.post(
   validate(twoFactorCodeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const status = await authService.disableTwoFactor(req.user!.id, req.body.code);
+    await accountSecurityService.recordEvent({
+      ...accountSecurityService.fromRequest(req),
+      user_id: req.user!.id,
+      session_id: req.user!.session_id,
+      event_type: '2fa_disabled',
+      success: true,
+    });
     res.status(200).json({ data: status, status });
   }),
 );
@@ -286,11 +362,57 @@ router.post(
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     if (req.user) {
+      await accountSecurityService.recordEvent({
+        ...accountSecurityService.fromRequest(req),
+        user_id: req.user.id,
+        role: req.user.role,
+        store_id: req.user.store_id,
+        session_id: req.user.session_id,
+        event_type: 'logout',
+        success: true,
+      });
       await authService.logout(req.user.id);
     }
     res.clearCookie('pd_at');
     clearSelectedStoreCookie(res);
     res.status(200).json({ success: true });
+  }),
+);
+
+router.get(
+  '/security/activity',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    await accountSecurityService.touchSession(
+      req.user!.session_id,
+      accountSecurityService.fromRequest(req),
+      'security_activity_view',
+    );
+    const data = await accountSecurityService.listSecurityOverview(req.user!.id);
+    res.status(200).json({
+      data: { ...data, current_session_id: req.user!.session_id ?? null },
+      ...data,
+      current_session_id: req.user!.session_id ?? null,
+    });
+  }),
+);
+
+router.post(
+  '/security/sessions/revoke',
+  requireAuth,
+  validate(revokeSessionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const revoked = await accountSecurityService.revokeSession(req.user!.id, req.body.session_id);
+    res.status(200).json({ success: true, revoked });
+  }),
+);
+
+router.post(
+  '/security/sessions/revoke-others',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const revoked = await accountSecurityService.revokeOtherSessions(req.user!.id, req.user!.session_id);
+    res.status(200).json({ success: true, revoked });
   }),
 );
 
@@ -345,7 +467,7 @@ router.post(
   authRateLimit,
   validate(forgotPasswordSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    await authService.forgotPassword(req.body.email);
+    await authService.forgotPassword(req.body.email, accountSecurityService.fromRequest(req, { auth_flow: 'forgot_password' }));
     // Always return success to prevent email enumeration
     res.status(200).json({ message: 'If an account exists with this email, a reset link has been sent.' });
   }),
@@ -362,7 +484,7 @@ router.post(
   authRateLimit,
   validate(resetPasswordSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    await authService.resetPassword(req.body.token, req.body.password);
+    await authService.resetPassword(req.body.token, req.body.password, accountSecurityService.fromRequest(req, { auth_flow: 'reset_password' }));
     res.status(200).json({ message: 'Password reset successfully. Please log in.' });
   }),
 );

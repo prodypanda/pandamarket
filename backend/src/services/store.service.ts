@@ -28,6 +28,7 @@ import { encrypt } from '../utils/crypto';
 import { walletService } from './wallet.service';
 import { creditsService } from './credits.service';
 import { subscriptionService } from './subscription.service';
+import { platformConfigService, type PlatformSettings } from './platform-config.service';
 
 export interface StoreRow {
   id: string;
@@ -46,7 +47,43 @@ export interface StoreRow {
   shipping_mode: ShippingMode;
   owner_id: string;
   created_at: Date;
-  updated_at: Date;
+  updated_at?: Date;
+}
+
+function normalizeCustomDomain(domain: string) {
+  return domain
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/\.$/, '');
+}
+
+function suffixList(value: PlatformSettings[keyof PlatformSettings]) {
+  return String(value || '')
+    .split(',')
+    .map((suffix) => suffix.trim().toLowerCase().replace(/^\./, ''))
+    .filter(Boolean);
+}
+
+function matchesSuffix(domain: string, suffix: string) {
+  return domain === suffix || domain.endsWith(`.${suffix}`);
+}
+
+function assertCustomDomainPolicy(domain: string, settings: PlatformSettings) {
+  if (!settings.security_custom_domains_enabled) {
+    throw new PdValidationError('Custom domains are disabled by platform settings');
+  }
+
+  const allowedSuffixes = suffixList(settings.security_custom_domain_allowed_suffixes);
+  if (allowedSuffixes.length > 0 && !allowedSuffixes.some((suffix) => matchesSuffix(domain, suffix))) {
+    throw new PdValidationError('Custom domain is not allowed by platform settings', { domain });
+  }
+
+  const blockedSuffixes = suffixList(settings.security_custom_domain_blocked_suffixes);
+  if (blockedSuffixes.some((suffix) => matchesSuffix(domain, suffix))) {
+    throw new PdValidationError('Custom domain is blocked by platform settings', { domain });
+  }
 }
 
 const SELLER_TYPE_CHANGE_CANCEL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -593,22 +630,25 @@ export class StoreService {
   }
 
   async updateCustomDomain(storeId: string, domain: string | null): Promise<StoreRow> {
-    if (domain) {
+    const normalizedDomain = domain ? normalizeCustomDomain(domain) : null;
+    if (normalizedDomain) {
+      const settings = await platformConfigService.getSettings();
+      assertCustomDomainPolicy(normalizedDomain, settings);
       const taken = await query<{ id: string }>(
         'SELECT id FROM pd_store WHERE custom_domain = $1 AND id != $2',
-        [domain.toLowerCase(), storeId],
+        [normalizedDomain, storeId],
       );
       if (taken.rowCount && taken.rowCount > 0) {
         throw new PdConflictError(
           PdErrorCode.STORE_DOMAIN_TAKEN,
           'This domain is already configured for another store',
-          { domain },
+          { domain: normalizedDomain },
         );
       }
     }
     const { rows } = await query<StoreRow>(
       'UPDATE pd_store SET custom_domain = $2 WHERE id = $1 RETURNING *',
-      [storeId, domain ? domain.toLowerCase() : null],
+      [storeId, normalizedDomain],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
     return rows[0];

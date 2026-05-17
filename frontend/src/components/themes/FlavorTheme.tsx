@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, UtensilsCrossed, Clock, Flame } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
 import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
 import { PoweredByMarketplace } from './PoweredByMarketplace';
 
@@ -13,6 +13,7 @@ import { PoweredByMarketplace } from './PoweredByMarketplace';
 export function FlavorTheme({ theme, storeName, products = [], branding }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const accentColor = tc.colors.primary;
+  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
   const displayProducts = products.length > 0 ? products : [
     { id: '1', title: 'Coffret Pâtisseries Fines', price: 45, images: [], category: 'Pâtisserie' },
     { id: '2', title: 'Huile d\'Olive Extra Vierge', price: 32, images: [], category: 'Épicerie' },
@@ -30,8 +31,8 @@ export function FlavorTheme({ theme, storeName, products = [], branding }: Theme
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b" style={{ backgroundColor: `${tc.colors.headerBg}E6`, borderColor: `${accentColor}15` }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href={branding?.store_path_base || '/'} className="flex items-center gap-2.5">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt={storeName} className="h-9 object-contain" />
+            {logoUrl ? (
+              <img src={logoUrl} alt={storeName} className="h-9 object-contain" />
             ) : (
               <>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: accentColor }}>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { User, Mail, Phone, MapPin, Save, Loader2, Shield, Trash2 } from 'lucide-react';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
+import { AccountSecurityActivityPanel } from '../../../components/AccountSecurityActivityPanel';
 import { AccountTwoFactorPanel } from '../../../components/AccountTwoFactorPanel';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
@@ -319,6 +320,10 @@ export default function ProfilePage() {
 
       <div className="mb-6">
         <AccountTwoFactorPanel accentClass={classes.primary} />
+      </div>
+
+      <div className="mb-6">
+        <AccountSecurityActivityPanel accentClass={classes.primary} />
       </div>
 
       {/* Addresses Section */}

@@ -12,7 +12,6 @@ import {
   Users,
   Settings,
   Wallet,
-  ScrollText,
   Crown,
   Sparkles,
   MessageSquare,
@@ -34,6 +33,8 @@ interface CurrentUser {
 interface MarketplaceSettings {
   marketplace_name?: string;
   marketplace_logo_url?: string;
+  marketplace_logo_light_url?: string;
+  marketplace_logo_dark_url?: string;
 }
 
 function isAdminRole(role?: string) {
@@ -171,9 +172,11 @@ export default function AdminLayout({
             href="/dashboard"
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-            className="min-h-[56px]"
-            imageClassName="h-14 max-w-[210px] object-contain"
-            textClassName="text-xl font-black text-slate-950"
+            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+            logoSurface="light"
+            imageClassName="h-10 max-w-[170px] object-contain"
+            textClassName="text-xl font-black text-white"
             fallbackMarkClassName="text-3xl font-black text-[#B91C1C]"
           />
         </div>

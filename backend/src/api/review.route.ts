@@ -21,6 +21,8 @@ import { requireAuth, requireAdmin, validate } from '../middlewares';
 import { reviewService } from '../services/review.service';
 import { z } from 'zod';
 import { ReviewStatus } from '@pandamarket/types';
+import { PdValidationError } from '../errors';
+import { platformConfigService } from '../services/platform-config.service';
 
 const router = Router();
 
@@ -45,6 +47,30 @@ const adminStatusSchema = z.object({
   admin_notes: z.string().max(1000).optional(),
 });
 
+async function reviewsEnabled() {
+  const settings = await platformConfigService.getSettings();
+  return Boolean(settings.reviews_enabled);
+}
+
+async function assertReviewsEnabled() {
+  if (!(await reviewsEnabled())) {
+    throw new PdValidationError('Reviews are disabled by platform settings');
+  }
+}
+
+function emptyRating(productId: string) {
+  return {
+    product_id: productId,
+    average_rating: 0,
+    review_count: 0,
+    rating_1: 0,
+    rating_2: 0,
+    rating_3: 0,
+    rating_4: 0,
+    rating_5: 0,
+  };
+}
+
 // ─── Public: List reviews for a product ─────────────────────────────
 
 router.get(
@@ -55,6 +81,10 @@ router.get(
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const sort = (req.query.sort as string) || 'recent';
+      if (!(await reviewsEnabled())) {
+        res.json({ reviews: [], total: 0, page, limit, pages: 0 });
+        return;
+      }
 
       const result = await reviewService.listByProduct(productId, {
         page,
@@ -81,19 +111,12 @@ router.get(
   '/products/:productId/rating',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!(await reviewsEnabled())) {
+        res.json(emptyRating(req.params.productId));
+        return;
+      }
       const rating = await reviewService.getProductRating(req.params.productId);
-      res.json(
-        rating ?? {
-          product_id: req.params.productId,
-          average_rating: 0,
-          review_count: 0,
-          rating_1: 0,
-          rating_2: 0,
-          rating_3: 0,
-          rating_4: 0,
-          rating_5: 0,
-        },
-      );
+      res.json(rating ?? emptyRating(req.params.productId));
     } catch (err) {
       next(err);
     }
@@ -108,6 +131,10 @@ router.post(
     try {
       const { product_ids } = req.body as { product_ids: string[] };
       if (!Array.isArray(product_ids) || product_ids.length === 0) {
+        res.json({ ratings: {} });
+        return;
+      }
+      if (!(await reviewsEnabled())) {
         res.json({ ratings: {} });
         return;
       }
@@ -133,6 +160,7 @@ router.post(
   validate(createReviewSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertReviewsEnabled();
       const review = await reviewService.create({
         product_id: req.body.product_id,
         customer_id: req.user!.id,
@@ -156,6 +184,7 @@ router.put(
   validate(updateReviewSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertReviewsEnabled();
       const review = await reviewService.update({
         review_id: req.params.id,
         customer_id: req.user!.id,
@@ -177,6 +206,7 @@ router.delete(
   requireAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertReviewsEnabled();
       await reviewService.delete(req.params.id, req.user!.id);
       res.json({ success: true });
     } catch (err) {
@@ -192,6 +222,7 @@ router.post(
   requireAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertReviewsEnabled();
       await reviewService.markHelpful(req.params.id);
       res.json({ success: true });
     } catch (err) {
