@@ -434,6 +434,7 @@
         "verified": "موثقون",
         "unverified": "غير موثقين",
         "suspended": "معلقون",
+        "maintenance": "صيانة",
         "pendingType": "طلبات النوع",
         "pendingKyc": "توثيق معلق"
       },

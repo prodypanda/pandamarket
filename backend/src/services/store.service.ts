@@ -126,6 +126,7 @@ export interface AdminVendorSummary {
   verified: number;
   unverified: number;
   suspended: number;
+  maintenance: number;
   pending_seller_type_requests: number;
   pending_kyc: number;
 }
@@ -908,6 +909,7 @@ export class StoreService {
       verified: string;
       unverified: string;
       suspended: string;
+      maintenance: string;
       pending_seller_type_requests: string;
       pending_kyc: string;
     }>(
@@ -916,6 +918,7 @@ export class StoreService {
          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true)::text AS verified,
          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = false)::text AS unverified,
          COUNT(*) FILTER (WHERE s.status = 'suspended')::text AS suspended,
+         COUNT(*) FILTER (WHERE s.status = 'maintenance')::text AS maintenance,
          COUNT(*) FILTER (WHERE s.settings->'seller_type_change_request'->>'status' = 'pending')::text AS pending_seller_type_requests,
          COUNT(*) FILTER (WHERE kyc.status = 'pending')::text AS pending_kyc
        FROM pd_store s
@@ -928,6 +931,7 @@ export class StoreService {
       verified: parseInt(summaryRow.verified, 10),
       unverified: parseInt(summaryRow.unverified, 10),
       suspended: parseInt(summaryRow.suspended, 10),
+      maintenance: parseInt(summaryRow.maintenance, 10),
       pending_seller_type_requests: parseInt(summaryRow.pending_seller_type_requests, 10),
       pending_kyc: parseInt(summaryRow.pending_kyc, 10),
     };

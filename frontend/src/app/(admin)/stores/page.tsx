@@ -87,6 +87,7 @@ interface VendorSummary {
   verified: number;
   unverified: number;
   suspended: number;
+  maintenance: number;
   pending_seller_type_requests: number;
   pending_kyc: number;
 }
@@ -100,6 +101,7 @@ const defaultSummary: VendorSummary = {
   verified: 0,
   unverified: 0,
   suspended: 0,
+  maintenance: 0,
   pending_seller_type_requests: 0,
   pending_kyc: 0,
 };
@@ -343,6 +345,7 @@ function AdminStoresContent() {
     { label: t('admin.vendorsPage.metrics.verified'), value: summary.verified, icon: ShieldCheck, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
     { label: t('admin.vendorsPage.metrics.unverified'), value: summary.unverified, icon: Clock3, tone: 'from-amber-400 to-orange-500 text-white' },
     { label: t('admin.vendorsPage.metrics.suspended'), value: summary.suspended, icon: Ban, tone: 'from-red-500 to-rose-600 text-white' },
+    { label: t('admin.vendorsPage.metrics.maintenance'), value: summary.maintenance, icon: Store, tone: 'from-blue-500 to-sky-600 text-white' },
     { label: t('admin.vendorsPage.metrics.pendingType'), value: summary.pending_seller_type_requests, icon: AlertTriangle, tone: 'from-amber-500 to-red-600 text-white' },
     { label: t('admin.vendorsPage.metrics.pendingKyc'), value: summary.pending_kyc, icon: FileCheck, tone: 'from-[#B91C1C] to-amber-500 text-white' },
   ];
@@ -403,7 +406,7 @@ function AdminStoresContent() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         {metricCards.map((card) => (
           <div key={card.label} className={`rounded-3xl bg-gradient-to-br p-5 shadow-xl shadow-slate-900/5 ${card.tone}`}>
             <card.icon className="h-5 w-5 opacity-80" />

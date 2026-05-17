@@ -434,6 +434,7 @@
         "verified": "Vérifiés",
         "unverified": "Non vérifiés",
         "suspended": "Suspendus",
+        "maintenance": "Maintenance",
         "pendingType": "Demandes type",
         "pendingKyc": "KYC en attente"
       },
