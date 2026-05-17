@@ -229,7 +229,7 @@ export default function DashboardLayout({
   ];
 
   const accountMenuItems = [
-    { name: 'My account', href: '/hub/account', icon: UserRound },
+    { name: 'My account', href: '/hub/profile', icon: UserRound },
     { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
     { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
