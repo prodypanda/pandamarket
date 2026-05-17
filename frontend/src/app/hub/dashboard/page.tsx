@@ -19,6 +19,7 @@ import {
   Store,
   Wallet,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -116,6 +117,7 @@ export default function DashboardOverview() {
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [verification, setVerification] = useState<VerificationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -172,6 +174,21 @@ export default function DashboardOverview() {
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (loading || !store?.id) return;
+    const storageKey = `pd_seller_welcome_seen:${store.id}`;
+    if (window.localStorage.getItem(storageKey) !== 'true') {
+      setShowWelcomeModal(true);
+    }
+  }, [loading, store?.id]);
+
+  const dismissWelcomeModal = () => {
+    if (store?.id) {
+      window.localStorage.setItem(`pd_seller_welcome_seen:${store.id}`, 'true');
+    }
+    setShowWelcomeModal(false);
+  };
 
   const salesData = useMemo(() => buildSalesChart(allOrders), [allOrders]);
   const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
@@ -246,6 +263,58 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {showWelcomeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="seller-welcome-title" className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-950/30">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[#B91C1C]/10 blur-3xl" />
+            <div className="relative p-6 sm:p-8">
+              <button
+                type="button"
+                onClick={dismissWelcomeModal}
+                className="absolute right-5 top-5 rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
+                aria-label="Fermer le message de bienvenue"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C]/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#B91C1C]">
+                <Store className="h-4 w-4" />
+                Bienvenue vendeur
+              </div>
+              <h2 id="seller-welcome-title" className="mt-4 text-3xl font-black tracking-tight text-gray-900">
+                Lancez {store?.name || 'votre boutique'} en quelques étapes
+              </h2>
+              <p className="mt-3 text-sm font-semibold leading-6 text-gray-500">
+                Votre espace vendeur est prêt. Suivez cette checklist pour préparer votre vitrine, publier vos premiers produits, configurer les paiements et passer votre boutique en ligne.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {setupSteps.map((step, index) => (
+                  <Link
+                    key={step.label}
+                    href={step.href}
+                    onClick={dismissWelcomeModal}
+                    className="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#B91C1C]/30 hover:bg-white hover:shadow-md"
+                  >
+                    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black ${step.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-500 ring-1 ring-gray-200'}`}>
+                      {step.completed ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-gray-900 group-hover:text-[#B91C1C]">{step.label}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-gray-500">{step.description}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-bold text-gray-400">Retrouvez ces étapes dans la carte Launch readiness du dashboard.</p>
+                <button type="button" onClick={dismissWelcomeModal} className="inline-flex items-center justify-center rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]">
+                  Commencer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />

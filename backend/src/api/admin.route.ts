@@ -991,7 +991,7 @@ router.get(
     const { rows } = await query(
       `SELECT l.*,
               COUNT(s.id)::int AS stores_count,
-              COUNT(s.id) FILTER (WHERE s.status = 'verified')::int AS verified_stores_count,
+              COUNT(s.id) FILTER (WHERE COALESCE(s.is_verified, false) = true)::int AS verified_stores_count,
               COUNT(s.id) FILTER (WHERE s.status = 'suspended')::int AS suspended_stores_count
        FROM pd_subscription_limits l
        LEFT JOIN pd_store s ON s.subscription_plan = l.plan_id

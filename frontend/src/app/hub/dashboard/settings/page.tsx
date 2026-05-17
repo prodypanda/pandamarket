@@ -8,6 +8,7 @@ import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/t
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountSecurityActivityPanel } from '../../../../components/AccountSecurityActivityPanel';
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
+import { LocaleSwitcher } from '../../../../components/LocaleSwitcher';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 
@@ -96,6 +97,7 @@ export default function SettingsPage() {
 
   // Maintenance mode
   const [storeStatus, setStoreStatus] = useState('verified');
+  const [storeIsVerified, setStoreIsVerified] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [togglingMaintenance, setTogglingMaintenance] = useState(false);
 
@@ -146,6 +148,7 @@ export default function SettingsPage() {
         setReturnsPolicy(store.settings?.returns_policy || '');
         setPaymentPolicy(store.settings?.payment_policy || '');
         setStoreStatus(store.status || 'verified');
+        setStoreIsVerified(Boolean(store.is_verified));
         setMaintenanceMessage(store.settings?.maintenance_message || '');
       } else {
         setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
@@ -609,6 +612,21 @@ export default function SettingsPage() {
               <h2 className="text-lg font-black text-slate-950">Informations de la boutique</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
             </div>
+            <div className="rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Étape d’onboarding</p>
+                  <h3 className="mt-1 text-base font-black text-slate-950">Type vendeur, langue et pays</h3>
+                  <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                    Choisissez votre modèle de vente, confirmez votre pays d’origine et utilisez le sélecteur de langue du dashboard pour adapter l’interface avant de configurer votre vitrine.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-sm">
+                  <span className="text-xs font-black uppercase tracking-wide text-gray-400">Langue</span>
+                  <LocaleSwitcher />
+                </div>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique</label>
               <input
@@ -915,7 +933,9 @@ export default function SettingsPage() {
                     <h3 className="text-sm font-semibold text-gray-900">Mode maintenance</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {storeStatus === 'maintenance'
-                        ? 'Votre boutique est actuellement en maintenance et inaccessible aux visiteurs.'
+                        ? storeIsVerified
+                          ? 'Votre boutique est actuellement en maintenance et inaccessible aux visiteurs.'
+                          : 'Votre boutique restera en maintenance jusqu’à votre vérification et sa publication.'
                         : 'Activez le mode maintenance pour rendre votre boutique temporairement inaccessible.'}
                     </p>
                     {storeStatus === 'maintenance' && (
@@ -936,7 +956,7 @@ export default function SettingsPage() {
                       onClick={async () => {
                         setTogglingMaintenance(true);
                         try {
-                          const enabling = storeStatus !== 'maintenance';
+                          const enabling = storeStatus !== 'maintenance' || !storeIsVerified;
                           const res = await fetchWithCsrf('/api/pd/stores/me/maintenance', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
@@ -949,7 +969,14 @@ export default function SettingsPage() {
                           if (res.ok) {
                             const data = await res.json();
                             setStoreStatus(data.store?.status || (enabling ? 'maintenance' : 'verified'));
-                            showFeedback(enabling ? 'Mode maintenance activé' : 'Boutique remise en ligne');
+                            setStoreIsVerified(Boolean(data.store?.is_verified));
+                            showFeedback(
+                              !storeIsVerified && storeStatus === 'maintenance'
+                                ? 'Message de maintenance sauvegardé'
+                                : enabling
+                                  ? 'Mode maintenance activé'
+                                  : 'Boutique remise en ligne',
+                            );
                           } else {
                             showFeedback(await getErrorMessage(res), true);
                           }
@@ -960,16 +987,18 @@ export default function SettingsPage() {
                         }
                       }}
                       className={`mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                        storeStatus === 'maintenance'
+                        storeStatus === 'maintenance' && storeIsVerified
                           ? 'bg-[#B91C1C] text-white hover:bg-[#991B1B]'
                           : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
                       }`}
                     >
-                      {storeStatus === 'maintenance' && <AlertTriangle className="h-4 w-4" />}
+                      {storeStatus === 'maintenance' && storeIsVerified && <AlertTriangle className="h-4 w-4" />}
                       {togglingMaintenance
                         ? 'En cours...'
                         : storeStatus === 'maintenance'
-                          ? 'Remettre en ligne'
+                          ? storeIsVerified
+                            ? 'Remettre en ligne'
+                            : 'Enregistrer le message'
                           : 'Activer la maintenance'}
                     </button>
                   </div>
