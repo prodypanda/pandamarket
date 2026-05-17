@@ -528,7 +528,7 @@ export default function DashboardOverview() {
                   return (
                     <div
                       key={day.date}
-                      className="flex-1 group relative"
+                      className="flex h-full flex-1 items-end group relative"
                       title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
                     >
                       <div
