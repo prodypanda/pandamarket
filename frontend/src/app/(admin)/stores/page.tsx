@@ -117,6 +117,7 @@ const planColors: Record<string, string> = {
 const statusColors: Record<string, string> = {
   verified: 'bg-amber-50 text-[#B91C1C] ring-amber-100',
   unverified: 'bg-amber-50 text-amber-700 ring-amber-100',
+  maintenance: 'bg-blue-50 text-blue-700 ring-blue-100',
   suspended: 'bg-red-50 text-red-700 ring-red-100',
 };
 
@@ -448,6 +449,7 @@ function AdminStoresContent() {
                 <option value="">{t('admin.vendorsPage.allStatuses')}</option>
                 <option value="verified">{t('admin.vendorsPage.statuses.verified')}</option>
                 <option value="unverified">{t('admin.vendorsPage.statuses.unverified')}</option>
+                <option value="maintenance">{t('admin.vendorsPage.statuses.maintenance')}</option>
                 <option value="suspended">{t('admin.vendorsPage.statuses.suspended')}</option>
               </select>
             </div>

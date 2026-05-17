@@ -440,6 +440,7 @@
       "statuses": {
         "verified": "Vérifié",
         "unverified": "Non vérifié",
+        "maintenance": "Maintenance",
         "suspended": "Suspendu"
       },
       "kyc": {

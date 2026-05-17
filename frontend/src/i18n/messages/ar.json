@@ -440,6 +440,7 @@
       "statuses": {
         "verified": "موثق",
         "unverified": "غير موثق",
+        "maintenance": "صيانة",
         "suspended": "معلق"
       },
       "kyc": {

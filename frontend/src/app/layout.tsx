@@ -132,7 +132,7 @@ export default async function RootLayout({
 
   return (
     <html lang="fr" className={`${inter.variable} ${playfair.variable} ${poppins.variable} ${montserrat.variable} ${lora.variable} ${spaceGrotesk.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         {gtmContainerId && (
           <noscript>
             <iframe

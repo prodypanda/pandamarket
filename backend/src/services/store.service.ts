@@ -8,6 +8,7 @@ import { query, transaction } from '../db/pool';
 import {
   PdConflictError,
   PdErrorCode,
+  PdForbiddenError,
   PdNotFoundError,
   PdPlanRequiredError,
   PdValidationError,
@@ -245,10 +246,19 @@ export class StoreService {
 
       const { rows } = await client.query<StoreRow>(
         `INSERT INTO pd_store
-          (id, name, subdomain, seller_type, subscription_plan, subscription_type, owner_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (id, name, status, subdomain, seller_type, subscription_plan, subscription_type, owner_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [id, opts.name, subdomain, sellerType, plan, subscriptionType, opts.user_id],
+        [
+          id,
+          opts.name,
+          StoreStatus.Maintenance,
+          subdomain,
+          sellerType,
+          plan,
+          subscriptionType,
+          opts.user_id,
+        ],
       );
       const store = rows[0];
 
@@ -404,12 +414,12 @@ export class StoreService {
   async verify(storeId: string): Promise<StoreRow> {
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
-       SET status = $2,
+       SET status = CASE WHEN status IN ($2, $3) THEN $3 ELSE status END,
            is_verified = true,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [storeId, StoreStatus.Verified],
+      [storeId, StoreStatus.Unverified, StoreStatus.Maintenance],
     );
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
@@ -420,11 +430,11 @@ export class StoreService {
   async reactivate(storeId: string): Promise<StoreRow> {
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
-       SET status = CASE WHEN is_verified THEN $2 ELSE $3 END,
+       SET status = $2,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [storeId, StoreStatus.Verified, StoreStatus.Unverified],
+      [storeId, StoreStatus.Maintenance],
     );
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
@@ -691,8 +701,11 @@ export class StoreService {
    * Mark a store as verified (called by KYC service after approval).
    */
   async markVerified(storeId: string, client?: PoolClient): Promise<void> {
-    const sql = `UPDATE pd_store SET status = $2, is_verified = true WHERE id = $1`;
-    const params = [storeId, StoreStatus.Verified];
+    const sql = `UPDATE pd_store
+      SET status = CASE WHEN status IN ($2, $3) THEN $3 ELSE status END,
+          is_verified = true
+      WHERE id = $1`;
+    const params = [storeId, StoreStatus.Unverified, StoreStatus.Maintenance];
     if (client) await client.query(sql, params);
     else await query(sql, params);
   }
@@ -716,7 +729,20 @@ export class StoreService {
     return rows[0];
   }
 
-  async updateStatus(storeId: string, status: string): Promise<StoreRow> {
+  async updateStatus(storeId: string, status: StoreStatus): Promise<StoreRow> {
+    if (!Object.values(StoreStatus).includes(status)) {
+      throw new PdValidationError('Invalid store status', { status });
+    }
+
+    const current = await this.getById(storeId);
+    if (status === StoreStatus.Verified && !current.is_verified) {
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        'Store must be verified before publishing',
+        { store_id: storeId },
+      );
+    }
+
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
        SET status = $2,
@@ -741,7 +767,7 @@ export class StoreService {
     const conditions: string[] = [];
     const params: unknown[] = [];
     if (opts.verifiedOnly) {
-      conditions.push("status = 'verified'");
+      conditions.push("status = 'verified' AND COALESCE(is_verified, false) = true");
     }
     if (opts.sellerType) {
       params.push(opts.sellerType);
@@ -887,8 +913,8 @@ export class StoreService {
     }>(
       `SELECT
          COUNT(*)::text AS total,
-         COUNT(*) FILTER (WHERE s.status = 'verified')::text AS verified,
-         COUNT(*) FILTER (WHERE s.status = 'unverified')::text AS unverified,
+         COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true)::text AS verified,
+         COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = false)::text AS unverified,
          COUNT(*) FILTER (WHERE s.status = 'suspended')::text AS suspended,
          COUNT(*) FILTER (WHERE s.settings->'seller_type_change_request'->>'status' = 'pending')::text AS pending_seller_type_requests,
          COUNT(*) FILTER (WHERE kyc.status = 'pending')::text AS pending_kyc
@@ -942,7 +968,7 @@ export class StoreService {
           COUNT(*) AS store_count,
           COUNT(*) FILTER (WHERE s.subscription_plan = 'free') AS free_store_count,
           COUNT(*) FILTER (WHERE s.subscription_plan != 'free') AS paid_store_count,
-          COUNT(*) FILTER (WHERE s.status = 'verified') AS verified_store_count,
+          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true) AS verified_store_count,
           COUNT(*) FILTER (WHERE s.status = 'suspended') AS suspended_store_count,
           COALESCE(SUM(ps.product_count), 0) AS product_count,
           COALESCE(SUM(os.order_count), 0) AS order_count,

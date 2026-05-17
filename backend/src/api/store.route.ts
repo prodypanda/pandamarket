@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { storeService } from '../services/store.service';
+import { storeService, type StoreRow } from '../services/store.service';
 import { categoryService } from '../services/category.service';
 import { productService } from '../services/product.service';
 import { fileAssetService } from '../services/file-asset.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
-import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType } from '@pandamarket/types';
+import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType, StoreStatus } from '@pandamarket/types';
 import { config } from '../config';
 import { PdValidationError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
@@ -164,6 +164,53 @@ function publicOwnedStore(store: Awaited<ReturnType<typeof storeService.listByOw
   };
 }
 
+
+function publicStorefrontSettings(settings: StoreRow['settings'] | null | undefined) {
+  const source = settings || {};
+  return {
+    colors: source.colors,
+    logo_url: source.logo_url,
+    logo_light_url: source.logo_light_url,
+    logo_dark_url: source.logo_dark_url,
+    favicon_url: source.favicon_url,
+    themeCustomization: source.themeCustomization,
+    store_description: source.store_description,
+    description: source.description,
+    contact_email: source.contact_email,
+    contact_phone: source.contact_phone,
+    address: source.address,
+    city: source.city,
+    country: source.country,
+    map_embed_url: source.map_embed_url,
+    social: source.social,
+    maintenance_message: source.maintenance_message,
+    marketplace_header_image_url: source.marketplace_header_image_url,
+    shipping_policy: source.shipping_policy,
+    returns_policy: source.returns_policy,
+    payment_policy: source.payment_policy,
+  };
+}
+
+function publicStorefrontStore(store: StoreRow, score?: { seller_score: string; review_count: string }) {
+  return {
+    id: store.id,
+    name: store.name,
+    status: store.status,
+    seller_type: store.seller_type,
+    is_verified: store.is_verified,
+    subdomain: store.subdomain,
+    custom_domain: store.custom_domain,
+    theme_id: store.theme_id,
+    shipping_mode: store.shipping_mode,
+    created_at: store.created_at,
+    settings: publicStorefrontSettings(store.settings),
+    ...(score ? {
+      seller_score: score.seller_score,
+      seller_review_count: score.review_count,
+    } : {}),
+  };
+}
+
 function canCreateFreeStore(stores: Awaited<ReturnType<typeof storeService.listByOwner>>) {
   return !stores.some((store) => store.subscription_plan === SubscriptionPlan.Free);
 }
@@ -236,9 +283,12 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
-    const verifiedOnly = req.query.verifiedOnly === 'true';
-    const result = await storeService.list({ page, limit, verifiedOnly });
-    res.status(200).json(result);
+    // Public store discovery must never expose onboarding, maintenance, or unverified stores.
+    const result = await storeService.list({ page, limit, verifiedOnly: true });
+    res.status(200).json({
+      ...result,
+      data: result.data.map((store) => publicStorefrontStore(store)),
+    });
   }),
 );
 
@@ -252,11 +302,7 @@ router.get(
     }
     const score = await storeService.getSellerScore(store.id);
     res.status(200).json({
-      store: {
-        ...store,
-        seller_score: score.seller_score,
-        seller_review_count: score.review_count,
-      },
+      store: publicStorefrontStore(store, score),
     });
   }),
 );
@@ -307,12 +353,12 @@ router.put(
       res.status(403).json({ error: { message: 'Suspended stores cannot toggle maintenance mode' } });
       return;
     }
-    if (current.status === 'unverified') {
-      res.status(403).json({ error: { message: 'Unverified stores cannot toggle maintenance mode' } });
+    if (!req.body.enabled && !current.is_verified) {
+      res.status(403).json({ error: { message: 'Store must be verified before publishing' } });
       return;
     }
 
-    const newStatus = req.body.enabled ? 'maintenance' : 'verified';
+    const newStatus = req.body.enabled ? StoreStatus.Maintenance : StoreStatus.Verified;
     await storeService.updateStatus(storeId, newStatus);
 
     if (req.body.maintenance_message !== undefined) {
