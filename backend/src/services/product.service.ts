@@ -553,7 +553,7 @@ export class ProductService {
          FROM pd_product_image pi
          WHERE pi.product_id = p.id
        ) img ON true
-       WHERE p.store_id = $1 AND p.slug = $2 AND p.status = $3 AND s.status = 'verified'
+       WHERE p.store_id = $1 AND p.slug = $2 AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
        LIMIT 1`,
       [storeId, slug, ProductStatus.Published],
     );
@@ -638,7 +638,7 @@ export class ProductService {
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
     const params: unknown[] = [ProductStatus.Published];
-    let where = "p.status = $1 AND s.status = 'verified'";
+    let where = "p.status = $1 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true";
     if (opts.category) {
       params.push(opts.category);
       where += ` AND (p.category = $${params.length} OR p.marketplace_category_id = $${params.length} OR mc.slug = $${params.length})`;
@@ -705,7 +705,7 @@ export class ProductService {
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
     const offset = Math.max(0, opts.offset ?? 0);
     const params: unknown[] = [ProductStatus.Published];
-    let where = "p.status = $1 AND s.status = 'verified'";
+    let where = "p.status = $1 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true";
 
     const term = opts.query?.trim();
     if (term) {

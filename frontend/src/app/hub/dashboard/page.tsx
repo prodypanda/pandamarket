@@ -86,6 +86,49 @@ const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; label: str
   refunded: { bg: 'bg-violet-50', text: 'text-violet-700', label: 'Remboursé' },
 };
 
+const STORE_STATUS_BADGES: Record<string, { label: string; className: string; dotClassName: string }> = {
+  verified: {
+    label: 'Live',
+    className: 'bg-emerald-500/20 text-emerald-200',
+    dotClassName: 'bg-emerald-300',
+  },
+  maintenance: {
+    label: 'Maintenance',
+    className: 'bg-amber-500/20 text-amber-200',
+    dotClassName: 'bg-amber-300',
+  },
+  unverified: {
+    label: 'Pending verification',
+    className: 'bg-slate-500/30 text-slate-200',
+    dotClassName: 'bg-slate-300',
+  },
+  suspended: {
+    label: 'Suspended',
+    className: 'bg-red-500/20 text-red-200',
+    dotClassName: 'bg-red-300',
+  },
+};
+
+function getWelcomeStorageKey(storeId: string): string {
+  return `pd_seller_welcome_seen:${storeId}`;
+}
+
+function hasSeenWelcomeModal(storeId: string): boolean {
+  try {
+    return window.localStorage.getItem(getWelcomeStorageKey(storeId)) === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function markWelcomeModalSeen(storeId: string): void {
+  try {
+    window.localStorage.setItem(getWelcomeStorageKey(storeId), 'true');
+  } catch {
+    // Ignore storage failures so dismissing the modal never breaks the dashboard.
+  }
+}
+
 /** Build last-30-day sales data from orders */
 function buildSalesChart(orders: Order[]): DailySales[] {
   const days: DailySales[] = [];
@@ -177,15 +220,14 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     if (loading || !store?.id) return;
-    const storageKey = `pd_seller_welcome_seen:${store.id}`;
-    if (window.localStorage.getItem(storageKey) !== 'true') {
+    if (!hasSeenWelcomeModal(store.id)) {
       setShowWelcomeModal(true);
     }
   }, [loading, store?.id]);
 
   const dismissWelcomeModal = () => {
     if (store?.id) {
-      window.localStorage.setItem(`pd_seller_welcome_seen:${store.id}`, 'true');
+      markWelcomeModalSeen(store.id);
     }
     setShowWelcomeModal(false);
   };
@@ -229,6 +271,7 @@ export default function DashboardOverview() {
   ];
   const completedSetupSteps = setupSteps.filter((step) => step.completed).length;
   const setupPercent = Math.round((completedSetupSteps / setupSteps.length) * 100);
+  const storeStatusBadge = store?.status ? STORE_STATUS_BADGES[store.status] : null;
 
   const stats = [
     {
@@ -334,9 +377,10 @@ export default function DashboardOverview() {
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
                 <Store className="h-4 w-4" />
                 Seller command center
-                {store?.status === 'active' && (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Live
+                {storeStatusBadge && (
+                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${storeStatusBadge.className}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${storeStatusBadge.dotClassName} ${store?.status === 'verified' ? 'animate-pulse' : ''}`} />
+                    {storeStatusBadge.label}
                   </span>
                 )}
               </div>
@@ -484,7 +528,7 @@ export default function DashboardOverview() {
                   return (
                     <div
                       key={day.date}
-                      className="flex-1 group relative"
+                      className="flex h-full flex-1 items-end group relative"
                       title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
                     >
                       <div

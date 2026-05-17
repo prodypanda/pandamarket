@@ -19,6 +19,7 @@ import {
   ProductStatus,
   ProductType,
   SellerType,
+  StoreStatus,
 } from '@pandamarket/types';
 import { roundTnd } from '../utils/money';
 import { logger } from '../utils/logger';
@@ -282,9 +283,13 @@ export class OrderService {
           type: ProductType;
           metadata: Record<string, unknown> | null;
           seller_type: SellerType | null;
+          store_status: StoreStatus | null;
+          store_is_verified: boolean | null;
         }>(
           `SELECT p.id, p.store_id, p.title, p.price, p.inventory_quantity, p.status, p.type, p.metadata,
-                  s.seller_type
+                  s.seller_type,
+                  s.status AS store_status,
+                  s.is_verified AS store_is_verified
            FROM pd_product p
            JOIN pd_store s ON s.id = p.store_id
            WHERE p.id = $1`,
@@ -296,7 +301,11 @@ export class OrderService {
             product_id: line.product_id,
           });
         }
-        if (product.status !== ProductStatus.Published) {
+        if (
+          product.status !== ProductStatus.Published ||
+          product.store_status !== StoreStatus.Verified ||
+          product.store_is_verified !== true
+        ) {
           throw new PdValidationError('Product is not available', {
             product_id: line.product_id,
           });

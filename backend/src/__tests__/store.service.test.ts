@@ -133,4 +133,63 @@ describe('StoreService maintenance publishing defaults', () => {
       ['pd_store_new', StoreStatus.Unverified, StoreStatus.Maintenance],
     );
   });
+
+  it('rejects direct publishing when the store is not verified', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    mocks.query.mockResolvedValueOnce({
+      rows: [{ id: 'pd_store_new', status: StoreStatus.Maintenance, is_verified: false }],
+      rowCount: 1,
+    });
+
+    await expect(storeService.updateStatus('pd_store_new', StoreStatus.Verified)).rejects.toThrow('Store must be verified before publishing');
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows verified stores to publish from maintenance mode', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 'pd_store_new', status: StoreStatus.Maintenance, is_verified: true }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({
+        rows: [{ id: 'pd_store_new', status: StoreStatus.Verified, is_verified: true }],
+        rowCount: 1,
+      });
+
+    const store = await storeService.updateStatus('pd_store_new', StoreStatus.Verified);
+
+    expect(store.status).toBe(StoreStatus.Verified);
+    expect(mocks.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('SET status = $2'),
+      ['pd_store_new', StoreStatus.Verified],
+    );
+  });
+
+  it('only lists publicly verified stores when verifiedOnly is requested', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    mocks.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
+
+    await storeService.list({ verifiedOnly: true });
+
+    expect(mocks.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("status = 'verified' AND COALESCE(is_verified, false) = true"),
+      expect.any(Array),
+    );
+    expect(mocks.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("status = 'verified' AND COALESCE(is_verified, false) = true"),
+      expect.any(Array),
+    );
+  });
 });

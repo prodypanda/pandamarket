@@ -8,6 +8,7 @@ import { query, transaction } from '../db/pool';
 import {
   PdConflictError,
   PdErrorCode,
+  PdForbiddenError,
   PdNotFoundError,
   PdPlanRequiredError,
   PdValidationError,
@@ -125,6 +126,7 @@ export interface AdminVendorSummary {
   verified: number;
   unverified: number;
   suspended: number;
+  maintenance: number;
   pending_seller_type_requests: number;
   pending_kyc: number;
 }
@@ -728,7 +730,20 @@ export class StoreService {
     return rows[0];
   }
 
-  async updateStatus(storeId: string, status: string): Promise<StoreRow> {
+  async updateStatus(storeId: string, status: StoreStatus): Promise<StoreRow> {
+    if (!Object.values(StoreStatus).includes(status)) {
+      throw new PdValidationError('Invalid store status', { status });
+    }
+
+    const current = await this.getById(storeId);
+    if (status === StoreStatus.Verified && !current.is_verified) {
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        'Store must be verified before publishing',
+        { store_id: storeId },
+      );
+    }
+
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
        SET status = $2,
@@ -753,7 +768,7 @@ export class StoreService {
     const conditions: string[] = [];
     const params: unknown[] = [];
     if (opts.verifiedOnly) {
-      conditions.push("status = 'verified'");
+      conditions.push("status = 'verified' AND COALESCE(is_verified, false) = true");
     }
     if (opts.sellerType) {
       params.push(opts.sellerType);
@@ -894,6 +909,7 @@ export class StoreService {
       verified: string;
       unverified: string;
       suspended: string;
+      maintenance: string;
       pending_seller_type_requests: string;
       pending_kyc: string;
     }>(
@@ -902,6 +918,7 @@ export class StoreService {
          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true)::text AS verified,
          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = false)::text AS unverified,
          COUNT(*) FILTER (WHERE s.status = 'suspended')::text AS suspended,
+         COUNT(*) FILTER (WHERE s.status = 'maintenance')::text AS maintenance,
          COUNT(*) FILTER (WHERE s.settings->'seller_type_change_request'->>'status' = 'pending')::text AS pending_seller_type_requests,
          COUNT(*) FILTER (WHERE kyc.status = 'pending')::text AS pending_kyc
        FROM pd_store s
@@ -914,6 +931,7 @@ export class StoreService {
       verified: parseInt(summaryRow.verified, 10),
       unverified: parseInt(summaryRow.unverified, 10),
       suspended: parseInt(summaryRow.suspended, 10),
+      maintenance: parseInt(summaryRow.maintenance, 10),
       pending_seller_type_requests: parseInt(summaryRow.pending_seller_type_requests, 10),
       pending_kyc: parseInt(summaryRow.pending_kyc, 10),
     };

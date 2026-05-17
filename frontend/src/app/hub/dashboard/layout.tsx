@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   BarChart3,
   ReceiptText,
+  UserRound,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -89,6 +90,7 @@ export default function DashboardLayout({
   const [authorized, setAuthorized] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const [setupProgress, setSetupProgress] = useState({ completed: 1, total: 6 });
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isStoreSelectorPage = pathname === '/hub/dashboard/select-store';
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
   const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage;
@@ -220,13 +222,17 @@ export default function DashboardLayout({
     { name: 'Financial', href: '/hub/dashboard/financial', icon: ReceiptText },
     { name: t('dashboard.sidebar.pageBuilder'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
     { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
-    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
-    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
-    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
     { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
     { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
     { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
+  ];
+
+  const accountMenuItems = [
+    { name: 'My account', href: '/hub/profile', icon: UserRound },
+    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
+    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
+    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
   ];
 
   const handleLogout = async () => {
@@ -388,8 +394,50 @@ export default function DashboardLayout({
               <Bell className="h-5 w-5" />
             </Link>
             <div className="text-sm font-medium text-slate-600">{t('dashboard.top.welcome', { name: displayName })}</div>
-            <div className="h-8 w-8 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold">
-              {initials}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                className="h-9 w-9 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold ring-1 ring-[#B91C1C]/10 transition hover:bg-[#B91C1C]/20"
+              >
+                {initials}
+              </button>
+              {accountMenuOpen && (
+                <div role="menu" className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 text-sm shadow-2xl shadow-slate-900/15">
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="font-black text-slate-900">{displayName}</p>
+                    {currentUser?.email && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{currentUser.email}</p>}
+                  </div>
+                  {accountMenuItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 font-bold transition ${
+                        pathname === item.href || pathname.startsWith(`${item.href}/`)
+                          ? 'bg-[#B91C1C]/10 text-[#B91C1C]'
+                          : 'text-slate-700 hover:bg-slate-50 hover:text-[#B91C1C]'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.name}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
