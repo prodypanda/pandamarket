@@ -208,6 +208,7 @@ export default function DashboardLayout({
             persistedStoreBasicsComplete || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
           );
           steps[1] = Boolean(persistedThemeComplete || store?.theme_id);
+          steps[2] = Boolean(store?.is_verified);
           steps[4] = Boolean(store?.payment_config);
         }
         if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
@@ -216,7 +217,7 @@ export default function DashboardLayout({
         }
         if (verificationRes.status === 'fulfilled' && verificationRes.value.ok) {
           const data = await verificationRes.value.json();
-          steps[2] = data.verification?.status === 'approved';
+          steps[2] = Boolean(steps[2] || data.verification?.status === 'approved');
         }
         setSetupProgress({ completed: steps.filter(Boolean).length, total: steps.length });
       } catch {

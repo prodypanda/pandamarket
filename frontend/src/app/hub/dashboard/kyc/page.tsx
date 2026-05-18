@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { updateOnboardingStep } from '@/lib/onboarding';
 import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, XCircle, Upload, Clock, FileText, AlertCircle } from 'lucide-react';
 
@@ -14,6 +15,20 @@ interface Verification {
   rejection_reason: string | null;
   reviewed_at: string | null;
   created_at: string;
+}
+
+function getKycMetadata(verification: Verification) {
+  return {
+    status: verification.status,
+    verification_id: verification.id,
+    has_rc_document: Boolean(verification.rc_document_url),
+    has_cin_document: Boolean(verification.cin_document_url),
+    phone_number: verification.phone_number,
+    phone_verified: verification.phone_verified,
+    submitted_at: verification.created_at,
+    reviewed_at: verification.reviewed_at,
+    rejection_reason: verification.rejection_reason,
+  };
 }
 
 export default function KycPage() {
@@ -35,7 +50,14 @@ export default function KycPage() {
       const res = await fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setVerification(data.verification);
+        const nextVerification = (data.verification || null) as Verification | null;
+        setVerification(nextVerification);
+        if (nextVerification) {
+          updateOnboardingStep('kyc', {
+            completed: nextVerification.status === 'approved',
+            metadata: getKycMetadata(nextVerification),
+          }).catch(() => undefined);
+        }
       }
     } catch {
       // ignore
@@ -124,8 +146,14 @@ export default function KycPage() {
         }),
       });
       if (res.ok) {
+        const data = await res.json();
+        const nextVerification = data.verification as Verification;
+        setVerification(nextVerification);
+        updateOnboardingStep('kyc', {
+          completed: nextVerification.status === 'approved',
+          metadata: getKycMetadata(nextVerification),
+        }).catch(() => undefined);
         setSuccess('Documents soumis avec succès ! Nous les examinerons sous 48h.');
-        fetchStatus();
       } else {
         const data = await res.json();
         setError(data.error?.message || 'Erreur lors de la soumission');
