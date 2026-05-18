@@ -47,7 +47,15 @@ interface StoreState {
 }
 
 interface VerificationState {
+  id?: string;
   status?: string | null;
+  rc_document_url?: string | null;
+  cin_document_url?: string | null;
+  phone_number?: string | null;
+  phone_verified?: boolean | null;
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
+  created_at?: string | null;
 }
 
 interface ProductMetaState {
@@ -93,6 +101,7 @@ export default function SellerOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [syncingStoreBasics, setSyncingStoreBasics] = useState(false);
   const [syncingTheme, setSyncingTheme] = useState(false);
+  const [syncingKyc, setSyncingKyc] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -211,6 +220,46 @@ export default function SellerOnboardingPage() {
   const themePercent = Math.round((completedThemeTasks / themeTasks.length) * 100);
   const themeStepComplete = Boolean(onboardingState.theme?.completed || store?.theme_id);
   const firstIncompleteThemeTask = themeTasks.find((task) => !task.completed);
+  const verificationStatus = verification?.status || (store?.is_verified ? 'approved' : 'not_submitted');
+  const kycStepComplete = Boolean(onboardingState.kyc?.completed || verificationStatus === 'approved');
+  const kycDocumentsReady = Boolean(verification?.rc_document_url && verification?.cin_document_url);
+  const kycPhoneReady = Boolean(verification?.phone_number || verification?.phone_verified);
+  const kycTasks = [
+    {
+      label: 'Identity documents',
+      detail: kycDocumentsReady ? 'RC and CIN documents are uploaded.' : 'Upload RC and CIN documents for manual review.',
+      completed: kycDocumentsReady,
+      href: '/hub/dashboard/kyc',
+    },
+    {
+      label: 'Phone contact',
+      detail: verification?.phone_number ? `${verification.phone_number} is attached to the request.` : 'Add the phone number admins should verify.',
+      completed: kycPhoneReady,
+      href: '/hub/dashboard/kyc',
+    },
+    {
+      label: 'Admin review',
+      detail: kycStepComplete
+        ? 'KYC is approved.'
+        : verificationStatus === 'pending'
+          ? 'Submitted and awaiting admin review.'
+          : verificationStatus === 'rejected'
+            ? verification?.rejection_reason || 'Rejected; resubmit corrected documents.'
+            : 'Submit documents to enter the review queue.',
+      completed: kycStepComplete,
+      href: '/hub/dashboard/kyc',
+    },
+  ];
+  const completedKycTasks = kycTasks.filter((task) => task.completed).length;
+  const kycPercent = Math.round((completedKycTasks / kycTasks.length) * 100);
+  const firstIncompleteKycTask = kycTasks.find((task) => !task.completed);
+  const kycStatusLabel = verificationStatus === 'approved'
+    ? 'Approved'
+    : verificationStatus === 'pending'
+      ? 'Pending review'
+      : verificationStatus === 'rejected'
+        ? 'Rejected'
+        : 'Not submitted';
   const wizardSteps = useMemo<WizardStep[]>(() => [
     {
       id: 'store_basics',
@@ -232,8 +281,8 @@ export default function SellerOnboardingPage() {
       id: 'kyc',
       label: 'KYC approved',
       description: 'Verify seller identity',
-      completed: verification?.status === 'approved' || Boolean(store?.is_verified),
-      href: '/hub/dashboard/kyc',
+      completed: kycStepComplete,
+      href: '/hub/dashboard/onboarding#kyc',
       icon: ShieldCheck,
     },
     {
@@ -252,7 +301,7 @@ export default function SellerOnboardingPage() {
       href: '/hub/dashboard/payment-config',
       icon: CreditCard,
     },
-  ], [onboardingState.store_basics?.completed, productCount, store, storeBasicsComplete, themeStepComplete, verification?.status]);
+  ], [kycStepComplete, onboardingState.store_basics?.completed, productCount, store, storeBasicsComplete, themeStepComplete]);
   const completedWizardSteps = wizardSteps.filter((step) => step.completed).length;
   const wizardPercent = Math.round((completedWizardSteps / wizardSteps.length) * 100);
 
@@ -293,6 +342,31 @@ export default function SellerOnboardingPage() {
       // Ignore transient sync failures; the guide reloads persisted state on the next visit.
     } finally {
       setSyncingTheme(false);
+    }
+  }
+
+  async function syncKycProgress() {
+    setSyncingKyc(true);
+    try {
+      const nextState = await updateOnboardingStep('kyc', {
+        completed: kycStepComplete,
+        metadata: {
+          status: verificationStatus,
+          verification_id: verification?.id || null,
+          has_rc_document: Boolean(verification?.rc_document_url),
+          has_cin_document: Boolean(verification?.cin_document_url),
+          phone_number: verification?.phone_number || null,
+          phone_verified: Boolean(verification?.phone_verified),
+          submitted_at: verification?.created_at || null,
+          reviewed_at: verification?.reviewed_at || null,
+          rejection_reason: verification?.rejection_reason || null,
+        },
+      });
+      setOnboardingState(nextState);
+    } catch {
+      // Ignore transient sync failures; the guide reloads persisted state on the next visit.
+    } finally {
+      setSyncingKyc(false);
     }
   }
 
@@ -496,6 +570,85 @@ export default function SellerOnboardingPage() {
               </div>
             </div>
           </section>
+
+          <section id="kyc" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Next guided step</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">KYC verification</h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                  Submit your business documents and phone contact so the PandaMarket team can approve the store before launch.
+                </p>
+              </div>
+              <div className={`rounded-2xl px-4 py-3 text-sm font-black ${kycStepComplete ? 'bg-emerald-50 text-emerald-700' : verificationStatus === 'pending' ? 'bg-blue-50 text-blue-700' : verificationStatus === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                {kycStatusLabel}
+              </div>
+            </div>
+
+            <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#B91C1C] transition-all" style={{ width: `${kycPercent}%` }} />
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[280px_1fr]">
+              <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 to-slate-800 p-5 text-white shadow-sm">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+                  <ShieldCheck className="h-6 w-6 text-amber-200" />
+                </div>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-amber-100">Verification status</p>
+                <h3 className="mt-2 text-2xl font-black">{kycStatusLabel}</h3>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-200">
+                  {kycStepComplete
+                    ? 'Approved stores can continue toward products and payments.'
+                    : verificationStatus === 'pending'
+                      ? 'Your documents are in the admin review queue.'
+                      : verificationStatus === 'rejected'
+                        ? 'Update the rejected documents before submitting again.'
+                        : 'Prepare RC, CIN, and phone contact before submitting.'}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {kycTasks.map((task) => (
+                  <Link
+                    key={task.label}
+                    href={task.href}
+                    className={`flex min-h-40 flex-col justify-between rounded-2xl border p-4 transition hover:border-[#B91C1C]/25 hover:bg-amber-50/40 ${task.completed ? 'border-emerald-100 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}
+                  >
+                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${task.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {task.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-slate-950">{task.label}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{task.detail}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-950">KYC action</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {firstIncompleteKycTask ? `Review: ${firstIncompleteKycTask.label}.` : 'KYC is ready. Continue with your first product and payment setup.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/hub/dashboard/kyc" className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white hover:bg-[#991B1B]">
+                  Open KYC verification <ArrowRight className="h-4 w-4" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={syncKycProgress}
+                  disabled={syncingKyc}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:border-[#B91C1C]/30 hover:text-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {syncingKyc ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Sync KYC
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className="space-y-4">
@@ -515,6 +668,7 @@ export default function SellerOnboardingPage() {
               <li>Use the same logo proportions for light and dark surfaces.</li>
               <li>Pick colors that keep buttons and product cards readable.</li>
               <li>Preview the storefront before moving to KYC and products.</li>
+              <li>Use the KYC section to track documents, phone contact, and review status.</li>
             </ul>
           </div>
         </aside>
