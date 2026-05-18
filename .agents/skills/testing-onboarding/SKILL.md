@@ -1,6 +1,6 @@
 ---
 name: testing-onboarding
-description: Test PandaMarket seller onboarding, dashboard welcome dismissal, store-basics settings persistence, and theme-selection onboarding end-to-end.
+description: Test PandaMarket seller onboarding, dashboard welcome dismissal, store-basics settings persistence, theme-selection onboarding, and KYC onboarding end-to-end.
 ---
 
 ## Devin Secrets Needed
@@ -46,11 +46,29 @@ None for local seeded testing. Use the project-local vendor test account: `vendo
 12. Open `/hub/dashboard` and verify the dashboard card plus sticky progress banner use five launch steps and respect persisted theme completion.
 13. Restore the original store theme/settings/onboarding state in PostgreSQL and verify cleanup.
 
+## Seller onboarding KYC test flow
+
+1. Capture the seeded vendor's `pd_verification_documents`, `pd_store.is_verified/status`, and `pd_user.onboarding_state` before browser assertions.
+2. For not-submitted coverage, delete the seeded store's verification row, set the store unverified, and clear `onboarding_state.kyc`.
+3. Open `/hub/dashboard/onboarding#kyc` and verify KYC status is not submitted, progress is `0%`, the wizard card is incomplete, and `/hub/dashboard` does not complete `KYC approved`.
+4. Open `/hub/dashboard/kyc`, upload dummy RC/CIN PDFs, enter a phone number, submit, and verify `pd_verification_documents.status='pending'` with both document URLs and phone saved.
+5. Verify pending KYC writes onboarding metadata with `metadata.status='pending'` while `completed` stays false or absent.
+6. Reload `/hub/dashboard/kyc` and confirm it leaves the skeleton promptly and renders pending details; the onboarding metadata PATCH on load must not block the page.
+7. Open `/hub/dashboard/onboarding#kyc`, click `Sync KYC`, and verify progress is `67%`, document/phone tasks are complete, admin review is incomplete, and dashboard/sticky progress do not count KYC as complete.
+8. For stale-completion coverage, update the verification row to `status='rejected'` with a rejection reason while intentionally setting `onboarding_state.kyc.completed=true`.
+9. Verify onboarding, KYC page, dashboard setup item, and sticky progress all treat rejected KYC as incomplete and display the rejection reason.
+10. For approved coverage, set the verification row to `status='approved'`, set `pd_store.is_verified=true/status='verified'`, and clear rejection reason.
+11. Verify onboarding progress is `100%`, the wizard KYC card is complete, `/hub/dashboard/kyc` shows `Compte Vérifié ✓`, and the dashboard `KYC approved` item renders a `lucide-circle-check` icon.
+12. Restore the original seeded KYC row, store verification status, and onboarding state in PostgreSQL. Verify no temporary document URLs, rejection reason, or QA-only KYC metadata remains.
+
 ## Known local caveats
 
 - Dashboard load may log an existing `GET /api/pd/orders/store?limit=200&date_from=...` 400 while onboarding tests still pass; treat it as separate from onboarding unless it becomes visible to the user.
 - Local rate limits can be triggered by many rapid UI/API checks. Keep endpoint checks to a small batch. A transient `Too many requests` banner does not fail a tab-deeplink check if the correct tab and form content still render.
-- Theme onboarding browser runs can exceed the local `apiRateLimit` (`100` requests per `60s`) because dashboard/settings pages load many widgets. If protected routes unexpectedly show seller login after many rapid navigations, wait one full API limiter window or restart the local backend, then retry once before treating it as a feature failure.
+- Theme and KYC onboarding browser runs can exceed the local `apiRateLimit` (`100` requests per `60s`) because dashboard/settings/KYC pages load many widgets. If protected routes unexpectedly show seller login or 429s after many rapid navigations, wait one full API limiter window or restart the local backend, then retry once before treating it as a feature failure.
 - After direct PostgreSQL mutations used for edge-state testing, force a fresh document such as `about:blank` before loading the same onboarding route/hash. This avoids stale React state from the previous page instance.
+- KYC page status-load sync is intentionally fire-and-forget. When verifying cleanup after KYC tests, navigate browser pages to `about:blank`, restore seed data in PostgreSQL, and verify cleanup directly if inline UI cleanup races with background sync.
+- If Playwright screenshots hang on local fonts, capture evidence frames with X11/ffmpeg instead of expanding the browser test scope.
+- Dashboard completed setup items use the rendered icon (`lucide-circle-check` versus `lucide-clock`) as the stable assertion; do not rely on color alone because some states share amber styling.
 - If UI cleanup is rate-limited, restore local seed data directly in PostgreSQL and verify it. For the seeded vendor, reset the store name to `Atelier Médina` and remove QA-only onboarding metadata for `vendor.pro@test.tn`.
 - Keep screenshots/recordings full-screen for user evidence.
