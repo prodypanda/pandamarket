@@ -11,6 +11,7 @@ import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPa
 import { LocaleSwitcher } from '../../../../components/LocaleSwitcher';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
+import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../../lib/onboarding';
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
 
@@ -75,6 +76,8 @@ export default function SettingsPage() {
   // Store settings
   const [storeName, setStoreName] = useState('');
   const [storeDescription, setStoreDescription] = useState('');
+  const [subdomain, setSubdomain] = useState('');
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [sellerType, setSellerType] = useState<SellerTypeValue>('retailer');
   const [currentSellerType, setCurrentSellerType] = useState<SellerTypeValue>('retailer');
   const [pendingSellerTypeRequest, setPendingSellerTypeRequest] = useState<SellerTypeChangeRequest | null>(null);
@@ -122,6 +125,7 @@ export default function SettingsPage() {
         const store = data.store;
         const loadedSellerType = (store.seller_type || 'retailer') as SellerTypeValue;
         setStoreName(store.name || '');
+        setSubdomain(store.subdomain || '');
         setSellerType(loadedSellerType);
         setCurrentSellerType(loadedSellerType);
         setPendingSellerTypeRequest(store.settings?.seller_type_change_request || null);
@@ -182,6 +186,20 @@ export default function SettingsPage() {
     fetchStoreSettings();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetchOnboardingState()
+      .then((state) => {
+        if (active) setOnboardingState(state);
+      })
+      .catch(() => {
+        if (active) setOnboardingState({});
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const fetchMediaItems = useCallback(async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/media?limit=100', { credentials: 'include' });
@@ -224,6 +242,21 @@ export default function SettingsPage() {
     }, {});
   };
 
+  const hasLogo = Boolean(logoUrl || logoLightUrl || logoDarkUrl);
+  const hasCustomColors = Boolean(
+    themeCustomization.colorPresetId || Object.values(themeCustomization.customColors || {}).some(Boolean),
+  );
+  const storeBasicsTasks = [
+    { label: 'Nom', detail: 'Nom boutique sauvegardé', completed: storeName.trim().length > 0 },
+    { label: 'Sous-domaine', detail: subdomain ? `${subdomain}.${marketplaceName.toLowerCase().replace(/\s+/g, '')}.tn` : 'Sous-domaine généré', completed: subdomain.trim().length > 0 },
+    { label: 'Logos', detail: 'Logo principal, clair ou sombre', completed: hasLogo },
+    { label: 'Couleurs', detail: 'Palette ou couleur personnalisée', completed: hasCustomColors },
+  ];
+  const completedStoreBasicsTasks = storeBasicsTasks.filter((task) => task.completed).length;
+  const storeBasicsProgress = Math.round((completedStoreBasicsTasks / storeBasicsTasks.length) * 100);
+  const storeBasicsComplete = completedStoreBasicsTasks === storeBasicsTasks.length;
+  const storeBasicsPersisted = Boolean(onboardingState.store_basics?.completed);
+
   const saveStoreSettings = async () => {
     setSaving(true);
     try {
@@ -262,8 +295,18 @@ export default function SettingsPage() {
           setCurrentSellerType(updatedSellerType);
         }
         setPendingSellerTypeRequest(nextStore?.settings?.seller_type_change_request || null);
+        const nextOnboardingState = await updateOnboardingStep('store_basics', {
+          completed: storeBasicsComplete,
+          metadata: {
+            store_name: storeName.trim(),
+            subdomain,
+            has_logo: hasLogo,
+            has_custom_colors: hasCustomColors,
+          },
+        }).catch(() => null);
+        if (nextOnboardingState) setOnboardingState(nextOnboardingState);
         if (sellerType === currentSellerType) {
-          showFeedback('Paramètres sauvegardés');
+          showFeedback(storeBasicsComplete ? 'Paramètres sauvegardés · étape Store basics complétée' : 'Paramètres sauvegardés');
           return;
         }
         showFeedback(
@@ -425,7 +468,7 @@ export default function SettingsPage() {
     }
   };
 
-  const saveThemeCustomization = useCallback(async (customization: ThemeCustomization) => {
+  const saveThemeCustomization = async (customization: ThemeCustomization) => {
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/settings', {
         method: 'PUT',
@@ -437,14 +480,28 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         setThemeCustomization(customization);
-        showFeedback('Personnalisation sauvegardée');
+        const nextHasCustomColors = Boolean(
+          customization.colorPresetId || Object.values(customization.customColors || {}).some(Boolean),
+        );
+        const nextStoreBasicsComplete = Boolean(storeName.trim() && subdomain.trim() && hasLogo && nextHasCustomColors);
+        const nextOnboardingState = await updateOnboardingStep('store_basics', {
+          completed: nextStoreBasicsComplete,
+          metadata: {
+            store_name: storeName.trim(),
+            subdomain,
+            has_logo: hasLogo,
+            has_custom_colors: nextHasCustomColors,
+          },
+        }).catch(() => null);
+        if (nextOnboardingState) setOnboardingState(nextOnboardingState);
+        showFeedback(nextStoreBasicsComplete ? 'Personnalisation sauvegardée · étape Store basics complétée' : 'Personnalisation sauvegardée');
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
       showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     }
-  }, []);
+  };
 
   const saveDomain = async () => {
     setSaving(true);
@@ -613,28 +670,64 @@ export default function SettingsPage() {
               <p className="mt-1 text-sm font-medium text-slate-500">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
             </div>
             <div className="rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Étape d’onboarding</p>
-                  <h3 className="mt-1 text-base font-black text-slate-950">Type vendeur, langue et pays</h3>
+                  <h3 className="mt-1 text-base font-black text-slate-950">Store basics: nom, sous-domaine, logos et couleurs</h3>
                   <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-                    Choisissez votre modèle de vente, confirmez votre pays d’origine et utilisez le sélecteur de langue du dashboard pour adapter l’interface avant de configurer votre vitrine.
+                    Complétez ces quatre éléments pour rendre votre vitrine reconnaissable avant de passer aux thèmes, produits et paiements.
                   </p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+                    <div className="h-full rounded-full bg-[#B91C1C] transition-all" style={{ width: `${storeBasicsProgress}%` }} />
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {storeBasicsTasks.map((task) => (
+                      <div key={task.label} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                        {task.completed ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <Clock3 className="h-4 w-4 text-amber-600" />}
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-slate-900">{task.label}</p>
+                          <p className="truncate text-[11px] font-semibold text-slate-500">{task.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-sm">
-                  <span className="text-xs font-black uppercase tracking-wide text-gray-400">Langue</span>
-                  <LocaleSwitcher />
+                <div className="flex shrink-0 flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-gray-400">Langue</span>
+                    <LocaleSwitcher />
+                  </div>
+                  <div className={`rounded-xl px-3 py-2 text-xs font-black ${storeBasicsPersisted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {storeBasicsPersisted ? 'Progression persistée' : `${completedStoreBasicsTasks}/${storeBasicsTasks.length} éléments`}
+                  </div>
+                  {!hasCustomColors && (
+                    <button type="button" onClick={() => setActiveTab('theme')} className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-50">
+                      Configurer les couleurs
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique</label>
-              <input
-                type="text"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique</label>
+                <input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sous-domaine public</label>
+                <input
+                  type="text"
+                  value={subdomain || 'Génération automatique'}
+                  readOnly
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 font-mono text-sm text-gray-600 outline-none"
+                />
+                <p className="mt-1 text-xs font-semibold text-gray-400">Le sous-domaine identifie votre storefront vendeur.</p>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
