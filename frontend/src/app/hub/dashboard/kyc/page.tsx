@@ -53,7 +53,7 @@ export default function KycPage() {
         const nextVerification = (data.verification || null) as Verification | null;
         setVerification(nextVerification);
         if (nextVerification) {
-          await updateOnboardingStep('kyc', {
+          updateOnboardingStep('kyc', {
             completed: nextVerification.status === 'approved',
             metadata: getKycMetadata(nextVerification),
           }).catch(() => undefined);
@@ -149,7 +149,7 @@ export default function KycPage() {
         const data = await res.json();
         const nextVerification = data.verification as Verification;
         setVerification(nextVerification);
-        await updateOnboardingStep('kyc', {
+        updateOnboardingStep('kyc', {
           completed: nextVerification.status === 'approved',
           metadata: getKycMetadata(nextVerification),
         }).catch(() => undefined);

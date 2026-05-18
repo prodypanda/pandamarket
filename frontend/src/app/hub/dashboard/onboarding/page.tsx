@@ -221,7 +221,7 @@ export default function SellerOnboardingPage() {
   const themeStepComplete = Boolean(onboardingState.theme?.completed || store?.theme_id);
   const firstIncompleteThemeTask = themeTasks.find((task) => !task.completed);
   const verificationStatus = verification?.status || (store?.is_verified ? 'approved' : 'not_submitted');
-  const kycStepComplete = Boolean(onboardingState.kyc?.completed || verificationStatus === 'approved');
+  const kycStepComplete = verificationStatus === 'approved';
   const kycDocumentsReady = Boolean(verification?.rc_document_url && verification?.cin_document_url);
   const kycPhoneReady = Boolean(verification?.phone_number || verification?.phone_verified);
   const kycTasks = [

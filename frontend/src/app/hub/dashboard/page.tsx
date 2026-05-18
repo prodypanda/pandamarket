@@ -276,7 +276,7 @@ export default function DashboardOverview() {
     {
       label: 'KYC approved',
       description: 'Verification status',
-      completed: Boolean(onboardingState.kyc?.completed || verification?.status === 'approved' || store?.is_verified),
+      completed: Boolean(verification?.status === 'approved' || store?.is_verified),
       href: '/hub/dashboard/onboarding#kyc',
     },
     {

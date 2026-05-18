@@ -204,12 +204,11 @@ export default function DashboardLayout({
           const storeHasCustomColors = hasCustomColors(store?.settings?.themeCustomization);
           const persistedStoreBasicsComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.store_basics?.completed);
           const persistedThemeComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.theme?.completed);
-          const persistedKycComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.kyc?.completed);
           steps[0] = Boolean(
             persistedStoreBasicsComplete || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
           );
           steps[1] = Boolean(persistedThemeComplete || store?.theme_id);
-          steps[2] = Boolean(persistedKycComplete || store?.is_verified);
+          steps[2] = Boolean(store?.is_verified);
           steps[4] = Boolean(store?.payment_config);
         }
         if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
