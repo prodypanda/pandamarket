@@ -15,6 +15,8 @@ import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
 
+const settingsTabIds: Tab[] = ['store', 'security', 'theme', 'domain', 'shipping', 'emails', 'payments'];
+
 type SocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';
 
 type SocialLinks = Record<SocialPlatform, string>;
@@ -72,6 +74,13 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
+
+  useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam && settingsTabIds.includes(tabParam as Tab)) {
+      setActiveTab(tabParam as Tab);
+    }
+  }, []);
 
   // Store settings
   const [storeName, setStoreName] = useState('');
