@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { fetchOnboardingState } from '@/lib/onboarding';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -42,6 +43,11 @@ interface CurrentUser {
   store_id?: string | null;
 }
 
+interface ThemeCustomizationState {
+  colorPresetId?: string | null;
+  customColors?: Record<string, string | null | undefined>;
+}
+
 interface CurrentStore {
   id?: string;
   name?: string;
@@ -54,6 +60,7 @@ interface CurrentStore {
     logo_light_url?: string | null;
     logo_dark_url?: string | null;
     store_description?: string | null;
+    themeCustomization?: ThemeCustomizationState | null;
   } | null;
   payment_config?: unknown;
   subdomain?: string | null;
@@ -73,6 +80,12 @@ function isAdminRole(role?: string) {
 
 function isVendorRole(role?: string) {
   return role === 'vendor' || role === 'Vendor';
+}
+
+function hasCustomColors(customization?: ThemeCustomizationState | null): boolean {
+  return Boolean(
+    customization?.colorPresetId || Object.values(customization?.customColors || {}).some((value) => Boolean(value)),
+  );
 }
 
 export default function DashboardLayout({
@@ -170,10 +183,11 @@ export default function DashboardLayout({
     async function fetchSetupProgress() {
       if (!authorized || isStoreSetupPage) return;
       try {
-        const [storeRes, productsRes, verificationRes] = await Promise.allSettled([
+        const [storeRes, productsRes, verificationRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
+          fetchOnboardingState(),
         ]);
         if (cancelled) return;
         const steps = [
@@ -187,7 +201,12 @@ export default function DashboardLayout({
         if (storeRes.status === 'fulfilled' && storeRes.value.ok) {
           const data = await storeRes.value.json();
           const store = data.store as CurrentStore | null;
-          steps[1] = Boolean(store?.settings?.logo_url || store?.settings?.store_description);
+          const storeHasLogo = Boolean(store?.settings?.logo_url || store?.settings?.logo_light_url || store?.settings?.logo_dark_url);
+          const storeHasCustomColors = hasCustomColors(store?.settings?.themeCustomization);
+          const persistedStoreBasicsComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.store_basics?.completed);
+          steps[1] = Boolean(
+            persistedStoreBasicsComplete || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
+          );
           steps[2] = Boolean(store?.theme_id);
           steps[5] = Boolean(store?.payment_config);
         }
