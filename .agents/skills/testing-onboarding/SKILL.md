@@ -1,6 +1,6 @@
 ---
 name: testing-onboarding
-description: Test PandaMarket seller onboarding, dashboard welcome dismissal, and store-basics settings persistence end-to-end.
+description: Test PandaMarket seller onboarding, dashboard welcome dismissal, store-basics settings persistence, and theme-selection onboarding end-to-end.
 ---
 
 ## Devin Secrets Needed
@@ -15,7 +15,7 @@ None for local seeded testing. Use the project-local vendor test account: `vendo
 4. If Next/Tailwind fail on missing Linux native optional packages, verify root optional dependencies are installed and clear `frontend/.next` before restarting the frontend. `npm install` at the repo root may be needed when optional dependencies are missing.
 5. Open `http://localhost:3000/login/seller?next=%2Fhub%2Fdashboard` in Chrome.
 
-## Seller onboarding test flow
+## Seller onboarding store-basics test flow
 
 1. Log in as `vendor.pro@test.tn` / `Test123!`.
 2. On `/hub/dashboard`, dismiss the welcome modal and verify `/api/pd/auth/onboarding` returns `welcome.dismissed: true` with `dismissed_at` populated.
@@ -30,9 +30,27 @@ None for local seeded testing. Use the project-local vendor test account: `vendo
 11. Patch `store_basics.completed` from `true` to `false` and confirm `completed_at` becomes `null`.
 12. Clean up any temporary store name or QA metadata used during testing.
 
+## Seller onboarding theme-selection test flow
+
+1. Capture the seeded vendor's `pd_store.theme_id`, `settings.themeCustomization`, `subdomain`, and `pd_user.onboarding_state` from PostgreSQL before browser assertions.
+2. Open `/hub/dashboard/onboarding#theme` and verify five launch steps plus Theme selection tasks: Theme template, Palette and layout, and Storefront preview.
+3. Confirm the theme preview title matches the resolved persisted theme. Missing or unknown `theme_id` should resolve to `Classic`.
+4. Confirm the reviewed count matches persisted state: template if `theme_id` exists, palette/layout if customization exists, preview if `subdomain` exists.
+5. Click `Open theme settings` and verify `/hub/dashboard/settings?tab=theme` renders the active `Thème` tab.
+6. Select a different visible theme template, save with `Appliquer le thème`, and verify `pd_store.theme_id` plus `onboarding_state.theme.completed=true` and metadata.
+7. Save a visible color preset/customization and verify `settings.themeCustomization.colorPresetId` matches `onboarding_state.theme.metadata.color_preset_id`.
+8. Return to `/hub/dashboard/onboarding#theme`, refresh, and verify the saved theme/customization remains reflected in the guide.
+9. For regression coverage, temporarily set local `pd_store.theme_id = NULL` and `onboarding_state.theme.completed=true` in PostgreSQL, then force a fresh browser document before reloading `/hub/dashboard/onboarding#theme`.
+10. Verify onboarding shows the `Classic` fallback and keeps the Theme selected wizard step complete; then verify settings selects `Classic`, not `Modern`.
+11. Click `Sync theme` from onboarding and confirm it preserves `theme.completed=true` while writing fallback metadata `theme_id: classic`.
+12. Open `/hub/dashboard` and verify the dashboard card plus sticky progress banner use five launch steps and respect persisted theme completion.
+13. Restore the original store theme/settings/onboarding state in PostgreSQL and verify cleanup.
+
 ## Known local caveats
 
 - Dashboard load may log an existing `GET /api/pd/orders/store?limit=200&date_from=...` 400 while onboarding tests still pass; treat it as separate from onboarding unless it becomes visible to the user.
 - Local rate limits can be triggered by many rapid UI/API checks. Keep endpoint checks to a small batch. A transient `Too many requests` banner does not fail a tab-deeplink check if the correct tab and form content still render.
+- Theme onboarding browser runs can exceed the local `apiRateLimit` (`100` requests per `60s`) because dashboard/settings pages load many widgets. If protected routes unexpectedly show seller login after many rapid navigations, wait one full API limiter window or restart the local backend, then retry once before treating it as a feature failure.
+- After direct PostgreSQL mutations used for edge-state testing, force a fresh document such as `about:blank` before loading the same onboarding route/hash. This avoids stale React state from the previous page instance.
 - If UI cleanup is rate-limited, restore local seed data directly in PostgreSQL and verify it. For the seeded vendor, reset the store name to `Atelier Médina` and remove QA-only onboarding metadata for `vendor.pro@test.tn`.
 - Keep screenshots/recordings full-screen for user evidence.
