@@ -62,6 +62,18 @@ interface ProductMetaState {
   total?: number | string | null;
 }
 
+interface ProductSummaryState {
+  id: string;
+  title: string;
+  status?: string | null;
+  price?: string | number | null;
+  inventory_quantity?: number | string | null;
+  thumbnail?: string | null;
+  category?: string | null;
+  marketplace_category_name?: string | null;
+  storefront_category_name?: string | null;
+}
+
 interface GuideTask {
   label: string;
   detail: string;
@@ -93,15 +105,21 @@ function getThemeId(value?: string | null): ThemeId {
   return value && Object.prototype.hasOwnProperty.call(themes, value) ? (value as ThemeId) : 'classic';
 }
 
+function getProductStatusLabel(status?: string | null): string {
+  return status ? status.replace(/_/g, ' ') : 'Not started';
+}
+
 export default function SellerOnboardingPage() {
   const [store, setStore] = useState<StoreState | null>(null);
   const [verification, setVerification] = useState<VerificationState | null>(null);
   const [productCount, setProductCount] = useState(0);
+  const [firstProduct, setFirstProduct] = useState<ProductSummaryState | null>(null);
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [loading, setLoading] = useState(true);
   const [syncingStoreBasics, setSyncingStoreBasics] = useState(false);
   const [syncingTheme, setSyncingTheme] = useState(false);
   const [syncingKyc, setSyncingKyc] = useState(false);
+  const [syncingFirstProduct, setSyncingFirstProduct] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -112,7 +130,7 @@ export default function SellerOnboardingPage() {
         const [storeRes, verificationRes, productsRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
-          fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/stores/me/products?limit=20', { credentials: 'include' }),
           fetchOnboardingState(),
         ]);
 
@@ -131,7 +149,9 @@ export default function SellerOnboardingPage() {
         if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
           const data = await productsRes.value.json();
           const meta = (data.meta || {}) as ProductMetaState;
+          const products = Array.isArray(data.data) ? (data.data as ProductSummaryState[]) : [];
           setProductCount(toNumber(meta.total));
+          setFirstProduct(products[0] || null);
         }
 
         if (onboardingRes.status === 'fulfilled') {
@@ -260,6 +280,40 @@ export default function SellerOnboardingPage() {
       : verificationStatus === 'rejected'
         ? 'Rejected'
         : 'Not submitted';
+  const firstProductStepComplete = productCount > 0;
+  const firstProductStatusLabel = getProductStatusLabel(firstProduct?.status);
+  const firstProductDetailsReady = Boolean(
+    firstProduct?.title?.trim() && Number.isFinite(Number(firstProduct.price)),
+  );
+  const firstProductTasks = [
+    {
+      label: 'Listing created',
+      detail: firstProductStepComplete
+        ? `${productCount} product${productCount === 1 ? '' : 's'} in your catalog.`
+        : 'Create the first product from the product studio.',
+      completed: firstProductStepComplete,
+      href: '/hub/dashboard/products?create=1',
+    },
+    {
+      label: 'Basics and pricing',
+      detail: firstProductDetailsReady
+        ? `${firstProduct?.title} has a saved price.`
+        : 'Add a title and valid TND price before saving.',
+      completed: firstProductDetailsReady,
+      href: firstProductStepComplete ? '/hub/dashboard/products' : '/hub/dashboard/products?create=1',
+    },
+    {
+      label: 'Status selected',
+      detail: firstProductStepComplete
+        ? `Current first product status: ${firstProductStatusLabel}.`
+        : 'Published products go live after verification; unverified stores enter pending approval.',
+      completed: Boolean(firstProduct?.status && firstProduct.status !== 'archived'),
+      href: firstProductStepComplete ? '/hub/dashboard/products' : '/hub/dashboard/products?create=1',
+    },
+  ];
+  const completedFirstProductTasks = firstProductTasks.filter((task) => task.completed).length;
+  const firstProductPercent = Math.round((completedFirstProductTasks / firstProductTasks.length) * 100);
+  const firstIncompleteProductTask = firstProductTasks.find((task) => !task.completed);
   const wizardSteps = useMemo<WizardStep[]>(() => [
     {
       id: 'store_basics',
@@ -289,8 +343,8 @@ export default function SellerOnboardingPage() {
       id: 'first_product',
       label: 'First product',
       description: 'Publish the first listing',
-      completed: productCount > 0,
-      href: '/hub/dashboard/products',
+      completed: firstProductStepComplete,
+      href: '/hub/dashboard/onboarding#first-product',
       icon: Package,
     },
     {
@@ -301,7 +355,7 @@ export default function SellerOnboardingPage() {
       href: '/hub/dashboard/payment-config',
       icon: CreditCard,
     },
-  ], [kycStepComplete, onboardingState.store_basics?.completed, productCount, store, storeBasicsComplete, themeStepComplete]);
+  ], [firstProductStepComplete, kycStepComplete, onboardingState.store_basics?.completed, store, storeBasicsComplete, themeStepComplete]);
   const completedWizardSteps = wizardSteps.filter((step) => step.completed).length;
   const wizardPercent = Math.round((completedWizardSteps / wizardSteps.length) * 100);
 
@@ -367,6 +421,31 @@ export default function SellerOnboardingPage() {
       // Ignore transient sync failures; the guide reloads persisted state on the next visit.
     } finally {
       setSyncingKyc(false);
+    }
+  }
+
+  async function syncFirstProductProgress() {
+    setSyncingFirstProduct(true);
+    try {
+      const nextState = await updateOnboardingStep('first_product', {
+        completed: firstProductStepComplete,
+        metadata: {
+          product_count: productCount,
+          first_product_id: firstProduct?.id || null,
+          first_product_title: firstProduct?.title || null,
+          first_product_status: firstProduct?.status || null,
+          first_product_price: firstProduct?.price || null,
+          first_product_inventory: firstProduct?.inventory_quantity || null,
+          has_thumbnail: Boolean(firstProduct?.thumbnail),
+          category: firstProduct?.marketplace_category_name || firstProduct?.category || null,
+          storefront_category: firstProduct?.storefront_category_name || null,
+        },
+      });
+      setOnboardingState(nextState);
+    } catch {
+      // Ignore transient sync failures; the guide reloads persisted state on the next visit.
+    } finally {
+      setSyncingFirstProduct(false);
     }
   }
 
@@ -649,6 +728,81 @@ export default function SellerOnboardingPage() {
               </div>
             </div>
           </section>
+
+          <section id="first-product" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Next guided step</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">First product</h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                  Create the first catalog item, confirm its price and visibility status, then use it as the launch checklist for products.
+                </p>
+              </div>
+              <div className={`rounded-2xl px-4 py-3 text-sm font-black ${firstProductStepComplete ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                {completedFirstProductTasks}/{firstProductTasks.length} ready
+              </div>
+            </div>
+
+            <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#B91C1C] transition-all" style={{ width: `${firstProductPercent}%` }} />
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[280px_1fr]">
+              <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-amber-50 via-white to-slate-50 p-5 shadow-sm">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#B91C1C]/10 text-[#B91C1C]">
+                  <Package className="h-6 w-6" />
+                </div>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-amber-700">Catalog status</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">{productCount} product{productCount === 1 ? '' : 's'}</h3>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
+                  {firstProductStepComplete
+                    ? `${firstProduct?.title || 'Your first product'} is saved with status ${firstProductStatusLabel}.`
+                    : 'Start with one complete listing; you can add images, categories, SEO, variants, and wholesale tiers later.'}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {firstProductTasks.map((task) => (
+                  <Link
+                    key={task.label}
+                    href={task.href}
+                    className={`flex min-h-40 flex-col justify-between rounded-2xl border p-4 transition hover:border-[#B91C1C]/25 hover:bg-amber-50/40 ${task.completed ? 'border-emerald-100 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}
+                  >
+                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${task.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {task.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-slate-950">{task.label}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{task.detail}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-950">Product action</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {firstIncompleteProductTask ? `Review: ${firstIncompleteProductTask.label}.` : 'First product is ready. Continue with payment and shipping setup.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href={firstProductStepComplete ? '/hub/dashboard/products' : '/hub/dashboard/products?create=1'} className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white hover:bg-[#991B1B]">
+                  {firstProductStepComplete ? 'Open products' : 'Create product'} <ArrowRight className="h-4 w-4" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={syncFirstProductProgress}
+                  disabled={syncingFirstProduct}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:border-[#B91C1C]/30 hover:text-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {syncingFirstProduct ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Sync product
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className="space-y-4">
@@ -669,6 +823,7 @@ export default function SellerOnboardingPage() {
               <li>Pick colors that keep buttons and product cards readable.</li>
               <li>Preview the storefront before moving to KYC and products.</li>
               <li>Use the KYC section to track documents, phone contact, and review status.</li>
+              <li>Create at least one product before configuring payments and shipping.</li>
             </ul>
           </div>
         </aside>

@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
+import { updateOnboardingStep } from '@/lib/onboarding';
 import { getHubProductHref } from '@/lib/product-links';
 import { Edit3, Eye, ImageIcon, Images, Loader2, Package, Plus, Search, Sparkles, Tags, Trash2, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -256,6 +257,25 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
   }
 }
 
+function syncFirstProductOnboarding(productTotal: number, currentProducts: Product[]) {
+  const primaryProduct = currentProducts[0] || null;
+  updateOnboardingStep('first_product', {
+    completed: productTotal > 0,
+    metadata: {
+      product_count: productTotal,
+      first_product_id: primaryProduct?.id || null,
+      first_product_title: primaryProduct?.title || null,
+      first_product_status: primaryProduct?.status || null,
+      first_product_price: primaryProduct?.price || null,
+      first_product_inventory: primaryProduct?.inventory_quantity || null,
+      has_thumbnail: Boolean(primaryProduct?.thumbnail),
+      category: primaryProduct?.marketplace_category_name || primaryProduct?.category || null,
+      storefront_category: primaryProduct?.storefront_category_name || null,
+      updated_from: 'products_page',
+    },
+  }).catch(() => undefined);
+}
+
 export default function ProductsPage() {
   const { t } = useLocale();
   const [products, setProducts] = useState<Product[]>([]);
@@ -311,9 +331,12 @@ export default function ProductsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setProducts(data.data || []);
+        const nextProducts = Array.isArray(data.data) ? (data.data as Product[]) : [];
+        const nextTotal = Number(data.meta?.total || 0);
+        setProducts(nextProducts);
         setTotalPages(data.meta?.total_pages || 1);
-        setTotalProducts(data.meta?.total || 0);
+        setTotalProducts(nextTotal);
+        syncFirstProductOnboarding(nextTotal, nextProducts);
       } else {
         setError(await getErrorMessage(res, 'Failed to load products'));
       }
@@ -358,6 +381,13 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') === '1' || params.get('new') === '1') {
+      setShowCreate(true);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStore();
