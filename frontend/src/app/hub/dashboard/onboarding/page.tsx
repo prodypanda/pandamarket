@@ -280,7 +280,7 @@ export default function SellerOnboardingPage() {
     setSyncingTheme(true);
     try {
       const nextState = await updateOnboardingStep('theme', {
-        completed: Boolean(store?.theme_id),
+        completed: themeStepComplete,
         metadata: {
           theme_id: activeThemeId,
           theme_name: activeTheme.name,
