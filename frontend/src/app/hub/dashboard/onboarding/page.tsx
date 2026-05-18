@@ -283,7 +283,11 @@ export default function SellerOnboardingPage() {
   const firstProductStepComplete = productCount > 0;
   const firstProductStatusLabel = getProductStatusLabel(firstProduct?.status);
   const firstProductDetailsReady = Boolean(
-    firstProduct?.title?.trim() && Number.isFinite(Number(firstProduct.price)),
+    firstProduct?.title?.trim()
+      && firstProduct.price !== undefined
+      && firstProduct.price !== null
+      && firstProduct.price !== ''
+      && Number.isFinite(Number(firstProduct.price)),
   );
   const firstProductTasks = [
     {

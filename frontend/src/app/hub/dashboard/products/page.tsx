@@ -336,7 +336,9 @@ export default function ProductsPage() {
         setProducts(nextProducts);
         setTotalPages(data.meta?.total_pages || 1);
         setTotalProducts(nextTotal);
-        syncFirstProductOnboarding(nextTotal, nextProducts);
+        if (page === 1) {
+          syncFirstProductOnboarding(nextTotal, nextProducts);
+        }
       } else {
         setError(await getErrorMessage(res, 'Failed to load products'));
       }
