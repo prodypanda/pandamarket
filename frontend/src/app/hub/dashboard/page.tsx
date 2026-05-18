@@ -270,8 +270,8 @@ export default function DashboardOverview() {
     {
       label: 'Theme selected',
       description: 'Storefront design',
-      completed: Boolean(store?.theme_id),
-      href: '/hub/dashboard/settings',
+      completed: Boolean(onboardingState.theme?.completed || store?.theme_id),
+      href: '/hub/dashboard/onboarding#theme',
     },
     {
       label: 'KYC approved',

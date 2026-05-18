@@ -17,8 +17,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '@/lib/onboarding';
+import { themes, type ThemeId } from '@/lib/themes';
 
 interface ThemeCustomizationState {
+  layoutVariation?: string | null;
+  gridDensity?: string | null;
+  heroStyle?: string | null;
   colorPresetId?: string | null;
   customColors?: Record<string, string | null | undefined>;
 }
@@ -77,13 +81,18 @@ function toNumber(value: unknown): number {
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
+function getThemeId(value?: string | null): ThemeId {
+  return value && Object.prototype.hasOwnProperty.call(themes, value) ? (value as ThemeId) : 'classic';
+}
+
 export default function SellerOnboardingPage() {
   const [store, setStore] = useState<StoreState | null>(null);
   const [verification, setVerification] = useState<VerificationState | null>(null);
   const [productCount, setProductCount] = useState(0);
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [syncingStoreBasics, setSyncingStoreBasics] = useState(false);
+  const [syncingTheme, setSyncingTheme] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -167,6 +176,41 @@ export default function SellerOnboardingPage() {
   const storeBasicsPercent = Math.round((completedStoreBasicsTasks / storeBasicsTasks.length) * 100);
   const firstIncompleteTask = storeBasicsTasks.find((task) => !task.completed);
   const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}` : '/hub';
+  const activeThemeId = getThemeId(store?.theme_id);
+  const activeTheme = themes[activeThemeId];
+  const activeThemePreset = activeTheme.colorPresets.find(
+    (preset) => preset.id === store?.settings?.themeCustomization?.colorPresetId,
+  ) || activeTheme.colorPresets[0];
+  const hasAdvancedThemeCustomization = Boolean(
+    store?.settings?.themeCustomization?.layoutVariation ||
+      store?.settings?.themeCustomization?.gridDensity ||
+      store?.settings?.themeCustomization?.heroStyle ||
+      hasCustomColors(store?.settings?.themeCustomization),
+  );
+  const themeTasks = [
+    {
+      label: 'Theme template',
+      detail: store?.theme_id ? `${activeTheme.name} is active.` : 'Choose one of the storefront designs.',
+      completed: Boolean(store?.theme_id),
+      href: '/hub/dashboard/settings?tab=theme',
+    },
+    {
+      label: 'Palette and layout',
+      detail: hasAdvancedThemeCustomization ? 'Theme customization has been reviewed.' : 'Review presets, layout, hero style, and product density.',
+      completed: hasAdvancedThemeCustomization,
+      href: '/hub/dashboard/settings?tab=theme',
+    },
+    {
+      label: 'Storefront preview',
+      detail: store?.subdomain ? 'Open the storefront after applying the theme.' : 'Add a subdomain before previewing the storefront.',
+      completed: Boolean(store?.subdomain),
+      href: storefrontHref,
+    },
+  ];
+  const completedThemeTasks = themeTasks.filter((task) => task.completed).length;
+  const themePercent = Math.round((completedThemeTasks / themeTasks.length) * 100);
+  const themeStepComplete = Boolean(onboardingState.theme?.completed || store?.theme_id);
+  const firstIncompleteThemeTask = themeTasks.find((task) => !task.completed);
   const wizardSteps = useMemo<WizardStep[]>(() => [
     {
       id: 'store_basics',
@@ -180,8 +224,8 @@ export default function SellerOnboardingPage() {
       id: 'theme',
       label: 'Theme selected',
       description: 'Choose the storefront design',
-      completed: Boolean(store?.theme_id),
-      href: '/hub/dashboard/settings?tab=theme',
+      completed: themeStepComplete,
+      href: '/hub/dashboard/onboarding#theme',
       icon: Palette,
     },
     {
@@ -208,12 +252,12 @@ export default function SellerOnboardingPage() {
       href: '/hub/dashboard/payment-config',
       icon: CreditCard,
     },
-  ], [onboardingState.store_basics?.completed, productCount, store, storeBasicsComplete, verification?.status]);
+  ], [onboardingState.store_basics?.completed, productCount, store, storeBasicsComplete, themeStepComplete, verification?.status]);
   const completedWizardSteps = wizardSteps.filter((step) => step.completed).length;
   const wizardPercent = Math.round((completedWizardSteps / wizardSteps.length) * 100);
 
   async function syncStoreBasicsProgress() {
-    setSyncing(true);
+    setSyncingStoreBasics(true);
     try {
       const nextState = await updateOnboardingStep('store_basics', {
         completed: storeBasicsComplete,
@@ -228,7 +272,27 @@ export default function SellerOnboardingPage() {
     } catch {
       // Ignore transient sync failures; the guide reloads persisted state on the next visit.
     } finally {
-      setSyncing(false);
+      setSyncingStoreBasics(false);
+    }
+  }
+
+  async function syncThemeProgress() {
+    setSyncingTheme(true);
+    try {
+      const nextState = await updateOnboardingStep('theme', {
+        completed: Boolean(store?.theme_id),
+        metadata: {
+          theme_id: activeThemeId,
+          theme_name: activeTheme.name,
+          color_preset_id: store?.settings?.themeCustomization?.colorPresetId || activeThemePreset?.id || null,
+          has_advanced_customization: hasAdvancedThemeCustomization,
+        },
+      });
+      setOnboardingState(nextState);
+    } catch {
+      // Ignore transient sync failures; the guide reloads persisted state on the next visit.
+    } finally {
+      setSyncingTheme(false);
     }
   }
 
@@ -288,7 +352,8 @@ export default function SellerOnboardingPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-6">
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Current step</p>
@@ -337,22 +402,101 @@ export default function SellerOnboardingPage() {
                   Open task <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
-                <Link href="/hub/dashboard/settings?tab=theme" className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white hover:bg-[#991B1B]">
+                <Link href="/hub/dashboard/onboarding#theme" className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white hover:bg-[#991B1B]">
                   Continue setup <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
               <button
                 type="button"
                 onClick={syncStoreBasicsProgress}
-                disabled={syncing}
+                disabled={syncingStoreBasics}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:border-[#B91C1C]/30 hover:text-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {syncingStoreBasics ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Sync progress
               </button>
             </div>
           </div>
-        </section>
+          </section>
+
+          <section id="theme" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Next guided step</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">Theme selection</h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                  Pick the storefront design, review the palette and layout choices, then preview the public shop before moving to KYC.
+                </p>
+              </div>
+              <div className={`rounded-2xl px-4 py-3 text-sm font-black ${themeStepComplete ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                {completedThemeTasks}/{themeTasks.length} reviewed
+              </div>
+            </div>
+
+            <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#B91C1C] transition-all" style={{ width: `${themePercent}%` }} />
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[280px_1fr]">
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm">
+                <div className="h-24" style={{ backgroundColor: activeThemePreset?.headerBg || '#FFFFFF' }} />
+                <div className="p-5" style={{ backgroundColor: activeThemePreset?.background || '#F8FAFC' }}>
+                  <div className="flex items-center gap-2">
+                    {[activeThemePreset?.primary || '#16C784', activeThemePreset?.accent || '#B91C1C', activeThemePreset?.secondary || '#F9FAFB'].map((color, index) => (
+                      <span key={`${color}-${index}`} className="h-6 w-6 rounded-full border border-white shadow-sm" style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                  <h3 className="mt-5 text-lg font-black" style={{ color: activeThemePreset?.text || '#111827' }}>{activeTheme.name}</h3>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                    Storefront template with {activeTheme.layout.productGrid} product grid and {activeTheme.typography.fontFamily} typography.
+                  </p>
+                </div>
+                <div className="h-10" style={{ backgroundColor: activeThemePreset?.footerBg || '#1A1A2E' }} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {themeTasks.map((task) => (
+                  <Link
+                    key={task.label}
+                    href={task.href}
+                    className={`flex min-h-40 flex-col justify-between rounded-2xl border p-4 transition hover:border-[#B91C1C]/25 hover:bg-amber-50/40 ${task.completed ? 'border-emerald-100 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}
+                  >
+                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${task.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {task.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-slate-950">{task.label}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{task.detail}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-950">Theme action</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {firstIncompleteThemeTask ? `Review: ${firstIncompleteThemeTask.label}.` : 'Theme step is ready. Continue with KYC and your first product.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/hub/dashboard/settings?tab=theme" className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white hover:bg-[#991B1B]">
+                  Open theme settings <ArrowRight className="h-4 w-4" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={syncThemeProgress}
+                  disabled={syncingTheme}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:border-[#B91C1C]/30 hover:text-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {syncingTheme ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Sync theme
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <aside className="space-y-4">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
