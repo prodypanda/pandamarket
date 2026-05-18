@@ -322,8 +322,9 @@ export default function ProductsPage() {
     }
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
+  const fetchProducts = useCallback(async (options?: { showLoading?: boolean }) => {
+    const shouldShowLoading = options?.showLoading !== false;
+    if (shouldShowLoading) setLoading(true);
     setError('');
     try {
       const res = await fetchWithCsrf(`/api/pd/stores/me/products?page=${page}&limit=20`, {
@@ -345,7 +346,7 @@ export default function ProductsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
     } finally {
-      setLoading(false);
+      if (shouldShowLoading) setLoading(false);
     }
   }, [page]);
 
@@ -1058,7 +1059,9 @@ export default function ProductsPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        await fetchProducts();
+        setProducts((current) => current.filter((product) => product.id !== productId));
+        setTotalProducts((current) => Math.max(0, current - 1));
+        await fetchProducts({ showLoading: false });
       } else {
         setError(await getErrorMessage(res, 'Failed to delete product'));
       }
