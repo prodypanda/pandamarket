@@ -225,6 +225,8 @@ export default function SellerOnboardingPage() {
         },
       });
       setOnboardingState(nextState);
+    } catch {
+      // Ignore transient sync failures; the guide reloads persisted state on the next visit.
     } finally {
       setSyncing(false);
     }
