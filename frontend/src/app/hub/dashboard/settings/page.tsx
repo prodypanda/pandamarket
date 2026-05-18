@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const [togglingMaintenance, setTogglingMaintenance] = useState(false);
 
   // Theme
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('modern');
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('classic');
   const [themeCustomization, setThemeCustomization] = useState<ThemeCustomization>({});
 
   // Domain
@@ -153,7 +153,7 @@ export default function SettingsPage() {
         setLogoLightUrl(store.settings?.logo_light_url || '');
         setLogoDarkUrl(store.settings?.logo_dark_url || '');
         setMarketplaceHeaderImageUrl(store.settings?.marketplace_header_image_url || '');
-        setSelectedTheme((store.theme_id || 'modern') as ThemeId);
+        setSelectedTheme((store.theme_id || 'classic') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
         setShippingMode(store.shipping_mode || 'self_managed');
@@ -466,7 +466,15 @@ export default function SettingsPage() {
         body: JSON.stringify({ theme_id: selectedTheme }),
       });
       if (res.ok) {
-        showFeedback('Thème mis à jour');
+        const nextOnboardingState = await updateOnboardingStep('theme', {
+          completed: true,
+          metadata: {
+            theme_id: selectedTheme,
+            theme_name: themes[selectedTheme].name,
+          },
+        }).catch(() => null);
+        if (nextOnboardingState) setOnboardingState(nextOnboardingState);
+        showFeedback('Thème mis à jour · étape Theme complétée');
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
@@ -493,7 +501,7 @@ export default function SettingsPage() {
           customization.colorPresetId || Object.values(customization.customColors || {}).some(Boolean),
         );
         const nextStoreBasicsComplete = Boolean(storeName.trim() && subdomain.trim() && hasLogo && nextHasCustomColors);
-        const nextOnboardingState = await updateOnboardingStep('store_basics', {
+        const nextStoreBasicsState = await updateOnboardingStep('store_basics', {
           completed: nextStoreBasicsComplete,
           metadata: {
             store_name: storeName.trim(),
@@ -502,8 +510,24 @@ export default function SettingsPage() {
             has_custom_colors: nextHasCustomColors,
           },
         }).catch(() => null);
-        if (nextOnboardingState) setOnboardingState(nextOnboardingState);
-        showFeedback(nextStoreBasicsComplete ? 'Personnalisation sauvegardée · étape Store basics complétée' : 'Personnalisation sauvegardée');
+        const nextThemeState = await updateOnboardingStep('theme', {
+          completed: true,
+          metadata: {
+            theme_id: selectedTheme,
+            theme_name: themes[selectedTheme].name,
+            color_preset_id: customization.colorPresetId || null,
+            has_custom_colors: nextHasCustomColors,
+            layout_variation: customization.layoutVariation || null,
+            grid_density: customization.gridDensity || null,
+            hero_style: customization.heroStyle || null,
+          },
+        }).catch(() => null);
+        if (nextThemeState) {
+          setOnboardingState(nextThemeState);
+        } else if (nextStoreBasicsState) {
+          setOnboardingState(nextStoreBasicsState);
+        }
+        showFeedback(nextStoreBasicsComplete ? 'Personnalisation sauvegardée · étapes Store basics et Theme mises à jour' : 'Personnalisation sauvegardée · étape Theme mise à jour');
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
