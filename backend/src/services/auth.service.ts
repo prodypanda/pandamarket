@@ -48,6 +48,7 @@ export interface UserRow {
   two_factor_recovery_codes?: string[] | null;
   two_factor_enabled_at?: Date | null;
   two_factor_last_used_at?: Date | null;
+  onboarding_state?: Record<string, unknown> | null;
 }
 
 export interface AuthTokens {
@@ -188,7 +189,7 @@ export class AuthService {
       `INSERT INTO pd_user
         (id, email, password_hash, first_name, last_name, role, phone)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone`,
+       RETURNING id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone, onboarding_state`,
       [id, email, passwordHash, opts.first_name, opts.last_name, role, opts.phone ?? null],
     );
 
@@ -237,7 +238,7 @@ export class AuthService {
     const { rows } = await query<UserRow>(
       `SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone,
               two_factor_enabled, two_factor_secret, two_factor_recovery_codes,
-              two_factor_enabled_at, two_factor_last_used_at
+              two_factor_enabled_at, two_factor_last_used_at, onboarding_state
        FROM pd_user
        WHERE email = $1`,
       [normalizedEmail],
@@ -354,7 +355,7 @@ export class AuthService {
         [tokenRow.id],
       );
       const { rows: userRows } = await client.query<UserRow>(
-        'SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone FROM pd_user WHERE id = $1',
+        'SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone, onboarding_state FROM pd_user WHERE id = $1',
         [payload.sub],
       );
       const user = userRows[0];

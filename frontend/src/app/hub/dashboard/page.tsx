@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../lib/onboarding';
 
 interface WalletData {
   balance?: number | string | null;
@@ -159,6 +160,7 @@ export default function DashboardOverview() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [verification, setVerification] = useState<VerificationData | null>(null);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [loading, setLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
@@ -170,13 +172,14 @@ export default function DashboardOverview() {
         dateFrom.setDate(dateFrom.getDate() - 30);
         const dateFromStr = dateFrom.toISOString().slice(0, 10);
 
-        const [walletRes, productsRes, ordersRes, chartOrdersRes, storeRes, verificationRes] = await Promise.allSettled([
+        const [walletRes, productsRes, ordersRes, chartOrdersRes, storeRes, verificationRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/orders/store?limit=5', { credentials: 'include' }),
           fetchWithCsrf(`/api/pd/orders/store?limit=200&date_from=${dateFromStr}`, { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
+          fetchOnboardingState(),
         ]);
 
         if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
@@ -209,6 +212,10 @@ export default function DashboardOverview() {
           const data = await verificationRes.value.json();
           setVerification(data.verification || null);
         }
+
+        if (onboardingRes.status === 'fulfilled') {
+          setOnboardingState(onboardingRes.value);
+        }
       } catch {
         // ignore
       } finally {
@@ -220,16 +227,19 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     if (loading || !store?.id) return;
-    if (!hasSeenWelcomeModal(store.id)) {
+    if (!onboardingState.welcome?.dismissed && !hasSeenWelcomeModal(store.id)) {
       setShowWelcomeModal(true);
     }
-  }, [loading, store?.id]);
+  }, [loading, onboardingState.welcome?.dismissed, store?.id]);
 
   const dismissWelcomeModal = () => {
     if (store?.id) {
       markWelcomeModalSeen(store.id);
     }
     setShowWelcomeModal(false);
+    updateOnboardingStep('welcome', { dismissed: true })
+      .then(setOnboardingState)
+      .catch(() => undefined);
   };
 
   const salesData = useMemo(() => buildSalesChart(allOrders), [allOrders]);
@@ -240,8 +250,8 @@ export default function DashboardOverview() {
   const setupSteps = [
     {
       label: 'Store basics',
-      description: 'Logo and description',
-      completed: Boolean(store?.settings?.logo_url || store?.settings?.store_description),
+      description: 'Name, subdomain, logos, colors',
+      completed: Boolean(onboardingState.store_basics?.completed || store?.settings?.logo_url || store?.settings?.store_description),
       href: '/hub/dashboard/settings',
     },
     {
