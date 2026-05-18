@@ -283,7 +283,7 @@ export default function DashboardOverview() {
       label: 'First product',
       description: 'Catalog is ready',
       completed: productCount > 0,
-      href: '/hub/dashboard/products',
+      href: '/hub/dashboard/onboarding#first-product',
     },
     {
       label: 'Payment configured',
