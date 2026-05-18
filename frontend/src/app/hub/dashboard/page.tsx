@@ -41,7 +41,13 @@ interface StoreInfo {
   payment_config?: unknown;
   settings?: {
     logo_url?: string | null;
+    logo_light_url?: string | null;
+    logo_dark_url?: string | null;
     store_description?: string | null;
+    themeCustomization?: {
+      colorPresetId?: string | null;
+      customColors?: Record<string, string | null | undefined>;
+    } | null;
   } | null;
 }
 
@@ -247,12 +253,19 @@ export default function DashboardOverview() {
   const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
   const totalOrders30d = useMemo(() => salesData.reduce((s, d) => s + d.count, 0), [salesData]);
   const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}` : '/hub';
+  const storeHasLogo = Boolean(store?.settings?.logo_url || store?.settings?.logo_light_url || store?.settings?.logo_dark_url);
+  const storeHasCustomColors = Boolean(
+    store?.settings?.themeCustomization?.colorPresetId || Object.values(store?.settings?.themeCustomization?.customColors || {}).some(Boolean),
+  );
+  const storeBasicsCompleted = Boolean(
+    onboardingState.store_basics?.completed || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
+  );
   const setupSteps = [
     {
       label: 'Store basics',
       description: 'Name, subdomain, logos, colors',
-      completed: Boolean(onboardingState.store_basics?.completed || store?.settings?.logo_url || store?.settings?.store_description),
-      href: '/hub/dashboard/settings',
+      completed: storeBasicsCompleted,
+      href: '/hub/dashboard/onboarding',
     },
     {
       label: 'Theme selected',

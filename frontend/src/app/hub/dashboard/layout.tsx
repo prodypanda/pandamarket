@@ -212,6 +212,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
+    { name: 'Setup guide', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
     { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
