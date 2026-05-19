@@ -2175,7 +2175,8 @@ router.delete(
     const roleFilter = log_type === 'buyer' ? "'customer'" : log_type === 'seller' ? "'vendor'" : "'admin', 'super_admin'";
 
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - ($1 || ' days')::interval AND actor_role IN (${roleFilter})`,
+      [older_than_days]
     );
 
     res.status(200).json({ deleted: rowCount });
