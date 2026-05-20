@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CalendarDays, ExternalLink, Grid3X3, MapPin, Package, Search, ShieldCheck, Star, Store, Truck } from 'lucide-react';
 import { HubNavbar } from '../hub/HubNavbar';
@@ -144,15 +145,15 @@ export function MarketplaceSellerPage({
 }: MarketplaceSellerPageProps) {
   const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
   const isAliExpress = classes.isAliExpress;
-  const visibleCategories = categories.filter((category) => !category.is_default);
-  const filteredProducts = selectedCategorySlug
+  const visibleCategories = useMemo(() => categories.filter((category) => !category.is_default), [categories]);
+  const filteredProducts = useMemo(() => selectedCategorySlug
     ? products.filter((product) => slugSegment(product.marketplace_category_slug || product.category) === selectedCategorySlug)
-    : products;
-  const categoryCounts = products.reduce<Record<string, number>>((acc, product) => {
+    : products, [products, selectedCategorySlug]);
+  const categoryCounts = useMemo(() => products.reduce<Record<string, number>>((acc, product) => {
     const slug = slugSegment(product.marketplace_category_slug || product.category);
     acc[slug] = (acc[slug] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [products]);
   const selectedCategory = visibleCategories.find((category) => category.slug === selectedCategorySlug);
   const logoUrl = selectLogoForSurface({
     logo_url: store.settings?.logo_url,
