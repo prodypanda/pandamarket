@@ -447,7 +447,7 @@ export default function FinancialPage() {
   ];
 
   const kpis = [
-    { label: 'Available wallet', value: formatMoney(wallet?.balance, currency), icon: Wallet, tone: 'from-[#3B0D0D] to-[#B91C1C] text-white' },
+    { label: 'Available wallet', value: formatMoney(wallet?.balance, currency), icon: Wallet, tone: 'bg-gradient-to-br from-[#3B0D0D] to-[#B91C1C] text-white' },
     { label: 'Pending release', value: formatMoney(wallet?.pending_balance, currency), icon: Banknote, tone: 'bg-white text-gray-950' },
     { label: '30d revenue', value: formatMoney(orderSummary?.revenue_30d, currency), icon: ArrowDownLeft, tone: 'bg-white text-gray-950' },
     { label: 'Withdrawn total', value: formatMoney(wallet?.total_withdrawn, currency), icon: ArrowUpRight, tone: 'bg-white text-gray-950' },
@@ -539,10 +539,10 @@ export default function FinancialPage() {
                 Export orders
               </button>
             </div>
-            <div className="mt-6 flex h-72 items-end gap-2 rounded-3xl bg-gradient-to-b from-amber-50 to-white p-4">
+            <div className="mt-6 flex h-72 items-end gap-2 rounded-3xl bg-white p-4 ring-1 ring-gray-100">
               {monthlyBars.length > 0 ? monthlyBars.map((bar) => (
                 <div key={bar.label} className="flex h-full flex-1 flex-col justify-end gap-2 text-center">
-                  <div className="rounded-t-2xl bg-[#B91C1C] shadow-lg shadow-red-900/10" style={{ height: `${bar.percentage}%` }} />
+                  <div className="rounded-t-2xl bg-gradient-to-t from-emerald-600 to-emerald-300 shadow-lg shadow-emerald-900/10" style={{ height: `${bar.percentage}%` }} />
                   <span className="text-[10px] font-bold text-gray-400">{bar.label}</span>
                 </div>
               )) : (

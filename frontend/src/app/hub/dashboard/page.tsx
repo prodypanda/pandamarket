@@ -19,6 +19,7 @@ import {
   Store,
   Wallet,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -85,6 +86,49 @@ const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; label: str
   refunded: { bg: 'bg-violet-50', text: 'text-violet-700', label: 'Remboursé' },
 };
 
+const STORE_STATUS_BADGES: Record<string, { label: string; className: string; dotClassName: string }> = {
+  verified: {
+    label: 'Live',
+    className: 'bg-emerald-500/20 text-emerald-200',
+    dotClassName: 'bg-emerald-300',
+  },
+  maintenance: {
+    label: 'Maintenance',
+    className: 'bg-amber-500/20 text-amber-200',
+    dotClassName: 'bg-amber-300',
+  },
+  unverified: {
+    label: 'Pending verification',
+    className: 'bg-slate-500/30 text-slate-200',
+    dotClassName: 'bg-slate-300',
+  },
+  suspended: {
+    label: 'Suspended',
+    className: 'bg-red-500/20 text-red-200',
+    dotClassName: 'bg-red-300',
+  },
+};
+
+function getWelcomeStorageKey(storeId: string): string {
+  return `pd_seller_welcome_seen:${storeId}`;
+}
+
+function hasSeenWelcomeModal(storeId: string): boolean {
+  try {
+    return window.localStorage.getItem(getWelcomeStorageKey(storeId)) === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function markWelcomeModalSeen(storeId: string): void {
+  try {
+    window.localStorage.setItem(getWelcomeStorageKey(storeId), 'true');
+  } catch {
+    // Ignore storage failures so dismissing the modal never breaks the dashboard.
+  }
+}
+
 /** Build last-30-day sales data from orders */
 function buildSalesChart(orders: Order[]): DailySales[] {
   const days: DailySales[] = [];
@@ -116,6 +160,7 @@ export default function DashboardOverview() {
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [verification, setVerification] = useState<VerificationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -173,6 +218,20 @@ export default function DashboardOverview() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (loading || !store?.id) return;
+    if (!hasSeenWelcomeModal(store.id)) {
+      setShowWelcomeModal(true);
+    }
+  }, [loading, store?.id]);
+
+  const dismissWelcomeModal = () => {
+    if (store?.id) {
+      markWelcomeModalSeen(store.id);
+    }
+    setShowWelcomeModal(false);
+  };
+
   const salesData = useMemo(() => buildSalesChart(allOrders), [allOrders]);
   const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
   const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
@@ -212,6 +271,7 @@ export default function DashboardOverview() {
   ];
   const completedSetupSteps = setupSteps.filter((step) => step.completed).length;
   const setupPercent = Math.round((completedSetupSteps / setupSteps.length) * 100);
+  const storeStatusBadge = store?.status ? STORE_STATUS_BADGES[store.status] : null;
 
   const stats = [
     {
@@ -246,6 +306,58 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {showWelcomeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="seller-welcome-title" className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-950/30">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[#B91C1C]/10 blur-3xl" />
+            <div className="relative p-6 sm:p-8">
+              <button
+                type="button"
+                onClick={dismissWelcomeModal}
+                className="absolute right-5 top-5 rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
+                aria-label="Fermer le message de bienvenue"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C]/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#B91C1C]">
+                <Store className="h-4 w-4" />
+                Bienvenue vendeur
+              </div>
+              <h2 id="seller-welcome-title" className="mt-4 text-3xl font-black tracking-tight text-gray-900">
+                Lancez {store?.name || 'votre boutique'} en quelques étapes
+              </h2>
+              <p className="mt-3 text-sm font-semibold leading-6 text-gray-500">
+                Votre espace vendeur est prêt. Suivez cette checklist pour préparer votre vitrine, publier vos premiers produits, configurer les paiements et passer votre boutique en ligne.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {setupSteps.map((step, index) => (
+                  <Link
+                    key={step.label}
+                    href={step.href}
+                    onClick={dismissWelcomeModal}
+                    className="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#B91C1C]/30 hover:bg-white hover:shadow-md"
+                  >
+                    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black ${step.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-500 ring-1 ring-gray-200'}`}>
+                      {step.completed ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-gray-900 group-hover:text-[#B91C1C]">{step.label}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-gray-500">{step.description}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-bold text-gray-400">Retrouvez ces étapes dans la carte Launch readiness du dashboard.</p>
+                <button type="button" onClick={dismissWelcomeModal} className="inline-flex items-center justify-center rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]">
+                  Commencer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
@@ -265,9 +377,10 @@ export default function DashboardOverview() {
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
                 <Store className="h-4 w-4" />
                 Seller command center
-                {store?.status === 'active' && (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Live
+                {storeStatusBadge && (
+                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${storeStatusBadge.className}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${storeStatusBadge.dotClassName} ${store?.status === 'verified' ? 'animate-pulse' : ''}`} />
+                    {storeStatusBadge.label}
                   </span>
                 )}
               </div>
@@ -415,7 +528,7 @@ export default function DashboardOverview() {
                   return (
                     <div
                       key={day.date}
-                      className="flex-1 group relative"
+                      className="flex h-full flex-1 items-end group relative"
                       title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
                     >
                       <div

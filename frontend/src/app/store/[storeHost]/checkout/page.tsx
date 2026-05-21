@@ -21,6 +21,8 @@ interface StoreData {
   id: string;
   name: string;
   theme_id: ThemeId;
+  status?: string | null;
+  is_verified?: boolean | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
     logo_url?: string;
@@ -35,6 +37,10 @@ interface MarketplaceSettings {
   marketplace_logo_url?: string;
   marketplace_logo_light_url?: string;
   marketplace_logo_dark_url?: string;
+}
+
+function isPublicStore(store: StoreData): boolean {
+  return store.status === 'verified' && store.is_verified === true;
 }
 
 export default function StoreCheckoutPage() {
@@ -73,7 +79,13 @@ export default function StoreCheckoutPage() {
         const res = await fetchWithCsrf(`/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`);
         if (res.ok) {
           const data = await res.json();
-          setStore(data.store);
+          const nextStore = data.store as StoreData;
+          if (isPublicStore(nextStore)) {
+            setStore(nextStore);
+          } else {
+            setStore(null);
+            setStoreError('Cette boutique n’est pas disponible pour le moment.');
+          }
         } else {
           setStoreError('Boutique introuvable ou indisponible.');
         }

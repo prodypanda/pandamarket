@@ -292,8 +292,14 @@ export default async function StorePage({
     notFound();
   }
 
-  // Per-store maintenance mode
-  if (store.status === 'maintenance' && !previewToken) {
+  const isPublicStore = store.status === 'verified' && store.is_verified === true;
+
+  // Per-store maintenance/onboarding mode. Legacy unverified stores are treated like maintenance,
+  // while suspended stores remain unavailable.
+  if (!isPublicStore && !previewToken) {
+    if (store.status === 'suspended') {
+      notFound();
+    }
     const marketplaceSettings = await getMarketplaceSettings();
     const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
     const activeTheme = themes[store.theme_id] || themes.classic;

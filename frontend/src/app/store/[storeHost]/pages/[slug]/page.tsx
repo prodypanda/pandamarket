@@ -49,6 +49,8 @@ interface StoreData {
   name: string;
   description?: string | null;
   theme_id: ThemeId;
+  status?: string | null;
+  is_verified?: boolean | null;
   shipping_mode?: string | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
@@ -187,6 +189,10 @@ export async function generateMetadata({
   const previewToken = getSearchParam(resolvedSearchParams, 'pb_preview');
   const store = await getStoreByHost(decodeURIComponent(storeHost));
   if (!store) return { title: 'Page introuvable' };
+  const isPublicStore = store.status === 'verified' && store.is_verified === true;
+  if (!previewToken && !isPublicStore) {
+    return { title: 'Page introuvable', robots: { index: false, follow: false } };
+  }
 
   const page = previewToken
     ? await getDraftPreviewPage(store.id, previewToken, slug)
@@ -237,6 +243,9 @@ export default async function CustomStorePage({
 
   const store = await getStoreByHost(decodedHost);
   if (!store) notFound();
+
+  const isPublicStore = store.status === 'verified' && store.is_verified === true;
+  if (!isPreview && !isPublicStore) notFound();
 
   const { storePathBase } = await getStoreRouteContext(storeHost);
 
