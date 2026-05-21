@@ -48,10 +48,10 @@ function verifyFlouciSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const a = Buffer.from(signature, 'hex');
+    const b = Buffer.from(expected, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
@@ -73,10 +73,10 @@ function verifyKonnectSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const a = Buffer.from(signature, 'hex');
+    const b = Buffer.from(expected, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
