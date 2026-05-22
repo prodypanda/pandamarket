@@ -46,7 +46,14 @@ async function applyMigration(file: string): Promise<void> {
   }
 }
 
-async function run(): Promise<void> {
+export function getMigrationFiles(migrationsDir = MIGRATIONS_DIR): string[] {
+  return fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql'))
+    .sort();
+}
+
+export async function run(): Promise<void> {
   logger.info({ dir: MIGRATIONS_DIR }, 'Running migrations…');
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
@@ -57,10 +64,7 @@ async function run(): Promise<void> {
   await ensureMigrationsTable();
   const applied = await getApplied();
 
-  const files = fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
+  const files = getMigrationFiles(MIGRATIONS_DIR);
 
   let count = 0;
   for (const file of files) {
@@ -76,9 +80,11 @@ async function run(): Promise<void> {
   }
 }
 
-run()
-  .catch((err) => {
-    logger.error({ err }, 'Migration runner failed');
-    process.exit(1);
-  })
-  .finally(() => closePool());
+if (require.main === module) {
+  run()
+    .catch((err) => {
+      logger.error({ err }, 'Migration runner failed');
+      process.exit(1);
+    })
+    .finally(() => closePool());
+}

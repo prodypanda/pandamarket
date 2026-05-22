@@ -434,12 +434,14 @@
         "verified": "Verified",
         "unverified": "Unverified",
         "suspended": "Suspended",
+        "maintenance": "Maintenance",
         "pendingType": "Type requests",
         "pendingKyc": "KYC pending"
       },
       "statuses": {
         "verified": "Verified",
         "unverified": "Unverified",
+        "maintenance": "Maintenance",
         "suspended": "Suspended"
       },
       "kyc": {

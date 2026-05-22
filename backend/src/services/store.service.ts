@@ -4,10 +4,12 @@
  */
 
 import { PoolClient } from 'pg';
+import { isIP } from 'node:net';
 import { query, transaction } from '../db/pool';
 import {
   PdConflictError,
   PdErrorCode,
+  PdForbiddenError,
   PdNotFoundError,
   PdPlanRequiredError,
   PdValidationError,
@@ -125,6 +127,7 @@ export interface AdminVendorSummary {
   verified: number;
   unverified: number;
   suspended: number;
+  maintenance: number;
   pending_seller_type_requests: number;
   pending_kyc: number;
 }
@@ -198,6 +201,64 @@ function parseTimestamp(value: unknown): number | null {
 }
 
 export class StoreService {
+  private normalizeHostnameInput(value: string): string {
+    const firstHost = value
+      .trim()
+      .toLowerCase()
+      .split(',')
+      .map((segment) => segment.trim())
+      .find((segment) => segment.length > 0) ?? '';
+
+    if (!firstHost) return '';
+
+    // Some proxies/misconfigured clients may send values like:
+    // "https://vendor.example.com/path". Normalize to host only.
+    const noScheme = firstHost.replace(/^[a-z][a-z0-9+.-]*:\/\//, '');
+    const hostOnly = noScheme.split('/')[0]?.trim() ?? '';
+    if (!hostOnly) return '';
+
+    // Host headers may include port (e.g. vendor.example.com:3000).
+    // For bracketed IPv6 ([::1]:3000), keep the host as-is because
+    // storefront subdomain resolution does not apply to raw IP hosts.
+    const withoutPort = hostOnly.startsWith('[')
+      ? (hostOnly.includes(']') ? hostOnly.slice(0, hostOnly.indexOf(']') + 1) : hostOnly)
+      : hostOnly.split(':')[0];
+
+    const withoutTrailingDots = withoutPort.replace(/\.+$/, '');
+    return withoutTrailingDots.replace(/^\.+/, '');
+  }
+
+  private isIpHost(host: string): boolean {
+    const unwrapped = host.startsWith('[') && host.endsWith(']')
+      ? host.slice(1, -1)
+      : host;
+    return isIP(unwrapped) !== 0;
+  }
+
+  private isLikelyHostname(host: string): boolean {
+    // Bracketed IPv6 / raw IP is handled by isIpHost separately.
+    if (!host || host.includes('[') || host.includes(']')) return false;
+    if (host.length > 253) return false;
+    if (host.includes('..')) return false;
+    if (/\s/.test(host)) return false;
+
+    const labels = host.split('.');
+    if (labels.length === 0) return false;
+    const validLabels = labels.every((label) => (
+      label.length > 0
+      && label.length <= 63
+      && /^[a-z0-9-]+$/.test(label)
+      && !label.startsWith('-')
+      && !label.endsWith('-')
+    ));
+    if (!validLabels) return false;
+
+    // Treat hosts composed only of numeric labels as invalid hostnames here.
+    // This avoids accidental tenant resolution attempts for dotted-decimal-like
+    // inputs that are not accepted by `node:net` as canonical IP addresses.
+    return !labels.every((label) => /^\d+$/.test(label));
+  }
+
   /**
    * Create a new store for a vendor user.
    * Also bootstraps wallet, credits, and updates user.role + user.store_id.
@@ -245,10 +306,19 @@ export class StoreService {
 
       const { rows } = await client.query<StoreRow>(
         `INSERT INTO pd_store
-          (id, name, subdomain, seller_type, subscription_plan, subscription_type, owner_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (id, name, status, subdomain, seller_type, subscription_plan, subscription_type, owner_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [id, opts.name, subdomain, sellerType, plan, subscriptionType, opts.user_id],
+        [
+          id,
+          opts.name,
+          StoreStatus.Maintenance,
+          subdomain,
+          sellerType,
+          plan,
+          subscriptionType,
+          opts.user_id,
+        ],
       );
       const store = rows[0];
 
@@ -329,8 +399,19 @@ export class StoreService {
    * Returns null if the host belongs to the central hub or admin.
    */
   async resolveByHostname(host: string, hubDomain: string): Promise<StoreRow | null> {
-    const cleanHost = host.toLowerCase().split(':')[0];
-    if (cleanHost === hubDomain || cleanHost === `www.${hubDomain}` || cleanHost === `admin.${hubDomain}`) {
+    const cleanHost = this.normalizeHostnameInput(host);
+    const normalizedHubDomain = this.normalizeHostnameInput(hubDomain);
+    if (!cleanHost || !normalizedHubDomain || this.isIpHost(cleanHost)) {
+      return null;
+    }
+    if (!this.isLikelyHostname(cleanHost) || !this.isLikelyHostname(normalizedHubDomain)) {
+      return null;
+    }
+    if (
+      cleanHost === normalizedHubDomain
+      || cleanHost === `www.${normalizedHubDomain}`
+      || cleanHost === `admin.${normalizedHubDomain}`
+    ) {
       return null;
     }
 
@@ -338,8 +419,14 @@ export class StoreService {
       return this.getBySubdomain(cleanHost);
     }
 
-    if (cleanHost.endsWith(`.${hubDomain}`)) {
-      const subdomain = cleanHost.slice(0, -1 - hubDomain.length);
+    if (cleanHost.endsWith(`.${normalizedHubDomain}`)) {
+      const subdomain = cleanHost.slice(0, -1 - normalizedHubDomain.length);
+      // Hub-hosted storefronts are single-label subdomains
+      // (e.g. <store>.pandamarket.local). Reject multi-label prefixes
+      // like a.b.pandamarket.local to avoid ambiguous tenant resolution.
+      if (!subdomain || subdomain.includes('.')) {
+        return null;
+      }
       return this.getBySubdomain(subdomain);
     }
 
@@ -349,6 +436,14 @@ export class StoreService {
     }
 
     return this.getByCustomDomain(cleanHost);
+  }
+
+  async resolvePublicByHostname(host: string, hubDomain: string): Promise<StoreRow | null> {
+    const store = await this.resolveByHostname(host, hubDomain);
+    if (!store) return null;
+    if (store.status !== StoreStatus.Verified) return null;
+    if (!store.is_verified) return null;
+    return store;
   }
 
   /**
@@ -404,12 +499,12 @@ export class StoreService {
   async verify(storeId: string): Promise<StoreRow> {
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
-       SET status = $2,
+       SET status = CASE WHEN status IN ($2, $3) THEN $3 ELSE status END,
            is_verified = true,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [storeId, StoreStatus.Verified],
+      [storeId, StoreStatus.Unverified, StoreStatus.Maintenance],
     );
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
@@ -420,11 +515,11 @@ export class StoreService {
   async reactivate(storeId: string): Promise<StoreRow> {
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
-       SET status = CASE WHEN is_verified THEN $2 ELSE $3 END,
+       SET status = $2,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [storeId, StoreStatus.Verified, StoreStatus.Unverified],
+      [storeId, StoreStatus.Maintenance],
     );
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
@@ -691,8 +786,11 @@ export class StoreService {
    * Mark a store as verified (called by KYC service after approval).
    */
   async markVerified(storeId: string, client?: PoolClient): Promise<void> {
-    const sql = `UPDATE pd_store SET status = $2, is_verified = true WHERE id = $1`;
-    const params = [storeId, StoreStatus.Verified];
+    const sql = `UPDATE pd_store
+      SET status = CASE WHEN status IN ($2, $3) THEN $3 ELSE status END,
+          is_verified = true
+      WHERE id = $1`;
+    const params = [storeId, StoreStatus.Unverified, StoreStatus.Maintenance];
     if (client) await client.query(sql, params);
     else await query(sql, params);
   }
@@ -716,7 +814,20 @@ export class StoreService {
     return rows[0];
   }
 
-  async updateStatus(storeId: string, status: string): Promise<StoreRow> {
+  async updateStatus(storeId: string, status: StoreStatus): Promise<StoreRow> {
+    if (!Object.values(StoreStatus).includes(status)) {
+      throw new PdValidationError('Invalid store status', { status });
+    }
+
+    const current = await this.getById(storeId);
+    if (status === StoreStatus.Verified && !current.is_verified) {
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        'Store must be verified before publishing',
+        { store_id: storeId },
+      );
+    }
+
     const { rows } = await query<StoreRow>(
       `UPDATE pd_store
        SET status = $2,
@@ -741,7 +852,7 @@ export class StoreService {
     const conditions: string[] = [];
     const params: unknown[] = [];
     if (opts.verifiedOnly) {
-      conditions.push("status = 'verified'");
+      conditions.push("status = 'verified' AND COALESCE(is_verified, false) = true");
     }
     if (opts.sellerType) {
       params.push(opts.sellerType);
@@ -882,14 +993,16 @@ export class StoreService {
       verified: string;
       unverified: string;
       suspended: string;
+      maintenance: string;
       pending_seller_type_requests: string;
       pending_kyc: string;
     }>(
       `SELECT
          COUNT(*)::text AS total,
-         COUNT(*) FILTER (WHERE s.status = 'verified')::text AS verified,
-         COUNT(*) FILTER (WHERE s.status = 'unverified')::text AS unverified,
+         COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true)::text AS verified,
+         COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = false)::text AS unverified,
          COUNT(*) FILTER (WHERE s.status = 'suspended')::text AS suspended,
+         COUNT(*) FILTER (WHERE s.status = 'maintenance')::text AS maintenance,
          COUNT(*) FILTER (WHERE s.settings->'seller_type_change_request'->>'status' = 'pending')::text AS pending_seller_type_requests,
          COUNT(*) FILTER (WHERE kyc.status = 'pending')::text AS pending_kyc
        FROM pd_store s
@@ -902,6 +1015,7 @@ export class StoreService {
       verified: parseInt(summaryRow.verified, 10),
       unverified: parseInt(summaryRow.unverified, 10),
       suspended: parseInt(summaryRow.suspended, 10),
+      maintenance: parseInt(summaryRow.maintenance, 10),
       pending_seller_type_requests: parseInt(summaryRow.pending_seller_type_requests, 10),
       pending_kyc: parseInt(summaryRow.pending_kyc, 10),
     };
@@ -942,7 +1056,7 @@ export class StoreService {
           COUNT(*) AS store_count,
           COUNT(*) FILTER (WHERE s.subscription_plan = 'free') AS free_store_count,
           COUNT(*) FILTER (WHERE s.subscription_plan != 'free') AS paid_store_count,
-          COUNT(*) FILTER (WHERE s.status = 'verified') AS verified_store_count,
+          COUNT(*) FILTER (WHERE COALESCE(s.is_verified, false) = true) AS verified_store_count,
           COUNT(*) FILTER (WHERE s.status = 'suspended') AS suspended_store_count,
           COALESCE(SUM(ps.product_count), 0) AS product_count,
           COALESCE(SUM(os.order_count), 0) AS order_count,
