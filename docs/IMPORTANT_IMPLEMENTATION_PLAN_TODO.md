@@ -105,11 +105,23 @@ Build the **Store basics guided step** first because the data model and settings
 ### Recommended next implementation slice
 
 Start with the database and API foundation:
-1. ticket tables and migrations
+1. ✅ ticket tables and migrations (started)
 2. seller create/list/detail/reply endpoints
 3. admin list/detail/reply/status endpoints
 4. basic seller and admin UI
 5. notification hooks after the core flow works
+
+### Latest progress update (2026-05-22)
+
+- Added migration `039_support_ticket_foundation.sql` with foundation tables:
+  - `pd_support_ticket`
+  - `pd_support_ticket_message`
+  - `pd_support_ticket_attachment`
+- Added indexes for store ownership, lifecycle states, assignment, and timeline queries.
+- Added `updated_at` maintenance triggers for tickets and ticket messages via `pd_set_updated_at()`.
+- Added enum-style CHECK constraints for category, priority, and status normalization.
+- API routes/UI for ticket flows are still pending and remain the immediate next implementation slice.
+- Rolled back unrequested onboarding publish/payment derived-step sync changes to keep this workstream focused on support tickets only.
 
 ---
 
