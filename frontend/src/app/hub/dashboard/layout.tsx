@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { fetchOnboardingState } from '@/lib/onboarding';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ import {
   CheckCircle2,
   BarChart3,
   ReceiptText,
+  UserRound,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -39,6 +41,11 @@ interface CurrentUser {
   last_name?: string | null;
   role?: string;
   store_id?: string | null;
+}
+
+interface ThemeCustomizationState {
+  colorPresetId?: string | null;
+  customColors?: Record<string, string | null | undefined>;
 }
 
 interface CurrentStore {
@@ -53,6 +60,7 @@ interface CurrentStore {
     logo_light_url?: string | null;
     logo_dark_url?: string | null;
     store_description?: string | null;
+    themeCustomization?: ThemeCustomizationState | null;
   } | null;
   payment_config?: unknown;
   subdomain?: string | null;
@@ -74,6 +82,12 @@ function isVendorRole(role?: string) {
   return role === 'vendor' || role === 'Vendor';
 }
 
+function hasCustomColors(customization?: ThemeCustomizationState | null): boolean {
+  return Boolean(
+    customization?.colorPresetId || Object.values(customization?.customColors || {}).some((value) => Boolean(value)),
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -88,7 +102,8 @@ export default function DashboardLayout({
   const [canCreateFreeStore, setCanCreateFreeStore] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
-  const [setupProgress, setSetupProgress] = useState({ completed: 1, total: 6 });
+  const [setupProgress, setSetupProgress] = useState({ completed: 0, total: 5 });
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isStoreSelectorPage = pathname === '/hub/dashboard/select-store';
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
   const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage;
@@ -168,14 +183,14 @@ export default function DashboardLayout({
     async function fetchSetupProgress() {
       if (!authorized || isStoreSetupPage) return;
       try {
-        const [storeRes, productsRes, verificationRes] = await Promise.allSettled([
+        const [storeRes, productsRes, verificationRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
+          fetchOnboardingState(),
         ]);
         if (cancelled) return;
         const steps = [
-          Boolean(currentStore?.id),
           false,
           false,
           false,
@@ -185,17 +200,24 @@ export default function DashboardLayout({
         if (storeRes.status === 'fulfilled' && storeRes.value.ok) {
           const data = await storeRes.value.json();
           const store = data.store as CurrentStore | null;
-          steps[1] = Boolean(store?.settings?.logo_url || store?.settings?.store_description);
-          steps[2] = Boolean(store?.theme_id);
-          steps[5] = Boolean(store?.payment_config);
+          const storeHasLogo = Boolean(store?.settings?.logo_url || store?.settings?.logo_light_url || store?.settings?.logo_dark_url);
+          const storeHasCustomColors = hasCustomColors(store?.settings?.themeCustomization);
+          const persistedStoreBasicsComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.store_basics?.completed);
+          const persistedThemeComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.theme?.completed);
+          steps[0] = Boolean(
+            persistedStoreBasicsComplete || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
+          );
+          steps[1] = Boolean(persistedThemeComplete || store?.theme_id);
+          steps[2] = Boolean(store?.is_verified);
+          steps[4] = Boolean(store?.payment_config);
         }
         if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
           const data = await productsRes.value.json();
-          steps[4] = Number(data.meta?.total || 0) > 0;
+          steps[3] = Number(data.meta?.total || 0) > 0;
         }
         if (verificationRes.status === 'fulfilled' && verificationRes.value.ok) {
           const data = await verificationRes.value.json();
-          steps[3] = data.verification?.status === 'approved';
+          steps[2] = Boolean(steps[2] || data.verification?.status === 'approved');
         }
         setSetupProgress({ completed: steps.filter(Boolean).length, total: steps.length });
       } catch {
@@ -210,6 +232,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
+    { name: 'Setup guide', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
     { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
@@ -220,13 +243,17 @@ export default function DashboardLayout({
     { name: 'Financial', href: '/hub/dashboard/financial', icon: ReceiptText },
     { name: t('dashboard.sidebar.pageBuilder'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
     { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
-    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
-    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
-    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
     { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
     { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
     { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
+  ];
+
+  const accountMenuItems = [
+    { name: 'My account', href: '/hub/profile', icon: UserRound },
+    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
+    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
+    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
   ];
 
   const handleLogout = async () => {
@@ -388,8 +415,50 @@ export default function DashboardLayout({
               <Bell className="h-5 w-5" />
             </Link>
             <div className="text-sm font-medium text-slate-600">{t('dashboard.top.welcome', { name: displayName })}</div>
-            <div className="h-8 w-8 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold">
-              {initials}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                className="h-9 w-9 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold ring-1 ring-[#B91C1C]/10 transition hover:bg-[#B91C1C]/20"
+              >
+                {initials}
+              </button>
+              {accountMenuOpen && (
+                <div role="menu" className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 text-sm shadow-2xl shadow-slate-900/15">
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="font-black text-slate-900">{displayName}</p>
+                    {currentUser?.email && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{currentUser.email}</p>}
+                  </div>
+                  {accountMenuItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 font-bold transition ${
+                        pathname === item.href || pathname.startsWith(`${item.href}/`)
+                          ? 'bg-[#B91C1C]/10 text-[#B91C1C]'
+                          : 'text-slate-700 hover:bg-slate-50 hover:text-[#B91C1C]'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.name}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
