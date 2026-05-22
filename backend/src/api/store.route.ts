@@ -295,6 +295,10 @@ router.get(
 router.get(
   '/by-host/:hostname',
   asyncHandler(async (req: Request, res: Response) => {
+    // Important: resolve by host for both public and maintenance storefronts.
+    // Frontend middleware + storefront routes rely on this endpoint to render
+    // branded maintenance experiences for non-public stores.
+    // Public product/catalog visibility is enforced in product/order services.
     const store = await storeService.resolveByHostname(req.params.hostname, config.hubDomain);
     if (!store) {
       res.status(404).json({ error: { message: 'Store not found for host' } });
@@ -706,4 +710,3 @@ router.get(
 );
 
 export default router;
-

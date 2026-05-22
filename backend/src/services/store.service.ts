@@ -4,6 +4,7 @@
  */
 
 import { PoolClient } from 'pg';
+import { isIP } from 'node:net';
 import { query, transaction } from '../db/pool';
 import {
   PdConflictError,
@@ -200,6 +201,64 @@ function parseTimestamp(value: unknown): number | null {
 }
 
 export class StoreService {
+  private normalizeHostnameInput(value: string): string {
+    const firstHost = value
+      .trim()
+      .toLowerCase()
+      .split(',')
+      .map((segment) => segment.trim())
+      .find((segment) => segment.length > 0) ?? '';
+
+    if (!firstHost) return '';
+
+    // Some proxies/misconfigured clients may send values like:
+    // "https://vendor.example.com/path". Normalize to host only.
+    const noScheme = firstHost.replace(/^[a-z][a-z0-9+.-]*:\/\//, '');
+    const hostOnly = noScheme.split('/')[0]?.trim() ?? '';
+    if (!hostOnly) return '';
+
+    // Host headers may include port (e.g. vendor.example.com:3000).
+    // For bracketed IPv6 ([::1]:3000), keep the host as-is because
+    // storefront subdomain resolution does not apply to raw IP hosts.
+    const withoutPort = hostOnly.startsWith('[')
+      ? (hostOnly.includes(']') ? hostOnly.slice(0, hostOnly.indexOf(']') + 1) : hostOnly)
+      : hostOnly.split(':')[0];
+
+    const withoutTrailingDots = withoutPort.replace(/\.+$/, '');
+    return withoutTrailingDots.replace(/^\.+/, '');
+  }
+
+  private isIpHost(host: string): boolean {
+    const unwrapped = host.startsWith('[') && host.endsWith(']')
+      ? host.slice(1, -1)
+      : host;
+    return isIP(unwrapped) !== 0;
+  }
+
+  private isLikelyHostname(host: string): boolean {
+    // Bracketed IPv6 / raw IP is handled by isIpHost separately.
+    if (!host || host.includes('[') || host.includes(']')) return false;
+    if (host.length > 253) return false;
+    if (host.includes('..')) return false;
+    if (/\s/.test(host)) return false;
+
+    const labels = host.split('.');
+    if (labels.length === 0) return false;
+    const validLabels = labels.every((label) => (
+      label.length > 0
+      && label.length <= 63
+      && /^[a-z0-9-]+$/.test(label)
+      && !label.startsWith('-')
+      && !label.endsWith('-')
+    ));
+    if (!validLabels) return false;
+
+    // Treat hosts composed only of numeric labels as invalid hostnames here.
+    // This avoids accidental tenant resolution attempts for dotted-decimal-like
+    // inputs that are not accepted by `node:net` as canonical IP addresses.
+    return !labels.every((label) => /^\d+$/.test(label));
+  }
+
   /**
    * Create a new store for a vendor user.
    * Also bootstraps wallet, credits, and updates user.role + user.store_id.
@@ -340,8 +399,19 @@ export class StoreService {
    * Returns null if the host belongs to the central hub or admin.
    */
   async resolveByHostname(host: string, hubDomain: string): Promise<StoreRow | null> {
-    const cleanHost = host.toLowerCase().split(':')[0];
-    if (cleanHost === hubDomain || cleanHost === `www.${hubDomain}` || cleanHost === `admin.${hubDomain}`) {
+    const cleanHost = this.normalizeHostnameInput(host);
+    const normalizedHubDomain = this.normalizeHostnameInput(hubDomain);
+    if (!cleanHost || !normalizedHubDomain || this.isIpHost(cleanHost)) {
+      return null;
+    }
+    if (!this.isLikelyHostname(cleanHost) || !this.isLikelyHostname(normalizedHubDomain)) {
+      return null;
+    }
+    if (
+      cleanHost === normalizedHubDomain
+      || cleanHost === `www.${normalizedHubDomain}`
+      || cleanHost === `admin.${normalizedHubDomain}`
+    ) {
       return null;
     }
 
@@ -349,8 +419,14 @@ export class StoreService {
       return this.getBySubdomain(cleanHost);
     }
 
-    if (cleanHost.endsWith(`.${hubDomain}`)) {
-      const subdomain = cleanHost.slice(0, -1 - hubDomain.length);
+    if (cleanHost.endsWith(`.${normalizedHubDomain}`)) {
+      const subdomain = cleanHost.slice(0, -1 - normalizedHubDomain.length);
+      // Hub-hosted storefronts are single-label subdomains
+      // (e.g. <store>.pandamarket.local). Reject multi-label prefixes
+      // like a.b.pandamarket.local to avoid ambiguous tenant resolution.
+      if (!subdomain || subdomain.includes('.')) {
+        return null;
+      }
       return this.getBySubdomain(subdomain);
     }
 
@@ -360,6 +436,14 @@ export class StoreService {
     }
 
     return this.getByCustomDomain(cleanHost);
+  }
+
+  async resolvePublicByHostname(host: string, hubDomain: string): Promise<StoreRow | null> {
+    const store = await this.resolveByHostname(host, hubDomain);
+    if (!store) return null;
+    if (store.status !== StoreStatus.Verified) return null;
+    if (!store.is_verified) return null;
+    return store;
   }
 
   /**

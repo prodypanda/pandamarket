@@ -192,4 +192,207 @@ describe('StoreService maintenance publishing defaults', () => {
       expect.any(Array),
     );
   });
+
+  it('resolves storefront hostnames only when the store is publicly verified', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    mocks.query.mockResolvedValueOnce({
+      rows: [{ id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Maintenance, is_verified: true }],
+      rowCount: 1,
+    });
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', 'pandamarket.local')).resolves.toBeNull();
+
+    mocks.query.mockResolvedValueOnce({
+      rows: [{ id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Verified, is_verified: false }],
+      rowCount: 1,
+    });
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', 'pandamarket.local')).resolves.toBeNull();
+
+    const verifiedStore = { id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Verified, is_verified: true };
+    mocks.query.mockResolvedValueOnce({
+      rows: [verifiedStore],
+      rowCount: 1,
+    });
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', 'pandamarket.local')).resolves.toEqual(verifiedStore);
+  });
+
+  it('resolves maintenance stores by host for storefront maintenance rendering', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    const maintenanceStore = { id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Maintenance, is_verified: false };
+    mocks.query.mockResolvedValueOnce({
+      rows: [maintenanceStore],
+      rowCount: 1,
+    });
+
+    await expect(storeService.resolveByHostname('new-store.localhost', 'pandamarket.local')).resolves.toEqual(maintenanceStore);
+  });
+
+  it('does not query stores when hostname is empty', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('', 'pandamarket.local')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('normalizes host and hub domain casing/spacing before resolution', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('  WWW.PANDAMARKET.LOCAL  ', '  PandaMarket.Local  ')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('normalizes trailing dots on hostnames', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('www.pandamarket.local.', 'pandamarket.local')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('does not query stores when hub domain is empty', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', '   ')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('normalizes forwarded host lists and ignores the extra hosts', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    const verifiedStore = { id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Verified, is_verified: true };
+    mocks.query.mockResolvedValueOnce({
+      rows: [verifiedStore],
+      rowCount: 1,
+    });
+
+    await expect(
+      storeService.resolvePublicByHostname('new-store.localhost:3000, proxy.local', 'pandamarket.local'),
+    ).resolves.toEqual(verifiedStore);
+  });
+
+  it('uses first non-empty host entry from forwarded host lists', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    const verifiedStore = { id: 'pd_store_new', subdomain: 'new-store', status: StoreStatus.Verified, is_verified: true };
+    mocks.query.mockResolvedValueOnce({
+      rows: [verifiedStore],
+      rowCount: 1,
+    });
+
+    await expect(
+      storeService.resolvePublicByHostname(' ,   ,new-store.localhost:3000, proxy.local', 'pandamarket.local'),
+    ).resolves.toEqual(verifiedStore);
+  });
+
+  it('normalizes trailing dots in hub domain config', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('www.pandamarket.local', 'pandamarket.local.'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('does not query stores for ipv4 hosts', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('127.0.0.1:3000', 'pandamarket.local'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('does not query stores for bracketed ipv6 hosts', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('[::1]:3000', 'pandamarket.local'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('normalizes host values that include scheme and path', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('https://www.pandamarket.local/some/path', 'pandamarket.local'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('normalizes non-http schemes and leading dots in host values', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('ws://.www.pandamarket.local./socket', 'pandamarket.local'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed hostnames before querying', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('bad host.local', 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('bad_host.local', 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('bad..host.local', 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('-bad.local', 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('bad-.local', 'pandamarket.local')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed hub domain config before querying', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', 'bad hub.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', 'bad_hub.local')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized hostname labels and oversized hostnames before querying', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    const oversizedLabel = `${'a'.repeat(64)}.local`;
+    const oversizedHost = `${Array.from({ length: 40 }, () => 'abcdef').join('.')}.local`;
+    const oversizedHub = `${'b'.repeat(64)}.local`;
+
+    await expect(storeService.resolvePublicByHostname(oversizedLabel, 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname(oversizedHost, 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('new-store.localhost', oversizedHub)).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects all-numeric dotted hosts before querying', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(storeService.resolvePublicByHostname('999.999.999.999', 'pandamarket.local')).resolves.toBeNull();
+    await expect(storeService.resolvePublicByHostname('123.456.789.0', 'pandamarket.local')).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects multi-label hub subdomain prefixes before querying', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.resolvePublicByHostname('a.b.pandamarket.local', 'pandamarket.local'),
+    ).resolves.toBeNull();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
 });
