@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Truck, Zap } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
@@ -56,7 +57,9 @@ function getProductImage(product: Product) {
   return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
-function ProductCard({ product, currency }: { product: Product; currency: string }) {
+// Optimization: Memoize ProductCard to prevent unnecessary re-renders when parent HubHomeContent state changes.
+// This is especially beneficial because ProductCard is rendered inside multiple product grids (trending, deals).
+const ProductCard = memo(function ProductCard({ product, currency }: { product: Product; currency: string }) {
   const image = getProductImage(product);
 
   return (
@@ -98,7 +101,7 @@ function ProductCard({ product, currency }: { product: Product; currency: string
       </div>
     </Link>
   );
-}
+});
 
 export function HubHomeContent({ trendingProducts, categories, marketplaceSettings }: HubHomeContentProps) {
   const { t } = useLocale();
