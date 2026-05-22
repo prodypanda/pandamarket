@@ -1,0 +1,303 @@
+{
+  "repo_notes": [
+    {
+      "content": ""
+    }
+  ],
+  "pages": [
+    {
+      "title": "PandaMarket (Old Markenti) Overview",
+      "purpose": "High-level introduction to PandaMarket — a Tunisian Marketplace-as-a-Service platform combining an Amazon-style central Hub with Shopify-style multi-tenant vendor storefronts. Covers the monorepo structure, tech stack, subscription tiers, and links to all major subsystem pages.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Architecture & Monorepo Structure",
+      "purpose": "Explains the three-package monorepo (backend, frontend, packages/types), the Express + Next.js split, shared type contracts, and how the three routing contexts (Hub, Admin, Storefront) are organized.",
+      "parent": "PandaMarket Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Getting Started & Local Setup",
+      "purpose": "Step-by-step guide for cloning the repo, installing dependencies, configuring environment variables, running Docker services (PostgreSQL, Redis, Meilisearch, MinIO), running migrations, seeding data, and starting the dev servers.",
+      "parent": "PandaMarket Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Environment Variables & Secrets Management",
+      "purpose": "Documents all PD_-prefixed environment variables, the Docker Secrets file-based pattern (_FILE suffix), the init-secrets.sh script, and how to configure payment, AI, and storage credentials for production.",
+      "parent": "PandaMarket Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Backend Architecture",
+      "purpose": "Overview of the Express.js backend — its bootstrap sequence, middleware stack, service layer, event bus, and background workers. Links to child pages for each major subsystem.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "API Routes & Middleware",
+      "purpose": "Covers all 29 Express route files under backend/src/api/, the global middleware stack (CSRF, rate limiting, audit log, maintenance, Sentry, Prometheus), request validation with Zod, and the requireAuth/requireStore/requireAdmin guards.",
+      "parent": "Backend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Service Layer",
+      "purpose": "Documents the 32 backend services (store, order, product, payment, wallet, auth, KYC, AI, etc.), their responsibilities, how they interact with the PostgreSQL pool, and the transaction wrapper pattern.",
+      "parent": "Backend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Background Workers & Event System",
+      "purpose": "Explains the BullMQ queue architecture (6 queues: AI, email, payout, search, subscription, webhook), the 6 worker files, the in-process EventBus (PdEvent constants), and the 9 subscriber files that react to domain events.",
+      "parent": "Backend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Database & Migrations",
+      "purpose": "Covers the PostgreSQL schema (pd_-prefixed tables), the migration runner (run.ts), the pd_migrations tracking table, all 37 SQL migration files and what they introduce, and the seed script for development data.",
+      "parent": "Backend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Frontend Architecture",
+      "purpose": "Overview of the Next.js 14 App Router frontend — the three routing contexts (Hub, Admin, Storefront), the multi-tenant middleware, shared providers, i18n setup, and links to child pages for each context.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Multi-Tenant Middleware & Routing",
+      "purpose": "Deep dive into frontend/src/middleware.ts — how hostname detection routes requests to Hub (/hub/*), Admin (/(admin)/*), or Storefront (/store/[storeHost]/*) contexts, including subdomain extraction, custom domain support, and maintenance bypass logic.",
+      "parent": "Frontend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Hub — Consumer Marketplace",
+      "purpose": "Documents the public-facing Hub pages: home page, product search and filtering, product detail (with wholesale pricing), category browsing, cart, checkout pipeline (address → shipping → payment → confirmation), wishlist, reviews, and the pricing/subscription page.",
+      "parent": "Frontend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Vendor Dashboard",
+      "purpose": "Documents the seller command center at /hub/dashboard — layout, authentication guard, store selector, setup progress, and all sub-pages: overview, financial, orders, products, analytics, KYC, settings, AI tools, page builder, media, webhooks, and reports.",
+      "parent": "Frontend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Admin Panel",
+      "purpose": "Documents the superadmin panel at admin.pandamarket.tn — layout, all admin pages (KYC queue, mandats, vendors, buyers, reports, plans, marketplace categories, AI costs, audit log, system logs, SMTP config, settings), and the admin API route structure.",
+      "parent": "Frontend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Vendor Storefronts & Theme Engine",
+      "purpose": "Explains how individual vendor storefronts are rendered — the 20 theme components (Minimal, Modern, Classic, Neon, Sahara, etc.), ThemeConfig and color resolution, the Page Builder override system, storefront product listing and detail pages, storefront cart and checkout, and the PoweredByMarketplace branding.",
+      "parent": "Frontend Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Business Domains",
+      "purpose": "Overview of the key business logic domains — store lifecycle, orders, payments, products, and the cart system. Links to child pages for each domain.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Store & Subscription Lifecycle",
+      "purpose": "Documents store creation (subdomain validation, wallet/credits bootstrapping, user promotion to vendor), store status transitions (unverified → verified → maintenance → suspended), subscription plan enforcement, custom domain policy, seller type change workflow, and the Launch Readiness checklist.",
+      "parent": "Core Business Domains",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Order Management & Fulfillment",
+      "purpose": "Covers the full order lifecycle — checkout pipeline (stock locking, order splitting, fulfillment creation), order status machine, shipping label generation (Aramex, La Poste), delivery proof, refunds, and the vendor orders dashboard with invoice/delivery slip printing.",
+      "parent": "Core Business Domains",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Payments, Wallet & Financial System",
+      "purpose": "Documents the payment provider abstraction (Flouci, Konnect, ManualMandat, COD), escrow vs. direct mode, payment idempotency via pd_payment_event, the vendor wallet ledger (balance/pending/earned/withdrawn), payout workflow, retention periods, and the financial dashboard.",
+      "parent": "Core Business Domains",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Product Catalog & Inventory",
+      "purpose": "Covers product types (physical, digital, serial, service), product status lifecycle (draft → pending_approval → published), variants, wholesale price tiers, inventory management, digital file ownership, Meilisearch indexing, and the product service.",
+      "parent": "Core Business Domains",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Cart System",
+      "purpose": "Documents the CartContext (React Context API + localStorage persistence), cart-utils.ts pure functions (addItem, getWholesaleUnitPrice, getItemsByStore, shippableStoreCount), multi-store cart grouping, and the wholesale pricing calculation pipeline.",
+      "parent": "Core Business Domains",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Platform Features",
+      "purpose": "Overview of cross-cutting platform features — AI tools, Page Builder, KYC verification, search, notifications, and maintenance mode. Links to child pages.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "AI Tools & Credits System",
+      "purpose": "Documents the AI service (image compression via sharp, SEO generation via Gemini/OpenAI/Claude), the credits/tokens system (atomic consumption with FOR UPDATE lock), the ai-queue BullMQ worker, AI provider configuration, and the vendor AI dashboard.",
+      "parent": "Platform Features",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Page Builder",
+      "purpose": "Covers the GrapesJS-integrated CMS — plan gating (Regular+ required), draft/publish workflow, HTML/CSS sanitization (XSS prevention), homepage override, page versioning (pd_store_page_version), preview tokens, size limits, and analytics event tracking.",
+      "parent": "Platform Features",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "KYC, Verification & Compliance",
+      "purpose": "Documents the KYC workflow (document upload, phone OTP, status machine: unverified → pending → approved/rejected), the admin KYC queue, Mandat Minute payment proof validation, and how verification status affects product visibility and store features.",
+      "parent": "Platform Features",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Search, Notifications & Real-Time",
+      "purpose": "Covers Meilisearch integration (product indexing via search-queue worker), the search API with multi-dimensional filtering, the Socket.IO gateway (user/store/admin rooms), the notification service, and the NotificationBell component.",
+      "parent": "Platform Features",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Maintenance Mode & Platform Configuration",
+      "purpose": "Documents the pd_platform_config key-value store, the maintenance middleware (Redis caching, IP whitelisting, admin bypass, 503 responses), global vs. per-store maintenance, the admin settings UI tabs (marketplace, commerce, finance, operations, integrations), and the public marketplace settings API.",
+      "parent": "Platform Features",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Security",
+      "purpose": "Overview of the security architecture — authentication, CSRF, encryption, 2FA, audit logging, and tenant isolation. Links to child pages.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Authentication & Authorization",
+      "purpose": "Documents the JWT access/refresh token system (15m/7d expiry), the double-submit CSRF cookie pattern (fetchWithCsrf, X-CSRF-Token header, pd_csrf cookie), role-based access control (Customer/Vendor/Admin/SuperAdmin), storefront customer auth (separate flow), and the auth service.",
+      "parent": "Security",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Encryption, 2FA & Account Security",
+      "purpose": "Covers AES-256-GCM encryption for vendor payment credentials (crypto.ts), TOTP-based two-factor authentication, admin 2FA reset capability, account security activity tracking (pd_account_activity_sessions), and the AccountSecurityActivityPanel component.",
+      "parent": "Security",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}

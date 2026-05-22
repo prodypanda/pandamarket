@@ -39,6 +39,24 @@ const updateMeSchema = z.object({
   phone: z.string().trim().max(30).optional(),
 });
 
+const onboardingStepSchema = z.enum([
+  'welcome',
+  'store_basics',
+  'theme',
+  'kyc',
+  'first_product',
+  'payment_shipping',
+  'publish_store',
+  'buyer_welcome',
+]);
+
+const onboardingPatchSchema = z.object({
+  step: onboardingStepSchema,
+  completed: z.boolean().optional(),
+  dismissed: z.boolean().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
 const twoFactorCodeSchema = z.object({
   code: z.string().trim().min(4).max(32),
 });
@@ -76,6 +94,7 @@ function publicUser<T extends {
   phone?: string | null;
   created_at?: Date | string;
   two_factor_enabled?: boolean;
+  onboarding_state?: Record<string, unknown> | null;
 }>(user: T) {
   return {
     id: user.id,
@@ -89,6 +108,7 @@ function publicUser<T extends {
     phone: user.phone ?? null,
     created_at: user.created_at,
     two_factor_enabled: Boolean(user.two_factor_enabled),
+    onboarding_state: user.onboarding_state ?? {},
   };
 }
 
@@ -422,13 +442,74 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { rows } = await query(
       `SELECT id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at,
-              two_factor_enabled
+              two_factor_enabled, onboarding_state
        FROM pd_user
        WHERE id = $1`,
       [req.user!.id],
     );
     const user = rows[0] ?? req.user;
     res.status(200).json({ user, data: user });
+  }),
+);
+
+router.get(
+  '/onboarding',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ onboarding_state: Record<string, unknown> | null }>(
+      'SELECT onboarding_state FROM pd_user WHERE id = $1',
+      [req.user!.id],
+    );
+    res.status(200).json({ onboarding_state: rows[0]?.onboarding_state ?? {} });
+  }),
+);
+
+router.patch(
+  '/onboarding',
+  authRateLimit,
+  requireAuth,
+  validate(onboardingPatchSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const now = new Date().toISOString();
+    const stepPatch: Record<string, unknown> = { updated_at: now };
+    if (typeof req.body.completed === 'boolean') {
+      stepPatch.completed = req.body.completed;
+      stepPatch.completed_at = req.body.completed ? now : null;
+    }
+    if (typeof req.body.dismissed === 'boolean') {
+      stepPatch.dismissed = req.body.dismissed;
+      stepPatch.dismissed_at = req.body.dismissed ? now : null;
+    }
+    const metadataPatch = req.body.metadata ? JSON.stringify(req.body.metadata) : null;
+    const { rows } = await query<{ onboarding_state: Record<string, unknown> }>(
+      `WITH patch AS (
+         SELECT $2::text AS step, $3::jsonb AS step_patch, $4::jsonb AS metadata_patch
+       )
+       UPDATE pd_user
+       SET onboarding_state = jsonb_set(
+             COALESCE(pd_user.onboarding_state, '{}'::jsonb),
+             ARRAY[patch.step],
+             COALESCE(pd_user.onboarding_state -> patch.step, '{}'::jsonb)
+             || patch.step_patch
+             || CASE
+                  WHEN patch.metadata_patch IS NULL THEN '{}'::jsonb
+                  ELSE jsonb_build_object(
+                    'metadata',
+                    CASE
+                      WHEN jsonb_typeof(pd_user.onboarding_state -> patch.step -> 'metadata') = 'object'
+                      THEN pd_user.onboarding_state -> patch.step -> 'metadata'
+                      ELSE '{}'::jsonb
+                    END || patch.metadata_patch
+                  )
+                END
+           ),
+           updated_at = NOW()
+       FROM patch
+       WHERE pd_user.id = $1
+       RETURNING pd_user.onboarding_state`,
+      [req.user!.id, req.body.step, JSON.stringify(stepPatch), metadataPatch],
+    );
+    res.status(200).json({ onboarding_state: rows[0]?.onboarding_state ?? { [req.body.step]: stepPatch } });
   }),
 );
 
@@ -444,7 +525,7 @@ router.put(
            phone = COALESCE($4, phone),
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at, two_factor_enabled`,
+       RETURNING id, email, first_name, last_name, role, store_id, email_verified, is_active, phone, created_at, two_factor_enabled, onboarding_state`,
       [
         req.user!.id,
         req.body.first_name ?? null,

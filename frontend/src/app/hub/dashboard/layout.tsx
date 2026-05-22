@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { fetchOnboardingState } from '@/lib/onboarding';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -42,6 +43,11 @@ interface CurrentUser {
   store_id?: string | null;
 }
 
+interface ThemeCustomizationState {
+  colorPresetId?: string | null;
+  customColors?: Record<string, string | null | undefined>;
+}
+
 interface CurrentStore {
   id?: string;
   name?: string;
@@ -54,6 +60,7 @@ interface CurrentStore {
     logo_light_url?: string | null;
     logo_dark_url?: string | null;
     store_description?: string | null;
+    themeCustomization?: ThemeCustomizationState | null;
   } | null;
   payment_config?: unknown;
   subdomain?: string | null;
@@ -75,6 +82,12 @@ function isVendorRole(role?: string) {
   return role === 'vendor' || role === 'Vendor';
 }
 
+function hasCustomColors(customization?: ThemeCustomizationState | null): boolean {
+  return Boolean(
+    customization?.colorPresetId || Object.values(customization?.customColors || {}).some((value) => Boolean(value)),
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -89,7 +102,7 @@ export default function DashboardLayout({
   const [canCreateFreeStore, setCanCreateFreeStore] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
-  const [setupProgress, setSetupProgress] = useState({ completed: 1, total: 6 });
+  const [setupProgress, setSetupProgress] = useState({ completed: 0, total: 5 });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isStoreSelectorPage = pathname === '/hub/dashboard/select-store';
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
@@ -170,14 +183,14 @@ export default function DashboardLayout({
     async function fetchSetupProgress() {
       if (!authorized || isStoreSetupPage) return;
       try {
-        const [storeRes, productsRes, verificationRes] = await Promise.allSettled([
+        const [storeRes, productsRes, verificationRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
+          fetchOnboardingState(),
         ]);
         if (cancelled) return;
         const steps = [
-          Boolean(currentStore?.id),
           false,
           false,
           false,
@@ -187,17 +200,24 @@ export default function DashboardLayout({
         if (storeRes.status === 'fulfilled' && storeRes.value.ok) {
           const data = await storeRes.value.json();
           const store = data.store as CurrentStore | null;
-          steps[1] = Boolean(store?.settings?.logo_url || store?.settings?.store_description);
-          steps[2] = Boolean(store?.theme_id);
-          steps[5] = Boolean(store?.payment_config);
+          const storeHasLogo = Boolean(store?.settings?.logo_url || store?.settings?.logo_light_url || store?.settings?.logo_dark_url);
+          const storeHasCustomColors = hasCustomColors(store?.settings?.themeCustomization);
+          const persistedStoreBasicsComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.store_basics?.completed);
+          const persistedThemeComplete = onboardingRes.status === 'fulfilled' && Boolean(onboardingRes.value.theme?.completed);
+          steps[0] = Boolean(
+            persistedStoreBasicsComplete || (store?.name?.trim() && store?.subdomain?.trim() && storeHasLogo && storeHasCustomColors),
+          );
+          steps[1] = Boolean(persistedThemeComplete || store?.theme_id);
+          steps[2] = Boolean(store?.is_verified);
+          steps[4] = Boolean(store?.payment_config);
         }
         if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
           const data = await productsRes.value.json();
-          steps[4] = Number(data.meta?.total || 0) > 0;
+          steps[3] = Number(data.meta?.total || 0) > 0;
         }
         if (verificationRes.status === 'fulfilled' && verificationRes.value.ok) {
           const data = await verificationRes.value.json();
-          steps[3] = data.verification?.status === 'approved';
+          steps[2] = Boolean(steps[2] || data.verification?.status === 'approved');
         }
         setSetupProgress({ completed: steps.filter(Boolean).length, total: steps.length });
       } catch {
@@ -212,6 +232,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
+    { name: 'Setup guide', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
     { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
