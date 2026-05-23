@@ -1,6 +1,6 @@
 # PandaMarket — TODO List
 
-> **Last updated:** 2026-05-22-v23 (Support-ticket focus: onboarding sync rollback)
+> **Last updated:** 2026-05-22-v24 (Support-ticket migration rollback file added)
 > **Overall status:** 99%+ MVP complete. All critical and high-priority items resolved.
 > **Production blockers:** NONE after v20 fixes; verified with `npm run build -w frontend` and `npm run build -w backend`.
 > **v20 audit note:** Fixed frontend routing/API proxy/login blockers; added CSRF-aware `fetchWithCsrf` coverage for mutating `/api/pd/*` frontend calls across auth, dashboard, admin, wishlist, reviews, notifications, checkout, webhooks, profile, wallet, KYC, API keys, page builder, and store settings; normalized client API calls to same-origin `/api/pd` proxy; added backend `GET/PUT /api/pd/auth/me` profile support; fixed backend review/wishlist TypeScript blockers. Remaining caveat: Socket.IO authentication uses the JWT access token stored in `localStorage` and should be refreshed/rotated in a future hardening pass to avoid stale realtime connections after token expiry.
@@ -231,6 +231,7 @@ All core features verified as implemented:
 ### 9. Support Ticket System (P1 — IN PROGRESS 2026-05-22-v22)
 - [x] Added DB foundation migration `039_support_ticket_foundation.sql` with `pd_support_ticket`, `pd_support_ticket_message`, and `pd_support_ticket_attachment`
 - [x] Added lifecycle/status/priority/category constraints, query indexes, and `updated_at` triggers for seller/admin queue usage
+- [x] Added rollback down migration `039_support_ticket_foundation.down.sql`
 - [ ] Add backend support-ticket service + seller endpoints (create/list/detail/reply)
 - [ ] Add admin support queue endpoints (list/detail/reply/assign/status)
 - [ ] Add seller/admin dashboard UI and notifications integration

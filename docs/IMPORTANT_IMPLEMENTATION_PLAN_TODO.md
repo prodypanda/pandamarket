@@ -119,6 +119,7 @@ Start with the database and API foundation:
   - `pd_support_ticket_attachment`
 - Added indexes for store ownership, lifecycle states, assignment, and timeline queries.
 - Added `updated_at` maintenance triggers for tickets and ticket messages via `pd_set_updated_at()`.
+- Added rollback migration `039_support_ticket_foundation.down.sql` for clean ticket-foundation rollback support.
 - Added enum-style CHECK constraints for category, priority, and status normalization.
 - API routes/UI for ticket flows are still pending and remain the immediate next implementation slice.
 - Rolled back unrequested onboarding publish/payment derived-step sync changes to keep this workstream focused on support tickets only.
