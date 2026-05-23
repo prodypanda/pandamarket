@@ -47,14 +47,15 @@ function verifyFlouciSignature(req: Request): boolean {
     .createHmac('sha256', config.flouci.appSecret)
     .update(payload)
     .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+
+  if (sigBuf.length !== expBuf.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 /**
@@ -72,14 +73,15 @@ function verifyKonnectSignature(req: Request): boolean {
     .createHmac('sha256', config.konnect.apiKey)
     .update(payload)
     .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+
+  if (sigBuf.length !== expBuf.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 // =====================================================
