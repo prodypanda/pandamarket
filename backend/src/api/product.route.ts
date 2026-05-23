@@ -200,9 +200,11 @@ router.post(
     const parsed = importSchema.parse(req.body);
     const results = { created: 0, errors: [] as string[] };
 
+    // Bolt optimization: Fetch store once outside the loop instead of N times
+    const store = await storeService.getById(req.user!.store_id!);
+
     for (const item of parsed.products) {
       try {
-        const store = await storeService.getById(req.user!.store_id!);
         const categories = await categoryService.resolveProductCategories(
           req.user!.store_id!,
           item.marketplace_category_id,
