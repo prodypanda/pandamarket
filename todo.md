@@ -1,6 +1,6 @@
 # PandaMarket — TODO List
 
-> **Last updated:** 2026-05-06-v21 (Storefront theming/cart checkpoint and documentation handoff)
+> **Last updated:** 2026-05-22-v25 (Support-ticket seller API MVP slice started)
 > **Overall status:** 99%+ MVP complete. All critical and high-priority items resolved.
 > **Production blockers:** NONE after v20 fixes; verified with `npm run build -w frontend` and `npm run build -w backend`.
 > **v20 audit note:** Fixed frontend routing/API proxy/login blockers; added CSRF-aware `fetchWithCsrf` coverage for mutating `/api/pd/*` frontend calls across auth, dashboard, admin, wishlist, reviews, notifications, checkout, webhooks, profile, wallet, KYC, API keys, page builder, and store settings; normalized client API calls to same-origin `/api/pd` proxy; added backend `GET/PUT /api/pd/auth/me` profile support; fixed backend review/wishlist TypeScript blockers. Remaining caveat: Socket.IO authentication uses the JWT access token stored in `localStorage` and should be refreshed/rotated in a future hardening pass to avoid stale realtime connections after token expiry.
@@ -227,3 +227,13 @@ All core features verified as implemented:
 | 5 | ~~Product reviews & ratings system~~ | ~~🟢 LOW~~ | ~~3-4 days~~ | ✅ **DONE (v12)** |
 | 6 | ~~Customer wishlist~~ | ~~🟢 LOW~~ | ~~1-2 days~~ | ✅ **DONE (v12)** |
 | 7 | ~~Multi-language support (FR/AR/EN)~~ | ~~🟢 LOW~~ | ~~~5-7 days~~ | ✅ **DONE (v17)** — i18n config, 3 locale files (fr/en/ar), LocaleContext, useLocale hook, LocaleSwitcher, RTL CSS |
+
+### 9. Support Ticket System (P1 — IN PROGRESS 2026-05-22-v22)
+- [x] Added DB foundation migration `039_support_ticket_foundation.sql` with `pd_support_ticket`, `pd_support_ticket_message`, and `pd_support_ticket_attachment`
+- [x] Added lifecycle/status/priority/category constraints, query indexes, and `updated_at` triggers for seller/admin queue usage
+- [x] Added rollback down migration `039_support_ticket_foundation.down.sql`
+- [x] Add backend support-ticket service + seller endpoints (create/list/detail/reply)
+- [ ] Add admin support queue endpoints (list/detail/reply/assign/status)
+- [ ] Add seller/admin dashboard UI and notifications integration
+
+- [x] Reverted onboarding publish/payment derived-step sync additions to keep this iteration scoped to support-ticket implementation only
