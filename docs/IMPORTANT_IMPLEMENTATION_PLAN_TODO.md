@@ -60,17 +60,12 @@
 
 ### Still missing / not finished
 
-- No dedicated multi-step onboarding wizard page or route.
-- No route/state machine that advances sellers through every step in order.
-- Store basics exists as an embedded settings card, not a complete guided step with next/back/skip behavior.
-- Theme picker exists in settings, but choosing a theme does not appear to persist the separate `theme` onboarding step.
-- KYC, first product, payment/shipping, and publish-store steps are detected from existing product state but are not implemented as guided wizard steps.
-- No buyer onboarding UI for `buyer_welcome` despite the backend step ID existing.
-- No coachmark/tour overlay system for dashboard features.
-- No persistent onboarding progress header across seller dashboard pages beyond current dashboard/settings surfaces.
-- No clear publish-store guided flow tying verification, maintenance mode, products, shipping, and payment readiness together.
-- No centralized onboarding checklist component shared across dashboard pages.
-- No tests covering onboarding persistence and UI flow.
+- No SLA timer/escalation engine (response targets, breach jobs, escalation workflow).
+- No durable file-upload pipeline for attachments (virus scan, signed URLs, retention controls).
+- No route/service integration tests hitting a real test DB; current coverage is unit-level mocks only.
+- No websocket/event-stream updates for ticket threads in the UI (currently request/refresh model).
+- No custom-template-service, returns/RMA, or offline-live-chat auto-ticket integration yet.
+- No explicit audit-log table for ticket field transitions and assignment changes.
 
 ### Recommended next implementation slice
 
@@ -80,7 +75,7 @@ Build the **Store basics guided step** first because the data model and settings
 
 ## 2. P1 — Seller/Admin Support Ticket System
 
-**Real status:** Not implemented as a true support ticket system. Some adjacent systems exist, especially reports/moderation and chat-related infrastructure, but there is no support-ticket product flow.
+**Real status:** Core MVP is implemented (DB + backend service/routes + seller/admin UI + unit tests), but hardening and deeper integration slices remain.
 
 ### Implemented / related foundation verified
 
@@ -91,25 +86,39 @@ Build the **Store basics guided step** first because the data model and settings
 
 ### Still missing / not finished
 
-- No dedicated support ticket tables such as `pd_support_ticket`, `pd_support_ticket_message`, `pd_support_ticket_attachment`, or SLA tables.
-- No seller-facing ticket creation/list/detail pages.
-- No admin support queue for tickets.
-- No ticket statuses, categories, priorities, assignment, internal notes, SLA timers, or escalation rules.
-- No seller/admin attachment upload flow for support tickets.
-- No ticket notification workflow over email, in-app notification, or WebSocket.
-- No integration from custom-template-service requests into tickets.
-- No integration from RMA/returns or offline live chat into tickets.
-- No support ticket audit trail.
-- No tests for ticket creation, admin response, status transitions, or notifications.
+- No SLA timer/escalation engine (first-response targets, breach jobs, escalation workflow).
+- No hardened attachment ingestion pipeline (malware scan, signed URLs, retention/expiry policy).
+- No route/service integration tests against a real test DB (current tests are unit-level with mocks).
+- No realtime ticket thread updates over WebSocket/SSE in admin and seller UIs.
+- No integration from custom-template-service requests into tickets yet.
+- No integration from RMA/returns or offline live chat into tickets yet.
+- No explicit support-ticket audit-log table for field transitions/assignment history.
 
 ### Recommended next implementation slice
 
 Start with the database and API foundation:
-1. ticket tables and migrations
-2. seller create/list/detail/reply endpoints
-3. admin list/detail/reply/status endpoints
-4. basic seller and admin UI
+1. ✅ ticket tables and migrations (started)
+2. ✅ seller create/list/detail/reply endpoints (MVP slice started)
+3. ✅ admin list/detail/reply/status endpoints (MVP slice started)
+4. ✅ basic seller and admin UI (MVP pages started)
 5. notification hooks after the core flow works
+
+### Latest progress update (2026-05-23)
+
+- Added migration `039_support_ticket_foundation.sql` with foundation tables:
+  - `pd_support_ticket`
+  - `pd_support_ticket_message`
+  - `pd_support_ticket_attachment`
+- Added indexes for store ownership, lifecycle states, assignment, and timeline queries.
+- Added `updated_at` maintenance triggers for tickets and ticket messages via `pd_set_updated_at()`.
+- Added rollback migration `039_support_ticket_foundation.down.sql` for clean ticket-foundation rollback support.
+- Added enum-style CHECK constraints for category, priority, and status normalization.
+- Seller API MVP slice added: `GET /api/pd/support/me`, `POST /api/pd/support/me`, `GET /api/pd/support/me/:id`, `POST /api/pd/support/me/:id/messages`.
+- Admin queue UI now supports direct status actions for `in_progress`, `resolved`, and `closed` to align with lifecycle timestamps.
+- Added seller close/reopen flow with backend route `PATCH /api/pd/support/me/:id/status`, service lifecycle handling, and reopen notification fanout.
+- Added unit test coverage for seller status endpoint delegation and close/reopen lifecycle SQL assertions.
+- Next slice focus: integration tests + attachment pipeline hardening + SLA/escalation jobs.
+- Rolled back unrequested onboarding publish/payment derived-step sync changes to keep this workstream focused on support tickets only.
 
 ---
 
