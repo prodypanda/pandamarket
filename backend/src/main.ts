@@ -44,6 +44,7 @@ import addressRouter from './api/address.route';
 import chatRouter from './api/chat.route';
 import analyticsRouter from './api/analytics.route';
 import emailTemplateRouter from './api/email-template.route';
+import supportRouter from './api/support.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -187,6 +188,7 @@ async function bootstrap() {
   apiRouter.use('/chats', chatRouter);
   apiRouter.use('/analytics', analyticsRouter);
   apiRouter.use('/email-templates', emailTemplateRouter);
+  apiRouter.use('/support', supportRouter);
 
   app.use('/api/pd', apiRouter);
 
