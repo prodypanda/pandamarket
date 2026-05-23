@@ -56,7 +56,7 @@ router.get(
   requireStore,
   validate(listSchema, 'query'),
   asyncHandler(async (req, res) => {
-    const { status, page, limit } = req.query as z.infer<typeof listSchema>;
+    const { status, page, limit } = listSchema.parse(req.query);
     const data = await supportTicketService.listForSeller({
       store_id: req.user!.store_id!,
       user_id: req.user!.id,
@@ -139,7 +139,7 @@ router.post(
 
 
 router.get('/admin', requireAdmin, validate(adminListSchema, 'query'), asyncHandler(async (req, res) => {
-  const { status, priority, category, page, limit } = req.query as z.infer<typeof adminListSchema>;
+  const { status, priority, category, page, limit } = adminListSchema.parse(req.query);
   const data = await supportTicketService.listForAdmin({ status, priority, category, page, limit });
   res.status(200).json(data);
 }));
@@ -152,6 +152,7 @@ router.get('/admin/:id', requireAdmin, asyncHandler(async (req, res) => {
 router.post('/admin/:id/messages', requireAdmin, validate(adminReplySchema), asyncHandler(async (req, res) => {
   const data = await supportTicketService.replyAsAdmin({
     ticket_id: req.params.id,
+    admin_id: req.user!.id,
     body: req.body.body,
     is_internal: req.body.is_internal,
   });

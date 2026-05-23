@@ -88,7 +88,7 @@ export class SupportTicketService {
       `SELECT t.id, t.ticket_number, t.subject, t.category, t.priority, t.status, t.created_at, t.updated_at,
               (
                 SELECT body FROM pd_support_ticket_message m
-                WHERE m.ticket_id = t.id
+                WHERE m.ticket_id = t.id AND m.is_internal = false
                 ORDER BY m.created_at DESC
                 LIMIT 1
               ) AS last_message

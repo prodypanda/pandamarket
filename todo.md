@@ -228,7 +228,7 @@ All core features verified as implemented:
 | 6 | ~~Customer wishlist~~ | ~~🟢 LOW~~ | ~~1-2 days~~ | ✅ **DONE (v12)** |
 | 7 | ~~Multi-language support (FR/AR/EN)~~ | ~~🟢 LOW~~ | ~~~5-7 days~~ | ✅ **DONE (v17)** — i18n config, 3 locale files (fr/en/ar), LocaleContext, useLocale hook, LocaleSwitcher, RTL CSS |
 
-### 9. Support Ticket System (P1 — IN PROGRESS 2026-05-23-v60)
+### 9. Support Ticket System (P1 — IN PROGRESS 2026-05-23-v61)
 - [x] Added DB foundation migration `039_support_ticket_foundation.sql` with `pd_support_ticket`, `pd_support_ticket_message`, and `pd_support_ticket_attachment`
 - [x] Added lifecycle/status/priority/category constraints, query indexes, and `updated_at` triggers for seller/admin queue usage
 - [x] Added rollback down migration `039_support_ticket_foundation.down.sql`
