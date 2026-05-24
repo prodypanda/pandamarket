@@ -28,10 +28,14 @@ const createProductSchema = z.object({
   seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
   status: z.nativeEnum(ProductStatus).optional(),
-  attributes: z.array(z.object({
-    name: z.string().min(1).max(80),
-    value: z.string().min(1).max(300),
-  })).optional(),
+  attributes: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(80),
+        value: z.string().min(1).max(300),
+      }),
+    )
+    .optional(),
   max_downloads: z.number().int().min(1).max(100).nullable().optional(),
   download_expires_hours: z.number().int().min(1).max(8760).nullable().optional(),
   digital_file_key: z.string().max(1024).nullable().optional(),
@@ -40,18 +44,28 @@ const createProductSchema = z.object({
   digital_file_size: z.number().int().min(0).nullable().optional(),
   license_keys: z.array(z.string().min(1).max(2000)).max(1000).optional(),
   wholesale_min_quantity: z.number().int().min(2).nullable().optional(),
-  wholesale_price_tiers: z.array(z.object({
-    min_quantity: z.number().int().min(2),
-    unit_price: z.number().min(0),
-  })).max(20).optional(),
-  variants: z.array(z.object({
-    id: z.string().max(64).optional(),
-    sku: z.string().max(100).nullable().optional(),
-    title: z.string().min(1).max(200),
-    price: z.number().min(0),
-    inventory_quantity: z.number().int().min(0).optional(),
-    options: z.record(z.string()).optional(),
-  })).max(100).optional(),
+  wholesale_price_tiers: z
+    .array(
+      z.object({
+        min_quantity: z.number().int().min(2),
+        unit_price: z.number().min(0),
+      }),
+    )
+    .max(20)
+    .optional(),
+  variants: z
+    .array(
+      z.object({
+        id: z.string().max(64).optional(),
+        sku: z.string().max(100).nullable().optional(),
+        title: z.string().min(1).max(200),
+        price: z.number().min(0),
+        inventory_quantity: z.number().int().min(0).optional(),
+        options: z.record(z.string()).optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
 });
 
 const updateProductSchema = createProductSchema.partial();
@@ -62,7 +76,10 @@ const addProductImageSchema = z.object({
   is_thumbnail: z.boolean().optional(),
 });
 
-function assertDigitalFileOwnership(payload: { digital_file_key?: string | null }, storeId: string) {
+function assertDigitalFileOwnership(
+  payload: { digital_file_key?: string | null },
+  storeId: string,
+) {
   if (payload.digital_file_key && !payload.digital_file_key.startsWith(`digital/${storeId}/`)) {
     throw new PdValidationError('Digital file does not belong to this store');
   }
@@ -110,8 +127,17 @@ router.get(
       ? (req.query.seller_type as SellerType)
       : undefined;
     const settings = await platformConfigService.getSettings();
-    const sortBy = (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
-    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId, sellerType, sortBy });
+    const sortBy =
+      (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
+    const result = await productService.listPublished({
+      page,
+      limit,
+      category,
+      marketplaceCategoryId,
+      storeId,
+      sellerType,
+      sortBy,
+    });
     res.status(200).json(result);
   }),
 );
@@ -119,7 +145,10 @@ router.get(
 router.get(
   '/by-store/:storeId/:slug',
   asyncHandler(async (req: Request, res: Response) => {
-    const product = await productService.getPublishedByStoreSlug(req.params.storeId, req.params.slug);
+    const product = await productService.getPublishedByStoreSlug(
+      req.params.storeId,
+      req.params.slug,
+    );
     res.status(200).json({ product });
   }),
 );
@@ -163,10 +192,7 @@ router.get(
       .join('\n');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="products-${Date.now()}.csv"`,
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="products-${Date.now()}.csv"`);
     res.send(csvHeader + csvRows);
   }),
 );
@@ -181,7 +207,7 @@ router.post(
         .array(
           z.object({
             title: z.string().min(2),
-  slug: z.string().max(100).optional(),
+            slug: z.string().max(100).optional(),
             description: z.string().optional(),
             category: z.string().optional(),
             marketplace_category_id: z.string().nullable().optional(),
@@ -200,9 +226,12 @@ router.post(
     const parsed = importSchema.parse(req.body);
     const results = { created: 0, errors: [] as string[] };
 
+    // Performance optimization: Fetch store data once before the loop to prevent N+1 queries.
+    // Fetching this inside the loop (up to 500 times) caused severe performance degradation and high DB load.
+    const store = await storeService.getById(req.user!.store_id!);
+
     for (const item of parsed.products) {
       try {
-        const store = await storeService.getById(req.user!.store_id!);
         const categories = await categoryService.resolveProductCategories(
           req.user!.store_id!,
           item.marketplace_category_id,
@@ -225,7 +254,9 @@ router.post(
         });
         results.created++;
       } catch (err: unknown) {
-        results.errors.push(`${item.title}: ${err instanceof Error ? err.message : 'Import failed'}`);
+        results.errors.push(
+          `${item.title}: ${err instanceof Error ? err.message : 'Import failed'}`,
+        );
       }
     }
 
@@ -313,11 +344,22 @@ router.get(
     const customerId = req.user!.id;
 
     if (product.type !== ProductType.Digital && product.type !== ProductType.Serial) {
-      return res.status(400).json({ error: { code: 'PD_PRODUCT_INVALID_TYPE', message: 'This product is not downloadable' } });
+      return res
+        .status(400)
+        .json({
+          error: { code: 'PD_PRODUCT_INVALID_TYPE', message: 'This product is not downloadable' },
+        });
     }
 
     if (!product.digital_file_key) {
-      return res.status(404).json({ error: { code: 'PD_FILE_NOT_FOUND', message: 'No digital file is attached to this product' } });
+      return res
+        .status(404)
+        .json({
+          error: {
+            code: 'PD_FILE_NOT_FOUND',
+            message: 'No digital file is attached to this product',
+          },
+        });
     }
 
     const { query: dbQuery } = await import('../db/pool');
@@ -332,7 +374,11 @@ router.get(
     const order = orderRows[0];
 
     if (!order) {
-      return res.status(403).json({ error: { code: 'PD_PERM_FORBIDDEN', message: 'You have not purchased this product' } });
+      return res
+        .status(403)
+        .json({
+          error: { code: 'PD_PERM_FORBIDDEN', message: 'You have not purchased this product' },
+        });
     }
 
     const maxDownloads = product.max_downloads ?? 5;
@@ -353,7 +399,9 @@ router.get(
     );
     const downloadCount = quotaRows[0]?.download_count;
     if (!downloadCount) {
-      return res.status(403).json({ error: { code: 'PD_PRODUCT_QUOTA_EXCEEDED', message: 'Download limit reached' } });
+      return res
+        .status(403)
+        .json({ error: { code: 'PD_PRODUCT_QUOTA_EXCEEDED', message: 'Download limit reached' } });
     }
 
     // Check for license key
@@ -391,4 +439,3 @@ router.get(
 );
 
 export default router;
-
