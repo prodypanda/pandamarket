@@ -98,6 +98,7 @@ export function TemplatePicker({ onSelect, onClose, storeBranding }: Props) {
           <button
             onClick={onClose}
             className="p-2 text-[#7C7468] hover:text-[#1A1A2E] rounded-lg hover:bg-[#F4EDE2]"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -328,6 +329,7 @@ function PreviewModal({
             <button
               onClick={onClose}
               className="p-2 text-[#7C7468] hover:text-[#1A1A2E] rounded-lg hover:bg-[#F4EDE2]"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>

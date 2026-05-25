@@ -256,7 +256,10 @@ export function MarketplaceStoreProductDetail({
                 image_url={mainImage || null}
                 maxQuantity={product.inventory_quantity}
               />
-              <button className="rounded-xl border border-gray-300 bg-white p-3 transition-colors hover:bg-gray-50">
+              <button
+                aria-label={translate(store?.settings?.locale as Locale | undefined, 'product.addToFavorites', 'Ajouter aux favoris')}
+                className="rounded-xl border border-gray-300 bg-white p-3 transition-colors hover:bg-gray-50"
+              >
                 <Heart className="h-5 w-5 text-gray-600" />
               </button>
             </div>

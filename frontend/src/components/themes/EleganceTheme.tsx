@@ -30,7 +30,7 @@ export function EleganceTheme({ theme, storeName, products = [], branding }: The
       {/* Header */}
       <header className="border-b border-gray-200/60">
         <div className="max-w-6xl mx-auto px-6 py-10 flex items-center justify-between">
-          <button className="md:hidden">
+          <button className="md:hidden" aria-label="Open menu">
             <Menu className="w-5 h-5" strokeWidth={1.5} />
           </button>
           <Link href={branding?.store_path_base || '/'} className="flex-1 text-center">
