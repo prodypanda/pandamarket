@@ -130,7 +130,7 @@ export default function SellerOnboardingPage() {
         const [storeRes, verificationRes, productsRes, onboardingRes] = await Promise.allSettled([
           fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
           fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
-          fetchWithCsrf('/api/pd/stores/me/products?limit=20', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }),
           fetchOnboardingState(),
         ]);
 
@@ -438,8 +438,8 @@ export default function SellerOnboardingPage() {
           first_product_id: firstProduct?.id || null,
           first_product_title: firstProduct?.title || null,
           first_product_status: firstProduct?.status || null,
-          first_product_price: firstProduct?.price || null,
-          first_product_inventory: firstProduct?.inventory_quantity || null,
+          first_product_price: firstProduct?.price ?? null,
+          first_product_inventory: firstProduct?.inventory_quantity ?? null,
           has_thumbnail: Boolean(firstProduct?.thumbnail),
           category: firstProduct?.marketplace_category_name || firstProduct?.category || null,
           storefront_category: firstProduct?.storefront_category_name || null,

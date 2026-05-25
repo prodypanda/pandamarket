@@ -266,8 +266,8 @@ function syncFirstProductOnboarding(productTotal: number, currentProducts: Produ
       first_product_id: primaryProduct?.id || null,
       first_product_title: primaryProduct?.title || null,
       first_product_status: primaryProduct?.status || null,
-      first_product_price: primaryProduct?.price || null,
-      first_product_inventory: primaryProduct?.inventory_quantity || null,
+      first_product_price: primaryProduct?.price ?? null,
+      first_product_inventory: primaryProduct?.inventory_quantity ?? null,
       has_thumbnail: Boolean(primaryProduct?.thumbnail),
       category: primaryProduct?.marketplace_category_name || primaryProduct?.category || null,
       storefront_category: primaryProduct?.storefront_category_name || null,
@@ -322,8 +322,9 @@ export default function ProductsPage() {
     }
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
+  const fetchProducts = useCallback(async (options?: { showLoading?: boolean }) => {
+    const shouldShowLoading = options?.showLoading !== false;
+    if (shouldShowLoading) setLoading(true);
     setError('');
     try {
       const res = await fetchWithCsrf(`/api/pd/stores/me/products?page=${page}&limit=20`, {
@@ -345,7 +346,7 @@ export default function ProductsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
     } finally {
-      setLoading(false);
+      if (shouldShowLoading) setLoading(false);
     }
   }, [page]);
 
@@ -1060,6 +1061,7 @@ export default function ProductsPage() {
       if (res.ok) {
         setProducts((current) => current.filter((product) => product.id !== productId));
         setTotalProducts((current) => Math.max(0, current - 1));
+        await fetchProducts({ showLoading: false });
       } else {
         setError(await getErrorMessage(res, 'Failed to delete product'));
       }
