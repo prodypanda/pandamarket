@@ -6,12 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import {
-  asyncHandler,
-  requireAuth,
-  requireAdmin,
-  validate,
-} from '../middlewares';
+import { asyncHandler, requireAuth, requireAdmin, validate } from '../middlewares';
 import { invalidateMaintenanceCache } from '../middlewares/maintenance.middleware';
 import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
@@ -199,7 +194,11 @@ router.get(
   '/verifications/pending',
   validate(kycStatusSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: VerificationStatus; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: VerificationStatus;
+      page: number;
+      limit: number;
+    };
     const result = await kycService.listByStatus(status, { page, limit });
     res.status(200).json(result);
   }),
@@ -247,7 +246,11 @@ router.get(
   '/mandats/pending',
   validate(mandatListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: MandatStatus; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: MandatStatus;
+      page: number;
+      limit: number;
+    };
     const result = await mandatService.listByStatus(status, { page, limit });
     res.status(200).json(result);
   }),
@@ -281,7 +284,9 @@ router.put(
 // =====================================================
 
 const reportListSchema = z.object({
-  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']).optional(),
+  status: z
+    .enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed'])
+    .optional(),
   target_type: z.enum(['seller', 'buyer']).optional(),
   source: z.enum(['buyer', 'admin']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
@@ -295,16 +300,17 @@ router.get(
   '/reports',
   validate(reportListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, target_type, source, priority, search, store_id, page, limit } = req.query as unknown as {
-      status?: ReportStatus;
-      target_type?: ReportTargetType;
-      source?: ReportSource;
-      priority?: ReportPriority;
-      search?: string;
-      store_id?: string;
-      page: number;
-      limit: number;
-    };
+    const { status, target_type, source, priority, search, store_id, page, limit } =
+      req.query as unknown as {
+        status?: ReportStatus;
+        target_type?: ReportTargetType;
+        source?: ReportSource;
+        priority?: ReportPriority;
+        search?: string;
+        store_id?: string;
+        page: number;
+        limit: number;
+      };
     const result = await reportService.list({
       status,
       targetType: target_type,
@@ -329,7 +335,11 @@ router.get(
   '/reports/targets',
   validate(reportTargetListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, search, limit } = req.query as unknown as { type: ReportTargetType; search?: string; limit: number };
+    const { type, search, limit } = req.query as unknown as {
+      type: ReportTargetType;
+      search?: string;
+      limit: number;
+    };
     const data = await reportService.listTargets(type, search, limit);
     res.status(200).json({ data });
   }),
@@ -369,19 +379,33 @@ router.post(
 );
 
 const updateReportSchema = z.object({
-  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']),
+  status: z.enum([
+    'open',
+    'investigating',
+    'awaiting_buyer',
+    'awaiting_seller',
+    'resolved',
+    'dismissed',
+  ]),
   admin_notes: z.string().max(2000).optional(),
 });
 
-const reportAttachmentInputSchema = z.object({
-  file_url: z.string().url().optional(),
-  file_key: z.string().min(1).max(1024).optional(),
-  file_name: z.string().min(1).max(255),
-  content_type: z.string().min(1).max(120),
-  file_size: z.number().int().min(0).max(20 * 1024 * 1024).optional(),
-}).refine((value) => value.file_url || value.file_key, {
-  message: 'Either file_url or file_key is required',
-});
+const reportAttachmentInputSchema = z
+  .object({
+    file_url: z.string().url().optional(),
+    file_key: z.string().min(1).max(1024).optional(),
+    file_name: z.string().min(1).max(255),
+    content_type: z.string().min(1).max(120),
+    file_size: z
+      .number()
+      .int()
+      .min(0)
+      .max(20 * 1024 * 1024)
+      .optional(),
+  })
+  .refine((value) => value.file_url || value.file_key, {
+    message: 'Either file_url or file_key is required',
+  });
 
 const createReportMessageSchema = z.object({
   visibility: z.enum(['buyer_admin', 'seller_admin', 'all_parties', 'admin_internal']),
@@ -445,7 +469,10 @@ router.put(
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
     }
-    logger.warn({ buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer');
+    logger.warn(
+      { buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended buyer',
+    );
     res.status(200).json({ success: true, user: rows[0] });
   }),
 );
@@ -474,7 +501,10 @@ router.put(
 // =====================================================
 
 const productListSchema = z.object({
-  status: z.enum(['pending_approval', 'published', 'rejected']).optional().default('pending_approval'),
+  status: z
+    .enum(['pending_approval', 'published', 'rejected'])
+    .optional()
+    .default('pending_approval'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -483,7 +513,11 @@ router.get(
   '/products/pending',
   validate(productListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: string; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: string;
+      page: number;
+      limit: number;
+    };
     const offset = (page - 1) * limit;
     const { rows } = await query<{
       id: string;
@@ -506,7 +540,9 @@ router.get(
       [status],
     );
     const total = parseInt(countRows[0].count, 10);
-    res.status(200).json({ data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } });
+    res
+      .status(200)
+      .json({ data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } });
   }),
 );
 
@@ -617,7 +653,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
     await authService.logout(rows[0].id);
-    logger.warn({ owner_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor account');
+    logger.warn(
+      { owner_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended vendor account',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -635,7 +674,10 @@ router.put(
       [req.params.id, 'vendor'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
-    logger.info({ owner_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated vendor account');
+    logger.info(
+      { owner_id: rows[0].id, admin_id: req.user!.id },
+      'Admin reactivated vendor account',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -693,7 +735,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
     await authService.logout(rows[0].id);
-    logger.warn({ buyer_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer account');
+    logger.warn(
+      { buyer_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended buyer account',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -711,7 +756,10 @@ router.put(
       [req.params.id, 'customer'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
-    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated buyer account');
+    logger.info(
+      { buyer_id: rows[0].id, admin_id: req.user!.id },
+      'Admin reactivated buyer account',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -744,7 +792,10 @@ router.put(
       [req.params.id, req.body.email_verified, 'customer'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
-    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id, email_verified: rows[0].email_verified }, 'Admin updated buyer email verification');
+    logger.info(
+      { buyer_id: rows[0].id, admin_id: req.user!.id, email_verified: rows[0].email_verified },
+      'Admin updated buyer email verification',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -753,7 +804,16 @@ router.get(
   '/vendors',
   validate(vendorListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, search, owner_id, status, verified_only, seller_type, pending_seller_type_request } = req.query as unknown as {
+    const {
+      page,
+      limit,
+      search,
+      owner_id,
+      status,
+      verified_only,
+      seller_type,
+      pending_seller_type_request,
+    } = req.query as unknown as {
       page: number;
       limit: number;
       search?: string;
@@ -800,7 +860,10 @@ router.put(
   validate(updateVendorSellerTypeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.updateSellerType(req.params.id, req.body.seller_type);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: req.body.seller_type }, 'Admin updated seller type');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, seller_type: req.body.seller_type },
+      'Admin updated seller type',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -809,7 +872,10 @@ router.put(
   '/vendors/:id/seller-type-request/approve',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.approveSellerTypeChange(req.params.id);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: store.seller_type }, 'Admin approved seller type change');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, seller_type: store.seller_type },
+      'Admin approved seller type change',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -819,7 +885,10 @@ router.put(
   validate(rejectSellerTypeRequestSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.rejectSellerTypeChange(req.params.id, req.body.reason);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin rejected seller type change');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin rejected seller type change',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -850,7 +919,15 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
     await authService.logout(rows[0].owner_id);
-    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor owner');
+    logger.warn(
+      {
+        store_id: req.params.id,
+        owner_id: rows[0].owner_id,
+        admin_id: req.user!.id,
+        reason: req.body.reason,
+      },
+      'Admin suspended vendor owner',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -869,7 +946,10 @@ router.put(
       [req.params.id],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
-    logger.info({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reactivated vendor owner');
+    logger.info(
+      { store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id },
+      'Admin reactivated vendor owner',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -886,7 +966,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
     await authService.resetTwoFactorForUser(rows[0].owner_id);
-    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reset vendor owner 2FA');
+    logger.warn(
+      { store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id },
+      'Admin reset vendor owner 2FA',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -902,7 +985,10 @@ router.put(
       req.body.subscription_type,
       req.body.subscription_expires_at,
     );
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, plan: req.body.subscription_plan }, 'Admin updated vendor subscription');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, plan: req.body.subscription_plan },
+      'Admin updated vendor subscription',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -911,7 +997,10 @@ router.delete(
   '/vendors/:id/payment-config',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.clearPaymentConfig(req.params.id);
-    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor payment config');
+    logger.warn(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin cleared vendor payment config',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -920,7 +1009,10 @@ router.delete(
   '/vendors/:id/custom-domain',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.clearCustomDomain(req.params.id);
-    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor custom domain');
+    logger.warn(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin cleared vendor custom domain',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -982,7 +1074,10 @@ const createPlanSchema = updatePlanSchema.extend({
 });
 
 const deletePlanSchema = z.object({
-  replacement_plan_id: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
+  replacement_plan_id: z
+    .string()
+    .optional()
+    .transform((value) => (value ? normalizePlanId(value) : undefined)),
 });
 
 router.get(
@@ -1016,9 +1111,10 @@ router.post(
   validate(createPlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = req.body.plan_id;
-    const commissionRate = Number(req.body.commission_rate) > 1
-      ? Number(req.body.commission_rate) / 100
-      : Number(req.body.commission_rate);
+    const commissionRate =
+      Number(req.body.commission_rate) > 1
+        ? Number(req.body.commission_rate) / 100
+        : Number(req.body.commission_rate);
     const { rows } = await query(
       `INSERT INTO pd_subscription_limits (
          plan_id,
@@ -1069,9 +1165,10 @@ router.put(
   validate(updatePlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = normalizePlanId(req.params.planId);
-    const commissionRate = Number(req.body.commission_rate) > 1
-      ? Number(req.body.commission_rate) / 100
-      : Number(req.body.commission_rate);
+    const commissionRate =
+      Number(req.body.commission_rate) > 1
+        ? Number(req.body.commission_rate) / 100
+        : Number(req.body.commission_rate);
     const { rows } = await query(
       `UPDATE pd_subscription_limits
        SET max_products = $2,
@@ -1117,7 +1214,10 @@ router.put(
 
     subscriptionService.invalidateCache();
     const syncedWallets = await creditsService.syncForPlan(planId, req.body.ai_tokens_included);
-    logger.info({ admin_id: req.user!.id, plan_id: planId, synced_wallets: syncedWallets }, 'Admin updated subscription plan');
+    logger.info(
+      { admin_id: req.user!.id, plan_id: planId, synced_wallets: syncedWallets },
+      'Admin updated subscription plan',
+    );
     res.status(200).json({ data: rows[0], plan: rows[0] });
   }),
 );
@@ -1134,7 +1234,9 @@ router.delete(
 
     const replacementPlanId = req.body.replacement_plan_id;
     if (replacementPlanId === planId) {
-      res.status(400).json({ error: { message: 'Replacement plan must be different from the deleted plan' } });
+      res
+        .status(400)
+        .json({ error: { message: 'Replacement plan must be different from the deleted plan' } });
       return;
     }
 
@@ -1172,7 +1274,13 @@ router.delete(
                updated_at = NOW()
            WHERE subscription_plan = $1
            RETURNING id`,
-          [planId, replacementPlanId, SubscriptionPlan.Free, SubscriptionType.Commission, SubscriptionType.Yearly],
+          [
+            planId,
+            replacementPlanId,
+            SubscriptionPlan.Free,
+            SubscriptionType.Commission,
+            SubscriptionType.Yearly,
+          ],
         );
         if (movedStores.rows.length > 0) {
           await client.query(
@@ -1208,12 +1316,15 @@ router.delete(
     }
 
     subscriptionService.invalidateCache();
-    logger.warn({
-      admin_id: req.user!.id,
-      plan_id: planId,
-      replacement_plan_id: result.replacementPlanId ?? null,
-      stores_count: result.storeCount,
-    }, 'Admin deleted subscription plan');
+    logger.warn(
+      {
+        admin_id: req.user!.id,
+        plan_id: planId,
+        replacement_plan_id: result.replacementPlanId ?? null,
+        stores_count: result.storeCount,
+      },
+      'Admin deleted subscription plan',
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -1288,17 +1399,39 @@ router.get(
 // Global Platform Settings
 // =====================================================
 
-const publicLinkSettingSchema = z.coerce.string().trim().max(2048).refine(
-  (value) => value === '' || (/^\/(?!\/)/.test(value)) || /^https?:\/\//i.test(value),
-  'Must be a relative path or http(s) URL',
-);
+const publicLinkSettingSchema = z.coerce
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (value) => value === '' || /^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value),
+    'Must be a relative path or http(s) URL',
+  );
 
-const hexColorSettingSchema = z.coerce.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color like #B91C1C');
-const ga4MeasurementIdSchema = z.coerce.string().trim().regex(/^(|G-[A-Z0-9]{4,20})$/, 'Must be blank or a GA4 measurement ID like G-XXXXXXXXXX');
-const gtmContainerIdSchema = z.coerce.string().trim().regex(/^(|GTM-[A-Z0-9]{4,20})$/, 'Must be blank or a GTM container ID like GTM-XXXXXXX');
-const metaPixelIdSchema = z.coerce.string().trim().regex(/^(|\d{5,30})$/, 'Must be blank or a numeric Meta Pixel ID');
-const searchConsoleVerificationSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
-const cloudflareIdentifierSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+const hexColorSettingSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color like #B91C1C');
+const ga4MeasurementIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|G-[A-Z0-9]{4,20})$/, 'Must be blank or a GA4 measurement ID like G-XXXXXXXXXX');
+const gtmContainerIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|GTM-[A-Z0-9]{4,20})$/, 'Must be blank or a GTM container ID like GTM-XXXXXXX');
+const metaPixelIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|\d{5,30})$/, 'Must be blank or a numeric Meta Pixel ID');
+const searchConsoleVerificationSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+const cloudflareIdentifierSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
 
 const globalSettingsSchema = z.object({
   marketplace_name: z.coerce.string().min(1).max(120).optional(),
@@ -1339,7 +1472,9 @@ const globalSettingsSchema = z.object({
   marketplace_cookie_policy_url: publicLinkSettingSchema.optional(),
   marketplace_contact_url: publicLinkSettingSchema.optional(),
   catalog_featured_category_slugs: z.coerce.string().trim().max(1000).optional(),
-  catalog_default_sort: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc']).optional(),
+  catalog_default_sort: z
+    .enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc'])
+    .optional(),
   hub_homepage_layout: z.enum(['theme_default', 'classic', 'deals', 'premium_deals']).optional(),
   hub_homepage_banner_title: z.coerce.string().trim().max(160).optional(),
   hub_homepage_banner_subtitle: z.coerce.string().trim().max(320).optional(),
@@ -1391,7 +1526,9 @@ const globalSettingsSchema = z.object({
   order_splitting_enabled: z.boolean().optional(),
   tax_mode: z.enum(['none', 'included', 'exclusive']).optional(),
   default_tax_rate: z.coerce.number().min(0).max(100).optional(),
-  price_rounding_mode: z.enum(['none', 'nearest_0_001', 'nearest_0_010', 'nearest_0_100']).optional(),
+  price_rounding_mode: z
+    .enum(['none', 'nearest_0_001', 'nearest_0_010', 'nearest_0_100'])
+    .optional(),
   auto_cancel_unpaid_enabled: z.boolean().optional(),
   auto_cancel_unpaid_minutes: z.coerce.number().int().min(5).max(10080).optional(),
   retention_days_flouci: z.coerce.number().int().min(1).max(90).optional(),
@@ -1408,7 +1545,9 @@ const globalSettingsSchema = z.object({
   payment_mandat_enabled: z.boolean().optional(),
   payment_cod_enabled: z.boolean().optional(),
   payment_vendor_direct_enabled: z.boolean().optional(),
-  payment_platform_credentials_source: z.enum(['environment', 'platform_config', 'vendor_direct_only']).optional(),
+  payment_platform_credentials_source: z
+    .enum(['environment', 'platform_config', 'vendor_direct_only'])
+    .optional(),
   mandat_recipient_name: z.coerce.string().max(200).optional(),
   mandat_recipient_cin: z.coerce.string().max(20).optional(),
   mandat_recipient_city: z.coerce.string().max(100).optional(),
@@ -1446,163 +1585,173 @@ const globalSettingsSchema = z.object({
   maintenance_block_storefronts: z.boolean().optional(),
 });
 
-const marketplaceSettingsSchema = globalSettingsSchema.pick({
-  marketplace_name: true,
-  marketplace_tagline: true,
-  marketplace_logo_url: true,
-  marketplace_logo_light_url: true,
-  marketplace_logo_dark_url: true,
-  marketplace_favicon_url: true,
-  marketplace_og_image_url: true,
-  marketplace_public_url: true,
-  marketplace_theme: true,
-  marketplace_primary_color: true,
-  marketplace_secondary_color: true,
-  marketplace_default_locale: true,
-  marketplace_supported_locales: true,
-  marketplace_rtl_enabled: true,
-  marketplace_support_email: true,
-  marketplace_support_phone: true,
-  marketplace_support_whatsapp: true,
-  marketplace_address: true,
-  marketplace_city: true,
-  marketplace_country: true,
-  marketplace_business_hours: true,
-  marketplace_facebook_url: true,
-  marketplace_instagram_url: true,
-  marketplace_x_url: true,
-  marketplace_tiktok_url: true,
-  marketplace_youtube_url: true,
-  marketplace_linkedin_url: true,
-  marketplace_whatsapp_url: true,
-  marketplace_telegram_url: true,
-  marketplace_pinterest_url: true,
-  marketplace_snapchat_url: true,
-  marketplace_help_url: true,
-  marketplace_terms_url: true,
-  marketplace_privacy_url: true,
-  marketplace_refund_url: true,
-  marketplace_cookie_policy_url: true,
-  marketplace_contact_url: true,
-  catalog_featured_category_slugs: true,
-  catalog_default_sort: true,
-  hub_homepage_layout: true,
-  hub_homepage_banner_title: true,
-  hub_homepage_banner_subtitle: true,
-  hub_homepage_banner_cta_label: true,
-  hub_homepage_banner_cta_url: true,
-  hub_homepage_banner_image_url: true,
-}).strict();
+const marketplaceSettingsSchema = globalSettingsSchema
+  .pick({
+    marketplace_name: true,
+    marketplace_tagline: true,
+    marketplace_logo_url: true,
+    marketplace_logo_light_url: true,
+    marketplace_logo_dark_url: true,
+    marketplace_favicon_url: true,
+    marketplace_og_image_url: true,
+    marketplace_public_url: true,
+    marketplace_theme: true,
+    marketplace_primary_color: true,
+    marketplace_secondary_color: true,
+    marketplace_default_locale: true,
+    marketplace_supported_locales: true,
+    marketplace_rtl_enabled: true,
+    marketplace_support_email: true,
+    marketplace_support_phone: true,
+    marketplace_support_whatsapp: true,
+    marketplace_address: true,
+    marketplace_city: true,
+    marketplace_country: true,
+    marketplace_business_hours: true,
+    marketplace_facebook_url: true,
+    marketplace_instagram_url: true,
+    marketplace_x_url: true,
+    marketplace_tiktok_url: true,
+    marketplace_youtube_url: true,
+    marketplace_linkedin_url: true,
+    marketplace_whatsapp_url: true,
+    marketplace_telegram_url: true,
+    marketplace_pinterest_url: true,
+    marketplace_snapchat_url: true,
+    marketplace_help_url: true,
+    marketplace_terms_url: true,
+    marketplace_privacy_url: true,
+    marketplace_refund_url: true,
+    marketplace_cookie_policy_url: true,
+    marketplace_contact_url: true,
+    catalog_featured_category_slugs: true,
+    catalog_default_sort: true,
+    hub_homepage_layout: true,
+    hub_homepage_banner_title: true,
+    hub_homepage_banner_subtitle: true,
+    hub_homepage_banner_cta_label: true,
+    hub_homepage_banner_cta_url: true,
+    hub_homepage_banner_image_url: true,
+  })
+  .strict();
 
-const commerceSettingsSchema = globalSettingsSchema.pick({
-  marketplace_enabled: true,
-  vendor_registration_enabled: true,
-  buyer_registration_enabled: true,
-  product_moderation_required: true,
-  product_auto_publish_verified: true,
-  seller_type_change_auto_approval: true,
-  reviews_enabled: true,
-  review_auto_publish: true,
-  wishlist_enabled: true,
-  ai_tools_enabled: true,
-  page_builder_enabled: true,
-  plugins_marketplace_enabled: true,
-  email_marketing_enabled: true,
-  cart_enabled: true,
-  shipping_enabled: true,
-  shipping_self_managed_enabled: true,
-  shipping_platform_unified_enabled: true,
-  shipping_default_provider: true,
-  shipping_aramex_enabled: true,
-  shipping_laposte_enabled: true,
-  shipping_platform_fallback_enabled: true,
-  shipping_default_origin_city: true,
-  shipping_default_origin_country: true,
-  shipping_domestic_zone_cities: true,
-  shipping_remote_zone_cities: true,
-  shipping_platform_flat_rate_tnd: true,
-  shipping_domestic_zone_rate_tnd: true,
-  shipping_remote_zone_rate_tnd: true,
-  shipping_free_shipping_threshold_tnd: true,
-  order_splitting_enabled: true,
-  tax_mode: true,
-  default_tax_rate: true,
-  price_rounding_mode: true,
-  auto_cancel_unpaid_enabled: true,
-  auto_cancel_unpaid_minutes: true,
-}).strict();
+const commerceSettingsSchema = globalSettingsSchema
+  .pick({
+    marketplace_enabled: true,
+    vendor_registration_enabled: true,
+    buyer_registration_enabled: true,
+    product_moderation_required: true,
+    product_auto_publish_verified: true,
+    seller_type_change_auto_approval: true,
+    reviews_enabled: true,
+    review_auto_publish: true,
+    wishlist_enabled: true,
+    ai_tools_enabled: true,
+    page_builder_enabled: true,
+    plugins_marketplace_enabled: true,
+    email_marketing_enabled: true,
+    cart_enabled: true,
+    shipping_enabled: true,
+    shipping_self_managed_enabled: true,
+    shipping_platform_unified_enabled: true,
+    shipping_default_provider: true,
+    shipping_aramex_enabled: true,
+    shipping_laposte_enabled: true,
+    shipping_platform_fallback_enabled: true,
+    shipping_default_origin_city: true,
+    shipping_default_origin_country: true,
+    shipping_domestic_zone_cities: true,
+    shipping_remote_zone_cities: true,
+    shipping_platform_flat_rate_tnd: true,
+    shipping_domestic_zone_rate_tnd: true,
+    shipping_remote_zone_rate_tnd: true,
+    shipping_free_shipping_threshold_tnd: true,
+    order_splitting_enabled: true,
+    tax_mode: true,
+    default_tax_rate: true,
+    price_rounding_mode: true,
+    auto_cancel_unpaid_enabled: true,
+    auto_cancel_unpaid_minutes: true,
+  })
+  .strict();
 
-const financeSettingsSchema = globalSettingsSchema.pick({
-  retention_days_flouci: true,
-  retention_days_konnect: true,
-  retention_days_mandat: true,
-  retention_days_cod: true,
-  payout_schedule: true,
-  min_withdrawal_tnd: true,
-  platform_commission_rate: true,
-  default_currency: true,
-  payment_sandbox_mode: true,
-  payment_flouci_enabled: true,
-  payment_konnect_enabled: true,
-  payment_mandat_enabled: true,
-  payment_cod_enabled: true,
-  payment_vendor_direct_enabled: true,
-  payment_platform_credentials_source: true,
-  mandat_recipient_name: true,
-  mandat_recipient_cin: true,
-  mandat_recipient_city: true,
-}).strict();
+const financeSettingsSchema = globalSettingsSchema
+  .pick({
+    retention_days_flouci: true,
+    retention_days_konnect: true,
+    retention_days_mandat: true,
+    retention_days_cod: true,
+    payout_schedule: true,
+    min_withdrawal_tnd: true,
+    platform_commission_rate: true,
+    default_currency: true,
+    payment_sandbox_mode: true,
+    payment_flouci_enabled: true,
+    payment_konnect_enabled: true,
+    payment_mandat_enabled: true,
+    payment_cod_enabled: true,
+    payment_vendor_direct_enabled: true,
+    payment_platform_credentials_source: true,
+    mandat_recipient_name: true,
+    mandat_recipient_cin: true,
+    mandat_recipient_city: true,
+  })
+  .strict();
 
-const operationsSettingsSchema = globalSettingsSchema.pick({
-  chat_bubble_enabled: true,
-  chat_bubble_position: true,
-  max_upload_size_mb: true,
-  max_product_images: true,
-  max_products_per_store_free: true,
-  default_low_stock_threshold: true,
-  chat_message_rate_limit_per_minute: true,
-  chat_max_images_per_message: true,
-  chat_max_image_size_mb: true,
-  chat_max_message_length: true,
-  notifications_in_app_enabled: true,
-  notifications_realtime_enabled: true,
-  notifications_email_enabled: true,
-  notifications_sms_enabled: true,
-  notifications_sms_provider: true,
-  notifications_sms_sender_name: true,
-  security_login_max_attempts: true,
-  security_login_lockout_minutes: true,
-  security_password_min_length: true,
-  security_password_require_uppercase: true,
-  security_password_require_lowercase: true,
-  security_password_require_number: true,
-  security_password_require_symbol: true,
-  security_2fa_required_roles: true,
-  security_custom_domains_enabled: true,
-  security_custom_domain_allowed_suffixes: true,
-  security_custom_domain_blocked_suffixes: true,
-  maintenance_enabled: true,
-  maintenance_title: true,
-  maintenance_message: true,
-  maintenance_illustration_url: true,
-  maintenance_eta: true,
-  maintenance_allowed_ips: true,
-  maintenance_block_storefronts: true,
-}).strict();
+const operationsSettingsSchema = globalSettingsSchema
+  .pick({
+    chat_bubble_enabled: true,
+    chat_bubble_position: true,
+    max_upload_size_mb: true,
+    max_product_images: true,
+    max_products_per_store_free: true,
+    default_low_stock_threshold: true,
+    chat_message_rate_limit_per_minute: true,
+    chat_max_images_per_message: true,
+    chat_max_image_size_mb: true,
+    chat_max_message_length: true,
+    notifications_in_app_enabled: true,
+    notifications_realtime_enabled: true,
+    notifications_email_enabled: true,
+    notifications_sms_enabled: true,
+    notifications_sms_provider: true,
+    notifications_sms_sender_name: true,
+    security_login_max_attempts: true,
+    security_login_lockout_minutes: true,
+    security_password_min_length: true,
+    security_password_require_uppercase: true,
+    security_password_require_lowercase: true,
+    security_password_require_number: true,
+    security_password_require_symbol: true,
+    security_2fa_required_roles: true,
+    security_custom_domains_enabled: true,
+    security_custom_domain_allowed_suffixes: true,
+    security_custom_domain_blocked_suffixes: true,
+    maintenance_enabled: true,
+    maintenance_title: true,
+    maintenance_message: true,
+    maintenance_illustration_url: true,
+    maintenance_eta: true,
+    maintenance_allowed_ips: true,
+    maintenance_block_storefronts: true,
+  })
+  .strict();
 
-const integrationsSettingsSchema = globalSettingsSchema.pick({
-  analytics_ga4_enabled: true,
-  analytics_ga4_measurement_id: true,
-  analytics_gtm_enabled: true,
-  analytics_gtm_container_id: true,
-  analytics_meta_pixel_enabled: true,
-  analytics_meta_pixel_id: true,
-  search_console_verification: true,
-  cloudflare_integration_enabled: true,
-  cloudflare_account_id: true,
-  cloudflare_zone_id: true,
-  cloudflare_custom_hostnames_enabled: true,
-}).strict();
+const integrationsSettingsSchema = globalSettingsSchema
+  .pick({
+    analytics_ga4_enabled: true,
+    analytics_ga4_measurement_id: true,
+    analytics_gtm_enabled: true,
+    analytics_gtm_container_id: true,
+    analytics_meta_pixel_enabled: true,
+    analytics_meta_pixel_id: true,
+    search_console_verification: true,
+    cloudflare_integration_enabled: true,
+    cloudflare_account_id: true,
+    cloudflare_zone_id: true,
+    cloudflare_custom_hostnames_enabled: true,
+  })
+  .strict();
 
 const settingsSectionParamSchema = z.object({
   section: z.enum(['marketplace', 'commerce', 'finance', 'operations', 'integrations']),
@@ -1641,10 +1790,7 @@ router.put(
       req.user!.id,
     );
 
-    logger.info(
-      { admin_id: req.user!.id, keys: updatedKeys },
-      'Admin updated platform settings',
-    );
+    logger.info({ admin_id: req.user!.id, keys: updatedKeys }, 'Admin updated platform settings');
 
     if (updatedKeys.some((key) => key.startsWith('maintenance_'))) {
       invalidateMaintenanceCache();
@@ -1664,8 +1810,14 @@ router.put(
   validate(settingsSectionParamSchema, 'params'),
   asyncHandler(async (req: Request, res: Response) => {
     const { section } = req.params as { section: PlatformSettingSection };
-    const parsed = settingsSectionSchemas[section].parse(req.body) as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
-    const updatedKeys = await platformConfigService.updateSectionSettings(section, parsed, req.user!.id);
+    const parsed = settingsSectionSchemas[section].parse(req.body) as Partial<
+      Record<PlatformSettingKey, PlatformSettingValue>
+    >;
+    const updatedKeys = await platformConfigService.updateSectionSettings(
+      section,
+      parsed,
+      req.user!.id,
+    );
 
     logger.info(
       { admin_id: req.user!.id, section, keys: updatedKeys },
@@ -1723,7 +1875,8 @@ function buildAuditLogWhere(filters: AuditLogFilters) {
   const params: unknown[] = [];
   let paramIdx = 1;
 
-  const statusExpr = "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
+  const statusExpr =
+    "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
   const methodExpr = "UPPER(COALESCE(a.metadata->>'method', split_part(a.action, ' ', 1)))";
 
   if (filters.log_type === 'buyer') {
@@ -1825,20 +1978,27 @@ const systemLogClearFilterSchema = z.object({
   search: z.string().max(200).optional(),
 });
 
-const systemLogClearSchema = z.object({
-  confirm: z.literal('CLEAR LOGS'),
-  ids: z.array(z.string().min(1).max(64)).max(1000).optional(),
-  older_than_days: z.number().int().min(1).max(3650).optional(),
-  clear_all: z.boolean().optional(),
-  filters: systemLogClearFilterSchema.optional(),
-}).refine(
-  (value) =>
-    value.clear_all === true ||
-    Boolean(value.older_than_days) ||
-    Boolean(value.ids?.length) ||
-    Boolean(value.filters && Object.values(value.filters).some((filterValue) => filterValue !== undefined && filterValue !== '')),
-  { message: 'Provide logs to clear, an age limit, filters, or clear_all=true' },
-);
+const systemLogClearSchema = z
+  .object({
+    confirm: z.literal('CLEAR LOGS'),
+    ids: z.array(z.string().min(1).max(64)).max(1000).optional(),
+    older_than_days: z.number().int().min(1).max(3650).optional(),
+    clear_all: z.boolean().optional(),
+    filters: systemLogClearFilterSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      value.clear_all === true ||
+      Boolean(value.older_than_days) ||
+      Boolean(value.ids?.length) ||
+      Boolean(
+        value.filters &&
+        Object.values(value.filters).some(
+          (filterValue) => filterValue !== undefined && filterValue !== '',
+        ),
+      ),
+    { message: 'Provide logs to clear, an age limit, filters, or clear_all=true' },
+  );
 
 const systemLogParamSchema = z.object({
   id: z.string().min(1).max(64),
@@ -2020,7 +2180,13 @@ router.get(
     );
 
     res.status(200).json({
-      summary: summaryRows[0] ?? { total: '0', last_24h: '0', failed: '0', actors: '0', writes: '0' },
+      summary: summaryRows[0] ?? {
+        total: '0',
+        last_24h: '0',
+        failed: '0',
+        actors: '0',
+        writes: '0',
+      },
       actions: actionRows,
       resources: resourceRows,
     });
@@ -2035,7 +2201,8 @@ router.get(
       page: number;
       limit: number;
     } & AuditLogFilters;
-    const { whereClause, params, nextParamIdx, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+    const { whereClause, params, nextParamIdx, statusExpr, methodExpr } =
+      buildAuditLogWhere(filters);
     const limitParamIdx = nextParamIdx;
     const offsetParamIdx = nextParamIdx + 1;
     const offset = (page - 1) * limit;
@@ -2141,7 +2308,8 @@ router.get(
       params,
     );
 
-    const csvHeader = 'id,actor_email,actor_role,action,resource_type,method,status_code,ip,created_at\\n';
+    const csvHeader =
+      'id,actor_email,actor_role,action,resource_type,method,status_code,ip,created_at\\n';
     const csvRows = rows
       .map((r) =>
         [
@@ -2159,10 +2327,7 @@ router.get(
       .join('\\n');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="audit-log-${Date.now()}.csv"`,
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="audit-log-${Date.now()}.csv"`);
     res.send(csvHeader + csvRows);
   }),
 );
@@ -2172,10 +2337,16 @@ router.delete(
   validate(auditLogPurgeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
-    const roleFilter = log_type === 'buyer' ? "'customer'" : log_type === 'seller' ? "'vendor'" : "'admin', 'super_admin'";
+    const roles =
+      log_type === 'buyer'
+        ? ['customer']
+        : log_type === 'seller'
+          ? ['vendor']
+          : ['admin', 'super_admin'];
 
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - ($1::int * INTERVAL '1 day') AND actor_role = ANY($2::text[])`,
+      [older_than_days, roles],
     );
 
     res.status(200).json({ deleted: rowCount });
@@ -2187,20 +2358,21 @@ router.delete(
 // =====================================================
 
 const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
-  const [summary, topConsumers, dailyUsage, byType, byStatus, recentFailures, creditWallets] = await Promise.all([
-    query<{
-      total_jobs: string;
-      total_tokens_consumed: string;
-      jobs_today: string;
-      tokens_today: string;
-      compression_jobs: string;
-      seo_jobs: string;
-      page_copy_jobs: string;
-      failed_jobs: string;
-      processing_jobs: string;
-      queued_jobs: string;
-    }>(
-      `SELECT COUNT(*)::text AS total_jobs,
+  const [summary, topConsumers, dailyUsage, byType, byStatus, recentFailures, creditWallets] =
+    await Promise.all([
+      query<{
+        total_jobs: string;
+        total_tokens_consumed: string;
+        jobs_today: string;
+        tokens_today: string;
+        compression_jobs: string;
+        seo_jobs: string;
+        page_copy_jobs: string;
+        failed_jobs: string;
+        processing_jobs: string;
+        queued_jobs: string;
+      }>(
+        `SELECT COUNT(*)::text AS total_jobs,
               COALESCE(SUM(tokens_consumed), 0)::text AS total_tokens_consumed,
               COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::text AS jobs_today,
               COALESCE(SUM(tokens_consumed) FILTER (WHERE created_at >= CURRENT_DATE), 0)::text AS tokens_today,
@@ -2211,9 +2383,9 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
               COUNT(*) FILTER (WHERE status = 'processing')::text AS processing_jobs,
               COUNT(*) FILTER (WHERE status = 'queued')::text AS queued_jobs
        FROM pd_ai_jobs`,
-    ),
-    query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
-      `SELECT j.store_id,
+      ),
+      query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
+        `SELECT j.store_id,
               s.name AS store_name,
               COALESCE(SUM(j.tokens_consumed), 0)::text AS tokens_used,
               COUNT(*)::text AS job_count
@@ -2222,54 +2394,59 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
        GROUP BY j.store_id, s.name
        ORDER BY SUM(j.tokens_consumed) DESC
        LIMIT 10`,
-    ),
-    query<{ date: string; tokens: string; jobs: string }>(
-      `SELECT DATE(created_at)::text AS date,
+      ),
+      query<{ date: string; tokens: string; jobs: string }>(
+        `SELECT DATE(created_at)::text AS date,
               COALESCE(SUM(tokens_consumed), 0)::text AS tokens,
               COUNT(*)::text AS jobs
        FROM pd_ai_jobs
        WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
        GROUP BY DATE(created_at)
        ORDER BY date ASC`,
-    ),
-    query<{ type: string; count: string; tokens: string }>(
-      `SELECT type,
+      ),
+      query<{ type: string; count: string; tokens: string }>(
+        `SELECT type,
               COUNT(*)::text AS count,
               COALESCE(SUM(tokens_consumed), 0)::text AS tokens
        FROM pd_ai_jobs
        GROUP BY type
        ORDER BY count DESC`,
-    ),
-    query<{ status: string; count: string }>(
-      `SELECT status, COUNT(*)::text AS count
+      ),
+      query<{ status: string; count: string }>(
+        `SELECT status, COUNT(*)::text AS count
        FROM pd_ai_jobs
        GROUP BY status
        ORDER BY count DESC`,
-    ),
-    query<{
-      id: string;
-      store_id: string;
-      store_name: string;
-      type: string;
-      error_message: string | null;
-      created_at: Date;
-      completed_at: Date | null;
-    }>(
-      `SELECT j.id, j.store_id, s.name AS store_name, j.type, j.error_message, j.created_at, j.completed_at
+      ),
+      query<{
+        id: string;
+        store_id: string;
+        store_name: string;
+        type: string;
+        error_message: string | null;
+        created_at: Date;
+        completed_at: Date | null;
+      }>(
+        `SELECT j.id, j.store_id, s.name AS store_name, j.type, j.error_message, j.created_at, j.completed_at
        FROM pd_ai_jobs j
        JOIN pd_store s ON s.id = j.store_id
        WHERE j.status = 'failed'
        ORDER BY COALESCE(j.completed_at, j.created_at) DESC
        LIMIT 8`,
-    ),
-    query<{ active_wallets: string; unlimited_wallets: string; finite_tokens_remaining: string; tokens_used: string }>(
-      `SELECT COUNT(*)::text AS active_wallets,
+      ),
+      query<{
+        active_wallets: string;
+        unlimited_wallets: string;
+        finite_tokens_remaining: string;
+        tokens_used: string;
+      }>(
+        `SELECT COUNT(*)::text AS active_wallets,
               COUNT(*) FILTER (WHERE ai_tokens = -1)::text AS unlimited_wallets,
               COALESCE(SUM(ai_tokens) FILTER (WHERE ai_tokens >= 0), 0)::text AS finite_tokens_remaining,
               COALESCE(SUM(tokens_used), 0)::text AS tokens_used
        FROM pd_vendor_credits`,
-    ),
-  ]);
+      ),
+    ]);
 
   const row = summary.rows[0];
   const totalTokens = parseInt(row.total_tokens_consumed, 10);
@@ -2287,17 +2464,19 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
     processing_jobs: parseInt(row.processing_jobs, 10),
     queued_jobs: parseInt(row.queued_jobs, 10),
     estimated_cost_tnd: totalTokens * 0.005,
-    credits: creditWallets.rows[0] ? {
-      active_wallets: parseInt(creditWallets.rows[0].active_wallets, 10),
-      unlimited_wallets: parseInt(creditWallets.rows[0].unlimited_wallets, 10),
-      finite_tokens_remaining: parseInt(creditWallets.rows[0].finite_tokens_remaining, 10),
-      tokens_used: parseInt(creditWallets.rows[0].tokens_used, 10),
-    } : {
-      active_wallets: 0,
-      unlimited_wallets: 0,
-      finite_tokens_remaining: 0,
-      tokens_used: 0,
-    },
+    credits: creditWallets.rows[0]
+      ? {
+          active_wallets: parseInt(creditWallets.rows[0].active_wallets, 10),
+          unlimited_wallets: parseInt(creditWallets.rows[0].unlimited_wallets, 10),
+          finite_tokens_remaining: parseInt(creditWallets.rows[0].finite_tokens_remaining, 10),
+          tokens_used: parseInt(creditWallets.rows[0].tokens_used, 10),
+        }
+      : {
+          active_wallets: 0,
+          unlimited_wallets: 0,
+          finite_tokens_remaining: 0,
+          tokens_used: 0,
+        },
     by_type: byType.rows.map((r) => ({
       type: r.type,
       count: parseInt(r.count, 10),
@@ -2351,10 +2530,15 @@ const aiProviderParamSchema = z.object({
 });
 
 const aiPricingSchema = z.object({
-  prices: z.array(z.object({
-    job_type: z.nativeEnum(AiJobType),
-    tokens_required: z.coerce.number().int().min(0).max(10000),
-  })).min(1).max(20),
+  prices: z
+    .array(
+      z.object({
+        job_type: z.nativeEnum(AiJobType),
+        tokens_required: z.coerce.number().int().min(0).max(10000),
+      }),
+    )
+    .min(1)
+    .max(20),
 });
 
 router.get(
