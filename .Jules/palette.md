@@ -1,0 +1,3 @@
+## 2026-05-26 - Adding aria-labels to icon-only buttons
+**Learning:** In the ChatInbox component, interactive buttons relying solely on icons (like 'X' for close/dismiss or 'Send' for submitting messages) were missing accessible names, leading to a poor experience for screen reader users. The `prettier` auto-formatter can cause significant visual noise if run on the entire file.
+**Action:** When adding `aria-label`s to similar icon-only buttons, I must avoid using global or file-wide auto-formatting to ensure pull requests remain focused and under the required line limits, ensuring clean code review.
