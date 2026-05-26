@@ -521,7 +521,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
       {error && (
         <div className="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="rounded-full p-1 hover:bg-red-100"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setError(null)} className="rounded-full p-1 hover:bg-red-100" aria-label="Dismiss error"><X className="h-4 w-4" /></button>
         </div>
       )}
 
@@ -723,6 +723,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                           type="button"
                           onClick={() => removePendingImage(index)}
                           className="absolute right-1 top-1 rounded-full bg-slate-950/80 p-1 text-white opacity-90 transition hover:bg-red-600"
+                          aria-label="Remove image"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -764,6 +765,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                     className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg transition disabled:cursor-not-allowed disabled:bg-gray-300 ${
                       adminMode ? 'bg-[#B91C1C] shadow-red-900/15 hover:bg-[#991B1B]' : 'bg-[#16C784] shadow-emerald-900/10 hover:bg-[#12ad72]'
                     }`}
+                    aria-label="Send message"
                   >
                     {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </button>
@@ -784,7 +786,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                 <h2 className="text-xl font-black text-gray-900">{mode === 'buyer' ? 'Contact marketplace support' : 'Start admin support chat'}</h2>
                 <p className="mt-1 text-sm font-semibold text-gray-500">{mode === 'buyer' ? 'Open a private conversation with the marketplace administrator team.' : 'Open a private conversation with the hub administrator team.'}</p>
               </div>
-              <button type="button" onClick={() => setShowCreateAdmin(false)} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setShowCreateAdmin(false)} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-3">
               {mode === 'admin' && (
