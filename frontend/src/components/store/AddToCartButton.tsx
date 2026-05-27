@@ -71,6 +71,7 @@ export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps)
       <div className="flex items-center overflow-hidden rounded-xl border border-gray-300">
         <button
           type="button"
+          aria-label="Decrease quantity"
           onClick={() => setQuantity((current) => Math.max(minimumQuantity, current - 1))}
           className="p-3 transition-colors hover:bg-gray-50"
         >
@@ -81,6 +82,7 @@ export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps)
         </span>
         <button
           type="button"
+          aria-label="Increase quantity"
           onClick={() => setQuantity((current) => Math.min(stockLimit ?? current + 1, current + 1))}
           disabled={stockLimit !== undefined && quantity >= stockLimit}
           className="p-3 transition-colors hover:bg-gray-50 disabled:opacity-40"
