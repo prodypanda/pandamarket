@@ -1,0 +1,3 @@
+## 2024-05-18 - Array Spread Operator O(N^2) Bottleneck in Loops
+**Learning:** When manually grouping or aggregating raw SQL database records in loops (e.g., mapping variants to products in `attachVariants`), using the array spread operator (`[...existing, newItem]`) causes severe O(N^2) memory reallocation bottlenecks because a new increasingly large array is instantiated and copied on every iteration.
+**Action:** Always mutate existing arrays directly using `.push()` instead of spreading, which achieves amortized O(1) insertion time and avoids massive garbage collection churn during bulk processing.
