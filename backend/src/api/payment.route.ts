@@ -38,7 +38,7 @@ const mandatUploadSchema = z.object({
  */
 function verifyFlouciSignature(req: Request): boolean {
   const signature = req.headers['x-flouci-signature'] as string | undefined;
-  if (!signature) {
+  if (!signature || typeof signature !== 'string') {
     logger.warn('Flouci webhook missing signature header');
     return false;
   }
@@ -47,14 +47,21 @@ function verifyFlouciSignature(req: Request): boolean {
     .createHmac('sha256', config.flouci.appSecret)
     .update(payload)
     .digest('hex');
+
+  let signatureBuffer: Buffer;
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    signatureBuffer = Buffer.from(signature, 'hex');
   } catch {
     return false;
   }
+
+  const expectedBuffer = Buffer.from(expected, 'hex');
+
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 }
 
 /**
@@ -63,7 +70,7 @@ function verifyFlouciSignature(req: Request): boolean {
  */
 function verifyKonnectSignature(req: Request): boolean {
   const signature = req.headers['x-konnect-signature'] as string | undefined;
-  if (!signature) {
+  if (!signature || typeof signature !== 'string') {
     logger.warn('Konnect webhook missing signature header');
     return false;
   }
@@ -72,14 +79,21 @@ function verifyKonnectSignature(req: Request): boolean {
     .createHmac('sha256', config.konnect.apiKey)
     .update(payload)
     .digest('hex');
+
+  let signatureBuffer: Buffer;
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    signatureBuffer = Buffer.from(signature, 'hex');
   } catch {
     return false;
   }
+
+  const expectedBuffer = Buffer.from(expected, 'hex');
+
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 }
 
 // =====================================================
