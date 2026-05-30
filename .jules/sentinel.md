@@ -1,0 +1,4 @@
+## 2026-05-30 - Prevent uncaught exceptions in timingSafeEqual
+**Vulnerability:** Exception-based control flow in webhook signature verification
+**Learning:** Node's `crypto.timingSafeEqual` throws a TypeError if input buffers have different lengths. While catching this error works, a missing or invalid input to the upstream `Buffer.from(signature, 'hex')` might throw or return an empty buffer unexpectedly, leading to unhandled exceptions and possible DoS if the catch block is removed without accounting for bad inputs.
+**Prevention:** Always perform explicit buffer length checks before `timingSafeEqual`. Keep `try/catch` blocks around `Buffer.from` and `crypto.timingSafeEqual` to ensure safe degradation of invalid inputs (like missing headers or malformed hex) and fail securely without crashing the server.
