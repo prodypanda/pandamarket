@@ -1,0 +1,3 @@
+## 2024-06-02 - O(N^2) Memory Reallocation in Map Aggregation
+**Learning:** Using the array spread operator (`[...existing, newItem]`) inside loops when grouping or aggregating raw SQL records causes severe O(N^2) memory reallocation bottlenecks due to array copying on every iteration.
+**Action:** When manually grouping arrays inside loops, avoid array spread operators. Mutate arrays directly using `.push()` instead.
