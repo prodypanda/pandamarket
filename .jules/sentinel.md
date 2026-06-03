@@ -1,0 +1,4 @@
+## 2024-06-03 - Timing Side-Channel via Exception Handling in Webhooks
+**Vulnerability:** Signature verification in payment webhooks leaked timing information due to `crypto.timingSafeEqual` throwing TypeErrors on buffer length mismatches and being wrapped in a generic `try...catch`. Additionally, missing type checks on Express headers (`typeof signature === 'string'`) before passing to `Buffer.from` could lead to DoS.
+**Learning:** Node.js's `crypto.timingSafeEqual` natively throws an error if input buffers have different lengths. Relying on `try...catch` to handle this creates a timing oracle because the exception path takes a different amount of time than a successful (or even failed but same-length) comparison. Furthermore, Express headers can be arrays, requiring explicit validation.
+**Prevention:** Always ensure `a.length === b.length` before calling `timingSafeEqual`. Validate header types explicitly (`typeof header === 'string'`) before parsing.
