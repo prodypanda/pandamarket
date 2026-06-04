@@ -192,7 +192,7 @@ export function InstantChatLauncher({ storeContext, marketplaceTheme = 'panda' }
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Instant chat</p>
                 <h3 className="mt-1 text-lg font-black">How can we help?</h3>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-full bg-white/15 p-2 hover:bg-white/25">
+              <button type="button" aria-label="Close instant chat" onClick={() => setOpen(false)} className="rounded-full bg-white/15 p-2 hover:bg-white/25">
                 <X className="h-4 w-4" />
               </button>
             </div>
