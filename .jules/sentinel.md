@@ -1,0 +1,4 @@
+## 2024-05-18 - Fix SQL Injection in Audit Log Purge
+**Vulnerability:** SQL Injection via string interpolation in `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+**Learning:** String interpolation was used directly in the SQL query for both INTERVAL and IN clauses. Even if inputs are validated by zod, string interpolation inside SQL queries is an anti-pattern.
+**Prevention:** Always use parameterized queries. For INTERVAL requiring dynamic integer parameters, use type casting with multiplication (`$1::int * INTERVAL '1 day'`). For IN clauses, pass an array and use `ANY($2::text[])`.
