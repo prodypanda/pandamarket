@@ -1948,6 +1948,8 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => startEdit(product)}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          aria-label="Edit product"
+                          title="Edit product"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
@@ -1955,6 +1957,8 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => handleDelete(product.id)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          aria-label="Delete product"
+                          title="Delete product"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
