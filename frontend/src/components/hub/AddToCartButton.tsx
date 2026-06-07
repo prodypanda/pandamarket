@@ -83,6 +83,7 @@ export function AddToCartButton({
       <div className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200 shadow-sm shadow-orange-900/5' : 'border-gray-300'}`}>
         <button
           onClick={() => setQuantity((q) => Math.max(minimumQuantity, q - 1))}
+          aria-label="Decrease quantity"
           className={`p-3 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
         >
           <Minus className="w-4 h-4 text-gray-600" />
@@ -93,6 +94,7 @@ export function AddToCartButton({
         <button
           onClick={() => setQuantity((q) => Math.min(stockLimit ?? q + 1, q + 1))}
           disabled={stockLimit !== undefined && quantity >= stockLimit}
+          aria-label="Increase quantity"
           className={`p-3 transition-colors disabled:opacity-40 ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
         >
           <Plus className="w-4 h-4 text-gray-600" />
