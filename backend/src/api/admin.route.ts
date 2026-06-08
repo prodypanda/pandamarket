@@ -2172,10 +2172,11 @@ router.delete(
   validate(auditLogPurgeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
-    const roleFilter = log_type === 'buyer' ? "'customer'" : log_type === 'seller' ? "'vendor'" : "'admin', 'super_admin'";
+    const roles = log_type === 'buyer' ? ['customer'] : log_type === 'seller' ? ['vendor'] : ['admin', 'super_admin'];
 
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - ($1::int * INTERVAL '1 day') AND actor_role = ANY($2::text[])`,
+      [older_than_days, roles]
     );
 
     res.status(200).json({ deleted: rowCount });
