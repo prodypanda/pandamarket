@@ -1,0 +1,4 @@
+## 2024-05-15 - [SQL Injection via String Interpolation in INTERVAL Parameter]
+**Vulnerability:** A SQL injection vulnerability exists in `backend/src/api/admin.route.ts` within the `/audit-log/purge` endpoint where user input `older_than_days` is directly injected into a database query using string interpolation (`INTERVAL '${older_than_days} days'`).
+**Learning:** This vulnerability existed because the developer did not use parameterized queries for dynamic components of an `INTERVAL` expression, mistakenly relying on the route schema validation as the primary defense against injection.
+**Prevention:** Always use parameterized queries for all database inputs. When dynamic intervals are needed, cast the parameter to an integer and multiply it by a static interval (e.g., `$1::int * INTERVAL '1 day'`) instead of using string concatenation or interpolation.
