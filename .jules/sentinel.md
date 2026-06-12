@@ -1,0 +1,4 @@
+## 2025-06-12 - Fix SQL Injection in INTERVAL clause
+**Vulnerability:** SQL injection vulnerability via string interpolation in the `INTERVAL` clause (`INTERVAL '${older_than_days} days'`) in the `admin.route.ts` audit log purge endpoint.
+**Learning:** The `INTERVAL` clause in PostgreSQL cannot be parameterized using standard `$1` syntax if the string literal format is maintained (e.g. `INTERVAL $1` fails). This often leads to developers falling back to unsafe string interpolation, creating SQL injection risks even when the input is assumed to be an integer.
+**Prevention:** For PostgreSQL `INTERVAL` clauses requiring dynamic integer parameters, use type casting with multiplication (e.g., `($1::int * INTERVAL '1 day')`) instead of string interpolation to prevent SQL injection and enforce database-level type safety.
