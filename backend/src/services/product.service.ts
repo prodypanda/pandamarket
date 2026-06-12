@@ -973,10 +973,13 @@ export class ProductService {
 
     const variantsByProduct = new Map<string, ProductVariantRow[]>();
     for (const variant of rows) {
-      variantsByProduct.set(variant.product_id, [
-        ...(variantsByProduct.get(variant.product_id) ?? []),
-        variant,
-      ]);
+      const existing = variantsByProduct.get(variant.product_id);
+      // Optimization: Mutate array with .push() instead of spread operator to avoid O(N^2) memory reallocation
+      if (existing) {
+        existing.push(variant);
+      } else {
+        variantsByProduct.set(variant.product_id, [variant]);
+      }
     }
 
     return products.map((product) => ({
