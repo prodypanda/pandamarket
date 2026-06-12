@@ -3380,7 +3380,7 @@ export function PageBuilderEditor({
                     <p className="truncate text-xs font-bold text-[#1A1A2E]">{section.name}</p>
                     <div className="mt-2 flex gap-1.5">
                       <button type="button" onClick={() => handleInsertSavedSection(section)} className="flex-1 rounded-lg bg-[#16C784] px-2 py-1.5 text-[10px] font-bold text-white">Ajouter</button>
-                      <button type="button" onClick={() => handleDeleteSavedSection(section.id)} className="rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-red-600">
+                      <button type="button" onClick={() => handleDeleteSavedSection(section.id)} aria-label="Delete" className="rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-red-600">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
