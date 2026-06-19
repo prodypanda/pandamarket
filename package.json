@@ -45,6 +45,6 @@
   "license": "UNLICENSED",
   "author": "PandaMarket Team",
   "dependencies": {
-    "nodemailer": "^8.0.7"
+    "nodemailer": "^9.0.1"
   }
 }
