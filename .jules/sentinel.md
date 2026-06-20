@@ -1,0 +1,4 @@
+## 2024-06-13 - [DoS Vulnerability in timingSafeEqual]
+**Vulnerability:** Calling `crypto.timingSafeEqual()` without verifying the input buffer lengths can lead to an unhandled `RangeError: Input buffers must have the same byte length`, which could crash the Node process and cause a Denial of Service (DoS).
+**Learning:** `Buffer.from(string, 'hex')` will gracefully parse as much hex as it can if invalid characters are provided, which means an attacker can manipulate the length of the parsed buffer. If the buffers given to `crypto.timingSafeEqual` don't match in length, it will throw an exception instead of returning false. Express headers could also be an array of strings, leading to an uncaught TypeError in `Buffer.from` if we don't validate `typeof header === 'string'`.
+**Prevention:** Always ensure `typeof header === 'string'` for express headers. And always ensure `buf1.length === buf2.length` before calling `crypto.timingSafeEqual`.
