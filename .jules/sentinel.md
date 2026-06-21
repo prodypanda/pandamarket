@@ -1,0 +1,4 @@
+## 2024-06-21 - [DoS and Uncaught TypeError in Signature Verification]
+**Vulnerability:** Flouci and Konnect webhook signature verification handled invalid signatures by catching thrown exceptions from `crypto.timingSafeEqual()` (due to buffer length mismatches), and assumed Express headers were exclusively strings.
+**Learning:** Relying on exceptions for expected failure paths (like malformed signatures) is a performance anti-pattern that can lead to CPU exhaustion DoS under spam. Furthermore, passing an unvalidated Express header array directly into `Buffer.from()` leads to an uncaught TypeError crash, completely crashing the Node.js process and causing DoS.
+**Prevention:** Always validate that incoming Express headers are specifically strings, and ensure explicit length checking of buffers before executing `timingSafeEqual()` to circumvent unhandled TypeErrors and performance degradation from generating stack traces.
