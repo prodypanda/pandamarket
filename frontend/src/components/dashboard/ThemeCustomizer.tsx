@@ -196,6 +196,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
             <button
               onClick={() => toggleSection(section.id)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              aria-expanded={expandedSection === section.id}
             >
               <div className="flex items-center gap-2.5">
                 <section.icon className="w-4 h-4 text-[#16C784]" />
