@@ -1,0 +1,4 @@
+## 2024-06-13 - Prevent DoS via Array Headers and Exception-Based Flow in crypto.timingSafeEqual
+**Vulnerability:** DoS vulnerability via uncaught TypeErrors from array headers and CPU exhaustion due to exception-based control flow in cryptographic signature checks.
+**Learning:** `req.headers` can return an array, which causes `Buffer.from()` to throw a TypeError that crashes the process if unchecked. Furthermore, relying on `try...catch` around `crypto.timingSafeEqual` for malformed signatures generates stack traces, leading to CPU exhaustion during spam attacks.
+**Prevention:** Always validate that headers passed to strict type functions are explicitly strings. Explicitly validate buffer lengths before calling `timingSafeEqual` instead of relying on `try...catch` blocks to handle mismatched lengths.
