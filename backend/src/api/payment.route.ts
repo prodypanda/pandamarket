@@ -48,10 +48,12 @@ function verifyFlouciSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const signatureBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
   } catch {
     return false;
   }
@@ -68,15 +70,14 @@ function verifyKonnectSignature(req: Request): boolean {
     return false;
   }
   const payload = JSON.stringify(req.body);
-  const expected = crypto
-    .createHmac('sha256', config.konnect.apiKey)
-    .update(payload)
-    .digest('hex');
+  const expected = crypto.createHmac('sha256', config.konnect.apiKey).update(payload).digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const signatureBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
   } catch {
     return false;
   }
@@ -135,7 +136,10 @@ router.post(
       return;
     }
 
-    const belongsToStore = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    const belongsToStore = await orderService.hasStoreItems(
+      order_id,
+      req.storefrontCustomer!.store_id,
+    );
     if (!belongsToStore) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
