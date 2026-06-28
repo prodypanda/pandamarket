@@ -972,11 +972,16 @@ export class ProductService {
     );
 
     const variantsByProduct = new Map<string, ProductVariantRow[]>();
+    // ⚡ Bolt Optimization: Grouping rows using .push() directly rather than the array
+    // spread operator avoids O(N^2) memory reallocation. Expected impact: significantly faster
+    // array aggregation when loading many products or products with many variants.
     for (const variant of rows) {
-      variantsByProduct.set(variant.product_id, [
-        ...(variantsByProduct.get(variant.product_id) ?? []),
-        variant,
-      ]);
+      let list = variantsByProduct.get(variant.product_id);
+      if (!list) {
+        list = [];
+        variantsByProduct.set(variant.product_id, list);
+      }
+      list.push(variant);
     }
 
     return products.map((product) => ({
