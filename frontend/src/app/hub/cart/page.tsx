@@ -8,7 +8,13 @@ import Link from 'next/link';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
-import { getCartItemUnitPrice, getCartLineTotal, getShippableStoreCount, getShippingTotalForItems, getStoreShippingTotal } from '../../../lib/cart-utils';
+import {
+  getCartItemUnitPrice,
+  getCartLineTotal,
+  getShippableStoreCount,
+  getShippingTotalForItems,
+  getStoreShippingTotal,
+} from '../../../lib/cart-utils';
 
 const SHIPPING_PER_VENDOR = 7;
 
@@ -49,13 +55,13 @@ export default function CartPage() {
           marketplaceTheme={settings.marketplace_theme}
         />
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-          <div className={`mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full ${classes.primarySoft}`}>
+          <div
+            className={`mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full ${classes.primarySoft}`}
+          >
             <ShoppingCart className="w-12 h-12" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('cart.empty')}</h1>
-          <p className="text-gray-500 mb-8">
-            {t('cart.emptySubtitle')}
-          </p>
+          <p className="text-gray-500 mb-8">{t('cart.emptySubtitle')}</p>
           <Link
             href="/hub"
             className={`inline-flex items-center gap-2 rounded-full px-8 py-3 font-black transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
@@ -89,7 +95,8 @@ export default function CartPage() {
                 {t('cart.title')} ({t('cart.itemCount', { count: getItemCount() })})
               </h1>
               <p className="mt-2 text-sm text-white/75">
-                {storeIds.length} vendor{storeIds.length !== 1 ? 's' : ''} · buyer protection · fast checkout
+                {storeIds.length} vendor{storeIds.length !== 1 ? 's' : ''} · buyer protection · fast
+                checkout
               </p>
             </div>
             <div className="rounded-2xl bg-white/15 px-5 py-4 backdrop-blur">
@@ -111,12 +118,11 @@ export default function CartPage() {
               const storeShippingTotal = getStoreShippingTotal(group.items, SHIPPING_PER_VENDOR);
 
               return (
-                <div
-                  key={storeId}
-                  className={`${classes.panel} overflow-hidden`}
-                >
+                <div key={storeId} className={`${classes.panel} overflow-hidden`}>
                   {/* Store Header */}
-                  <div className={`px-6 py-4 border-b flex items-center gap-2 ${isAliExpress ? 'border-orange-100 bg-orange-50/70' : 'border-gray-200 bg-gray-50'}`}>
+                  <div
+                    className={`px-6 py-4 border-b flex items-center gap-2 ${isAliExpress ? 'border-orange-100 bg-orange-50/70' : 'border-gray-200 bg-gray-50'}`}
+                  >
                     <Store className={`w-4 h-4 ${classes.primaryText}`} />
                     <span className="font-semibold text-gray-900">{group.store_name}</span>
                   </div>
@@ -162,8 +168,11 @@ export default function CartPage() {
                         </div>
 
                         {/* Quantity */}
-                        <div className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200' : 'border-gray-300'}`}>
+                        <div
+                          className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200' : 'border-gray-300'}`}
+                        >
                           <button
+                            aria-label="Decrease quantity"
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
@@ -173,6 +182,7 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
+                            aria-label="Increase quantity"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
@@ -189,6 +199,7 @@ export default function CartPage() {
 
                         {/* Remove */}
                         <button
+                          aria-label="Remove item"
                           onClick={() => removeFromCart(item.id)}
                           className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                         >
@@ -199,7 +210,9 @@ export default function CartPage() {
                   </div>
 
                   {/* Store Shipping + Subtotal */}
-                  <div className={`px-6 py-3 border-t flex items-center justify-between text-sm ${isAliExpress ? 'border-orange-100 bg-orange-50/60' : 'border-gray-200 bg-gray-50'}`}>
+                  <div
+                    className={`px-6 py-3 border-t flex items-center justify-between text-sm ${isAliExpress ? 'border-orange-100 bg-orange-50/60' : 'border-gray-200 bg-gray-50'}`}
+                  >
                     <span className="text-gray-500">
                       {t('cart.shipping')} : {formatPrice(storeShippingTotal)}
                     </span>

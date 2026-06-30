@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { ShoppingCart, Minus, Plus, Check } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useMarketplaceTheme } from '../../hooks/useMarketplaceTheme';
-import { getMinimumQuantityForSeller, getWholesaleUnitPrice, type WholesalePricing } from '../../lib/cart-utils';
+import {
+  getMinimumQuantityForSeller,
+  getWholesaleUnitPrice,
+  type WholesalePricing,
+} from '../../lib/cart-utils';
 
 interface AddToCartButtonProps {
   product_id: string;
@@ -48,7 +52,10 @@ export function AddToCartButton({
   const minimumQuantity = getMinimumQuantityForSeller(seller_type, wholesale_pricing);
   const [quantity, setQuantity] = useState(minimumQuantity);
   const [added, setAdded] = useState(false);
-  const stockLimit = product_type === 'physical' && typeof maxQuantity === 'number' && Number.isFinite(maxQuantity) ? Math.max(0, maxQuantity) : undefined;
+  const stockLimit =
+    product_type === 'physical' && typeof maxQuantity === 'number' && Number.isFinite(maxQuantity)
+      ? Math.max(0, maxQuantity)
+      : undefined;
   const isOutOfStock = stockLimit !== undefined && stockLimit < minimumQuantity;
   const unitPrice = getWholesaleUnitPrice(price, quantity, seller_type, wholesale_pricing);
 
@@ -80,8 +87,11 @@ export function AddToCartButton({
   return (
     <div className="flex items-center gap-3 flex-1">
       {/* Quantity Selector */}
-      <div className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200 shadow-sm shadow-orange-900/5' : 'border-gray-300'}`}>
+      <div
+        className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200 shadow-sm shadow-orange-900/5' : 'border-gray-300'}`}
+      >
         <button
+          aria-label="Decrease quantity"
           onClick={() => setQuantity((q) => Math.max(minimumQuantity, q - 1))}
           className={`p-3 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
         >
@@ -91,6 +101,7 @@ export function AddToCartButton({
           {quantity}
         </span>
         <button
+          aria-label="Increase quantity"
           onClick={() => setQuantity((q) => Math.min(stockLimit ?? q + 1, q + 1))}
           disabled={stockLimit !== undefined && quantity >= stockLimit}
           className={`p-3 transition-colors disabled:opacity-40 ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
@@ -112,8 +123,8 @@ export function AddToCartButton({
           isOutOfStock
             ? 'rounded-full bg-gray-300 cursor-not-allowed'
             : added
-            ? `${classes.primaryGradient} rounded-full scale-[0.98]`
-            : `${classes.primaryGradient} rounded-full hover:scale-[1.02] hover:shadow-lg`
+              ? `${classes.primaryGradient} rounded-full scale-[0.98]`
+              : `${classes.primaryGradient} rounded-full hover:scale-[1.02] hover:shadow-lg`
         }`}
       >
         {isOutOfStock ? (

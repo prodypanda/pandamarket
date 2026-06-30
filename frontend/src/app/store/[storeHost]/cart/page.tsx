@@ -7,8 +7,17 @@ import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, ArrowLeft } from 'lucide
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { isMarketplaceHost } from '../../../../lib/store-hosts';
-import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
-import { getCartItemUnitPrice, getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
+import {
+  resolveThemeColors,
+  themes,
+  type ThemeCustomization,
+  type ThemeId,
+} from '../../../../lib/themes';
+import {
+  getCartItemUnitPrice,
+  getCartLineTotal,
+  getStoreShippingTotal,
+} from '../../../../lib/cart-utils';
 
 function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
@@ -93,15 +102,24 @@ export default function StoreCartPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground }}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: primaryColor }} />
+      <div
+        className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`}
+        style={{ backgroundColor: pageBackground }}
+      >
+        <div
+          className="animate-spin rounded-full h-8 w-8 border-b-2"
+          style={{ borderColor: primaryColor }}
+        />
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
+      <div
+        className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`}
+        style={{ backgroundColor: pageBackground, color: textColor }}
+      >
         <div className="max-w-md mx-auto px-6 py-12 text-center">
           <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Boutique indisponible</h1>
@@ -122,9 +140,15 @@ export default function StoreCartPage() {
 
   if (storeItems.length === 0) {
     return (
-      <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
+      <div
+        className={`min-h-screen ${activeTheme.typography.fontFamily}`}
+        style={{ backgroundColor: pageBackground, color: textColor }}
+      >
         {/* Header */}
-        <header className="border-b sticky top-0 z-50" style={{ backgroundColor: headerBackground, borderColor }}>
+        <header
+          className="border-b sticky top-0 z-50"
+          style={{ backgroundColor: headerBackground, borderColor }}
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <Link
@@ -140,7 +164,9 @@ export default function StoreCartPage() {
 
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
           <ShoppingCart className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold mb-3" style={{ color: textColor }}>Votre panier est vide</h1>
+          <h1 className="text-2xl font-bold mb-3" style={{ color: textColor }}>
+            Votre panier est vide
+          </h1>
           <p className="mb-8" style={{ color: `${textColor}99` }}>
             Découvrez nos produits et ajoutez-les à votre panier.
           </p>
@@ -158,9 +184,15 @@ export default function StoreCartPage() {
   }
 
   return (
-    <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground, color: textColor }}>
+    <div
+      className={`min-h-screen ${activeTheme.typography.fontFamily}`}
+      style={{ backgroundColor: pageBackground, color: textColor }}
+    >
       {/* Header */}
-      <header className="border-b sticky top-0 z-50" style={{ backgroundColor: headerBackground, borderColor }}>
+      <header
+        className="border-b sticky top-0 z-50"
+        style={{ backgroundColor: headerBackground, borderColor }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link
@@ -190,7 +222,10 @@ export default function StoreCartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: surfaceColor, borderColor }}>
+            <div
+              className="rounded-xl border overflow-hidden"
+              style={{ backgroundColor: surfaceColor, borderColor }}
+            >
               <div className="divide-y divide-gray-100">
                 {storeItems.map((item) => (
                   <div key={item.id} className="px-6 py-4 flex items-center gap-4">
@@ -211,9 +246,13 @@ export default function StoreCartPage() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium line-clamp-1" style={{ color: textColor }}>{item.title}</p>
+                      <p className="font-medium line-clamp-1" style={{ color: textColor }}>
+                        {item.title}
+                      </p>
                       {item.variant && (
-                        <p className="text-xs mt-0.5" style={{ color: mutedTextColor }}>{item.variant}</p>
+                        <p className="text-xs mt-0.5" style={{ color: mutedTextColor }}>
+                          {item.variant}
+                        </p>
                       )}
                       <p className="text-sm font-semibold mt-1" style={{ color: mutedTextColor }}>
                         {formatPrice(getCartItemUnitPrice(item))}
@@ -228,15 +267,20 @@ export default function StoreCartPage() {
                     {/* Quantity */}
                     <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                       <button
+                        aria-label="Decrease quantity"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-600" />
                       </button>
-                      <span className="px-3 text-sm font-semibold min-w-[32px] text-center" style={{ color: textColor }}>
+                      <span
+                        className="px-3 text-sm font-semibold min-w-[32px] text-center"
+                        style={{ color: textColor }}
+                      >
                         {item.quantity}
                       </span>
                       <button
+                        aria-label="Increase quantity"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
@@ -253,6 +297,7 @@ export default function StoreCartPage() {
 
                     {/* Remove */}
                     <button
+                      aria-label="Remove item"
                       onClick={() => removeFromCart(item.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                     >
@@ -263,7 +308,10 @@ export default function StoreCartPage() {
               </div>
 
               {/* Shipping */}
-              <div className="px-6 py-3 border-t flex items-center justify-between text-sm" style={{ backgroundColor: surfaceColor, borderColor }}>
+              <div
+                className="px-6 py-3 border-t flex items-center justify-between text-sm"
+                style={{ backgroundColor: surfaceColor, borderColor }}
+              >
                 <span style={{ color: mutedTextColor }}>
                   Livraison : {formatPrice(shippingTotal)}
                 </span>
@@ -276,20 +324,31 @@ export default function StoreCartPage() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="rounded-xl border p-6 sticky top-24" style={{ backgroundColor: surfaceColor, borderColor }}>
-              <h2 className="font-bold text-lg mb-4" style={{ color: textColor }}>Résumé</h2>
+            <div
+              className="rounded-xl border p-6 sticky top-24"
+              style={{ backgroundColor: surfaceColor, borderColor }}
+            >
+              <h2 className="font-bold text-lg mb-4" style={{ color: textColor }}>
+                Résumé
+              </h2>
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span style={{ color: mutedTextColor }}>Sous-total</span>
-                  <span className="font-medium" style={{ color: textColor }}>{formatPrice(subtotal)}</span>
+                  <span className="font-medium" style={{ color: textColor }}>
+                    {formatPrice(subtotal)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span style={{ color: mutedTextColor }}>Livraison</span>
-                  <span className="font-medium" style={{ color: textColor }}>{formatPrice(shippingTotal)}</span>
+                  <span className="font-medium" style={{ color: textColor }}>
+                    {formatPrice(shippingTotal)}
+                  </span>
                 </div>
                 <div className="border-t pt-3 flex justify-between" style={{ borderColor }}>
-                  <span className="font-bold text-base" style={{ color: textColor }}>Total</span>
+                  <span className="font-bold text-base" style={{ color: textColor }}>
+                    Total
+                  </span>
                   <span className="font-extrabold text-lg" style={{ color: primaryColor }}>
                     {formatPrice(total)}
                   </span>
