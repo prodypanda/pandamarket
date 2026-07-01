@@ -1,0 +1,4 @@
+## 2026-07-01 - Avoid Exception-Based Control Flow in Crypto Operations
+**Vulnerability:** Denial of Service (DoS) vulnerability due to exception-based control flow when comparing cryptographic signatures with mismatched lengths, and potential TypeError from unvalidated header types.
+**Learning:** `crypto.timingSafeEqual` throws RangeError for buffers of different lengths. Relying on `try...catch` for expected invalid inputs is a performance anti-pattern that can exhaust CPU under spam attacks. Express header values can also be string arrays, which causes TypeErrors if passed directly to `Buffer.from()`.
+**Prevention:** Always validate that HTTP headers are single strings (`typeof header === 'string'`) and explicitly compare the `.length` of both buffers before passing them to `crypto.timingSafeEqual` to avoid exceptions.
