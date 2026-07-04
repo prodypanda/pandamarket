@@ -37,7 +37,13 @@ function formatSize(value?: string | number | null) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function MarketplaceAssetPicker({ open, title = 'Media library', type = 'image', onClose, onSelect }: MarketplaceAssetPickerProps) {
+export function MarketplaceAssetPicker({
+  open,
+  title = 'Media library',
+  type = 'image',
+  onClose,
+  onSelect,
+}: MarketplaceAssetPickerProps) {
   const [assets, setAssets] = useState<FileAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -48,7 +54,9 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/assets?type=${type}&limit=80`, { credentials: 'include' });
+      const res = await fetchWithCsrf(`/api/pd/admin/assets?type=${type}&limit=80`, {
+        credentials: 'include',
+      });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load media library'));
       const data = await res.json();
       setAssets(data.data || []);
@@ -66,7 +74,10 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
   const filteredAssets = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return assets;
-    return assets.filter((asset) => asset.filename.toLowerCase().includes(needle) || asset.url.toLowerCase().includes(needle));
+    return assets.filter(
+      (asset) =>
+        asset.filename.toLowerCase().includes(needle) || asset.url.toLowerCase().includes(needle),
+    );
   }, [assets, query]);
 
   const uploadAsset = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +99,8 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
           purpose: 'marketplace_asset',
         }),
       });
-      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Failed to prepare upload'));
+      if (!presignRes.ok)
+        throw new Error(await getErrorMessage(presignRes, 'Failed to prepare upload'));
       const presignData = await presignRes.json();
 
       const uploadRes = await fetch(presignData.upload_url, {
@@ -115,15 +127,26 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-            <p className="text-sm text-gray-500">Upload a new file or reuse an existing marketplace asset.</p>
+            <p className="text-sm text-gray-500">
+              Upload a new file or reuse an existing marketplace asset.
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-4 p-6">
-          {error && <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {error && (
+            <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative max-w-md flex-1">
@@ -137,9 +160,19 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
               />
             </div>
             <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#16C784] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#14b876]">
-              {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {uploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
               {uploading ? 'Uploading...' : 'Upload file'}
-              <input type="file" accept={type === 'image' ? 'image/*' : undefined} onChange={uploadAsset} disabled={uploading} className="hidden" />
+              <input
+                type="file"
+                accept={type === 'image' ? 'image/*' : undefined}
+                onChange={uploadAsset}
+                disabled={uploading}
+                className="hidden"
+              />
             </label>
           </div>
 
@@ -148,7 +181,9 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : filteredAssets.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-500">No assets found.</div>
+            <div className="rounded-xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-500">
+              No assets found.
+            </div>
           ) : (
             <div className="grid max-h-[520px] grid-cols-2 gap-4 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
               {filteredAssets.map((asset) => {
@@ -162,16 +197,27 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                   >
                     <div className="flex aspect-square items-center justify-center bg-gray-50">
                       {isImage ? (
-                        <img src={asset.url} alt={asset.filename} className="h-full w-full object-cover" />
+                        <img
+                          src={asset.url}
+                          alt={asset.filename}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         <FileText className="h-10 w-10 text-gray-400" />
                       )}
                     </div>
                     <div className="space-y-1 p-3">
-                      <p className="truncate text-sm font-semibold text-gray-800">{asset.filename}</p>
+                      <p className="truncate text-sm font-semibold text-gray-800">
+                        {asset.filename}
+                      </p>
                       <p className="flex items-center gap-1 text-xs text-gray-500">
-                        {isImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                        {asset.content_type}{formatSize(asset.file_size) ? ` • ${formatSize(asset.file_size)}` : ''}
+                        {isImage ? (
+                          <ImageIcon className="h-3.5 w-3.5" />
+                        ) : (
+                          <FileText className="h-3.5 w-3.5" />
+                        )}
+                        {asset.content_type}
+                        {formatSize(asset.file_size) ? ` • ${formatSize(asset.file_size)}` : ''}
                       </p>
                     </div>
                   </button>
