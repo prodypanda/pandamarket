@@ -37,9 +37,9 @@ const mandatUploadSchema = z.object({
  * Flouci sends the signature in the `x-flouci-signature` header.
  */
 function verifyFlouciSignature(req: Request): boolean {
-  const signature = req.headers['x-flouci-signature'] as string | undefined;
-  if (!signature) {
-    logger.warn('Flouci webhook missing signature header');
+  const signature = req.headers['x-flouci-signature'];
+  if (!signature || typeof signature !== 'string') {
+    logger.warn('Flouci webhook missing or invalid signature header');
     return false;
   }
   const payload = JSON.stringify(req.body);
@@ -47,14 +47,15 @@ function verifyFlouciSignature(req: Request): boolean {
     .createHmac('sha256', config.flouci.appSecret)
     .update(payload)
     .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+
+  if (sigBuf.length !== expBuf.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 /**
@@ -62,24 +63,22 @@ function verifyFlouciSignature(req: Request): boolean {
  * Konnect sends the signature in the `x-konnect-signature` header.
  */
 function verifyKonnectSignature(req: Request): boolean {
-  const signature = req.headers['x-konnect-signature'] as string | undefined;
-  if (!signature) {
-    logger.warn('Konnect webhook missing signature header');
+  const signature = req.headers['x-konnect-signature'];
+  if (!signature || typeof signature !== 'string') {
+    logger.warn('Konnect webhook missing or invalid signature header');
     return false;
   }
   const payload = JSON.stringify(req.body);
-  const expected = crypto
-    .createHmac('sha256', config.konnect.apiKey)
-    .update(payload)
-    .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+  const expected = crypto.createHmac('sha256', config.konnect.apiKey).update(payload).digest('hex');
+
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+
+  if (sigBuf.length !== expBuf.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 // =====================================================
@@ -135,7 +134,10 @@ router.post(
       return;
     }
 
-    const belongsToStore = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    const belongsToStore = await orderService.hasStoreItems(
+      order_id,
+      req.storefrontCustomer!.store_id,
+    );
     if (!belongsToStore) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
