@@ -15,11 +15,7 @@ import {
   PdValidationError,
   PdErrorCode,
 } from '../errors';
-import {
-  ProductStatus,
-  ProductType,
-  SellerType,
-} from '@pandamarket/types';
+import { ProductStatus, ProductType, SellerType } from '@pandamarket/types';
 import { subscriptionService } from './subscription.service';
 import { logger } from '../utils/logger';
 import { sanitizeProductDescription } from '../utils/sanitize-html';
@@ -165,10 +161,19 @@ function normalizeWholesalePriceTiers(tiers?: WholesalePriceTier[]): WholesalePr
       min_quantity: Number(tier.min_quantity),
       unit_price: Number(tier.unit_price),
     }))
-    .filter((tier) => Number.isInteger(tier.min_quantity) && tier.min_quantity > 0 && Number.isFinite(tier.unit_price) && tier.unit_price >= 0)
+    .filter(
+      (tier) =>
+        Number.isInteger(tier.min_quantity) &&
+        tier.min_quantity > 0 &&
+        Number.isFinite(tier.unit_price) &&
+        tier.unit_price >= 0,
+    )
     .sort((a, b) => a.min_quantity - b.min_quantity);
 
-  return normalized.filter((tier, index, all) => all.findIndex((item) => item.min_quantity === tier.min_quantity) === index);
+  return normalized.filter(
+    (tier, index, all) =>
+      all.findIndex((item) => item.min_quantity === tier.min_quantity) === index,
+  );
 }
 
 function normalizeProductVariants(variants?: ProductVariantInput[]): ProductVariantInput[] {
@@ -203,15 +208,21 @@ function normalizeProductVariants(variants?: ProductVariantInput[]): ProductVari
   });
 }
 
-function buildWholesalePricingMetadata(input: {
-  store_seller_type?: SellerType;
-  wholesale_min_quantity?: number | null;
-  wholesale_price_tiers?: WholesalePriceTier[];
-}, required: boolean): { enabled: boolean; min_quantity: number; price_tiers: WholesalePriceTier[] } | undefined {
-  const hasWholesalePayload = input.wholesale_min_quantity !== undefined || input.wholesale_price_tiers !== undefined;
+function buildWholesalePricingMetadata(
+  input: {
+    store_seller_type?: SellerType;
+    wholesale_min_quantity?: number | null;
+    wholesale_price_tiers?: WholesalePriceTier[];
+  },
+  required: boolean,
+): { enabled: boolean; min_quantity: number; price_tiers: WholesalePriceTier[] } | undefined {
+  const hasWholesalePayload =
+    input.wholesale_min_quantity !== undefined || input.wholesale_price_tiers !== undefined;
   if (!isWholesaleCapableSeller(input.store_seller_type)) {
     if (hasWholesalePayload) {
-      throw new PdValidationError('Wholesale pricing is only available for wholesaler or hybrid sellers');
+      throw new PdValidationError(
+        'Wholesale pricing is only available for wholesaler or hybrid sellers',
+      );
     }
     return undefined;
   }
@@ -229,7 +240,9 @@ function buildWholesalePricingMetadata(input: {
     throw new PdValidationError('At least one wholesale price tier is required');
   }
   if (priceTiers.some((tier) => tier.min_quantity < minQuantity)) {
-    throw new PdValidationError('Wholesale price tiers must start at or above the minimum wholesale quantity');
+    throw new PdValidationError(
+      'Wholesale price tiers must start at or above the minimum wholesale quantity',
+    );
   }
 
   return { enabled: true, min_quantity: minQuantity, price_tiers: priceTiers };
@@ -263,12 +276,13 @@ export class ProductService {
     const baseSlug = slugify(input.slug || input.title);
     const slug = await this.uniqueSlug(input.store_id, baseSlug);
 
-    const requestedStatus = input.status ?? (input.store_is_verified
-      ? ProductStatus.Published
-      : ProductStatus.PendingApproval);
-    const status = requestedStatus === ProductStatus.Published && !input.store_is_verified
-      ? ProductStatus.PendingApproval
-      : requestedStatus;
+    const requestedStatus =
+      input.status ??
+      (input.store_is_verified ? ProductStatus.Published : ProductStatus.PendingApproval);
+    const status =
+      requestedStatus === ProductStatus.Published && !input.store_is_verified
+        ? ProductStatus.PendingApproval
+        : requestedStatus;
     if (
       isDownloadableType(input.type) &&
       (status === ProductStatus.Published || status === ProductStatus.PendingApproval) &&
@@ -286,10 +300,15 @@ export class ProductService {
       (status === ProductStatus.Published || status === ProductStatus.PendingApproval) &&
       licenseKeys.length === 0
     ) {
-      throw new PdValidationError('Serial products require at least one license key before publishing');
+      throw new PdValidationError(
+        'Serial products require at least one license key before publishing',
+      );
     }
 
-    const wholesalePricing = buildWholesalePricingMetadata(input, isWholesaleCapableSeller(input.store_seller_type));
+    const wholesalePricing = buildWholesalePricingMetadata(
+      input,
+      isWholesaleCapableSeller(input.store_seller_type),
+    );
     const metadata = wholesalePricing ? { wholesale_pricing: wholesalePricing } : {};
     const variants = normalizeProductVariants(input.variants);
 
@@ -408,13 +427,17 @@ export class ProductService {
     return rows[0];
   }
 
-  async update(id: string, patch: Partial<CreateProductInput> & { status?: ProductStatus }): Promise<ProductRow> {
+  async update(
+    id: string,
+    patch: Partial<CreateProductInput> & { status?: ProductStatus },
+  ): Promise<ProductRow> {
     const fields: string[] = [];
     const values: unknown[] = [];
     let i = 1;
     let current: ProductRow | null = null;
     const licenseKeys = normalizeLicenseKeys(patch.license_keys);
-    const variants = patch.variants !== undefined ? normalizeProductVariants(patch.variants) : undefined;
+    const variants =
+      patch.variants !== undefined ? normalizeProductVariants(patch.variants) : undefined;
     if (
       patch.status === ProductStatus.Published ||
       patch.status === ProductStatus.PendingApproval ||
@@ -426,7 +449,8 @@ export class ProductService {
       current = await this.getById(id);
       const nextType = patch.type ?? current.type;
       const nextStatus = patch.status ?? current.status;
-      const nextFileKey = patch.digital_file_key !== undefined ? patch.digital_file_key : current.digital_file_key;
+      const nextFileKey =
+        patch.digital_file_key !== undefined ? patch.digital_file_key : current.digital_file_key;
       if (licenseKeys.length > 0 && nextType !== ProductType.Serial) {
         throw new PdValidationError('License keys are only supported for serial products');
       }
@@ -449,7 +473,9 @@ export class ProductService {
           [id],
         );
         if (parseInt(licenseRows[0]?.count ?? '0', 10) === 0) {
-          throw new PdValidationError('Serial products require at least one license key before publishing');
+          throw new PdValidationError(
+            'Serial products require at least one license key before publishing',
+          );
         }
       }
     }
@@ -487,15 +513,28 @@ export class ProductService {
     if (patch.slug !== undefined) {
       current = await this.getById(id);
       fields.push(`slug = $${++i}`);
-      values.push(await this.uniqueSlug(current.store_id, slugify(patch.slug || patch.title || current.title), id));
+      values.push(
+        await this.uniqueSlug(
+          current.store_id,
+          slugify(patch.slug || patch.title || current.title),
+          id,
+        ),
+      );
     }
     for (const k of allowed) {
       if (patch[k] !== undefined) {
         fields.push(`${k} = $${++i}`);
-        values.push(k === 'tags' || k === 'attributes' ? JSON.stringify(patch[k]) : k === 'description' ? sanitizeProductDescription(patch[k] as string | null | undefined) : patch[k]);
+        values.push(
+          k === 'tags' || k === 'attributes'
+            ? JSON.stringify(patch[k])
+            : k === 'description'
+              ? sanitizeProductDescription(patch[k] as string | null | undefined)
+              : patch[k],
+        );
       }
     }
-    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined) return this.getById(id);
+    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined)
+      return this.getById(id);
     const productId = await transaction(async (c) => {
       current = current ?? (await this.getById(id));
       if (fields.length > 0) {
@@ -513,8 +552,19 @@ export class ProductService {
     return this.getById(productId);
   }
 
-  async getPublishedByStoreSlug(storeId: string, slug: string): Promise<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }> {
-    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }>(
+  async getPublishedByStoreSlug(
+    storeId: string,
+    slug: string,
+  ): Promise<
+    ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }
+  > {
+    const { rows } = await query<
+      ProductRow & {
+        store_name: string;
+        store_subdomain: string;
+        store_custom_domain: string | null;
+      }
+    >(
       `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               s.seller_type AS store_seller_type,
               s.is_verified AS store_is_verified,
@@ -627,13 +677,26 @@ export class ProductService {
       params.slice(0, -2),
     );
     const total = parseInt(countRows[0].count, 10);
-    return { data: await this.attachVariants(rows), meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    return {
+      data: await this.attachVariants(rows),
+      meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
+    };
   }
 
   /**
    * List published products across the platform (Hub homepage / category browsing).
    */
-  async listPublished(opts: { page?: number; limit?: number; category?: string; marketplaceCategoryId?: string; storeId?: string; sellerType?: SellerType; sortBy?: string } = {}) {
+  async listPublished(
+    opts: {
+      page?: number;
+      limit?: number;
+      category?: string;
+      marketplaceCategoryId?: string;
+      storeId?: string;
+      sellerType?: SellerType;
+      sortBy?: string;
+    } = {},
+  ) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
@@ -793,10 +856,7 @@ export class ProductService {
       [id],
     );
     if (!rows[0]) {
-      throw new PdNotFoundError(
-        PdErrorCode.PRODUCT_NOT_FOUND,
-        'Product not found or not pending',
-      );
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found or not pending');
     }
     return rows[0];
   }
@@ -812,10 +872,7 @@ export class ProductService {
       [id, reason],
     );
     if (!rows[0]) {
-      throw new PdNotFoundError(
-        PdErrorCode.PRODUCT_NOT_FOUND,
-        'Product not found or not pending',
-      );
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found or not pending');
     }
     return rows[0];
   }
@@ -841,14 +898,10 @@ export class ProductService {
       );
       const id = pdId('pimg');
       if (opts.is_thumbnail) {
-        await c.query(
-          'UPDATE pd_product_image SET is_thumbnail = false WHERE product_id = $1',
-          [productId],
-        );
-        await c.query('UPDATE pd_product SET thumbnail = $2 WHERE id = $1', [
+        await c.query('UPDATE pd_product_image SET is_thumbnail = false WHERE product_id = $1', [
           productId,
-          opts.url,
         ]);
+        await c.query('UPDATE pd_product SET thumbnail = $2 WHERE id = $1', [productId, opts.url]);
       }
       const { rows } = await c.query<{
         id: string;
@@ -858,7 +911,14 @@ export class ProductService {
       }>(
         `INSERT INTO pd_product_image (id, product_id, url, alt_text, position, is_thumbnail)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, url, alt_text, position`,
-        [id, productId, opts.url, opts.alt_text ?? null, posRows[0].next_pos, opts.is_thumbnail ?? false],
+        [
+          id,
+          productId,
+          opts.url,
+          opts.alt_text ?? null,
+          posRows[0].next_pos,
+          opts.is_thumbnail ?? false,
+        ],
       );
       return rows[0];
     });
@@ -945,10 +1005,7 @@ export class ProductService {
         params.push(excludeId);
         sql += ` AND id != $${params.length}`;
       }
-      const { rowCount } = await query(
-        sql,
-        params,
-      );
+      const { rowCount } = await query(sql, params);
       if (!rowCount) return candidate;
       attempt++;
       candidate = `${base}-${attempt + 1}`;
@@ -973,10 +1030,13 @@ export class ProductService {
 
     const variantsByProduct = new Map<string, ProductVariantRow[]>();
     for (const variant of rows) {
-      variantsByProduct.set(variant.product_id, [
-        ...(variantsByProduct.get(variant.product_id) ?? []),
-        variant,
-      ]);
+      let variants = variantsByProduct.get(variant.product_id);
+      if (!variants) {
+        variants = [];
+        variantsByProduct.set(variant.product_id, variants);
+      }
+      // Use .push() instead of the array spread operator to prevent O(N^2) memory reallocation
+      variants.push(variant);
     }
 
     return products.map((product) => ({
@@ -985,7 +1045,12 @@ export class ProductService {
     }));
   }
 
-  private async addLicenseKeys(client: PoolClient, productId: string, storeId: string, keys: string[]): Promise<void> {
+  private async addLicenseKeys(
+    client: PoolClient,
+    productId: string,
+    storeId: string,
+    keys: string[],
+  ): Promise<void> {
     const licenseKeys = normalizeLicenseKeys(keys);
     if (licenseKeys.length === 0) return;
     const { rows } = await client.query<{ license_key: string }>(
@@ -1003,7 +1068,11 @@ export class ProductService {
     }
   }
 
-  private async replaceVariants(client: PoolClient, productId: string, variants: ProductVariantInput[]): Promise<void> {
+  private async replaceVariants(
+    client: PoolClient,
+    productId: string,
+    variants: ProductVariantInput[],
+  ): Promise<void> {
     const keptIds = variants.map((variant) => variant.id).filter(Boolean);
     if (keptIds.length > 0) {
       await client.query(
@@ -1065,5 +1134,3 @@ export class ProductService {
 }
 
 export const productService = new ProductService();
-
-
