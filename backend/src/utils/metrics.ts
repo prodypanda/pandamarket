@@ -46,8 +46,9 @@ interface GaugeMetric {
 const HTTP_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
 // Stores
-const httpDurationHistograms: HistogramMetric[] = [];
-const httpRequestCounters: CounterMetric[] = [];
+// Use Map for O(1) lookup to improve performance, replacing O(N) Array loops
+const httpDurationHistograms: Map<string, HistogramMetric> = new Map();
+const httpRequestCounters: Map<string, CounterMetric> = new Map();
 const gauges: Map<string, GaugeMetric> = new Map();
 const businessCounters: Map<string, CounterMetric> = new Map();
 
@@ -59,7 +60,7 @@ let activeConnections = 0;
 
 function findOrCreateHistogram(labels: Record<string, string>): HistogramMetric {
   const key = JSON.stringify(labels);
-  let h = httpDurationHistograms.find((m) => JSON.stringify(m.labels) === key);
+  let h = httpDurationHistograms.get(key);
   if (!h) {
     h = {
       labels,
@@ -67,17 +68,20 @@ function findOrCreateHistogram(labels: Record<string, string>): HistogramMetric 
       sum: 0,
       count: 0,
     };
-    httpDurationHistograms.push(h);
+    httpDurationHistograms.set(key, h);
   }
   return h;
 }
 
-function findOrCreateCounter(store: CounterMetric[], labels: Record<string, string>): CounterMetric {
+function findOrCreateCounter(
+  store: Map<string, CounterMetric>,
+  labels: Record<string, string>,
+): CounterMetric {
   const key = JSON.stringify(labels);
-  let c = store.find((m) => JSON.stringify(m.labels) === key);
+  let c = store.get(key);
   if (!c) {
     c = { labels, value: 0 };
-    store.push(c);
+    store.set(key, c);
   }
   return c;
 }
@@ -100,7 +104,11 @@ function normaliseRoute(req: Request): string {
 /**
  * Express middleware that records HTTP request duration and count.
  */
-export const metricsMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
+export const metricsMiddleware: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   if (!config.metricsEnabled) return next();
 
   activeConnections++;
@@ -170,25 +178,29 @@ function serialiseMetrics(): string {
   const lines: string[] = [];
 
   // HTTP request duration histogram
-  if (httpDurationHistograms.length > 0) {
+  if (httpDurationHistograms.size > 0) {
     lines.push('# HELP pd_http_request_duration_seconds HTTP request duration in seconds');
     lines.push('# TYPE pd_http_request_duration_seconds histogram');
-    for (const h of httpDurationHistograms) {
+    for (const h of httpDurationHistograms.values()) {
       const base = formatLabels(h.labels);
       for (const b of h.buckets) {
-        lines.push(`pd_http_request_duration_seconds_bucket{${base.slice(1, -1)},le="${b.le}"} ${b.count}`);
+        lines.push(
+          `pd_http_request_duration_seconds_bucket{${base.slice(1, -1)},le="${b.le}"} ${b.count}`,
+        );
       }
-      lines.push(`pd_http_request_duration_seconds_bucket{${base.slice(1, -1)},le="+Inf"} ${h.count}`);
+      lines.push(
+        `pd_http_request_duration_seconds_bucket{${base.slice(1, -1)},le="+Inf"} ${h.count}`,
+      );
       lines.push(`pd_http_request_duration_seconds_sum${base} ${h.sum}`);
       lines.push(`pd_http_request_duration_seconds_count${base} ${h.count}`);
     }
   }
 
   // HTTP request count
-  if (httpRequestCounters.length > 0) {
+  if (httpRequestCounters.size > 0) {
     lines.push('# HELP pd_http_requests_total Total HTTP requests');
     lines.push('# TYPE pd_http_requests_total counter');
-    for (const c of httpRequestCounters) {
+    for (const c of httpRequestCounters.values()) {
       lines.push(`pd_http_requests_total${formatLabels(c.labels)} ${c.value}`);
     }
   }

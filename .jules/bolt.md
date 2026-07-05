@@ -1,0 +1,3 @@
+## 2026-07-05 - O(1) Map Lookups for Metrics Data
+**Learning:** In the Node.js backend, keeping stateful counters in memory using Arrays and searching them via `array.find()` on every request becomes a severe O(N) performance bottleneck for large metrics cardinality (thousands of different routes or permutations of method/status), causing execution time to grow exponentially with O(N²).
+**Action:** Always prefer `Map` over `Array` for storing dynamic elements where lookups by a unique string key are required. This reduces access time complexity from O(N) to O(1), saving CPU cycles and garbage collection overhead.
