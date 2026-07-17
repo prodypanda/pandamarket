@@ -108,7 +108,31 @@ function isPrivateLanHost(hostname: string) {
 }
 
 function isHubHost(hostname: string) {
-  return HUB_DOMAINS.has(hostname.toLowerCase()) || isPrivateLanHost(hostname);
+  const host = getHostNameOnly(hostname).toLowerCase();
+  if (HUB_DOMAINS.has(host) || isPrivateLanHost(hostname)) {
+    return true;
+  }
+  if (host.endsWith('.vercel.app')) {
+    const parts = host.split('.');
+    if (parts.length === 3) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isAdminHost(hostname: string) {
+  const host = getHostNameOnly(hostname).toLowerCase();
+  if (ADMIN_DOMAINS.has(host)) {
+    return true;
+  }
+  if (host.endsWith('.vercel.app')) {
+    const parts = host.split('.');
+    if (parts.length === 4 && parts[0] === 'admin') {
+      return true;
+    }
+  }
+  return false;
 }
 
 function hasAuthCookie(req: NextRequest) {
@@ -260,7 +284,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2. Admin panel (admin.pandamarket.tn)
-  if (ADMIN_DOMAINS.has(hostname)) {
+  if (isAdminHost(hostname)) {
     if (!matchesRoutePrefix(url.pathname, AUTH_ROUTE_PREFIXES) && !hasAuthCookie(req)) {
       return redirectToLogin(req, '/login/admin');
     }
@@ -276,6 +300,15 @@ export async function middleware(req: NextRequest) {
     if (hostname.endsWith(base)) {
       storeHost = hostname.replace(base, '');
       break;
+    }
+  }
+
+  // Check if this is a subdomain of a Vercel deployment (e.g. boutique1.myapp.vercel.app)
+  if (!storeHost && hostname.toLowerCase().endsWith('.vercel.app')) {
+    const host = getHostNameOnly(hostname).toLowerCase();
+    const parts = host.split('.');
+    if (parts.length === 4 && parts[0] !== 'admin') {
+      storeHost = parts[0];
     }
   }
 
