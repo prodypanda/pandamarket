@@ -26,11 +26,14 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "socket.io-client": "^4.8.3",
-    "lightningcss": "^1.32.0"
+    "lightningcss": "^1.32.0",
+    "@tailwindcss/oxide": "4.2.4"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "^1.32.0",
-    "lightningcss-win32-x64-msvc": "^1.32.0"
+    "lightningcss-win32-x64-msvc": "^1.32.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.2.4",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.2.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
