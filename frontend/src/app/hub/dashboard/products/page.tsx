@@ -389,7 +389,35 @@ export default function ProductsPage() {
     if (params.get('create') === '1' || params.get('new') === '1') {
       setShowCreate(true);
     }
-  }, []);
+    
+    const editId = params.get('edit');
+    if (editId) {
+      if (editingProduct?.id === editId) return;
+      const existingProduct = products.find((p) => p.id === editId);
+      if (existingProduct) {
+        startEdit(existingProduct);
+      } else {
+        let active = true;
+        async function fetchSingleProduct() {
+          try {
+            const res = await fetchWithCsrf(`/api/pd/products/${editId}`, { credentials: 'include' });
+            if (res.ok && active) {
+              const data = await res.json();
+              if (data.product) {
+                startEdit(data.product);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        fetchSingleProduct();
+        return () => {
+          active = false;
+        };
+      }
+    }
+  }, [products, editingProduct]);
 
   useEffect(() => {
     fetchStore();

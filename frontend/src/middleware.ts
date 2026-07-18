@@ -108,10 +108,11 @@ function isPrivateLanHost(hostname: string) {
 }
 
 function isHubHost(hostname: string) {
-  const host = getHostNameOnly(hostname).toLowerCase();
-  if (HUB_DOMAINS.has(host) || isPrivateLanHost(hostname)) {
+  const hostWithPort = hostname.toLowerCase();
+  if (HUB_DOMAINS.has(hostWithPort) || isPrivateLanHost(hostname)) {
     return true;
   }
+  const host = getHostNameOnly(hostname).toLowerCase();
   if (host.endsWith('.vercel.app')) {
     const parts = host.split('.');
     if (parts.length === 3) {
@@ -122,10 +123,11 @@ function isHubHost(hostname: string) {
 }
 
 function isAdminHost(hostname: string) {
-  const host = getHostNameOnly(hostname).toLowerCase();
-  if (ADMIN_DOMAINS.has(host)) {
+  const hostWithPort = hostname.toLowerCase();
+  if (ADMIN_DOMAINS.has(hostWithPort)) {
     return true;
   }
+  const host = getHostNameOnly(hostname).toLowerCase();
   if (host.endsWith('.vercel.app')) {
     const parts = host.split('.');
     if (parts.length === 4 && parts[0] === 'admin') {
