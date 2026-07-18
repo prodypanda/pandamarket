@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
       process.env.PD_S3_PUBLIC_PROXY_URL ||
       process.env.PD_S3_ENDPOINT ||
       process.env.NEXT_PUBLIC_S3_PUBLIC_PROXY_URL ||
-      'http://localhost:9100'
+      backendUrl
     ).replace(/\/$/, '');
 
     return [
@@ -47,6 +47,30 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'pandamarket.tn',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vercel.app',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.onrender.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'garbage.team',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.garbage.team',
+      },
+      {
+        protocol: 'http',
+        hostname: 'garbage.team',
+      },
+      {
+        protocol: 'http',
+        hostname: '*.garbage.team',
       },
     ],
   },

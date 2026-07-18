@@ -6,9 +6,11 @@
  * and content-type/size validation.
  */
 
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 import { asyncHandler, requireAuth, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
 import { presignDownload, presignUpload, publicUrl } from '../utils/s3';
@@ -168,12 +170,18 @@ router.post(
 
     const fileKey = `${keyPrefix}/${safeFilename}`;
 
-    const uploadUrl = await presignUpload({
-      bucket,
-      key: fileKey,
-      contentType: content_type,
-      expiresInSeconds: 900, // 15 minutes
-    });
+    const isS3Local = config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+    const host = req.get('host');
+    const protocol = req.protocol;
+
+    const uploadUrl = isS3Local
+      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}`
+      : await presignUpload({
+          bucket,
+          key: fileKey,
+          contentType: content_type,
+          expiresInSeconds: 900, // 15 minutes
+        });
 
     // For public bucket, also return the public URL
     const isPublic = bucket === config.s3.bucketPublic;
@@ -237,13 +245,57 @@ router.get(
       throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You cannot access this file');
     }
 
-    const downloadUrl = await presignDownload({
-      bucket: config.s3.bucketPrivate,
-      key,
-      expiresInSeconds: 900,
-    });
+    const isS3Local = config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+    const host = req.get('host');
+    const protocol = req.protocol;
+
+    const downloadUrl = isS3Local
+      ? `${protocol}://${host}/api/pd/files/download-s3-mock/${config.s3.bucketPrivate}/${key}`
+      : await presignDownload({
+          bucket: config.s3.bucketPrivate,
+          key,
+          expiresInSeconds: 900,
+        });
 
     res.status(200).json({ download_url: downloadUrl, expires_in: 900 });
+  }),
+);
+
+// S3 Local Upload Mock Route
+router.put(
+  '/upload-s3-mock/:bucket/*',
+  express.raw({ type: '*/*', limit: '110mb' }),
+  asyncHandler(async (req: Request, res: Response) => {
+    const bucket = req.params.bucket;
+    const key = req.params[0];
+    if (!bucket || !key) {
+      res.status(400).send('Bad Request');
+      return;
+    }
+    const filePath = path.join(__dirname, '../../data', bucket, key);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, req.body);
+    logger.info({ bucket, key, path: filePath }, 'S3-Mock file uploaded');
+    res.status(200).send('OK');
+  }),
+);
+
+// S3 Local Download Mock Route
+router.get(
+  '/download-s3-mock/:bucket/*',
+  asyncHandler(async (req: Request, res: Response) => {
+    const bucket = req.params.bucket;
+    const key = req.params[0];
+    if (!bucket || !key) {
+      res.status(400).send('Bad Request');
+      return;
+    }
+    const filePath = path.join(__dirname, '../../data', bucket, key);
+    if (!fs.existsSync(filePath)) {
+      res.status(404).send('Not Found');
+      return;
+    }
+    res.sendFile(filePath);
   }),
 );
 

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { accessLog, apiRateLimit, errorHandler, requestId } from './middlewares';
@@ -148,6 +149,10 @@ async function bootstrap() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(config.cookieSecret));
+  
+  // Serve public uploads and themes statically from backend/data
+  app.use('/pd-product-images', express.static(path.join(__dirname, '../data/pd-product-images')));
+  app.use('/pd-themes', express.static(path.join(__dirname, '../data/pd-themes')));
 
   // Base Middlewares
   app.use(requestId);
