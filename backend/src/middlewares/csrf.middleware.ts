@@ -55,8 +55,8 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     return next();
   }
 
-  // Skip for webhook routes (they use HMAC)
-  if (req.path.includes('/webhook/') || req.path.includes('/callback')) {
+  // Skip for webhook routes (they use HMAC) and S3 mock uploads
+  if (req.path.includes('/webhook/') || req.path.includes('/callback') || req.path.includes('/upload-s3-mock/')) {
     return next();
   }
 
