@@ -33,6 +33,8 @@ const HUB_DOMAINS = new Set([
   'pandamarket.local:3000',
   'pandamarket.tn',
   'www.pandamarket.tn',
+  'garbage.team',
+  'www.garbage.team',
 ]);
 
 // Admin domains — the super admin panel
@@ -41,6 +43,7 @@ const ADMIN_DOMAINS = new Set([
   'admin.127.0.0.1:3000',
   'admin.pandamarket.local:3000',
   'admin.pandamarket.tn',
+  'admin.garbage.team',
 ]);
 
 // Platform base domains used for subdomain extraction
@@ -48,6 +51,7 @@ const PLATFORM_BASES = [
   '.pandamarket.local:3000',
   '.localhost:3000',
   '.pandamarket.tn',
+  '.garbage.team',
 ];
 
 const AUTH_ROUTE_PREFIXES = ['/login', '/register', '/forgot-password', '/reset-password'];
