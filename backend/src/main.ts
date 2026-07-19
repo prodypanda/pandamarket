@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { config } from './config';
 import { logger } from './utils/logger';
+import { getDataDir } from './utils/data-dir';
 import { accessLog, apiRateLimit, errorHandler, requestId } from './middlewares';
 import { csrfProtection } from './middlewares/csrf.middleware';
 import { maintenanceMiddleware } from './middlewares/maintenance.middleware';
@@ -150,9 +151,11 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(config.cookieSecret));
   
-  // Serve public uploads and themes statically from backend/data
-  app.use('/pd-product-images', express.static(path.join(__dirname, '../data/pd-product-images')));
-  app.use('/pd-themes', express.static(path.join(__dirname, '../data/pd-themes')));
+  // Serve public uploads and themes statically from backend/data.
+  // getDataDir() resolves correctly for both tsx dev mode (src/) and the
+  // compiled production build (dist/backend/src/), unlike __dirname-relative paths.
+  app.use('/pd-product-images', express.static(path.join(getDataDir(), 'pd-product-images')));
+  app.use('/pd-themes', express.static(path.join(getDataDir(), 'pd-themes')));
 
   // Base Middlewares
   app.use(requestId);

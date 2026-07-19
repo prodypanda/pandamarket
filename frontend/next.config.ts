@@ -58,6 +58,14 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.storage.supabase.co',
+      },
+      {
+        protocol: 'https',
         hostname: 'garbage.team',
       },
       {

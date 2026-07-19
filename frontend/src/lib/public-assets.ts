@@ -1,4 +1,4 @@
-const LOCAL_STORAGE_HOSTS = new Set(['localhost:9100', '127.0.0.1:9100', '[::1]:9100']);
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 const PROXIED_PUBLIC_BUCKET_PATHS = ['/pd-product-images/', '/pd-themes/'];
 
 function isProxiedPublicPath(pathname: string) {
@@ -12,7 +12,7 @@ export function normalizePublicAssetUrl(url?: string | null): string {
 
   try {
     const parsed = new URL(value);
-    if (LOCAL_STORAGE_HOSTS.has(parsed.host) && isProxiedPublicPath(parsed.pathname)) {
+    if (LOCAL_HOSTNAMES.has(parsed.hostname) && isProxiedPublicPath(parsed.pathname)) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
   } catch {

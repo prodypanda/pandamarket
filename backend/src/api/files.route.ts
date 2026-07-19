@@ -19,6 +19,7 @@ import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdErrorCode, PdForbiddenError } from '../errors';
 import { fileAssetService } from '../services/file-asset.service';
+import { resolveDataPath } from '../utils/data-dir';
 import { reportService } from '../services/report.service';
 import { chatService } from '../services/chat.service';
 import { UserRole } from '@pandamarket/types';
@@ -272,7 +273,13 @@ router.put(
       res.status(400).send('Bad Request');
       return;
     }
-    const filePath = path.join(__dirname, '../../data', bucket, key);
+    let filePath: string;
+    try {
+      filePath = resolveDataPath(bucket, key);
+    } catch {
+      res.status(400).send('Bad Request');
+      return;
+    }
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
     await fs.promises.writeFile(filePath, req.body);
     logger.info({ bucket, key, path: filePath }, 'S3-Mock file uploaded');
@@ -290,7 +297,13 @@ router.get(
       res.status(400).send('Bad Request');
       return;
     }
-    const filePath = path.join(__dirname, '../../data', bucket, key);
+    let filePath: string;
+    try {
+      filePath = resolveDataPath(bucket, key);
+    } catch {
+      res.status(400).send('Bad Request');
+      return;
+    }
     if (!fs.existsSync(filePath)) {
       res.status(404).send('Not Found');
       return;
