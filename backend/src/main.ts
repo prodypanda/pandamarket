@@ -293,6 +293,26 @@ async function bootstrap() {
     logger.info(`Server listening on port ${port} in ${config.env} mode.`);
   });
 
+  // Keep-alive self-ping to avoid free-tier cold starts (Render sleeps web
+  // services after ~15 minutes without inbound traffic). Pinging our own
+  // public URL counts as inbound traffic and keeps the instance warm.
+  // Configure with PD_KEEP_ALIVE_URL (or Render's auto-set RENDER_EXTERNAL_URL),
+  // disable with PD_KEEP_ALIVE_ENABLED=false.
+  const keepAliveUrl = process.env.PD_KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL;
+  const keepAliveEnabled = (process.env.PD_KEEP_ALIVE_ENABLED ?? 'true') !== 'false';
+  if (keepAliveEnabled && keepAliveUrl && config.env === 'production') {
+    const parsedInterval = Number(process.env.PD_KEEP_ALIVE_INTERVAL_MS);
+    const keepAliveIntervalMs = Number.isFinite(parsedInterval) && parsedInterval >= 60_000 ? parsedInterval : 10 * 60 * 1000;
+    const keepAliveTarget = `${keepAliveUrl.replace(/\/$/, '')}/health`;
+    const keepAliveTimer = setInterval(() => {
+      fetch(keepAliveTarget, { signal: AbortSignal.timeout(15000) })
+        .then((res) => logger.debug({ status: res.status }, 'Keep-alive ping sent.'))
+        .catch((err) => logger.warn({ err }, 'Keep-alive ping failed.'));
+    }, keepAliveIntervalMs);
+    keepAliveTimer.unref();
+    logger.info({ target: keepAliveTarget, interval_ms: keepAliveIntervalMs }, 'Keep-alive self-ping enabled.');
+  }
+
   // Attach WebSocket gateway for real-time notifications
   socketGateway.attach(server);
 

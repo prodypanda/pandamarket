@@ -3,6 +3,8 @@ import { HubNavbar } from '../../components/hub/HubNavbar';
 import { HubHomeContent } from '../../components/hub/HubHomeContent';
 import { AliExpressHomeContent } from '../../components/hub/AliExpressHomeContent';
 import { AliExpress2HomeContent } from '../../components/hub/AliExpress2HomeContent';
+import { AlibabaHomeContent } from '../../components/hub/AlibabaHomeContent';
+import { AmazonHomeContent } from '../../components/hub/AmazonHomeContent';
 import { HubFooter } from '../../components/hub/HubFooter';
 import { getMarketplaceSettings, type MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveMarketplaceTheme } from '../../lib/marketplace-theme';
@@ -69,6 +71,8 @@ function resolveHomepageLayout(value?: string) {
   if (value === 'classic') return 'classic';
   if (value === 'deals') return 'deals';
   if (value === 'premium_deals') return 'premium_deals';
+  if (value === 'alibaba') return 'alibaba';
+  if (value === 'amazon') return 'amazon';
   return 'theme_default';
 }
 
@@ -125,7 +129,19 @@ export default async function HubHomepage() {
   const homepageLayout = resolveHomepageLayout(marketplaceSettings.hub_homepage_layout);
 
   const homeContent =
-    homepageLayout === 'premium_deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress2') ? (
+    homepageLayout === 'alibaba' ? (
+      <AlibabaHomeContent
+        trendingProducts={trendingProducts}
+        categories={orderedCategories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    ) : homepageLayout === 'amazon' ? (
+      <AmazonHomeContent
+        trendingProducts={trendingProducts}
+        categories={orderedCategories}
+        marketplaceSettings={marketplaceSettings}
+      />
+    ) : homepageLayout === 'premium_deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress2') ? (
       <AliExpress2HomeContent
         trendingProducts={trendingProducts}
         categories={orderedCategories}

@@ -11,6 +11,7 @@ import { ProductDescriptionRenderer } from '../../../../components/product/Produ
 import { ProductGallery } from '../../../../components/product/ProductGallery';
 import { ProductVariantPurchasePanel } from '../../../../components/product/ProductVariantPurchasePanel';
 import { SellerHoverCard } from '../../../../components/product/SellerHoverCard';
+import { RecentlyViewedTracker } from '../../../../components/hub/RecentlyViewedTracker';
 import { ContactSellerButton } from '../../../../components/chat/ContactSellerButton';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
@@ -226,6 +227,15 @@ export default async function ProductDetailPage({
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <RecentlyViewedTracker
+          product={{
+            id: product.id,
+            title: product.title,
+            price: toNumber(product.price),
+            thumbnail: mainImage || null,
+            href: `/hub/products/${encodeURIComponent(product.id)}`,
+          }}
+        />
         {isAliExpress && (
           <div className="mb-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] p-[1px] shadow-xl shadow-orange-900/10">
             <div className="flex flex-col gap-3 rounded-[1.7rem] bg-white/95 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">

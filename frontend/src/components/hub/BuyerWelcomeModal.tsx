@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy, ShoppingBag, X } from 'lucide-react';
 import { updateOnboardingStep } from '@/lib/onboarding';
-import { fetchWithCsrf } from '@/lib/api';
 
 interface BuyerWelcomeModalProps {
   onClose: () => void;
@@ -46,6 +45,27 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
     };
   }, []);
 
+  // Persist dismissal so the modal doesn't reappear on every visit,
+  // then close. Used by the X button, backdrop click, and Escape key.
+  const handleSkip = () => {
+    updateOnboardingStep('buyer_welcome', {
+      completed: true,
+      metadata: { skipped: true, dismissed_at: new Date().toISOString() },
+    }).catch(() => {
+      // Persisting the skip is best-effort — never block closing
+    });
+    onClose();
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') handleSkip();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggleCategory = (name: string) => {
     setSelectedCategories((prev) =>
       prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
@@ -59,15 +79,6 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Ignored
-    }
-  };
-
-  const handleNext = () => {
-    if (step === 1 && selectedCategories.length === 0) {
-      // Allow moving next without selection or require at least one
-      setStep(2);
-    } else if (step === 1) {
-      setStep(2);
     }
   };
 
@@ -97,7 +108,12 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && step < 3) handleSkip();
+      }}
+    >
       <div className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0F0F23] p-8 text-white shadow-2xl shadow-purple-950/20">
         {/* Decorative background gradients */}
         <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
@@ -106,7 +122,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
         {step < 3 && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleSkip}
             className="absolute right-6 top-6 rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white"
           >
             <X className="h-5 w-5" />
@@ -162,10 +178,10 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={handleNext}
+                  onClick={() => setStep(2)}
                   className="w-full rounded-2xl bg-[#B91C1C] py-3.5 text-sm font-black text-white hover:bg-[#991B1B]"
                 >
-                  Continue
+                  {selectedCategories.length > 0 ? 'Continue' : 'Skip — choose later'}
                 </button>
               </div>
             </div>

@@ -82,6 +82,18 @@ interface CategoryState {
   slug: string;
 }
 
+const WIZARD_STEP_KEYS = ['store_basics', 'theme', 'kyc', 'first_product', 'payment_shipping'] as const;
+
+/** Returns the wizard step index the seller should resume from (0 = welcome tour, 6 = launch). */
+function getResumeStep(state: OnboardingState): number {
+  const record = state as Record<string, { completed?: boolean } | undefined>;
+  if (!record.store_basics?.completed) return 0;
+  for (let i = 1; i < WIZARD_STEP_KEYS.length; i += 1) {
+    if (!record[WIZARD_STEP_KEYS[i]]?.completed) return i + 1;
+  }
+  return 6;
+}
+
 export default function SellerOnboardingPage() {
   const [store, setStore] = useState<StoreState | null>(null);
   const [verification, setVerification] = useState<VerificationState | null>(null);
@@ -90,6 +102,9 @@ export default function SellerOnboardingPage() {
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [categories, setCategories] = useState<CategoryState[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Platform domain shown in the wizard — configurable per deployment
+  const platformDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '');
 
   // Wizard state
   const [showWizard, setShowWizard] = useState(false);
@@ -170,6 +185,8 @@ export default function SellerOnboardingPage() {
 
       if (onboardingRes.status === 'fulfilled') {
         setOnboardingState(onboardingRes.value);
+        // Resume from the first incomplete step (progress persistence)
+        setCurrentStep(getResumeStep(onboardingRes.value));
         // Automatically open wizard if basics not completed
         if (!onboardingRes.value.store_basics?.completed) {
           setShowWizard(true);
@@ -233,7 +250,7 @@ export default function SellerOnboardingPage() {
 
   // Coachmarks helper content per step
   const stepCoachmarks = [
-    'Welcome! This interactive guide will walk you through setting up and launching your store on garbage.team in minutes. Let\'s start!',
+    `Welcome! This interactive guide will walk you through setting up and launching your store on ${platformDomain} in minutes. Let's start!`,
     'Your logo and store name are the first things customers see. Enter a catchy name and upload your branding logos.',
     'Browse our curated designs. Click on any theme card below to instantly preview its layout and visual presets.',
     'Submit identification documents (RC & CIN) to verify your vendor profile. Verified stores gain organic search ranking!',
@@ -308,6 +325,16 @@ export default function SellerOnboardingPage() {
 
   // Save Step 4: KYC Documents
   const saveKyc = async () => {
+    // Verification already submitted or approved — do not resubmit, just advance
+    if (verification?.status === 'approved' || verification?.status === 'pending') {
+      const nextOnboarding = await updateOnboardingStep('kyc', {
+        completed: true,
+        metadata: { status: verification.status },
+      });
+      setOnboardingState(nextOnboarding);
+      setCurrentStep(4);
+      return;
+    }
     if (!rcFileUrl || !cinFileUrl || !phone) {
       setWizardError('Please complete all document uploads and enter a phone number');
       return;
@@ -341,8 +368,23 @@ export default function SellerOnboardingPage() {
 
   // Save Step 5: Product Creator
   const saveFirstProduct = async () => {
+    // A product already exists and no new one was typed — mark the step complete
+    if (productCount > 0 && !productTitle.trim()) {
+      const nextOnboarding = await updateOnboardingStep('first_product', {
+        completed: true,
+        metadata: { product_title: firstProduct?.title || 'existing' },
+      });
+      setOnboardingState(nextOnboarding);
+      setCurrentStep(5);
+      return;
+    }
     if (!productTitle || !productPrice || !selectedCategoryId) {
       setWizardError('Product Title, Price, and Category are required');
+      return;
+    }
+    const parsedPrice = parseFloat(productPrice);
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setWizardError('Price must be a valid positive number (TND)');
       return;
     }
     setSavingStep(true);
@@ -354,7 +396,7 @@ export default function SellerOnboardingPage() {
         body: JSON.stringify({
           title: productTitle,
           description: productDescription,
-          price: parseFloat(productPrice),
+          price: parsedPrice,
           marketplace_category_id: selectedCategoryId,
           tags: productTags.split(',').map((t) => t.trim()).filter(Boolean),
           thumbnail: productThumbnail || undefined,
@@ -379,6 +421,11 @@ export default function SellerOnboardingPage() {
 
   // Save Step 6: Shipping & Payments
   const savePaymentsAndShipping = async () => {
+    const parsedShippingFee = parseFloat(shippingFee);
+    if (!Number.isFinite(parsedShippingFee) || parsedShippingFee < 0) {
+      setWizardError('Shipping fee must be a valid number (TND)');
+      return;
+    }
     setSavingStep(true);
     setWizardError('');
     try {
@@ -386,7 +433,7 @@ export default function SellerOnboardingPage() {
       const shipRes = await fetchWithCsrf('/api/pd/stores/me/shipping', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shipping_flat_fee: parseFloat(shippingFee) }),
+        body: JSON.stringify({ shipping_flat_fee: parsedShippingFee }),
       });
       if (!shipRes.ok) throw new Error('Failed to save shipping configurations');
 
@@ -517,7 +564,7 @@ export default function SellerOnboardingPage() {
             <button
               type="button"
               onClick={() => {
-                setCurrentStep(0);
+                setCurrentStep(getResumeStep(onboardingState));
                 setShowWizard(true);
               }}
               className="flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-6 py-4 text-sm font-black text-white hover:bg-[#991B1B] transition-transform hover:-translate-y-0.5"
@@ -604,7 +651,7 @@ export default function SellerOnboardingPage() {
             </Link>
           </div>
           <p className="text-xs text-slate-400 leading-5">
-            Your storefront is currently mapped to: <code className="text-[#ff5f5f]">{store?.subdomain}.garbage.team</code>
+            Your storefront is currently mapped to: <code className="text-[#ff5f5f]">{store?.subdomain}.{platformDomain}</code>
           </p>
         </div>
 
@@ -665,11 +712,7 @@ export default function SellerOnboardingPage() {
                     <button
                       key={label}
                       type="button"
-                      onClick={() => {
-                        if (idx <= currentStep || idx < 6) {
-                          setCurrentStep(idx);
-                        }
-                      }}
+                      onClick={() => setCurrentStep(idx)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
                         idx === currentStep
                           ? 'bg-[#B91C1C]/15 text-[#ff5f5f]'
@@ -753,7 +796,7 @@ export default function SellerOnboardingPage() {
                 {currentStep === 0 && (
                   <div className="space-y-6 text-center max-w-xl mx-auto py-6">
                     <span className="text-6xl">🐼</span>
-                    <h3 className="text-2xl font-black">Let\'s configure garbage.team</h3>
+                    <h3 className="text-2xl font-black">Let&apos;s configure {platformDomain}</h3>
                     <p className="text-sm text-slate-400 leading-6">
                       Welcome to your merchant command center. This quick interactive wizard will configure your public store basics, design layout theme, verify files, and add your first product.
                     </p>
@@ -794,7 +837,7 @@ export default function SellerOnboardingPage() {
                           className="flex-1 bg-transparent p-4 text-sm text-slate-400 focus:outline-none cursor-not-allowed"
                         />
                         <span className="bg-slate-800 p-4 text-sm font-bold text-slate-400">
-                          .garbage.team
+                          .{platformDomain}
                         </span>
                       </div>
                     </div>
@@ -1009,7 +1052,7 @@ export default function SellerOnboardingPage() {
 
                       <div className="space-y-2">
                         <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                          CIN (Carte d\'Identité Nationale)
+                          CIN (Carte d&apos;Identité Nationale)
                         </label>
                         <div className="rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[140px]">
                           {cinFileUrl ? (
@@ -1238,7 +1281,7 @@ export default function SellerOnboardingPage() {
                     <span className="text-6xl animate-bounce block">🚀</span>
                     <h3 className="text-3xl font-black text-white">Congratulations!</h3>
                     <p className="text-sm text-slate-400 leading-6">
-                      Your settings are persisted, product is listed, and custom design is applied. You are ready to launch on garbage.team!
+                      Your settings are persisted, product is listed, and custom design is applied. You are ready to launch on {platformDomain}!
                     </p>
 
                     <div className="p-5 rounded-3xl bg-white/5 border border-slate-800 flex items-center justify-between">
