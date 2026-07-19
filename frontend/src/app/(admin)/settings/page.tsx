@@ -49,7 +49,7 @@ interface PlatformSettings {
   marketplace_contact_url: string;
   catalog_featured_category_slugs: string;
   catalog_default_sort: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc';
-  hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals';
+  hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
   hub_homepage_banner_title: string;
   hub_homepage_banner_subtitle: string;
   hub_homepage_banner_cta_label: string;
@@ -1509,6 +1509,8 @@ export default function AdminSettingsPage() {
               <option value="classic">Classic marketplace</option>
               <option value="deals">Deals marketplace</option>
               <option value="premium_deals">Premium deals</option>
+              <option value="alibaba">Alibaba B2B</option>
+              <option value="amazon">Amazon classic</option>
             </select>
           </div>
           <div className="space-y-1.5">
