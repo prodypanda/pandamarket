@@ -109,12 +109,12 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-lg"
       onClick={(event) => {
         if (event.target === event.currentTarget && step < 3) handleSkip();
       }}
     >
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0F0F23] p-8 text-white shadow-2xl shadow-purple-950/20">
+      <div role="dialog" aria-modal="true" aria-label="Welcome onboarding" className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/15 bg-[#0F0F23] p-8 text-white shadow-2xl shadow-red-950/30 ring-1 ring-white/10">
         {/* Decorative background gradients */}
         <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
         <div className="absolute -left-20 -bottom-20 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
@@ -149,7 +149,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                   <ShoppingBag className="h-7 w-7" />
                 </div>
                 <h2 className="mt-4 text-2xl font-black">Welcome to PandaMarket! 🐼</h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm leading-6 text-slate-300">
                   Select your favorite categories so we can personalize your shopping experience.
                 </p>
               </div>
@@ -165,7 +165,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                       className={`flex items-center justify-between rounded-2xl border p-3.5 text-left text-xs font-bold transition hover:-translate-y-0.5 hover:shadow-md ${
                         isSelected
                           ? 'border-[#B91C1C] bg-[#B91C1C]/10 text-white'
-                          : 'border-slate-800 bg-white/5 text-slate-300'
+                          : 'border-slate-700 bg-white/5 text-slate-200 hover:border-slate-500'
                       }`}
                     >
                       <span>{cat.name}</span>
@@ -179,7 +179,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="w-full rounded-2xl bg-[#B91C1C] py-3.5 text-sm font-black text-white hover:bg-[#991B1B]"
+                  className="w-full rounded-2xl bg-gradient-to-r from-[#B91C1C] to-[#7F1D1D] py-3.5 text-sm font-black text-white shadow-lg shadow-red-950/40 transition-transform hover:-translate-y-0.5 hover:from-[#D42020] hover:to-[#991B1B]"
                 >
                   {selectedCategories.length > 0 ? 'Continue' : 'Skip — choose later'}
                 </button>
@@ -191,7 +191,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-2xl font-black">Where should we deliver? 📍</h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm leading-6 text-slate-300">
                   Add your primary delivery location to get accurate shipping estimates.
                 </p>
               </div>
@@ -228,7 +228,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                   type="button"
                   onClick={handleFinish}
                   disabled={saving}
-                  className="flex-1 rounded-2xl bg-[#B91C1C] py-3.5 text-sm font-black text-white hover:bg-[#991B1B] disabled:opacity-50"
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-[#B91C1C] to-[#7F1D1D] py-3.5 text-sm font-black text-white shadow-lg shadow-red-950/40 transition-transform hover:-translate-y-0.5 hover:from-[#D42020] hover:to-[#991B1B] disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   {saving ? 'Saving...' : 'Finish Setup'}
                 </button>
@@ -241,7 +241,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
               <div className="text-6xl">🎉</div>
               <div>
                 <h2 className="text-2xl font-black">You are ready!</h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm leading-6 text-slate-300">
                   Use this promo code at checkout to get a 10% discount on your first order.
                 </p>
               </div>
@@ -266,7 +266,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                 <button
                   type="button"
                   onClick={handleDone}
-                  className="w-full rounded-2xl bg-[#B91C1C] py-3.5 text-sm font-black text-white hover:bg-[#991B1B]"
+                  className="w-full rounded-2xl bg-gradient-to-r from-[#B91C1C] to-[#7F1D1D] py-3.5 text-sm font-black text-white shadow-lg shadow-red-950/40 transition-transform hover:-translate-y-0.5 hover:from-[#D42020] hover:to-[#991B1B]"
                 >
                   Explore Marketplace
                 </button>

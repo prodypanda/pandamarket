@@ -76,7 +76,6 @@ export function SellerHoverCard({
 }: SellerHoverCardProps) {
   const { locale, t } = useLocale();
   const sellerSettings = getSellerSettings(settings);
-  const resolvedWebsiteHref = websiteHref || href;
   const description = sellerSettings.store_description || sellerSettings.description;
   const location = [sellerSettings.address, sellerSettings.city, sellerSettings.country].filter(Boolean).join(', ');
   const statusLabel = formatStatus(status, isVerified, t);
@@ -88,8 +87,15 @@ export function SellerHoverCard({
     .slice(0, 2)
     .toUpperCase();
 
-  const content = (
-    <div className="group relative flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white p-4 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:border-gray-200 hover:shadow-lg">
+  // Two distinct destinations:
+  // - href: the internal marketplace seller page (/store/{subdomain})
+  // - websiteHref: the seller's own website (custom domain / subdomain URL)
+  const marketplaceHref = href || null;
+  const externalWebsiteHref = websiteHref && websiteHref !== href ? websiteHref : null;
+  const mainHref = marketplaceHref || websiteHref || null;
+
+  const row = (
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white p-4 text-sm shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:border-gray-200 group-hover:shadow-lg">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-sm font-black shadow-sm ring-1 ring-gray-100" style={{ color: accentColor }}>
         {sellerSettings.logo_url ? (
           <div
@@ -113,6 +119,18 @@ export function SellerHoverCard({
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black shadow-sm" style={{ color: accentColor }}>
         {t('sellerCard.store')} <ExternalLink className="h-3.5 w-3.5" />
       </span>
+    </div>
+  );
+
+  return (
+    <div className="group relative">
+      {mainHref ? (
+        <Link href={mainHref} className="block">
+          {row}
+        </Link>
+      ) : (
+        row
+      )}
 
       <div className="pointer-events-none absolute left-0 top-full z-30 mt-3 w-[min(22rem,calc(100vw-2rem))] translate-y-2 overflow-hidden rounded-3xl border border-gray-100 bg-white text-sm opacity-0 shadow-2xl shadow-slate-900/15 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
         <div className="relative p-5 text-white" style={{ background: `linear-gradient(135deg, ${accentColor}, #0f172a)` }}>
@@ -136,11 +154,6 @@ export function SellerHoverCard({
                 {isVerified && <Shield className="h-4 w-4 shrink-0" />}
               </p>
               <p className="mt-1 text-xs font-semibold text-white/75">{sellerTypeLabel} · {statusLabel}</p>
-              {resolvedWebsiteHref && (
-                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur">
-                  {t('sellerCard.visitStore')} <Globe2 className="h-3 w-3" />
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -186,22 +199,32 @@ export function SellerHoverCard({
             )}
           </div>
 
-          {resolvedWebsiteHref && (
-            <span className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black text-white" style={{ backgroundColor: accentColor }}>
-              {t('sellerCard.visitStore')} <Globe2 className="h-3.5 w-3.5" />
-            </span>
+          {(marketplaceHref || externalWebsiteHref) && (
+            <div className="mt-4 grid gap-2">
+              {marketplaceHref && (
+                <Link
+                  href={marketplaceHref}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black text-white transition-transform hover:-translate-y-0.5"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  {t('sellerCard.visitStore')} <Store className="h-3.5 w-3.5" />
+                </Link>
+              )}
+              {externalWebsiteHref && (
+                <a
+                  href={externalWebsiteHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 bg-white px-4 py-3 text-xs font-black transition-transform hover:-translate-y-0.5"
+                  style={{ borderColor: accentColor, color: accentColor }}
+                >
+                  Site officiel <Globe2 className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
     </div>
-  );
-
-  const linkHref = resolvedWebsiteHref || href;
-  if (!linkHref) return content;
-
-  return (
-    <Link href={linkHref} className="block">
-      {content}
-    </Link>
   );
 }

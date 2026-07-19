@@ -680,8 +680,8 @@ export default function SellerOnboardingPage() {
 
       {/* FULLSCREEN INTERACTIVE WIZARD OVERLAY SHELL */}
       {showWizard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-4xl overflow-hidden rounded-[2.5rem] border border-slate-800 bg-[#0F0F23] text-white shadow-2xl flex flex-col md:flex-row h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-lg">
+          <div role="dialog" aria-modal="true" aria-label="Store setup wizard" className="relative w-full max-w-4xl overflow-hidden rounded-[2.5rem] border border-slate-700 bg-[#0F0F23] text-white shadow-2xl ring-1 ring-white/10 flex flex-col md:flex-row h-[90vh]">
             
             {/* Sidebar with Steps progress */}
             <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-800 bg-[#0B0B1A]/80 p-6 flex flex-col justify-between overflow-y-auto">
@@ -718,7 +718,7 @@ export default function SellerOnboardingPage() {
                           ? 'bg-[#B91C1C]/15 text-[#ff5f5f]'
                           : idx < currentStep
                             ? 'text-emerald-400 font-bold hover:bg-white/5'
-                            : 'text-slate-500 hover:text-slate-300'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
                       }`}
                     >
                       <span
@@ -761,7 +761,7 @@ export default function SellerOnboardingPage() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#B91C1C]">
                     Step 0{currentStep + 1} of 07
                   </span>
-                  <h2 className="text-lg font-black mt-1">
+                  <h2 className="text-xl font-black mt-1 text-white">
                     {
                       [
                         'Welcome to PandaMarket',
@@ -787,7 +787,7 @@ export default function SellerOnboardingPage() {
               {/* Step Forms */}
               <div className="flex-1 p-8 overflow-y-auto space-y-6">
                 {wizardError && (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs font-bold text-red-400 flex items-center gap-2">
+                  <div role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm font-bold text-red-300 flex items-center gap-2">
                     <Info className="h-4 w-4" /> {wizardError}
                   </div>
                 )}
@@ -1337,7 +1337,7 @@ export default function SellerOnboardingPage() {
                       <span className="block text-xs font-black uppercase tracking-wider text-[#ff5f5f]">
                         Panda Launch Advisor
                       </span>
-                      <p className="mt-1 text-xs text-slate-300 leading-5 font-semibold">
+                      <p className="mt-1 text-sm text-slate-200 leading-6 font-semibold">
                         {stepCoachmarks[currentStep]}
                       </p>
                     </div>
