@@ -45,6 +45,43 @@ export async function ensureCsrfToken(): Promise<string | null> {
   return token;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+/**
+ * Refreshes the session using the httpOnly pd_rt refresh cookie.
+ * Deduplicated so parallel 401s trigger a single refresh call.
+ */
+async function refreshSession(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const headers = new Headers({ 'Content-Type': 'application/json' });
+        const token = await ensureCsrfToken();
+        if (token) headers.set(CSRF_HEADER, token);
+        const res = await fetch('/api/pd/auth/refresh', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: '{}',
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 export async function fetchWithCsrf(input: RequestInfo | URL, init: RequestInit = {}) {
   const method = String(init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
@@ -54,9 +91,24 @@ export async function fetchWithCsrf(input: RequestInfo | URL, init: RequestInit 
     if (token) headers.set(CSRF_HEADER, token);
   }
 
-  return fetch(input, {
-    ...init,
-    headers,
-    credentials: init.credentials ?? 'include',
-  });
+  const doFetch = () =>
+    fetch(input, {
+      ...init,
+      headers,
+      credentials: init.credentials ?? 'include',
+    });
+
+  let response = await doFetch();
+
+  // If the short-lived access token expired, silently refresh the session
+  // once and retry, so users are not logged out while working in dashboards.
+  const isAuthSessionEndpoint = /\/api\/pd\/auth\/(login|logout|refresh|register|csrf)/.test(requestUrl(input));
+  if (response.status === 401 && !isAuthSessionEndpoint && typeof window !== 'undefined') {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      response = await doFetch();
+    }
+  }
+
+  return response;
 }

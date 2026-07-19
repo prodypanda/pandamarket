@@ -30,7 +30,8 @@ const loginSchema = z.object({
 });
 
 const refreshSchema = z.object({
-  refresh_token: z.string().min(1),
+  // Optional because the token may also come from the httpOnly pd_rt cookie.
+  refresh_token: z.string().min(1).optional(),
 });
 
 const updateMeSchema = z.object({
@@ -121,6 +122,22 @@ function setAccessCookie(res: Response, accessToken: string) {
   });
 }
 
+const REFRESH_COOKIE = 'pd_rt';
+
+function setRefreshCookie(res: Response, refreshToken: string) {
+  res.cookie(REFRESH_COOKIE, refreshToken, {
+    httpOnly: true,
+    secure: process.env.PD_NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/api/pd/auth',
+  });
+}
+
+function clearRefreshCookie(res: Response) {
+  res.clearCookie(REFRESH_COOKIE, { path: '/api/pd/auth' });
+}
+
 function clearSelectedStoreCookie(res: Response) {
   res.clearCookie(SELECTED_STORE_COOKIE, { path: '/' });
 }
@@ -188,6 +205,7 @@ async function loginAndRespond(req: Request, res: Response, allowedRoles?: UserR
 
   clearSelectedStoreCookie(res);
   setAccessCookie(res, tokens.access_token);
+  setRefreshCookie(res, tokens.refresh_token);
 
   res.status(200).json({ user: publicUser(user), tokens });
 }
@@ -214,6 +232,7 @@ async function registerAndRespond(req: Request, res: Response, forcedRole?: User
 
   clearSelectedStoreCookie(res);
   setAccessCookie(res, tokens.access_token);
+  setRefreshCookie(res, tokens.refresh_token);
 
   res.status(201).json({ user: publicUser(user), tokens });
 }
@@ -293,9 +312,16 @@ router.post(
   '/refresh',
   validate(refreshSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const tokens = await authService.refresh(req.body.refresh_token, accountSecurityService.fromRequest(req, { auth_flow: 'refresh' }));
+    const refreshToken: string | undefined = req.body.refresh_token || req.cookies?.pd_rt;
+    if (!refreshToken) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Missing refresh token');
+    }
+    const tokens = await authService.refresh(refreshToken, accountSecurityService.fromRequest(req, { auth_flow: 'refresh' }));
 
     setAccessCookie(res, tokens.access_token);
+    if (tokens.refresh_token) {
+      setRefreshCookie(res, tokens.refresh_token);
+    }
 
     res.status(200).json({ tokens });
   }),
@@ -321,6 +347,7 @@ router.post(
     });
     clearSelectedStoreCookie(res);
     setAccessCookie(res, tokens.access_token);
+    setRefreshCookie(res, tokens.refresh_token);
     res.status(200).json({ user: publicUser(user), tokens });
   }),
 );
@@ -394,6 +421,7 @@ router.post(
       await authService.logout(req.user.id);
     }
     res.clearCookie('pd_at');
+    clearRefreshCookie(res);
     clearSelectedStoreCookie(res);
     res.status(200).json({ success: true });
   }),

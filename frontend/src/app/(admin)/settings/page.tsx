@@ -1120,6 +1120,8 @@ export default function AdminSettingsPage() {
         const nextSettings = { ...DEFAULT_SETTINGS, ...(data.data || { ...settings, ...payload }) };
         setSettings(nextSettings);
         setSavedSettings(nextSettings);
+        // Bust the cached hub pages so theme/layout changes show up immediately.
+        fetch('/api/marketplace/revalidate', { method: 'POST', credentials: 'include' }).catch(() => undefined);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {

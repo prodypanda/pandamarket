@@ -16,7 +16,9 @@ export function getStorefrontWebsiteHref(opts: {
   // requiring wildcard DNS.
   const baseDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || '').trim();
   if (!baseDomain) {
-    return `/store/${encodeURIComponent(subdomain)}`;
+    // Path-based storefront: force the seller's own themed website view so this
+    // link stays distinct from the marketplace seller page at /store/{subdomain}.
+    return `/store/${encodeURIComponent(subdomain)}?view=website`;
   }
 
   const cleanBaseDomain = baseDomain.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');

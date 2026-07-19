@@ -328,7 +328,13 @@ export default async function StorePage({
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
 
-  if (isMarketplaceStoreRoute && !previewToken) {
+  // Explicit overrides: ?view=website always shows the seller's own themed
+  // website, ?view=market always shows the marketplace seller page.
+  const viewParam = getSearchParam(resolvedSearchParams, 'view');
+  const showMarketplaceSellerPage =
+    viewParam === 'market' || (isMarketplaceStoreRoute && viewParam !== 'website');
+
+  if (showMarketplaceSellerPage && !previewToken) {
     const [products, categories, marketplaceSettings] = await Promise.all([
       getStoreProducts(store.id),
       getMarketplaceCategories(),

@@ -67,11 +67,13 @@ export interface MarketplaceSettings {
   maintenance_block_storefronts?: string | boolean;
 }
 
+export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';
+
 export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {
-      next: { revalidate: 30 },
+      next: { revalidate: 30, tags: [MARKETPLACE_SETTINGS_TAG] },
     });
     if (!res.ok) return {};
     const data = await res.json();
