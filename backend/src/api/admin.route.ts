@@ -1340,7 +1340,7 @@ const globalSettingsSchema = z.object({
   marketplace_contact_url: publicLinkSettingSchema.optional(),
   catalog_featured_category_slugs: z.coerce.string().trim().max(1000).optional(),
   catalog_default_sort: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc']).optional(),
-  hub_homepage_layout: z.enum(['theme_default', 'classic', 'deals', 'premium_deals']).optional(),
+  hub_homepage_layout: z.enum(['theme_default', 'classic', 'deals', 'premium_deals', 'alibaba', 'amazon']).optional(),
   hub_homepage_banner_title: z.coerce.string().trim().max(160).optional(),
   hub_homepage_banner_subtitle: z.coerce.string().trim().max(320).optional(),
   hub_homepage_banner_cta_label: z.coerce.string().trim().max(80).optional(),

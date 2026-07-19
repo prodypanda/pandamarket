@@ -727,7 +727,11 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
       ? 'deals'
       : payload.hub_homepage_layout === 'premium_deals'
         ? 'premium_deals'
-        : 'theme_default';
+        : payload.hub_homepage_layout === 'alibaba'
+          ? 'alibaba'
+          : payload.hub_homepage_layout === 'amazon'
+            ? 'amazon'
+            : 'theme_default';
   payload.shipping_default_provider = payload.shipping_default_provider === 'aramex'
     ? 'aramex'
     : payload.shipping_default_provider === 'laposte'
