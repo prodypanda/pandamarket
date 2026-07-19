@@ -1,6 +1,7 @@
 import { MeiliSearch } from 'meilisearch';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { query } from '../db/pool';
 
 export interface SearchProductDocument {
   id: string;
@@ -91,16 +92,68 @@ export class SearchService {
   }
 
   /**
-   * Query the products index
+   * Query the products index (falls back to PostgreSQL if Meilisearch is unavailable)
    */
-  async searchProducts(query: string, opts: { limit?: number; offset?: number; category?: string } = {}) {
-    const filter = opts.category ? [`category = "${opts.category}"`] : [];
-    
-    return this.client.index(config.meili.productsIndex).search(query, {
+  async searchProducts(searchQuery: string, opts: { limit?: number; offset?: number; category?: string } = {}) {
+    try {
+      if (process.env.PD_USE_PG_SEARCH === 'true') {
+        throw new Error('Forced Postgres search fallback');
+      }
+      const filter = opts.category ? [`category = "${opts.category}"`] : [];
+      return await this.client.index(config.meili.productsIndex).search(searchQuery, {
+        limit: opts.limit ?? 20,
+        offset: opts.offset ?? 0,
+        filter,
+      });
+    } catch (err) {
+      logger.warn({ err, searchQuery }, 'Meilisearch query failed, falling back to PostgreSQL full-text search');
+      return this.searchProductsPostgres(searchQuery, opts);
+    }
+  }
+
+  /**
+   * PostgreSQL fallback search implementation
+   */
+  private async searchProductsPostgres(searchQuery: string, opts: { limit?: number; offset?: number; category?: string } = {}) {
+    let sql = `
+      SELECT id, title, slug, price::float as price, thumbnail, store_id, category, description, tags
+      FROM pd_product
+      WHERE status = 'published'
+    `;
+    const params: any[] = [];
+
+    if (opts.category) {
+      params.push(opts.category);
+      sql += ` AND category = $${params.length}`;
+    }
+
+    if (searchQuery.trim()) {
+      params.push(`%${searchQuery.trim()}%`);
+      sql += ` AND (title ILIKE $${params.length} OR description ILIKE $${params.length} OR category ILIKE $${params.length} OR $${params.length} = ANY(tags))`;
+    }
+
+    // Get count
+    const countSql = `SELECT COUNT(*)::int as count FROM (${sql}) as sub`;
+    const countRes = await query(countSql, [...params]);
+    const nbHits = countRes.rows[0]?.count ?? 0;
+
+    // Add pagination
+    params.push(opts.limit ?? 20);
+    sql += ` LIMIT $${params.length}`;
+
+    params.push(opts.offset ?? 0);
+    sql += ` OFFSET $${params.length}`;
+
+    const res = await query(sql, params);
+    return {
+      hits: res.rows.map((row) => ({
+        ...row,
+        tags: Array.isArray(row.tags) ? row.tags : [],
+      })),
+      nbHits,
       limit: opts.limit ?? 20,
       offset: opts.offset ?? 0,
-      filter,
-    });
+    };
   }
 }
 

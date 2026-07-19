@@ -51,6 +51,12 @@ import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
+import { startAiWorker } from './workers/ai.worker';
+import { startEmailWorker } from './workers/email.worker';
+import { startPayoutWorker } from './workers/payout.worker';
+import { startSearchWorker } from './workers/search.worker';
+import { startSubscriptionWorker } from './workers/subscription.worker';
+import { startWebhookWorker } from './workers/webhook.worker';
 
 async function bootstrap() {
   // Initialise Sentry (no-op if DSN not configured)
@@ -292,6 +298,36 @@ async function bootstrap() {
 
   // Register event subscribers (notifications, wallet credits, search sync, webhooks)
   registerAllSubscribers();
+
+  // Start in-process background workers (BullMQ) if enabled
+  if (config.runWorkersInProcess) {
+    logger.info('🚀 Starting background workers (BullMQ) in-process...');
+    try {
+      const workers = [
+        startAiWorker(),
+        startEmailWorker(),
+        startPayoutWorker(),
+        startSearchWorker(),
+        startSubscriptionWorker(),
+        startWebhookWorker(),
+      ];
+
+      const shutdownWorkers = async () => {
+        logger.info('Shutting down in-process background workers...');
+        await Promise.all(workers.map((w) => w.close().catch(() => {})));
+      };
+
+      process.on('SIGTERM', async () => {
+        await shutdownWorkers();
+      });
+      process.on('SIGINT', async () => {
+        await shutdownWorkers();
+      });
+      logger.info('🤖 All 6 background workers successfully started in-process.');
+    } catch (err) {
+      logger.error({ err }, 'Failed to start background workers in-process.');
+    }
+  }
 }
 
 bootstrap().catch((err) => {

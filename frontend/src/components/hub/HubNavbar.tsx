@@ -11,6 +11,8 @@ import { useCart } from '../../contexts/CartContext';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { MarketplaceBrand } from '../MarketplaceBrand';
+import { BuyerWelcomeModal } from './BuyerWelcomeModal';
+import { fetchOnboardingState, type OnboardingState } from '../../lib/onboarding';
 
 interface CurrentUser {
   role?: string;
@@ -47,6 +49,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
   const isAliExpress2 = resolvedMarketplaceTheme === 'aliexpress2';
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showBuyerWelcome, setShowBuyerWelcome] = useState(false);
   const cartCount = getItemCount();
   const role = currentUser?.role?.toLowerCase();
   const dashboardHref =
@@ -89,7 +92,16 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
         const res = await fetch('/api/pd/auth/me', { credentials: 'include' });
         if (!cancelled && res.ok) {
           const data = await res.json();
-          setCurrentUser(data.user || data.data || null);
+          const user = data.user || data.data || null;
+          setCurrentUser(user);
+
+          // If role is buyer, check onboarding status
+          if (user && user.role?.toLowerCase() === 'buyer') {
+            const state = (await fetchOnboardingState().catch(() => ({}))) as OnboardingState;
+            if (!state.buyer_welcome?.completed && !cancelled) {
+              setShowBuyerWelcome(true);
+            }
+          }
         }
       } catch {
         if (!cancelled) setCurrentUser(null);
@@ -188,6 +200,12 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
         </div>
       </div>
       {showInstantChat && <InstantChatLauncher marketplaceTheme={resolvedMarketplaceTheme} />}
+      {showBuyerWelcome && (
+        <BuyerWelcomeModal
+          onClose={() => setShowBuyerWelcome(false)}
+          onCompleted={() => setShowBuyerWelcome(false)}
+        />
+      )}
     </header>
   );
 }

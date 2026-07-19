@@ -78,6 +78,7 @@ export const config = {
   hubDomain: optional('PD_HUB_DOMAIN', 'pandamarket.local')!,
   adminCors: asList('PD_ADMIN_CORS', ['http://localhost:3000']),
   storeCors: asList('PD_STORE_CORS', ['http://localhost:3000']),
+  runWorkersInProcess: asBool('PD_RUN_WORKERS_IN_PROCESS', true),
 
   // Database
   databaseUrl: required('PD_DATABASE_URL'),
