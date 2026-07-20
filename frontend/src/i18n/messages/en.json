@@ -608,6 +608,8 @@
     "store": "Store",
     "viewStore": "View store",
     "visitStore": "Visit store",
+    "sellerStore": "Seller store",
+    "sellerWebsite": "Seller website",
     "memberSince": "Member since",
     "activeProducts": "Active products",
     "verifiedProfile": "Profile verified by PandaMarket",

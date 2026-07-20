@@ -507,7 +507,7 @@ export default function SellerOnboardingPage() {
     );
   }
 
-  const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}` : '/hub';
+  const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}?view=website` : '/hub';
 
   return (
     <div className="relative space-y-6">
@@ -588,8 +588,8 @@ export default function SellerOnboardingPage() {
             key={item.id}
             className={`rounded-2xl border p-4 flex flex-col justify-between ${
               item.completed
-                ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
-                : 'border-slate-800 bg-[#0F0F23]/40 text-slate-400'
+                ? 'border-emerald-500/40 bg-[#0C1B16] text-emerald-400'
+                : 'border-slate-800 bg-[#0F0F23] text-slate-400'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -603,7 +603,7 @@ export default function SellerOnboardingPage() {
 
       {/* Static settings directory cards */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23]/60 p-6 space-y-4">
+        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
           <h2 className="text-xl font-black text-white">⚙️ Configuration Settings</h2>
           <p className="text-xs text-slate-400 leading-5">
             Quick links to customize components in detail later from settings panel.
@@ -633,7 +633,7 @@ export default function SellerOnboardingPage() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23]/60 p-6 space-y-4">
+        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
           <h2 className="text-xl font-black text-white">🏪 Storefront Status</h2>
           <div className="rounded-2xl bg-white/5 p-4 flex items-center justify-between">
             <div>
@@ -655,7 +655,7 @@ export default function SellerOnboardingPage() {
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23]/60 p-6 space-y-4">
+        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
           <h2 className="text-xl font-black text-white">🛂 Identity & KYC</h2>
           <div className="rounded-2xl bg-white/5 p-4 flex items-center justify-between">
             <div>
@@ -821,7 +821,7 @@ export default function SellerOnboardingPage() {
                         placeholder="My Beautiful Store"
                         value={storeName}
                         onChange={(e) => setStoreName(e.target.value)}
-                        className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none"
+                        className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
                       />
                     </div>
 
@@ -1111,7 +1111,7 @@ export default function SellerOnboardingPage() {
                             placeholder="Handmade Ceramic Mug"
                             value={productTitle}
                             onChange={(e) => setProductTitle(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
                           />
                         </div>
 
@@ -1124,7 +1124,7 @@ export default function SellerOnboardingPage() {
                             placeholder="45.00"
                             value={productPrice}
                             onChange={(e) => setProductPrice(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
                           />
                         </div>
                       </div>
@@ -1140,7 +1140,7 @@ export default function SellerOnboardingPage() {
                             className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white focus:border-[#B91C1C] focus:outline-none"
                           >
                             {categories.map((c) => (
-                              <option key={c.id} value={c.id} className="bg-[#0F0F23]">{c.name}</option>
+                              <option key={c.id} value={c.id} className="bg-[#0F0F23] text-white">{c.name}</option>
                             ))}
                           </select>
                         </div>
@@ -1154,7 +1154,7 @@ export default function SellerOnboardingPage() {
                             placeholder="mug, clay, ceramic"
                             value={productTags}
                             onChange={(e) => setProductTags(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
                           />
                         </div>
                       </div>
@@ -1168,7 +1168,7 @@ export default function SellerOnboardingPage() {
                           value={productDescription}
                           onChange={(e) => setProductDescription(e.target.value)}
                           rows={2}
-                          className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none resize-none"
+                          className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none resize-none"
                         />
                       </div>
                     </div>
@@ -1267,7 +1267,7 @@ export default function SellerOnboardingPage() {
                             value={bankTransferDetails}
                             onChange={(e) => setBankTransferDetails(e.target.value)}
                             rows={3}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm focus:border-[#B91C1C] focus:outline-none resize-none"
+                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none resize-none"
                           />
                         </div>
                       </div>

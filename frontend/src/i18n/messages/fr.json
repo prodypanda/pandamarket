@@ -608,6 +608,8 @@
     "store": "Boutique",
     "viewStore": "Voir la boutique",
     "visitStore": "Visiter la boutique",
+    "sellerStore": "Boutique vendeur",
+    "sellerWebsite": "Site du vendeur",
     "memberSince": "Membre depuis",
     "activeProducts": "Produits actifs",
     "verifiedProfile": "Profil contrôlé par PandaMarket",

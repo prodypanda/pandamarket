@@ -88,11 +88,16 @@ export function SellerHoverCard({
     .toUpperCase();
 
   // Two distinct destinations:
-  // - href: the internal marketplace seller page (/store/{subdomain})
-  // - websiteHref: the seller's own website (custom domain / subdomain URL)
-  const marketplaceHref = href || null;
+  // - href: the internal marketplace seller store page (/store/{subdomain}?view=market),
+  //   showing store info, categories and products in the marketplace style
+  // - websiteHref: the seller's own storefront website (custom domain / subdomain URL)
+  const marketplaceHref = href
+    ? href.includes('view=')
+      ? href
+      : `${href}${href.includes('?') ? '&' : '?'}view=market`
+    : null;
   const externalWebsiteHref = websiteHref && websiteHref !== href ? websiteHref : null;
-  const mainHref = marketplaceHref || websiteHref || null;
+  const mainHref = marketplaceHref || externalWebsiteHref || null;
 
   const row = (
     <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white p-4 text-sm shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:border-gray-200 group-hover:shadow-lg">
@@ -207,7 +212,7 @@ export function SellerHoverCard({
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black text-white transition-transform hover:-translate-y-0.5"
                   style={{ backgroundColor: accentColor }}
                 >
-                  {t('sellerCard.visitStore')} <Store className="h-3.5 w-3.5" />
+                  {t('sellerCard.sellerStore')} <Store className="h-3.5 w-3.5" />
                 </Link>
               )}
               {externalWebsiteHref && (
@@ -218,7 +223,7 @@ export function SellerHoverCard({
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 bg-white px-4 py-3 text-xs font-black transition-transform hover:-translate-y-0.5"
                   style={{ borderColor: accentColor, color: accentColor }}
                 >
-                  Site officiel <Globe2 className="h-3.5 w-3.5" />
+                  {t('sellerCard.sellerWebsite')} <Globe2 className="h-3.5 w-3.5" />
                 </a>
               )}
             </div>
