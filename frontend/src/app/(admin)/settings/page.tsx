@@ -1554,8 +1554,8 @@ export default function AdminSettingsPage() {
       <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <SectionHeader
           icon={<SlidersHorizontal className="h-5 w-5" />}
-          title="Homepage Blocks (Alibaba / Amazon)"
-          description="Enable, reorder and customize every block of the Alibaba B2B and Amazon classic homepage templates."
+          title="Homepage Blocks"
+          description="Enable, reorder, and customize blocks, banners, CTAs, and hero slides for Alibaba, Amazon, AliExpress, and Classic homepages."
         />
         <HomepageBlocksEditor
           value={settings.hub_homepage_blocks}

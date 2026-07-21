@@ -54,7 +54,7 @@ interface HubHomeContentProps {
 }
 
 // Sections that can be reordered from the admin Homepage Blocks editor.
-const MIDDLE_BLOCK_IDS = ['features', 'categories', 'deals_spotlight', 'trending', 'category_showcase', 'cta_banner'];
+const MIDDLE_BLOCK_IDS = ['features', 'categories', 'deals_spotlight', 'trending', 'category_showcase', 'cta_banner', 'recently_viewed'];
 
 function formatPrice(price: Product['price']) {
   const numericPrice = typeof price === 'number' ? price : Number(price);
@@ -348,13 +348,13 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const renderCtaBanner = (): ReactNode => (
     <section className="bg-gradient-to-r from-[#1A1A2E] to-[#25253D] py-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pd-reveal">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">{t('hub.ctaBanner.title')}</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">{blockTitle('cta_banner', t('hub.ctaBanner.title'))}</h2>
         <p className="text-gray-400 text-lg mb-8 max-w-2xl mx-auto">{t('hub.ctaBanner.subtitle')}</p>
         <Link
-          href="/hub/vendor-signup"
+          href={blockById.get('cta_banner')?.cta_url || '/hub/vendor-signup'}
           className="pd-btn pd-btn-primary inline-block px-10 py-4 bg-[#16C784] text-white font-semibold rounded-full shadow-lg shadow-[#16C784]/30 hover:bg-[#14b576] hover:-translate-y-0.5 transition-all text-lg"
         >
-          {t('hub.ctaBanner.cta')}
+          {blockById.get('cta_banner')?.cta_label || t('hub.ctaBanner.cta')}
         </Link>
       </div>
     </section>
@@ -367,6 +367,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
     trending: renderTrending,
     category_showcase: renderCategoryShowcase,
     cta_banner: renderCtaBanner,
+    recently_viewed: () => <RecentlyViewedRail />,
   };
 
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
@@ -500,8 +501,6 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
       {middleBlocks.map((block) => (
         <Fragment key={block.id}>{middleRenderers[block.id]?.() ?? null}</Fragment>
       ))}
-
-      <RecentlyViewedRail />
     </main>
   );
 }

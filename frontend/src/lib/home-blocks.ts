@@ -305,6 +305,15 @@ export const HOME_TEMPLATE_BLOCKS: Record<HomeTemplateId, HomeBlockDefinition[]>
       id: 'cta_banner',
       label: 'Seller CTA banner',
       description: 'Bottom "open your store" call-to-action banner.',
+      supportsTitle: true,
+      supportsImage: true,
+      supportsCta: true,
+      defaultTitle: 'Open your store',
+    },
+    {
+      id: 'recently_viewed',
+      label: 'Recently viewed',
+      description: 'Products the visitor recently opened (stored in their browser).',
     },
   ],
 };
