@@ -1,0 +1,17 @@
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+vi.mock('../db/pool',()=>({query:vi.fn(),transaction:vi.fn()}));
+vi.mock('../utils/crypto',()=>({pdId:vi.fn((type:string)=>`pd_${type}_test`)}));
+vi.mock('../plugins/payment',()=>({getPaymentProvider:vi.fn()}));
+vi.mock('../services/ads.service',()=>({adsService:{getAccount:vi.fn()}}));
+vi.mock('../services/platform-config.service',()=>({platformConfigService:{getSettings:vi.fn()}}));
+vi.mock('../config',()=>({config:{hubDomain:'http://localhost:3000'}}));
+import {PaymentGateway} from '@pandamarket/types';
+import {query,transaction} from '../db/pool';
+import {getPaymentProvider} from '../plugins/payment';
+import {AdsRefillService} from '../services/ads-refill.service';
+const result=(rows:any[])=>({rows,rowCount:rows.length} as any);
+describe('AdsRefillService webhooks',()=>{beforeEach(()=>vi.clearAllMocks());
+ it('verifies and captures a matching webhook exactly once',async()=>{const intent={id:'pd_adrfl_1',account_id:'pd_adacct_1',gateway:'flouci',gateway_reference:'pay_1',amount:'20',status:'pending'};vi.mocked(query).mockResolvedValueOnce(result([intent]));vi.mocked(getPaymentProvider).mockReturnValue({verify:vi.fn().mockResolvedValue({status:'captured',amount:20})} as any);const client={query:vi.fn().mockResolvedValueOnce(result([intent])).mockResolvedValueOnce(result([{id:'pd_adacct_1'}])).mockResolvedValueOnce(result([{balance:'20'}])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([{...intent,status:'captured'}]))};vi.mocked(transaction).mockImplementation(async(fn:any)=>fn(client));const value=await new AdsRefillService().settleWebhook(PaymentGateway.Flouci,intent.id,'pay_1');expect(value.status).toBe('captured');expect(client.query).toHaveBeenCalledWith(expect.stringContaining("type,amount"),expect.arrayContaining([intent.account_id,intent.amount]));});
+ it('returns an already captured intent without crediting again',async()=>{const intent={id:'pd_adrfl_1',status:'captured'};vi.mocked(query).mockResolvedValueOnce(result([intent]));const value=await new AdsRefillService().settleWebhook(PaymentGateway.Flouci,intent.id,'pay_1');expect(value).toEqual(intent);expect(transaction).not.toHaveBeenCalled();});
+ it('rejects a webhook reference that does not match an intent',async()=>{vi.mocked(query).mockResolvedValueOnce(result([]));await expect(new AdsRefillService().settleWebhook(PaymentGateway.Konnect,'pd_adrfl_1','wrong')).rejects.toThrow('not found');});
+});

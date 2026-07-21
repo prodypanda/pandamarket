@@ -1328,11 +1328,15 @@ export class OrderService {
       );
       if (rows[0].active === '0' && rows[0].delivered !== '0') {
         await c.query(
-          `UPDATE pd_order SET status = 'delivered' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-          [opts.order_id],
+          `UPDATE pd_order SET status = 'delivered',
+             payment_status=CASE WHEN payment_gateway=$2 THEN 'captured' ELSE payment_status END,
+             updated_at=NOW() WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
+          [opts.order_id,PaymentGateway.Cod],
         );
       }
     });
+    // COD is considered paid only after every store fulfillment is delivered.
+    await adsService.recognizeOrderConversion(opts.order_id);
     logger.info(opts, 'Fulfillment delivered');
   }
 

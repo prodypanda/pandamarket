@@ -14,23 +14,23 @@
 ## Seller experience
 - [x] Implement the initial campaign creation workflow.
 - [x] Expand campaign creation with creative, objective, pricing, scheduling, targeting, and preview sections.
-- [ ] Convert campaign creation into a guided multi-step wizard with saved progress.
-- [ ] Add creative upload and media-library selection.
+- [x] Convert campaign creation into a guided multi-step wizard with saved progress.
+- [x] Add creative upload and media-library selection.
 - [x] Add shared Sponsored Brand/Content creative editor and live card preview.
-- [ ] Add format-specific advanced creative editors.
-- [ ] Add full placement and template previews.
+- [x] Add format-specific advanced creative editors.
+- [x] Add full placement and template previews.
 - [x] Add targeting controls for locale, category, and device.
 - [x] Enforce locale, category, and device targeting during delivery.
-- [ ] Add audience and behavioral targeting controls.
+- [x] Add audience and behavioral targeting controls.
 - [x] Add schedule, daily budget, total budget, pricing model, and bid controls.
-- [ ] Add delivery estimates and budget recommendations.
+- [x] Add delivery estimates and budget recommendations.
 - [x] Add product/service Sponsor or Boost action to the seller product list.
-- [ ] Add Sponsor or Boost actions to remaining seller product surfaces.
+- [x] Add Sponsor or Boost actions to remaining seller product surfaces.
 - [x] Add seller campaign performance summaries and date filters.
-- [ ] Add campaign analytics time-series charts.
+- [x] Add campaign analytics time-series charts.
 - [x] Add Ads transaction ledger UI.
 - [x] Add in-dashboard low-balance warnings and campaign-state actions.
-- [ ] Add email and notification-center low-balance/campaign alerts.
+- [x] Add email and notification-center low-balance/campaign alerts.
 - [x] Add RTL-aware layout behavior to the seller Ads dashboard.
 - [ ] Replace remaining hard-coded Ads labels with full French, English, and Arabic translation keys.
 
@@ -38,7 +38,7 @@
 - [x] Implement Ads refill intents independent of commerce orders.
 - [x] Integrate Flouci Ads refill checkout and verification.
 - [x] Integrate Konnect Ads refill checkout and verification.
-- [ ] Implement signed idempotent asynchronous refill webhooks.
+- [x] Implement signed idempotent asynchronous refill webhooks.
 - [x] Implement idempotent authenticated return-path settlement.
 - [ ] Implement optional admin-approved mandat refills.
 - [ ] Implement reserved funds and atomic campaign debits.
@@ -47,7 +47,7 @@
 - [x] Implement idempotent fixed-daily campaign charging.
 - [x] Implement idempotent debit refunds, promotional credits, and admin adjustments.
 - [x] Add refill records to the Ads transaction history.
-- [ ] Add downloadable tax receipts and dedicated refill history UI.
+- [x] Add downloadable tax receipts and dedicated refill history UI.
 - [ ] Add optional auto-refill.
 
 ## Admin
@@ -57,10 +57,10 @@
 - [x] Add advertiser suspension/reactivation controls with automatic campaign pausing.
 - [x] Add safe idempotent balance adjustment controls.
 - [x] Add refund APIs and promotional-credit controls.
-- [ ] Add transaction-detail UI for selecting individual debit refunds.
+- [x] Add transaction-detail UI for selecting individual debit refunds.
 - [x] Add placement enable/disable management.
 - [x] Add placement-level pricing model and rate management.
-- [ ] Add global pricing defaults and bulk updates.
+- [x] Add global pricing defaults and bulk updates.
 - [x] Add global enable, refill, budget, duration, moderation, frequency-cap, and attribution configuration.
 - [x] Enforce moderation mode, frequency cap, and attribution-window settings at runtime.
 - [x] Persist and correctly coerce all Ads boolean and numeric platform settings.
@@ -68,16 +68,16 @@
 - [x] Add automatic-approval lifecycle regression coverage.
 - [x] Add campaign-type availability configuration and creation-time enforcement.
 - [x] Add configurable creative URL, image, description-length, and prohibited-term controls.
-- [ ] Add promotional credit and coupon management.
+- [x] Add promotional credit and coupon management.
 - [x] Add platform 30-day Ads revenue and performance analytics API data.
-- [ ] Add admin time-series visualization for platform Ads analytics.
+- [x] Add admin time-series visualization for platform Ads analytics.
 - [ ] Add fraud review and blocked-content management.
 
 ## Delivery and rendering
 - [x] Implement eligible campaign selection and bid-weighted ranking.
 - [x] Implement daily/total campaign budget enforcement and account balance enforcement.
 - [x] Automate scheduled activation, end-date completion, and budget exhaustion.
-- [ ] Implement advanced time-distributed campaign pacing.
+- [x] Implement advanced time-distributed campaign pacing.
 - [x] Implement initial per-campaign browser-session frequency caps.
 - [x] Implement separate sponsored product placements above organic search results.
 - [x] Implement category-targeted sponsored product placements above organic category results.
@@ -99,12 +99,12 @@
 - [x] Implement initial user-agent bot/crawler filtering.
 - [ ] Add advanced behavioral bot and anomaly detection.
 - [x] Implement authenticated seller self-click exclusion.
-- [ ] Hash IP identifiers and apply retention limits.
+- [x] Hash IP identifiers and apply retention limits.
 - [x] Implement order conversion attribution for verified recent sponsored interactions.
 - [x] Implement seven-day click and one-day view attribution windows.
 - [x] Move conversion recognition from order creation to captured payment for prepaid gateways.
-- [ ] Define and implement conversion recognition policy for COD and approved manual-mandat payments.
-- [ ] Implement daily analytics aggregation and raw-event retention.
+- [x] Define and implement conversion recognition policy for COD and approved manual-mandat payments.
+- [x] Implement daily analytics aggregation and raw-event retention.
 - [x] Add dedicated public Ads delivery and event rate limits.
 - [ ] Implement suspicious activity reporting dashboard and automated blocking.
 
@@ -115,9 +115,9 @@
 - [x] Enforce product ownership, published status, placement validity, and Ads-account status in campaign operations.
 - [x] Add Ads campaign and analytics tenant-isolation unit tests.
 - [ ] Add Ads route-level tenant-isolation integration tests.
-- [ ] Add delivery, pacing, and budget tests.
-- [ ] Add event deduplication and fraud tests.
-- [ ] Add attribution tests.
+- [x] Add delivery, pacing, and budget tests.
+- [x] Add event deduplication and fraud tests.
+- [x] Add attribution tests.
 - [ ] Add seller and admin UI tests.
 - [ ] Add RTL tests.
 - [ ] Add end-to-end refill, campaign, moderation, delivery, and conversion tests.

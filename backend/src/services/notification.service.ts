@@ -32,6 +32,8 @@ const STORE_SCOPED_NOTIFICATION_TYPES = [
   'ai_job_completed',
   'subscription.expired',
   'subscription.expiring_soon',
+  'ads_low_balance',
+  'ads_campaign_state',
 ];
 
 const STORE_SCOPED_TYPE_LIST = STORE_SCOPED_NOTIFICATION_TYPES

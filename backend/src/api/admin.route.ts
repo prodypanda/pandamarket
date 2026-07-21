@@ -66,6 +66,8 @@ const adsReviewSchema = z.object({
 const adsConfigSchema=z.object({ads_enabled:z.boolean().optional(),ads_moderation_required:z.boolean().optional(),ads_min_refill_tnd:z.number().min(1).max(100000).optional(),ads_max_refill_tnd:z.number().min(1).max(1000000).optional(),ads_min_daily_budget_tnd:z.number().min(.001).max(100000).optional(),ads_max_campaign_days:z.number().int().min(1).max(365).optional(),ads_frequency_cap_daily:z.number().int().min(1).max(100).optional(),ads_click_attribution_days:z.number().int().min(1).max(90).optional(),ads_view_attribution_days:z.number().int().min(1).max(30).optional(),ads_sponsored_products_enabled:z.boolean().optional(),ads_sponsored_brands_enabled:z.boolean().optional(),ads_sponsored_content_enabled:z.boolean().optional(),ads_prohibited_terms:z.string().trim().max(5000).optional(),ads_creative_image_required:z.boolean().optional(),ads_max_creative_description_length:z.number().int().min(50).max(5000).optional()}).refine(v=>Object.keys(v).length>0).refine(v=>v.ads_min_refill_tnd===undefined||v.ads_max_refill_tnd===undefined||v.ads_max_refill_tnd>=v.ads_min_refill_tnd,{message:'Maximum refill must be at least the minimum refill',path:['ads_max_refill_tnd']});
 const adsAccountStatusSchema=z.object({status:z.enum(['active','suspended'])});
 const adsPlacementSchema=z.object({enabled:z.boolean().optional(),default_price:z.number().min(0).max(100000).optional(),default_pricing_model:z.enum(['cpc','cpm','fixed_daily']).optional()}).refine(v=>Object.keys(v).length>0);
+const adsBulkPricingSchema=z.object({pricing_model:z.enum(['cpc','cpm','fixed_daily']),default_price:z.number().positive().max(100000),placement_ids:z.array(z.string().min(1)).max(100).optional()});
+const adsCouponSchema=z.object({code:z.string().trim().min(4).max(40),amount:z.number().positive().max(1000000),max_redemptions:z.number().int().min(1).max(100000),expires_at:z.string().datetime().optional(),enabled:z.boolean().optional()});
 const adsCreditSchema=z.object({store_id:z.string().min(8).max(100),amount:z.number().positive().max(1000000),reason:z.string().trim().min(3).max(500),idempotency_key:z.string().min(8).max(160)});
 const adsRefundSchema=z.object({reason:z.string().trim().min(3).max(500)});
 const adsAdjustmentSchema = z.object({
@@ -88,10 +90,14 @@ router.post('/ads/accounts/adjust', validate(adsAdjustmentSchema), asyncHandler(
   const result = await adsService.adjustAccount(req.body.store_id, req.body.amount, req.user!.id, req.body.reason, req.body.idempotency_key);
   res.status(200).json(result);
 }));
+router.get('/ads/coupons',asyncHandler(async(_req:Request,res:Response)=>res.json({coupons:await adsService.listCoupons()})));
+router.post('/ads/coupons',validate(adsCouponSchema),asyncHandler(async(req:Request,res:Response)=>res.status(201).json({coupon:await adsService.createCoupon({code:req.body.code,amount:req.body.amount,maxRedemptions:req.body.max_redemptions,expiresAt:req.body.expires_at,enabled:req.body.enabled},req.user!.id)})));
 router.post('/ads/credits',validate(adsCreditSchema),asyncHandler(async(req:Request,res:Response)=>res.status(201).json({transaction:await adsService.grantPromotionalCredit(req.body.store_id,req.body.amount,req.user!.id,req.body.reason,req.body.idempotency_key)})));
 router.post('/ads/transactions/:id/refund',validate(adsRefundSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.refundTransaction(req.params.id,req.user!.id,req.body.reason)})));
 router.patch('/ads/accounts/:storeId/status',validate(adsAccountStatusSchema),asyncHandler(async(req:Request,res:Response)=>res.json({account:await adsService.setAccountStatus(req.params.storeId,req.body.status)})));
 router.get('/ads/placements',asyncHandler(async(_req:Request,res:Response)=>res.json({placements:await adsService.listAdminPlacements()})));
+router.get('/ads/transactions',asyncHandler(async(req:Request,res:Response)=>res.json({transactions:await adsService.listAdminTransactions(Number(req.query.limit)||100)})));
+router.patch('/ads/placements/bulk-pricing',validate(adsBulkPricingSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placements:await adsService.bulkUpdatePlacementPricing(req.body.pricing_model,req.body.default_price,req.body.placement_ids)})));
 router.patch('/ads/placements/:id',validate(adsPlacementSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placement:await adsService.updatePlacement(req.params.id,{enabled:req.body.enabled,defaultPrice:req.body.default_price,defaultPricingModel:req.body.default_pricing_model})})));
 
 const userSecurityActivityParamsSchema = z.object({

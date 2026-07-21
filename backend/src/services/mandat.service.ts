@@ -19,6 +19,7 @@ import { MandatStatus, MandatUploader, PaymentGateway } from '@pandamarket/types
 import { logger } from '../utils/logger';
 import { eventBus } from '../events/event-bus';
 import { orderService } from './order.service';
+import { adsService } from './ads.service';
 
 export interface MandatProofRow {
   id: string;
@@ -143,6 +144,7 @@ export class MandatService {
     }
     const proof = rows[0];
     await orderService.markPaid(proof.order_id, PaymentGateway.ManualMandat, proofId);
+    await adsService.recognizeOrderConversion(proof.order_id);
     logger.info({ proof_id: proofId, order_id: proof.order_id }, 'Mandat approved');
     eventBus.emit('pd.payment.captured', {
       order_id: proof.order_id,

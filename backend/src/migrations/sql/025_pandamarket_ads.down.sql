@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS pd_ads_conversion;
+DROP TABLE IF EXISTS pd_ads_review;
+DROP TABLE IF EXISTS pd_ads_daily_stat;
+DROP TABLE IF EXISTS pd_ads_event;
+DROP TABLE IF EXISTS pd_ads_transaction;
+DROP TABLE IF EXISTS pd_ads_campaign_placement;
+DROP TABLE IF EXISTS pd_ads_placement;
+DROP TABLE IF EXISTS pd_ads_creative;
+DROP TABLE IF EXISTS pd_ads_campaign;
+DROP TABLE IF EXISTS pd_ads_account;

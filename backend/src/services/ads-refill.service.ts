@@ -25,6 +25,14 @@ export class AdsRefillService {
 
   async list(storeId:string){return (await query(`SELECT id,gateway,amount,currency,status,gateway_reference,created_at,captured_at FROM pd_ads_refill_intent WHERE store_id=$1 ORDER BY created_at DESC LIMIT 50`,[storeId])).rows;}
 
+  async receipt(storeId:string,intentId:string){
+    const result=await query(`SELECT r.id,r.amount,r.currency,r.gateway,r.gateway_reference,r.captured_at,s.name AS store_name
+      FROM pd_ads_refill_intent r JOIN pd_store s ON s.id=r.store_id
+      WHERE r.id=$1 AND r.store_id=$2 AND r.status='captured'`,[intentId,storeId]);
+    if(!result.rows[0])throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Captured Ads refill receipt not found');
+    return result.rows[0];
+  }
+
   async settle(storeId:string,intentId:string){
     const found=await query(`SELECT * FROM pd_ads_refill_intent WHERE id=$1 AND store_id=$2`,[intentId,storeId]); const intent=found.rows[0];
     if(!intent)throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Ads refill not found'); if(intent.status==='captured')return intent;
@@ -32,8 +40,26 @@ export class AdsRefillService {
     const result=await getPaymentProvider(intent.gateway as PaymentGateway).verify(intent.gateway_reference);
     if(result.status!=='captured')throw new PdValidationError('Payment is not captured yet');
     if(result.amount!==undefined&&Math.abs(Number(result.amount)-Number(intent.amount))>.001)throw new PdValidationError('Captured amount does not match refill intent');
+    return this.captureVerifiedIntent(intent,result.amount);
+  }
+
+  async settleWebhook(gateway:PaymentGateway,intentId:string,gatewayReference:string){
+    if(![PaymentGateway.Flouci,PaymentGateway.Konnect].includes(gateway))throw new PdValidationError('Unsupported Ads refill gateway');
+    const found=await query(`SELECT * FROM pd_ads_refill_intent WHERE id=$1 AND gateway=$2 AND gateway_reference=$3`,[intentId,gateway,gatewayReference]);
+    const intent=found.rows[0];
+    if(!intent)throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Ads refill not found');
+    if(intent.status==='captured')return intent;
+    if(intent.status!=='pending')throw new PdValidationError('Ads refill is no longer payable');
+    const result=await getPaymentProvider(gateway).verify(gatewayReference);
+    if(result.status!=='captured')throw new PdValidationError('Payment is not captured yet');
+    return this.captureVerifiedIntent(intent,result.amount);
+  }
+
+  private async captureVerifiedIntent(intent:any,verifiedAmount?:number){
+    if(verifiedAmount!==undefined&&Math.abs(Number(verifiedAmount)-Number(intent.amount))>.001)throw new PdValidationError('Captured amount does not match refill intent');
     return transaction(async(c)=>{
-      const locked=await c.query(`SELECT * FROM pd_ads_refill_intent WHERE id=$1 FOR UPDATE`,[intentId]); if(locked.rows[0].status==='captured')return locked.rows[0];
+      const locked=await c.query(`SELECT * FROM pd_ads_refill_intent WHERE id=$1 FOR UPDATE`,[intent.id]); if(locked.rows[0].status==='captured')return locked.rows[0];
+      if(locked.rows[0].status!=='pending')throw new PdValidationError('Ads refill is no longer payable');
       await c.query(`SELECT id FROM pd_ads_account WHERE id=$1 FOR UPDATE`,[intent.account_id]);
       const updated=await c.query(`UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING *`,[intent.account_id,intent.amount]);
       await c.query(`INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,payment_reference,description) VALUES ($1,$2,'refill',$3,$4,$5,$6,$7)`,[pdId('adtx'),intent.account_id,intent.amount,updated.rows[0].balance,`refill:${intent.id}`,intent.gateway_reference,`${intent.gateway} Ads refill`]);
