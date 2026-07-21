@@ -18,10 +18,12 @@ import {
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import {
+  BlockBanner,
   RecentlyViewedRail,
   formatPrice,
   getProductHref,
   getProductImage,
+  isRtlLocale,
   useCountdown,
   type HomeCategory,
   type HomeProduct,
@@ -50,6 +52,7 @@ const MIDDLE_BLOCK_IDS = ['lightning_deals', 'top_sellers', 'sponsored_brands', 
 
 export function AmazonHomeContent({ trendingProducts, categories, marketplaceSettings }: AmazonHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const rtl = isRtlLocale(marketplaceSettings);
   const [slideIndex, setSlideIndex] = useState(0);
   const [activeCategory, setActiveCategory] = useState<HomeCategory | null>(null);
   const countdown = useCountdown();
@@ -65,6 +68,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
   const blockLimit = (id: string, fallback: number) => blockById.get(id)?.limit || fallback;
 
   const slides = useMemo<HeroSlide[]>(() => {
+    // Admin-defined hero slides fully replace the banner+category fallback.
+    const configured = (blockById.get('hero')?.slides ?? []).map((entry) => ({
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      ctaLabel: entry.cta_label || 'Shop now',
+      ctaUrl: entry.cta_url || '/hub/search',
+      imageUrl: entry.image_url || null,
+    }));
+    if (configured.length > 0) return configured;
     const result: HeroSlide[] = [];
     if (marketplaceSettings.hub_homepage_banner_title) {
       result.push({
@@ -93,7 +105,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
       });
     }
     return result;
-  }, [categories, marketplaceName, marketplaceSettings]);
+  }, [blockById, categories, marketplaceName, marketplaceSettings]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -123,6 +135,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
 
   const renderLightningDeals = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <BlockBanner block={blockById.get('lightning_deals')} />
       <div className="rounded-lg bg-white p-5 shadow-md">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-xl font-black">
@@ -183,6 +196,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
     if (sponsoredBrands.length === 0) return null;
     return (
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <BlockBanner block={blockById.get('sponsored_brands')} />
         <div className="rounded-lg bg-white p-5 shadow-md">
           <div className="mb-4 flex items-center gap-2">
             <Megaphone className="h-5 w-5" style={{ color: TEAL }} />
@@ -213,7 +227,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
   };
 
   return (
-    <div className="bg-[#e3e6e6] text-gray-900">
+    <div dir={rtl ? 'rtl' : 'ltr'} className="bg-[#e3e6e6] text-gray-900">
       {/* Utility bar */}
       {isBlockEnabled('utility_bar') && (
         <div className="text-white" style={{ backgroundColor: INK }}>

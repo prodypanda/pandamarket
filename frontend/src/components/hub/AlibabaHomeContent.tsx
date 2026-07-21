@@ -20,10 +20,12 @@ import {
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import {
+  BlockBanner,
   RecentlyViewedRail,
   formatPrice,
   getProductHref,
   getProductImage,
+  isRtlLocale,
   useCountdown,
   type HomeCategory,
   type HomeProduct,
@@ -51,6 +53,7 @@ const MIDDLE_BLOCK_IDS = ['deals', 'sponsored_brands', 'product_grid', 'recently
 
 export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSettings }: AlibabaHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const rtl = isRtlLocale(marketplaceSettings);
   const [activeCategory, setActiveCategory] = useState<HomeCategory | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const countdown = useCountdown();
@@ -68,6 +71,15 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   // Admin-managed hero carousel: the configured banner (admin settings) is
   // always slide 1, followed by featured category slides.
   const slides = useMemo<HeroSlide[]>(() => {
+    // Admin-defined hero slides fully replace the banner+category fallback.
+    const configured = (blockById.get('hero')?.slides ?? []).map((entry) => ({
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      ctaLabel: entry.cta_label || 'Shop now',
+      ctaUrl: entry.cta_url || '/hub/search',
+      imageUrl: entry.image_url || null,
+    }));
+    if (configured.length > 0) return configured;
     const result: HeroSlide[] = [];
     if (marketplaceSettings.hub_homepage_banner_title) {
       result.push({
@@ -96,7 +108,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       });
     }
     return result;
-  }, [categories, marketplaceName, marketplaceSettings]);
+  }, [blockById, categories, marketplaceName, marketplaceSettings]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -124,6 +136,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
   const renderDeals = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+      <BlockBanner block={blockById.get('deals')} />
       <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-xl font-black">
@@ -161,6 +174,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
     if (sponsoredBrands.length === 0) return null;
     return (
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <BlockBanner block={blockById.get('sponsored_brands')} />
         <div className="mb-4 flex items-center gap-2">
           <Megaphone className="h-5 w-5" style={{ color: ORANGE }} />
           <h2 className="text-xl font-black">{blockTitle('sponsored_brands', 'Sponsored brands')}</h2>
@@ -181,9 +195,12 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
   const renderProductGrid = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <BlockBanner block={blockById.get('product_grid')} />
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-black">{blockTitle('product_grid', 'Just for you')}</h2>
-        <Link href="/hub/search" className="text-xs font-black" style={{ color: ORANGE }}>View all</Link>
+        <Link href={blockById.get('product_grid')?.cta_url || '/hub/search'} className="text-xs font-black" style={{ color: ORANGE }}>
+          {blockById.get('product_grid')?.cta_label || 'View all'}
+        </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {gridProducts.map((product) => (
@@ -216,7 +233,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   };
 
   return (
-    <div className="bg-[#f4f6fa] text-gray-900">
+    <div dir={rtl ? 'rtl' : 'ltr'} className="bg-[#f4f6fa] text-gray-900">
       {/* Utility bar */}
       {isBlockEnabled('utility_bar') && (
         <div className="text-white" style={{ backgroundColor: NAVY }}>

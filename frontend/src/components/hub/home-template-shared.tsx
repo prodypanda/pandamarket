@@ -119,6 +119,45 @@ export function recordRecentlyViewed(item: RecentlyViewedItem) {
   }
 }
 
+/**
+ * True when the marketplace default locale is Arabic and RTL rendering is
+ * enabled from the admin settings. Used to set `dir="rtl"` on templates.
+ */
+export function isRtlLocale(settings?: {
+  marketplace_rtl_enabled?: string | boolean;
+  marketplace_default_locale?: string;
+}): boolean {
+  if (!settings) return false;
+  const rtl = settings.marketplace_rtl_enabled;
+  return (rtl === true || rtl === 'true') && settings.marketplace_default_locale === 'ar';
+}
+
+/**
+ * Optional admin-configured banner rendered above a homepage block. Shows
+ * nothing unless the block has an image_url; the CTA makes it clickable.
+ */
+export function BlockBanner({ block }: {
+  block?: { image_url?: string; cta_label?: string; cta_url?: string; title?: string };
+}) {
+  if (!block?.image_url) return null;
+  const banner = (
+    <div className="relative mb-4 h-40 w-full overflow-hidden rounded-2xl bg-gray-100 sm:h-52">
+      <div
+        aria-label={block.title || 'Section banner'}
+        role="img"
+        className="h-full w-full bg-cover bg-center"
+        style={{ backgroundImage: `url(${block.image_url})` }}
+      />
+      {block.cta_label && (
+        <span className="absolute bottom-3 start-3 rounded-full bg-black/70 px-4 py-1.5 text-xs font-black text-white">
+          {block.cta_label}
+        </span>
+      )}
+    </div>
+  );
+  return block.cta_url ? <Link href={block.cta_url} className="block">{banner}</Link> : banner;
+}
+
 export function RecentlyViewedRail({ accentClass = 'text-[#16C784]' }: { accentClass?: string }) {
   const [items, setItems] = useState<RecentlyViewedItem[]>([]);
 

@@ -1300,6 +1300,19 @@ const metaPixelIdSchema = z.coerce.string().trim().regex(/^(|\d{5,30})$/, 'Must 
 const searchConsoleVerificationSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
 const cloudflareIdentifierSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
 
+const hubHomepageBlocksSchema = z.coerce.string().trim().max(40000).refine(
+  (value) => {
+    if (value === '') return true;
+    try {
+      const parsed = JSON.parse(value);
+      return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
+    } catch {
+      return false;
+    }
+  },
+  'Must be blank or a JSON object describing homepage blocks',
+);
+
 const globalSettingsSchema = z.object({
   marketplace_name: z.coerce.string().min(1).max(120).optional(),
   marketplace_tagline: z.coerce.string().max(255).optional(),
@@ -1346,6 +1359,7 @@ const globalSettingsSchema = z.object({
   hub_homepage_banner_cta_label: z.coerce.string().trim().max(80).optional(),
   hub_homepage_banner_cta_url: publicLinkSettingSchema.optional(),
   hub_homepage_banner_image_url: publicLinkSettingSchema.optional(),
+  hub_homepage_blocks: hubHomepageBlocksSchema.optional(),
   analytics_ga4_enabled: z.boolean().optional(),
   analytics_ga4_measurement_id: ga4MeasurementIdSchema.optional(),
   analytics_gtm_enabled: z.boolean().optional(),
@@ -1492,6 +1506,7 @@ const marketplaceSettingsSchema = globalSettingsSchema.pick({
   hub_homepage_banner_cta_label: true,
   hub_homepage_banner_cta_url: true,
   hub_homepage_banner_image_url: true,
+  hub_homepage_blocks: true,
 }).strict();
 
 const commerceSettingsSchema = globalSettingsSchema.pick({
@@ -1664,7 +1679,21 @@ router.put(
   validate(settingsSectionParamSchema, 'params'),
   asyncHandler(async (req: Request, res: Response) => {
     const { section } = req.params as { section: PlatformSettingSection };
-    const parsed = settingsSectionSchemas[section].parse(req.body) as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
+    const parsedResult = settingsSectionSchemas[section].safeParse(req.body);
+    if (!parsedResult.success) {
+      res.status(400).json({
+        error: {
+          code: 'PD_VALIDATION_ERROR',
+          message: 'Invalid settings payload',
+          details: parsedResult.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+      });
+      return;
+    }
+    const parsed = parsedResult.data as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
     const updatedKeys = await platformConfigService.updateSectionSettings(section, parsed, req.user!.id);
 
     logger.info(
