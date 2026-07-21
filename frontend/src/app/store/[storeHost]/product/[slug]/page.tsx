@@ -20,7 +20,7 @@ import type { StoreBranding, StoreSocialLinks } from '../../../../../components/
 import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
 import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
 
 interface Product {
@@ -202,6 +202,7 @@ export default async function StoreProductPage({
 }) {
   const { storeHost, slug } = await params;
   const decodedHost = decodeURIComponent(storeHost);
+  const requestHost = (await headers()).get('host');
   const cookieStore = await cookies();
   const requestedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isValidLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
@@ -226,6 +227,7 @@ export default async function StoreProductPage({
   const sellerWebsiteHref = getStorefrontWebsiteHref({
     subdomain: store.subdomain,
     customDomain: store.custom_domain,
+    currentHost: requestHost,
   });
 
   if (isMarketplaceStoreRoute) {
@@ -238,6 +240,7 @@ export default async function StoreProductPage({
         ratingData={ratingData}
         marketplaceSettings={marketplaceSettings}
         locale={locale}
+        currentHost={requestHost}
       />
     );
   }

@@ -24,6 +24,7 @@ import { DigitalTheme } from '../../../components/themes/DigitalTheme';
 import { KidsTheme } from '../../../components/themes/KidsTheme';
 import { SafePageRenderer } from '../../../components/page-builder/SafePageRenderer';
 import { StoreCartIcon } from '../../../components/store/StoreCartIcon';
+import { headers } from 'next/headers';
 import { getMarketplaceSettings } from '@/lib/marketplace-settings';
 import { getStoreRouteContext } from '@/lib/store-routing';
 import {
@@ -341,6 +342,8 @@ export default async function StorePage({
       getMarketplaceSettings(),
     ]);
 
+    const requestHost = (await headers()).get('host');
+
     return (
       <MarketplaceSellerPage
         storeHost={storeHost}
@@ -348,6 +351,7 @@ export default async function StorePage({
         products={products}
         categories={categories}
         marketplaceSettings={marketplaceSettings}
+        currentHost={requestHost}
       />
     );
   }

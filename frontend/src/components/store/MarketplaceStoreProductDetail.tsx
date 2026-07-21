@@ -41,6 +41,7 @@ interface MarketplaceStoreProductDetailProps {
   ratingData: { average_rating: number; review_count: number } | null;
   marketplaceSettings: MarketplaceThemeSettings;
   locale: Locale;
+  currentHost?: string | null;
 }
 
 function toNumber(value: unknown): number {
@@ -70,6 +71,7 @@ export function MarketplaceStoreProductDetail({
   ratingData,
   marketplaceSettings,
   locale,
+  currentHost,
 }: MarketplaceStoreProductDetailProps) {
   const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
   const tx = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
@@ -77,6 +79,7 @@ export function MarketplaceStoreProductDetail({
   const accentHex = isAliExpress ? '#ff4747' : '#16C784';
   const storeHref = `/store/${encodeURIComponent(storeHost)}`;
   const sellerWebsiteHref = getStorefrontWebsiteHref({
+    currentHost,
     subdomain: store.subdomain,
     customDomain: store.custom_domain,
   });

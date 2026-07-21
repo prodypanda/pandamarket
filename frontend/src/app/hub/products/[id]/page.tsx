@@ -19,7 +19,7 @@ import { getStorefrontWebsiteHref } from '../../../../lib/storefront-url';
 import { getWholesalePricingFromMetadata } from '../../../../lib/cart-utils';
 import { t as translate } from '../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../i18n/config';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 type ProductImage = string | { id?: string; url: string; position?: number };
 
@@ -174,6 +174,7 @@ export default async function ProductDetailPage({
 }) {
   const { id } = await params;
   const cookieStore = await cookies();
+  const requestHost = (await headers()).get('host');
   const requestedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isValidLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
   const tx = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
@@ -211,6 +212,7 @@ export default async function ProductDetailPage({
   const sellerWebsiteHref = getStorefrontWebsiteHref({
     subdomain: product.store_subdomain,
     customDomain: product.store_custom_domain,
+    currentHost: requestHost,
   });
   const wholesalePricing = product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
     ? getWholesalePricingFromMetadata(product.metadata)

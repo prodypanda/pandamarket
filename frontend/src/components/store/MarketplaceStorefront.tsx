@@ -132,6 +132,7 @@ interface MarketplaceSellerPageProps {
   categories: MarketplaceCategory[];
   marketplaceSettings: MarketplaceThemeSettings;
   selectedCategorySlug?: string;
+  currentHost?: string | null;
 }
 
 export function MarketplaceSellerPage({
@@ -141,6 +142,7 @@ export function MarketplaceSellerPage({
   categories,
   marketplaceSettings,
   selectedCategorySlug,
+  currentHost,
 }: MarketplaceSellerPageProps) {
   const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
   const isAliExpress = classes.isAliExpress;
@@ -164,6 +166,7 @@ export function MarketplaceSellerPage({
   const since = formatSince(store.created_at);
   const productsHref = `/store/${encodeURIComponent(storeHost)}/products`;
   const storefrontWebsiteHref = getStorefrontWebsiteHref({
+    currentHost,
     subdomain: store.subdomain,
     customDomain: store.custom_domain,
   });
