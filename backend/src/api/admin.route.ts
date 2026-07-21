@@ -52,11 +52,47 @@ import {
 } from '../services/platform-config.service';
 import { PdErrorCode, PdNotFoundError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
+import { adsService } from '../services/ads.service';
 
 const router = Router();
 
 // All admin routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
+
+const adsReviewSchema = z.object({
+  decision: z.enum(['approved', 'rejected', 'changes_requested']),
+  reason: z.string().trim().max(2000).optional(),
+}).refine((value) => value.decision === 'approved' || Boolean(value.reason), { message: 'A reason is required when an ad is not approved', path: ['reason'] });
+const adsConfigSchema=z.object({ads_enabled:z.boolean().optional(),ads_moderation_required:z.boolean().optional(),ads_min_refill_tnd:z.number().min(1).max(100000).optional(),ads_max_refill_tnd:z.number().min(1).max(1000000).optional(),ads_min_daily_budget_tnd:z.number().min(.001).max(100000).optional(),ads_max_campaign_days:z.number().int().min(1).max(365).optional(),ads_frequency_cap_daily:z.number().int().min(1).max(100).optional(),ads_click_attribution_days:z.number().int().min(1).max(90).optional(),ads_view_attribution_days:z.number().int().min(1).max(30).optional(),ads_sponsored_products_enabled:z.boolean().optional(),ads_sponsored_brands_enabled:z.boolean().optional(),ads_sponsored_content_enabled:z.boolean().optional(),ads_prohibited_terms:z.string().trim().max(5000).optional(),ads_creative_image_required:z.boolean().optional(),ads_max_creative_description_length:z.number().int().min(50).max(5000).optional()}).refine(v=>Object.keys(v).length>0).refine(v=>v.ads_min_refill_tnd===undefined||v.ads_max_refill_tnd===undefined||v.ads_max_refill_tnd>=v.ads_min_refill_tnd,{message:'Maximum refill must be at least the minimum refill',path:['ads_max_refill_tnd']});
+const adsAccountStatusSchema=z.object({status:z.enum(['active','suspended'])});
+const adsPlacementSchema=z.object({enabled:z.boolean().optional(),default_price:z.number().min(0).max(100000).optional(),default_pricing_model:z.enum(['cpc','cpm','fixed_daily']).optional()}).refine(v=>Object.keys(v).length>0);
+const adsCreditSchema=z.object({store_id:z.string().min(8).max(100),amount:z.number().positive().max(1000000),reason:z.string().trim().min(3).max(500),idempotency_key:z.string().min(8).max(160)});
+const adsRefundSchema=z.object({reason:z.string().trim().min(3).max(500)});
+const adsAdjustmentSchema = z.object({
+  store_id: z.string().min(8).max(100),
+  amount: z.number().finite().refine((value) => value !== 0),
+  reason: z.string().trim().min(3).max(500),
+  idempotency_key: z.string().trim().min(8).max(160),
+});
+
+router.get('/ads', asyncHandler(async (_req: Request, res: Response) => {
+  res.status(200).json(await adsService.adminOverview());
+}));
+router.get('/ads/config',asyncHandler(async(_req:Request,res:Response)=>{const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
+router.patch('/ads/config',validate(adsConfigSchema),asyncHandler(async(req:Request,res:Response)=>{await platformConfigService.updateSettings(req.body,req.user!.id);const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
+router.post('/ads/campaigns/:id/review', validate(adsReviewSchema), asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await adsService.reviewCampaign(req.params.id, req.user!.id, req.body.decision, req.body.reason);
+  res.status(200).json({ campaign });
+}));
+router.post('/ads/accounts/adjust', validate(adsAdjustmentSchema), asyncHandler(async (req: Request, res: Response) => {
+  const result = await adsService.adjustAccount(req.body.store_id, req.body.amount, req.user!.id, req.body.reason, req.body.idempotency_key);
+  res.status(200).json(result);
+}));
+router.post('/ads/credits',validate(adsCreditSchema),asyncHandler(async(req:Request,res:Response)=>res.status(201).json({transaction:await adsService.grantPromotionalCredit(req.body.store_id,req.body.amount,req.user!.id,req.body.reason,req.body.idempotency_key)})));
+router.post('/ads/transactions/:id/refund',validate(adsRefundSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.refundTransaction(req.params.id,req.user!.id,req.body.reason)})));
+router.patch('/ads/accounts/:storeId/status',validate(adsAccountStatusSchema),asyncHandler(async(req:Request,res:Response)=>res.json({account:await adsService.setAccountStatus(req.params.storeId,req.body.status)})));
+router.get('/ads/placements',asyncHandler(async(_req:Request,res:Response)=>res.json({placements:await adsService.listAdminPlacements()})));
+router.patch('/ads/placements/:id',validate(adsPlacementSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placement:await adsService.updatePlacement(req.params.id,{enabled:req.body.enabled,defaultPrice:req.body.default_price,defaultPricingModel:req.body.default_pricing_model})})));
 
 const userSecurityActivityParamsSchema = z.object({
   id: z.string().min(8).max(100),

@@ -153,6 +153,21 @@ export const PLATFORM_SETTING_DEFAULTS = {
   maintenance_eta: '',
   maintenance_allowed_ips: '',
   maintenance_block_storefronts: false,
+  ads_enabled: true,
+  ads_moderation_required: true,
+  ads_min_refill_tnd: 5,
+  ads_max_refill_tnd: 10000,
+  ads_min_daily_budget_tnd: 1,
+  ads_max_campaign_days: 90,
+  ads_frequency_cap_daily: 5,
+  ads_click_attribution_days: 7,
+  ads_view_attribution_days: 1,
+  ads_sponsored_products_enabled: true,
+  ads_sponsored_brands_enabled: true,
+  ads_sponsored_content_enabled: true,
+  ads_prohibited_terms: '',
+  ads_creative_image_required: false,
+  ads_max_creative_description_length: 500,
 } satisfies Record<string, PlatformSettingValue>;
 
 export type PlatformSettingKey = keyof typeof PLATFORM_SETTING_DEFAULTS;
@@ -330,6 +345,19 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'price_rounding_mode',
     'auto_cancel_unpaid_enabled',
     'auto_cancel_unpaid_minutes',
+    'ads_enabled',
+    'ads_moderation_required',
+    'ads_min_daily_budget_tnd',
+    'ads_max_campaign_days',
+    'ads_frequency_cap_daily',
+    'ads_click_attribution_days',
+    'ads_view_attribution_days',
+    'ads_sponsored_products_enabled',
+    'ads_sponsored_brands_enabled',
+    'ads_sponsored_content_enabled',
+    'ads_prohibited_terms',
+    'ads_creative_image_required',
+    'ads_max_creative_description_length',
   ],
   finance: [
     'retention_days_flouci',
@@ -350,6 +378,8 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'mandat_recipient_name',
     'mandat_recipient_cin',
     'mandat_recipient_city',
+    'ads_min_refill_tnd',
+    'ads_max_refill_tnd',
   ],
   operations: [
     'chat_bubble_enabled',
@@ -449,6 +479,12 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'analytics_meta_pixel_enabled',
   'cloudflare_integration_enabled',
   'cloudflare_custom_hostnames_enabled',
+  'ads_enabled',
+  'ads_moderation_required',
+  'ads_sponsored_products_enabled',
+  'ads_sponsored_brands_enabled',
+  'ads_sponsored_content_enabled',
+  'ads_creative_image_required',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
@@ -475,6 +511,14 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'security_login_max_attempts',
   'security_login_lockout_minutes',
   'security_password_min_length',
+  'ads_min_refill_tnd',
+  'ads_max_refill_tnd',
+  'ads_min_daily_budget_tnd',
+  'ads_max_campaign_days',
+  'ads_frequency_cap_daily',
+  'ads_click_attribution_days',
+  'ads_view_attribution_days',
+  'ads_max_creative_description_length',
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {

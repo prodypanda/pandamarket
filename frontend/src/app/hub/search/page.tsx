@@ -11,6 +11,7 @@ import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
 import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-type';
 import { isAliExpressTheme } from '../../../lib/marketplace-theme';
+import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
 
 interface SearchProduct {
   id: string;
@@ -399,6 +400,7 @@ function SearchContent() {
 
           {/* Results Grid */}
           <div className="flex-1">
+            <SponsoredAdsRail placement="search.top_results" title="Sponsored results" locale="all" category={selectedCategories[0]} />
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (

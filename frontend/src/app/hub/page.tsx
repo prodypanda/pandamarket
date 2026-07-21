@@ -6,6 +6,7 @@ import { AliExpress2HomeContent } from '../../components/hub/AliExpress2HomeCont
 import { AlibabaHomeContent } from '../../components/hub/AlibabaHomeContent';
 import { AmazonHomeContent } from '../../components/hub/AmazonHomeContent';
 import { HubFooter } from '../../components/hub/HubFooter';
+import { SponsoredAdsRail } from '../../components/hub/SponsoredAdsRail';
 import { getMarketplaceSettings, type MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../lib/public-assets';
@@ -170,7 +171,10 @@ export default async function HubHomepage() {
         marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceTheme}
       />
+      <SponsoredAdsRail placement="hub.home_banner" title="Sponsored content" variant="banner" locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
       {homeContent}
+      <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
+      <SponsoredAdsRail locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
       <HubFooter {...marketplaceSettings} />
     </div>
   );

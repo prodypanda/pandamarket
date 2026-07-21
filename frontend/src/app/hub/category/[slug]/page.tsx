@@ -7,6 +7,7 @@ import { getHubProductHref } from '../../../../lib/product-links';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
+import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 
 interface Product {
   id: string;
@@ -172,6 +173,8 @@ export default async function CategoryPage({
             Filtres avancés
           </Link>
         </div>
+
+        <SponsoredAdsRail placement="search.top_results" title="Sponsored in this category" locale={marketplaceSettings.marketplace_default_locale || 'fr'} category={slug} />
 
         {/* Product Grid */}
         {products.length > 0 ? (

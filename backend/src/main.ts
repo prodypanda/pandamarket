@@ -47,6 +47,7 @@ import chatRouter from './api/chat.route';
 import analyticsRouter from './api/analytics.route';
 import emailTemplateRouter from './api/email-template.route';
 import supportRouter from './api/support.route';
+import adsRouter from './api/ads.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -57,6 +58,7 @@ import { startPayoutWorker } from './workers/payout.worker';
 import { startSearchWorker } from './workers/search.worker';
 import { startSubscriptionWorker } from './workers/subscription.worker';
 import { startWebhookWorker } from './workers/webhook.worker';
+import { adsService } from './services/ads.service';
 
 async function bootstrap() {
   // Initialise Sentry (no-op if DSN not configured)
@@ -203,6 +205,7 @@ async function bootstrap() {
   apiRouter.use('/analytics', analyticsRouter);
   apiRouter.use('/email-templates', emailTemplateRouter);
   apiRouter.use('/support', supportRouter);
+  apiRouter.use('/ads', adsRouter);
 
   app.use('/api/pd', apiRouter);
 
@@ -312,6 +315,14 @@ async function bootstrap() {
     keepAliveTimer.unref();
     logger.info({ target: keepAliveTarget, interval_ms: keepAliveIntervalMs }, 'Keep-alive self-ping enabled.');
   }
+
+  const adsLifecycleTimer=setInterval(()=>{
+    adsService.processLifecycle().then(result=>{
+      if(result.activated||result.completed||result.exhausted||result.charged)logger.info({ads:result},'Ads lifecycle processed');
+    }).catch(err=>logger.error({err},'Ads lifecycle processing failed'));
+  },5*60*1000);
+  adsLifecycleTimer.unref();
+  void adsService.processLifecycle().catch(err=>logger.error({err},'Initial Ads lifecycle processing failed'));
 
   // Attach WebSocket gateway for real-time notifications
   socketGateway.attach(server);

@@ -30,6 +30,7 @@ import {
   BarChart3,
   ReceiptText,
   UserRound,
+  Megaphone,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -234,6 +235,7 @@ export default function DashboardLayout({
     { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
     { name: 'Setup guide', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
     { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
+    { name: 'PandaMarket Ads', href: '/hub/dashboard/ads', icon: Megaphone },
     { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
     { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
     { name: 'Media', href: '/hub/dashboard/media', icon: ImageIcon },

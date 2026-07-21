@@ -85,6 +85,8 @@ export default function CheckoutPage() {
       : null;
 
     try {
+      let adsAttribution: {campaign_id:string;creative_id:string;event_key:string}|undefined;
+      try { const raw=localStorage.getItem('pd_ads_attribution'); if(raw){const parsed=JSON.parse(raw);if(parsed.created_at>Date.now()-7*86400000)adsAttribution={campaign_id:parsed.campaign_id,creative_id:parsed.creative_id,event_key:parsed.event_key};else localStorage.removeItem('pd_ads_attribution');} } catch { localStorage.removeItem('pd_ads_attribution'); }
       // Step 1: Create order
       const orderRes = await fetchWithCsrf('/api/pd/orders/checkout', {
         method: 'POST',
@@ -98,6 +100,7 @@ export default function CheckoutPage() {
           })),
           shipping_address: normalizedAddress,
           payment_gateway: selectedGateway,
+          ads_attribution: adsAttribution,
         }),
       });
 
@@ -110,6 +113,7 @@ export default function CheckoutPage() {
 
       const orderData = await orderRes.json();
       const orderId = orderData.order?.id || orderData.order_id;
+      if (adsAttribution) localStorage.removeItem('pd_ads_attribution');
 
       // Step 2: Handle payment based on gateway
       if (selectedGateway === 'manual_mandat') {

@@ -12,6 +12,7 @@ import { ProductGallery } from '../../../../components/product/ProductGallery';
 import { ProductVariantPurchasePanel } from '../../../../components/product/ProductVariantPurchasePanel';
 import { SellerHoverCard } from '../../../../components/product/SellerHoverCard';
 import { RecentlyViewedTracker } from '../../../../components/hub/RecentlyViewedTracker';
+import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 import { ContactSellerButton } from '../../../../components/chat/ContactSellerButton';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
@@ -274,6 +275,8 @@ export default async function ProductDetailPage({
           )}
           <span className="text-gray-900 font-medium truncate max-w-xs">{product.title}</span>
         </nav>
+
+        <SponsoredAdsRail placement="product.related" title="Sponsored recommendations" locale={locale} category={product.marketplace_category_slug || product.category} />
 
         {/* Product Main Section */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 mb-16">

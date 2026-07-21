@@ -22,6 +22,7 @@ import { PaymentInitResult, PaymentVerifyResult } from '../plugins/payment/payme
 import { pdId } from '../utils/crypto';
 import { PdConflictError, PdErrorCode, PdValidationError } from '../errors';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
+import { adsService } from './ads.service';
 
 export class PaymentService {
   /**
@@ -168,6 +169,7 @@ export class PaymentService {
       // Mark order as paid (this also guards against double-capture at the order level)
       try {
         await orderService.markPaid(opts.orderId, opts.gateway, opts.gatewayEventId);
+        await adsService.recognizeOrderConversion(opts.orderId);
         await query(
           `UPDATE pd_payment_event SET status = 'processed', amount = $2, processed_at = NOW() WHERE id = $1`,
           [eventId, verifyResult.amount ?? null],

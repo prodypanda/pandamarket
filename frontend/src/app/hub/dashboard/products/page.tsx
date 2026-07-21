@@ -4,7 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
 import { updateOnboardingStep } from '@/lib/onboarding';
 import { getHubProductHref } from '@/lib/product-links';
-import { Edit3, Eye, ImageIcon, Images, Loader2, Package, Plus, Search, Sparkles, Tags, Trash2, Upload, X } from 'lucide-react';
+import { Edit3, Eye, ImageIcon, Images, Loader2, Megaphone, Package, Plus, Search, Sparkles, Tags, Trash2, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../../../contexts/LocaleContext';
 
@@ -1956,6 +1956,15 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-1">
+                        {product.status === 'published' && (
+                          <a
+                            href={`/hub/dashboard/ads?product_id=${encodeURIComponent(product.id)}`}
+                            title="Sponsor or boost this product"
+                            className="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                          >
+                            <Megaphone className="w-4 h-4" />
+                          </a>
+                        )}
                         <a
                           href={getHubProductHref(product)}
                           target="_blank"

@@ -309,6 +309,22 @@ export const authRateLimit = rateLimit({
 /**
  * Default API rate limit (100 req / minute / IP).
  */
+export const adsEventRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising events' } },
+});
+
+export const adsDeliveryRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising requests' } },
+});
+
 export const apiRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 100,

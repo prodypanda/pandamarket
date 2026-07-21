@@ -26,6 +26,7 @@ import { logger } from '../utils/logger';
 import { config } from '../config';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 import { shippingService } from './shipping.service';
+import { adsService } from './ads.service';
 
 interface CartLine {
   product_id: string;
@@ -260,6 +261,7 @@ export class OrderService {
     items: CartLine[];
     shipping_address?: IAddress | null;
     payment_gateway: PaymentGateway;
+    ads_attribution?: { campaign_id:string; creative_id:string; event_key:string };
   }): Promise<OrderRow> {
     if (!opts.items || opts.items.length === 0) {
       throw new PdValidationError('Cart is empty', { code: PdErrorCode.ORDER_EMPTY_CART });
@@ -485,6 +487,16 @@ export class OrderService {
               available: rowCount ?? 0,
             });
           }
+        }
+      }
+
+      // ----- Attribute an eligible sponsored interaction -----
+      if (opts.ads_attribution) {
+        const hit=await adsService.findAttribution(c,{eventKey:opts.ads_attribution.event_key,campaignId:opts.ads_attribution.campaign_id,creativeId:opts.ads_attribution.creative_id});
+        if(hit&&(!hit.product_id||prepared.some(item=>item.product_id===hit.product_id))){
+          await c.query(`INSERT INTO pd_ads_conversion (id,campaign_id,event_id,order_id,revenue,attribution_type)
+            VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (campaign_id,order_id) DO NOTHING`,
+            [pdId('adcnv'),hit.campaign_id,hit.event_id,orderId,total,hit.event_type==='click'?'click':'view']);
         }
       }
 

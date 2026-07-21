@@ -44,6 +44,11 @@ const checkoutSchema = z.object({
   ).min(1),
   shipping_address: shippingAddressSchema.nullable().optional(),
   payment_gateway: z.nativeEnum(PaymentGateway),
+  ads_attribution: z.object({
+    campaign_id: z.string().min(8).max(100),
+    creative_id: z.string().min(8).max(100),
+    event_key: z.string().min(12).max(160),
+  }).optional(),
 });
 
 const fulfillSchema = z.object({

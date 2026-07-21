@@ -1,0 +1,509 @@
+import { PoolClient } from 'pg';
+import { query, transaction } from '../db/pool';
+import { pdId } from '../utils/crypto';
+import { PdNotFoundError, PdValidationError, PdErrorCode } from '../errors';
+import { roundTnd } from '../utils/money';
+import * as crypto from 'crypto';
+import { config } from '../config';
+import { platformConfigService } from './platform-config.service';
+
+export type AdsCampaignStatus = 'draft' | 'pending_review' | 'approved' | 'scheduled' | 'active' | 'paused' | 'completed' | 'rejected' | 'cancelled' | 'exhausted';
+
+const transitions: Record<AdsCampaignStatus, AdsCampaignStatus[]> = {
+  draft: ['pending_review', 'cancelled'],
+  pending_review: ['approved', 'rejected', 'cancelled'],
+  approved: ['scheduled', 'active', 'paused', 'cancelled'],
+  scheduled: ['active', 'paused', 'cancelled'],
+  active: ['paused', 'completed', 'exhausted', 'cancelled'],
+  paused: ['active', 'cancelled'],
+  completed: [], rejected: ['draft', 'cancelled'], cancelled: [], exhausted: [],
+};
+
+export class AdsService {
+  private async getOrCreateAccount(storeId: string, client?: PoolClient) {
+    const run = async (c: PoolClient) => {
+      const existing = await c.query('SELECT * FROM pd_ads_account WHERE store_id = $1 FOR UPDATE', [storeId]);
+      if (existing.rows[0]) return existing.rows[0];
+      const created = await c.query(
+        `INSERT INTO pd_ads_account (id, store_id) VALUES ($1,$2) RETURNING *`,
+        [pdId('adacct'), storeId],
+      );
+      return created.rows[0];
+    };
+    return client ? run(client) : transaction(run);
+  }
+
+  async getAccount(storeId: string) {
+    const account = await this.getOrCreateAccount(storeId);
+    const stats = await query(
+      `SELECT COALESCE(SUM(spent_amount),0)::text AS total_spend,
+              COUNT(*) FILTER (WHERE status = 'active')::int AS active_campaigns
+       FROM pd_ads_campaign WHERE store_id = $1`, [storeId],
+    );
+    return { ...account, ...stats.rows[0] };
+  }
+
+  async credit(storeId: string, amountInput: number, opts: { type?: string; description?: string; idempotencyKey?: string } = {}) {
+    const amount = roundTnd(amountInput);
+    if (amount <= 0) throw new PdValidationError('Ads credit amount must be positive');
+    return transaction(async (c) => {
+      const account = await this.getOrCreateAccount(storeId, c);
+      if (opts.idempotencyKey) {
+        const prior = await c.query('SELECT * FROM pd_ads_transaction WHERE idempotency_key = $1', [opts.idempotencyKey]);
+        if (prior.rows[0]) return { account, transaction: prior.rows[0] };
+      }
+      const updated = await c.query(
+        `UPDATE pd_ads_account SET balance = balance + $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+        [account.id, amount],
+      );
+      const ledger = await c.query(
+        `INSERT INTO pd_ads_transaction (id, account_id, type, amount, balance_after, idempotency_key, description)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [pdId('adtx'), account.id, opts.type || 'refill', amount, updated.rows[0].balance, opts.idempotencyKey || null, opts.description || 'Ads account credit'],
+      );
+      return { account: updated.rows[0], transaction: ledger.rows[0] };
+    });
+  }
+
+  async listTransactions(storeId: string, limit = 50) {
+    const account = await this.getOrCreateAccount(storeId);
+    const result = await query(
+      'SELECT * FROM pd_ads_transaction WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2',
+      [account.id, Math.min(100, Math.max(1, limit))],
+    );
+    return result.rows;
+  }
+
+  async createCampaign(storeId: string, input: any) {
+    const settings=await platformConfigService.getSettings();
+    if(!settings.ads_enabled)throw new PdValidationError('PandaMarket Ads is currently disabled');
+    const typeEnabled=input.campaign_type==='sponsored_product'?settings.ads_sponsored_products_enabled:input.campaign_type==='sponsored_brand'?settings.ads_sponsored_brands_enabled:settings.ads_sponsored_content_enabled;
+    if(!typeEnabled)throw new PdValidationError('This advertising format is currently disabled');
+    if(Number(input.daily_budget)<Number(settings.ads_min_daily_budget_tnd))throw new PdValidationError(`Minimum daily Ads budget is ${settings.ads_min_daily_budget_tnd} TND`);
+    if(input.starts_at&&input.ends_at&&(new Date(input.ends_at).getTime()-new Date(input.starts_at).getTime())/86400000>Number(settings.ads_max_campaign_days))throw new PdValidationError(`Maximum campaign duration is ${settings.ads_max_campaign_days} days`);
+    return transaction(async (c) => {
+      const account = await this.getOrCreateAccount(storeId, c);
+      if (!input.creative) throw new PdValidationError('A campaign creative is required');
+      const creativeText=`${input.creative.title||''} ${input.creative.description||''} ${input.creative.cta_label||''}`.toLowerCase();
+      const prohibited=String(settings.ads_prohibited_terms||'').split(',').map(term=>term.trim().toLowerCase()).filter(Boolean);
+      const blocked=prohibited.find(term=>creativeText.includes(term));
+      if(blocked)throw new PdValidationError('Creative contains prohibited content',{term:blocked});
+      if(settings.ads_creative_image_required&&!input.creative.image_url)throw new PdValidationError('A creative image is required');
+      if(String(input.creative.description||'').length>Number(settings.ads_max_creative_description_length))throw new PdValidationError(`Creative description cannot exceed ${settings.ads_max_creative_description_length} characters`);
+      if (input.campaign_type === 'sponsored_product' && !input.creative.product_id) {
+        throw new PdValidationError('Sponsored product campaigns require a product or service');
+      }
+      if (input.creative.product_id) {
+        const product = await c.query<{ id:string; status:string }>(
+          'SELECT id,status FROM pd_product WHERE id=$1 AND store_id=$2',
+          [input.creative.product_id,storeId],
+        );
+        if (!product.rows[0]) throw new PdValidationError('The selected product does not belong to this store');
+        if (product.rows[0].status !== 'published') throw new PdValidationError('Only published products and services can be sponsored');
+      }
+      if (!input.placement_ids?.length) throw new PdValidationError('Select at least one Ads placement');
+      const validPlacements = await c.query<{ id:string }>(
+        'SELECT id FROM pd_ads_placement WHERE id=ANY($1::varchar[]) AND enabled=TRUE',
+        [input.placement_ids],
+      );
+      if (validPlacements.rows.length !== new Set(input.placement_ids).size) {
+        throw new PdValidationError('One or more selected Ads placements are unavailable');
+      }
+      const campaignId = pdId('adcmp');
+      const campaign = await c.query(
+        `INSERT INTO pd_ads_campaign
+          (id, account_id, store_id, name, campaign_type, objective, pricing_model, bid_amount, daily_budget, total_budget, starts_at, ends_at, targeting)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+        [campaignId, account.id, storeId, input.name, input.campaign_type, input.objective, input.pricing_model, input.bid_amount, input.daily_budget, input.total_budget, input.starts_at || null, input.ends_at || null, input.targeting || {}],
+      );
+      await c.query(
+        `INSERT INTO pd_ads_creative (id, campaign_id, product_id, title, description, image_url, cta_label, destination_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [pdId('adcrt'), campaignId, input.creative.product_id || null, input.creative.title, input.creative.description || null, input.creative.image_url || null, input.creative.cta_label || null, input.creative.destination_url || null],
+      );
+      for (const placementId of [...new Set<string>(input.placement_ids)]) {
+        await c.query('INSERT INTO pd_ads_campaign_placement (campaign_id, placement_id) VALUES ($1,$2)', [campaignId, placementId]);
+      }
+      return campaign.rows[0];
+    });
+  }
+
+  async listCampaigns(storeId: string) {
+    const result = await query(
+      `SELECT c.*, COALESCE(json_agg(cr.*) FILTER (WHERE cr.id IS NOT NULL), '[]') AS creatives
+       FROM pd_ads_campaign c LEFT JOIN pd_ads_creative cr ON cr.campaign_id = c.id
+       WHERE c.store_id = $1 GROUP BY c.id ORDER BY c.created_at DESC`, [storeId],
+    );
+    return result.rows;
+  }
+
+  async getCampaign(storeId: string, id: string) {
+    const result = await query('SELECT * FROM pd_ads_campaign WHERE id = $1 AND store_id = $2', [id, storeId]);
+    if (!result.rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Ads campaign not found');
+    return result.rows[0];
+  }
+
+  async updateCampaign(storeId: string, id: string, input: any) {
+    const current = await this.getCampaign(storeId, id);
+    if (!['draft', 'rejected', 'paused'].includes(current.status)) throw new PdValidationError('This campaign cannot be edited in its current state');
+    const result = await query(
+      `UPDATE pd_ads_campaign SET name=COALESCE($3,name), daily_budget=COALESCE($4,daily_budget), total_budget=COALESCE($5,total_budget), bid_amount=COALESCE($6,bid_amount), starts_at=COALESCE($7,starts_at), ends_at=COALESCE($8,ends_at), targeting=COALESCE($9,targeting), updated_at=NOW()
+       WHERE id=$1 AND store_id=$2 RETURNING *`,
+      [id, storeId, input.name, input.daily_budget, input.total_budget, input.bid_amount, input.starts_at, input.ends_at, input.targeting],
+    );
+    return result.rows[0];
+  }
+
+  async transition(storeId: string, id: string, next: AdsCampaignStatus) {
+    const settings=await platformConfigService.getSettings();
+    const requestedNext=next;
+    if(next==='pending_review'&&!settings.ads_moderation_required)next='approved';
+    return transaction(async (c) => {
+      const result = await c.query('SELECT * FROM pd_ads_campaign WHERE id=$1 AND store_id=$2 FOR UPDATE', [id, storeId]);
+      const campaign = result.rows[0];
+      if (!campaign) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Ads campaign not found');
+      const allowedTargets=transitions[campaign.status as AdsCampaignStatus]||[];
+      const transitionAllowed=allowedTargets.includes(next)||(requestedNext==='pending_review'&&next==='approved'&&allowedTargets.includes('pending_review'));
+      if (!transitionAllowed) throw new PdValidationError(`Cannot move campaign from ${campaign.status} to ${next}`);
+      if (['pending_review', 'approved', 'active'].includes(next)) {
+        const account = await this.getOrCreateAccount(storeId, c);
+        if (account.status !== 'active') throw new PdValidationError('Your Ads account is not active');
+        if (Number(account.balance) <= 0) throw new PdValidationError('Refill your Ads account before advertising');
+        if ((next === 'active' || next === 'scheduled') && Number(account.balance) < Math.min(Number(campaign.daily_budget), Number(campaign.total_budget) - Number(campaign.spent_amount))) {
+          throw new PdValidationError('Your Ads balance is below the campaign launch requirement');
+        }
+      }
+      if(next==='active'&&campaign.starts_at&&new Date(campaign.starts_at).getTime()>Date.now())next='scheduled';
+      const updated = await c.query(
+        `UPDATE pd_ads_campaign SET status=$3,
+          submitted_at=CASE WHEN $4='pending_review' THEN NOW() ELSE submitted_at END,
+          approved_at=CASE WHEN $3='approved' THEN NOW() ELSE approved_at END,
+          updated_at=NOW() WHERE id=$1 AND store_id=$2 RETURNING *`,
+        [id, storeId, next, requestedNext],
+      );
+      return updated.rows[0];
+    });
+  }
+
+  async listPlacements() {
+    return (await query('SELECT * FROM pd_ads_placement WHERE enabled = TRUE ORDER BY name')).rows;
+  }
+
+  async getAnalytics(storeId: string, options: { from?: string; to?: string; campaignId?: string }) {
+    const from = options.from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const to = options.to || new Date().toISOString().slice(0, 10);
+    const params: unknown[] = [storeId, from, to];
+    const campaignFilter = options.campaignId ? 'AND c.id = $4' : '';
+    if (options.campaignId) params.push(options.campaignId);
+    const [summary, daily, campaigns] = await Promise.all([
+      query(
+        `SELECT COALESCE(SUM(ds.impressions),0)::bigint AS impressions,
+                COALESCE(SUM(ds.clicks),0)::bigint AS clicks,
+                COALESCE(SUM(ds.conversions),0)::bigint AS conversions,
+                COALESCE(SUM(ds.spend),0)::text AS spend,
+                COALESCE(SUM(ds.revenue),0)::text AS revenue
+         FROM pd_ads_campaign c LEFT JOIN pd_ads_daily_stat ds ON ds.campaign_id=c.id AND ds.stat_date BETWEEN $2::date AND $3::date
+         WHERE c.store_id=$1 ${campaignFilter}`,
+        params,
+      ),
+      query(
+        `SELECT ds.stat_date, SUM(ds.impressions)::bigint AS impressions, SUM(ds.clicks)::bigint AS clicks,
+                SUM(ds.conversions)::bigint AS conversions, SUM(ds.spend)::text AS spend, SUM(ds.revenue)::text AS revenue
+         FROM pd_ads_daily_stat ds JOIN pd_ads_campaign c ON c.id=ds.campaign_id
+         WHERE c.store_id=$1 AND ds.stat_date BETWEEN $2::date AND $3::date ${campaignFilter}
+         GROUP BY ds.stat_date ORDER BY ds.stat_date`,
+        params,
+      ),
+      query(
+        `SELECT c.id,c.name,c.status,COALESCE(SUM(ds.impressions),0)::bigint AS impressions,
+                COALESCE(SUM(ds.clicks),0)::bigint AS clicks,COALESCE(SUM(ds.conversions),0)::bigint AS conversions,
+                COALESCE(SUM(ds.spend),0)::text AS spend,COALESCE(SUM(ds.revenue),0)::text AS revenue
+         FROM pd_ads_campaign c LEFT JOIN pd_ads_daily_stat ds ON ds.campaign_id=c.id AND ds.stat_date BETWEEN $2::date AND $3::date
+         WHERE c.store_id=$1 ${campaignFilter} GROUP BY c.id ORDER BY c.created_at DESC`,
+        params,
+      ),
+    ]);
+    const totals = summary.rows[0];
+    const impressions = Number(totals.impressions || 0); const clicks = Number(totals.clicks || 0);
+    const conversions = Number(totals.conversions || 0); const spend = Number(totals.spend || 0); const revenue = Number(totals.revenue || 0);
+    return {
+      range: { from, to },
+      summary: { ...totals, ctr: impressions ? clicks / impressions : 0, average_cpc: clicks ? spend / clicks : 0, conversion_rate: clicks ? conversions / clicks : 0, roas: spend ? revenue / spend : 0 },
+      daily: daily.rows,
+      campaigns: campaigns.rows,
+    };
+  }
+
+  private signDeliveryToken(payload: Record<string, unknown>): string {
+    const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signature = crypto.createHmac('sha256', config.jwt.secret).update(encoded).digest('base64url');
+    return `${encoded}.${signature}`;
+  }
+
+  private verifyDeliveryToken(token: string): Record<string, any> {
+    const [encoded, signature] = token.split('.');
+    if (!encoded || !signature) throw new PdValidationError('Invalid ad event token');
+    const expected = crypto.createHmac('sha256', config.jwt.secret).update(encoded).digest('base64url');
+    const left = Buffer.from(signature); const right = Buffer.from(expected);
+    if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) throw new PdValidationError('Invalid ad event token');
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as Record<string, any>;
+    if (!payload.exp || Number(payload.exp) < Date.now()) throw new PdValidationError('Expired ad event token');
+    return payload;
+  }
+
+  async deliver(placementKey: string, limit = 4, context: { locale?:string; category?:string; device?:string } = {}) {
+    const settings=await platformConfigService.getSettings();
+    if(!settings.ads_enabled)return [];
+    const locale=context.locale?.trim().toLowerCase()||'all';
+    const category=context.category?.trim().toLowerCase()||'';
+    const device=context.device==='mobile'||context.device==='desktop'?context.device:'all';
+    const result = await query(
+      `SELECT c.id AS campaign_id,c.campaign_type,c.pricing_model,c.bid_amount,c.daily_budget,c.total_budget,c.spent_amount,
+              cr.id AS creative_id,cr.product_id,cr.title,cr.description,cr.image_url,cr.cta_label,cr.destination_url,
+              p.id AS placement_id,p.placement_key,s.name AS store_name,s.subdomain AS store_subdomain
+       FROM pd_ads_campaign c
+       JOIN pd_ads_account a ON a.id=c.account_id AND a.status='active' AND a.balance>0
+       JOIN pd_ads_campaign_placement cp ON cp.campaign_id=c.id
+       JOIN pd_ads_placement p ON p.id=cp.placement_id AND p.enabled=TRUE AND p.placement_key=$1
+       JOIN pd_store s ON s.id=c.store_id AND s.status NOT IN ('suspended','maintenance')
+       JOIN LATERAL (SELECT * FROM pd_ads_creative WHERE campaign_id=c.id ORDER BY created_at LIMIT 1) cr ON TRUE
+       WHERE c.status='active' AND c.spent_amount<c.total_budget
+         AND (c.starts_at IS NULL OR c.starts_at<=NOW()) AND (c.ends_at IS NULL OR c.ends_at>NOW())
+         AND COALESCE((SELECT spend FROM pd_ads_daily_stat WHERE campaign_id=c.id AND stat_date=CURRENT_DATE),0)<c.daily_budget
+         AND (COALESCE(c.targeting->>'locale','all')='all' OR LOWER(c.targeting->>'locale')=$3)
+         AND (COALESCE(c.targeting->>'device','all')='all' OR LOWER(c.targeting->>'device')=$4)
+         AND (COALESCE(c.targeting->>'category','')='' OR LOWER(c.targeting->>'category')=$5)
+       ORDER BY c.bid_amount DESC, RANDOM() LIMIT $2`,
+      [placementKey, Math.min(12, Math.max(1, limit)),locale,device,category],
+    );
+    return result.rows.map((row) => ({
+      ...row,
+      sponsored: true,
+      event_token: this.signDeliveryToken({ campaign_id:row.campaign_id,creative_id:row.creative_id,placement_id:row.placement_id,destination_url:row.destination_url,pricing_model:row.pricing_model,bid_amount:row.bid_amount,exp:Date.now()+30*60*1000 }),
+    }));
+  }
+
+  async recordEvent(input: { token:string; eventType:'impression'|'click'; eventKey:string; sessionHash?:string; ipHash?:string; viewerStoreId?:string|null }) {
+    const token = this.verifyDeliveryToken(input.token);
+    const settings=await platformConfigService.getSettings();
+    return transaction(async (c) => {
+      const duplicate = await c.query('SELECT id FROM pd_ads_event WHERE event_key=$1', [input.eventKey]);
+      if (duplicate.rows[0]) return { recorded:false, duplicate:true };
+      const campaignResult = await c.query(
+        `SELECT c.*,a.balance,a.id AS ads_account_id FROM pd_ads_campaign c JOIN pd_ads_account a ON a.id=c.account_id
+         WHERE c.id=$1 FOR UPDATE OF c,a`, [token.campaign_id],
+      );
+      const campaign = campaignResult.rows[0];
+      if (!campaign || campaign.status!=='active') throw new PdValidationError('Campaign is not active');
+      if (input.viewerStoreId && input.viewerStoreId === campaign.store_id) return { recorded:false, self_click:true };
+      if (input.sessionHash) {
+        const duplicateWindow = input.eventType === 'click' ? '30 minutes' : '24 hours';
+        const recent = await c.query(
+          `SELECT id FROM pd_ads_event WHERE campaign_id=$1 AND creative_id=$2 AND event_type=$3 AND session_hash=$4 AND created_at>NOW()-$5::interval LIMIT 1`,
+          [campaign.id,token.creative_id,input.eventType,input.sessionHash,duplicateWindow],
+        );
+        if (recent.rows[0]) return { recorded:false, duplicate:true };
+        const frequency = await c.query<{ count:string }>(
+          `SELECT COUNT(*)::text AS count FROM pd_ads_event WHERE campaign_id=$1 AND event_type='impression' AND session_hash=$2 AND created_at>NOW()-INTERVAL '24 hours'`,
+          [campaign.id,input.sessionHash],
+        );
+        if (input.eventType === 'impression' && Number(frequency.rows[0].count) >= Number(settings.ads_frequency_cap_daily)) return { recorded:false, frequency_capped:true };
+      }
+      const rawCost = input.eventType==='click' && campaign.pricing_model==='cpc' ? Number(campaign.bid_amount)
+        : input.eventType==='impression' && campaign.pricing_model==='cpm' ? Number(campaign.bid_amount)/1000 : 0;
+      const cost = roundTnd(rawCost);
+      const daily = await c.query('SELECT spend FROM pd_ads_daily_stat WHERE campaign_id=$1 AND stat_date=CURRENT_DATE FOR UPDATE', [campaign.id]);
+      const dailySpend = Number(daily.rows[0]?.spend || 0);
+      const remaining = Math.min(Number(campaign.balance), Number(campaign.total_budget)-Number(campaign.spent_amount), Number(campaign.daily_budget)-dailySpend);
+      if (cost>remaining) {
+        await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW() WHERE id=$1`, [campaign.id]);
+        throw new PdValidationError('Campaign budget is exhausted');
+      }
+      await c.query(`INSERT INTO pd_ads_event (id,campaign_id,creative_id,placement_id,event_type,event_key,session_hash,ip_hash,cost)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [pdId('adevt'),campaign.id,token.creative_id,token.placement_id,input.eventType,input.eventKey,input.sessionHash||null,input.ipHash||null,cost]);
+      await c.query(`INSERT INTO pd_ads_daily_stat (campaign_id,stat_date,impressions,clicks,spend) VALUES ($1,CURRENT_DATE,$2,$3,$4)
+        ON CONFLICT (campaign_id,stat_date) DO UPDATE SET impressions=pd_ads_daily_stat.impressions+EXCLUDED.impressions,clicks=pd_ads_daily_stat.clicks+EXCLUDED.clicks,spend=pd_ads_daily_stat.spend+EXCLUDED.spend`,
+        [campaign.id,input.eventType==='impression'?1:0,input.eventType==='click'?1:0,cost]);
+      if (cost>0) {
+        const account = await c.query('UPDATE pd_ads_account SET balance=balance-$2,updated_at=NOW() WHERE id=$1 RETURNING balance', [campaign.ads_account_id,cost]);
+        await c.query('UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2,updated_at=NOW() WHERE id=$1', [campaign.id,cost]);
+        await c.query(`INSERT INTO pd_ads_transaction (id,account_id,campaign_id,type,amount,balance_after,idempotency_key,description)
+          VALUES ($1,$2,$3,'campaign_debit',$4,$5,$6,$7)`, [pdId('adtx'),campaign.ads_account_id,campaign.id,-cost,account.rows[0].balance,`event:${input.eventKey}`,`${input.eventType} charge`]);
+      }
+      return { recorded:true, cost };
+    });
+  }
+
+  async resolveClick(tokenValue:string):Promise<string> {
+    const token=this.verifyDeliveryToken(tokenValue);
+    const fallback='/hub';
+    if(typeof token.destination_url!=='string'||!token.destination_url.trim())return fallback;
+    const destination=token.destination_url.trim();
+    if(destination.startsWith('/')&&!destination.startsWith('//'))return destination;
+    try{
+      const parsed=new URL(destination);
+      const hubHost=new URL(config.hubDomain.startsWith('http')?config.hubDomain:`https://${config.hubDomain}`).hostname;
+      if(parsed.protocol==='https:'&&(parsed.hostname===hubHost||parsed.hostname.endsWith(`.${hubHost}`)))return parsed.toString();
+    }catch{ return fallback; }
+    return fallback;
+  }
+
+  async findAttribution(client:PoolClient,input:{eventKey:string;campaignId:string;creativeId:string}) {
+    const settings=await platformConfigService.getSettings();
+    const result=await client.query<{campaign_id:string;event_id:string;event_type:string;product_id:string|null}>(
+      `SELECT e.campaign_id,e.id AS event_id,e.event_type,cr.product_id
+       FROM pd_ads_event e JOIN pd_ads_creative cr ON cr.id=e.creative_id
+       WHERE e.event_key=$1 AND e.campaign_id=$2 AND e.creative_id=$3
+         AND ((e.event_type='click' AND e.created_at>NOW()-($4::text||' days')::interval)
+           OR (e.event_type='impression' AND e.created_at>NOW()-($5::text||' days')::interval))
+       ORDER BY CASE WHEN e.event_type='click' THEN 0 ELSE 1 END LIMIT 1`,
+      [input.eventKey,input.campaignId,input.creativeId,settings.ads_click_attribution_days,settings.ads_view_attribution_days],
+    );
+    return result.rows[0]||null;
+  }
+
+  async recognizeOrderConversion(orderId:string) {
+    return transaction(async(c)=>{
+      const conversions=await c.query<{id:string;campaign_id:string;revenue:string}>(
+        `SELECT ac.id,ac.campaign_id,ac.revenue FROM pd_ads_conversion ac
+         JOIN pd_order o ON o.id=ac.order_id
+         WHERE ac.order_id=$1 AND ac.recognized_at IS NULL AND o.payment_status='captured'
+         FOR UPDATE OF ac`,[orderId],
+      );
+      for(const conversion of conversions.rows){
+        const recognized=await c.query(`UPDATE pd_ads_conversion SET recognized_at=NOW() WHERE id=$1 AND recognized_at IS NULL RETURNING id`,[conversion.id]);
+        if(!recognized.rows[0])continue;
+        await c.query(`INSERT INTO pd_ads_daily_stat (campaign_id,stat_date,conversions,revenue) VALUES ($1,CURRENT_DATE,1,$2)
+          ON CONFLICT (campaign_id,stat_date) DO UPDATE SET conversions=pd_ads_daily_stat.conversions+1,revenue=pd_ads_daily_stat.revenue+EXCLUDED.revenue`,
+          [conversion.campaign_id,conversion.revenue]);
+      }
+      return conversions.rows.length;
+    });
+  }
+
+  async processLifecycle() {
+    return transaction(async(c)=>{
+      const activated=await c.query(`UPDATE pd_ads_campaign SET status='active',updated_at=NOW()
+        WHERE status='scheduled' AND starts_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW()) RETURNING id`);
+      const completed=await c.query(`UPDATE pd_ads_campaign SET status='completed',updated_at=NOW()
+        WHERE status IN ('active','scheduled','paused') AND ends_at IS NOT NULL AND ends_at<=NOW() RETURNING id`);
+      const exhausted=await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW()
+        WHERE status='active' AND spent_amount>=total_budget RETURNING id`);
+      const dailyCampaigns=await c.query<{id:string;account_id:string;bid_amount:string;daily_budget:string;total_budget:string;spent_amount:string;balance:string}>(
+        `SELECT c.id,c.account_id,c.bid_amount,c.daily_budget,c.total_budget,c.spent_amount,a.balance
+         FROM pd_ads_campaign c JOIN pd_ads_account a ON a.id=c.account_id
+         WHERE c.status='active' AND c.pricing_model='fixed_daily' AND a.status='active'
+           AND NOT EXISTS (SELECT 1 FROM pd_ads_transaction t WHERE t.campaign_id=c.id AND t.idempotency_key='fixed_daily:'||c.id||':'||CURRENT_DATE::text)
+         FOR UPDATE OF c,a`,
+      );
+      let charged=0;
+      for(const campaign of dailyCampaigns.rows){
+        const amount=roundTnd(Math.min(Number(campaign.bid_amount),Number(campaign.daily_budget),Number(campaign.total_budget)-Number(campaign.spent_amount),Number(campaign.balance)));
+        if(amount<=0){await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW() WHERE id=$1`,[campaign.id]);continue;}
+        const account=await c.query(`UPDATE pd_ads_account SET balance=balance-$2,updated_at=NOW() WHERE id=$1 RETURNING balance`,[campaign.account_id,amount]);
+        await c.query(`UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2,updated_at=NOW() WHERE id=$1`,[campaign.id,amount]);
+        await c.query(`INSERT INTO pd_ads_transaction (id,account_id,campaign_id,type,amount,balance_after,idempotency_key,description)
+          VALUES ($1,$2,$3,'campaign_debit',$4,$5,$6,'Fixed daily campaign charge')`,[pdId('adtx'),campaign.account_id,campaign.id,-amount,account.rows[0].balance,`fixed_daily:${campaign.id}:${new Date().toISOString().slice(0,10)}`]);
+        await c.query(`INSERT INTO pd_ads_daily_stat (campaign_id,stat_date,spend) VALUES ($1,CURRENT_DATE,$2)
+          ON CONFLICT (campaign_id,stat_date) DO UPDATE SET spend=pd_ads_daily_stat.spend+EXCLUDED.spend`,[campaign.id,amount]);
+        charged++;
+      }
+      return {activated:activated.rowCount||0,completed:completed.rowCount||0,exhausted:exhausted.rowCount||0,charged};
+    });
+  }
+
+  async adminOverview() {
+    const [summary, campaigns, accounts, daily, reviews] = await Promise.all([
+      query(`SELECT COUNT(*)::int AS campaigns,
+                    COUNT(*) FILTER (WHERE status='pending_review')::int AS pending_review,
+                    COUNT(*) FILTER (WHERE status='active')::int AS active,
+                    COALESCE(SUM(spent_amount),0)::text AS total_spend
+             FROM pd_ads_campaign`),
+      query(`SELECT c.*, s.name AS store_name,
+                    COALESCE(json_agg(cr.*) FILTER (WHERE cr.id IS NOT NULL), '[]') AS creatives
+             FROM pd_ads_campaign c
+             JOIN pd_store s ON s.id=c.store_id
+             LEFT JOIN pd_ads_creative cr ON cr.campaign_id=c.id
+             GROUP BY c.id,s.name ORDER BY c.created_at DESC LIMIT 100`),
+      query(`SELECT a.*, s.name AS store_name,
+                    COUNT(c.id)::int AS campaign_count,
+                    COALESCE(SUM(c.spent_amount),0)::text AS total_spend
+             FROM pd_ads_account a JOIN pd_store s ON s.id=a.store_id
+             LEFT JOIN pd_ads_campaign c ON c.account_id=a.id
+             GROUP BY a.id,s.name ORDER BY a.created_at DESC LIMIT 100`),
+      query(`SELECT stat_date,SUM(impressions)::bigint AS impressions,SUM(clicks)::bigint AS clicks,SUM(conversions)::bigint AS conversions,SUM(spend)::text AS spend,SUM(revenue)::text AS revenue FROM pd_ads_daily_stat WHERE stat_date>=CURRENT_DATE-INTERVAL '30 days' GROUP BY stat_date ORDER BY stat_date`),
+      query(`SELECT r.*,c.name AS campaign_name,s.name AS store_name,u.email AS reviewer_email FROM pd_ads_review r JOIN pd_ads_campaign c ON c.id=r.campaign_id JOIN pd_store s ON s.id=c.store_id LEFT JOIN pd_user u ON u.id=r.reviewer_user_id ORDER BY r.created_at DESC LIMIT 100`),
+    ]);
+    return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily:daily.rows, reviews:reviews.rows };
+  }
+
+  async reviewCampaign(campaignId: string, reviewerId: string, decision: 'approved'|'rejected'|'changes_requested', reason?: string) {
+    return transaction(async (c) => {
+      const found = await c.query('SELECT * FROM pd_ads_campaign WHERE id=$1 FOR UPDATE', [campaignId]);
+      const campaign = found.rows[0];
+      if (!campaign) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Ads campaign not found');
+      if (campaign.status !== 'pending_review') throw new PdValidationError('Only pending campaigns can be reviewed');
+      const next = decision === 'approved' ? 'approved' : 'rejected';
+      const updated = await c.query(
+        `UPDATE pd_ads_campaign SET status=$2, approved_at=CASE WHEN $2='approved' THEN NOW() ELSE NULL END,
+          rejection_reason=CASE WHEN $2='rejected' THEN $3 ELSE NULL END, updated_at=NOW() WHERE id=$1 RETURNING *`,
+        [campaignId, next, reason || null],
+      );
+      await c.query(`INSERT INTO pd_ads_review (id,campaign_id,reviewer_user_id,decision,reason) VALUES ($1,$2,$3,$4,$5)`,
+        [pdId('adrvw'), campaignId, reviewerId, decision, reason || null]);
+      return updated.rows[0];
+    });
+  }
+
+  async setAccountStatus(storeId: string, status: 'active'|'suspended') {
+    const account = await this.getOrCreateAccount(storeId);
+    const updated = await query('UPDATE pd_ads_account SET status=$2,updated_at=NOW() WHERE id=$1 RETURNING *', [account.id,status]);
+    if (status === 'suspended') await query(`UPDATE pd_ads_campaign SET status='paused',updated_at=NOW() WHERE store_id=$1 AND status IN ('active','scheduled')`, [storeId]);
+    return updated.rows[0];
+  }
+
+  async updatePlacement(id:string,input:{enabled?:boolean;defaultPrice?:number;defaultPricingModel?:'cpc'|'cpm'|'fixed_daily'}) {
+    const result=await query(`UPDATE pd_ads_placement SET enabled=COALESCE($2,enabled),default_price=COALESCE($3,default_price),default_pricing_model=COALESCE($4,default_pricing_model),updated_at=NOW() WHERE id=$1 RETURNING *`,[id,input.enabled,input.defaultPrice,input.defaultPricingModel]);
+    if(!result.rows[0])throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Ads placement not found');
+    return result.rows[0];
+  }
+
+  async listAdminPlacements(){return (await query('SELECT * FROM pd_ads_placement ORDER BY name')).rows;}
+
+  async refundTransaction(transactionId:string,adminId:string,reason:string) {
+    return transaction(async(c)=>{
+      const original=await c.query(`SELECT t.*,a.store_id FROM pd_ads_transaction t JOIN pd_ads_account a ON a.id=t.account_id WHERE t.id=$1 FOR UPDATE OF t,a`,[transactionId]);
+      const tx=original.rows[0];
+      if(!tx||tx.type!=='campaign_debit'||Number(tx.amount)>=0)throw new PdValidationError('Only campaign debit transactions can be refunded');
+      const key=`refund:${transactionId}`;const prior=await c.query('SELECT * FROM pd_ads_transaction WHERE idempotency_key=$1',[key]);if(prior.rows[0])return prior.rows[0];
+      const amount=Math.abs(Number(tx.amount));const account=await c.query('UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING balance',[tx.account_id,amount]);
+      if(tx.campaign_id)await c.query('UPDATE pd_ads_campaign SET spent_amount=GREATEST(0,spent_amount-$2),updated_at=NOW() WHERE id=$1',[tx.campaign_id,amount]);
+      return (await c.query(`INSERT INTO pd_ads_transaction (id,account_id,campaign_id,type,amount,balance_after,idempotency_key,description,metadata) VALUES ($1,$2,$3,'refund',$4,$5,$6,$7,$8) RETURNING *`,[pdId('adtx'),tx.account_id,tx.campaign_id,amount,account.rows[0].balance,key,reason,{admin_user_id:adminId,original_transaction_id:transactionId}])).rows[0];
+    });
+  }
+
+  async grantPromotionalCredit(storeId:string,amountInput:number,adminId:string,reason:string,idempotencyKey:string){
+    const amount=roundTnd(amountInput);if(amount<=0)throw new PdValidationError('Promotional credit must be positive');
+    return transaction(async(c)=>{const account=await this.getOrCreateAccount(storeId,c);const prior=await c.query('SELECT * FROM pd_ads_transaction WHERE idempotency_key=$1',[idempotencyKey]);if(prior.rows[0])return prior.rows[0];const updated=await c.query('UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING balance',[account.id,amount]);return(await c.query(`INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,description,metadata) VALUES ($1,$2,'promotional_credit',$3,$4,$5,$6,$7) RETURNING *`,[pdId('adtx'),account.id,amount,updated.rows[0].balance,idempotencyKey,reason,{admin_user_id:adminId}])).rows[0];});
+  }
+
+  async adjustAccount(storeId: string, amountInput: number, adminId: string, reason: string, idempotencyKey: string) {
+    const amount = roundTnd(amountInput);
+    if (amount === 0) throw new PdValidationError('Adjustment amount cannot be zero');
+    return transaction(async (c) => {
+      const account = await this.getOrCreateAccount(storeId, c);
+      const prior = await c.query('SELECT * FROM pd_ads_transaction WHERE idempotency_key=$1', [idempotencyKey]);
+      if (prior.rows[0]) return { account, transaction: prior.rows[0] };
+      if (Number(account.balance) + amount < 0) throw new PdValidationError('Adjustment would make the Ads balance negative');
+      const updated = await c.query('UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING *', [account.id, amount]);
+      const ledger = await c.query(
+        `INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,description,metadata)
+         VALUES ($1,$2,'admin_adjustment',$3,$4,$5,$6,$7) RETURNING *`,
+        [pdId('adtx'),account.id,amount,updated.rows[0].balance,idempotencyKey,reason,{ admin_user_id:adminId }],
+      );
+      return { account:updated.rows[0], transaction:ledger.rows[0] };
+    });
+  }
+}
+
+export const adsService = new AdsService();

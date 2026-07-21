@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   Activity,
+  Megaphone,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -125,6 +126,7 @@ export default function AdminLayout({
     { href: '/users', label: t('admin.sidebar.vendors'), icon: Users },
     { href: '/buyers', label: 'Buyers', icon: Users },
     { href: '/withdrawals', label: t('admin.sidebar.withdrawals'), icon: Wallet },
+    { href: '/ads', label: 'PandaMarket Ads', icon: Megaphone },
     { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },
     { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories'), icon: Tags },
     { href: '/ai-costs', label: t('admin.sidebar.aiCosts'), icon: Sparkles },
