@@ -83,6 +83,7 @@ const analyticsQuerySchema = z.object({
   from: z.string().date().optional(), to: z.string().date().optional(), campaign_id: z.string().min(1).optional(),
 }).refine((value) => !value.from || !value.to || value.from <= value.to, { message: 'Invalid date range' });
 const refillSchema=z.object({amount:z.number().positive().max(1000000),gateway:z.enum([PaymentGateway.Flouci,PaymentGateway.Konnect])});
+const manualRefillSchema=z.object({amount:z.number().positive().max(1000000),proof_url:z.string().trim().min(1).max(2048).refine(value=>/^https?:\/\//i.test(value)||/^\/(?!\/)/.test(value),'Invalid proof URL')});
 const couponRedeemSchema=z.object({code:z.string().trim().min(4).max(40)});
 router.post('/coupons/redeem',requireStore,validate(couponRedeemSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.redeemCoupon(req.user!.store_id!,req.body.code)})));
 router.get('/account', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ account: await adsService.getAccount(req.user!.store_id!) })));
@@ -91,6 +92,10 @@ router.post('/refills',requireStore,validate(refillSchema),asyncHandler(async(re
   const user=await query<{email:string}>('SELECT email FROM pd_user WHERE id=$1',[req.user!.id]);
   const refill=await adsRefillService.create(req.user!.store_id!,req.user!.id,user.rows[0]?.email||'',req.body.gateway,req.body.amount);
   res.status(201).json({refill,checkout_url:refill.checkout_url});
+}));
+router.post('/refills/manual-mandat',requireStore,validate(manualRefillSchema),asyncHandler(async(req:Request,res:Response)=>{
+  const refill=await adsRefillService.createManualMandat(req.user!.store_id!,req.user!.id,req.body.amount,req.body.proof_url);
+  res.status(201).json({refill});
 }));
 router.post('/refills/:id/verify',requireStore,asyncHandler(async(req:Request,res:Response)=>res.json({refill:await adsRefillService.settle(req.user!.store_id!,req.params.id)})));
 router.get('/refills/:id/receipt',requireStore,asyncHandler(async(req:Request,res:Response)=>{const receipt=await adsRefillService.receipt(req.user!.store_id!,req.params.id);const text=[`PandaMarket Ads receipt`,`Receipt: ${receipt.id}`,`Advertiser: ${receipt.store_name}`,`Amount: ${Number(receipt.amount).toFixed(3)} ${receipt.currency}`,`Gateway: ${receipt.gateway}`,`Payment reference: ${receipt.gateway_reference||'—'}`,`Captured: ${new Date(receipt.captured_at).toISOString()}`].join('\n');res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Content-Disposition',`attachment; filename="pandamarket-ads-${receipt.id}.txt"`);res.send(text);}));

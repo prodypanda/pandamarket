@@ -23,7 +23,47 @@ export class AdsRefillService {
     }catch(error){await query(`UPDATE pd_ads_refill_intent SET status='failed',updated_at=NOW() WHERE id=$1`,[id]);throw error;}
   }
 
-  async list(storeId:string){return (await query(`SELECT id,gateway,amount,currency,status,gateway_reference,created_at,captured_at FROM pd_ads_refill_intent WHERE store_id=$1 ORDER BY created_at DESC LIMIT 50`,[storeId])).rows;}
+  async createManualMandat(storeId:string,userId:string,rawAmount:number,proofUrl:string){
+    const settings=await platformConfigService.getSettings();
+    if(!settings.ads_enabled)throw new PdValidationError('PandaMarket Ads is currently disabled');
+    const amount=roundTnd(rawAmount),min=Number(settings.ads_min_refill_tnd),max=Number(settings.ads_max_refill_tnd);
+    if(amount<min||amount>max)throw new PdValidationError(`Ads refill must be between ${min} and ${max} TND`);
+    if(!/^https?:\/\//i.test(proofUrl)&&!/^\/(?!\/)/.test(proofUrl))throw new PdValidationError('A valid mandat proof URL is required');
+    const account=await adsService.getAccount(storeId);
+    const result=await query(
+      `INSERT INTO pd_ads_refill_intent
+        (id,account_id,store_id,gateway,amount,status,proof_url,created_by,expires_at)
+       VALUES ($1,$2,$3,'manual_mandat',$4,'pending_review',$5,$6,NOW()+INTERVAL '30 days') RETURNING *`,
+      [pdId('adrfl'),account.id,storeId,amount,proofUrl,userId],
+    );
+    return result.rows[0];
+  }
+
+  async list(storeId:string){return (await query(`SELECT id,gateway,amount,currency,status,gateway_reference,proof_url,rejection_reason,created_at,captured_at,reviewed_at FROM pd_ads_refill_intent WHERE store_id=$1 ORDER BY created_at DESC LIMIT 50`,[storeId])).rows;}
+
+  async listManualForAdmin(status='pending_review'){
+    if(!['pending_review','captured','rejected'].includes(status))throw new PdValidationError('Invalid manual refill status');
+    return (await query(`SELECT r.*,s.name AS store_name,u.email AS seller_email,reviewer.email AS reviewer_email
+      FROM pd_ads_refill_intent r JOIN pd_store s ON s.id=r.store_id LEFT JOIN pd_user u ON u.id=r.created_by
+      LEFT JOIN pd_user reviewer ON reviewer.id=r.reviewed_by
+      WHERE r.gateway='manual_mandat' AND r.status=$1 ORDER BY r.created_at ASC LIMIT 100`,[status])).rows;
+  }
+
+  async reviewManual(intentId:string,adminId:string,decision:'approved'|'rejected',reason?:string){
+    if(decision==='rejected'&&!reason?.trim())throw new PdValidationError('A rejection reason is required');
+    return transaction(async c=>{
+      const found=await c.query(`SELECT * FROM pd_ads_refill_intent WHERE id=$1 AND gateway='manual_mandat' FOR UPDATE`,[intentId]);
+      const intent=found.rows[0];
+      if(!intent)throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Manual Ads refill not found');
+      if(intent.status!=='pending_review')throw new PdValidationError('Manual Ads refill has already been reviewed');
+      if(decision==='rejected')return (await c.query(`UPDATE pd_ads_refill_intent SET status='rejected',reviewed_by=$2,reviewed_at=NOW(),rejection_reason=$3,updated_at=NOW() WHERE id=$1 RETURNING *`,[intentId,adminId,reason!.trim()])).rows[0];
+      const account=await c.query(`UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING balance`,[intent.account_id,intent.amount]);
+      if(!account.rows[0])throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Ads account not found');
+      await c.query(`INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,payment_reference,description,metadata)
+        VALUES ($1,$2,'refill',$3,$4,$5,$6,'Admin-approved manual mandat Ads refill',$7)`,[pdId('adtx'),intent.account_id,intent.amount,account.rows[0].balance,`refill:${intent.id}`,intent.id,{reviewed_by:adminId,proof_url:intent.proof_url}]);
+      return (await c.query(`UPDATE pd_ads_refill_intent SET status='captured',captured_at=NOW(),reviewed_by=$2,reviewed_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *`,[intentId,adminId])).rows[0];
+    });
+  }
 
   async receipt(storeId:string,intentId:string){
     const result=await query(`SELECT r.id,r.amount,r.currency,r.gateway,r.gateway_reference,r.captured_at,s.name AS store_name

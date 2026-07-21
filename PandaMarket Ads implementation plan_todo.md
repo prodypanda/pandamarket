@@ -40,7 +40,7 @@
 - [x] Integrate Konnect Ads refill checkout and verification.
 - [x] Implement signed idempotent asynchronous refill webhooks.
 - [x] Implement idempotent authenticated return-path settlement.
-- [ ] Implement optional admin-approved mandat refills.
+- [x] Implement optional admin-approved mandat refills.
 - [ ] Implement reserved funds and atomic campaign debits.
 - [x] Implement atomic CPC charging.
 - [x] Implement atomic CPM charging.
@@ -114,12 +114,12 @@
 - [x] Add initial campaign lifecycle, validation, and authorization service tests.
 - [x] Enforce product ownership, published status, placement validity, and Ads-account status in campaign operations.
 - [x] Add Ads campaign and analytics tenant-isolation unit tests.
-- [ ] Add Ads route-level tenant-isolation integration tests.
+- [x] Add Ads route-level tenant-isolation integration tests.
 - [x] Add delivery, pacing, and budget tests.
 - [x] Add event deduplication and fraud tests.
 - [x] Add attribution tests.
-- [ ] Add seller and admin UI tests.
-- [ ] Add RTL tests.
+- [ ] Add seller and admin UI tests. (Seller campaign wizard and performance chart coverage added; admin coverage remains.)
+- [x] Add RTL tests.
 - [ ] Add end-to-end refill, campaign, moderation, delivery, and conversion tests.
 - [ ] Run migrations in staging and verify rollback strategy.
 - [ ] Run full backend, frontend, and E2E pipelines.

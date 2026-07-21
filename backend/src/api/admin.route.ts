@@ -53,6 +53,7 @@ import {
 import { PdErrorCode, PdNotFoundError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
 import { adsService } from '../services/ads.service';
+import { adsRefillService } from '../services/ads-refill.service';
 
 const router = Router();
 
@@ -70,6 +71,8 @@ const adsBulkPricingSchema=z.object({pricing_model:z.enum(['cpc','cpm','fixed_da
 const adsCouponSchema=z.object({code:z.string().trim().min(4).max(40),amount:z.number().positive().max(1000000),max_redemptions:z.number().int().min(1).max(100000),expires_at:z.string().datetime().optional(),enabled:z.boolean().optional()});
 const adsCreditSchema=z.object({store_id:z.string().min(8).max(100),amount:z.number().positive().max(1000000),reason:z.string().trim().min(3).max(500),idempotency_key:z.string().min(8).max(160)});
 const adsRefundSchema=z.object({reason:z.string().trim().min(3).max(500)});
+const adsManualRefillListSchema=z.object({status:z.enum(['pending_review','captured','rejected']).optional().default('pending_review')});
+const adsManualRefillReviewSchema=z.object({decision:z.enum(['approved','rejected']),reason:z.string().trim().max(1000).optional()}).refine(value=>value.decision==='approved'||Boolean(value.reason),{message:'A rejection reason is required',path:['reason']});
 const adsAdjustmentSchema = z.object({
   store_id: z.string().min(8).max(100),
   amount: z.number().finite().refine((value) => value !== 0),
@@ -97,6 +100,8 @@ router.post('/ads/transactions/:id/refund',validate(adsRefundSchema),asyncHandle
 router.patch('/ads/accounts/:storeId/status',validate(adsAccountStatusSchema),asyncHandler(async(req:Request,res:Response)=>res.json({account:await adsService.setAccountStatus(req.params.storeId,req.body.status)})));
 router.get('/ads/placements',asyncHandler(async(_req:Request,res:Response)=>res.json({placements:await adsService.listAdminPlacements()})));
 router.get('/ads/transactions',asyncHandler(async(req:Request,res:Response)=>res.json({transactions:await adsService.listAdminTransactions(Number(req.query.limit)||100)})));
+router.get('/ads/manual-refills',validate(adsManualRefillListSchema,'query'),asyncHandler(async(req:Request,res:Response)=>res.json({refills:await adsRefillService.listManualForAdmin(String(req.query.status||'pending_review'))})));
+router.post('/ads/manual-refills/:id/review',validate(adsManualRefillReviewSchema),asyncHandler(async(req:Request,res:Response)=>res.json({refill:await adsRefillService.reviewManual(req.params.id,req.user!.id,req.body.decision,req.body.reason)})));
 router.patch('/ads/placements/bulk-pricing',validate(adsBulkPricingSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placements:await adsService.bulkUpdatePlacementPricing(req.body.pricing_model,req.body.default_price,req.body.placement_ids)})));
 router.patch('/ads/placements/:id',validate(adsPlacementSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placement:await adsService.updatePlacement(req.params.id,{enabled:req.body.enabled,defaultPrice:req.body.default_price,defaultPricingModel:req.body.default_pricing_model})})));
 

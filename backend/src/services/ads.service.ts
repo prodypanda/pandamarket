@@ -359,8 +359,21 @@ export class AdsService {
         ON CONFLICT (campaign_id,stat_date) DO UPDATE SET impressions=pd_ads_daily_stat.impressions+EXCLUDED.impressions,clicks=pd_ads_daily_stat.clicks+EXCLUDED.clicks,spend=pd_ads_daily_stat.spend+EXCLUDED.spend`,
         [campaign.id,input.eventType==='impression'?1:0,input.eventType==='click'?1:0,cost]);
       if (cost>0) {
-        const account = await c.query('UPDATE pd_ads_account SET balance=balance-$2,updated_at=NOW() WHERE id=$1 RETURNING balance', [campaign.ads_account_id,cost]);
-        await c.query('UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2,updated_at=NOW() WHERE id=$1', [campaign.id,cost]);
+        const account = await c.query(
+          `UPDATE pd_ads_account SET balance=balance-$2,updated_at=NOW()
+           WHERE id=$1 AND balance >= $2 RETURNING balance`,
+          [campaign.ads_account_id,cost],
+        );
+        if (!account.rows[0]) {
+          await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW() WHERE id=$1`, [campaign.id]);
+          throw new PdValidationError('Campaign budget is exhausted');
+        }
+        const chargedCampaign = await c.query(
+          `UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2,updated_at=NOW()
+           WHERE id=$1 AND spent_amount+$2 <= total_budget RETURNING spent_amount`,
+          [campaign.id,cost],
+        );
+        if (!chargedCampaign.rows[0]) throw new PdValidationError('Campaign budget is exhausted');
         await c.query(`INSERT INTO pd_ads_transaction (id,account_id,campaign_id,type,amount,balance_after,idempotency_key,description)
           VALUES ($1,$2,$3,'campaign_debit',$4,$5,$6,$7)`, [pdId('adtx'),campaign.ads_account_id,campaign.id,-cost,account.rows[0].balance,`event:${input.eventKey}`,`${input.eventType} charge`]);
       }
