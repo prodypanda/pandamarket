@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
+import { HomepageBlocksEditor } from '@/components/admin/HomepageBlocksEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
@@ -55,6 +56,7 @@ interface PlatformSettings {
   hub_homepage_banner_cta_label: string;
   hub_homepage_banner_cta_url: string;
   hub_homepage_banner_image_url: string;
+  hub_homepage_blocks: string;
   analytics_ga4_enabled: boolean;
   analytics_ga4_measurement_id: string;
   analytics_gtm_enabled: boolean;
@@ -228,6 +230,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_banner_cta_label: 'Explorer le Hub',
   hub_homepage_banner_cta_url: '/hub/search',
   hub_homepage_banner_image_url: '',
+  hub_homepage_blocks: '',
   analytics_ga4_enabled: false,
   analytics_ga4_measurement_id: '',
   analytics_gtm_enabled: false,
@@ -427,6 +430,7 @@ const TEXT_SETTING_KEYS = [
   'hub_homepage_banner_cta_label',
   'hub_homepage_banner_cta_url',
   'hub_homepage_banner_image_url',
+  'hub_homepage_blocks',
   'analytics_ga4_measurement_id',
   'analytics_gtm_container_id',
   'analytics_meta_pixel_id',
@@ -573,6 +577,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_homepage_banner_cta_label',
     'hub_homepage_banner_cta_url',
     'hub_homepage_banner_image_url',
+    'hub_homepage_blocks',
   ],
   commerce: [
     'marketplace_enabled',
@@ -1544,6 +1549,18 @@ export default function AdminSettingsPage() {
             {renderTextInput('catalog_featured_category_slugs', 'Featured Category Slugs', 'electronics,beauty,home')}
           </div>
         </div>
+      </section>
+
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<SlidersHorizontal className="h-5 w-5" />}
+          title="Homepage Blocks (Alibaba / Amazon)"
+          description="Enable, reorder and customize every block of the Alibaba B2B and Amazon classic homepage templates."
+        />
+        <HomepageBlocksEditor
+          value={settings.hub_homepage_blocks}
+          onChange={(next) => updateSetting('hub_homepage_blocks', next)}
+        />
       </section>
 
       <section className={`${activeTab === 'commerce' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>

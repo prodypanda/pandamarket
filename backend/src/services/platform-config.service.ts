@@ -54,6 +54,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
   hub_homepage_banner_cta_label: 'Explorer le Hub',
   hub_homepage_banner_cta_url: '/hub/search',
   hub_homepage_banner_image_url: '',
+  hub_homepage_blocks: '',
   analytics_ga4_enabled: false,
   analytics_ga4_measurement_id: '',
   analytics_gtm_enabled: false,
@@ -206,6 +207,7 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'hub_homepage_banner_cta_label',
   'hub_homepage_banner_cta_url',
   'hub_homepage_banner_image_url',
+  'hub_homepage_blocks',
   'analytics_ga4_enabled',
   'analytics_ga4_measurement_id',
   'analytics_gtm_enabled',
@@ -290,6 +292,7 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_homepage_banner_cta_label',
     'hub_homepage_banner_cta_url',
     'hub_homepage_banner_image_url',
+    'hub_homepage_blocks',
   ],
   commerce: [
     'marketplace_enabled',
