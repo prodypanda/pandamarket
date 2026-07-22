@@ -485,7 +485,7 @@ export class AdsService {
     return {currency:'TND',metric,range:{low,high},estimated_days:estimatedDays,effective_rate:effectiveRate,recommended_bid:recommendedBid,recommended_daily_budget:recommendedDailyBudget,placement_count:result.rows.length,assumptions:'Directional estimate based on current placement rates and budget. Delivery is not guaranteed and varies with auction demand, targeting, and creative quality.'};
   }
 
-  async getAnalytics(storeId: string, options: { from?: string; to?: string; campaignId?: string }) {
+  async getAnalytics(storeId: string, options: { from?: string; to?: string; campaignId?: string; granularity?: 'hourly' | 'daily' | 'monthly' }) {
     const from = options.from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const to = options.to || new Date().toISOString().slice(0, 10);
     const params: unknown[] = [storeId, from, to];

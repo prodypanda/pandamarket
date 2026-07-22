@@ -11,10 +11,10 @@ type Point = {
   revenue: string | number;
 };
 
-const W = 760;
-const H = 240;
-const Px = 45;
-const Py = 25;
+const W = 1200;
+const H = 300;
+const Px = 50;
+const Py = 30;
 
 export function AdsPlatformChart({ daily }: { daily: Point[] }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);

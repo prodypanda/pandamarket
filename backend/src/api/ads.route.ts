@@ -82,6 +82,7 @@ const estimateSchema = z.object({
 }).refine(value=>value.total_budget>=value.daily_budget,{message:'Total budget must be at least the daily budget',path:['total_budget']});
 const analyticsQuerySchema = z.object({
   from: z.string().date().optional(), to: z.string().date().optional(), campaign_id: z.string().min(1).optional(),
+  granularity: z.enum(['hourly', 'daily', 'monthly']).optional(),
 }).refine((value) => !value.from || !value.to || value.from <= value.to, { message: 'Invalid date range' });
 const refillSchema=z.object({amount:z.number().positive().max(1000000),gateway:z.enum([PaymentGateway.Flouci,PaymentGateway.Konnect])});
 const manualRefillSchema=z.object({amount:z.number().positive().max(1000000),proof_url:z.string().trim().min(1).max(2048).refine(value=>/^https?:\/\//i.test(value)||/^\/(?!\/)/.test(value),'Invalid proof URL')});
@@ -138,8 +139,8 @@ router.post('/refills/manual-mandat',requireStore,validate(manualRefillSchema),a
 router.post('/refills/:id/verify',requireStore,asyncHandler(async(req:Request,res:Response)=>res.json({refill:await adsRefillService.settle(req.user!.store_id!,req.params.id)})));
 router.get('/refills/:id/receipt',requireStore,asyncHandler(async(req:Request,res:Response)=>{const receipt=await adsRefillService.receipt(req.user!.store_id!,req.params.id);const text=[`PandaMarket Ads receipt`,`Receipt: ${receipt.id}`,`Advertiser: ${receipt.store_name}`,`Amount: ${Number(receipt.amount).toFixed(3)} ${receipt.currency}`,`Gateway: ${receipt.gateway}`,`Payment reference: ${receipt.gateway_reference||'—'}`,`Captured: ${new Date(receipt.captured_at).toISOString()}`].join('\n');res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Content-Disposition',`attachment; filename="pandamarket-ads-${receipt.id}.txt"`);res.send(text);}));
 router.get('/analytics', requireStore, validate(analyticsQuerySchema, 'query'), asyncHandler(async (req: Request, res: Response) => {
-  const q=req.query as unknown as {from?:string;to?:string;campaign_id?:string};
-  res.json(await adsService.getAnalytics(req.user!.store_id!, { from:q.from,to:q.to,campaignId:q.campaign_id }));
+  const q=req.query as unknown as {from?:string;to?:string;campaign_id?:string;granularity?:'hourly'|'daily'|'monthly'};
+  res.json(await adsService.getAnalytics(req.user!.store_id!, { from:q.from,to:q.to,campaignId:q.campaign_id,granularity:q.granularity }));
 }));
 router.get('/transactions', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ transactions: await adsService.listTransactions(req.user!.store_id!, Number(req.query.limit) || 50) })));
 router.post('/estimate',requireStore,validate(estimateSchema),asyncHandler(async(req:Request,res:Response)=>res.json({estimate:await adsService.estimateDelivery(req.body)})));

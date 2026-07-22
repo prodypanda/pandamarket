@@ -446,7 +446,7 @@ export default function AdminAdsPage() {
               </div>
 
               {/* Full Width Responsive Chart with Datetime & Granularity Controls */}
-              <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+              <section className="w-full rounded-2xl border bg-white shadow-sm">
                 <div className="border-b p-5 flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <h2 className="font-black text-slate-900 text-lg">Platform Ads Performance Analytics</h2>
@@ -486,7 +486,7 @@ export default function AdminAdsPage() {
                   </div>
                 </div>
 
-                <div className="w-full">
+                <div className="w-full p-4">
                   <AdsPlatformChart daily={daily} />
                 </div>
               </section>
