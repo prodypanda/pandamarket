@@ -96,6 +96,7 @@ interface Category {
   name: string;
   slug: string;
   parent_id?: string | null;
+  parent_name?: string | null;
   is_default?: boolean;
   is_active?: boolean;
   product_count?: number;
