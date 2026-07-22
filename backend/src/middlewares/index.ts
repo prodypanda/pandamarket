@@ -349,15 +349,26 @@ export const errorHandler = (
   _next: NextFunction,
 ): void => {
   const log = childLogger({ request_id: req.requestId });
-  if (err instanceof PdError) {
-    res.status(err.httpStatus).json(err.toJSON());
-    if (err.httpStatus >= 500) {
+  const isPdError = err instanceof PdError || (Boolean(err) && typeof (err as any).httpStatus === 'number' && typeof (err as any).code === 'string');
+  if (isPdError) {
+    const httpStatus = (err as any).httpStatus || 400;
+    const code = (err as any).code || 'PD_VALIDATION_ERROR';
+    const message = err.message || 'Validation error';
+    const details = (err as any).details;
+    res.status(httpStatus).json({
+      error: {
+        code,
+        message,
+        ...(details && { details }),
+      },
+    });
+    if (httpStatus >= 500) {
       log.error({ err }, 'Server error');
-      systemLogService.captureError(err, req, err.httpStatus, {
+      systemLogService.captureError(err, req, httpStatus, {
         handled: true,
-        details: err.details ?? null,
+        details: details ?? null,
       });
-    } else log.debug({ err: { code: err.code, msg: err.message } }, 'Client error');
+    } else log.debug({ err: { code, msg: message } }, 'Client error');
     return;
   }
   // Unknown error — wrap as 500
