@@ -38,6 +38,20 @@ export default function SellerAdsPage() {
   const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [campaignFilter, setCampaignFilter] = useState('');
+  const [granularity, setGranularity] = useState<'hourly' | 'daily' | 'monthly'>('daily');
+
+  const setSellerPreset = (preset: 'today' | '7d' | '30d' | '90d') => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (preset === 'today') {
+      setFrom(today); setTo(today); setGranularity('hourly');
+    } else if (preset === '7d') {
+      setFrom(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)); setTo(today); setGranularity('daily');
+    } else if (preset === '30d') {
+      setFrom(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)); setTo(today); setGranularity('daily');
+    } else if (preset === '90d') {
+      setFrom(new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)); setTo(today); setGranularity('daily');
+    }
+  };
 
   const [refilling, setRefilling] = useState(false);
   const [refillAmount, setRefillAmount] = useState('50');
@@ -78,7 +92,7 @@ export default function SellerAdsPage() {
     setLoading(true);
     setError('');
     try {
-      const q = new URLSearchParams({ from, to });
+      const q = new URLSearchParams({ from, to, granularity });
       if (campaignFilter) q.set('campaign_id', campaignFilter);
 
       const [ar, cr, pr, rr, tr, an, msr] = await Promise.all([
@@ -116,7 +130,7 @@ export default function SellerAdsPage() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, campaignFilter]);
+  }, [from, to, campaignFilter, granularity]);
 
   useEffect(() => {
     void load();
@@ -343,16 +357,36 @@ export default function SellerAdsPage() {
             <h2 className="font-black text-slate-900">{t('ads.performanceTitle') || 'Performance & Analytics'}</h2>
             <p className="text-xs text-slate-500">{t('ads.performanceDesc') || 'Track impressions, clicks, spend, and conversions.'}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <select aria-label="Campaign filter" value={campaignFilter} onChange={(e) => setCampaignFilter(e.target.value)} className="max-w-48 rounded-lg border px-3 py-2 text-sm font-semibold">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+              {(['today', '7d', '30d', '90d'] as const).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setSellerPreset(preset)}
+                  className="rounded-lg px-2.5 py-1 text-xs font-bold uppercase hover:bg-white cursor-pointer transition"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+
+            <select aria-label="Campaign filter" value={campaignFilter} onChange={(e) => setCampaignFilter(e.target.value)} className="max-w-48 rounded-xl border px-3 py-2 text-xs font-semibold">
               <option value="">{t('ads.allCampaigns') || 'All Campaigns'}</option>
               {campaigns.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            <input aria-label="From date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border px-3 py-2 text-sm font-semibold" />
-            <input aria-label="To date" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border px-3 py-2 text-sm font-semibold" />
-            <button type="button" onClick={() => load()} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 cursor-pointer">
+
+            <select value={granularity} onChange={(e) => setGranularity(e.target.value as any)} className="rounded-xl border px-3 py-2 text-xs font-bold text-slate-900 cursor-pointer">
+              <option value="hourly">Hourly (24h)</option>
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+            </select>
+
+            <input aria-label="From date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border px-3 py-2 text-xs font-semibold" />
+            <input aria-label="To date" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border px-3 py-2 text-xs font-semibold" />
+            <button type="button" onClick={() => load()} className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 cursor-pointer">
               {t('ads.apply') || 'Apply'}
             </button>
           </div>

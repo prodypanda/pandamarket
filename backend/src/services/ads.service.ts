@@ -21,28 +21,74 @@ const transitions: Record<AdsCampaignStatus, AdsCampaignStatus[]> = {
   completed: [], rejected: ['draft', 'cancelled'], cancelled: [], exhausted: [],
 };
 
-function fillTimeline(rows: any[], fromStr: string, toStr: string) {
+function fillTimeline(rows: any[], fromStr: string, toStr: string, granularity: 'hourly' | 'daily' | 'monthly' = 'daily') {
   const map = new Map<string, any>();
   for (const r of rows) {
     if (!r.stat_date) continue;
-    const key = new Date(r.stat_date).toISOString().slice(0, 10);
+    let key = new Date(r.stat_date).toISOString();
+    if (granularity === 'hourly') {
+      key = key.slice(0, 13) + ':00';
+    } else if (granularity === 'monthly') {
+      key = key.slice(0, 7);
+    } else {
+      key = key.slice(0, 10);
+    }
     map.set(key, r);
   }
+
   const result: any[] = [];
-  const curr = new Date(fromStr);
-  const end = new Date(toStr);
-  while (curr <= end) {
-    const key = curr.toISOString().slice(0, 10);
-    const existing = map.get(key);
-    result.push({
-      stat_date: key,
-      impressions: existing ? Number(existing.impressions || 0) : 0,
-      clicks: existing ? Number(existing.clicks || 0) : 0,
-      conversions: existing ? Number(existing.conversions || 0) : 0,
-      spend: existing ? String(existing.spend || '0.000') : '0.000',
-      revenue: existing ? String(existing.revenue || '0.000') : '0.000',
-    });
-    curr.setDate(curr.getDate() + 1);
+  if (granularity === 'hourly' || fromStr === toStr) {
+    const dayStr = fromStr || new Date().toISOString().slice(0, 10);
+    for (let h = 0; h < 24; h++) {
+      const hourPad = h.toString().padStart(2, '0');
+      const key = `${dayStr}T${hourPad}:00`;
+      const existing = map.get(key);
+      result.push({
+        stat_date: key,
+        label: `${hourPad}:00`,
+        impressions: existing ? Number(existing.impressions || 0) : 0,
+        clicks: existing ? Number(existing.clicks || 0) : 0,
+        conversions: existing ? Number(existing.conversions || 0) : 0,
+        spend: existing ? String(existing.spend || '0.000') : '0.000',
+        revenue: existing ? String(existing.revenue || '0.000') : '0.000',
+      });
+    }
+  } else if (granularity === 'monthly') {
+    const start = new Date(fromStr);
+    const end = new Date(toStr);
+    const curr = new Date(start.getFullYear(), start.getMonth(), 1);
+    const stop = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (curr <= stop) {
+      const key = curr.toISOString().slice(0, 7);
+      const existing = map.get(key);
+      result.push({
+        stat_date: key,
+        label: key,
+        impressions: existing ? Number(existing.impressions || 0) : 0,
+        clicks: existing ? Number(existing.clicks || 0) : 0,
+        conversions: existing ? Number(existing.conversions || 0) : 0,
+        spend: existing ? String(existing.spend || '0.000') : '0.000',
+        revenue: existing ? String(existing.revenue || '0.000') : '0.000',
+      });
+      curr.setMonth(curr.getMonth() + 1);
+    }
+  } else {
+    const curr = new Date(fromStr);
+    const end = new Date(toStr);
+    while (curr <= end) {
+      const key = curr.toISOString().slice(0, 10);
+      const existing = map.get(key);
+      result.push({
+        stat_date: key,
+        label: key,
+        impressions: existing ? Number(existing.impressions || 0) : 0,
+        clicks: existing ? Number(existing.clicks || 0) : 0,
+        conversions: existing ? Number(existing.conversions || 0) : 0,
+        spend: existing ? String(existing.spend || '0.000') : '0.000',
+        revenue: existing ? String(existing.revenue || '0.000') : '0.000',
+      });
+      curr.setDate(curr.getDate() + 1);
+    }
   }
   return result;
 }
@@ -465,10 +511,11 @@ export class AdsService {
     const totals = summary.rows[0];
     const impressions = Number(totals.impressions || 0); const clicks = Number(totals.clicks || 0);
     const conversions = Number(totals.conversions || 0); const spend = Number(totals.spend || 0); const revenue = Number(totals.revenue || 0);
+    const granularity = options.granularity || (from === to ? 'hourly' : 'daily');
     return {
       range: { from, to },
       summary: { ...totals, ctr: impressions ? clicks / impressions : 0, average_cpc: clicks ? spend / clicks : 0, conversion_rate: clicks ? conversions / clicks : 0, roas: spend ? revenue / spend : 0 },
-      daily: daily.rows,
+      daily: fillTimeline(daily.rows, from, to, granularity),
       campaigns: campaigns.rows,
     };
   }
@@ -723,7 +770,11 @@ export class AdsService {
     for(const row of rows.rows){const key=`ads:low_balance:${row.store_id}:${day}`;const exists=await query(`SELECT id FROM pd_notifications WHERE user_id=$1 AND data->>'alert_key'=$2 LIMIT 1`,[row.owner_id,key]);if(exists.rows[0])continue;const message=`Your Ads balance is ${Number(row.balance).toFixed(3)} TND. Refill to avoid delivery interruption.`;await notificationService.create({user_id:row.owner_id,type:'ads_low_balance',title:'Low Ads balance',message,data:{store_id:row.store_id,balance:row.balance,alert_key:key}});await emailQueue.add('ads_low_balance',{to:row.email,template:'generic_notification',subject:'Low PandaMarket Ads balance',variables:{title:'Low Ads balance',message},scope:'store',store_id:row.store_id});}
   }
 
-  async adminOverview() {
+  async adminOverview(options?: { from?: string; to?: string; granularity?: 'hourly' | 'daily' | 'monthly' }) {
+    const fromStr = options?.from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const toStr = options?.to || new Date().toISOString().slice(0, 10);
+    const granularity = options?.granularity || (fromStr === toStr ? 'hourly' : 'daily');
+
     const [summary, campaigns, accounts, daily, reviews] = await Promise.all([
       query(`SELECT COUNT(*)::int AS campaigns,
                     COUNT(*) FILTER (WHERE status='pending_review')::int AS pending_review,
@@ -750,14 +801,13 @@ export class AdsService {
              FROM pd_ads_account a JOIN pd_store s ON s.id=a.store_id
              LEFT JOIN pd_ads_campaign c ON c.account_id=a.id
              GROUP BY a.id,s.name ORDER BY a.created_at DESC LIMIT 100`),
-      query(`SELECT stat_date,SUM(impressions)::bigint AS impressions,SUM(clicks)::bigint AS clicks,SUM(conversions)::bigint AS conversions,SUM(spend)::text AS spend,SUM(revenue)::text AS revenue FROM pd_ads_daily_stat WHERE stat_date>=CURRENT_DATE-INTERVAL '30 days' GROUP BY stat_date ORDER BY stat_date`),
+      query(`SELECT stat_date,SUM(impressions)::bigint AS impressions,SUM(clicks)::bigint AS clicks,SUM(conversions)::bigint AS conversions,SUM(spend)::text AS spend,SUM(revenue)::text AS revenue FROM pd_ads_daily_stat WHERE stat_date BETWEEN $1::date AND $2::date GROUP BY stat_date ORDER BY stat_date`, [fromStr, toStr]),
       query(`SELECT r.*,c.name AS campaign_name,s.name AS store_name,u.email AS reviewer_email FROM pd_ads_review r JOIN pd_ads_campaign c ON c.id=r.campaign_id JOIN pd_store s ON s.id=c.store_id LEFT JOIN pd_user u ON u.id=r.reviewer_user_id ORDER BY r.created_at DESC LIMIT 100`),
     ]);
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    const today = new Date().toISOString().slice(0, 10);
-    const dailyTimeline = fillTimeline(daily.rows, thirtyDaysAgo, today);
 
-    return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily: dailyTimeline, reviews: reviews.rows };
+    const dailyTimeline = fillTimeline(daily.rows, fromStr, toStr, granularity);
+
+    return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily: dailyTimeline, reviews: reviews.rows, range: { from: fromStr, to: toStr, granularity } };
   }
 
   async adminSuspendCampaign(campaignId: string, adminId: string, reason?: string) {

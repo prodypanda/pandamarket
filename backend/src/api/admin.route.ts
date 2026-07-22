@@ -80,8 +80,12 @@ const adsAdjustmentSchema = z.object({
   idempotency_key: z.string().trim().min(8).max(160),
 });
 
-router.get('/ads', asyncHandler(async (_req: Request, res: Response) => {
-  res.status(200).json(await adsService.adminOverview());
+router.get('/ads', asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await adsService.adminOverview({
+    from: req.query.from as string,
+    to: req.query.to as string,
+    granularity: req.query.granularity as any,
+  }));
 }));
 router.get('/ads/config',asyncHandler(async(_req:Request,res:Response)=>{const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
 router.patch('/ads/config',validate(adsConfigSchema),asyncHandler(async(req:Request,res:Response)=>{await platformConfigService.updateSettings(req.body,req.user!.id);const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
