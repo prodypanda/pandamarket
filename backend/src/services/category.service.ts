@@ -163,13 +163,13 @@ export class CategoryService {
     let currentParentId = category.parent_id;
 
     while (currentParentId) {
-      const { rows } = await query<MarketplaceCategoryRow>(
+      const parentRes = await query<MarketplaceCategoryRow>(
         'SELECT id, name, slug, parent_id FROM pd_marketplace_category WHERE id = $1',
         [currentParentId],
       );
-      if (!rows[0]) break;
-      ancestors.unshift({ id: rows[0].id, name: rows[0].name, slug: rows[0].slug });
-      currentParentId = rows[0].parent_id;
+      if (!parentRes.rows[0]) break;
+      ancestors.unshift({ id: parentRes.rows[0].id, name: parentRes.rows[0].name, slug: parentRes.rows[0].slug });
+      currentParentId = parentRes.rows[0].parent_id;
     }
 
     return ancestors;
@@ -183,7 +183,7 @@ export class CategoryService {
     );
     if (findRows[0]) rootId = findRows[0].id;
 
-    const { rows } = await query<{ id: string }>(
+    const treeRes = await query<{ id: string }>(
       `WITH RECURSIVE cat_tree AS (
          SELECT id FROM pd_marketplace_category WHERE id = $1
          UNION ALL
@@ -192,7 +192,7 @@ export class CategoryService {
        ) SELECT id FROM cat_tree`,
       [rootId],
     );
-    return rows.map((r) => r.id);
+    return treeRes.rows.map((r) => r.id);
   }
 
   private async assertNoCircularParent(categoryId: string, targetParentId: string): Promise<void> {
@@ -206,11 +206,11 @@ export class CategoryService {
         throw new PdValidationError('Circular category parent relationship detected');
       }
       visited.add(curr);
-      const { rows } = await query<{ parent_id: string | null }>(
+      const parentCheckResult: { rows: Array<{ parent_id: string | null }> } = await query<{ parent_id: string | null }>(
         'SELECT parent_id FROM pd_marketplace_category WHERE id = $1',
         [curr],
       );
-      curr = rows[0]?.parent_id || null;
+      curr = parentCheckResult.rows[0]?.parent_id || null;
     }
   }
 
