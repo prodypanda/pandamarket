@@ -527,6 +527,13 @@ export class AdsService {
     let timeline = fillTimeline(daily.rows, from, to, granularity);
 
     if (granularity === 'hourly') {
+      const hourlyParams: unknown[] = [storeId, from];
+      let hourlyCampaignFilter = '';
+      if (options.campaignId) {
+        hourlyParams.push(options.campaignId);
+        hourlyCampaignFilter = 'AND c.id = $3';
+      }
+
       const [hourlyEvents, hourlySpend] = await Promise.all([
         query(
           `SELECT EXTRACT(HOUR FROM e.created_at)::int AS hour,
@@ -534,9 +541,9 @@ export class AdsService {
                   COUNT(*) FILTER (WHERE e.event_type = 'click')::bigint AS clicks
            FROM pd_ads_event e
            JOIN pd_ads_campaign c ON c.id = e.campaign_id
-           WHERE c.store_id = $1 AND e.created_at >= $2::date AND e.created_at < $2::date + INTERVAL '1 day' ${campaignFilter}
+           WHERE c.store_id = $1 AND e.created_at >= $2::date AND e.created_at < $2::date + INTERVAL '1 day' ${hourlyCampaignFilter}
            GROUP BY 1`,
-          params.slice(0, options.campaignId ? 4 : 3),
+          hourlyParams,
         ),
         query(
           `SELECT EXTRACT(HOUR FROM t.created_at)::int AS hour,
@@ -545,9 +552,9 @@ export class AdsService {
            JOIN pd_ads_account a ON a.id = t.account_id
            LEFT JOIN pd_ads_campaign c ON c.id = t.campaign_id
            WHERE a.store_id = $1 AND t.type = 'campaign_debit'
-             AND t.created_at >= $2::date AND t.created_at < $2::date + INTERVAL '1 day' ${campaignFilter}
+             AND t.created_at >= $2::date AND t.created_at < $2::date + INTERVAL '1 day' ${hourlyCampaignFilter}
            GROUP BY 1`,
-          params.slice(0, options.campaignId ? 4 : 3),
+          hourlyParams,
         ),
       ]);
 
