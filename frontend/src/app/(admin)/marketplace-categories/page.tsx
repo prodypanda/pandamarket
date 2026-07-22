@@ -46,6 +46,8 @@ export default function MarketplaceCategoriesPage() {
   const [parentId, setParentId] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [longDescription, setLongDescription] = useState('');
+  const [descriptionAr, setDescriptionAr] = useState('');
+  const [descriptionEn, setDescriptionEn] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -86,6 +88,9 @@ export default function MarketplaceCategoriesPage() {
           name_fr: name.trim(),
           name_ar: nameAr.trim() || undefined,
           name_en: nameEn.trim() || undefined,
+          description_fr: longDescription.trim() || shortDescription.trim() || undefined,
+          description_ar: descriptionAr.trim() || undefined,
+          description_en: descriptionEn.trim() || undefined,
           parent_id: parentId || null,
           short_description: shortDescription.trim() || undefined,
           long_description: longDescription.trim() || undefined,
@@ -99,6 +104,8 @@ export default function MarketplaceCategoriesPage() {
       setParentId('');
       setShortDescription('');
       setLongDescription('');
+      setDescriptionAr('');
+      setDescriptionEn('');
       setImageUrl('');
       setSuccess('Marketplace category created.');
       await fetchCategories();
@@ -284,13 +291,34 @@ export default function MarketplaceCategoriesPage() {
               className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all text-sm text-slate-700"
             />
           </div>
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Detailed Description</label>
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Description (FR / Default)</label>
             <textarea
               value={longDescription}
               onChange={(event) => setLongDescription(event.target.value)}
-              placeholder="Extensive details for SEO and category page headers..."
-              rows={3}
+              placeholder="Description détaillée en français pour le SEO et les en-têtes de rayon..."
+              rows={2}
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none resize-none transition-all text-sm text-slate-700"
+            />
+          </div>
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">الوصف (العربية AR)</label>
+            <textarea
+              dir="rtl"
+              value={descriptionAr}
+              onChange={(event) => setDescriptionAr(event.target.value)}
+              placeholder="وصف تفصيلي باللغة العربية للقسم..."
+              rows={2}
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none resize-none transition-all text-sm text-slate-700"
+            />
+          </div>
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Description (EN)</label>
+            <textarea
+              value={descriptionEn}
+              onChange={(event) => setDescriptionEn(event.target.value)}
+              placeholder="Detailed description in English..."
+              rows={2}
               className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none resize-none transition-all text-sm text-slate-700"
             />
           </div>
