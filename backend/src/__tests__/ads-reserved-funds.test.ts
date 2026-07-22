@@ -91,6 +91,7 @@ describe('Ads Reserved Funds & Auto-Refill', () => {
 
     const client = {
       query: vi.fn()
+        .mockResolvedValueOnce(result([])) // blocked IP check (ipHash is undefined, queries with '')
         .mockResolvedValueOnce(result([])) // duplicate check
         .mockResolvedValueOnce(result([campaign])) // campaign and account fetch
         .mockResolvedValueOnce(result([])) // insert ad event

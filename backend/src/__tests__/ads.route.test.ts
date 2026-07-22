@@ -31,7 +31,7 @@ vi.mock('express', () => ({
 vi.mock('zod', () => ({ z: {
   object: () => zChain, string: () => zChain, number: () => zChain,
   enum: () => zChain, array: () => zChain, record: () => zChain,
-  unknown: () => zChain,
+  unknown: () => zChain, boolean: () => zChain,
   coerce: { number: () => zChain },
 } }));
 vi.mock('../services/ads.service', () => ({ adsService: service }));

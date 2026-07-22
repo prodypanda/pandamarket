@@ -86,6 +86,7 @@ const ADMIN_ROUTE_PREFIXES = [
   '/system-logs',
   '/smtp-config',
   '/settings',
+  '/ads',
 ];
 
 function matchesRoutePrefix(pathname: string, prefixes: string[]) {

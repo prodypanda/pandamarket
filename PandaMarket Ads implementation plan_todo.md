@@ -32,7 +32,7 @@
 - [x] Add in-dashboard low-balance warnings and campaign-state actions.
 - [x] Add email and notification-center low-balance/campaign alerts.
 - [x] Add RTL-aware layout behavior to the seller Ads dashboard.
-- [ ] Replace remaining hard-coded Ads labels with full French, English, and Arabic translation keys.
+- [x] Replace remaining hard-coded Ads labels with full French, English, and Arabic translation keys.
 
 ## Refill and billing
 - [x] Implement Ads refill intents independent of commerce orders.
@@ -41,14 +41,14 @@
 - [x] Implement signed idempotent asynchronous refill webhooks.
 - [x] Implement idempotent authenticated return-path settlement.
 - [x] Implement optional admin-approved mandat refills.
-- [ ] Implement reserved funds and atomic campaign debits.
+- [x] Implement reserved funds and atomic campaign debits.
 - [x] Implement atomic CPC charging.
 - [x] Implement atomic CPM charging.
 - [x] Implement idempotent fixed-daily campaign charging.
 - [x] Implement idempotent debit refunds, promotional credits, and admin adjustments.
 - [x] Add refill records to the Ads transaction history.
 - [x] Add downloadable tax receipts and dedicated refill history UI.
-- [ ] Add optional auto-refill.
+- [x] Add optional auto-refill.
 
 ## Admin
 - [x] Add the super-admin Ads dashboard and navigation.
@@ -71,7 +71,7 @@
 - [x] Add promotional credit and coupon management.
 - [x] Add platform 30-day Ads revenue and performance analytics API data.
 - [x] Add admin time-series visualization for platform Ads analytics.
-- [ ] Add fraud review and blocked-content management.
+- [x] Add fraud review and blocked-content management.
 
 ## Delivery and rendering
 - [x] Implement eligible campaign selection and bid-weighted ranking.
@@ -84,7 +84,7 @@
 - [x] Implement category-aware sponsored recommendations on product-detail pages without replacing organic recommendations.
 - [x] Add paid sponsored-brand campaigns to the shared Hub homepage flow.
 - [x] Add paid sponsored-content/banner campaigns across all Hub homepage templates.
-- [ ] Remove template-local organic placeholder sponsored-brand sections after visual regression review.
+- [x] Remove template-local organic placeholder sponsored-brand sections after visual regression review.
 - [x] Add accessible Sponsored labels to the initial Hub sponsored-products rail.
 - [x] Add visible Sponsored labels to product, brand, and banner formats.
 - [x] Preserve organic homepage content while rendering paid placements as separate sections.
@@ -97,7 +97,7 @@
 - [x] Implement idempotent event-key duplicate suppression.
 - [x] Implement session-window duplicate impression/click suppression.
 - [x] Implement initial user-agent bot/crawler filtering.
-- [ ] Add advanced behavioral bot and anomaly detection.
+- [x] Add advanced behavioral bot and anomaly detection.
 - [x] Implement authenticated seller self-click exclusion.
 - [x] Hash IP identifiers and apply retention limits.
 - [x] Implement order conversion attribution for verified recent sponsored interactions.
@@ -106,11 +106,11 @@
 - [x] Define and implement conversion recognition policy for COD and approved manual-mandat payments.
 - [x] Implement daily analytics aggregation and raw-event retention.
 - [x] Add dedicated public Ads delivery and event rate limits.
-- [ ] Implement suspicious activity reporting dashboard and automated blocking.
+- [x] Implement suspicious activity reporting dashboard and automated blocking.
 
 ## Quality and rollout
 - [x] Add initial ledger idempotency test coverage.
-- [ ] Add concurrent ledger atomicity integration tests.
+- [x] Add concurrent ledger atomicity integration tests.
 - [x] Add initial campaign lifecycle, validation, and authorization service tests.
 - [x] Enforce product ownership, published status, placement validity, and Ads-account status in campaign operations.
 - [x] Add Ads campaign and analytics tenant-isolation unit tests.
@@ -118,7 +118,7 @@
 - [x] Add delivery, pacing, and budget tests.
 - [x] Add event deduplication and fraud tests.
 - [x] Add attribution tests.
-- [ ] Add seller and admin UI tests. (Seller campaign wizard and performance chart coverage added; admin coverage remains.)
+- [x] Add seller and admin UI tests. (Seller campaign wizard, performance charts, and admin ads page coverage added.)
 - [x] Add RTL tests.
 - [ ] Add end-to-end refill, campaign, moderation, delivery, and conversion tests.
 - [ ] Run migrations in staging and verify rollback strategy.
