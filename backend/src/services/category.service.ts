@@ -8,8 +8,14 @@ export interface MarketplaceCategoryRow {
   id: string;
   parent_id?: string | null;
   name: string;
+  name_fr?: string | null;
+  name_ar?: string | null;
+  name_en?: string | null;
   slug: string;
   description: string | null;
+  description_fr?: string | null;
+  description_ar?: string | null;
+  description_en?: string | null;
   short_description: string | null;
   long_description: string | null;
   image_url: string | null;
@@ -26,6 +32,36 @@ export interface MarketplaceCategoryRow {
   children?: MarketplaceCategoryRow[];
   created_at: Date;
   updated_at: Date;
+}
+
+export function resolveCategoryLocale(cat: MarketplaceCategoryRow, locale?: string): MarketplaceCategoryRow {
+  if (!cat) return cat;
+  let resolvedName = cat.name;
+  let resolvedDesc = cat.description;
+
+  const loc = (locale || '').toLowerCase();
+  if (loc === 'ar' || loc.startsWith('ar')) {
+    if (cat.name_ar) resolvedName = cat.name_ar;
+    if (cat.description_ar) resolvedDesc = cat.description_ar;
+  } else if (loc === 'en' || loc.startsWith('en')) {
+    if (cat.name_en) resolvedName = cat.name_en;
+    if (cat.description_en) resolvedDesc = cat.description_en;
+  } else if (loc === 'fr' || loc.startsWith('fr')) {
+    if (cat.name_fr) resolvedName = cat.name_fr;
+    if (cat.description_fr) resolvedDesc = cat.description_fr;
+  }
+
+  const result: MarketplaceCategoryRow = {
+    ...cat,
+    name: resolvedName,
+    description: resolvedDesc,
+  };
+
+  if (cat.children && cat.children.length > 0) {
+    result.children = cat.children.map((c) => resolveCategoryLocale(c, locale));
+  }
+
+  return result;
 }
 
 export interface StorefrontCategoryRow {
@@ -118,7 +154,7 @@ export class CategoryService {
     return roots;
   }
 
-  async listMarketplaceCategories(options: { tree?: boolean } = {}): Promise<MarketplaceCategoryRow[]> {
+  async listMarketplaceCategories(options: { tree?: boolean; locale?: string } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
       `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
@@ -128,13 +164,14 @@ export class CategoryService {
        GROUP BY c.id, parent.name, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
+    const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
     if (options.tree) {
-      return this.buildTree(rows);
+      return this.buildTree(resolvedRows);
     }
-    return rows;
+    return resolvedRows;
   }
 
-  async listPublicMarketplaceCategories(options: { tree?: boolean } = {}): Promise<MarketplaceCategoryRow[]> {
+  async listPublicMarketplaceCategories(options: { tree?: boolean; locale?: string } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
       `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
@@ -145,10 +182,11 @@ export class CategoryService {
        GROUP BY c.id, parent.name, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
+    const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
     if (options.tree) {
-      return this.buildTree(rows);
+      return this.buildTree(resolvedRows);
     }
-    return rows;
+    return resolvedRows;
   }
 
   async getCategoryAncestors(idOrSlug: string): Promise<Array<{ id: string; name: string; slug: string }>> {

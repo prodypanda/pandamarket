@@ -36,7 +36,8 @@ router.get(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
     const isTree = req.query.tree === 'true';
-    const categories = await categoryService.listPublicMarketplaceCategories({ tree: isTree });
+    const locale = typeof req.query.locale === 'string' ? req.query.locale : undefined;
+    const categories = await categoryService.listPublicMarketplaceCategories({ tree: isTree, locale });
 
     const formatCategory = (cat: any): any => ({
       ...cat,

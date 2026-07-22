@@ -14,6 +14,8 @@ import { MarketplaceBrand } from '../MarketplaceBrand';
 import { BuyerWelcomeModal } from './BuyerWelcomeModal';
 import { fetchOnboardingState, type OnboardingState } from '../../lib/onboarding';
 
+import { CategoryMegaMenu } from './CategoryMegaMenu';
+
 interface CurrentUser {
   role?: string;
   store_id?: string | null;
@@ -142,8 +144,8 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
       ) : null}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex-shrink-0 flex items-center">
+          {/* Logo & Category Mega-Menu */}
+          <div className="flex-shrink-0 flex items-center gap-4">
             <MarketplaceBrand
               href="/hub"
               marketplaceName={resolvedMarketplaceName}
@@ -158,6 +160,9 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
               }`}
               fallbackMarkClassName="hidden"
             />
+            <div className="hidden lg:block">
+              <CategoryMegaMenu marketplaceTheme={resolvedMarketplaceTheme} />
+            </div>
           </div>
 
           {/* Search Bar - Hidden on small screens */}
