@@ -32,6 +32,17 @@ import {
   type HomeProduct,
 } from './home-template-shared';
 
+interface TreeCategoryNode {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  short_description?: string | null;
+  image_url?: string | null;
+  product_count?: number;
+  children?: TreeCategoryNode[];
+}
+
 interface AlibabaHomeContentProps {
   trendingProducts: HomeProduct[];
   categories: HomeCategory[];
@@ -55,9 +66,34 @@ const MIDDLE_BLOCK_IDS = ['deals', 'sponsored_brands', 'product_grid', 'recently
 export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSettings }: AlibabaHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
   const rtl = isRtlLocale(marketplaceSettings);
-  const [activeCategory, setActiveCategory] = useState<HomeCategory | null>(null);
+  const locale = marketplaceSettings.marketplace_default_locale || 'fr';
+  const [treeCategories, setTreeCategories] = useState<TreeCategoryNode[]>([]);
+  const [activeCategory, setActiveCategory] = useState<TreeCategoryNode | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const countdown = useCountdown();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTreeCategories() {
+      try {
+        const res = await fetch(`/api/pd/categories?tree=true&locale=${locale}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setTreeCategories(data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load tree categories for Alibaba layout:', err);
+      }
+    }
+    fetchTreeCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  const displayCategories: TreeCategoryNode[] = treeCategories.length > 0
+    ? treeCategories
+    : categories.map((c) => ({ ...c, children: [] }));
 
   // Admin-managed block configuration (enable/disable, order, titles, limits)
   const blocks = useMemo(
@@ -201,8 +237,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
             </div>
             <div className="p-3">
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
-              {product.store_name && <p className="mt-1 truncate text-[10px] font-semibold text-gray-400">{product.store_name}</p>}
+              <p className="mt-2 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
             </div>
           </Link>
         ))}
@@ -220,63 +255,100 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   };
 
   return (
-    <div dir={rtl ? 'rtl' : 'ltr'} className="bg-[#f4f6fa] text-gray-900">
-      {/* Utility bar */}
-      {isBlockEnabled('utility_bar') && (
-        <div className="text-white" style={{ backgroundColor: NAVY }}>
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-[11px] font-bold sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center gap-4 text-white/80">
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> Trade assurance on every order</span>
-              {marketplaceSettings.marketplace_support_email && (
-                <span className="hidden items-center gap-1.5 sm:inline-flex"><Headset className="h-3.5 w-3.5" /> {marketplaceSettings.marketplace_support_email}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/hub/orders" className="hover:text-[#ffb37d]">Track order</Link>
-              <Link href={marketplaceSettings.marketplace_help_url || '/hub/cases'} className="hover:text-[#ffb37d]">Help center</Link>
-              <Link href="/hub/vendor-signup" className="rounded-full px-3 py-1 text-white" style={{ backgroundColor: ORANGE }}>Become a supplier</Link>
-            </div>
+    <div className="min-h-screen bg-[#F5F7FA]">
+      {/* Top B2B Sourcing Announcement Bar */}
+      <div className="bg-[#0b1e3f] text-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 text-xs font-black sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-amber-400" /> Trade Assurance Protection</span>
+            <span className="hidden items-center gap-1.5 md:flex"><Truck className="h-4 w-4 text-[#ff6a00]" /> Verified Suppliers & Fast Logistics</span>
           </div>
+          <Link href="/hub/vendor-signup" className="rounded-full bg-[#ff6a00] px-3 py-1 font-black text-white hover:bg-orange-600 transition-colors">
+            Become a Seller
+          </Link>
         </div>
-      )}
+      </div>
 
-      {/* Hero: mega-category sidebar + carousel + seller rail */}
+      {/* Hero: persistent Alibaba B2B category sidebar + multi-column mega flyout + carousel + seller rail */}
       {isBlockEnabled('hero') && (
         <>
           <section className="mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[260px_1fr_240px] lg:px-8">
-            <aside className="relative hidden rounded-2xl border border-gray-200 bg-white shadow-sm lg:block" onMouseLeave={() => setActiveCategory(null)}>
+            <aside
+              className="relative hidden rounded-2xl border border-gray-200 bg-white shadow-sm lg:block"
+              onMouseLeave={() => setActiveCategory(null)}
+            >
               <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-gray-500">
-                <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> All categories
+                <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {rtl ? 'جميع الأقسام' : 'My Markets & Categories'}
               </p>
               <ul className="max-h-[380px] overflow-y-auto py-1">
-                {categories.slice(0, 12).map((category) => (
+                {displayCategories.slice(0, 12).map((category) => (
                   <li key={category.id} onMouseEnter={() => setActiveCategory(category)}>
                     <Link
                       href={`/hub/category/${encodeURIComponent(category.slug)}`}
-                      className={`flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${activeCategory?.id === category.id ? 'bg-orange-50 text-[#ff6a00]' : 'text-gray-700 hover:bg-orange-50'}`}
+                      className={`flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-all ${
+                        activeCategory?.id === category.id
+                          ? 'bg-orange-50 text-[#ff6a00]'
+                          : 'text-gray-700 hover:bg-orange-50'
+                      }`}
                     >
                       <span className="truncate">{category.name}</span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
+                      <ChevronRight className={`h-4 w-4 shrink-0 text-gray-300 ${rtl ? 'rotate-180' : ''}`} />
                     </Link>
                   </li>
                 ))}
               </ul>
 
+              {/* Alibaba B2B Multi-Column Mega Flyout Panel */}
               {activeCategory && (
-                <div className="absolute left-full top-0 z-30 ml-2 w-80 rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl">
-                  {activeCategory.image_url && (
-                    <div aria-label={activeCategory.name} role="img" className="mb-3 h-28 w-full rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${activeCategory.image_url})` }} />
+                <div
+                  dir={rtl ? 'rtl' : 'ltr'}
+                  className={`absolute ${
+                    rtl ? 'right-full mr-2' : 'left-full ml-2'
+                  } top-0 z-40 w-[640px] max-w-[90vw] rounded-2xl border border-gray-200 bg-white/95 p-6 shadow-2xl backdrop-blur-xl`}
+                >
+                  <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">{activeCategory.name}</h3>
+                      <p className="text-xs font-semibold text-slate-400">
+                        {activeCategory.children?.length || 0} subcategories available
+                      </p>
+                    </div>
+                    <Link
+                      href={`/hub/category/${encodeURIComponent(activeCategory.slug)}`}
+                      className="text-xs font-black text-[#ff6a00] hover:underline"
+                    >
+                      Browse All ➔
+                    </Link>
+                  </div>
+
+                  {activeCategory.children && activeCategory.children.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {activeCategory.children.map((sub) => (
+                        <Link
+                          key={sub.id}
+                          href={`/hub/category/${encodeURIComponent(sub.slug)}`}
+                          className="group flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3 transition-all hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40"
+                        >
+                          <span className="text-xs font-extrabold text-slate-800 group-hover:text-[#ff6a00]">
+                            {sub.name}
+                          </span>
+                          <span className="mt-2 text-[10px] font-bold text-slate-400">
+                            {sub.product_count || 0} products
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-xs font-semibold text-slate-400">
+                      {activeCategory.short_description || activeCategory.description || 'Source directly from verified manufacturers and suppliers.'}
+                    </div>
                   )}
-                  <p className="text-sm font-black text-gray-900">{activeCategory.name}</p>
-                  <p className="mt-1 line-clamp-3 text-xs leading-5 text-gray-500">
-                    {activeCategory.short_description || activeCategory.description || 'Browse wholesale listings from verified sellers.'}
-                  </p>
-                  {typeof activeCategory.product_count === 'number' && (
-                    <p className="mt-2 text-xs font-bold text-gray-400">{activeCategory.product_count} products</p>
-                  )}
-                  <Link href={`/hub/category/${encodeURIComponent(activeCategory.slug)}`} className="mt-4 inline-flex items-center gap-1 text-xs font-black" style={{ color: ORANGE }}>
-                    Browse category <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+
+                  {/* B2B Sourcing Tags */}
+                  <div className="mt-6 flex items-center justify-between rounded-xl bg-slate-50 p-3 text-[11px] font-black text-slate-600">
+                    <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Trade Assurance Verified</span>
+                    <span className="flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5 text-blue-500" /> Verified Factory Suppliers</span>
+                  </div>
                 </div>
               )}
             </aside>

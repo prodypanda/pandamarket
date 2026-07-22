@@ -41,6 +41,8 @@ export default function MarketplaceCategoriesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [nameAr, setNameAr] = useState('');
+  const [nameEn, setNameEn] = useState('');
   const [parentId, setParentId] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [longDescription, setLongDescription] = useState('');
@@ -81,6 +83,9 @@ export default function MarketplaceCategoriesPage() {
         credentials: 'include',
         body: JSON.stringify({
           name: name.trim(),
+          name_fr: name.trim(),
+          name_ar: nameAr.trim() || undefined,
+          name_en: nameEn.trim() || undefined,
           parent_id: parentId || null,
           short_description: shortDescription.trim() || undefined,
           long_description: longDescription.trim() || undefined,
@@ -89,6 +94,8 @@ export default function MarketplaceCategoriesPage() {
       });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to create category'));
       setName('');
+      setNameAr('');
+      setNameEn('');
       setParentId('');
       setShortDescription('');
       setLongDescription('');
@@ -222,11 +229,32 @@ export default function MarketplaceCategoriesPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Category Name</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Nom / Name (FR)</label>
             <input
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              placeholder="ex. Électronique, Smartphones"
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">اسم القسم (العربية AR)</label>
+            <input
+              type="text"
+              dir="rtl"
+              value={nameAr}
+              onChange={(event) => setNameAr(event.target.value)}
+              placeholder="مثال: الإلكترونيات، الهواتف"
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Name (EN)</label>
+            <input
+              type="text"
+              value={nameEn}
+              onChange={(event) => setNameEn(event.target.value)}
               placeholder="e.g. Electronics, Smartphones"
               className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900"
             />

@@ -205,8 +205,14 @@ router.post(
 
 const categorySchema = z.object({
   name: z.string().min(2).max(120),
+  name_fr: z.string().max(255).nullable().optional(),
+  name_ar: z.string().max(255).nullable().optional(),
+  name_en: z.string().max(255).nullable().optional(),
   parent_id: z.string().nullable().optional(),
   description: z.string().max(1000).optional(),
+  description_fr: z.string().max(1000).nullable().optional(),
+  description_ar: z.string().max(1000).nullable().optional(),
+  description_en: z.string().max(1000).nullable().optional(),
   short_description: z.string().max(255).optional(),
   long_description: z.string().max(5000).optional(),
   image_url: z.string().nullable().optional(),

@@ -254,8 +254,14 @@ export class CategoryService {
 
   async createMarketplaceCategory(input: {
     name: string;
+    name_fr?: string | null;
+    name_ar?: string | null;
+    name_en?: string | null;
     parent_id?: string | null;
     description?: string;
+    description_fr?: string | null;
+    description_ar?: string | null;
+    description_en?: string | null;
     short_description?: string;
     long_description?: string;
     image_url?: string | null;
@@ -273,10 +279,23 @@ export class CategoryService {
     const id = pdId('cat');
     const slug = await this.uniqueMarketplaceSlug(slugify(name));
     const { rows } = await query<MarketplaceCategoryRow>(
-      `INSERT INTO pd_marketplace_category (id, parent_id, name, slug, description, position)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO pd_marketplace_category (id, parent_id, name, name_fr, name_ar, name_en, slug, description, description_fr, description_ar, description_en, position)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [id, input.parent_id || null, name, slug, input.description?.trim() || input.short_description?.trim() || null, input.position ?? 100],
+      [
+        id,
+        input.parent_id || null,
+        name,
+        input.name_fr?.trim() || name,
+        input.name_ar?.trim() || null,
+        input.name_en?.trim() || null,
+        slug,
+        input.description?.trim() || input.short_description?.trim() || null,
+        input.description_fr?.trim() || null,
+        input.description_ar?.trim() || null,
+        input.description_en?.trim() || null,
+        input.position ?? 100,
+      ],
     );
     if (
       input.short_description !== undefined ||
@@ -302,8 +321,14 @@ export class CategoryService {
 
   async updateMarketplaceCategory(id: string, patch: {
     name?: string;
+    name_fr?: string | null;
+    name_ar?: string | null;
+    name_en?: string | null;
     parent_id?: string | null;
     description?: string;
+    description_fr?: string | null;
+    description_ar?: string | null;
+    description_en?: string | null;
     short_description?: string;
     long_description?: string;
     image_url?: string | null;
@@ -339,9 +364,33 @@ export class CategoryService {
         fields.push(`slug = $${values.length}`);
       }
     }
+    if (patch.name_fr !== undefined) {
+      values.push(patch.name_fr?.trim() || null);
+      fields.push(`name_fr = $${values.length}`);
+    }
+    if (patch.name_ar !== undefined) {
+      values.push(patch.name_ar?.trim() || null);
+      fields.push(`name_ar = $${values.length}`);
+    }
+    if (patch.name_en !== undefined) {
+      values.push(patch.name_en?.trim() || null);
+      fields.push(`name_en = $${values.length}`);
+    }
     if (patch.description !== undefined) {
       values.push(patch.description.trim() || null);
       fields.push(`description = $${values.length}`);
+    }
+    if (patch.description_fr !== undefined) {
+      values.push(patch.description_fr?.trim() || null);
+      fields.push(`description_fr = $${values.length}`);
+    }
+    if (patch.description_ar !== undefined) {
+      values.push(patch.description_ar?.trim() || null);
+      fields.push(`description_ar = $${values.length}`);
+    }
+    if (patch.description_en !== undefined) {
+      values.push(patch.description_en?.trim() || null);
+      fields.push(`description_en = $${values.length}`);
     }
     if (patch.short_description !== undefined) {
       const shortDescription = patch.short_description.trim() || null;
