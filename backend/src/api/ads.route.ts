@@ -87,6 +87,26 @@ const manualRefillSchema=z.object({amount:z.number().positive().max(1000000),pro
 const couponRedeemSchema=z.object({code:z.string().trim().min(4).max(40)});
 router.post('/coupons/redeem',requireStore,validate(couponRedeemSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.redeemCoupon(req.user!.store_id!,req.body.code)})));
 router.get('/account', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ account: await adsService.getAccount(req.user!.store_id!) })));
+const autoRefillSettingsSchema = z.object({
+  enabled: z.boolean(),
+  threshold: z.number().min(0).max(100000),
+  amount: z.number().positive().max(100000),
+});
+router.post('/account/auto-refill', requireStore, validate(autoRefillSettingsSchema), asyncHandler(async (req: Request, res: Response) => {
+  const { enabled, threshold, amount } = req.body;
+  const storeId = req.user!.store_id!;
+  const result = await query(
+    `UPDATE pd_ads_account 
+     SET auto_refill_enabled = $2, auto_refill_threshold = $3, auto_refill_amount = $4, updated_at = NOW()
+     WHERE store_id = $1 RETURNING *`,
+    [storeId, enabled, threshold, amount]
+  );
+  if (!result.rows[0]) {
+    res.status(404).json({ error: { message: 'Ads account not found' } });
+    return;
+  }
+  res.json({ account: result.rows[0] });
+}));
 router.get('/refills',requireStore,asyncHandler(async(req:Request,res:Response)=>res.json({refills:await adsRefillService.list(req.user!.store_id!)})));
 router.post('/refills',requireStore,validate(refillSchema),asyncHandler(async(req:Request,res:Response)=>{
   const user=await query<{email:string}>('SELECT email FROM pd_user WHERE id=$1',[req.user!.id]);

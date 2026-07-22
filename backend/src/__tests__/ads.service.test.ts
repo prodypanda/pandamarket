@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../db/pool',()=>({query:vi.fn(),transaction:vi.fn()}));
 vi.mock('../utils/crypto',()=>({pdId:vi.fn((entity:string)=>`pd_${entity}_test`)}));
 vi.mock('../services/platform-config.service',()=>({platformConfigService:{getSettings:vi.fn().mockResolvedValue({ads_enabled:true,ads_moderation_required:true,ads_min_daily_budget_tnd:1,ads_max_campaign_days:90,ads_frequency_cap_daily:5,ads_click_attribution_days:7,ads_view_attribution_days:1,ads_sponsored_products_enabled:true,ads_sponsored_brands_enabled:true,ads_sponsored_content_enabled:true})}}));
-vi.mock('../config',()=>({config:{jwt:{secret:'test-secret'},hubDomain:'http://localhost:3000'}}));
+vi.mock('../config',()=>({config:{jwt:{secret:'test-secret'},hubDomain:'http://localhost:3000',logLevel:'info'}}));
 
 import { query, transaction } from '../db/pool';
 import { AdsService } from '../services/ads.service';
@@ -115,7 +115,7 @@ describe('AdsService',()=>{
  it('returns duplicate without charging a repeated event key',async()=>{
   const payload={campaign_id:'pd_adcmp_A',creative_id:'pd_adcrt_A',placement_id:'pd_adpl_A',exp:Date.now()+60000};
   const encoded=Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const crypto=await import('crypto');const signature=crypto.createHmac('sha256','[REDACTED]').update(encoded).digest('base64url');
+  const crypto=await import('crypto');const signature=crypto.createHmac('sha256','test-secret').update(encoded).digest('base64url');
   const client={query:vi.fn().mockResolvedValueOnce(result([{id:'pd_adevt_existing'}]))};
   mockTransaction.mockImplementation(async(fn:any)=>fn(client));
   await expect(service.recordEvent({token:`${encoded}.${signature}`,eventType:'click',eventKey:'existing-event-key'})).resolves.toEqual({recorded:false,duplicate:true});

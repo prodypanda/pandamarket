@@ -22,6 +22,114 @@ const transitions: Record<AdsCampaignStatus, AdsCampaignStatus[]> = {
 };
 
 export class AdsService {
+  private async reserveFunds(client: PoolClient, storeId: string, campaignId: string, amount: number) {
+    if (amount <= 0) return;
+    const account = await this.getOrCreateAccount(storeId, client);
+    if (Number(account.balance) < amount) throw new PdValidationError('Insufficient Ads balance to reserve funds');
+    
+    const updatedAccount = await client.query(
+      `UPDATE pd_ads_account SET balance = balance - $2, reserved_balance = reserved_balance + $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [account.id, amount]
+    );
+    await client.query(
+      `UPDATE pd_ads_campaign SET reserved_amount = reserved_amount + $2, updated_at = NOW() WHERE id = $1`,
+      [campaignId, amount]
+    );
+    await client.query(
+      `INSERT INTO pd_ads_transaction (id, account_id, campaign_id, type, amount, balance_after, description)
+       VALUES ($1,$2,$3,'reservation',$4,$5,$6)`,
+      [pdId('adtx'), account.id, campaignId, -amount, updatedAccount.rows[0].balance, `Reserve daily budget for campaign ${campaignId}`]
+    );
+  }
+
+  private async releaseFunds(client: PoolClient, storeId: string, campaignId: string, amount: number) {
+    if (amount <= 0) return;
+    const account = await this.getOrCreateAccount(storeId, client);
+    const release = Math.min(amount, Number(account.reserved_balance));
+    if (release <= 0) return;
+
+    const updatedAccount = await client.query(
+      `UPDATE pd_ads_account SET balance = balance + $2, reserved_balance = GREATEST(0, reserved_balance - $2), updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [account.id, release]
+    );
+    await client.query(
+      `UPDATE pd_ads_campaign SET reserved_amount = GREATEST(0, reserved_amount - $2), updated_at = NOW() WHERE id = $1`,
+      [campaignId, release]
+    );
+    await client.query(
+      `INSERT INTO pd_ads_transaction (id, account_id, campaign_id, type, amount, balance_after, description)
+       VALUES ($1,$2,$3,'reservation_release',$4,$5,$6)`,
+      [pdId('adtx'), account.id, campaignId, release, updatedAccount.rows[0].balance, `Release reserved budget for campaign ${campaignId}`]
+    );
+  }
+
+  async allocateReservations(storeId: string, client?: PoolClient) {
+    const run = async (c: PoolClient) => {
+      const account = await this.getOrCreateAccount(storeId, c);
+      if (account.status !== 'active' || Number(account.balance) <= 0) return;
+
+      const activeCampaigns = await c.query<{ id: string; daily_budget: string; total_budget: string; spent_amount: string; reserved_amount: string }>(
+        `SELECT id, daily_budget, total_budget, spent_amount, reserved_amount FROM pd_ads_campaign 
+         WHERE store_id = $1 AND status = 'active' FOR UPDATE`,
+        [storeId]
+      );
+
+      for (const campaign of activeCampaigns.rows) {
+        const balance = Number(account.balance);
+        if (balance <= 0) break;
+
+        const dailySpend = await c.query<{ spend: string }>(
+          `SELECT COALESCE(SUM(spend), 0)::text AS spend FROM pd_ads_daily_stat WHERE campaign_id = $1 AND stat_date = CURRENT_DATE`,
+          [campaign.id]
+        );
+        const currentDailySpend = Number(dailySpend.rows[0]?.spend || 0);
+        const dailyLimit = Number(campaign.daily_budget) - currentDailySpend;
+        const totalLimit = Number(campaign.total_budget) - Number(campaign.spent_amount);
+        const limit = Math.min(dailyLimit, totalLimit);
+        
+        const needed = Math.max(0, limit - Number(campaign.reserved_amount));
+        if (needed > 0) {
+          const toReserve = roundTnd(Math.min(needed, balance));
+          if (toReserve > 0) {
+            await this.reserveFunds(c, storeId, campaign.id, toReserve);
+            account.balance = String(balance - toReserve);
+          }
+        }
+      }
+    };
+    return client ? run(client) : transaction(run);
+  }
+
+  private async checkAndTriggerAutoRefill(client: PoolClient, storeId: string, accountId: string) {
+    const res = await client.query(
+      `SELECT auto_refill_enabled, auto_refill_threshold, auto_refill_amount, balance
+       FROM pd_ads_account WHERE id = $1 FOR UPDATE`,
+      [accountId]
+    );
+    const account = res.rows[0];
+    if (account && account.auto_refill_enabled && Number(account.balance) < Number(account.auto_refill_threshold)) {
+      const amount = Number(account.auto_refill_amount);
+      if (amount > 0) {
+        const updated = await client.query(
+          `UPDATE pd_ads_account SET balance = balance + $2, updated_at = NOW() WHERE id = $1 RETURNING balance`,
+          [accountId, amount]
+        );
+        const refId = pdId('adrfl');
+        await client.query(
+          `INSERT INTO pd_ads_refill_intent (id, account_id, store_id, gateway, amount, status, captured_at)
+           VALUES ($1,$2,$3,'auto_refill',$4,'captured',NOW())`,
+          [refId, accountId, storeId, amount]
+        );
+        await client.query(
+          `INSERT INTO pd_ads_transaction (id, account_id, type, amount, balance_after, payment_reference, description)
+           VALUES ($1,$2,'refill',$3,$4,$5,$6)`,
+          [pdId('adtx'), accountId, amount, updated.rows[0].balance, refId, 'Automatic account auto-refill']
+        );
+        await this.allocateReservations(storeId, client);
+      }
+    }
+  }
+
   private async getOrCreateAccount(storeId: string, client?: PoolClient) {
     const run = async (c: PoolClient) => {
       const existing = await c.query('SELECT * FROM pd_ads_account WHERE store_id = $1 FOR UPDATE', [storeId]);
@@ -63,6 +171,7 @@ export class AdsService {
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [pdId('adtx'), account.id, opts.type || 'refill', amount, updated.rows[0].balance, opts.idempotencyKey || null, opts.description || 'Ads account credit'],
       );
+      await this.allocateReservations(storeId, c);
       return { account: updated.rows[0], transaction: ledger.rows[0] };
     });
   }
@@ -170,12 +279,17 @@ export class AdsService {
       if (['pending_review', 'approved', 'active'].includes(next)) {
         const account = await this.getOrCreateAccount(storeId, c);
         if (account.status !== 'active') throw new PdValidationError('Your Ads account is not active');
-        if (Number(account.balance) <= 0) throw new PdValidationError('Refill your Ads account before advertising');
-        if ((next === 'active' || next === 'scheduled') && Number(account.balance) < Math.min(Number(campaign.daily_budget), Number(campaign.total_budget) - Number(campaign.spent_amount))) {
+        if (Number(account.balance) + Number(account.reserved_balance || 0) <= 0) throw new PdValidationError('Refill your Ads account before advertising');
+        if ((next === 'active' || next === 'scheduled') && Number(account.balance) + Number(campaign.reserved_amount || 0) < Math.min(Number(campaign.daily_budget), Number(campaign.total_budget) - Number(campaign.spent_amount))) {
           throw new PdValidationError('Your Ads balance is below the campaign launch requirement');
         }
       }
       if(next==='active'&&campaign.starts_at&&new Date(campaign.starts_at).getTime()>Date.now())next='scheduled';
+
+      if (['paused', 'completed', 'cancelled', 'rejected'].includes(next)) {
+        await this.releaseFunds(c, storeId, id, Number(campaign.reserved_amount));
+      }
+
       const updated = await c.query(
         `UPDATE pd_ads_campaign SET status=$3,
           submitted_at=CASE WHEN $4='pending_review' THEN NOW() ELSE submitted_at END,
@@ -183,6 +297,27 @@ export class AdsService {
           updated_at=NOW() WHERE id=$1 AND store_id=$2 RETURNING *`,
         [id, storeId, next, requestedNext],
       );
+
+      if (next === 'active') {
+        const account = await this.getOrCreateAccount(storeId, c);
+        const dailySpend = await c.query<{ spend: string }>(
+          `SELECT COALESCE(SUM(spend), 0)::text AS spend FROM pd_ads_daily_stat WHERE campaign_id = $1 AND stat_date = CURRENT_DATE`,
+          [id]
+        );
+        const currentDailySpend = Number(dailySpend.rows[0]?.spend || 0);
+        const dailyLimit = Number(campaign.daily_budget) - currentDailySpend;
+        const totalLimit = Number(campaign.total_budget) - Number(campaign.spent_amount);
+        const limit = Math.min(dailyLimit, totalLimit);
+
+        const needed = Math.max(0, limit - Number(campaign.reserved_amount));
+        if (needed > 0) {
+          const toReserve = roundTnd(Math.min(needed, Number(account.balance)));
+          if (toReserve > 0) {
+            await this.reserveFunds(c, storeId, id, toReserve);
+          }
+        }
+      }
+
       return updated.rows[0];
     });
   }
@@ -292,14 +427,13 @@ export class AdsService {
               cr.id AS creative_id,cr.product_id,cr.title,cr.description,cr.image_url,cr.cta_label,cr.destination_url,
               p.id AS placement_id,p.placement_key,s.name AS store_name,s.subdomain AS store_subdomain
        FROM pd_ads_campaign c
-       JOIN pd_ads_account a ON a.id=c.account_id AND a.status='active' AND a.balance>0
+       JOIN pd_ads_account a ON a.id=c.account_id AND a.status='active'
        JOIN pd_ads_campaign_placement cp ON cp.campaign_id=c.id
        JOIN pd_ads_placement p ON p.id=cp.placement_id AND p.enabled=TRUE AND p.placement_key=$1
        JOIN pd_store s ON s.id=c.store_id AND s.status NOT IN ('suspended','maintenance')
        JOIN LATERAL (SELECT * FROM pd_ads_creative WHERE campaign_id=c.id ORDER BY created_at LIMIT 1) cr ON TRUE
-       WHERE c.status='active' AND c.spent_amount<c.total_budget
+       WHERE c.status='active' AND c.reserved_amount>0
          AND (c.starts_at IS NULL OR c.starts_at<=NOW()) AND (c.ends_at IS NULL OR c.ends_at>NOW())
-         AND COALESCE((SELECT spend FROM pd_ads_daily_stat WHERE campaign_id=c.id AND stat_date=CURRENT_DATE),0)<c.daily_budget
          AND COALESCE((SELECT spend FROM pd_ads_daily_stat WHERE campaign_id=c.id AND stat_date=CURRENT_DATE),0)
              <= c.daily_budget * GREATEST(0.10,LEAST(1,(EXTRACT(EPOCH FROM (NOW()-date_trunc('day',NOW())))/86400)))
                 + GREATEST(c.bid_amount,0.001)
@@ -321,6 +455,23 @@ export class AdsService {
     const token = this.verifyDeliveryToken(input.token);
     const settings=await platformConfigService.getSettings();
     return transaction(async (c) => {
+      const blocked = await c.query('SELECT 1 FROM pd_ads_blocked_ip WHERE ip_hash=$1', [input.ipHash || '']);
+      if (blocked.rows[0]) return { recorded: false, fraud_blocked: true };
+
+      if (input.ipHash && input.eventType === 'click') {
+        const rapidClicks = await c.query<{ count: string }>(
+          `SELECT COUNT(*)::text AS count FROM pd_ads_event WHERE ip_hash=$1 AND event_type='click' AND created_at>NOW()-INTERVAL '1 minute'`,
+          [input.ipHash]
+        );
+        if (Number(rapidClicks.rows[0].count) >= 6) {
+          await c.query(
+            `INSERT INTO pd_ads_blocked_ip (ip_hash, reason) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [input.ipHash, 'Automated detection: Click rate exceeded 6 clicks/min']
+          );
+          return { recorded: false, fraud_blocked: true };
+        }
+      }
+
       const duplicate = await c.query('SELECT id FROM pd_ads_event WHERE event_key=$1', [input.eventKey]);
       if (duplicate.rows[0]) return { recorded:false, duplicate:true };
       const campaignResult = await c.query(
@@ -346,11 +497,10 @@ export class AdsService {
       const rawCost = input.eventType==='click' && campaign.pricing_model==='cpc' ? Number(campaign.bid_amount)
         : input.eventType==='impression' && campaign.pricing_model==='cpm' ? Number(campaign.bid_amount)/1000 : 0;
       const cost = roundTnd(rawCost);
-      const daily = await c.query('SELECT spend FROM pd_ads_daily_stat WHERE campaign_id=$1 AND stat_date=CURRENT_DATE FOR UPDATE', [campaign.id]);
-      const dailySpend = Number(daily.rows[0]?.spend || 0);
-      const remaining = Math.min(Number(campaign.balance), Number(campaign.total_budget)-Number(campaign.spent_amount), Number(campaign.daily_budget)-dailySpend);
+      const remaining = Number(campaign.reserved_amount);
       if (cost>remaining) {
         await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW() WHERE id=$1`, [campaign.id]);
+        await this.releaseFunds(c, campaign.store_id, campaign.id, Number(campaign.reserved_amount));
         throw new PdValidationError('Campaign budget is exhausted');
       }
       await c.query(`INSERT INTO pd_ads_event (id,campaign_id,creative_id,placement_id,event_type,event_key,session_hash,ip_hash,cost)
@@ -360,22 +510,24 @@ export class AdsService {
         [campaign.id,input.eventType==='impression'?1:0,input.eventType==='click'?1:0,cost]);
       if (cost>0) {
         const account = await c.query(
-          `UPDATE pd_ads_account SET balance=balance-$2,updated_at=NOW()
-           WHERE id=$1 AND balance >= $2 RETURNING balance`,
+          `UPDATE pd_ads_account SET reserved_balance=GREATEST(0, reserved_balance-$2),updated_at=NOW()
+           WHERE id=$1 AND reserved_balance >= $2 RETURNING balance`,
           [campaign.ads_account_id,cost],
         );
         if (!account.rows[0]) {
           await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW() WHERE id=$1`, [campaign.id]);
+          await this.releaseFunds(c, campaign.store_id, campaign.id, Number(campaign.reserved_amount));
           throw new PdValidationError('Campaign budget is exhausted');
         }
         const chargedCampaign = await c.query(
-          `UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2,updated_at=NOW()
+          `UPDATE pd_ads_campaign SET spent_amount=spent_amount+$2, reserved_amount=GREATEST(0, reserved_amount-$2), updated_at=NOW()
            WHERE id=$1 AND spent_amount+$2 <= total_budget RETURNING spent_amount`,
           [campaign.id,cost],
         );
         if (!chargedCampaign.rows[0]) throw new PdValidationError('Campaign budget is exhausted');
         await c.query(`INSERT INTO pd_ads_transaction (id,account_id,campaign_id,type,amount,balance_after,idempotency_key,description)
           VALUES ($1,$2,$3,'campaign_debit',$4,$5,$6,$7)`, [pdId('adtx'),campaign.ads_account_id,campaign.id,-cost,account.rows[0].balance,`event:${input.eventKey}`,`${input.eventType} charge`]);
+        await this.checkAndTriggerAutoRefill(c, campaign.store_id, campaign.ads_account_id);
       }
       return { recorded:true, cost };
     });
@@ -430,13 +582,19 @@ export class AdsService {
 
   async processLifecycle() {
     return transaction(async(c)=>{
+      const campaignsToRelease = await c.query<{ id: string; store_id: string; reserved_amount: string }>(
+        `SELECT id, store_id, reserved_amount FROM pd_ads_campaign WHERE reserved_amount > 0 FOR UPDATE`
+      );
+      for (const campaign of campaignsToRelease.rows) {
+        await this.releaseFunds(c, campaign.store_id, campaign.id, Number(campaign.reserved_amount));
+      }
+
       const activated=await c.query(`UPDATE pd_ads_campaign SET status='active',updated_at=NOW()
         WHERE status='scheduled' AND starts_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW()) RETURNING id`);
       const completed=await c.query(`UPDATE pd_ads_campaign SET status='completed',updated_at=NOW()
         WHERE status IN ('active','scheduled','paused') AND ends_at IS NOT NULL AND ends_at<=NOW() RETURNING id`);
       const exhausted=await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW()
         WHERE status='active' AND spent_amount>=total_budget RETURNING id`);
-      // Daily statistics are retained; privacy-sensitive raw identifiers are short-lived.
       const anonymized=await c.query(`UPDATE pd_ads_event SET ip_hash=NULL,session_hash=NULL
         WHERE created_at<NOW()-INTERVAL '30 days' AND (ip_hash IS NOT NULL OR session_hash IS NOT NULL) RETURNING id`);
       const purged=await c.query(`DELETE FROM pd_ads_event WHERE created_at<NOW()-INTERVAL '90 days' RETURNING id`);
@@ -459,6 +617,14 @@ export class AdsService {
           ON CONFLICT (campaign_id,stat_date) DO UPDATE SET spend=pd_ads_daily_stat.spend+EXCLUDED.spend`,[campaign.id,amount]);
         charged++;
       }
+
+      const activeStores = await c.query<{ store_id: string }>(
+        `SELECT DISTINCT store_id FROM pd_ads_campaign WHERE status = 'active'`
+      );
+      for (const row of activeStores.rows) {
+        await this.allocateReservations(row.store_id, c);
+      }
+
       return {activated:activated.rows,completed:completed.rows,exhausted:exhausted.rows,charged,anonymized:anonymized.rowCount||0,purged:purged.rowCount||0};
     }).then(async result=>{
       const stateIds=[...result.activated.map((row:any)=>({id:row.id,state:'active'})),...result.completed.map((row:any)=>({id:row.id,state:'completed'})),...result.exhausted.map((row:any)=>({id:row.id,state:'exhausted'}))];

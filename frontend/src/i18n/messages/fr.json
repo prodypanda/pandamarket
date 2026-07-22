@@ -633,5 +633,16 @@
     "networkError": "Erreur réseau. Vérifiez votre connexion.",
     "unauthorized": "Vous devez être connecté pour accéder à cette page.",
     "forbidden": "Vous n'avez pas les droits pour cette action."
+  },
+  "ads": {
+    "center": "Centre de publicité",
+    "sponsorDesc": "Sponsorisez des produits, des services, du contenu ou votre marque entière.",
+    "newCampaign": "Nouvelle campagne",
+    "refillAccount": "Recharger le compte publicitaire",
+    "redeemCoupon": "Utiliser un coupon",
+    "availableBalance": "Solde disponible",
+    "reserved": "Réservé",
+    "totalSpend": "Dépenses totales",
+    "activeCampaigns": "Campagnes actives"
   }
 }

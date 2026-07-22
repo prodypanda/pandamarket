@@ -61,6 +61,7 @@ export class AdsRefillService {
       if(!account.rows[0])throw new PdNotFoundError(PdErrorCode.NOT_FOUND,'Ads account not found');
       await c.query(`INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,payment_reference,description,metadata)
         VALUES ($1,$2,'refill',$3,$4,$5,$6,'Admin-approved manual mandat Ads refill',$7)`,[pdId('adtx'),intent.account_id,intent.amount,account.rows[0].balance,`refill:${intent.id}`,intent.id,{reviewed_by:adminId,proof_url:intent.proof_url}]);
+      await adsService.allocateReservations(intent.store_id, c);
       return (await c.query(`UPDATE pd_ads_refill_intent SET status='captured',captured_at=NOW(),reviewed_by=$2,reviewed_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *`,[intentId,adminId])).rows[0];
     });
   }
@@ -103,6 +104,7 @@ export class AdsRefillService {
       await c.query(`SELECT id FROM pd_ads_account WHERE id=$1 FOR UPDATE`,[intent.account_id]);
       const updated=await c.query(`UPDATE pd_ads_account SET balance=balance+$2,updated_at=NOW() WHERE id=$1 RETURNING *`,[intent.account_id,intent.amount]);
       await c.query(`INSERT INTO pd_ads_transaction (id,account_id,type,amount,balance_after,idempotency_key,payment_reference,description) VALUES ($1,$2,'refill',$3,$4,$5,$6,$7)`,[pdId('adtx'),intent.account_id,intent.amount,updated.rows[0].balance,`refill:${intent.id}`,intent.gateway_reference,`${intent.gateway} Ads refill`]);
+      await adsService.allocateReservations(intent.store_id, c);
       return (await c.query(`UPDATE pd_ads_refill_intent SET status='captured',captured_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *`,[intent.id])).rows[0];
     });
   }

@@ -1,22 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { service, routes, zChain } = vi.hoisted(() => ({
-  service: {
-    getCampaign: vi.fn(),
-    updateCampaign: vi.fn(),
-    transition: vi.fn(),
-    createCampaign: vi.fn(),
-  },
-  routes: {} as Record<string, any[]>,
-  zChain: {} as any,
-}));
-
-Object.assign(zChain, {
-  trim: () => zChain, min: () => zChain, max: () => zChain,
-  positive: () => zChain, int: () => zChain, default: () => zChain,
-  optional: () => zChain, partial: () => zChain, pick: () => zChain,
-  refine: () => zChain, datetime: () => zChain, date: () => zChain,
-} as any);
+const { service, routes, zChain } = vi.hoisted(() => {
+  const chain: any = {};
+  const self = () => chain;
+  Object.assign(chain, {
+    trim: self, min: self, max: self,
+    positive: self, int: self, default: self,
+    optional: self, partial: self, pick: self,
+    refine: self, datetime: self, date: self,
+  });
+  return {
+    service: {
+      getCampaign: vi.fn(),
+      updateCampaign: vi.fn(),
+      transition: vi.fn(),
+      createCampaign: vi.fn(),
+    },
+    routes: {} as Record<string, any[]>,
+    zChain: chain,
+  };
+});
 
 vi.mock('express', () => ({
   Router: () => ({
@@ -28,6 +31,7 @@ vi.mock('express', () => ({
 vi.mock('zod', () => ({ z: {
   object: () => zChain, string: () => zChain, number: () => zChain,
   enum: () => zChain, array: () => zChain, record: () => zChain,
+  unknown: () => zChain,
   coerce: { number: () => zChain },
 } }));
 vi.mock('../services/ads.service', () => ({ adsService: service }));

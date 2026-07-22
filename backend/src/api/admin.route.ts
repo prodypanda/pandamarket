@@ -105,6 +105,28 @@ router.post('/ads/manual-refills/:id/review',validate(adsManualRefillReviewSchem
 router.patch('/ads/placements/bulk-pricing',validate(adsBulkPricingSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placements:await adsService.bulkUpdatePlacementPricing(req.body.pricing_model,req.body.default_price,req.body.placement_ids)})));
 router.patch('/ads/placements/:id',validate(adsPlacementSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placement:await adsService.updatePlacement(req.params.id,{enabled:req.body.enabled,defaultPrice:req.body.default_price,defaultPricingModel:req.body.default_pricing_model})})));
 
+const blockIpSchema = z.object({ ip_hash: z.string().min(1).max(128), reason: z.string().trim().min(3).max(1000) });
+router.get('/ads/fraud/blocked-ips', asyncHandler(async (_req: Request, res: Response) => {
+  const result = await query('SELECT ip_hash, reason, blocked_at FROM pd_ads_blocked_ip ORDER BY blocked_at DESC LIMIT 100');
+  res.json({ blocked_ips: result.rows });
+}));
+router.post('/ads/fraud/block-ip', validate(blockIpSchema), asyncHandler(async (req: Request, res: Response) => {
+  const result = await query(
+    `INSERT INTO pd_ads_blocked_ip (ip_hash, reason) VALUES ($1, $2)
+     ON CONFLICT (ip_hash) DO UPDATE SET reason = EXCLUDED.reason, blocked_at = NOW() RETURNING *`,
+    [req.body.ip_hash, req.body.reason]
+  );
+  res.status(201).json({ blocked: result.rows[0] });
+}));
+router.delete('/ads/fraud/blocked-ips/:ipHash', asyncHandler(async (req: Request, res: Response) => {
+  const result = await query('DELETE FROM pd_ads_blocked_ip WHERE ip_hash = $1 RETURNING ip_hash', [req.params.ipHash]);
+  if (!result.rows[0]) {
+    res.status(404).json({ error: { message: 'Blocked IP not found' } });
+    return;
+  }
+  res.json({ unblocked: req.params.ipHash });
+}));
+
 const userSecurityActivityParamsSchema = z.object({
   id: z.string().min(8).max(100),
 });

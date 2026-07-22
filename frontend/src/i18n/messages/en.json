@@ -633,5 +633,16 @@
     "networkError": "Network error. Check your connection.",
     "unauthorized": "You must be logged in to access this page.",
     "forbidden": "You don't have permission for this action."
+  },
+  "ads": {
+    "center": "Advertising Center",
+    "sponsorDesc": "Sponsor products, services, content, or your entire brand.",
+    "newCampaign": "New campaign",
+    "refillAccount": "Refill Ads account",
+    "redeemCoupon": "Redeem coupon",
+    "availableBalance": "Available balance",
+    "reserved": "Reserved",
+    "totalSpend": "Total spend",
+    "activeCampaigns": "Active campaigns"
   }
 }

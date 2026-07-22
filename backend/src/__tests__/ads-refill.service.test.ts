@@ -2,7 +2,7 @@ import {beforeEach,describe,expect,it,vi} from 'vitest';
 vi.mock('../db/pool',()=>({query:vi.fn(),transaction:vi.fn()}));
 vi.mock('../utils/crypto',()=>({pdId:vi.fn((type:string)=>`pd_${type}_test`)}));
 vi.mock('../plugins/payment',()=>({getPaymentProvider:vi.fn()}));
-vi.mock('../services/ads.service',()=>({adsService:{getAccount:vi.fn()}}));
+vi.mock('../services/ads.service',()=>({adsService:{getAccount:vi.fn(),allocateReservations:vi.fn()}}));
 vi.mock('../services/platform-config.service',()=>({platformConfigService:{getSettings:vi.fn()}}));
 vi.mock('../config',()=>({config:{hubDomain:'http://localhost:3000'}}));
 import {PaymentGateway} from '@pandamarket/types';
