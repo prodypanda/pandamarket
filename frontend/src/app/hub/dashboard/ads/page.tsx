@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { BarChart3, Megaphone, Plus, WalletCards, X } from 'lucide-react';
+import { BarChart3, Building, CheckCircle2, CreditCard, Image as ImageIcon, Loader2, Megaphone, Plus, Upload, WalletCards, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { AdsCampaignWizard } from '../../../../components/dashboard/AdsCampaignWizard';
@@ -14,12 +14,14 @@ type Transaction = { id:string; type:string; amount:string; balance_after:string
 type Refill = { id:string; gateway:string; amount:string; currency:string; status:string; gateway_reference?:string; proof_url?:string; rejection_reason?:string; created_at:string; captured_at?:string };
 type Analytics = { impressions:string; clicks:string; conversions:string; spend:string; revenue:string; ctr:number; average_cpc:number; conversion_rate:number; roas:number };
 type DailyStat = { stat_date:string; impressions:string; clicks:string; conversions:string; spend:string; revenue:string };
+type BillingInfo = { recipient_name:string; cin:string; city:string; bank_name:string; rib:string; iban:string; phone:string };
 
 const money = (value?: string, currency = 'TND') => `${Number(value || 0).toFixed(3)} ${currency}`;
 
 export default function AdsDashboardPage() {
   const { t, dir } = useLocale();
   const [account, setAccount] = useState<Account | null>(null);
+  const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -35,12 +37,15 @@ export default function AdsDashboardPage() {
   const [refillAmount, setRefillAmount] = useState('20');
   const [refillGateway, setRefillGateway] = useState('flouci');
   const [refillProofUrl, setRefillProofUrl] = useState('');
+  const [proofPreviewUrl, setProofPreviewUrl] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [autoRefillEnabled, setAutoRefillEnabled] = useState(false);
   const [autoRefillThreshold, setAutoRefillThreshold] = useState('5.000');
   const [autoRefillAmount, setAutoRefillAmount] = useState('20.000');
   const [savingAutoRefill, setSavingAutoRefill] = useState(false);
+
   const emptyCampaignForm={name:'',campaign_type:'sponsored_product',objective:'traffic',pricing_model:'cpc',daily_budget:'5',total_budget:'50',bid_amount:'0.100',creative_title:'',creative_description:'',image_url:'',cta_label:'Shop now',destination_url:'',product_id:'',starts_at:'',ends_at:'',locale:'all',category:'',device:'all',placement_ids:[] as string[]};
   const [form, setForm] = useState(emptyCampaignForm);
 
@@ -57,8 +62,19 @@ export default function AdsDashboardPage() {
       ]);
       if (!a.ok || !c.ok || !p.ok || !t.ok || !n.ok || !r.ok) throw new Error('Unable to load Ads data');
       const [ad,cd,pd,td,nd,rd] = await Promise.all([a.json(),c.json(),p.json(),t.json(),n.json(),r.json()]);
-      setAccount(ad.account); setCampaigns(cd.campaigns || []); setPlacements(pd.placements || []); setTransactions(td.transactions || []); setAnalytics(nd.summary || null); setDaily(nd.daily || []); setRefills(rd.refills || []);
-      if(ad.account){ setAutoRefillEnabled(Boolean(ad.account.auto_refill_enabled)); if(ad.account.auto_refill_threshold) setAutoRefillThreshold(String(ad.account.auto_refill_threshold)); if(ad.account.auto_refill_amount) setAutoRefillAmount(String(ad.account.auto_refill_amount)); }
+      setAccount(ad.account);
+      if (ad.billing_info) setBillingInfo(ad.billing_info);
+      setCampaigns(cd.campaigns || []);
+      setPlacements(pd.placements || []);
+      setTransactions(td.transactions || []);
+      setAnalytics(nd.summary || null);
+      setDaily(nd.daily || []);
+      setRefills(rd.refills || []);
+      if(ad.account){
+        setAutoRefillEnabled(Boolean(ad.account.auto_refill_enabled));
+        if(ad.account.auto_refill_threshold) setAutoRefillThreshold(String(ad.account.auto_refill_threshold));
+        if(ad.account.auto_refill_amount) setAutoRefillAmount(String(ad.account.auto_refill_amount));
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load Ads data'); }
     finally { setLoading(false); }
   };
@@ -84,15 +100,51 @@ export default function AdsDashboardPage() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to save auto-refill settings'); }
     finally { setSavingAutoRefill(false); }
   };
-  const startRefill = async (event: React.FormEvent) => {
+
+  const uploadProofPicture = async (file: File) => {
+    setError(''); setUploadingFile(true);
+    try {
+      const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, content_type: file.type, file_size: file.size, purpose: 'mandat_proof' }),
+      });
+      if (!presignRes.ok) {
+        const errData = await presignRes.json();
+        throw new Error(errData.error?.message || 'Failed to prepare picture upload');
+      }
+      const presignData = await presignRes.json();
+      const { upload_url, file_key, public_url } = presignData;
+      if (upload_url) {
+        const uploadRes = await fetch(upload_url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+        if (!uploadRes.ok) throw new Error('Picture upload to server failed');
+      }
+      const finalUrl = public_url || file_key || upload_url;
+      setRefillProofUrl(finalUrl);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => setProofPreviewUrl(e.target?.result as string);
+        reader.readAsDataURL(file);
+      } else {
+        setProofPreviewUrl(finalUrl);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Picture upload failed');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const startRefill=async(event:React.FormEvent)=>{
     event.preventDefault(); setError(''); setSuccessMsg('');
     if(refillGateway==='manual_mandat'){
-      if(!refillProofUrl.trim()){setError('Please provide a proof URL for your bank transfer receipt.');return;}
+      if(!refillProofUrl.trim()){setError(t('ads.proofUrlHint') || 'Please upload a picture of your payment receipt.');return;}
       const r=await fetchWithCsrf('/api/pd/ads/refills/manual-mandat',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:Number(refillAmount),proof_url:refillProofUrl.trim()})});
       const d=await r.json();if(!r.ok){setError(d.error?.message||'Unable to submit manual refill');return;}
-      setRefilling(false);setRefillProofUrl('');setSuccessMsg(t('ads.mandatSubmitted'));await load();return;
+      setRefilling(false);setRefillProofUrl('');setProofPreviewUrl('');setSuccessMsg(t('ads.mandatSubmitted'));await load();return;
     }
-    const r=await fetchWithCsrf('/api/pd/ads/refills',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:Number(refillAmount),gateway:refillGateway})});const d=await r.json();if(!r.ok){setError(d.error?.message||'Unable to start refill');return;}window.location.href=d.checkout_url;};
+    const r=await fetchWithCsrf('/api/pd/ads/refills',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:Number(refillAmount),gateway:refillGateway})});const d=await r.json();if(!r.ok){setError(d.error?.message||'Unable to start refill');return;}window.location.href=d.checkout_url;
+  };
 
   const createCampaign = async (event: React.FormEvent) => {
     event.preventDefault(); setError('');
@@ -114,7 +166,7 @@ export default function AdsDashboardPage() {
     await load();
   };
 
-  if (loading) return <div className="p-8 text-sm font-semibold text-slate-500">Loading PandaMarket Ads…</div>;
+  if (loading) return <div className="p-8 text-sm font-semibold text-slate-500">{t('ads.loadingAds')}</div>;
   return (
     <div dir={dir} className="space-y-7 p-4 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -126,7 +178,9 @@ export default function AdsDashboardPage() {
       <div className="grid gap-4 md:grid-cols-4">
         {[[t('ads.availableBalance'),money(account?.balance,account?.currency),WalletCards],[t('ads.reserved'),money(account?.reserved_balance,account?.currency),WalletCards],[t('ads.totalSpend'),money(account?.total_spend,account?.currency),BarChart3],[t('ads.activeCampaigns'),String(account?.active_campaigns || 0),Megaphone]].map(([label,value,Icon]) => <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><Icon className="h-5 w-5 text-emerald-600" /><p className="mt-4 text-xs font-bold uppercase text-slate-400">{String(label)}</p><p className="mt-1 text-2xl font-black text-slate-900">{String(value)}</p></div>)}
       </div>
-      <div className={`rounded-2xl border p-5 ${Number(account?.balance||0)<5?'border-red-200 bg-red-50':'border-amber-200 bg-amber-50'}`}><p className={`font-black ${Number(account?.balance||0)<5?'text-red-900':'text-amber-900'}`}>{Number(account?.balance||0)<5?'Low Ads balance':'Prepaid Ads account'}</p><p className={`mt-1 text-sm ${Number(account?.balance||0)<5?'text-red-700':'text-amber-800'}`}>{Number(account?.balance||0)<5?'Refill your Ads account before submitting or launching campaigns.':'Your advertising funds are separate from sales revenue and stop automatically at budget limits.'}</p></div>
+      <div className={`rounded-2xl border p-5 ${Number(account?.balance||0)<5?'border-red-200 bg-red-50':'border-amber-200 bg-amber-50'}`}><p className={`font-black ${Number(account?.balance||0)<5?'text-red-900':'text-amber-900'}`}>{Number(account?.balance||0)<5?t('ads.lowBalanceTitle'):t('ads.prepaidAccountTitle')}</p><p className={`mt-1 text-sm ${Number(account?.balance||0)<5?'text-red-700':'text-amber-800'}`}>{Number(account?.balance||0)<5?t('ads.lowBalanceDesc'):t('ads.prepaidAccountDesc')}</p></div>
+      
+      {/* Auto-Refill Controls */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form onSubmit={saveAutoRefill} className="flex flex-wrap items-center justify-between gap-4">
           <div><h2 className="font-black text-slate-900">{t('ads.autoRefillTitle')}</h2><p className="text-xs text-slate-500">{t('ads.autoRefillDesc')}</p></div>
@@ -142,13 +196,109 @@ export default function AdsDashboardPage() {
           </div>
         </form>
       </section>
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-black">Performance</h2><p className="text-xs text-slate-500">Viewable impressions and valid clicks in the selected period.</p></div><div className="flex flex-wrap gap-2"><select aria-label="Campaign filter" value={campaignFilter} onChange={e=>setCampaignFilter(e.target.value)} className="max-w-48 rounded-lg border px-3 py-2 text-sm"><option value="">All campaigns</option>{campaigns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><button onClick={()=>load()} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white">Apply</button></div></div><div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">{[['Impressions',analytics?.impressions||0],['Clicks',analytics?.clicks||0],['CTR',`${((analytics?.ctr||0)*100).toFixed(2)}%`],['Avg. CPC',money(String(analytics?.average_cpc||0))],['Conversions',analytics?.conversions||0],['Conv. rate',`${((analytics?.conversion_rate||0)*100).toFixed(2)}%`],['Revenue',money(analytics?.revenue)],['ROAS',`${Number(analytics?.roas||0).toFixed(2)}×`]].map(([l,v])=><div key={String(l)} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase text-slate-400">{String(l)}</p><p className="mt-1 font-black text-slate-900">{String(v)}</p></div>)}</div><AdsPerformanceCharts daily={daily}/></section>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-slate-900">Campaigns</h2></div>{campaigns.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">No campaigns yet. Create your first sponsored campaign.</div> : <div className="divide-y divide-slate-100">{campaigns.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black text-slate-900">{c.name}</p><p className="text-xs font-semibold text-slate-500">{c.campaign_type.replaceAll('_',' ')} · {money(c.spent_amount)} spent of {money(c.total_budget)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">{c.status.replaceAll('_',' ')}</span>{c.status === 'draft' && <button onClick={() => action(c.id,'submit')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Submit</button>}{c.status === 'approved' && <button onClick={() => action(c.id,'launch')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Launch</button>}{c.status === 'active' && <button onClick={() => action(c.id,'pause')} className="rounded-lg border px-3 py-2 text-xs font-black">Pause</button>}{c.status === 'paused' && <button onClick={() => action(c.id,'resume')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Resume</button>}</div></div>)}</div>}</section>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-black">{t('ads.refillHistory')}</h2><p className="text-xs text-slate-500">{t('ads.refillHistoryDesc')}</p></div>{refills.length===0?<p className="p-8 text-center text-sm text-slate-400">{t('ads.noRefills')}</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">{t('ads.date')}</th><th className="p-4">{t('ads.gateway')}</th><th className="p-4">{t('ads.amount')}</th><th className="p-4">{t('ads.status')}</th><th className="p-4">{t('ads.proof')}</th><th className="p-4">{t('ads.receipt')}</th></tr></thead><tbody className="divide-y">{refills.map(r=><tr key={r.id}><td className="p-4 text-slate-500">{new Date(r.created_at).toLocaleString()}</td><td className="p-4 font-bold capitalize">{r.gateway==='manual_mandat'?t('ads.mandatGateway'):r.gateway}</td><td className="p-4 font-black">{money(r.amount,r.currency)}</td><td className="p-4">{r.status==='captured'?<span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{t('ads.captured')}</span>:r.status==='pending_review'?<span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">{t('ads.pendingReview')}</span>:r.status==='rejected'?<span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">{t('ads.rejected')}</span>:<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{r.status.replaceAll('_',' ')}</span>}{r.status==='rejected'&&r.rejection_reason&&<p className="mt-1 text-[11px] text-red-500">{r.rejection_reason}</p>}</td><td className="p-4">{r.proof_url?<a href={r.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-blue-600 underline">{t('ads.viewProof')}</a>:<span className="text-xs text-slate-400">—</span>}</td><td className="p-4">{r.status==='captured'?<a href={`/api/pd/ads/refills/${encodeURIComponent(r.id)}/receipt`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{t('ads.download')}</a>:<span className="text-xs text-slate-400">{t('ads.unavailable')}</span>}</td></tr>)}</tbody></table></div>}</section>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-black">Ads account transactions</h2></div>{transactions.length===0?<p className="p-8 text-center text-sm text-slate-400">No Ads transactions yet.</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">Date</th><th className="p-4">Type</th><th className="p-4">Description</th><th className="p-4">Amount</th><th className="p-4">Balance</th></tr></thead><tbody className="divide-y">{transactions.map(t=><tr key={t.id}><td className="p-4 text-slate-500">{new Date(t.created_at).toLocaleString()}</td><td className="p-4 font-bold">{t.type.replaceAll('_',' ')}</td><td className="p-4 text-slate-500">{t.description||'—'}</td><td className={`p-4 font-black ${Number(t.amount)>=0?'text-emerald-600':'text-red-600'}`}>{Number(t.amount)>=0?'+':''}{money(t.amount)}</td><td className="p-4 font-bold">{money(t.balance_after)}</td></tr>)}</tbody></table></div>}</section>
-      {refilling&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"><form onSubmit={startRefill} className="w-full max-w-md rounded-3xl bg-white p-7"><div className="flex justify-between"><div><h2 className="text-2xl font-black">{t('ads.refillAccount')}</h2><p className="text-sm text-slate-500">{t('ads.refillDesc')}</p></div><button type="button" onClick={()=>setRefilling(false)}><X/></button></div><label className="mt-6 block text-xs font-black uppercase text-slate-500">{t('ads.amountTnd')}<input type="number" min="0.001" step="0.001" value={refillAmount} onChange={e=>setRefillAmount(e.target.value)} className="mt-1 w-full rounded-xl border p-3 text-lg font-black"/></label><label className="mt-4 block text-xs font-black uppercase text-slate-500">{t('ads.gateway')}<select value={refillGateway} onChange={e=>setRefillGateway(e.target.value)} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"><option value="flouci">Flouci</option><option value="konnect">Konnect</option><option value="manual_mandat">{t('ads.mandatGateway')}</option></select></label>{refillGateway==='manual_mandat'&&<label className="mt-4 block text-xs font-black uppercase text-slate-500">{t('ads.proofUrl')}<input required type="url" placeholder="https://..." value={refillProofUrl} onChange={e=>setRefillProofUrl(e.target.value)} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"/><p className="mt-1 text-[11px] font-normal normal-case text-slate-400">{t('ads.proofUrlHint')}</p></label>}<button className="mt-6 w-full rounded-xl bg-emerald-600 py-3 font-black text-white">{refillGateway==='manual_mandat'?t('ads.submitMandat'):t('ads.continuePayment')}</button></form></div>}
+
+      {/* Performance Section */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-black">{t('ads.performanceTitle')}</h2><p className="text-xs text-slate-500">{t('ads.performanceDesc')}</p></div><div className="flex flex-wrap gap-2"><select aria-label="Campaign filter" value={campaignFilter} onChange={e=>setCampaignFilter(e.target.value)} className="max-w-48 rounded-lg border px-3 py-2 text-sm"><option value="">{t('ads.allCampaigns')}</option>{campaigns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><button onClick={()=>load()} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white">{t('ads.apply')}</button></div></div><div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">{[[t('ads.impressions'),analytics?.impressions||0],[t('ads.clicks'),analytics?.clicks||0],[t('ads.ctr'),`${((analytics?.ctr||0)*100).toFixed(2)}%`],[t('ads.avgCpc'),money(String(analytics?.average_cpc||0))],[t('ads.conversions'),analytics?.conversions||0],[t('ads.convRate'),`${((analytics?.conversion_rate||0)*100).toFixed(2)}%`],[t('ads.revenue'),money(analytics?.revenue)],[t('ads.roas'),`${Number(analytics?.roas||0).toFixed(2)}×`]].map(([l,v])=><div key={String(l)} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase text-slate-400">{String(l)}</p><p className="mt-1 font-black text-slate-900">{String(v)}</p></div>)}</div><AdsPerformanceCharts daily={daily}/></section>
+      
+      {/* Campaigns Section */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-slate-900">{t('ads.campaignsTitle')}</h2></div>{campaigns.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">{t('ads.noCampaigns')}</div> : <div className="divide-y divide-slate-100">{campaigns.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black text-slate-900">{c.name}</p><p className="text-xs font-semibold text-slate-500">{c.campaign_type.replaceAll('_',' ')} · {money(c.spent_amount)} {t('ads.spentOf')} {money(c.total_budget)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">{c.status.replaceAll('_',' ')}</span>{c.status === 'draft' && <button onClick={() => action(c.id,'submit')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">{t('ads.submit')}</button>}{c.status === 'approved' && <button onClick={() => action(c.id,'launch')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">{t('ads.launch')}</button>}{c.status === 'active' && <button onClick={() => action(c.id,'pause')} className="rounded-lg border px-3 py-2 text-xs font-black">{t('ads.pause')}</button>}{c.status === 'paused' && <button onClick={() => action(c.id,'resume')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">{t('ads.resume')}</button>}</div></div>)}</div>}</section>
+
+      {/* Refill History */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-black">{t('ads.refillHistoryTitle')}</h2><p className="text-xs text-slate-500">{t('ads.refillHistoryDesc')}</p></div>{refills.length===0?<p className="p-8 text-center text-sm text-slate-400">{t('ads.noRefills')}</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">{t('ads.date')}</th><th className="p-4">{t('ads.gateway')}</th><th className="p-4">{t('ads.amount')}</th><th className="p-4">{t('ads.status')}</th><th className="p-4">{t('ads.proof')}</th><th className="p-4">{t('ads.receipt')}</th></tr></thead><tbody className="divide-y">{refills.map(r=><tr key={r.id}><td className="p-4 text-slate-500">{new Date(r.created_at).toLocaleString()}</td><td className="p-4 font-bold capitalize">{r.gateway==='manual_mandat'?t('ads.mandatGateway'):r.gateway}</td><td className="p-4 font-black">{money(r.amount,r.currency)}</td><td className="p-4">{r.status==='captured'?<span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{t('ads.captured')}</span>:r.status==='pending_review'?<span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">{t('ads.pendingReview')}</span>:r.status==='rejected'?<span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">{t('ads.rejected')}</span>:<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{r.status.replaceAll('_',' ')}</span>}{r.status==='rejected'&&r.rejection_reason&&<p className="mt-1 text-[11px] text-red-500">{r.rejection_reason}</p>}</td><td className="p-4">{r.proof_url?<a href={r.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-blue-600 underline">{t('ads.viewProof')}</a>:<span className="text-xs text-slate-400">—</span>}</td><td className="p-4">{r.status==='captured'?<a href={`/api/pd/ads/refills/${encodeURIComponent(r.id)}/receipt`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{t('ads.download')}</a>:<span className="text-xs text-slate-400">{t('ads.unavailable')}</span>}</td></tr>)}</tbody></table></div>}</section>
+
+      {/* Transactions Section */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-black">{t('ads.transactionsTitle')}</h2></div>{transactions.length===0?<p className="p-8 text-center text-sm text-slate-400">{t('ads.noTransactions')}</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">{t('ads.date')}</th><th className="p-4">{t('ads.type')}</th><th className="p-4">{t('ads.description')}</th><th className="p-4">{t('ads.amount')}</th><th className="p-4">{t('ads.balance')}</th></tr></thead><tbody className="divide-y">{transactions.map(t=><tr key={t.id}><td className="p-4 text-slate-500">{new Date(t.created_at).toLocaleString()}</td><td className="p-4 font-bold">{t.type.replaceAll('_',' ')}</td><td className="p-4 text-slate-500">{t.description||'—'}</td><td className={`p-4 font-black ${Number(t.amount)>=0?'text-emerald-600':'text-red-600'}`}>{Number(t.amount)>=0?'+':''}{money(t.amount)}</td><td className="p-4 font-bold">{money(t.balance_after)}</td></tr>)}</tbody></table></div>}</section>
+      
+      {/* Refill Modal with Picture Upload and Billing Information */}
+      {refilling && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <form onSubmit={startRefill} className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">{t('ads.refillModalTitle')}</h2>
+                <p className="text-xs text-slate-500">{t('ads.refillModalDesc')}</p>
+              </div>
+              <button type="button" onClick={() => setRefilling(false)} className="rounded-full p-1 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
+              {t('ads.amountTnd')}
+              <input type="number" min="0.001" step="0.001" value={refillAmount} onChange={e => setRefillAmount(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-lg font-black text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" />
+            </label>
+
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
+              {t('ads.gateway')}
+              <select value={refillGateway} onChange={e => setRefillGateway(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-bold text-slate-900 normal-case focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="flouci">Flouci</option>
+                <option value="konnect">Konnect</option>
+                <option value="manual_mandat">{t('ads.mandatGateway')}</option>
+              </select>
+            </label>
+
+            {/* Billing Details & Picture Upload for Bank Transfer / Mandat */}
+            {refillGateway === 'manual_mandat' && (
+              <div className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                <div className="flex items-center gap-2">
+                  <Building className="h-5 w-5 text-amber-700" />
+                  <h3 className="font-black text-amber-900 text-sm">{t('ads.billingDetailsTitle')}</h3>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-slate-800 font-semibold bg-white p-3 rounded-xl border border-amber-100">
+                  <p><span className="font-bold text-slate-500">{t('ads.recipientName')}:</span> {billingInfo?.recipient_name || 'PandaMarket SARL'}</p>
+                  <p><span className="font-bold text-slate-500">{t('ads.bankName')}:</span> {billingInfo?.bank_name || 'STB (Société Tunisienne de Banque)'}</p>
+                  <p className="font-mono text-slate-900"><span className="font-bold text-slate-500 font-sans">{t('ads.rib')}:</span> {billingInfo?.rib || '10 000 0000000000000 00'}</p>
+                  <p className="font-mono text-slate-900"><span className="font-bold text-slate-500 font-sans">{t('ads.iban')}:</span> {billingInfo?.iban || 'TN59 1000 0000 0000 0000 0000'}</p>
+                  <p><span className="font-bold text-slate-500">{t('ads.cinNumber')}:</span> {billingInfo?.cin || '01234567'} ({billingInfo?.city || 'Tunis'})</p>
+                  {billingInfo?.phone && <p><span className="font-bold text-slate-500">{t('ads.phone')}:</span> {billingInfo.phone}</p>}
+                </div>
+
+                <p className="text-[11px] font-medium text-amber-800">{t('ads.transferInstructions')}</p>
+
+                {/* Picture Upload Input */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-black uppercase text-slate-700">{t('ads.proofImage')}</label>
+                  
+                  {uploadingFile ? (
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-white p-4 text-xs font-bold text-slate-600">
+                      <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                      {t('ads.uploadingProof')}
+                    </div>
+                  ) : proofPreviewUrl ? (
+                    <div className="relative overflow-hidden rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                      <div className="flex items-center gap-3">
+                        {proofPreviewUrl.startsWith('data:image') || proofPreviewUrl.startsWith('http') ? (
+                          <img src={proofPreviewUrl} alt="Receipt preview" className="h-14 w-14 rounded-lg object-cover border border-emerald-200" />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold text-xs">PDF</div>
+                        )}
+                        <div>
+                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-800">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Uploaded successfully
+                          </div>
+                          <button type="button" onClick={() => { setRefillProofUrl(''); setProofPreviewUrl(''); }} className="mt-1 text-[11px] font-bold text-red-600 underline">Change picture</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-white p-4 text-center transition hover:border-emerald-500 hover:bg-emerald-50/50">
+                      <Upload className="h-6 w-6 text-amber-600" />
+                      <span className="mt-2 text-xs font-black text-slate-900">{t('ads.uploadProofBtn') || 'Click to select picture'}</span>
+                      <span className="mt-0.5 text-[10px] text-slate-400">PNG, JPG, WEBP, or PDF up to 10MB</span>
+                      <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadProofPicture(e.target.files[0]); }} />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button disabled={uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-lg shadow-emerald-600/20">
+              {refillGateway === 'manual_mandat' ? t('ads.submitMandat') : t('ads.continueToPayment')}
+            </button>
+          </form>
+        </div>
+      )}
+
       {creating && <AdsCampaignWizard placements={placements} productId={form.product_id} onClose={()=>setCreating(false)} onCreated={load} onError={setError}/>} 
-      {false && <div className="hidden"><form onSubmit={createCampaign} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl"><div className="flex justify-between"><div><h2 className="text-2xl font-black">Create campaign</h2><p className="text-sm text-slate-500">Save as draft, then refill and submit for review.</p></div><button type="button" onClick={() => setCreating(false)} aria-label="Close"><X /></button></div><div className="mt-6 grid gap-4 sm:grid-cols-2"><label className="text-xs font-black uppercase text-slate-500">Campaign name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"/></label><label className="text-xs font-black uppercase text-slate-500">Format<select value={form.campaign_type} onChange={e=>setForm({...form,campaign_type:e.target.value})} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"><option value="sponsored_product">Sponsored product/service</option><option value="sponsored_brand">Sponsored brand</option><option value="sponsored_content">Sponsored content</option></select></label><label className="text-xs font-black uppercase text-slate-500">Objective<select value={form.objective} onChange={e=>setForm({...form,objective:e.target.value})} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"><option value="awareness">Awareness</option><option value="traffic">Traffic</option><option value="sales">Sales</option><option value="conversions">Conversions</option></select></label><label className="text-xs font-black uppercase text-slate-500">Pricing<select value={form.pricing_model} onChange={e=>setForm({...form,pricing_model:e.target.value})} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"><option value="cpc">Cost per click</option><option value="cpm">Cost per 1,000 impressions</option><option value="fixed_daily">Fixed daily</option></select></label>{[['Daily budget','daily_budget'],['Total budget','total_budget'],['Bid / rate','bid_amount']].map(([label,key])=><label key={key} className="text-xs font-black uppercase text-slate-500">{label}<input required type="number" min="0.001" step="0.001" value={form[key as 'daily_budget'|'total_budget'|'bid_amount']} onChange={e=>setForm({...form,[key]:e.target.value})} className="mt-1 w-full rounded-xl border p-3 text-sm normal-case"/></label>)}</div><div className="mt-5 rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-500">Creative</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><input required placeholder="Creative title" value={form.creative_title} onChange={e=>setForm({...form,creative_title:e.target.value})} className="rounded-xl border p-3 text-sm"/><input placeholder="Image URL" value={form.image_url} onChange={e=>setForm({...form,image_url:e.target.value})} className="rounded-xl border p-3 text-sm"/><textarea placeholder="Description" value={form.creative_description} onChange={e=>setForm({...form,creative_description:e.target.value})} className="rounded-xl border p-3 text-sm sm:col-span-2"/><input placeholder="CTA label" value={form.cta_label} onChange={e=>setForm({...form,cta_label:e.target.value})} className="rounded-xl border p-3 text-sm"/><input placeholder="Destination URL" value={form.destination_url} onChange={e=>setForm({...form,destination_url:e.target.value})} className="rounded-xl border p-3 text-sm"/></div>{(form.creative_title||form.image_url)&&<div className="mt-4 overflow-hidden rounded-2xl border border-amber-200 bg-white"><div className="aspect-[3/1] bg-slate-100">{form.image_url&&<img src={form.image_url} alt="Campaign preview" className="h-full w-full object-cover"/>}</div><div className="p-4"><span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black uppercase text-amber-800">Sponsored</span><p className="mt-2 font-black">{form.creative_title||'Creative title'}</p><p className="text-sm text-slate-500">{form.creative_description}</p></div></div>}</div><div className="mt-5"><p className="text-xs font-black uppercase text-slate-500">Schedule and targeting</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Starts<input type="datetime-local" value={form.starts_at} onChange={e=>setForm({...form,starts_at:e.target.value})} className="mt-1 w-full rounded-xl border p-3"/></label><label className="text-xs font-bold text-slate-500">Ends<input type="datetime-local" value={form.ends_at} onChange={e=>setForm({...form,ends_at:e.target.value})} className="mt-1 w-full rounded-xl border p-3"/></label><select aria-label="Target locale" value={form.locale} onChange={e=>setForm({...form,locale:e.target.value})} className="rounded-xl border p-3 text-sm"><option value="all">All languages</option><option value="fr">French</option><option value="en">English</option><option value="ar">Arabic</option></select><select aria-label="Target device" value={form.device} onChange={e=>setForm({...form,device:e.target.value})} className="rounded-xl border p-3 text-sm"><option value="all">All devices</option><option value="mobile">Mobile</option><option value="desktop">Desktop</option></select><input placeholder="Category slug (optional)" value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="rounded-xl border p-3 text-sm sm:col-span-2"/></div></div><div className="mt-5"><p className="text-xs font-black uppercase text-slate-500">Placements</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{placements.map((p) => <label key={p.id} className="flex gap-2 rounded-xl border p-3 text-sm font-semibold"><input type="checkbox" checked={form.placement_ids.includes(p.id)} onChange={(e) => setForm({...form,placement_ids:e.target.checked?[...form.placement_ids,p.id]:form.placement_ids.filter((id) => id !== p.id)})} /> {p.name}</label>)}</div></div><button className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-black text-white">Create draft campaign</button></form></div>}
     </div>
   );
 }

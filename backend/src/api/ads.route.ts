@@ -5,6 +5,7 @@ import { adsDeliveryRateLimit, adsEventRateLimit, asyncHandler, optionalAuth, re
 import * as crypto from 'crypto';
 import { config } from '../config';
 import { adsRefillService } from '../services/ads-refill.service';
+import { platformConfigService } from '../services/platform-config.service';
 import { PaymentGateway } from '@pandamarket/types';
 import { query } from '../db/pool';
 import { logger } from '../utils/logger';
@@ -86,7 +87,24 @@ const refillSchema=z.object({amount:z.number().positive().max(1000000),gateway:z
 const manualRefillSchema=z.object({amount:z.number().positive().max(1000000),proof_url:z.string().trim().min(1).max(2048).refine(value=>/^https?:\/\//i.test(value)||/^\/(?!\/)/.test(value),'Invalid proof URL')});
 const couponRedeemSchema=z.object({code:z.string().trim().min(4).max(40)});
 router.post('/coupons/redeem',requireStore,validate(couponRedeemSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.redeemCoupon(req.user!.store_id!,req.body.code)})));
-router.get('/account', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ account: await adsService.getAccount(req.user!.store_id!) })));
+router.get('/account', requireStore, asyncHandler(async (req: Request, res: Response) => {
+  const [account, settings] = await Promise.all([
+    adsService.getAccount(req.user!.store_id!),
+    platformConfigService.getSettings(),
+  ]);
+  res.json({
+    account,
+    billing_info: {
+      recipient_name: settings.mandat_recipient_name,
+      cin: settings.mandat_recipient_cin,
+      city: settings.mandat_recipient_city,
+      bank_name: settings.mandat_bank_name,
+      rib: settings.mandat_bank_rib,
+      iban: settings.mandat_bank_iban,
+      phone: settings.mandat_recipient_phone,
+    },
+  });
+}));
 const autoRefillSettingsSchema = z.object({
   enabled: z.boolean(),
   threshold: z.number().min(0).max(100000),

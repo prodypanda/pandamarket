@@ -11,6 +11,7 @@ import {
   CreditCard,
   DollarSign,
   ExternalLink,
+  Megaphone,
   Package,
   Plus,
   Settings,
@@ -412,6 +413,9 @@ export default function DashboardOverview() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link href="/hub/dashboard/ads" className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-amber-600 shadow-sm">
+              PandaMarket Ads <Megaphone className="h-4 w-4" />
+            </Link>
             <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-amber-50">
               View storefront <ExternalLink className="h-4 w-4" />
             </Link>
@@ -423,11 +427,12 @@ export default function DashboardOverview() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: 'Products', icon: Package, href: '/hub/dashboard/products', color: 'text-blue-600 bg-blue-50' },
           { label: 'Orders', icon: ShoppingCart, href: '/hub/dashboard/orders', color: 'text-violet-600 bg-violet-50' },
-          { label: 'Analytics', icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-amber-600 bg-amber-50' },
+          { label: 'PandaMarket Ads', icon: Megaphone, href: '/hub/dashboard/ads', color: 'text-amber-600 bg-amber-50' },
+          { label: 'Analytics', icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-emerald-600 bg-emerald-50' },
           { label: 'Settings', icon: Settings, href: '/hub/dashboard/settings', color: 'text-gray-600 bg-gray-100' },
         ].map((action) => (
           <Link key={action.label} href={action.href} className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
