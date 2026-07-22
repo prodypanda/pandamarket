@@ -244,6 +244,29 @@ export default function AdminAdsPage() {
     await load();
   };
 
+  const createCoupon = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const code = String(fd.get('code') || '').trim();
+    const amount = Number(fd.get('amount'));
+    const max_redemptions = Number(fd.get('max_redemptions') || 100);
+    if (!code || !amount) return;
+    setError(''); setSuccessMsg('');
+    const r = await fetchWithCsrf('/api/pd/admin/ads/coupons', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, amount, max_redemptions, enabled: true }),
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      setError(d.error?.message || 'Create coupon failed');
+      return;
+    }
+    (e.target as HTMLFormElement).reset();
+    setSuccessMsg(`Promo coupon ${code.toUpperCase()} created successfully!`);
+    await load();
+  };
+
   const setStatus = async (account: Account) => {
     const status = account.status === 'active' ? 'suspended' : 'active';
     if (!window.confirm(`${status === 'suspended' ? 'Suspend' : 'Reactivate'} ${account.store_name}'s Ads account?`)) return;
@@ -721,7 +744,84 @@ export default function AdminAdsPage() {
             </section>
           )}
 
-          {/* TAB 6: CONFIGURATION (Enhanced Control Center) */}
+          {/* TAB 6: PROMOS & COUPONS */}
+          {activeTab === 'coupons' && (
+            <div className="space-y-6">
+              <section className="rounded-2xl border bg-white shadow-sm p-6">
+                <h2 className="font-black text-slate-900 text-lg">Create Promotional Coupon</h2>
+                <form onSubmit={createCoupon} className="mt-4 grid gap-3 sm:grid-cols-4">
+                  <input name="code" placeholder="Coupon Code (e.g. WELCOME50)" required className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-900 uppercase" />
+                  <input name="amount" type="number" step="0.1" min="1" placeholder="Credit Amount (TND)" required className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-900" />
+                  <input name="max_redemptions" type="number" min="1" defaultValue="100" placeholder="Max Redemptions" required className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-900" />
+                  <button type="submit" className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-700 transition cursor-pointer">
+                    + Create Coupon
+                  </button>
+                </form>
+              </section>
+
+              <section className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+                <div className="border-b p-5"><h2 className="font-black text-slate-900">Active Promo Coupons ({coupons.length})</h2></div>
+                <div className="divide-y divide-gray-100">
+                  {coupons.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between p-5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">{c.code}</span>
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800">
+                            {money(c.amount)} Credit
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">Redemptions: {c.redemption_count} / {c.max_redemptions}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(c.code)}
+                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                      >
+                        Copy Code
+                      </button>
+                    </div>
+                  ))}
+                  {coupons.length === 0 && <p className="p-8 text-center text-sm font-semibold text-gray-400">No promo coupons created yet.</p>}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* TAB 7: FRAUD & SAFETY */}
+          {activeTab === 'fraud' && (
+            <div className="space-y-6">
+              <section className="rounded-2xl border bg-white shadow-sm p-6">
+                <h2 className="font-black text-slate-900 text-lg">Fraud & Click Protection Controls</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Manually block suspicious IP hashes or bot identifiers from generating billable ad events.</p>
+                <form onSubmit={blockIP} className="mt-4 flex flex-wrap gap-3">
+                  <input name="ip_hash" placeholder="IP Hash / Session Identifier" required className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-900 flex-1 min-w-64" />
+                  <input name="reason" placeholder="Block reason (e.g. click farm activity)" className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-900 flex-1 min-w-64" />
+                  <button type="submit" className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-black text-white hover:bg-red-700 transition cursor-pointer">
+                    Block Identifier
+                  </button>
+                </form>
+              </section>
+
+              <section className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+                <div className="border-b p-5"><h2 className="font-black text-slate-900">Blocked IP Hashes ({blockedIPs.length})</h2></div>
+                <div className="divide-y divide-gray-100">
+                  {blockedIPs.map((b) => (
+                    <div key={b.ip_hash} className="flex items-center justify-between p-4">
+                      <div>
+                        <p className="font-mono text-xs font-bold text-slate-900">{b.ip_hash}</p>
+                        <p className="text-xs text-slate-500">{b.reason || 'Manual block'} · Blocked: {new Date(b.blocked_at).toLocaleString()}</p>
+                      </div>
+                      <button type="button" onClick={() => unblockIP(b.ip_hash)} className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+                        Unblock
+                      </button>
+                    </div>
+                  ))}
+                  {blockedIPs.length === 0 && <p className="p-8 text-center text-sm font-semibold text-gray-400">No blocked IP hashes recorded.</p>}
+                </div>
+              </section>
+            </div>
+          )}
           {activeTab === 'configuration' && adsConfig && (
             <div className="space-y-6">
               <section className="rounded-2xl border bg-white shadow-sm p-6 space-y-6">

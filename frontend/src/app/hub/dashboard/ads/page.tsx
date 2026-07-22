@@ -582,7 +582,7 @@ export default function SellerAdsPage() {
                     <td className="p-4 text-xs font-semibold text-slate-500">{new Date(t.created_at).toLocaleString()}</td>
                     <td className="p-4 font-bold capitalize text-slate-900">{t.type.replaceAll('_', ' ')}</td>
                     <td className="p-4 text-xs font-semibold text-slate-600">{t.description || '—'}</td>
-                    <td className="p-4 text-xs font-bold text-slate-900">{t.campaign_name || '—'}</td>
+                    <td className="p-4 text-xs font-bold text-slate-900">{t.campaign_name || t.description || 'General Account Item'}</td>
                     <td className={`p-4 font-black ${Number(t.amount) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                       {Number(t.amount) >= 0 ? '+' : ''}{money(t.amount)}
                     </td>

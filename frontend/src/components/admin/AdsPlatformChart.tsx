@@ -108,10 +108,10 @@ export function AdsPlatformChart({ daily }: { daily: Point[] }) {
       </div>
 
       {/* SVG Performance Chart */}
-      <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-hidden" dir="ltr">
+      <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm w-full" dir="ltr">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="h-60 w-full min-w-[600px]"
+          className="h-64 w-full"
           onMouseLeave={() => setHoverIndex(null)}
         >
           <defs>
@@ -204,7 +204,9 @@ export function AdsPlatformChart({ daily }: { daily: Point[] }) {
               left: `${Math.min(Math.max(Px, getX(hoverIndex) - 90), W - 180)}px`,
             }}
           >
-            <p className="font-black text-amber-400">{new Date(activeHoverPoint.stat_date).toLocaleDateString()}</p>
+            <p className="font-black text-amber-400">
+              {(activeHoverPoint as any).label || new Date(activeHoverPoint.stat_date).toLocaleString()}
+            </p>
             <div className="mt-1.5 space-y-1 text-[11px]">
               <p>Spend: <span className="font-bold text-red-400">{Number(activeHoverPoint.spend || 0).toFixed(3)} TND</span></p>
               <p>Revenue: <span className="font-bold text-blue-400">{Number(activeHoverPoint.revenue || 0).toFixed(3)} TND</span></p>
@@ -217,9 +219,11 @@ export function AdsPlatformChart({ daily }: { daily: Point[] }) {
 
       {/* Date Axis Footer */}
       <div className="flex justify-between text-[11px] font-bold text-slate-400 px-2" dir="ltr">
-        <span>{new Date(dates[0]).toLocaleDateString()}</span>
-        <span>{new Date(dates[Math.floor(dates.length / 2)]).toLocaleDateString()}</span>
-        <span>{new Date(dates[dates.length - 1]).toLocaleDateString()}</span>
+        <span>{(daily[0] as any).label || new Date(daily[0].stat_date).toLocaleDateString()}</span>
+        {daily.length > 4 && <span>{(daily[Math.floor(daily.length / 4)] as any).label || new Date(daily[Math.floor(daily.length / 4)].stat_date).toLocaleDateString()}</span>}
+        {daily.length > 2 && <span>{(daily[Math.floor(daily.length / 2)] as any).label || new Date(daily[Math.floor(daily.length / 2)].stat_date).toLocaleDateString()}</span>}
+        {daily.length > 4 && <span>{(daily[Math.floor((3 * daily.length) / 4)] as any).label || new Date(daily[Math.floor((3 * daily.length) / 4)].stat_date).toLocaleDateString()}</span>}
+        <span>{(daily[daily.length - 1] as any).label || new Date(daily[daily.length - 1].stat_date).toLocaleDateString()}</span>
       </div>
     </div>
   );

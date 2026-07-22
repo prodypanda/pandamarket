@@ -251,7 +251,18 @@ export class AdsService {
   async listTransactions(storeId: string, limit = 50) {
     const account = await this.getOrCreateAccount(storeId);
     const result = await query(
-      'SELECT * FROM pd_ads_transaction WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2',
+      `SELECT t.*, COALESCE(c.name, CASE 
+        WHEN t.type = 'manual_refill' THEN 'Bank Transfer / Mandat Refill'
+        WHEN t.type = 'refill' THEN 'Online Payment Refill (Flouci / Konnect)'
+        WHEN t.type = 'promotional_credit' THEN 'Promotional Coupon Credit'
+        WHEN t.type = 'admin_adjustment' THEN 'System Account Adjustment'
+        WHEN t.type = 'reservation' THEN 'Campaign Daily Reservation'
+        WHEN t.type = 'reservation_release' THEN 'Campaign Reservation Release'
+        ELSE COALESCE(t.description, 'Account Ledger Item')
+       END) AS campaign_name
+       FROM pd_ads_transaction t
+       LEFT JOIN pd_ads_campaign c ON c.id = t.campaign_id
+       WHERE t.account_id = $1 ORDER BY t.created_at DESC LIMIT $2`,
       [account.id, Math.min(100, Math.max(1, limit))],
     );
     return result.rows;
@@ -512,10 +523,60 @@ export class AdsService {
     const impressions = Number(totals.impressions || 0); const clicks = Number(totals.clicks || 0);
     const conversions = Number(totals.conversions || 0); const spend = Number(totals.spend || 0); const revenue = Number(totals.revenue || 0);
     const granularity = options.granularity || (from === to ? 'hourly' : 'daily');
+
+    let timeline = fillTimeline(daily.rows, from, to, granularity);
+
+    if (granularity === 'hourly') {
+      const [hourlyEvents, hourlySpend] = await Promise.all([
+        query(
+          `SELECT EXTRACT(HOUR FROM e.created_at)::int AS hour,
+                  COUNT(*) FILTER (WHERE e.event_type = 'impression')::bigint AS impressions,
+                  COUNT(*) FILTER (WHERE e.event_type = 'click')::bigint AS clicks
+           FROM pd_ads_event e
+           JOIN pd_ads_campaign c ON c.id = e.campaign_id
+           WHERE c.store_id = $1 AND e.created_at >= $2::date AND e.created_at < $2::date + INTERVAL '1 day' ${campaignFilter}
+           GROUP BY 1`,
+          params.slice(0, options.campaignId ? 4 : 3),
+        ),
+        query(
+          `SELECT EXTRACT(HOUR FROM t.created_at)::int AS hour,
+                  SUM(ABS(t.amount))::text AS spend
+           FROM pd_ads_transaction t
+           JOIN pd_ads_account a ON a.id = t.account_id
+           LEFT JOIN pd_ads_campaign c ON c.id = t.campaign_id
+           WHERE a.store_id = $1 AND t.type = 'campaign_debit'
+             AND t.created_at >= $2::date AND t.created_at < $2::date + INTERVAL '1 day' ${campaignFilter}
+           GROUP BY 1`,
+          params.slice(0, options.campaignId ? 4 : 3),
+        ),
+      ]);
+
+      const eventsByHour = new Map<number, any>();
+      for (const r of hourlyEvents.rows) eventsByHour.set(Number(r.hour), r);
+      const spendByHour = new Map<number, string>();
+      for (const r of hourlySpend.rows) spendByHour.set(Number(r.hour), String(r.spend || '0.000'));
+
+      timeline = [];
+      for (let h = 0; h < 24; h++) {
+        const hourPad = h.toString().padStart(2, '0');
+        const key = `${from}T${hourPad}:00`;
+        const ev = eventsByHour.get(h);
+        timeline.push({
+          stat_date: key,
+          label: `${hourPad}:00`,
+          impressions: ev ? Number(ev.impressions || 0) : 0,
+          clicks: ev ? Number(ev.clicks || 0) : 0,
+          conversions: 0,
+          spend: spendByHour.get(h) || '0.000',
+          revenue: '0.000',
+        });
+      }
+    }
+
     return {
-      range: { from, to },
+      range: { from, to, granularity },
       summary: { ...totals, ctr: impressions ? clicks / impressions : 0, average_cpc: clicks ? spend / clicks : 0, conversion_rate: clicks ? conversions / clicks : 0, roas: spend ? revenue / spend : 0 },
-      daily: fillTimeline(daily.rows, from, to, granularity),
+      daily: timeline,
       campaigns: campaigns.rows,
     };
   }
@@ -805,7 +866,51 @@ export class AdsService {
       query(`SELECT r.*,c.name AS campaign_name,s.name AS store_name,u.email AS reviewer_email FROM pd_ads_review r JOIN pd_ads_campaign c ON c.id=r.campaign_id JOIN pd_store s ON s.id=c.store_id LEFT JOIN pd_user u ON u.id=r.reviewer_user_id ORDER BY r.created_at DESC LIMIT 100`),
     ]);
 
-    const dailyTimeline = fillTimeline(daily.rows, fromStr, toStr, granularity);
+    let dailyTimeline = fillTimeline(daily.rows, fromStr, toStr, granularity);
+
+    if (granularity === 'hourly') {
+      const [hourlyEvents, hourlySpend] = await Promise.all([
+        query(
+          `SELECT EXTRACT(HOUR FROM created_at)::int AS hour,
+                  COUNT(*) FILTER (WHERE event_type = 'impression')::bigint AS impressions,
+                  COUNT(*) FILTER (WHERE event_type = 'click')::bigint AS clicks
+           FROM pd_ads_event
+           WHERE created_at >= $1::date AND created_at < $1::date + INTERVAL '1 day'
+           GROUP BY 1`,
+          [fromStr],
+        ),
+        query(
+          `SELECT EXTRACT(HOUR FROM created_at)::int AS hour,
+                  SUM(ABS(amount))::text AS spend
+           FROM pd_ads_transaction
+           WHERE type = 'campaign_debit'
+             AND created_at >= $1::date AND created_at < $1::date + INTERVAL '1 day'
+           GROUP BY 1`,
+          [fromStr],
+        ),
+      ]);
+
+      const eventsByHour = new Map<number, any>();
+      for (const r of hourlyEvents.rows) eventsByHour.set(Number(r.hour), r);
+      const spendByHour = new Map<number, string>();
+      for (const r of hourlySpend.rows) spendByHour.set(Number(r.hour), String(r.spend || '0.000'));
+
+      dailyTimeline = [];
+      for (let h = 0; h < 24; h++) {
+        const hourPad = h.toString().padStart(2, '0');
+        const key = `${fromStr}T${hourPad}:00`;
+        const ev = eventsByHour.get(h);
+        dailyTimeline.push({
+          stat_date: key,
+          label: `${hourPad}:00`,
+          impressions: ev ? Number(ev.impressions || 0) : 0,
+          clicks: ev ? Number(ev.clicks || 0) : 0,
+          conversions: 0,
+          spend: spendByHour.get(h) || '0.000',
+          revenue: '0.000',
+        });
+      }
+    }
 
     return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily: dailyTimeline, reviews: reviews.rows, range: { from: fromStr, to: toStr, granularity } };
   }

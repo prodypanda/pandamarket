@@ -97,10 +97,10 @@ function SingleChart({
       </figcaption>
 
       {/* SVG Container */}
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3" dir="ltr">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3 w-full" dir="ltr">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="h-48 w-full min-w-[480px]"
+          className="h-52 w-full"
           onMouseLeave={() => setHoverIndex(null)}
         >
           {/* Gridlines */}
@@ -169,7 +169,9 @@ function SingleChart({
               left: `${Math.min(Math.max(Px, getX(hoverIndex) - 80), W - 160)}px`,
             }}
           >
-            <p className="font-black text-amber-400">{new Date(hoverPoint.stat_date).toLocaleDateString()}</p>
+            <p className="font-black text-amber-400">
+              {(hoverPoint as any).label || new Date(hoverPoint.stat_date).toLocaleString()}
+            </p>
             <div className="mt-1 space-y-0.5 text-[11px]">
               {series.map((s) => (
                 <p key={s.key}>
@@ -182,8 +184,11 @@ function SingleChart({
       </div>
 
       <div className="flex justify-between text-[10px] font-bold text-slate-400 px-1" dir="ltr">
-        <span>{new Date(dates[0]).toLocaleDateString()}</span>
-        <span>{new Date(dates[dates.length - 1]).toLocaleDateString()}</span>
+        <span>{(daily[0] as any).label || new Date(daily[0].stat_date).toLocaleDateString()}</span>
+        {daily.length > 4 && <span>{(daily[Math.floor(daily.length / 4)] as any).label || new Date(daily[Math.floor(daily.length / 4)].stat_date).toLocaleDateString()}</span>}
+        {daily.length > 2 && <span>{(daily[Math.floor(daily.length / 2)] as any).label || new Date(daily[Math.floor(daily.length / 2)].stat_date).toLocaleDateString()}</span>}
+        {daily.length > 4 && <span>{(daily[Math.floor((3 * daily.length) / 4)] as any).label || new Date(daily[Math.floor((3 * daily.length) / 4)].stat_date).toLocaleDateString()}</span>}
+        <span>{(daily[daily.length - 1] as any).label || new Date(daily[daily.length - 1].stat_date).toLocaleDateString()}</span>
       </div>
     </figure>
   );
