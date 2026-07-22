@@ -690,6 +690,13 @@
     "manualMandatTitle": "Mandat Minute / Virement",
     "proofUrl": "URL de la preuve",
     "submitManualRefill": "Soumettre la recharge manuelle",
-    "manualRefillSubmitted": "Recharge manuelle soumise"
+    "mandatSubmitted": "Rechargement manuel soumis avec succès pour vérification.",
+    "autoRefillTitle": "Configuration du rechargement automatique",
+    "autoRefillDesc": "Rechargez automatiquement votre compte publicitaire lorsque votre solde disponible passe sous un seuil.",
+    "enableAutoRefill": "Activer le rechargement automatique",
+    "minThreshold": "Seuil de déclenchement (TND)",
+    "refillAmountLabel": "Montant du rechargement (TND)",
+    "saveSettings": "Enregistrer les paramètres",
+    "autoRefillSaved": "Paramètres de rechargement automatique enregistrés avec succès."
   }
 }

@@ -690,6 +690,13 @@
     "manualMandatTitle": "حوالة دقيقة / تحويل بنكي",
     "proofUrl": "رابط الإثبات",
     "submitManualRefill": "إرسال الشحن اليدوي",
-    "manualRefillSubmitted": "تم إرسال الشحن اليدوي"
+    "mandatSubmitted": "تم تقديم الشحن اليدوي بنجاح للمراجعة.",
+    "autoRefillTitle": "إعدادات الشحن التلقائي",
+    "autoRefillDesc": "شحن حساب الإعلانات تلقائياً عندما ينخفض رصيدك المتاح عن حد معين.",
+    "enableAutoRefill": "تفعيل الشحن التلقائي",
+    "minThreshold": "حد التفعيل (دينار)",
+    "refillAmountLabel": "مبلغ الشحن (دينار)",
+    "saveSettings": "حفظ الإعدادات",
+    "autoRefillSaved": "تم حفظ إعدادات الشحن التلقائي بنجاح."
   }
 }

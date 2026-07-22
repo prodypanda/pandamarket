@@ -7,7 +7,7 @@ import { useLocale } from '../../../../contexts/LocaleContext';
 import { AdsCampaignWizard } from '../../../../components/dashboard/AdsCampaignWizard';
 import { AdsPerformanceCharts } from '../../../../components/dashboard/AdsPerformanceCharts';
 
-type Account = { balance:string; reserved_balance:string; currency:string; total_spend:string; active_campaigns:number };
+type Account = { balance:string; reserved_balance:string; currency:string; total_spend:string; active_campaigns:number; auto_refill_enabled?:boolean; auto_refill_threshold?:string; auto_refill_amount?:string };
 type Campaign = { id:string; name:string; campaign_type:string; status:string; daily_budget:string; total_budget:string; spent_amount:string; created_at:string };
 type Placement = { id:string; name:string; placement_key:string; format:string; default_price:string };
 type Transaction = { id:string; type:string; amount:string; balance_after:string; description?:string; created_at:string };
@@ -37,6 +37,10 @@ export default function AdsDashboardPage() {
   const [refillProofUrl, setRefillProofUrl] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [autoRefillEnabled, setAutoRefillEnabled] = useState(false);
+  const [autoRefillThreshold, setAutoRefillThreshold] = useState('5.000');
+  const [autoRefillAmount, setAutoRefillAmount] = useState('20.000');
+  const [savingAutoRefill, setSavingAutoRefill] = useState(false);
   const emptyCampaignForm={name:'',campaign_type:'sponsored_product',objective:'traffic',pricing_model:'cpc',daily_budget:'5',total_budget:'50',bid_amount:'0.100',creative_title:'',creative_description:'',image_url:'',cta_label:'Shop now',destination_url:'',product_id:'',starts_at:'',ends_at:'',locale:'all',category:'',device:'all',placement_ids:[] as string[]};
   const [form, setForm] = useState(emptyCampaignForm);
 
@@ -54,6 +58,7 @@ export default function AdsDashboardPage() {
       if (!a.ok || !c.ok || !p.ok || !t.ok || !n.ok || !r.ok) throw new Error('Unable to load Ads data');
       const [ad,cd,pd,td,nd,rd] = await Promise.all([a.json(),c.json(),p.json(),t.json(),n.json(),r.json()]);
       setAccount(ad.account); setCampaigns(cd.campaigns || []); setPlacements(pd.placements || []); setTransactions(td.transactions || []); setAnalytics(nd.summary || null); setDaily(nd.daily || []); setRefills(rd.refills || []);
+      if(ad.account){ setAutoRefillEnabled(Boolean(ad.account.auto_refill_enabled)); if(ad.account.auto_refill_threshold) setAutoRefillThreshold(String(ad.account.auto_refill_threshold)); if(ad.account.auto_refill_amount) setAutoRefillAmount(String(ad.account.auto_refill_amount)); }
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load Ads data'); }
     finally { setLoading(false); }
   };
@@ -68,7 +73,19 @@ export default function AdsDashboardPage() {
 
   const redeemCoupon=async()=>{const code=window.prompt('Enter your PandaMarket Ads coupon code:')?.trim();if(!code)return;const response=await fetchWithCsrf('/api/pd/ads/coupons/redeem',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const data=await response.json();if(!response.ok){setError(data.error?.message||'Coupon redemption failed');return;}await load();};
 
-  const startRefill=async(event:React.FormEvent)=>{event.preventDefault();setError('');setSuccessMsg('');
+  const saveAutoRefill = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(''); setSuccessMsg(''); setSavingAutoRefill(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/ads/account/auto-refill', { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ enabled:autoRefillEnabled, threshold:Number(autoRefillThreshold), amount:Number(autoRefillAmount) }) });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error?.message || 'Failed to save auto-refill settings');
+      setSuccessMsg(t('ads.autoRefillSaved') || 'Auto-refill settings saved successfully');
+      await load();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to save auto-refill settings'); }
+    finally { setSavingAutoRefill(false); }
+  };
+  const startRefill = async (event: React.FormEvent) => {
+    event.preventDefault(); setError(''); setSuccessMsg('');
     if(refillGateway==='manual_mandat'){
       if(!refillProofUrl.trim()){setError('Please provide a proof URL for your bank transfer receipt.');return;}
       const r=await fetchWithCsrf('/api/pd/ads/refills/manual-mandat',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:Number(refillAmount),proof_url:refillProofUrl.trim()})});
@@ -110,6 +127,21 @@ export default function AdsDashboardPage() {
         {[[t('ads.availableBalance'),money(account?.balance,account?.currency),WalletCards],[t('ads.reserved'),money(account?.reserved_balance,account?.currency),WalletCards],[t('ads.totalSpend'),money(account?.total_spend,account?.currency),BarChart3],[t('ads.activeCampaigns'),String(account?.active_campaigns || 0),Megaphone]].map(([label,value,Icon]) => <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><Icon className="h-5 w-5 text-emerald-600" /><p className="mt-4 text-xs font-bold uppercase text-slate-400">{String(label)}</p><p className="mt-1 text-2xl font-black text-slate-900">{String(value)}</p></div>)}
       </div>
       <div className={`rounded-2xl border p-5 ${Number(account?.balance||0)<5?'border-red-200 bg-red-50':'border-amber-200 bg-amber-50'}`}><p className={`font-black ${Number(account?.balance||0)<5?'text-red-900':'text-amber-900'}`}>{Number(account?.balance||0)<5?'Low Ads balance':'Prepaid Ads account'}</p><p className={`mt-1 text-sm ${Number(account?.balance||0)<5?'text-red-700':'text-amber-800'}`}>{Number(account?.balance||0)<5?'Refill your Ads account before submitting or launching campaigns.':'Your advertising funds are separate from sales revenue and stop automatically at budget limits.'}</p></div>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form onSubmit={saveAutoRefill} className="flex flex-wrap items-center justify-between gap-4">
+          <div><h2 className="font-black text-slate-900">{t('ads.autoRefillTitle')}</h2><p className="text-xs text-slate-500">{t('ads.autoRefillDesc')}</p></div>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer"><input type="checkbox" checked={autoRefillEnabled} onChange={e=>setAutoRefillEnabled(e.target.checked)} className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"/> {t('ads.enableAutoRefill')}</label>
+            {autoRefillEnabled && (
+              <>
+                <label className="text-xs font-bold text-slate-500">{t('ads.minThreshold')}<input type="number" min="0" step="1" value={autoRefillThreshold} onChange={e=>setAutoRefillThreshold(e.target.value)} className="ml-2 rounded-lg border px-3 py-1.5 text-sm font-bold w-24"/></label>
+                <label className="text-xs font-bold text-slate-500">{t('ads.refillAmountLabel')}<input type="number" min="1" step="1" value={autoRefillAmount} onChange={e=>setAutoRefillAmount(e.target.value)} className="ml-2 rounded-lg border px-3 py-1.5 text-sm font-bold w-24"/></label>
+              </>
+            )}
+            <button disabled={savingAutoRefill} className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50">{savingAutoRefill ? '...' : t('ads.saveSettings')}</button>
+          </div>
+        </form>
+      </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-black">Performance</h2><p className="text-xs text-slate-500">Viewable impressions and valid clicks in the selected period.</p></div><div className="flex flex-wrap gap-2"><select aria-label="Campaign filter" value={campaignFilter} onChange={e=>setCampaignFilter(e.target.value)} className="max-w-48 rounded-lg border px-3 py-2 text-sm"><option value="">All campaigns</option>{campaigns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded-lg border px-3 py-2 text-sm"/><button onClick={()=>load()} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white">Apply</button></div></div><div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">{[['Impressions',analytics?.impressions||0],['Clicks',analytics?.clicks||0],['CTR',`${((analytics?.ctr||0)*100).toFixed(2)}%`],['Avg. CPC',money(String(analytics?.average_cpc||0))],['Conversions',analytics?.conversions||0],['Conv. rate',`${((analytics?.conversion_rate||0)*100).toFixed(2)}%`],['Revenue',money(analytics?.revenue)],['ROAS',`${Number(analytics?.roas||0).toFixed(2)}×`]].map(([l,v])=><div key={String(l)} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase text-slate-400">{String(l)}</p><p className="mt-1 font-black text-slate-900">{String(v)}</p></div>)}</div><AdsPerformanceCharts daily={daily}/></section>
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-slate-900">Campaigns</h2></div>{campaigns.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">No campaigns yet. Create your first sponsored campaign.</div> : <div className="divide-y divide-slate-100">{campaigns.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black text-slate-900">{c.name}</p><p className="text-xs font-semibold text-slate-500">{c.campaign_type.replaceAll('_',' ')} · {money(c.spent_amount)} spent of {money(c.total_budget)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">{c.status.replaceAll('_',' ')}</span>{c.status === 'draft' && <button onClick={() => action(c.id,'submit')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Submit</button>}{c.status === 'approved' && <button onClick={() => action(c.id,'launch')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Launch</button>}{c.status === 'active' && <button onClick={() => action(c.id,'pause')} className="rounded-lg border px-3 py-2 text-xs font-black">Pause</button>}{c.status === 'paused' && <button onClick={() => action(c.id,'resume')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Resume</button>}</div></div>)}</div>}</section>
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-black">{t('ads.refillHistory')}</h2><p className="text-xs text-slate-500">{t('ads.refillHistoryDesc')}</p></div>{refills.length===0?<p className="p-8 text-center text-sm text-slate-400">{t('ads.noRefills')}</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">{t('ads.date')}</th><th className="p-4">{t('ads.gateway')}</th><th className="p-4">{t('ads.amount')}</th><th className="p-4">{t('ads.status')}</th><th className="p-4">{t('ads.proof')}</th><th className="p-4">{t('ads.receipt')}</th></tr></thead><tbody className="divide-y">{refills.map(r=><tr key={r.id}><td className="p-4 text-slate-500">{new Date(r.created_at).toLocaleString()}</td><td className="p-4 font-bold capitalize">{r.gateway==='manual_mandat'?t('ads.mandatGateway'):r.gateway}</td><td className="p-4 font-black">{money(r.amount,r.currency)}</td><td className="p-4">{r.status==='captured'?<span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{t('ads.captured')}</span>:r.status==='pending_review'?<span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">{t('ads.pendingReview')}</span>:r.status==='rejected'?<span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">{t('ads.rejected')}</span>:<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{r.status.replaceAll('_',' ')}</span>}{r.status==='rejected'&&r.rejection_reason&&<p className="mt-1 text-[11px] text-red-500">{r.rejection_reason}</p>}</td><td className="p-4">{r.proof_url?<a href={r.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-blue-600 underline">{t('ads.viewProof')}</a>:<span className="text-xs text-slate-400">—</span>}</td><td className="p-4">{r.status==='captured'?<a href={`/api/pd/ads/refills/${encodeURIComponent(r.id)}/receipt`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{t('ads.download')}</a>:<span className="text-xs text-slate-400">{t('ads.unavailable')}</span>}</td></tr>)}</tbody></table></div>}</section>

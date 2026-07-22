@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
+import { SponsoredAdsRail } from './SponsoredAdsRail';
 import {
   BlockBanner,
   RecentlyViewedRail,
@@ -171,24 +172,10 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   );
 
   const renderSponsoredBrands = (): ReactNode => {
-    if (sponsoredBrands.length === 0) return null;
     return (
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <BlockBanner block={blockById.get('sponsored_brands')} />
-        <div className="mb-4 flex items-center gap-2">
-          <Megaphone className="h-5 w-5" style={{ color: ORANGE }} />
-          <h2 className="text-xl font-black">{blockTitle('sponsored_brands', 'Sponsored brands')}</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {sponsoredBrands.map((brand) => (
-            <Link key={brand.name} href={brand.subdomain ? `/store/${encodeURIComponent(brand.subdomain)}` : '/hub/search'} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-gray-500">Sponsored</span>
-              <p className="mt-3 truncate text-sm font-black text-gray-900">{brand.name}</p>
-              <p className="mt-1 text-xs font-semibold text-gray-500">{brand.count} trending products</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-black" style={{ color: ORANGE }}>Visit store <ArrowRight className="h-3.5 w-3.5" /></span>
-            </Link>
-          ))}
-        </div>
+        <SponsoredAdsRail placement="hub.sponsored_brands" variant="cards" />
       </section>
     );
   };

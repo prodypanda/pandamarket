@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
+import { SponsoredAdsRail } from './SponsoredAdsRail';
 import {
   BlockBanner,
   RecentlyViewedRail,
@@ -193,26 +194,10 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
   };
 
   const renderSponsoredBrands = (): ReactNode => {
-    if (sponsoredBrands.length === 0) return null;
     return (
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <BlockBanner block={blockById.get('sponsored_brands')} />
-        <div className="rounded-lg bg-white p-5 shadow-md">
-          <div className="mb-4 flex items-center gap-2">
-            <Megaphone className="h-5 w-5" style={{ color: TEAL }} />
-            <h2 className="text-xl font-black">{blockTitle('sponsored_brands', 'Sponsored brands')}</h2>
-            <span className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-gray-500">Ad</span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {sponsoredBrands.map((brand) => (
-              <Link key={brand.name} href={brand.subdomain ? `/store/${encodeURIComponent(brand.subdomain)}` : '/hub/search'} className="rounded-lg border border-gray-200 p-5 transition hover:shadow-md">
-                <Gift className="h-5 w-5" style={{ color: AMBER }} />
-                <p className="mt-2 truncate text-sm font-black text-gray-900">{brand.name}</p>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-black" style={{ color: TEAL }}>Explore brand <ArrowRight className="h-3.5 w-3.5" /></span>
-              </Link>
-            ))}
-          </div>
-        </div>
+        <SponsoredAdsRail placement="hub.sponsored_brands" variant="cards" />
       </section>
     );
   };
