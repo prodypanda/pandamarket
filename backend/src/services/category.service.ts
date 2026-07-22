@@ -36,19 +36,20 @@ export interface MarketplaceCategoryRow {
 
 export function resolveCategoryLocale(cat: MarketplaceCategoryRow, locale?: string): MarketplaceCategoryRow {
   if (!cat) return cat;
-  let resolvedName = cat.name;
-  let resolvedDesc = cat.description;
+  const loc = (locale || 'fr').toLowerCase();
 
-  const loc = (locale || '').toLowerCase();
+  let resolvedName = cat.name_fr || cat.name;
+  let resolvedDesc = cat.description_fr || cat.description;
+
   if (loc === 'ar' || loc.startsWith('ar')) {
-    if (cat.name_ar) resolvedName = cat.name_ar;
-    if (cat.description_ar) resolvedDesc = cat.description_ar;
+    resolvedName = cat.name_ar || cat.name_fr || cat.name;
+    resolvedDesc = cat.description_ar || cat.description_fr || cat.description;
   } else if (loc === 'en' || loc.startsWith('en')) {
-    if (cat.name_en) resolvedName = cat.name_en;
-    if (cat.description_en) resolvedDesc = cat.description_en;
+    resolvedName = cat.name_en || cat.name;
+    resolvedDesc = cat.description_en || cat.description;
   } else if (loc === 'fr' || loc.startsWith('fr')) {
-    if (cat.name_fr) resolvedName = cat.name_fr;
-    if (cat.description_fr) resolvedDesc = cat.description_fr;
+    resolvedName = cat.name_fr || cat.name;
+    resolvedDesc = cat.description_fr || cat.description;
   }
 
   const result: MarketplaceCategoryRow = {
@@ -189,25 +190,27 @@ export class CategoryService {
     return resolvedRows;
   }
 
-  async getCategoryAncestors(idOrSlug: string): Promise<Array<{ id: string; name: string; slug: string }>> {
+  async getCategoryAncestors(idOrSlug: string, locale?: string): Promise<Array<{ id: string; name: string; slug: string }>> {
     let category: MarketplaceCategoryRow | null = null;
     try {
       category = await this.getMarketplaceCategory(idOrSlug);
     } catch {
-      category = await this.getMarketplaceCategoryBySlug(idOrSlug);
+      category = await this.getMarketplaceCategoryBySlug(idOrSlug, locale);
     }
+    category = resolveCategoryLocale(category, locale);
 
     const ancestors: Array<{ id: string; name: string; slug: string }> = [{ id: category.id, name: category.name, slug: category.slug }];
     let currentParentId = category.parent_id;
 
     while (currentParentId) {
       const parentRes = await query<MarketplaceCategoryRow>(
-        'SELECT id, name, slug, parent_id FROM pd_marketplace_category WHERE id = $1',
+        'SELECT * FROM pd_marketplace_category WHERE id = $1',
         [currentParentId],
       );
       if (!parentRes.rows[0]) break;
-      ancestors.unshift({ id: parentRes.rows[0].id, name: parentRes.rows[0].name, slug: parentRes.rows[0].slug });
-      currentParentId = parentRes.rows[0].parent_id;
+      const parentResolved = resolveCategoryLocale(parentRes.rows[0], locale);
+      ancestors.unshift({ id: parentResolved.id, name: parentResolved.name, slug: parentResolved.slug });
+      currentParentId = parentResolved.parent_id;
     }
 
     return ancestors;
@@ -450,13 +453,13 @@ export class CategoryService {
     return rows[0];
   }
 
-  async getMarketplaceCategoryBySlug(slug: string): Promise<MarketplaceCategoryRow> {
+  async getMarketplaceCategoryBySlug(slug: string, locale?: string): Promise<MarketplaceCategoryRow> {
     const { rows } = await query<MarketplaceCategoryRow>(
       'SELECT * FROM pd_marketplace_category WHERE slug = $1 AND is_active = true LIMIT 1',
       [slug],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Marketplace category not found');
-    return rows[0];
+    return resolveCategoryLocale(rows[0], locale);
   }
 
   async getMarketplaceDeleteImpact(id: string) {

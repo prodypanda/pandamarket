@@ -123,13 +123,17 @@ export function recordRecentlyViewed(item: RecentlyViewedItem) {
  * True when the marketplace default locale is Arabic and RTL rendering is
  * enabled from the admin settings. Used to set `dir="rtl"` on templates.
  */
-export function isRtlLocale(settings?: {
-  marketplace_rtl_enabled?: string | boolean;
-  marketplace_default_locale?: string;
-}): boolean {
+export function isRtlLocale(
+  settings?: {
+    marketplace_rtl_enabled?: string | boolean;
+    marketplace_default_locale?: string;
+  },
+  activeLocale?: string,
+): boolean {
+  if (activeLocale === 'ar') return true;
   if (!settings) return false;
   const rtl = settings.marketplace_rtl_enabled;
-  return (rtl === true || rtl === 'true') && settings.marketplace_default_locale === 'ar';
+  return (rtl === true || rtl === 'true') || settings.marketplace_default_locale === 'ar';
 }
 
 /**

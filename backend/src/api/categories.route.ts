@@ -27,6 +27,25 @@ const categoryProductsSchema = z.object({
 // Routes
 // ==========================================================
 
+function extractReqLocale(req: Request): string {
+  if (typeof req.query.locale === 'string' && req.query.locale.trim()) {
+    return req.query.locale.trim();
+  }
+  if (typeof req.headers['x-locale'] === 'string' && req.headers['x-locale'].trim()) {
+    return req.headers['x-locale'].trim();
+  }
+  const cookieHeader = req.headers.cookie || '';
+  const match = cookieHeader.split('; ').find((row) => row.startsWith('pd_locale='));
+  if (match) {
+    const val = match.split('=')[1];
+    if (val) return val.trim();
+  }
+  const acceptLang = (req.headers['accept-language'] || '').toLowerCase();
+  if (acceptLang.includes('ar')) return 'ar';
+  if (acceptLang.includes('en')) return 'en';
+  return 'fr';
+}
+
 /**
  * GET /api/pd/categories
  * List all active marketplace categories with published product counts.
@@ -36,7 +55,7 @@ router.get(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
     const isTree = req.query.tree === 'true';
-    const locale = typeof req.query.locale === 'string' ? req.query.locale : undefined;
+    const locale = extractReqLocale(req);
     const categories = await categoryService.listPublicMarketplaceCategories({ tree: isTree, locale });
 
     const formatCategory = (cat: any): any => ({
@@ -59,12 +78,13 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { page, limit } = req.query as unknown as { page: number; limit: number };
     const slug = req.params.slug;
+    const locale = extractReqLocale(req);
 
-    const category = await categoryService.getMarketplaceCategoryBySlug(slug.toLowerCase());
+    const category = await categoryService.getMarketplaceCategoryBySlug(slug.toLowerCase(), locale);
     const [result, ancestors, allCategories] = await Promise.all([
       productService.listPublished({ page, limit, category: category.slug }),
-      categoryService.getCategoryAncestors(category.id),
-      categoryService.listPublicMarketplaceCategories(),
+      categoryService.getCategoryAncestors(category.id, locale),
+      categoryService.listPublicMarketplaceCategories({ locale }),
     ]);
 
     const subcategories = allCategories

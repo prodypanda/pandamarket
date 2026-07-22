@@ -17,6 +17,7 @@ import {
   Store,
   Truck,
 } from 'lucide-react';
+import { useLocale } from '../../contexts/LocaleContext';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
@@ -65,8 +66,8 @@ const MIDDLE_BLOCK_IDS = ['deals', 'sponsored_brands', 'product_grid', 'recently
 
 export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSettings }: AlibabaHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
-  const rtl = isRtlLocale(marketplaceSettings);
-  const locale = marketplaceSettings.marketplace_default_locale || 'fr';
+  const { locale } = useLocale();
+  const rtl = isRtlLocale(marketplaceSettings, locale);
   const [treeCategories, setTreeCategories] = useState<TreeCategoryNode[]>([]);
   const [activeCategory, setActiveCategory] = useState<TreeCategoryNode | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
