@@ -89,6 +89,10 @@ router.post('/ads/campaigns/:id/review', validate(adsReviewSchema), asyncHandler
   const campaign = await adsService.reviewCampaign(req.params.id, req.user!.id, req.body.decision, req.body.reason);
   res.status(200).json({ campaign });
 }));
+router.post('/ads/campaigns/:id/suspend', asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await adsService.adminSuspendCampaign(req.params.id, req.user!.id, req.body?.reason);
+  res.status(200).json({ campaign });
+}));
 router.post('/ads/accounts/adjust', validate(adsAdjustmentSchema), asyncHandler(async (req: Request, res: Response) => {
   const result = await adsService.adjustAccount(req.body.store_id, req.body.amount, req.user!.id, req.body.reason, req.body.idempotency_key);
   res.status(200).json(result);

@@ -113,6 +113,23 @@ export default function AdminAdsPage() {
     await load();
   };
 
+  const suspendCampaign = async (id: string) => {
+    const reason = window.prompt('Reason for suspending this campaign:') || 'Suspended by Super Admin';
+    if (!reason) return;
+    const r = await fetchWithCsrf(`/api/pd/admin/ads/campaigns/${id}/suspend`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      setError(d.error?.message || 'Suspend failed');
+      return;
+    }
+    setSelectedCampaign(null);
+    await load();
+  };
+
   const credit = async (account: Account) => {
     const raw = window.prompt(`Promotional credit for ${account.store_name}:`);
     const amount = Number(raw);
@@ -414,6 +431,15 @@ export default function AdminAdsPage() {
                                 <X className="h-3.5 w-3.5" /> Reject
                               </button>
                             </>
+                          )}
+                          {['approved', 'active', 'scheduled'].includes(c.status) && (
+                            <button
+                              type="button"
+                              onClick={() => suspendCampaign(c.id)}
+                              className="inline-flex items-center gap-1 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-700 transition cursor-pointer shadow-sm"
+                            >
+                              Suspend Ad
+                            </button>
                           )}
                         </div>
                       </div>

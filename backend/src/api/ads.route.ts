@@ -148,6 +148,8 @@ router.get('/campaigns', requireStore, asyncHandler(async (req: Request, res: Re
 router.post('/campaigns', requireStore, validate(campaignSchema), asyncHandler(async (req: Request, res: Response) => res.status(201).json({ campaign: await adsService.createCampaign(req.user!.store_id!, req.body) })));
 router.get('/campaigns/:id', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ campaign: await adsService.getCampaign(req.user!.store_id!, req.params.id) })));
 router.patch('/campaigns/:id', requireStore, validate(updateSchema), asyncHandler(async (req: Request, res: Response) => res.json({ campaign: await adsService.updateCampaign(req.user!.store_id!, req.params.id, req.body) })));
+router.delete('/campaigns/:id', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ campaign: await adsService.hideCampaign(req.user!.store_id!, req.params.id) })));
+router.post('/campaigns/:id/hide', requireStore, asyncHandler(async (req: Request, res: Response) => res.json({ campaign: await adsService.hideCampaign(req.user!.store_id!, req.params.id) })));
 
 const actions: Record<string, AdsCampaignStatus> = { submit:'pending_review', launch:'active', pause:'paused', resume:'active', cancel:'cancelled' };
 router.post('/campaigns/:id/:action', requireStore, asyncHandler(async (req: Request, res: Response) => {

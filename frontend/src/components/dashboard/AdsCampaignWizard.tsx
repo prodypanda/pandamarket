@@ -289,7 +289,7 @@ export function AdsCampaignWizard({
               <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.campaignSetup') || 'Campaign setup'}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={t('ads.wizard.campaignName') || 'Campaign name'}>
-                  <input autoFocus value={form.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} placeholder="e.g. Summer Promotion Campaign" />
+                  <input value={form.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} placeholder="e.g. Summer Promotion Campaign" />
                 </Field>
 
                 <Field label={t('ads.wizard.format') || 'Format'}>

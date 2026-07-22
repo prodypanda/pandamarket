@@ -21,6 +21,32 @@ const transitions: Record<AdsCampaignStatus, AdsCampaignStatus[]> = {
   completed: [], rejected: ['draft', 'cancelled'], cancelled: [], exhausted: [],
 };
 
+function fillTimeline(rows: any[], fromStr: string, toStr: string) {
+  const map = new Map<string, any>();
+  for (const r of rows) {
+    if (!r.stat_date) continue;
+    const key = new Date(r.stat_date).toISOString().slice(0, 10);
+    map.set(key, r);
+  }
+  const result: any[] = [];
+  const curr = new Date(fromStr);
+  const end = new Date(toStr);
+  while (curr <= end) {
+    const key = curr.toISOString().slice(0, 10);
+    const existing = map.get(key);
+    result.push({
+      stat_date: key,
+      impressions: existing ? Number(existing.impressions || 0) : 0,
+      clicks: existing ? Number(existing.clicks || 0) : 0,
+      conversions: existing ? Number(existing.conversions || 0) : 0,
+      spend: existing ? String(existing.spend || '0.000') : '0.000',
+      revenue: existing ? String(existing.revenue || '0.000') : '0.000',
+    });
+    curr.setDate(curr.getDate() + 1);
+  }
+  return result;
+}
+
 export class AdsService {
   private async reserveFunds(client: PoolClient, storeId: string, campaignId: string, amount: number) {
     if (amount <= 0) return;
@@ -243,7 +269,8 @@ export class AdsService {
     const result = await query(
       `SELECT c.*, COALESCE(json_agg(cr.*) FILTER (WHERE cr.id IS NOT NULL), '[]') AS creatives
        FROM pd_ads_campaign c LEFT JOIN pd_ads_creative cr ON cr.campaign_id = c.id
-       WHERE c.store_id = $1 GROUP BY c.id ORDER BY c.created_at DESC`, [storeId],
+       WHERE c.store_id = $1 AND (c.is_hidden IS FALSE OR c.is_hidden IS NULL)
+       GROUP BY c.id ORDER BY c.created_at DESC`, [storeId],
     );
     return result.rows;
   }
@@ -254,15 +281,63 @@ export class AdsService {
     return result.rows[0];
   }
 
-  async updateCampaign(storeId: string, id: string, input: any) {
-    const current = await this.getCampaign(storeId, id);
-    if (!['draft', 'rejected', 'paused'].includes(current.status)) throw new PdValidationError('This campaign cannot be edited in its current state');
+  async hideCampaign(storeId: string, id: string) {
     const result = await query(
-      `UPDATE pd_ads_campaign SET name=COALESCE($3,name), daily_budget=COALESCE($4,daily_budget), total_budget=COALESCE($5,total_budget), bid_amount=COALESCE($6,bid_amount), starts_at=COALESCE($7,starts_at), ends_at=COALESCE($8,ends_at), targeting=COALESCE($9,targeting), updated_at=NOW()
-       WHERE id=$1 AND store_id=$2 RETURNING *`,
-      [id, storeId, input.name, input.daily_budget, input.total_budget, input.bid_amount, input.starts_at, input.ends_at, input.targeting],
+      `UPDATE pd_ads_campaign SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1 AND store_id = $2 RETURNING *`,
+      [id, storeId],
     );
+    if (!result.rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Ads campaign not found');
     return result.rows[0];
+  }
+
+  async updateCampaign(storeId: string, id: string, input: any) {
+    const settings = await platformConfigService.getSettings();
+    const current = await this.getCampaign(storeId, id);
+    if (['completed', 'cancelled', 'exhausted'].includes(current.status)) {
+      throw new PdValidationError('This campaign cannot be edited in its current status');
+    }
+    const wasApprovedOrActive = ['approved', 'active', 'scheduled'].includes(current.status);
+    const nextStatus = wasApprovedOrActive ? (settings.ads_moderation_required ? 'pending_review' : 'approved') : current.status;
+    const resetApprovedAt = wasApprovedOrActive && settings.ads_moderation_required;
+
+    return transaction(async (c) => {
+      const result = await c.query(
+        `UPDATE pd_ads_campaign SET
+           name=COALESCE($3,name),
+           daily_budget=COALESCE($4,daily_budget),
+           total_budget=COALESCE($5,total_budget),
+           bid_amount=COALESCE($6,bid_amount),
+           starts_at=COALESCE($7,starts_at),
+           ends_at=COALESCE($8,ends_at),
+           targeting=COALESCE($9,targeting),
+           status=$10,
+           approved_at=CASE WHEN $11 THEN NULL ELSE approved_at END,
+           updated_at=NOW()
+         WHERE id=$1 AND store_id=$2 RETURNING *`,
+        [
+          id, storeId, input.name, input.daily_budget, input.total_budget, input.bid_amount,
+          input.starts_at, input.ends_at, input.targeting, nextStatus, resetApprovedAt,
+        ],
+      );
+      if (input.creative) {
+        await c.query(
+          `UPDATE pd_ads_creative SET
+             title=COALESCE($2,title),
+             description=COALESCE($3,description),
+             image_url=COALESCE($4,image_url),
+             cta_label=COALESCE($5,cta_label),
+             destination_url=COALESCE($6,destination_url),
+             product_id=COALESCE($7,product_id),
+             updated_at=NOW()
+           WHERE campaign_id=$1`,
+          [
+            id, input.creative.title, input.creative.description, input.creative.image_url,
+            input.creative.cta_label, input.creative.destination_url, input.creative.product_id,
+          ],
+        );
+      }
+      return result.rows[0];
+    });
   }
 
   async transition(storeId: string, id: string, next: AdsCampaignStatus) {
@@ -678,7 +753,26 @@ export class AdsService {
       query(`SELECT stat_date,SUM(impressions)::bigint AS impressions,SUM(clicks)::bigint AS clicks,SUM(conversions)::bigint AS conversions,SUM(spend)::text AS spend,SUM(revenue)::text AS revenue FROM pd_ads_daily_stat WHERE stat_date>=CURRENT_DATE-INTERVAL '30 days' GROUP BY stat_date ORDER BY stat_date`),
       query(`SELECT r.*,c.name AS campaign_name,s.name AS store_name,u.email AS reviewer_email FROM pd_ads_review r JOIN pd_ads_campaign c ON c.id=r.campaign_id JOIN pd_store s ON s.id=c.store_id LEFT JOIN pd_user u ON u.id=r.reviewer_user_id ORDER BY r.created_at DESC LIMIT 100`),
     ]);
-    return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily:daily.rows, reviews:reviews.rows };
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const dailyTimeline = fillTimeline(daily.rows, thirtyDaysAgo, today);
+
+    return { summary: summary.rows[0], campaigns: campaigns.rows, accounts: accounts.rows, daily: dailyTimeline, reviews: reviews.rows };
+  }
+
+  async adminSuspendCampaign(campaignId: string, adminId: string, reason?: string) {
+    return transaction(async (c) => {
+      const found = await c.query('SELECT * FROM pd_ads_campaign WHERE id=$1 FOR UPDATE', [campaignId]);
+      const campaign = found.rows[0];
+      if (!campaign) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Ads campaign not found');
+      await c.query(`UPDATE pd_ads_campaign SET status='paused', updated_at=NOW() WHERE id=$1`, [campaignId]);
+      await this.releaseFunds(c, campaign.store_id, campaignId, Number(campaign.reserved_amount || 0));
+      await c.query(
+        `INSERT INTO pd_ads_review (id, campaign_id, reviewer_user_id, decision, reason) VALUES ($1,$2,$3,$4,$5)`,
+        [pdId('adrvw'), campaignId, adminId, 'rejected', reason || 'Suspended by Super Admin'],
+      );
+      return { ...campaign, status: 'paused' };
+    });
   }
 
   async reviewCampaign(campaignId: string, reviewerId: string, decision: 'approved'|'rejected'|'changes_requested', reason?: string) {

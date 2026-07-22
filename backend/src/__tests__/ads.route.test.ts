@@ -26,6 +26,7 @@ vi.mock('express', () => ({
     get: (path: string, ...handlers: any[]) => { routes[`GET ${path}`] = handlers; },
     post: (path: string, ...handlers: any[]) => { routes[`POST ${path}`] = handlers; },
     patch: (path: string, ...handlers: any[]) => { routes[`PATCH ${path}`] = handlers; },
+    delete: (path: string, ...handlers: any[]) => { routes[`DELETE ${path}`] = handlers; },
   }),
 }));
 vi.mock('zod', () => ({ z: {
