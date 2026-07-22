@@ -9,6 +9,9 @@ import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 
+import { CategoryBreadcrumbs } from '../../../../components/hub/CategoryBreadcrumbs';
+import { SubcategoryGrid } from '../../../../components/hub/SubcategoryGrid';
+
 interface Product {
   id: string;
   title: string;
@@ -30,6 +33,8 @@ interface CategoryData {
 
 interface CategoryResponse {
   category: CategoryData;
+  ancestors?: Array<{ id: string; name: string; slug: string }>;
+  subcategories?: Array<{ id: string; name: string; slug: string; short_description?: string | null; image_url?: string | null; product_count?: number }>;
   data: Product[];
   meta: { page: number; limit: number; total: number; total_pages: number };
 }
@@ -146,14 +151,8 @@ export default async function CategoryPage({
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link href="/hub" className={`transition-colors ${isAliExpress ? 'hover:text-[#ff4747]' : 'hover:text-[#16C784]'}`}>
-            Hub
-          </Link>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-gray-900 font-medium">{category.name}</span>
-        </nav>
+        {/* Breadcrumbs */}
+        <CategoryBreadcrumbs ancestors={result.ancestors && result.ancestors.length > 0 ? result.ancestors : [{ id: category.slug, name: category.name, slug: category.slug }]} />
 
         {/* Category Header */}
         <div className={`mb-8 flex items-center justify-between ${isAliExpress ? (isAliExpress2 ? 'rounded-xl bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] p-6 text-white shadow-xl shadow-orange-900/10' : 'rounded-3xl bg-gradient-to-r from-[#ff4747] to-[#ff8a00] p-6 text-white shadow-lg shadow-orange-900/10') : ''}`}>
@@ -173,6 +172,9 @@ export default async function CategoryPage({
             Filtres avancés
           </Link>
         </div>
+
+        {/* Subcategories Grid */}
+        <SubcategoryGrid parentName={category.name} subcategories={result.subcategories || []} />
 
         <SponsoredAdsRail placement="search.top_results" title="Sponsored in this category" locale={marketplaceSettings.marketplace_default_locale || 'fr'} category={slug} />
 

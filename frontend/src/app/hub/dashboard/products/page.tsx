@@ -1267,7 +1267,7 @@ export default function ProductsPage() {
                 <option value="">Non categorized products</option>
                 {marketplaceCategories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.name}{category.is_default ? ' (default)' : ''}
+                    {category.parent_name ? `└─ ${category.name}` : category.name}{category.is_default ? ' (default)' : ''}
                   </option>
                 ))}
               </select>

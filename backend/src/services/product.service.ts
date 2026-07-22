@@ -21,6 +21,7 @@ import {
   SellerType,
 } from '@pandamarket/types';
 import { subscriptionService } from './subscription.service';
+import { categoryService } from './category.service';
 import { logger } from '../utils/logger';
 import { sanitizeProductDescription } from '../utils/sanitize-html';
 import type { PoolClient } from 'pg';
@@ -640,8 +641,10 @@ export class ProductService {
     const params: unknown[] = [ProductStatus.Published];
     let where = "p.status = $1 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true";
     if (opts.category) {
+      const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);
+      params.push(subtreeIds);
       params.push(opts.category);
-      where += ` AND (p.category = $${params.length} OR p.marketplace_category_id = $${params.length} OR mc.slug = $${params.length})`;
+      where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length})`;
     }
     if (opts.marketplaceCategoryId) {
       params.push(opts.marketplaceCategoryId);
@@ -714,8 +717,10 @@ export class ProductService {
     }
 
     if (opts.category) {
+      const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);
+      params.push(subtreeIds);
       params.push(opts.category);
-      where += ` AND (p.category = $${params.length} OR p.marketplace_category_id = $${params.length} OR mc.slug = $${params.length})`;
+      where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length})`;
     }
 
     if (typeof opts.priceMin === 'number' && Number.isFinite(opts.priceMin)) {

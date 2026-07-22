@@ -30,22 +30,27 @@ const categoryProductsSchema = z.object({
 /**
  * GET /api/pd/categories
  * List all active marketplace categories with published product counts.
+ * Supports ?tree=true to return nested hierarchy tree.
  */
 router.get(
   '/',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const categories = (await categoryService.listPublicMarketplaceCategories()).map((category) => ({
-      ...category,
-      product_count: parseInt(category.product_count || '0', 10),
-    }));
+  asyncHandler(async (req: Request, res: Response) => {
+    const isTree = req.query.tree === 'true';
+    const categories = await categoryService.listPublicMarketplaceCategories({ tree: isTree });
 
-    res.status(200).json({ data: categories });
+    const formatCategory = (cat: any): any => ({
+      ...cat,
+      product_count: parseInt(cat.product_count || '0', 10),
+      children: Array.isArray(cat.children) ? cat.children.map(formatCategory) : undefined,
+    });
+
+    res.status(200).json({ data: categories.map(formatCategory) });
   }),
 );
 
 /**
  * GET /api/pd/categories/:slug
- * Get published products in a specific category.
+ * Get published products in a specific category (including child subcategories), plus ancestors & subcategories.
  */
 router.get(
   '/:slug',
@@ -55,10 +60,20 @@ router.get(
     const slug = req.params.slug;
 
     const category = await categoryService.getMarketplaceCategoryBySlug(slug.toLowerCase());
-    const result = await productService.listPublished({ page, limit, marketplaceCategoryId: category.id });
+    const [result, ancestors, allCategories] = await Promise.all([
+      productService.listPublished({ page, limit, category: category.slug }),
+      categoryService.getCategoryAncestors(category.id),
+      categoryService.listPublicMarketplaceCategories(),
+    ]);
+
+    const subcategories = allCategories
+      .filter((c) => c.parent_id === category.id)
+      .map((c) => ({ ...c, product_count: parseInt(c.product_count || '0', 10) }));
 
     res.status(200).json({
       category,
+      ancestors,
+      subcategories,
       ...result,
     });
   }),

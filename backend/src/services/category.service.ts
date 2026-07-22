@@ -6,16 +6,24 @@ import { slugify } from '../utils/subdomain';
 
 export interface MarketplaceCategoryRow {
   id: string;
+  parent_id?: string | null;
   name: string;
   slug: string;
   description: string | null;
   short_description: string | null;
   long_description: string | null;
   image_url: string | null;
+  icon?: string | null;
+  banner_url?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   is_default: boolean;
   is_active: boolean;
   position: number;
   product_count?: string;
+  parent_name?: string | null;
+  parent_slug?: string | null;
+  children?: MarketplaceCategoryRow[];
   created_at: Date;
   updated_at: Date;
 }
@@ -90,56 +98,198 @@ export class CategoryService {
     return rows[0];
   }
 
-  async listMarketplaceCategories(): Promise<MarketplaceCategoryRow[]> {
+  private buildTree(nodes: MarketplaceCategoryRow[]): MarketplaceCategoryRow[] {
+    const map = new Map<string, MarketplaceCategoryRow>();
+    const roots: MarketplaceCategoryRow[] = [];
+
+    nodes.forEach((node) => {
+      map.set(node.id, { ...node, children: [] });
+    });
+
+    nodes.forEach((node) => {
+      const current = map.get(node.id)!;
+      if (node.parent_id && map.has(node.parent_id)) {
+        map.get(node.parent_id)!.children!.push(current);
+      } else {
+        roots.push(current);
+      }
+    });
+
+    return roots;
+  }
+
+  async listMarketplaceCategories(options: { tree?: boolean } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
-      `SELECT c.*, COUNT(p.id)::text AS product_count
+      `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
        FROM pd_marketplace_category c
+       LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id
-       GROUP BY c.id
+       GROUP BY c.id, parent.name, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
+    if (options.tree) {
+      return this.buildTree(rows);
+    }
     return rows;
   }
 
-  async listPublicMarketplaceCategories(): Promise<MarketplaceCategoryRow[]> {
+  async listPublicMarketplaceCategories(options: { tree?: boolean } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
-      `SELECT c.*, COUNT(p.id)::text AS product_count
+      `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
        FROM pd_marketplace_category c
+       LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
        WHERE c.is_active = true
-       GROUP BY c.id
+       GROUP BY c.id, parent.name, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
+    if (options.tree) {
+      return this.buildTree(rows);
+    }
     return rows;
   }
 
-  async createMarketplaceCategory(input: { name: string; description?: string; short_description?: string; long_description?: string; image_url?: string | null; position?: number }): Promise<MarketplaceCategoryRow> {
+  async getCategoryAncestors(idOrSlug: string): Promise<Array<{ id: string; name: string; slug: string }>> {
+    let category: MarketplaceCategoryRow | null = null;
+    try {
+      category = await this.getMarketplaceCategory(idOrSlug);
+    } catch {
+      category = await this.getMarketplaceCategoryBySlug(idOrSlug);
+    }
+
+    const ancestors: Array<{ id: string; name: string; slug: string }> = [{ id: category.id, name: category.name, slug: category.slug }];
+    let currentParentId = category.parent_id;
+
+    while (currentParentId) {
+      const { rows } = await query<MarketplaceCategoryRow>(
+        'SELECT id, name, slug, parent_id FROM pd_marketplace_category WHERE id = $1',
+        [currentParentId],
+      );
+      if (!rows[0]) break;
+      ancestors.unshift({ id: rows[0].id, name: rows[0].name, slug: rows[0].slug });
+      currentParentId = rows[0].parent_id;
+    }
+
+    return ancestors;
+  }
+
+  async getCategorySubtreeIds(idOrSlug: string): Promise<string[]> {
+    let rootId = idOrSlug;
+    const { rows: findRows } = await query<{ id: string }>(
+      'SELECT id FROM pd_marketplace_category WHERE id = $1 OR slug = $1 LIMIT 1',
+      [idOrSlug],
+    );
+    if (findRows[0]) rootId = findRows[0].id;
+
+    const { rows } = await query<{ id: string }>(
+      `WITH RECURSIVE cat_tree AS (
+         SELECT id FROM pd_marketplace_category WHERE id = $1
+         UNION ALL
+         SELECT c.id FROM pd_marketplace_category c
+         INNER JOIN cat_tree ct ON c.parent_id = ct.id
+       ) SELECT id FROM cat_tree`,
+      [rootId],
+    );
+    return rows.map((r) => r.id);
+  }
+
+  private async assertNoCircularParent(categoryId: string, targetParentId: string): Promise<void> {
+    if (categoryId === targetParentId) {
+      throw new PdValidationError('A category cannot be its own parent');
+    }
+    let curr: string | null = targetParentId;
+    const visited = new Set<string>([categoryId]);
+    while (curr) {
+      if (visited.has(curr)) {
+        throw new PdValidationError('Circular category parent relationship detected');
+      }
+      visited.add(curr);
+      const { rows } = await query<{ parent_id: string | null }>(
+        'SELECT parent_id FROM pd_marketplace_category WHERE id = $1',
+        [curr],
+      );
+      curr = rows[0]?.parent_id || null;
+    }
+  }
+
+  async createMarketplaceCategory(input: {
+    name: string;
+    parent_id?: string | null;
+    description?: string;
+    short_description?: string;
+    long_description?: string;
+    image_url?: string | null;
+    icon?: string | null;
+    banner_url?: string | null;
+    seo_title?: string | null;
+    seo_description?: string | null;
+    position?: number;
+  }): Promise<MarketplaceCategoryRow> {
     const name = input.name.trim();
     if (name.length < 2) throw new PdValidationError('Category name is required');
+    if (input.parent_id) {
+      await this.getMarketplaceCategory(input.parent_id);
+    }
     const id = pdId('cat');
     const slug = await this.uniqueMarketplaceSlug(slugify(name));
     const { rows } = await query<MarketplaceCategoryRow>(
-      `INSERT INTO pd_marketplace_category (id, name, slug, description, position)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO pd_marketplace_category (id, parent_id, name, slug, description, position)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [id, name, slug, input.description?.trim() || input.short_description?.trim() || null, input.position ?? 100],
+      [id, input.parent_id || null, name, slug, input.description?.trim() || input.short_description?.trim() || null, input.position ?? 100],
     );
-    if (input.short_description !== undefined || input.long_description !== undefined || input.image_url !== undefined) {
+    if (
+      input.short_description !== undefined ||
+      input.long_description !== undefined ||
+      input.image_url !== undefined ||
+      input.icon !== undefined ||
+      input.banner_url !== undefined ||
+      input.seo_title !== undefined ||
+      input.seo_description !== undefined
+    ) {
       return this.updateMarketplaceCategory(rows[0].id, {
         short_description: input.short_description,
         long_description: input.long_description,
         image_url: input.image_url,
+        icon: input.icon,
+        banner_url: input.banner_url,
+        seo_title: input.seo_title,
+        seo_description: input.seo_description,
       });
     }
     return rows[0];
   }
 
-  async updateMarketplaceCategory(id: string, patch: { name?: string; description?: string; short_description?: string; long_description?: string; image_url?: string | null; is_active?: boolean; position?: number }): Promise<MarketplaceCategoryRow> {
+  async updateMarketplaceCategory(id: string, patch: {
+    name?: string;
+    parent_id?: string | null;
+    description?: string;
+    short_description?: string;
+    long_description?: string;
+    image_url?: string | null;
+    icon?: string | null;
+    banner_url?: string | null;
+    seo_title?: string | null;
+    seo_description?: string | null;
+    is_active?: boolean;
+    position?: number;
+  }): Promise<MarketplaceCategoryRow> {
     const current = await this.getMarketplaceCategory(id);
     const fields: string[] = [];
     const values: unknown[] = [id];
+
+    if (patch.parent_id !== undefined) {
+      if (patch.parent_id) {
+        await this.assertNoCircularParent(id, patch.parent_id);
+        await this.getMarketplaceCategory(patch.parent_id);
+        values.push(patch.parent_id);
+        fields.push(`parent_id = $${values.length}`);
+      } else {
+        fields.push('parent_id = NULL');
+      }
+    }
 
     if (patch.name !== undefined) {
       const name = patch.name.trim();
@@ -169,6 +319,22 @@ export class CategoryService {
     if (patch.image_url !== undefined) {
       values.push(patch.image_url?.trim() || null);
       fields.push(`image_url = $${values.length}`);
+    }
+    if (patch.icon !== undefined) {
+      values.push(patch.icon?.trim() || null);
+      fields.push(`icon = $${values.length}`);
+    }
+    if (patch.banner_url !== undefined) {
+      values.push(patch.banner_url?.trim() || null);
+      fields.push(`banner_url = $${values.length}`);
+    }
+    if (patch.seo_title !== undefined) {
+      values.push(patch.seo_title?.trim() || null);
+      fields.push(`seo_title = $${values.length}`);
+    }
+    if (patch.seo_description !== undefined) {
+      values.push(patch.seo_description?.trim() || null);
+      fields.push(`seo_description = $${values.length}`);
     }
     if (patch.is_active !== undefined) {
       if (current.is_default && !patch.is_active) {

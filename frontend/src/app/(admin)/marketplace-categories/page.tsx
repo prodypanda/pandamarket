@@ -7,16 +7,23 @@ import { useCallback, useEffect, useState } from 'react';
 
 interface Category {
   id: string;
+  parent_id?: string | null;
   name: string;
   slug: string;
   description?: string | null;
   short_description?: string | null;
   long_description?: string | null;
   image_url?: string | null;
+  icon?: string | null;
+  banner_url?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   is_default: boolean;
   is_active: boolean;
   position: number;
   product_count: number;
+  parent_name?: string | null;
+  parent_slug?: string | null;
 }
 
 async function getErrorMessage(res: Response, fallback = 'Request failed') {
@@ -34,6 +41,7 @@ export default function MarketplaceCategoriesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [parentId, setParentId] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [longDescription, setLongDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -73,6 +81,7 @@ export default function MarketplaceCategoriesPage() {
         credentials: 'include',
         body: JSON.stringify({
           name: name.trim(),
+          parent_id: parentId || null,
           short_description: shortDescription.trim() || undefined,
           long_description: longDescription.trim() || undefined,
           image_url: imageUrl.trim() || null,
@@ -80,6 +89,7 @@ export default function MarketplaceCategoriesPage() {
       });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to create category'));
       setName('');
+      setParentId('');
       setShortDescription('');
       setLongDescription('');
       setImageUrl('');
@@ -210,16 +220,31 @@ export default function MarketplaceCategoriesPage() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Category Name</label>
             <input
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Electronics, Fashion"
+              placeholder="e.g. Electronics, Smartphones"
               className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Parent Category (Optional)</label>
+            <select
+              value={parentId}
+              onChange={(event) => setParentId(event.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 outline-none transition-all font-medium text-slate-900 cursor-pointer"
+            >
+              <option value="">None (Top-Level Category)</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.parent_name ? `└─ ${c.name}` : c.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Short Description</label>
@@ -313,21 +338,44 @@ export default function MarketplaceCategoriesPage() {
                           </button>
                         </div>
                         <div className="flex-1 space-y-2.5 min-w-[300px]">
-                          <div className="flex items-center justify-between gap-4">
-                            <input
-                              type="text"
-                              value={category.name}
-                              disabled={category.is_default}
-                              onChange={(event) =>
-                                setCategories((current) =>
-                                  current.map((item) =>
-                                    item.id === category.id ? { ...item, name: event.target.value } : item,
-                                  ),
-                                )
-                              }
-                              className="w-full px-3 py-1.5 border border-transparent hover:border-slate-300 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 bg-transparent rounded-lg text-lg font-black text-slate-900 transition-all disabled:opacity-60 outline-none"
-                            />
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md shrink-0">/{category.slug}</p>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1">
+                              {category.parent_name && <span className="text-amber-700 font-bold text-xs bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">└─ Subcategory of {category.parent_name}</span>}
+                              <input
+                                type="text"
+                                value={category.name}
+                                disabled={category.is_default}
+                                onChange={(event) =>
+                                  setCategories((current) =>
+                                    current.map((item) =>
+                                      item.id === category.id ? { ...item, name: event.target.value } : item,
+                                    ),
+                                  )
+                                }
+                                className="w-full px-3 py-1.5 border border-transparent hover:border-slate-300 focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15 bg-transparent rounded-lg text-lg font-black text-slate-900 transition-all disabled:opacity-60 outline-none"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={category.parent_id || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value || null;
+                                  setCategories((current) =>
+                                    current.map((item) => (item.id === category.id ? { ...item, parent_id: val } : item)),
+                                  );
+                                  updateCategory(category, { parent_id: val });
+                                }}
+                                className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 bg-white hover:bg-slate-50 cursor-pointer outline-none"
+                              >
+                                <option value="">Top-Level (No Parent)</option>
+                                {categories.filter((c) => c.id !== category.id).map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.parent_name ? `└─ ${c.name}` : c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md shrink-0">/{category.slug}</p>
+                            </div>
                           </div>
                           
                           <input
