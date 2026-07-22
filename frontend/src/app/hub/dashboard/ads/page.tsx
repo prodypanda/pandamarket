@@ -82,10 +82,28 @@ export default function AdsDashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('product_id') || '';
-    if (productId) { setForm((v) => ({ ...v, product_id:productId, campaign_type:'sponsored_product' })); setCreating(true); }
-    const refillId=params.get('refill'); if(refillId&&!params.get('status')) fetchWithCsrf(`/api/pd/ads/refills/${encodeURIComponent(refillId)}/verify`,{method:'POST',credentials:'include'}).then(()=>load()).catch(()=>undefined);
+    if (productId) {
+      setForm((v) => ({ ...v, product_id: productId, campaign_type: 'sponsored_product' }));
+      setCreating(true);
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+    const refillId = params.get('refill');
+    if (refillId && !params.get('status')) {
+      fetchWithCsrf(`/api/pd/ads/refills/${encodeURIComponent(refillId)}/verify`, { method: 'POST', credentials: 'include' })
+        .then(() => load())
+        .catch(() => undefined);
+    }
     void load();
   }, []);
+
+  const closeWizard = () => {
+    setCreating(false);
+    if (typeof window !== 'undefined' && window.location.search.includes('product_id')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
 
   const redeemCoupon=async()=>{const code=window.prompt('Enter your PandaMarket Ads coupon code:')?.trim();if(!code)return;const response=await fetchWithCsrf('/api/pd/ads/coupons/redeem',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const data=await response.json();if(!response.ok){setError(data.error?.message||'Coupon redemption failed');return;}await load();};
 
@@ -298,7 +316,7 @@ export default function AdsDashboardPage() {
         </div>
       )}
 
-      {creating && <AdsCampaignWizard placements={placements} productId={form.product_id} onClose={()=>setCreating(false)} onCreated={load} onError={setError}/>} 
+      {creating && <AdsCampaignWizard placements={placements} productId={form.product_id} onClose={closeWizard} onCreated={load} onError={setError}/>} 
     </div>
   );
 }

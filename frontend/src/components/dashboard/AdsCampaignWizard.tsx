@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { ChevronLeft, ChevronRight, Loader2, Package, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Loader2, Package, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { AdsCreativeMediaPicker } from './AdsCreativeMediaPicker';
@@ -107,22 +107,13 @@ export function AdsCampaignWizard({
 
   const set = (patch: Partial<Form>) => setForm((v) => ({ ...v, ...patch }));
 
-  const handleProductSelect = (selectedId: string) => {
-    if (!selectedId) {
-      set({ product_id: '' });
-      return;
-    }
-    const found = storeProducts.find((p) => p.id === selectedId);
-    if (found) {
-      set({
-        product_id: found.id,
-        creative_title: form.creative_title || found.title,
-        image_url: form.image_url || found.image_url || '',
-        destination_url: form.destination_url || `/hub/products/${found.id}`,
-      });
-    } else {
-      set({ product_id: selectedId });
-    }
+  const handleProductSelect = (selectedProduct: ProductOption) => {
+    set({
+      product_id: selectedProduct.id,
+      creative_title: form.creative_title || selectedProduct.title,
+      image_url: form.image_url || selectedProduct.image_url || '',
+      destination_url: form.destination_url || `/hub/products/${selectedProduct.id}`,
+    });
   };
 
   const valid = () => {
@@ -347,24 +338,16 @@ export function AdsCampaignWizard({
               <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.stepCreative') || 'Creative'}</h3>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* Product Dropdown Selection for Sponsored Product */}
+                {/* Rich Product Selector with Pictures */}
                 {form.campaign_type === 'sponsored_product' && (
                   <div className="sm:col-span-2 space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
                     <Field label={t('ads.wizard.selectProduct') || 'Select product or service'}>
-                      {loadingProducts ? (
-                        <div className="mt-1 flex items-center gap-2 p-3 text-xs font-bold text-emerald-700 bg-white rounded-xl border">
-                          <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> Loading store catalog...
-                        </div>
-                      ) : (
-                        <select value={form.product_id} onChange={(e) => handleProductSelect(e.target.value)} className={inputClass}>
-                          <option value="">{t('ads.wizard.chooseProduct') || '-- Select from your store catalog --'}</option>
-                          {storeProducts.map((prod) => (
-                            <option key={prod.id} value={prod.id}>
-                              {prod.title} ({Number(prod.price).toFixed(3)} TND) — ID: {prod.id}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      <RichProductSelector
+                        products={storeProducts}
+                        selectedId={form.product_id}
+                        loading={loadingProducts}
+                        onSelect={handleProductSelect}
+                      />
                     </Field>
 
                     <Field label={t('ads.wizard.productId') || 'Product / Service ID'}>
@@ -563,6 +546,120 @@ export function AdsCampaignWizard({
       </form>
 
       <AdsCreativeMediaPicker open={mediaOpen} onClose={() => setMediaOpen(false)} onSelect={(image_url) => set({ image_url })} />
+    </div>
+  );
+}
+
+/**
+ * Custom Rich Product Dropdown Selector Component with Pictures
+ */
+function RichProductSelector({
+  products,
+  selectedId,
+  loading,
+  onSelect,
+}: {
+  products: ProductOption[];
+  selectedId: string;
+  loading: boolean;
+  onSelect: (prod: ProductOption) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const selectedProduct = products.find((p) => p.id === selectedId);
+  const filtered = products.filter(
+    (p) => p.title.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-500">
+        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> Loading store catalog products...
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mt-1">
+      {/* Selector Button */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:border-emerald-500 focus:outline-none"
+      >
+        {selectedProduct ? (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+              {selectedProduct.image_url ? (
+                <img src={selectedProduct.image_url} alt={selectedProduct.title} className="h-full w-full object-cover" />
+              ) : (
+                <Package className="h-5 w-5 text-slate-400" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-900">{selectedProduct.title}</p>
+              <p className="text-xs font-semibold text-emerald-700">{Number(selectedProduct.price).toFixed(3)} TND · <span className="font-mono text-slate-400">{selectedProduct.id}</span></p>
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm font-semibold text-slate-400">-- Select a product/service from your catalog --</span>
+        )}
+        <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown Menu */}
+      {open && (
+        <div className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+          <div className="sticky top-0 bg-white p-1">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="w-full bg-transparent font-semibold text-slate-900 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-1 divide-y divide-slate-100">
+            {filtered.length === 0 ? (
+              <p className="p-4 text-center text-xs text-slate-400">No matching products found</p>
+            ) : (
+              filtered.map((prod) => (
+                <button
+                  key={prod.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(prod);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between p-2.5 text-left transition hover:bg-emerald-50/70 rounded-xl ${
+                    prod.id === selectedId ? 'bg-emerald-50 font-bold' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      {prod.image_url ? (
+                        <img src={prod.image_url} alt={prod.title} className="h-full w-full object-cover" />
+                      ) : (
+                        <Package className="h-5 w-5 text-slate-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-900 line-clamp-1">{prod.title}</p>
+                      <p className="text-[11px] font-bold text-emerald-700">{Number(prod.price).toFixed(3)} TND <span className="font-mono text-[10px] text-slate-400">({prod.id})</span></p>
+                    </div>
+                  </div>
+                  {prod.id === selectedId && <Check className="h-4 w-4 text-emerald-600" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -291,9 +291,9 @@ export class AdsService {
       }
 
       const updated = await c.query(
-        `UPDATE pd_ads_campaign SET status=$3,
-          submitted_at=CASE WHEN $4='pending_review' THEN NOW() ELSE submitted_at END,
-          approved_at=CASE WHEN $3='approved' THEN NOW() ELSE approved_at END,
+        `UPDATE pd_ads_campaign SET status=$3::varchar,
+          submitted_at=CASE WHEN $4::text='pending_review' THEN NOW() ELSE submitted_at END,
+          approved_at=CASE WHEN $3::text='approved' THEN NOW() ELSE approved_at END,
           updated_at=NOW() WHERE id=$1 AND store_id=$2 RETURNING *`,
         [id, storeId, next, requestedNext],
       );
