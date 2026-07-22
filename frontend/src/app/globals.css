@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Global Cursor Pointer Enforcement for Interactive Elements */
+button, [role="button"], a, input[type="submit"], input[type="button"], input[type="reset"], select, label, option {
+  cursor: pointer;
+}
+button:disabled, input:disabled, select:disabled {
+  cursor: not-allowed !important;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =====================================================

@@ -655,12 +655,20 @@ export class AdsService {
                     COUNT(*) FILTER (WHERE status='active')::int AS active,
                     COALESCE(SUM(spent_amount),0)::text AS total_spend
              FROM pd_ads_campaign`),
-      query(`SELECT c.*, s.name AS store_name,
-                    COALESCE(json_agg(cr.*) FILTER (WHERE cr.id IS NOT NULL), '[]') AS creatives
+      query(`SELECT c.*, s.name AS store_name, s.subdomain, s.custom_domain, s.is_verified, s.seller_type,
+                    u.email AS owner_email, u.full_name AS owner_name,
+                    a.balance AS account_balance, a.reserved_balance AS account_reserved_balance, a.status AS account_status,
+                    COALESCE(json_agg(DISTINCT cr.*) FILTER (WHERE cr.id IS NOT NULL), '[]') AS creatives,
+                    COALESCE(json_agg(DISTINCT p.name) FILTER (WHERE p.id IS NOT NULL), '[]') AS placement_names
              FROM pd_ads_campaign c
              JOIN pd_store s ON s.id=c.store_id
+             JOIN pd_user u ON u.id=s.owner_id
+             LEFT JOIN pd_ads_account a ON a.store_id=c.store_id
              LEFT JOIN pd_ads_creative cr ON cr.campaign_id=c.id
-             GROUP BY c.id,s.name ORDER BY c.created_at DESC LIMIT 100`),
+             LEFT JOIN pd_ads_campaign_placement cp ON cp.campaign_id=c.id
+             LEFT JOIN pd_ads_placement p ON p.id=cp.placement_id
+             GROUP BY c.id,s.name,s.subdomain,s.custom_domain,s.is_verified,s.seller_type,u.email,u.full_name,a.balance,a.reserved_balance,a.status
+             ORDER BY c.created_at DESC LIMIT 100`),
       query(`SELECT a.*, s.name AS store_name,
                     COUNT(c.id)::int AS campaign_count,
                     COALESCE(SUM(c.spent_amount),0)::text AS total_spend
@@ -681,8 +689,8 @@ export class AdsService {
       if (campaign.status !== 'pending_review') throw new PdValidationError('Only pending campaigns can be reviewed');
       const next = decision === 'approved' ? 'approved' : 'rejected';
       const updated = await c.query(
-        `UPDATE pd_ads_campaign SET status=$2, approved_at=CASE WHEN $2='approved' THEN NOW() ELSE NULL END,
-          rejection_reason=CASE WHEN $2='rejected' THEN $3 ELSE NULL END, updated_at=NOW() WHERE id=$1 RETURNING *`,
+        `UPDATE pd_ads_campaign SET status=$2::varchar, approved_at=CASE WHEN $2::text='approved' THEN NOW() ELSE NULL END,
+          rejection_reason=CASE WHEN $2::text='rejected' THEN $3 ELSE NULL END, updated_at=NOW() WHERE id=$1 RETURNING *`,
         [campaignId, next, reason || null],
       );
       await c.query(`INSERT INTO pd_ads_review (id,campaign_id,reviewer_user_id,decision,reason) VALUES ($1,$2,$3,$4,$5)`,
