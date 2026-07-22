@@ -361,6 +361,34 @@ export function AdsCampaignWizard({
                   </div>
                 )}
 
+                <div className="sm:col-span-2 flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-slate-500">{t('ads.wizard.titleLabel') || 'Title & Copy'}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sampleProduct = storeProducts.find((p) => p.id === form.product_id);
+                      const baseName = sampleProduct?.title || form.name || 'PandaMarket Exclusive';
+                      const headlines = [
+                        `🔥 Exclusive Deal: ${baseName} - Best Price Guaranteed!`,
+                        `🌟 Premium ${baseName}: Top Rated on PandaMarket`,
+                        `🚀 Limited Stock: Buy ${baseName} Today & Save Big!`,
+                        `✨ Best Seller: ${baseName} with Fast Nationwide Delivery`,
+                      ];
+                      const descriptions = [
+                        `Discover the finest quality with ${baseName}. Order now on PandaMarket and enjoy exclusive marketplace savings!`,
+                        `Upgrade your daily lifestyle with ${baseName}. Trusted quality, verified sellers, and instant ordering.`,
+                        `Special promotional offer on ${baseName}. Stock is limited — get yours today before it sells out!`,
+                      ];
+                      const randHead = headlines[Math.floor(Math.random() * headlines.length)];
+                      const randDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+                      set({ creative_title: randHead, creative_description: randDesc });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-3 py-1 text-xs font-black text-amber-700 hover:bg-amber-500/20 transition cursor-pointer border border-amber-300"
+                  >
+                    ✨ Spark AI Copy Generator
+                  </button>
+                </div>
+
                 <Field label={t('ads.wizard.titleLabel') || 'Title'}>
                   <input value={form.creative_title} onChange={(e) => set({ creative_title: e.target.value })} className={inputClass} placeholder="e.g. Best Olive Oil in Tunisia" />
                 </Field>

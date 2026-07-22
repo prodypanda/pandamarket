@@ -401,9 +401,14 @@ export default function SellerAdsPage() {
                       </div>
                     )}
                     <div>
-                      <p className="font-black text-slate-900 text-base">{c.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-slate-900 text-base">{c.name}</p>
+                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${creative?.image_url ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                          Health: {creative?.image_url ? '95% Excellent' : '75% Needs Artwork'}
+                        </span>
+                      </div>
                       <p className="text-xs font-semibold text-slate-500">
-                        {c.campaign_type.replaceAll('_', ' ')} · {money(c.spent_amount)} {t('ads.spentOf') || 'spent of'} {money(c.total_budget)}
+                        {c.campaign_type.replaceAll('_', ' ')} · {money(c.spent_amount)} {t('ads.spentOf') || 'spent of'} {money(c.total_budget)} · Rate: {money(c.bid_amount)}
                       </p>
                     </div>
                   </div>
@@ -682,10 +687,26 @@ export default function SellerAdsPage() {
               <button type="button" onClick={() => setRefilling(false)} className="rounded-full p-1 hover:bg-slate-100 cursor-pointer"><X className="h-5 w-5" /></button>
             </div>
 
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
-              {t('ads.amountTnd') || 'Amount (TND)'}
-              <input type="number" min="0.001" step="0.001" value={refillAmount} onChange={(e) => setRefillAmount(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-lg font-black text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" />
-            </label>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
+                {t('ads.amountTnd') || 'Amount (TND)'}
+                <input type="number" min="0.001" step="0.001" value={refillAmount} onChange={(e) => setRefillAmount(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-lg font-black text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" />
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {['20', '50', '100', '200'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRefillAmount(preset)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                      refillAmount === preset ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    +{preset} TND
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
               {t('ads.gateway') || 'Payment Method'}
