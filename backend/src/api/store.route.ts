@@ -65,9 +65,9 @@ const updatePaymentConfigSchema = z.object({
 const storefrontCategorySchema = z.object({
   name: z.string().min(2).max(120),
   parent_id: z.string().nullable().optional(),
-  description: z.string().max(1000).optional(),
-  short_description: z.string().max(255).optional(),
-  long_description: z.string().max(5000).optional(),
+  description: z.string().max(1000).nullable().optional(),
+  short_description: z.string().max(255).nullable().optional(),
+  long_description: z.string().max(5000).nullable().optional(),
   image_url: z.string().url().nullable().optional(),
   position: z.number().int().optional(),
 });
