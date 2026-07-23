@@ -41,27 +41,28 @@ export function resolveCategoryLocale(cat: MarketplaceCategoryRow, locale?: stri
   if (!cat) return cat;
   const loc = (locale || 'fr').toLowerCase();
 
-  let resolvedName = cat.name_fr || cat.name;
-  let resolvedDesc = cat.description_fr || cat.description;
+  let resolvedName = cat.name;
+  let resolvedDesc = cat.description;
 
   if (loc === 'ar' || loc.startsWith('ar')) {
-    resolvedName = cat.name_ar || cat.name_fr || cat.name;
-    resolvedDesc = cat.description_ar || cat.description_fr || cat.description;
+    resolvedName = (cat.name_ar && cat.name_ar.trim()) || (cat.name_fr && cat.name_fr.trim()) || (cat.name_en && cat.name_en.trim()) || cat.name;
+    resolvedDesc = (cat.description_ar && cat.description_ar.trim()) || (cat.description_fr && cat.description_fr.trim()) || (cat.description_en && cat.description_en.trim()) || cat.description;
   } else if (loc === 'en' || loc.startsWith('en')) {
-    resolvedName = cat.name_en || cat.name;
-    resolvedDesc = cat.description_en || cat.description;
-  } else if (loc === 'fr' || loc.startsWith('fr')) {
-    resolvedName = cat.name_fr || cat.name;
-    resolvedDesc = cat.description_fr || cat.description;
+    resolvedName = (cat.name_en && cat.name_en.trim()) || (cat.name_fr && cat.name_fr.trim()) || (cat.name_ar && cat.name_ar.trim()) || cat.name;
+    resolvedDesc = (cat.description_en && cat.description_en.trim()) || (cat.description_fr && cat.description_fr.trim()) || (cat.description_ar && cat.description_ar.trim()) || cat.description;
+  } else {
+    // default / fr
+    resolvedName = (cat.name_fr && cat.name_fr.trim()) || (cat.name_en && cat.name_en.trim()) || (cat.name_ar && cat.name_ar.trim()) || cat.name;
+    resolvedDesc = (cat.description_fr && cat.description_fr.trim()) || (cat.description_en && cat.description_en.trim()) || (cat.description_ar && cat.description_ar.trim()) || cat.description;
   }
 
   let resolvedParentName = cat.parent_name;
   if (loc === 'ar' || loc.startsWith('ar')) {
-    resolvedParentName = cat.parent_name_ar || cat.parent_name_fr || cat.parent_name;
+    resolvedParentName = (cat.parent_name_ar && cat.parent_name_ar.trim()) || (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
   } else if (loc === 'en' || loc.startsWith('en')) {
-    resolvedParentName = cat.parent_name_en || cat.parent_name;
+    resolvedParentName = (cat.parent_name_en && cat.parent_name_en.trim()) || (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
   } else if (loc === 'fr' || loc.startsWith('fr')) {
-    resolvedParentName = cat.parent_name_fr || cat.parent_name;
+    resolvedParentName = (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
   }
 
   const result: MarketplaceCategoryRow = {

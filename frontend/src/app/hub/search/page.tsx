@@ -59,7 +59,7 @@ interface MarketplaceSettings {
 }
 
 function SearchContent() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const sellerTypeOptions = getSellerTypeOptions(t);
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -94,7 +94,7 @@ function SearchContent() {
     let active = true;
     async function fetchCategories() {
       try {
-        const res = await fetchWithCsrf('/api/pd/categories');
+        const res = await fetchWithCsrf(`/api/pd/categories?locale=${encodeURIComponent(locale)}`);
         if (!res.ok) return;
         const data = await res.json();
         if (active) setCategories((data.data || []).filter((category: MarketplaceCategory) => !category.is_default));
@@ -106,7 +106,7 @@ function SearchContent() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     let active = true;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy, ShoppingBag, X } from 'lucide-react';
 import { updateOnboardingStep } from '@/lib/onboarding';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface BuyerWelcomeModalProps {
   onClose: () => void;
@@ -10,6 +11,7 @@ interface BuyerWelcomeModalProps {
 }
 
 export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalProps) {
+  const { locale } = useLocale();
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -21,7 +23,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
     let active = true;
     async function loadCategories() {
       try {
-        const res = await fetch('/api/pd/categories');
+        const res = await fetch(`/api/pd/categories?locale=${encodeURIComponent(locale)}`);
         if (res.ok && active) {
           const data = await res.json();
           setCategories(data.data || []);
@@ -29,13 +31,30 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
       } catch {
         // Fallback static categories
         if (active) {
-          setCategories([
-            { id: '1', name: 'Fashion & Apparel' },
-            { id: '2', name: 'Electronics & Gadgets' },
-            { id: '3', name: 'Home & Kitchen' },
-            { id: '4', name: 'Health & Beauty' },
-            { id: '5', name: 'Books & Stationery' },
-          ]);
+          const fallbacks = locale === 'ar'
+            ? [
+                { id: '1', name: 'موضة وأزياء' },
+                { id: '2', name: 'إلكترونيات وتكنولوجيا' },
+                { id: '3', name: 'منزل ومطبخ' },
+                { id: '4', name: 'صحة وجمال' },
+                { id: '5', name: 'كتب وأدوات مكتبية' },
+              ]
+            : locale === 'en'
+              ? [
+                  { id: '1', name: 'Fashion & Apparel' },
+                  { id: '2', name: 'Electronics & Gadgets' },
+                  { id: '3', name: 'Home & Kitchen' },
+                  { id: '4', name: 'Health & Beauty' },
+                  { id: '5', name: 'Books & Stationery' },
+                ]
+              : [
+                  { id: '1', name: 'Mode & Vêtements' },
+                  { id: '2', name: 'Électronique & High-Tech' },
+                  { id: '3', name: 'Maison & Cuisine' },
+                  { id: '4', name: 'Santé & Beauté' },
+                  { id: '5', name: 'Livres & Bureau' },
+                ];
+          setCategories(fallbacks);
         }
       }
     }
@@ -43,7 +62,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
     return () => {
       active = false;
     };
-  }, []);
+  }, [locale]);
 
   // Persist dismissal so the modal doesn't reappear on every visit,
   // then close. Used by the X button, backdrop click, and Escape key.

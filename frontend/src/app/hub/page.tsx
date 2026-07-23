@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { HubNavbar } from '../../components/hub/HubNavbar';
 import { HubHomeContent } from '../../components/hub/HubHomeContent';
 import { AliExpressHomeContent } from '../../components/hub/AliExpressHomeContent';
@@ -105,10 +106,10 @@ async function getTrendingProducts(sortBy?: string): Promise<Product[]> {
   }
 }
 
-async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
+async function getMarketplaceCategories(locale: string = 'fr'): Promise<MarketplaceCategory[]> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/categories`, {
+    const res = await fetch(`${backendUrl}/api/pd/categories?locale=${encodeURIComponent(locale)}`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
@@ -119,11 +120,21 @@ async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
   }
 }
 
-export default async function HubHomepage() {
+export default async function HubHomepage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ locale?: string }>;
+}) {
+  const sp = searchParams ? await searchParams : {};
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get('pd_locale')?.value;
+
   const marketplaceSettings = await getMarketplaceSettings();
+  const activeLocale = sp.locale || cookieLocale || marketplaceSettings.marketplace_default_locale || 'fr';
+
   const [trendingProducts, categories] = await Promise.all([
     getTrendingProducts(marketplaceSettings.catalog_default_sort),
-    getMarketplaceCategories(),
+    getMarketplaceCategories(activeLocale),
   ]);
   const orderedCategories = prioritizeFeaturedCategories(categories, marketplaceSettings);
   const marketplaceTheme = resolveMarketplaceTheme(marketplaceSettings.marketplace_theme);
