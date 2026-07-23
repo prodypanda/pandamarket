@@ -489,6 +489,27 @@ export class CategoryService {
     return rows[0];
   }
 
+  async reorderMarketplaceCategories(items: Array<{ id: string; position: number; parent_id?: string | null }>): Promise<void> {
+    for (const item of items) {
+      if (item.parent_id) {
+        await query(
+          'UPDATE pd_marketplace_category SET position = $1, parent_id = $2, updated_at = NOW() WHERE id = $3',
+          [item.position, item.parent_id, item.id],
+        );
+      } else if (item.parent_id === null) {
+        await query(
+          'UPDATE pd_marketplace_category SET position = $1, parent_id = NULL, updated_at = NOW() WHERE id = $2',
+          [item.position, item.id],
+        );
+      } else {
+        await query(
+          'UPDATE pd_marketplace_category SET position = $1, updated_at = NOW() WHERE id = $2',
+          [item.position, item.id],
+        );
+      }
+    }
+  }
+
   async getMarketplaceCategory(id: string): Promise<MarketplaceCategoryRow> {
     const { rows } = await query<MarketplaceCategoryRow>('SELECT * FROM pd_marketplace_category WHERE id = $1', [id]);
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Marketplace category not found');

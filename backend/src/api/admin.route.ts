@@ -253,6 +253,25 @@ const handleUpdateCategory = asyncHandler(async (req: Request, res: Response) =>
   res.status(200).json({ category });
 });
 
+const reorderCategoriesSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      position: z.number().int(),
+      parent_id: z.string().nullable().optional(),
+    }),
+  ),
+});
+
+router.put(
+  '/marketplace-categories/reorder',
+  validate(reorderCategoriesSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await categoryService.reorderMarketplaceCategories(req.body.items);
+    res.status(200).json({ success: true });
+  }),
+);
+
 router.put('/marketplace-categories/:id', validate(updateCategorySchema), handleUpdateCategory);
 router.patch('/marketplace-categories/:id', validate(updateCategorySchema), handleUpdateCategory);
 
