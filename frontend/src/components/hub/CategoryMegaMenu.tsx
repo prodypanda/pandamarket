@@ -57,28 +57,45 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Tv,
 };
 
-export function CategoryMegaMenu({
-  marketplaceTheme = 'panda',
-}: {
-  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
-}) {
-  const { locale } = useLocale();
+function getCategoryIconComponent(cat: CategoryNode) {
+  if (cat.icon && ICON_MAP[cat.icon]) {
+    return ICON_MAP[cat.icon];
+  }
+  const slug = (cat.slug || cat.name || '').toLowerCase();
+  if (slug.includes('electr') || slug.includes('tech') || slug.includes('phone') || slug.includes('ordinat')) return Smartphone;
+  if (slug.includes('fash') || slug.includes('vetement') || slug.includes('cloth') || slug.includes('mode')) return Shirt;
+  if (slug.includes('home') || slug.includes('maison') || slug.includes('meuble') || slug.includes('furnit')) return Home;
+  if (slug.includes('beaut') || slug.includes('beaute') || slug.includes('cosmet')) return Sparkle;
+  if (slug.includes('auto') || slug.includes('vehic') || slug.includes('car')) return Wrench;
+  if (slug.includes('bijou') || slug.includes('watch') || slug.includes('montre')) return Gem;
+  if (slug.includes('food') || slug.includes('alimen') || slug.includes('restau')) return Utensils;
+  if (slug.includes('book') || slug.includes('livre') || slug.includes('bureau')) return BookOpen;
+  if (slug.includes('game') || slug.includes('jouet') || slug.includes('toy')) return Tv;
+  if (slug.includes('media') || slug.includes('tv') || slug.includes('video')) return Tv;
+  if (slug.includes('audio') || slug.includes('music') || slug.includes('casque')) return Music;
+  return Layers;
+}
+
+export interface CategoryMegaMenuProps {
+  variant?: 'classic' | 'aliexpress' | 'aliexpress2';
+}
+
+export function CategoryMegaMenu({ variant = 'classic' }: CategoryMegaMenuProps) {
+  const { locale, isRtl } = useLocale();
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [activeCategory, setActiveCategory] = useState<CategoryNode | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isAliExpress = marketplaceTheme === 'aliexpress' || marketplaceTheme === 'aliexpress2';
-  const isAliExpress2 = marketplaceTheme === 'aliexpress2';
-  const isRtl = locale === 'ar';
+  const isAliExpress = variant === 'aliexpress';
+  const isAliExpress2 = variant === 'aliexpress2';
 
   useEffect(() => {
     let cancelled = false;
-
     async function fetchCategories() {
+      setLoading(true);
       try {
-        setLoading(true);
         const res = await fetch(`/api/pd/categories?tree=true&locale=${locale}`);
         if (!cancelled && res.ok) {
           const data = await res.json();
@@ -95,12 +112,14 @@ export function CategoryMegaMenu({
       }
     }
 
-    fetchCategories();
+    if (isOpen) {
+      fetchCategories();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [isOpen, locale]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -112,13 +131,6 @@ export function CategoryMegaMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (activeCategory && categories.length > 0) {
-      const match = categories.find((c) => c.id === activeCategory.id);
-      if (match) setActiveCategory(match);
-    }
-  }, [categories]);
-
   const buttonStyle = isAliExpress2
     ? 'bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white hover:opacity-95 shadow-md shadow-orange-900/20'
     : isAliExpress
@@ -127,7 +139,6 @@ export function CategoryMegaMenu({
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* Category Dropdown Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-xs font-black transition-all ${buttonStyle}`}
@@ -140,7 +151,6 @@ export function CategoryMegaMenu({
         <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Multi-Column Mega Menu Panel */}
       {isOpen && (
         <div
           dir={isRtl ? 'rtl' : 'ltr'}
@@ -161,10 +171,9 @@ export function CategoryMegaMenu({
             </div>
           ) : (
             <div className="grid grid-cols-12 gap-4">
-              {/* Left Column: Top-Level Category List */}
               <div className="col-span-4 border-r border-slate-100 dark:border-white/10 pr-2 space-y-1 max-h-[420px] overflow-y-auto">
                 {categories.map((cat) => {
-                  const IconComp = (cat.icon && ICON_MAP[cat.icon]) || Layers;
+                  const IconComp = getCategoryIconComponent(cat);
                   const isActive = activeCategory?.id === cat.id;
 
                   return (
