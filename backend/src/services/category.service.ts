@@ -423,7 +423,7 @@ export class CategoryService {
       fields.push(`name_en = $${values.length}`);
     }
     if (patch.description !== undefined) {
-      values.push(patch.description.trim() || null);
+      values.push(patch.description?.trim() || null);
       fields.push(`description = $${values.length}`);
     }
     if (patch.description_fr !== undefined) {
@@ -439,14 +439,14 @@ export class CategoryService {
       fields.push(`description_en = $${values.length}`);
     }
     if (patch.short_description !== undefined) {
-      const shortDescription = patch.short_description.trim() || null;
+      const shortDescription = patch.short_description?.trim() || null;
       values.push(shortDescription);
       fields.push(`short_description = $${values.length}`);
       values.push(shortDescription);
       fields.push(`description = $${values.length}`);
     }
     if (patch.long_description !== undefined) {
-      values.push(patch.long_description.trim() || null);
+      values.push(patch.long_description?.trim() || null);
       fields.push(`long_description = $${values.length}`);
     }
     if (patch.image_url !== undefined) {
@@ -624,18 +624,18 @@ export class CategoryService {
       fields.push(`parent_id = $${values.length}`);
     }
     if (patch.description !== undefined) {
-      values.push(patch.description.trim() || null);
+      values.push(patch.description?.trim() || null);
       fields.push(`description = $${values.length}`);
     }
     if (patch.short_description !== undefined) {
-      const shortDescription = patch.short_description.trim() || null;
+      const shortDescription = patch.short_description?.trim() || null;
       values.push(shortDescription);
       fields.push(`short_description = $${values.length}`);
       values.push(shortDescription);
       fields.push(`description = $${values.length}`);
     }
     if (patch.long_description !== undefined) {
-      values.push(patch.long_description.trim() || null);
+      values.push(patch.long_description?.trim() || null);
       fields.push(`long_description = $${values.length}`);
     }
     if (patch.image_url !== undefined) {
