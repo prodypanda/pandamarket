@@ -110,8 +110,8 @@ function ProductCard({ product, currency }: { product: Product; currency: string
 }
 
 export function HubHomeContent({ trendingProducts, categories, marketplaceSettings }: HubHomeContentProps) {
-  const { t } = useLocale();
-  const rtl = isRtlLocale(marketplaceSettings);
+  const { t, locale } = useLocale();
+  const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
 
   // Admin-managed block configuration (enable/disable, order, titles, limits)

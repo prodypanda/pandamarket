@@ -112,6 +112,13 @@ export function CategoryMegaMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (activeCategory && categories.length > 0) {
+      const match = categories.find((c) => c.id === activeCategory.id);
+      if (match) setActiveCategory(match);
+    }
+  }, [categories]);
+
   const buttonStyle = isAliExpress2
     ? 'bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white hover:opacity-95 shadow-md shadow-orange-900/20'
     : isAliExpress
@@ -143,12 +150,14 @@ export function CategoryMegaMenu({
             <div className="flex h-64 items-center justify-center">
               <div className="flex items-center gap-3 text-xs font-bold text-slate-400">
                 <Sparkles className="h-4 w-4 animate-spin text-amber-500" />
-                <span>Chargement des catégories...</span>
+                <span>
+                  {locale === 'ar' ? 'جاري تحميل الأقسام...' : locale === 'en' ? 'Loading categories...' : 'Chargement des catégories...'}
+                </span>
               </div>
             </div>
           ) : categories.length === 0 ? (
             <div className="p-8 text-center text-xs font-semibold text-slate-500">
-              Aucune catégorie disponible
+              {locale === 'ar' ? 'لا توجد أقسام متوفرة' : locale === 'en' ? 'No categories available' : 'Aucune catégorie disponible'}
             </div>
           ) : (
             <div className="grid grid-cols-12 gap-4">
@@ -191,7 +200,11 @@ export function CategoryMegaMenu({
                           {activeCategory.name}
                         </h3>
                         <p className="text-[11px] font-semibold text-slate-400">
-                          {activeCategory.children?.length || 0} sous-catégories
+                          {locale === 'ar'
+                            ? `${activeCategory.children?.length || 0} قسم فرعي`
+                            : locale === 'en'
+                              ? `${activeCategory.children?.length || 0} subcategories`
+                              : `${activeCategory.children?.length || 0} sous-catégories`}
                         </p>
                       </div>
                       <Link
@@ -201,7 +214,7 @@ export function CategoryMegaMenu({
                           isAliExpress ? 'text-[#ff4747] hover:underline' : 'text-emerald-600 hover:underline'
                         }`}
                       >
-                        Voir tout ➔
+                        {locale === 'ar' ? 'تصفح الكل ➔' : locale === 'en' ? 'Browse All ➔' : 'Tout parcourir ➔'}
                       </Link>
                     </div>
 
@@ -219,27 +232,37 @@ export function CategoryMegaMenu({
                               {sub.name}
                             </span>
                             <span className="mt-2 text-[10px] font-bold text-slate-400">
-                              {sub.product_count || 0} produits
+                              {locale === 'ar'
+                                ? `${sub.product_count || 0} منتج`
+                                : locale === 'en'
+                                  ? `${sub.product_count || 0} products`
+                                  : `${sub.product_count || 0} produits`}
                             </span>
                           </Link>
                         ))}
                       </div>
                     ) : (
                       <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-semibold text-slate-400 dark:border-white/10">
-                        <p>Explorez les produits dans {activeCategory.name}</p>
+                        <p>
+                          {locale === 'ar'
+                            ? `استكشف المنتجات في قسم ${activeCategory.name}`
+                            : locale === 'en'
+                              ? `Explore products in ${activeCategory.name}`
+                              : `Explorez les produits dans ${activeCategory.name}`}
+                        </p>
                         <Link
                           href={`/hub/category/${activeCategory.slug}`}
                           onClick={() => setIsOpen(false)}
                           className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800"
                         >
-                          Accéder au rayon
+                          {locale === 'ar' ? 'الانتقال إلى القسم' : locale === 'en' ? 'Go to department' : 'Accéder au rayon'}
                         </Link>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="p-8 text-center text-xs font-semibold text-slate-400">
-                    Sélectionnez un rayon à gauche
+                    {locale === 'ar' ? 'اختر قسمًا من القائمة على اليمين' : locale === 'en' ? 'Select a category from the left menu' : 'Sélectionnez un rayon à gauche'}
                   </div>
                 )}
               </div>

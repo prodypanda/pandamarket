@@ -130,10 +130,13 @@ export function isRtlLocale(
   },
   activeLocale?: string,
 ): boolean {
-  if (activeLocale === 'ar') return true;
+  if (activeLocale) {
+    return activeLocale === 'ar' || activeLocale.startsWith('ar');
+  }
   if (!settings) return false;
   const rtl = settings.marketplace_rtl_enabled;
-  return (rtl === true || rtl === 'true') || settings.marketplace_default_locale === 'ar';
+  const isRtlEnabled = rtl === true || rtl === 'true';
+  return isRtlEnabled && settings.marketplace_default_locale === 'ar';
 }
 
 /**

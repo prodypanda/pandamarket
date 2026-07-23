@@ -15,6 +15,7 @@ import {
   Store,
   Zap,
 } from 'lucide-react';
+import { useLocale } from '../../contexts/LocaleContext';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
@@ -53,7 +54,8 @@ const MIDDLE_BLOCK_IDS = ['lightning_deals', 'top_sellers', 'sponsored_brands', 
 
 export function AmazonHomeContent({ trendingProducts, categories, marketplaceSettings }: AmazonHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
-  const rtl = isRtlLocale(marketplaceSettings);
+  const { locale } = useLocale();
+  const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
   const [activeCategory, setActiveCategory] = useState<HomeCategory | null>(null);
   const countdown = useCountdown();

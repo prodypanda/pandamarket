@@ -64,10 +64,82 @@ const ORANGE = '#ff6a00';
 // Sections that can be reordered from the admin Homepage Blocks editor.
 const MIDDLE_BLOCK_IDS = ['deals', 'sponsored_brands', 'product_grid', 'recently_viewed'];
 
+const TRANSLATIONS = {
+  fr: {
+    allCategories: 'Toutes les catégories',
+    subcategoriesAvailable: (count: number) => `${count} sous-catégorie${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}`,
+    browseAll: 'Tout parcourir ➔',
+    productsCount: (count: number) => `${count} produit${count > 1 ? 's' : ''}`,
+    tradeAssurance: 'Protection Trade Assurance',
+    tradeAssuranceVerified: 'Vérifié Trade Assurance',
+    verifiedLogistics: 'Fournisseurs vérifiés & Logistique rapide',
+    verifiedSuppliers: 'Usines & Fournisseurs vérifiés',
+    becomeSeller: 'Devenir vendeur',
+    defaultCategoryDesc: 'Achetez directement auprès de fabricants et fournisseurs vérifiés.',
+    topSellers: 'Meilleurs vendeurs',
+    noSellers: 'Aucun vendeur pour le moment',
+    rfqTitle: 'Demande de devis (RFQ)',
+    rfqSubtitle: 'Exprimez votre besoin et recevez des offres sur mesure.',
+    rfqButton: 'Publier une demande',
+    endsIn: 'Se termine dans',
+    noDeals: 'Aucune offre pour le moment',
+    justForYou: 'Pour vous',
+    viewAll: 'Voir tout',
+    dealsTitle: "Offres du jour",
+  },
+  ar: {
+    allCategories: 'جميع الأقسام',
+    subcategoriesAvailable: (count: number) => `${count} قسم فرعي متوفر`,
+    browseAll: 'تصفح الكل ➔',
+    productsCount: (count: number) => `${count} منتج`,
+    tradeAssurance: 'حماية الضمان التجاري',
+    tradeAssuranceVerified: 'ضمان تجاري معتمد',
+    verifiedLogistics: 'موردون معتمدون وشحن سريع',
+    verifiedSuppliers: 'موردو مصانع معتمدون',
+    becomeSeller: 'كن بائعاً',
+    defaultCategoryDesc: 'اشترِ مباشرة من المصانع والموردين المعتمدين.',
+    topSellers: 'أفضل البائعين',
+    noSellers: 'لا يوجد بائعون بعد',
+    rfqTitle: 'طلب عروض أسعار (RFQ)',
+    rfqSubtitle: 'أخبر الموردين باحتياجاتك واحصل على أفضل العروض.',
+    rfqButton: 'إرسال طلب',
+    endsIn: 'ينتهي خلال',
+    noDeals: 'لا توجد عروض حالياً',
+    justForYou: 'خصيصاً لك',
+    viewAll: 'عرض الكل',
+    dealsTitle: 'عروض اليوم',
+  },
+  en: {
+    allCategories: 'My Markets & Categories',
+    subcategoriesAvailable: (count: number) => `${count} subcategories available`,
+    browseAll: 'Browse All ➔',
+    productsCount: (count: number) => `${count} products`,
+    tradeAssurance: 'Trade Assurance Protection',
+    tradeAssuranceVerified: 'Trade Assurance Verified',
+    verifiedLogistics: 'Verified Suppliers & Fast Logistics',
+    verifiedSuppliers: 'Verified Factory Suppliers',
+    becomeSeller: 'Become a Seller',
+    defaultCategoryDesc: 'Source directly from verified manufacturers and suppliers.',
+    topSellers: 'Top Sellers',
+    noSellers: 'No sellers yet',
+    rfqTitle: 'Request for Quotation',
+    rfqSubtitle: 'Tell sellers what you need and receive tailored offers.',
+    rfqButton: 'Post a Request',
+    endsIn: 'Ends in',
+    noDeals: 'No deals available yet',
+    justForYou: 'Just for you',
+    viewAll: 'View all',
+    dealsTitle: "Today's deals",
+  },
+};
+
 export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSettings }: AlibabaHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
   const { locale } = useLocale();
   const rtl = isRtlLocale(marketplaceSettings, locale);
+  const locKey = locale && locale.startsWith('ar') ? 'ar' : locale && locale.startsWith('en') ? 'en' : 'fr';
+  const i18n = TRANSLATIONS[locKey];
+
   const [treeCategories, setTreeCategories] = useState<TreeCategoryNode[]>([]);
   const [activeCategory, setActiveCategory] = useState<TreeCategoryNode | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -92,6 +164,14 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
     };
   }, [locale]);
 
+  // Keep active category synced when treeCategories reloads in another locale
+  useEffect(() => {
+    if (activeCategory && treeCategories.length > 0) {
+      const match = treeCategories.find((c) => c.id === activeCategory.id);
+      if (match) setActiveCategory(match);
+    }
+  }, [treeCategories]);
+
   const displayCategories: TreeCategoryNode[] = treeCategories.length > 0
     ? treeCategories
     : categories.map((c) => ({ ...c, children: [] }));
@@ -106,10 +186,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   const blockTitle = (id: string, fallback: string) => blockById.get(id)?.title || fallback;
   const blockLimit = (id: string, fallback: number) => blockById.get(id)?.limit || fallback;
 
-  // Admin-managed hero carousel: the configured banner (admin settings) is
-  // always slide 1, followed by featured category slides.
+  // Admin-managed hero carousel
   const slides = useMemo<HeroSlide[]>(() => {
-    // Admin-defined hero slides fully replace the banner+category fallback.
     const configured = (blockById.get('hero')?.slides ?? []).map((entry) => ({
       title: entry.title,
       subtitle: entry.subtitle || '',
@@ -131,7 +209,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
     categories.slice(0, 3).forEach((category) => {
       result.push({
         title: category.name,
-        subtitle: category.short_description || category.description || 'Source directly from verified sellers.',
+        subtitle: category.short_description || category.description || i18n.defaultCategoryDesc,
         ctaLabel: 'Source now',
         ctaUrl: `/hub/category/${encodeURIComponent(category.slug)}`,
         imageUrl: category.image_url,
@@ -146,7 +224,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       });
     }
     return result;
-  }, [blockById, categories, marketplaceName, marketplaceSettings]);
+  }, [blockById, categories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -178,10 +256,10 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-xl font-black">
-            <Clock3 className="h-5 w-5" style={{ color: ORANGE }} /> {blockTitle('deals', "Today's deals")}
+            <Clock3 className="h-5 w-5" style={{ color: ORANGE }} /> {blockTitle('deals', i18n.dealsTitle)}
           </h2>
           <div className="flex items-center gap-1.5 text-sm font-black">
-            <span className="text-gray-500">Ends in</span>
+            <span className="text-gray-500">{i18n.endsIn}</span>
             {[{ label: 'h', value: countdown.hours }, { label: 'm', value: countdown.minutes }, { label: 's', value: countdown.seconds }].map((unit) => (
               <span key={unit.label} className="rounded-lg px-2 py-1 font-mono text-white" style={{ backgroundColor: NAVY }}>{unit.value}</span>
             ))}
@@ -202,28 +280,26 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
               <p className="mt-1 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
             </Link>
           ))}
-          {dealProducts.length === 0 && <p className="col-span-full text-sm text-gray-400">No deals available yet.</p>}
+          {dealProducts.length === 0 && <p className="col-span-full text-sm text-gray-400">{i18n.noDeals}</p>}
         </div>
       </div>
     </section>
   );
 
-  const renderSponsoredBrands = (): ReactNode => {
-    return (
-      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <BlockBanner block={blockById.get('sponsored_brands')} />
-        <SponsoredAdsRail placement="hub.sponsored_brands" variant="cards" />
-      </section>
-    );
-  };
+  const renderSponsoredBrands = (): ReactNode => (
+    <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <BlockBanner block={blockById.get('sponsored_brands')} />
+      <SponsoredAdsRail placement="hub.sponsored_brands" variant="cards" />
+    </section>
+  );
 
   const renderProductGrid = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <BlockBanner block={blockById.get('product_grid')} />
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-black">{blockTitle('product_grid', 'Just for you')}</h2>
+        <h2 className="text-xl font-black">{blockTitle('product_grid', i18n.justForYou)}</h2>
         <Link href={blockById.get('product_grid')?.cta_url || '/hub/search'} className="text-xs font-black" style={{ color: ORANGE }}>
-          {blockById.get('product_grid')?.cta_label || 'View all'}
+          {blockById.get('product_grid')?.cta_label || i18n.viewAll}
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -256,16 +332,16 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
+    <div dir={rtl ? 'rtl' : 'ltr'} className="min-h-screen bg-[#F5F7FA]">
       {/* Top B2B Sourcing Announcement Bar */}
       <div className="bg-[#0b1e3f] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 text-xs font-black sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-amber-400" /> Trade Assurance Protection</span>
-            <span className="hidden items-center gap-1.5 md:flex"><Truck className="h-4 w-4 text-[#ff6a00]" /> Verified Suppliers & Fast Logistics</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-amber-400" /> {i18n.tradeAssurance}</span>
+            <span className="hidden items-center gap-1.5 md:flex"><Truck className="h-4 w-4 text-[#ff6a00]" /> {i18n.verifiedLogistics}</span>
           </div>
           <Link href="/hub/vendor-signup" className="rounded-full bg-[#ff6a00] px-3 py-1 font-black text-white hover:bg-orange-600 transition-colors">
-            Become a Seller
+            {i18n.becomeSeller}
           </Link>
         </div>
       </div>
@@ -279,7 +355,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
               onMouseLeave={() => setActiveCategory(null)}
             >
               <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-gray-500">
-                <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {rtl ? 'جميع الأقسام' : 'My Markets & Categories'}
+                <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
               </p>
               <ul className="max-h-[380px] overflow-y-auto py-1">
                 {displayCategories.slice(0, 12).map((category) => (
@@ -311,14 +387,14 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                     <div>
                       <h3 className="text-base font-black text-slate-900">{activeCategory.name}</h3>
                       <p className="text-xs font-semibold text-slate-400">
-                        {activeCategory.children?.length || 0} subcategories available
+                        {i18n.subcategoriesAvailable(activeCategory.children?.length || 0)}
                       </p>
                     </div>
                     <Link
                       href={`/hub/category/${encodeURIComponent(activeCategory.slug)}`}
                       className="text-xs font-black text-[#ff6a00] hover:underline"
                     >
-                      Browse All ➔
+                      {i18n.browseAll}
                     </Link>
                   </div>
 
@@ -334,21 +410,21 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                             {sub.name}
                           </span>
                           <span className="mt-2 text-[10px] font-bold text-slate-400">
-                            {sub.product_count || 0} products
+                            {i18n.productsCount(sub.product_count || 0)}
                           </span>
                         </Link>
                       ))}
                     </div>
                   ) : (
                     <div className="p-6 text-center text-xs font-semibold text-slate-400">
-                      {activeCategory.short_description || activeCategory.description || 'Source directly from verified manufacturers and suppliers.'}
+                      {activeCategory.short_description || activeCategory.description || i18n.defaultCategoryDesc}
                     </div>
                   )}
 
                   {/* B2B Sourcing Tags */}
                   <div className="mt-6 flex items-center justify-between rounded-xl bg-slate-50 p-3 text-[11px] font-black text-slate-600">
-                    <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Trade Assurance Verified</span>
-                    <span className="flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5 text-blue-500" /> Verified Factory Suppliers</span>
+                    <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {i18n.tradeAssuranceVerified}</span>
+                    <span className="flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5 text-blue-500" /> {i18n.verifiedSuppliers}</span>
                   </div>
                 </div>
               )}
@@ -388,7 +464,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
             <aside className="hidden flex-col gap-3 lg:flex">
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
-                  <Store className="h-4 w-4" style={{ color: ORANGE }} /> Top sellers
+                  <Store className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.topSellers}
                 </p>
                 <ul className="mt-3 space-y-2">
                   {topSellers.slice(0, 5).map((seller) => (
@@ -399,22 +475,22 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       </Link>
                     </li>
                   ))}
-                  {topSellers.length === 0 && <li className="text-xs text-gray-400">No sellers yet</li>}
+                  {topSellers.length === 0 && <li className="text-xs text-gray-400">{i18n.noSellers}</li>}
                 </ul>
               </div>
               <div className="rounded-2xl p-4 text-white shadow-sm" style={{ backgroundColor: NAVY }}>
                 <Factory className="h-5 w-5" style={{ color: ORANGE }} />
-                <p className="mt-2 text-sm font-black">Request for quotation</p>
-                <p className="mt-1 text-[11px] leading-4 text-white/70">Tell sellers what you need and receive tailored offers.</p>
-                <Link href="/hub/messages" className="mt-3 inline-flex rounded-full bg-white/10 px-4 py-2 text-[11px] font-black hover:bg-white/20">Post a request</Link>
+                <p className="mt-2 text-sm font-black">{i18n.rfqTitle}</p>
+                <p className="mt-1 text-[11px] leading-4 text-white/70">{i18n.rfqSubtitle}</p>
+                <Link href="/hub/messages" className="mt-3 inline-flex rounded-full bg-white/10 px-4 py-2 text-[11px] font-black hover:bg-white/20">{i18n.rfqButton}</Link>
               </div>
             </aside>
           </section>
 
-          {/* Mobile category access (the sidebar above is desktop-only) */}
-          {categories.length > 0 && (
+          {/* Mobile category access */}
+          {displayCategories.length > 0 && (
             <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-4 sm:px-6 lg:hidden">
-              {categories.slice(0, 12).map((category) => (
+              {displayCategories.slice(0, 12).map((category) => (
                 <Link
                   key={category.id}
                   href={`/hub/category/${encodeURIComponent(category.slug)}`}
@@ -439,39 +515,39 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
           <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
             {[
               {
-                title: 'Buy with confidence',
+                title: locKey === 'ar' ? 'تسوق بثقة' : locKey === 'en' ? 'Buy with confidence' : 'Achetez en toute confiance',
                 icon: ShieldCheck,
                 links: [
-                  { label: 'Buyer protection', href: '/hub/cases' },
-                  { label: 'Order tracking', href: '/hub/orders' },
-                  { label: 'Help center', href: marketplaceSettings.marketplace_help_url || '/hub/cases' },
+                  { label: locKey === 'ar' ? 'حماية المشتري' : locKey === 'en' ? 'Buyer protection' : 'Protection des acheteurs', href: '/hub/cases' },
+                  { label: locKey === 'ar' ? 'تتبع الطلبات' : locKey === 'en' ? 'Order tracking' : 'Suivi des commandes', href: '/hub/orders' },
+                  { label: locKey === 'ar' ? 'مركز المساعدة' : locKey === 'en' ? 'Help center' : 'Centre d\'aide', href: marketplaceSettings.marketplace_help_url || '/hub/cases' },
                 ],
               },
               {
-                title: 'Sell on the marketplace',
+                title: locKey === 'ar' ? 'البيع في السوق' : locKey === 'en' ? 'Sell on the marketplace' : 'Vendre sur la marketplace',
                 icon: Store,
                 links: [
-                  { label: 'Become a supplier', href: '/hub/vendor-signup' },
-                  { label: 'Pricing plans', href: '/hub/pricing' },
-                  { label: 'Seller dashboard', href: '/hub/dashboard' },
+                  { label: locKey === 'ar' ? 'كن موردًا' : locKey === 'en' ? 'Become a supplier' : 'Devenir un fournisseur', href: '/hub/vendor-signup' },
+                  { label: locKey === 'ar' ? 'خطط الأسعار' : locKey === 'en' ? 'Pricing plans' : 'Forfaits & Tarifs', href: '/hub/pricing' },
+                  { label: locKey === 'ar' ? 'لوحة تحكم البائع' : locKey === 'en' ? 'Seller dashboard' : 'Tableau de bord vendeur', href: '/hub/dashboard' },
                 ],
               },
               {
-                title: 'Logistics',
+                title: locKey === 'ar' ? 'الخدمات اللوجستية' : locKey === 'en' ? 'Logistics' : 'Logistique & Expédition',
                 icon: Truck,
                 links: [
-                  { label: 'Shipping options', href: '/hub/search' },
-                  { label: 'Wholesale orders', href: '/hub/search' },
-                  { label: 'Contact support', href: marketplaceSettings.marketplace_contact_url || '/hub/cases' },
+                  { label: locKey === 'ar' ? 'خيارات الشحن' : locKey === 'en' ? 'Shipping options' : 'Options de livraison', href: '/hub/search' },
+                  { label: locKey === 'ar' ? 'طلبات الجملة' : locKey === 'en' ? 'Wholesale orders' : 'Commandes en gros', href: '/hub/search' },
+                  { label: locKey === 'ar' ? 'الاتصال بالدعم' : locKey === 'en' ? 'Contact support' : 'Contacter le support', href: marketplaceSettings.marketplace_contact_url || '/hub/cases' },
                 ],
               },
               {
-                title: 'Legal',
+                title: locKey === 'ar' ? 'الشروط القانونية' : locKey === 'en' ? 'Legal' : 'Informations légales',
                 icon: Globe2,
                 links: [
-                  { label: 'Terms of service', href: marketplaceSettings.marketplace_terms_url || '/hub' },
-                  { label: 'Privacy policy', href: marketplaceSettings.marketplace_privacy_url || '/hub' },
-                  { label: 'Refund policy', href: marketplaceSettings.marketplace_refund_url || '/hub' },
+                  { label: locKey === 'ar' ? 'شروط الخدمة' : locKey === 'en' ? 'Terms of service' : 'Conditions d\'utilisation', href: marketplaceSettings.marketplace_terms_url || '/hub' },
+                  { label: locKey === 'ar' ? 'سياسة الخصوصية' : locKey === 'en' ? 'Privacy policy' : 'Politique de confidentialité', href: marketplaceSettings.marketplace_privacy_url || '/hub' },
+                  { label: locKey === 'ar' ? 'سياسة الاسترجاع' : locKey === 'en' ? 'Refund policy' : 'Politique de remboursement', href: marketplaceSettings.marketplace_refund_url || '/hub' },
                 ],
               },
             ].map((column) => (

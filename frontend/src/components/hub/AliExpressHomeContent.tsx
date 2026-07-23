@@ -7,6 +7,7 @@ import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { getMarketplaceThemeClasses, resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
+import { useLocale } from '../../contexts/LocaleContext';
 import { BlockBanner, RecentlyViewedRail, isRtlLocale } from './home-template-shared';
 
 type MarketplaceThemeClasses = ReturnType<typeof getMarketplaceThemeClasses>;
@@ -96,7 +97,8 @@ function DealCard({ product, currency, themeClasses, isAliExpress2 }: { product:
 }
 
 export function AliExpressHomeContent({ trendingProducts, categories, marketplaceSettings }: AliExpressHomeContentProps) {
-  const rtl = isRtlLocale(marketplaceSettings);
+  const { locale } = useLocale();
+  const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
 
   // Admin-managed block configuration (enable/disable, order, titles, limits)
