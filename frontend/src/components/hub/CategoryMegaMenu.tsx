@@ -78,18 +78,21 @@ function getCategoryIconComponent(cat: CategoryNode) {
 
 export interface CategoryMegaMenuProps {
   variant?: 'classic' | 'aliexpress' | 'aliexpress2';
+  marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
 }
 
-export function CategoryMegaMenu({ variant = 'classic' }: CategoryMegaMenuProps) {
-  const { locale, isRtl } = useLocale();
+export function CategoryMegaMenu({ variant, marketplaceTheme }: CategoryMegaMenuProps) {
+  const { locale } = useLocale();
+  const isRtl = locale === 'ar';
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [activeCategory, setActiveCategory] = useState<CategoryNode | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isAliExpress = variant === 'aliexpress';
-  const isAliExpress2 = variant === 'aliexpress2';
+  const theme = marketplaceTheme || variant || 'panda';
+  const isAliExpress = theme === 'aliexpress' || theme === 'aliexpress2';
+  const isAliExpress2 = theme === 'aliexpress2';
 
   useEffect(() => {
     let cancelled = false;
