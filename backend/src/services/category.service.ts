@@ -28,6 +28,9 @@ export interface MarketplaceCategoryRow {
   position: number;
   product_count?: string;
   parent_name?: string | null;
+  parent_name_fr?: string | null;
+  parent_name_ar?: string | null;
+  parent_name_en?: string | null;
   parent_slug?: string | null;
   children?: MarketplaceCategoryRow[];
   created_at: Date;
@@ -52,10 +55,20 @@ export function resolveCategoryLocale(cat: MarketplaceCategoryRow, locale?: stri
     resolvedDesc = cat.description_fr || cat.description;
   }
 
+  let resolvedParentName = cat.parent_name;
+  if (loc === 'ar' || loc.startsWith('ar')) {
+    resolvedParentName = cat.parent_name_ar || cat.parent_name_fr || cat.parent_name;
+  } else if (loc === 'en' || loc.startsWith('en')) {
+    resolvedParentName = cat.parent_name_en || cat.parent_name;
+  } else if (loc === 'fr' || loc.startsWith('fr')) {
+    resolvedParentName = cat.parent_name_fr || cat.parent_name;
+  }
+
   const result: MarketplaceCategoryRow = {
     ...cat,
     name: resolvedName,
     description: resolvedDesc,
+    parent_name: resolvedParentName || cat.parent_name,
   };
 
   if (cat.children && cat.children.length > 0) {
@@ -140,7 +153,11 @@ export class CategoryService {
     const roots: MarketplaceCategoryRow[] = [];
 
     nodes.forEach((node) => {
-      map.set(node.id, { ...node, children: [] });
+      map.set(node.id, {
+        ...node,
+        product_count: String(node.product_count || '0'),
+        children: [],
+      });
     });
 
     nodes.forEach((node) => {
@@ -152,17 +169,36 @@ export class CategoryService {
       }
     });
 
+    const aggregateProductCount = (node: MarketplaceCategoryRow): number => {
+      let total = parseInt(node.product_count || '0', 10);
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          total += aggregateProductCount(child);
+        }
+      }
+      node.product_count = String(total);
+      return total;
+    };
+
+    roots.forEach((root) => aggregateProductCount(root));
+
     return roots;
   }
 
   async listMarketplaceCategories(options: { tree?: boolean; locale?: string } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
-      `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
+      `SELECT c.*,
+              parent.name AS parent_name,
+              parent.name_fr AS parent_name_fr,
+              parent.name_ar AS parent_name_ar,
+              parent.name_en AS parent_name_en,
+              parent.slug AS parent_slug,
+              COUNT(p.id)::text AS product_count
        FROM pd_marketplace_category c
        LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id
-       GROUP BY c.id, parent.name, parent.slug
+       GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
     const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
@@ -175,12 +211,18 @@ export class CategoryService {
   async listPublicMarketplaceCategories(options: { tree?: boolean; locale?: string } = {}): Promise<MarketplaceCategoryRow[]> {
     await this.ensureMarketplaceDefault();
     const { rows } = await query<MarketplaceCategoryRow>(
-      `SELECT c.*, parent.name AS parent_name, parent.slug AS parent_slug, COUNT(p.id)::text AS product_count
+      `SELECT c.*,
+              parent.name AS parent_name,
+              parent.name_fr AS parent_name_fr,
+              parent.name_ar AS parent_name_ar,
+              parent.name_en AS parent_name_en,
+              parent.slug AS parent_slug,
+              COUNT(p.id)::text AS product_count
        FROM pd_marketplace_category c
        LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
        WHERE c.is_active = true
-       GROUP BY c.id, parent.name, parent.slug
+       GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
     const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));

@@ -9,8 +9,14 @@ interface Category {
   id: string;
   parent_id?: string | null;
   name: string;
+  name_fr?: string | null;
+  name_ar?: string | null;
+  name_en?: string | null;
   slug: string;
   description?: string | null;
+  description_fr?: string | null;
+  description_ar?: string | null;
+  description_en?: string | null;
   short_description?: string | null;
   long_description?: string | null;
   image_url?: string | null;
@@ -511,6 +517,13 @@ export default function MarketplaceCategoriesPage() {
                           type="button"
                           onClick={() => updateCategory(category, {
                             name: category.name,
+                            name_fr: category.name_fr || category.name,
+                            name_ar: category.name_ar || undefined,
+                            name_en: category.name_en || undefined,
+                            description: category.description || undefined,
+                            description_fr: category.description_fr || undefined,
+                            description_ar: category.description_ar || undefined,
+                            description_en: category.description_en || undefined,
                             short_description: category.short_description || undefined,
                             long_description: category.long_description || undefined,
                             image_url: category.image_url || null,

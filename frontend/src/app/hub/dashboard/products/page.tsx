@@ -278,7 +278,7 @@ function syncFirstProductOnboarding(productTotal: number, currentProducts: Produ
 }
 
 export default function ProductsPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -353,7 +353,7 @@ export default function ProductsPage() {
   const fetchCategories = useCallback(async () => {
     try {
       const [marketplaceRes, storefrontRes] = await Promise.all([
-        fetchWithCsrf('/api/pd/categories', { credentials: 'include' }),
+        fetchWithCsrf(`/api/pd/categories?locale=${locale}`, { credentials: 'include' }),
         fetchWithCsrf('/api/pd/stores/me/categories', { credentials: 'include' }),
       ]);
       if (marketplaceRes.ok) {
@@ -367,7 +367,7 @@ export default function ProductsPage() {
     } catch {
       setError('Failed to load product categories');
     }
-  }, []);
+  }, [locale]);
 
   const fetchMediaItems = useCallback(async () => {
     try {
