@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '@/lib/onboarding';
 import { themes, type ThemeId } from '@/lib/themes';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface ThemeCustomizationState {
   layoutVariation?: string | null;
@@ -95,6 +96,7 @@ function getResumeStep(state: OnboardingState): number {
 }
 
 export default function SellerOnboardingPage() {
+  const { locale } = useLocale();
   const [store, setStore] = useState<StoreState | null>(null);
   const [verification, setVerification] = useState<VerificationState | null>(null);
   const [productCount, setProductCount] = useState(0);
@@ -151,7 +153,7 @@ export default function SellerOnboardingPage() {
         fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }),
         fetchWithCsrf('/api/pd/stores/me/products?limit=20', { credentials: 'include' }),
         fetchOnboardingState(),
-        fetchWithCsrf('/api/pd/categories', { credentials: 'include' }),
+        fetchWithCsrf(`/api/pd/categories?locale=${encodeURIComponent(locale)}`, { credentials: 'include' }),
       ]);
 
       if (storeRes.status === 'fulfilled' && storeRes.value.ok) {

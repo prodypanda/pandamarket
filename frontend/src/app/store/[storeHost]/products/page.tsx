@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { themes, type ThemeCustomization, type ThemeId, resolveThemeColors } from '../../../../lib/themes';
 import { MinimalTheme } from '../../../../components/themes/MinimalTheme';
@@ -83,10 +84,10 @@ async function getStoreProducts(storeId: string): Promise<MarketplaceStoreProduc
   }
 }
 
-async function getMarketplaceCategories(): Promise<MarketplaceCategory[]> {
+async function getMarketplaceCategories(locale: string = 'fr'): Promise<MarketplaceCategory[]> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/categories`, {
+    const res = await fetch(`${backendUrl}/api/pd/categories?locale=${encodeURIComponent(locale)}`, {
       next: { revalidate: 120 },
     });
     if (!res.ok) return [];
@@ -154,8 +155,10 @@ export default async function StoreProductsPage({
   const products = await getStoreProducts(store.id);
 
   if (isMarketplaceStoreRoute) {
+    const cookieStore = await cookies();
+    const activeLocale = cookieStore.get('pd_locale')?.value || 'fr';
     const [categories, marketplaceSettings] = await Promise.all([
-      getMarketplaceCategories(),
+      getMarketplaceCategories(activeLocale),
       getMarketplaceSettings(),
     ]);
 

@@ -263,7 +263,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         imageUrl: marketplaceSettings.hub_homepage_banner_image_url,
       });
     }
-    categories.slice(0, 3).forEach((category) => {
+    displayCategories.slice(0, 3).forEach((category) => {
       result.push({
         title: category.name,
         subtitle: category.short_description || category.description || i18n.defaultCategoryDesc,
@@ -281,7 +281,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       });
     }
     return result;
-  }, [blockById, categories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings]);
+  }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
