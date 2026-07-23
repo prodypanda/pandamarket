@@ -383,6 +383,7 @@ type FreeTextSettingKey = Exclude<
   | 'chat_bubble_position'
   | 'catalog_default_sort'
   | 'hub_homepage_layout'
+  | 'hub_megamenu_style'
   | 'shipping_default_provider'
   | 'notifications_sms_provider'
   | 'tax_mode'
@@ -574,6 +575,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'catalog_featured_category_slugs',
     'catalog_default_sort',
     'hub_homepage_layout',
+    'hub_megamenu_style',
     'hub_homepage_banner_title',
     'hub_homepage_banner_subtitle',
     'hub_homepage_banner_cta_label',

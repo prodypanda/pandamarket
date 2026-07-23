@@ -450,14 +450,23 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   dir={rtl ? 'rtl' : 'ltr'}
                   className={`absolute ${
                     rtl ? 'right-full mr-3' : 'left-full ml-3'
-                  } top-0 z-50 w-[720px] max-w-[92vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-200`}
+                  } top-0 z-50 ${
+                    marketplaceSettings?.hub_megamenu_style === 'visual_rich' ? 'w-[820px]' : 'w-[720px]'
+                  } max-w-[92vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-200`}
                 >
                   {/* Flyout Header with Icon / Image Badge */}
                   <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-3.5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-[#ff6a00] shadow-sm border border-orange-100">
+                    <div className="flex items-center gap-3.5 max-w-[75%]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 text-[#ff6a00] shadow-sm border border-orange-100">
                         {activeCategory.image_url ? (
-                          <img src={activeCategory.image_url} alt={activeCategory.name} className="h-full w-full object-cover rounded-2xl" />
+                          <img
+                            src={activeCategory.image_url}
+                            alt={activeCategory.name}
+                            className="h-full w-full object-cover rounded-2xl"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
                         ) : (
                           (() => {
                             const IconComp = (activeCategory.icon && ICON_MAP[activeCategory.icon]) || getCategoryIconComponent(activeCategory);
@@ -467,45 +476,74 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       </div>
                       <div>
                         <h3 className="text-lg font-black text-slate-900 leading-tight">{activeCategory.name}</h3>
-                        <p className="mt-0.5 text-xs font-semibold text-slate-400">
-                          {i18n.subcategoriesAvailable(activeCategory.children?.length || 0)}
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500 line-clamp-1">
+                          {activeCategory.description || activeCategory.short_description || i18n.subcategoriesAvailable(activeCategory.children?.length || 0)}
                         </p>
                       </div>
                     </div>
                     <Link
                       href={`/hub/category/${encodeURIComponent(activeCategory.slug)}`}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-4 py-2 text-xs font-black text-[#ff6a00] hover:bg-orange-100 transition-colors shadow-xs"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-orange-50 px-4 py-2 text-xs font-black text-[#ff6a00] hover:bg-orange-100 transition-colors shadow-xs"
                     >
                       {i18n.browseAll}
                     </Link>
                   </div>
 
-                  {/* Multi-Column Subcategories Grid */}
+                  {/* Multi-Column Subcategories Grid (Visual Rich or Standard) */}
                   {activeCategory.children && activeCategory.children.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-3 max-h-[380px] overflow-y-auto pr-1">
-                      {activeCategory.children.map((sub) => (
-                        <Link
-                          key={sub.id}
-                          href={`/hub/category/${encodeURIComponent(sub.slug)}`}
-                          className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 transition-all duration-200 hover:-translate-y-1 hover:border-orange-300 hover:bg-white hover:shadow-lg hover:shadow-orange-950/5"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-extrabold text-slate-800 group-hover:text-[#ff6a00] transition-colors leading-snug">
-                              {sub.name}
-                            </span>
-                            <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:text-[#ff6a00] transition-all ${rtl ? 'rotate-180' : ''}`} />
-                          </div>
-                          <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100/80">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-600 shadow-xs border border-slate-100">
-                              <Box className="h-3 w-3 text-orange-500" />
-                              {i18n.productsCount(sub.product_count || 0)}
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {i18n.exploreDept}
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
+                    <div className={`grid ${marketplaceSettings?.hub_megamenu_style === 'visual_rich' ? 'grid-cols-2 gap-3.5' : 'grid-cols-3 gap-3'} max-h-[380px] overflow-y-auto pr-1`}>
+                      {activeCategory.children.map((sub) => {
+                        const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
+
+                        return (
+                          <Link
+                            key={sub.id}
+                            href={`/hub/category/${encodeURIComponent(sub.slug)}`}
+                            className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 transition-all duration-200 hover:-translate-y-1 hover:border-orange-300 hover:bg-white hover:shadow-lg hover:shadow-orange-950/5"
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  {sub.image_url ? (
+                                    <img
+                                      src={sub.image_url}
+                                      alt={sub.name}
+                                      className="h-7 w-7 rounded-xl object-cover border border-slate-200/60 shadow-xs"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-100/70 text-[#ff6a00]">
+                                      <SubIcon className="h-3.5 w-3.5" />
+                                    </div>
+                                  )}
+                                  <span className="text-xs font-extrabold text-slate-800 group-hover:text-[#ff6a00] transition-colors leading-snug">
+                                    {sub.name}
+                                  </span>
+                                </div>
+                                <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:text-[#ff6a00] transition-all ${rtl ? 'rotate-180' : ''}`} />
+                              </div>
+
+                              {marketplaceSettings?.hub_megamenu_style === 'visual_rich' && (sub.description || sub.short_description) && (
+                                <p className="text-[10.5px] font-medium text-slate-500 line-clamp-2 leading-snug">
+                                  {sub.description || sub.short_description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100/80">
+                              <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-600 shadow-xs border border-slate-100">
+                                <Box className="h-3 w-3 text-orange-500" />
+                                {i18n.productsCount(sub.product_count || 0)}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {i18n.exploreDept}
+                              </span>
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-xs font-semibold text-slate-500">
