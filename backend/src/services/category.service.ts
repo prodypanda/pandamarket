@@ -442,8 +442,10 @@ export class CategoryService {
       const shortDescription = patch.short_description?.trim() || null;
       values.push(shortDescription);
       fields.push(`short_description = $${values.length}`);
-      values.push(shortDescription);
-      fields.push(`description = $${values.length}`);
+      if (patch.description === undefined) {
+        values.push(shortDescription);
+        fields.push(`description = $${values.length}`);
+      }
     }
     if (patch.long_description !== undefined) {
       values.push(patch.long_description?.trim() || null);
@@ -631,8 +633,10 @@ export class CategoryService {
       const shortDescription = patch.short_description?.trim() || null;
       values.push(shortDescription);
       fields.push(`short_description = $${values.length}`);
-      values.push(shortDescription);
-      fields.push(`description = $${values.length}`);
+      if (patch.description === undefined) {
+        values.push(shortDescription);
+        fields.push(`description = $${values.length}`);
+      }
     }
     if (patch.long_description !== undefined) {
       values.push(patch.long_description?.trim() || null);
