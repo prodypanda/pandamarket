@@ -111,6 +111,7 @@ const TRANSLATIONS = {
     notFoundDesc: (slug: string) => `La catégorie "${slug}" n'existe pas ou ne contient aucun produit.`,
     backToHub: 'Retour au Hub',
     productsFound: (count: number) => `${count} produit${count !== 1 ? 's' : ''} trouvé${count !== 1 ? 's' : ''}`,
+    subcategoriesCount: (count: number) => `${count} sous-catégorie${count > 1 ? 's' : ''}`,
     advancedFilters: 'Filtres avancés',
     noImage: "Pas d'image",
     noProducts: 'Aucun produit dans cette catégorie pour le moment.',
@@ -126,6 +127,7 @@ const TRANSLATIONS = {
     notFoundDesc: (slug: string) => `القسم "${slug}" غير موجود أو لا يحتوي على منتجات حالياً.`,
     backToHub: 'العودة إلى السوق الرئيسي',
     productsFound: (count: number) => `${count} منتج متوفر`,
+    subcategoriesCount: (count: number) => `${count} أقسام فرعية`,
     advancedFilters: 'تصفية متقدمة',
     noImage: 'لا تتوفر صورة',
     noProducts: 'لا توجد منتجات متوفرة في هذا القسم حالياً.',
@@ -141,6 +143,7 @@ const TRANSLATIONS = {
     notFoundDesc: (slug: string) => `The category "${slug}" does not exist or has no products yet.`,
     backToHub: 'Back to Marketplace Hub',
     productsFound: (count: number) => `${count} product${count !== 1 ? 's' : ''} found`,
+    subcategoriesCount: (count: number) => `${count} subcategor${count > 1 ? 'ies' : 'y'}`,
     advancedFilters: 'Advanced Filters',
     noImage: 'No image',
     noProducts: 'No products available in this category yet.',
@@ -162,7 +165,7 @@ async function getCategoryProducts(
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/categories/${encodeURIComponent(slug)}?page=${page}&limit=20&locale=${encodeURIComponent(locale)}`,
-      { next: { revalidate: 120 } },
+      { cache: 'no-store' },
     );
     if (!res.ok) return null;
     return await res.json();
@@ -308,7 +311,7 @@ export default async function CategoryPage({
                   {result.subcategories && result.subcategories.length > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/80 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-xs">
                       <Layers className="h-3.5 w-3.5" />
-                      {result.subcategories.length} subcategories
+                      {i18n.subcategoriesCount(result.subcategories.length)}
                     </span>
                   )}
                 </div>
