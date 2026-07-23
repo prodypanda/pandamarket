@@ -39,6 +39,7 @@ export interface MarketplaceSettings {
   catalog_featured_category_slugs?: string;
   catalog_default_sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc' | string;
   hub_homepage_layout?: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | string;
+  hub_megamenu_style?: 'standard' | 'visual_rich' | string;
   hub_homepage_banner_title?: string;
   hub_homepage_banner_subtitle?: string;
   hub_homepage_banner_cta_label?: string;

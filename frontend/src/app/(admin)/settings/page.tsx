@@ -51,6 +51,7 @@ interface PlatformSettings {
   catalog_featured_category_slugs: string;
   catalog_default_sort: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc';
   hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
+  hub_megamenu_style: 'standard' | 'visual_rich';
   hub_homepage_banner_title: string;
   hub_homepage_banner_subtitle: string;
   hub_homepage_banner_cta_label: string;
@@ -225,6 +226,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   catalog_featured_category_slugs: '',
   catalog_default_sort: 'newest',
   hub_homepage_layout: 'theme_default',
+  hub_megamenu_style: 'standard',
   hub_homepage_banner_title: '',
   hub_homepage_banner_subtitle: '',
   hub_homepage_banner_cta_label: 'Explorer le Hub',
@@ -1522,6 +1524,17 @@ export default function AdminSettingsPage() {
               <option value="premium_deals">Premium deals</option>
               <option value="alibaba">Alibaba B2B</option>
               <option value="amazon">Amazon classic</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Categories Megamenu Version</label>
+            <select
+              value={settings.hub_megamenu_style || 'standard'}
+              onChange={(e) => updateSetting('hub_megamenu_style', e.target.value as PlatformSettings['hub_megamenu_style'])}
+              className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+            >
+              <option value="standard">Version 1: Standard List (Alibaba Compact)</option>
+              <option value="visual_rich">Version 2: Visual Rich (Pictures & Descriptions Showcase)</option>
             </select>
           </div>
           <div className="space-y-1.5">
