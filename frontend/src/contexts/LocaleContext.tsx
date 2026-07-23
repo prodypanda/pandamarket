@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_DIR, isValidLocale, type Locale } from '../i18n/config';
 import { t as translate } from '../i18n/utils';
 
@@ -46,6 +47,7 @@ function getInitialLocale(): Locale {
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   // Read initial locale on mount (client-side only)
   useEffect(() => {
@@ -66,7 +68,14 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     // Update <html> lang and dir attributes
     document.documentElement.lang = newLocale;
     document.documentElement.dir = LOCALE_DIR[newLocale];
-  }, []);
+
+    // Refresh Next.js server components so server pages re-fetch localized data!
+    try {
+      router.refresh();
+    } catch {
+      // ignore
+    }
+  }, [router]);
 
   // Apply dir attribute on mount and locale change
   useEffect(() => {

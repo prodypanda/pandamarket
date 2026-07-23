@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../../components/hub/HubFooter';
@@ -215,8 +216,12 @@ export default async function CategoryPage({
   const sp = await searchParams;
   const page = parseInt(sp.page || '1', 10);
 
-  const marketplaceSettings = await getMarketplaceSettings();
-  const activeLocale = sp.locale || marketplaceSettings.marketplace_default_locale || 'fr';
+  const [cookieStore, marketplaceSettings] = await Promise.all([
+    cookies(),
+    getMarketplaceSettings(),
+  ]);
+  const cookieLocale = cookieStore.get('pd_locale')?.value;
+  const activeLocale = sp.locale || cookieLocale || marketplaceSettings.marketplace_default_locale || 'fr';
   const isRtl = activeLocale === 'ar';
   const i18n = TRANSLATIONS[activeLocale as keyof typeof TRANSLATIONS] || TRANSLATIONS.fr;
 
