@@ -240,7 +240,7 @@ function RecursiveCategoryItem({
     'border-emerald-200 bg-emerald-50/40 shadow-xs',
   ];
   const badgeColors = [
-    'bg-slate-900 text-white',
+    'bg-slate-900 text-[#fff]',
     'bg-amber-600 text-white',
     'bg-blue-600 text-white',
     'bg-purple-600 text-white',
@@ -438,6 +438,8 @@ export default function MarketplaceCategoriesPage() {
   const [descFr, setDescFr] = useState('');
   const [descAr, setDescAr] = useState('');
   const [descEn, setDescEn] = useState('');
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [icon, setIcon] = useState('Layers');
@@ -469,7 +471,7 @@ export default function MarketplaceCategoriesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
 
-  // Asset picker target: 'new' | 'edit_image' | 'edit_banner' | category.id
+  // Asset picker target: 'new' | 'new_banner' | 'edit_image' | 'edit_banner' | category.id
   const [assetPickerTarget, setAssetPickerTarget] = useState<string | null>(null);
 
   const fetchCategories = useCallback(async () => {
@@ -609,6 +611,8 @@ export default function MarketplaceCategoriesPage() {
           parent_id: parentId || null,
           short_description: shortDescription.trim() || undefined,
           long_description: descFr.trim() || undefined,
+          seo_title: seoTitle.trim() || undefined,
+          seo_description: seoDescription.trim() || undefined,
           image_url: imageUrl.trim() || null,
           banner_url: bannerUrl.trim() || null,
           icon: icon || 'Layers',
@@ -624,6 +628,8 @@ export default function MarketplaceCategoriesPage() {
       setDescFr('');
       setDescAr('');
       setDescEn('');
+      setSeoTitle('');
+      setSeoDescription('');
       setImageUrl('');
       setBannerUrl('');
       setIcon('Layers');
@@ -782,7 +788,7 @@ export default function MarketplaceCategoriesPage() {
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">{error}</div>}
       {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-700">{success}</div>}
 
-      {/* CREATE NEW CATEGORY FORM */}
+      {/* FULL-FEATURED CREATE NEW CATEGORY FORM (ALL SETTINGS RESTORED) */}
       <div className="rounded-[2.5rem] border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/40 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
@@ -791,7 +797,7 @@ export default function MarketplaceCategoriesPage() {
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900">Add New Category or Subcategory</h3>
-              <p className="text-xs font-semibold text-slate-400">Configure multilingual names, parent category, and Megamenu visibility.</p>
+              <p className="text-xs font-semibold text-slate-400">Configure multilingual names, descriptions, parent category, icon, and images.</p>
             </div>
           </div>
 
@@ -812,7 +818,7 @@ export default function MarketplaceCategoriesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="space-y-4">
           {/* Dynamic Language Name Inputs */}
           {formLang === 'fr' && (
             <div className="space-y-1.5">
@@ -852,87 +858,225 @@ export default function MarketplaceCategoriesPage() {
             </div>
           )}
 
-          {/* Searchable Parent Category Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
-            <SearchableParentCategorySelect
-              value={parentId}
-              onChange={(id) => setParentId(id)}
-              options={flattenedCategoryOptions}
-            />
+          {/* Parent Category & Megamenu Visibility */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
+              <SearchableParentCategorySelect
+                value={parentId}
+                onChange={(id) => setParentId(id)}
+                options={flattenedCategoryOptions}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
+              <button
+                type="button"
+                onClick={() => setShowInMegamenu(!showInMegamenu)}
+                className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
+                  showInMegamenu
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-500'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  {showInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
+                  <span>{showInMegamenu ? 'Show in Public Megamenu' : 'Hide from Public Megamenu'}</span>
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${showInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
+                  {showInMegamenu ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Megamenu Visibility Selector Toggle */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
-            <button
-              type="button"
-              onClick={() => setShowInMegamenu(!showInMegamenu)}
-              className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
-                showInMegamenu
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
-                  : 'border-slate-200 bg-slate-100 text-slate-500'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {showInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
-                <span>{showInMegamenu ? 'Show in Public Megamenu' : 'Hide from Public Megamenu'}</span>
-              </span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${showInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
-                {showInMegamenu ? 'ON' : 'OFF'}
-              </span>
-            </button>
+          {/* Dynamic Language Description Textareas */}
+          {formLang === 'fr' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (FR 🇫🇷)</label>
+              <textarea
+                value={descFr}
+                onChange={(e) => setDescFr(e.target.value)}
+                rows={2}
+                placeholder="Description détaillée du rayon en français..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
+          )}
+          {formLang === 'ar' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">الوصف (العربية AR 🇸🇦)</label>
+              <textarea
+                dir="rtl"
+                value={descAr}
+                onChange={(e) => setDescAr(e.target.value)}
+                rows={2}
+                placeholder="وصف تفصيلي للقسم..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
+          )}
+          {formLang === 'en' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (EN 🇬🇧)</label>
+              <textarea
+                value={descEn}
+                onChange={(e) => setDescEn(e.target.value)}
+                rows={2}
+                placeholder="Detailed category description in English..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
+          )}
+
+          {/* Short Description & Category Icon Picker */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Short Description</label>
+              <input
+                type="text"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="Brief category subtitle..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Icon</label>
+              <select
+                value={icon}
+                onChange={(e) => setIcon(e.target.value)}
+                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+              >
+                {ICON_OPTIONS.map((opt) => (
+                  <option key={opt.name} value={opt.name}>
+                    {opt.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Picture Preview Placeholder for Category Image */}
-          <div className="space-y-1.5 md:col-span-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
-            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                {imageUrl ? (
-                  <img src={imageUrl} alt="Category preview" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center text-slate-300">
-                    <ImageIcon className="h-6 w-6" />
-                    <span className="text-[9px] font-bold">No Image</span>
-                  </div>
-                )}
-              </div>
+          {/* SEO Title & Description */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Title</label>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                placeholder="Meta title for Google..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
 
-              <div className="flex-1 space-y-1">
-                <p className="text-xs font-black text-slate-800">
-                  {imageUrl ? 'Picture Selected' : 'No Picture Selected'}
-                </p>
-                <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{imageUrl || 'Upload or select a picture from gallery.'}</p>
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setAssetPickerTarget('new')}
-                    className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3 py-1.5 text-xs font-black text-white hover:bg-red-800"
-                  >
-                    <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                    {imageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
-                  </button>
-                  {imageUrl && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Description</label>
+              <input
+                type="text"
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="Meta description for search engines..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Category Image & Hero Banner Preview Placeholders */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Icon/Card Image)</label>
+              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="Category preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-300">
+                      <ImageIcon className="h-6 w-6" />
+                      <span className="text-[9px] font-bold">No Image</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs font-black text-slate-800">
+                    {imageUrl ? 'Picture Selected' : 'No Picture Selected'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{imageUrl || 'Upload or select picture from gallery.'}</p>
+                  <div className="flex gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => setImageUrl('')}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                      onClick={() => setAssetPickerTarget('new')}
+                      className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3 py-1.5 text-xs font-black text-white hover:bg-red-800"
                     >
-                      Remove
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                      {imageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
                     </button>
+                    {imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero Banner Picture</label>
+              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                  {bannerUrl ? (
+                    <img src={bannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-300">
+                      <ImageIcon className="h-6 w-6" />
+                      <span className="text-[9px] font-bold">No Banner</span>
+                    </div>
                   )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs font-black text-slate-800">
+                    {bannerUrl ? 'Banner Selected' : 'No Banner Selected'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{bannerUrl || 'Upload or select hero banner.'}</p>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAssetPickerTarget('new_banner')}
+                      className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                    >
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                      {bannerUrl ? 'Change Banner' : 'Choose / Upload Asset'}
+                    </button>
+                    {bannerUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setBannerUrl('')}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-end md:col-span-1">
+          <div className="flex justify-end pt-2">
             <button
               type="button"
               onClick={createCategory}
               disabled={savingId === 'new' || (!nameFr.trim() && !nameAr.trim() && !nameEn.trim())}
-              className="w-full inline-flex items-center justify-center rounded-xl bg-[#B91C1C] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-red-900/20 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] disabled:opacity-50 disabled:hover:translate-y-0"
+              className="inline-flex items-center justify-center rounded-xl bg-[#B91C1C] px-8 py-3.5 text-sm font-black text-white shadow-lg shadow-red-900/20 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] disabled:opacity-50 disabled:hover:translate-y-0"
             >
               {savingId === 'new' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
               Publish Category
@@ -1332,44 +1476,88 @@ export default function MarketplaceCategoriesPage() {
                 </div>
               </div>
 
-              {/* Category Image Picture Preview Placeholder */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                    {editImageUrl ? (
-                      <img src={editImageUrl} alt={editingCategory.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center text-slate-300">
-                        <ImageIcon className="h-7 w-7" />
-                        <span className="text-[9px] font-bold">No Image</span>
-                      </div>
-                    )}
-                  </div>
+              {/* Category Image & Hero Banner Preview Placeholders */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Icon/Card Image)</label>
+                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                      {editImageUrl ? (
+                        <img src={editImageUrl} alt={editingCategory.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-300">
+                          <ImageIcon className="h-7 w-7" />
+                          <span className="text-[9px] font-bold">No Image</span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex-1 space-y-1">
-                    <p className="text-xs font-black text-slate-800">
-                      {editImageUrl ? 'Picture Selected' : 'No Picture Selected'}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-semibold truncate max-w-sm">{editImageUrl || 'Choose an image from gallery.'}</p>
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setAssetPickerTarget('edit_image')}
-                        className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
-                      >
-                        <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                        {editImageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
-                      </button>
-                      {editImageUrl && (
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-black text-slate-800">
+                        {editImageUrl ? 'Picture Selected' : 'No Picture Selected'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editImageUrl || 'Choose image from gallery.'}</p>
+                      <div className="flex gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={() => setEditImageUrl('')}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                          onClick={() => setAssetPickerTarget('edit_image')}
+                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
                         >
-                          Remove
+                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                          {editImageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
                         </button>
+                        {editImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditImageUrl('')}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero Banner Picture</label>
+                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                      {editBannerUrl ? (
+                        <img src={editBannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-300">
+                          <ImageIcon className="h-7 w-7" />
+                          <span className="text-[9px] font-bold">No Banner</span>
+                        </div>
                       )}
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-black text-slate-800">
+                        {editBannerUrl ? 'Banner Selected' : 'No Banner Selected'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editBannerUrl || 'Choose hero banner.'}</p>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setAssetPickerTarget('edit_banner')}
+                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                        >
+                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                          {editBannerUrl ? 'Change Banner' : 'Choose / Upload Asset'}
+                        </button>
+                        {editBannerUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditBannerUrl('')}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1441,12 +1629,14 @@ export default function MarketplaceCategoriesPage() {
       {/* Central Asset Picker Modal */}
       <MarketplaceAssetPicker
         open={Boolean(assetPickerTarget)}
-        title="Choose Category Image"
+        title="Choose Category Asset"
         type="image"
         onClose={() => setAssetPickerTarget(null)}
         onSelect={(url) => {
           if (assetPickerTarget === 'new') {
             setImageUrl(url);
+          } else if (assetPickerTarget === 'new_banner') {
+            setBannerUrl(url);
           } else if (assetPickerTarget === 'edit_image') {
             setEditImageUrl(url);
           } else if (assetPickerTarget === 'edit_banner') {
