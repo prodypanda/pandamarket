@@ -41,6 +41,7 @@ export interface MarketplaceSettings {
   hub_homepage_layout?: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | string;
   hub_megamenu_style?: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep' | string;
   hub_megamenu_lazy_loading?: boolean;
+  hub_category_page_style?: 'v1_classic' | 'v2_modern_showcase' | string;
   hub_homepage_banner_title?: string;
   hub_homepage_banner_subtitle?: string;
   hub_homepage_banner_cta_label?: string;

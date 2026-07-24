@@ -15,6 +15,7 @@ import {
   Laptop,
   Layers,
   Package,
+  Search,
   ShieldCheck,
   Shirt,
   SlidersHorizontal,
@@ -31,6 +32,7 @@ import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
+import { LazyBlurImage } from '../../../../components/ui/LazyBlurImage';
 
 import { CategoryBreadcrumbs } from '../../../../components/hub/CategoryBreadcrumbs';
 import { SubcategoryGrid } from '../../../../components/hub/SubcategoryGrid';
@@ -121,6 +123,9 @@ const TRANSLATIONS = {
     tradeAssurance: 'Garantie Trade Assurance',
     verifiedSuppliers: 'Fournisseurs & Usines Vérifiés',
     fastShipping: 'Expédition Rapide',
+    searchInCat: (name: string) => `Rechercher dans ${name}...`,
+    searchBtn: 'Rechercher',
+    allSubcat: 'Toutes les sous-catégories',
   },
   ar: {
     notFoundTitle: 'القسم غير موجود',
@@ -137,6 +142,9 @@ const TRANSLATIONS = {
     tradeAssurance: 'ضمان تجاري معتمد',
     verifiedSuppliers: 'موردون ومصانع معتمدة',
     fastShipping: 'شحن سريع معتمد',
+    searchInCat: (name: string) => `البحث في قسم ${name}...`,
+    searchBtn: 'بحث',
+    allSubcat: 'جميع الأقسام الفرعية',
   },
   en: {
     notFoundTitle: 'Category Not Found',
@@ -153,6 +161,9 @@ const TRANSLATIONS = {
     tradeAssurance: 'Trade Assurance Protection',
     verifiedSuppliers: 'Verified Suppliers & Factories',
     fastShipping: 'Fast Express Shipping',
+    searchInCat: (name: string) => `Search in ${name}...`,
+    searchBtn: 'Search',
+    allSubcat: 'All Subcategories',
   },
 };
 
@@ -268,6 +279,7 @@ export default async function CategoryPage({
 
   const { category, data: products, meta } = result;
   const CategoryIconComp = getCategoryIconComponent(category);
+  const isV2Showcase = marketplaceSettings.hub_category_page_style === 'v2_modern_showcase';
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-[#F5F7FA]">
@@ -279,70 +291,213 @@ export default async function CategoryPage({
         marketplaceTheme={marketplaceSettings.marketplace_theme}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Breadcrumbs */}
         <CategoryBreadcrumbs ancestors={result.ancestors && result.ancestors.length > 0 ? result.ancestors : [{ id: category.slug, name: category.name, slug: category.slug }]} locale={activeLocale} />
 
-        {/* Hero Category Header Card */}
-        <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-[#0b1e3f] via-[#163060] to-[#1e3c72] p-8 text-white shadow-xl">
-          {category.banner_url && (
-            <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(${category.banner_url})` }} />
-          )}
+        {isV2Showcase ? (
+          /* ========================================================================= */
+          /* VERSION 2: MODERN SHOWCASE (BIGGER PICTURE HERO & COMPACT INFORMATION AREA)*/
+          /* ========================================================================= */
+          <div className="space-y-6">
+            {/* Ultra-Large 360px Tall Hero Showcase Banner */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 text-white shadow-2xl h-80 md:h-96 flex flex-col justify-between p-6 md:p-8">
+              {category.banner_url || category.image_url ? (
+                <LazyBlurImage
+                  src={category.banner_url || category.image_url!}
+                  alt={category.name}
+                  containerClassName="absolute inset-0 h-full w-full"
+                  className="h-full w-full object-cover opacity-60 transition-transform duration-1000 hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0b1e3f] via-[#163060] to-[#ff6a00]/40 opacity-90" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-transparent" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-amber-400 backdrop-blur-md border border-white/20 shadow-md">
-                {category.image_url ? (
-                  <img src={category.image_url} alt={category.name} className="h-full w-full object-cover rounded-2xl" />
-                ) : (
-                  <CategoryIconComp className="h-8 w-8" />
-                )}
-              </div>
-              <div>
-                <h1 className="text-3xl font-black text-white leading-tight">{category.name}</h1>
-                <p className="mt-1.5 text-xs font-semibold text-white/80 max-w-xl leading-relaxed">
-                  {category.short_description || category.description || `${i18n.productsFound(meta.total)}.`}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-xs border border-white/10">
-                    <Box className="h-3.5 w-3.5 text-amber-400" />
+              {/* Top Hero Pills */}
+              <div className="relative z-10 flex items-center justify-between gap-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-950 shadow-lg">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {i18n.tradeAssurance}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-2xl bg-white/15 backdrop-blur-md px-3.5 py-1 text-xs font-black text-white border border-white/20 shadow-sm">
                     {i18n.productsFound(meta.total)}
                   </span>
                   {result.subcategories && result.subcategories.length > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/80 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-xs">
-                      <Layers className="h-3.5 w-3.5" />
+                    <span className="rounded-2xl bg-[#ff6a00] px-3.5 py-1 text-xs font-black text-white shadow-sm">
                       {i18n.subcategoriesCount(result.subcategories.length)}
                     </span>
                   )}
                 </div>
               </div>
+
+              {/* Bottom Hero Info Area */}
+              <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="flex h-20 w-20 md:h-24 md:w-24 shrink-0 items-center justify-center rounded-3xl bg-white/15 text-amber-400 backdrop-blur-xl border border-white/30 shadow-2xl p-1.5 overflow-hidden">
+                    {category.image_url ? (
+                      <LazyBlurImage
+                        src={category.image_url}
+                        alt={category.name}
+                        containerClassName="h-full w-full rounded-2xl"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <CategoryIconComp className="h-10 w-10 text-amber-400" />
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-md">{category.name}</h1>
+                    <p className="text-xs md:text-sm text-slate-200 max-w-2xl leading-relaxed font-medium line-clamp-2 drop-shadow-sm">
+                      {category.short_description || category.description || `${i18n.productsFound(meta.total)}.`}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/hub/search?category=${encodeURIComponent(category.name)}`}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/30 bg-white/20 px-6 py-3.5 text-xs font-black text-white backdrop-blur-md hover:bg-white/30 hover:scale-105 transition-all shadow-xl shrink-0 w-fit"
+                >
+                  <SlidersHorizontal className="h-4 w-4 text-amber-400" />
+                  {i18n.advancedFilters}
+                </Link>
+              </div>
             </div>
 
-            <Link
-              href={`/hub/search?category=${encodeURIComponent(category.name)}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-6 py-3 text-xs font-black text-white backdrop-blur-md hover:bg-white/25 transition-all shadow-md shrink-0 w-fit"
-            >
-              <SlidersHorizontal className="h-4 w-4 text-amber-400" />
-              {i18n.advancedFilters}
-            </Link>
-          </div>
+            {/* Compact Information Area Card */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                {/* Search in Category Input */}
+                <form action="/hub/search" method="GET" className="flex w-full lg:max-w-md items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 focus-within:bg-white focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+                  <input type="hidden" name="category" value={category.name} />
+                  <Search className="h-4 w-4 ml-2 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    name="q"
+                    placeholder={i18n.searchInCat(category.name)}
+                    className="w-full bg-transparent px-2 py-1 text-xs font-bold text-slate-800 placeholder-slate-400 outline-none"
+                  />
+                  <button type="submit" className="rounded-xl bg-[#ff6a00] px-4 py-2 text-xs font-black text-white hover:bg-orange-600 transition-colors shadow-xs shrink-0">
+                    {i18n.searchBtn}
+                  </button>
+                </form>
 
-          {/* B2B Sourcing Feature Badges */}
-          <div className="relative z-10 mt-6 pt-5 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-extrabold text-white/90">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-amber-400" />
-              <span>{i18n.tradeAssurance}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <BadgeCheck className="h-4 w-4 text-blue-400" />
-              <span>{i18n.verifiedSuppliers}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-orange-400" />
-              <span>{i18n.fastShipping}</span>
+                {/* Sourcing Badges */}
+                <div className="flex flex-wrap items-center gap-4 text-xs font-extrabold text-slate-700">
+                  <div className="flex items-center gap-1.5 bg-orange-50/80 text-[#ff6a00] px-3 py-1.5 rounded-xl border border-orange-100">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>{i18n.tradeAssurance}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-blue-50/80 text-blue-700 px-3 py-1.5 rounded-xl border border-blue-100">
+                    <BadgeCheck className="h-4 w-4 text-blue-500" />
+                    <span>{i18n.verifiedSuppliers}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-emerald-50/80 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100">
+                    <Truck className="h-4 w-4 text-emerald-500" />
+                    <span>{i18n.fastShipping}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subcategories Horizontal Scroll Chips */}
+              {result.subcategories && result.subcategories.length > 0 && (
+                <div className="pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1">
+                      {i18n.allSubcat}:
+                    </span>
+                    {result.subcategories.map((sub) => (
+                      <Link
+                        key={sub.id}
+                        href={`/hub/category/${encodeURIComponent(sub.slug)}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-extrabold text-slate-700 hover:border-orange-400 hover:bg-orange-50 hover:text-[#ff6a00] transition-all shrink-0 shadow-2xs"
+                      >
+                        {sub.image_url && (
+                          <LazyBlurImage
+                            src={sub.image_url}
+                            alt={sub.name}
+                            containerClassName="h-4 w-4 rounded-md shrink-0"
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        <span>{sub.name}</span>
+                        {sub.product_count !== undefined && (
+                          <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[9.5px] font-black text-slate-600">
+                            {sub.product_count}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        ) : (
+          /* ========================================================================= */
+          /* VERSION 1: CLASSIC HEADER                                                 */
+          /* ========================================================================= */
+          <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-[#0b1e3f] via-[#163060] to-[#1e3c72] p-8 text-white shadow-xl">
+            {category.banner_url && (
+              <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(${category.banner_url})` }} />
+            )}
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-amber-400 backdrop-blur-md border border-white/20 shadow-md">
+                  {category.image_url ? (
+                    <LazyBlurImage src={category.image_url} alt={category.name} containerClassName="h-full w-full rounded-2xl" className="h-full w-full object-cover" />
+                  ) : (
+                    <CategoryIconComp className="h-8 w-8" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-black text-white leading-tight">{category.name}</h1>
+                  <p className="mt-1.5 text-xs font-semibold text-white/80 max-w-xl leading-relaxed">
+                    {category.short_description || category.description || `${i18n.productsFound(meta.total)}.`}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-xs border border-white/10">
+                      <Box className="h-3.5 w-3.5 text-amber-400" />
+                      {i18n.productsFound(meta.total)}
+                    </span>
+                    {result.subcategories && result.subcategories.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/80 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-xs">
+                        <Layers className="h-3.5 w-3.5" />
+                        {i18n.subcategoriesCount(result.subcategories.length)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href={`/hub/search?category=${encodeURIComponent(category.name)}`}
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-6 py-3 text-xs font-black text-white backdrop-blur-md hover:bg-white/25 transition-all shadow-md shrink-0 w-fit"
+              >
+                <SlidersHorizontal className="h-4 w-4 text-amber-400" />
+                {i18n.advancedFilters}
+              </Link>
+            </div>
+
+            {/* B2B Sourcing Feature Badges */}
+            <div className="relative z-10 mt-6 pt-5 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-extrabold text-white/90">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-400" />
+                <span>{i18n.tradeAssurance}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <BadgeCheck className="h-4 w-4 text-blue-400" />
+                <span>{i18n.verifiedSuppliers}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-orange-400" />
+                <span>{i18n.fastShipping}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Subcategories Grid */}
         <SubcategoryGrid parentName={category.name} subcategories={result.subcategories || []} locale={activeLocale} />
@@ -369,9 +524,10 @@ export default async function CategoryPage({
                 >
                   <div className="aspect-square bg-slate-50 relative overflow-hidden">
                     {imageUrl ? (
-                      <img
+                      <LazyBlurImage
                         src={imageUrl}
                         alt={product.title}
+                        containerClassName="w-full h-full"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (

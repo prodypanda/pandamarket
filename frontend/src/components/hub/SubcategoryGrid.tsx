@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, Layers, Box } from 'lucide-react';
+import { LazyBlurImage } from '../ui/LazyBlurImage';
 
 interface Subcategory {
   id: string;
@@ -79,10 +80,11 @@ export function SubcategoryGrid({
           >
             <div className="flex items-center gap-3">
               {sub.image_url ? (
-                <img
+                <LazyBlurImage
                   src={sub.image_url}
                   alt={sub.name}
-                  className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-200 shadow-xs"
+                  containerClassName="h-10 w-10 shrink-0 rounded-xl border border-slate-200 shadow-xs"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100/70 font-black text-[#ff6a00] text-sm shadow-xs border border-orange-200/50">

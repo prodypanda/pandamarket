@@ -53,6 +53,7 @@ interface PlatformSettings {
   hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
   hub_megamenu_style: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep';
   hub_megamenu_lazy_loading: boolean;
+  hub_category_page_style: 'v1_classic' | 'v2_modern_showcase';
   hub_homepage_banner_title: string;
   hub_homepage_banner_subtitle: string;
   hub_homepage_banner_cta_label: string;
@@ -229,6 +230,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_layout: 'theme_default',
   hub_megamenu_style: 'standard',
   hub_megamenu_lazy_loading: true,
+  hub_category_page_style: 'v1_classic',
   hub_homepage_banner_title: '',
   hub_homepage_banner_subtitle: '',
   hub_homepage_banner_cta_label: 'Explorer le Hub',
@@ -579,6 +581,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_homepage_layout',
     'hub_megamenu_style',
     'hub_megamenu_lazy_loading',
+    'hub_category_page_style',
     'hub_homepage_banner_title',
     'hub_homepage_banner_subtitle',
     'hub_homepage_banner_cta_label',
@@ -1550,6 +1553,17 @@ export default function AdminSettingsPage() {
             description:
               'When enabled, category trees are lazy-loaded on demand when hovering or clicking the Megamenu, improving initial page load speed.',
           })}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Category / Subcategory Page Style Version</label>
+            <select
+              value={settings.hub_category_page_style || 'v1_classic'}
+              onChange={(e) => updateSetting('hub_category_page_style', e.target.value as PlatformSettings['hub_category_page_style'])}
+              className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+            >
+              <option value="v1_classic">Version 1: Classic Header & Grid</option>
+              <option value="v2_modern_showcase">Version 2: Modern Showcase (Bigger Picture Hero & Compact Info Area)</option>
+            </select>
+          </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Default Product Sort</label>
             <select
