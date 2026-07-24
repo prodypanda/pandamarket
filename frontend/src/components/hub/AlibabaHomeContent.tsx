@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowRight,
   BadgeCheck,
@@ -202,6 +203,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   const [activeCategory, setActiveCategory] = useState<TreeCategoryNode | null>(null);
   const [activeSubcategory, setActiveSubcategory] = useState<TreeCategoryNode | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const countdown = useCountdown();
 
   useEffect(() => {
@@ -415,7 +418,9 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         <>
           <section className="mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[260px_1fr_240px] lg:px-8">
             <aside
-              className="relative hidden rounded-3xl border border-gray-200 bg-white shadow-md lg:block"
+              className={`relative hidden rounded-3xl border border-gray-200 bg-white lg:block transition-all ${
+                activeCategory ? 'z-50 shadow-2xl ring-1 ring-orange-200' : 'z-10 shadow-md'
+              }`}
               onMouseLeave={() => setActiveCategory(null)}
             >
               <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700">
@@ -454,19 +459,22 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 })}
               </ul>
 
+              {/* Lightly Black Backdrop (20% Opacity) to Isolate View */}
+              {activeCategory && mounted && createPortal(
+                <div
+                  className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
+                  onClick={() => setActiveCategory(null)}
+                />,
+                document.body
+              )}
+
               {/* Alibaba B2B Multi-Column Mega Flyout Panel */}
               {activeCategory && (
-                <>
-                  {/* Lightly Black Backdrop (20% Opacity) to Isolate View */}
-                  <div
-                    className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
-                    onClick={() => setActiveCategory(null)}
-                  />
-                  <div
-                    dir={rtl ? 'rtl' : 'ltr'}
-                    className={`absolute ${
-                      rtl ? 'right-full mr-3' : 'left-full ml-3'
-                    } top-0 z-50 ${
+                <div
+                  dir={rtl ? 'rtl' : 'ltr'}
+                  className={`absolute ${
+                    rtl ? 'right-full mr-3' : 'left-full ml-3'
+                  } top-0 z-50 ${
                       marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
                         ? 'w-[920px]'
                         : marketplaceSettings?.hub_megamenu_style === 'ultra_rich'
@@ -839,7 +847,6 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                     </div>
                   </div>
                 </div>
-                </>
               )}
             </aside>
 

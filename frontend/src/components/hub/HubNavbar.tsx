@@ -120,7 +120,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
   }, []);
 
   return (
-    <header className={`sticky top-0 z-40 border-b backdrop-blur-sm ${
+    <header className={`sticky top-0 z-50 border-b backdrop-blur-sm ${
       isAliExpress2 ? 'border-white/[0.06] bg-[#09090b]/90 backdrop-blur-2xl shadow-2xl shadow-black/50' : isAliExpress ? 'border-orange-100 bg-white/95 shadow-sm shadow-orange-900/5 dark:bg-[#1A1A2E]/95' : 'border-gray-100 bg-white/95 dark:border-white/10 dark:bg-[#1A1A2E]/95'
     }`}>
       {isAliExpress2 ? (

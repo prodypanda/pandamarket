@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   ChevronRight,
@@ -121,6 +122,8 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
   const [configuredStyle, setConfiguredStyle] = useState<'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep'>('standard');
   const [lazyLoadingEnabled, setLazyLoadingEnabled] = useState<boolean>(true);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const theme = marketplaceTheme || variant || 'panda';
   const isAliExpress = theme === 'aliexpress' || theme === 'aliexpress2';
@@ -238,16 +241,18 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
         <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      {isOpen && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
+          onClick={() => setIsOpen(false)}
+        />,
+        document.body
+      )}
+
       {isOpen && (
-        <>
-          {/* Lightly Black Backdrop (20% Opacity) to Isolate View */}
-          <div
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
+        <div
+          dir={isRtl ? 'rtl' : 'ltr'}
+          className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
               isUltraRichDeep
                 ? 'w-[1120px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
                 : isUltraRich
@@ -1003,7 +1008,6 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             </div>
           )}
         </div>
-        </>
       )}
     </div>
   );
