@@ -471,10 +471,10 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 >
                   {marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep' ? (
                     /* ========================================================================= */
-                    /* VERSION 4: ULTRA-RICH DEEP SHOWCASE WITH INTERACTIVE MULTI-LEVEL SUBMENUS  */
+                    /* VERSION 4: ULTRA-RICH DEEP SHOWCASE WITH LARGE PICTURE CARDS & DEEP SUBMENUS*/
                     /* ========================================================================= */
                     <div className="space-y-4">
-                      {/* Large 200px Hero Banner */}
+                      {/* Large 200px Hero Banner (Exact Style 3) */}
                       <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
                         {activeCategory.image_url ? (
                           <img
@@ -521,129 +521,88 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                         </div>
                       </div>
 
-                      {/* Level 2 Subcategories Horizontal Tab Selector */}
-                      {activeCategory.children && activeCategory.children.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                              <Layers className="h-4 w-4 text-[#ff6a00]" />
-                              <span>Subcategories & Deep Submenus</span>
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-400">
-                              Hover to view sub-subcategories
-                            </span>
-                          </div>
+                      {/* Large Picture Subcategory Card Grid (Exact Style 3 Layout) with Deep Level 2/3 Submenus */}
+                      {activeCategory.children && activeCategory.children.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-3.5 max-h-[360px] overflow-y-auto pr-1">
+                          {activeCategory.children.map((sub) => {
+                            const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
 
-                          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                            {activeCategory.children.map((sub) => {
-                              const isSubActive = (activeSubcategory?.id === sub.id) || false;
-                              const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
-
-                              return (
-                                <button
-                                  key={sub.id}
-                                  onClick={() => setActiveSubcategory(sub)}
-                                  onMouseEnter={() => setActiveSubcategory(sub)}
-                                  className={`flex items-center gap-2 shrink-0 rounded-2xl px-3 py-2 text-xs font-bold transition-all border ${
-                                    isSubActive
-                                      ? 'border-[#ff6a00] bg-orange-50 text-[#ff6a00] shadow-sm'
-                                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                                  }`}
+                            return (
+                              <div
+                                key={sub.id}
+                                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl"
+                              >
+                                {/* Large 120px Picture Frame (Style 3) */}
+                                <Link
+                                  href={`/hub/category/${encodeURIComponent(sub.slug)}`}
+                                  className="relative h-28 w-full overflow-hidden bg-slate-100"
                                 >
                                   {sub.image_url ? (
-                                    <img src={sub.image_url} alt={sub.name} className="h-5 w-5 rounded-lg object-cover" />
+                                    <img
+                                      src={sub.image_url}
+                                      alt={sub.name}
+                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
                                   ) : (
-                                    <SubIcon className="h-4 w-4" />
-                                  )}
-                                  <span>{sub.name}</span>
-                                  {sub.children && sub.children.length > 0 && (
-                                    <span className="rounded-full bg-slate-200 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-600">
-                                      {sub.children.length}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {/* Active Subcategory Deep Showcase Panel */}
-                          {(activeSubcategory || (activeCategory.children && activeCategory.children[0])) && (
-                            <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4 space-y-3">
-                              {(() => {
-                                const targetSub = activeSubcategory || activeCategory.children[0];
-                                return (
-                                  <>
-                                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
-                                      <div className="flex items-center gap-3">
-                                        {targetSub.image_url ? (
-                                          <img src={targetSub.image_url} alt={targetSub.name} className="h-10 w-10 rounded-2xl object-cover border border-slate-200" />
-                                        ) : (
-                                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500 text-white font-black text-xs">
-                                            {targetSub.name.substring(0, 2)}
-                                          </div>
-                                        )}
-                                        <div>
-                                          <h4 className="text-sm font-black text-slate-900">{targetSub.name}</h4>
-                                          <p className="text-[11px] font-semibold text-slate-500">
-                                            {targetSub.description || targetSub.short_description || i18n.defaultCategoryDesc}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <Link
-                                        href={`/hub/category/${encodeURIComponent(targetSub.slug)}`}
-                                        className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-black text-white hover:bg-orange-600 transition-colors"
-                                      >
-                                        <span>{i18n.browseAll}</span>
-                                        <ChevronRight className={`h-3 w-3 ${rtl ? 'rotate-180' : ''}`} />
-                                      </Link>
+                                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-500 to-amber-600 text-white">
+                                      <SubIcon className="h-8 w-8 opacity-80" />
                                     </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                                  <span className="absolute bottom-2 left-2.5 right-2.5 text-xs font-black text-white truncate drop-shadow-md">
+                                    {sub.name}
+                                  </span>
+                                </Link>
 
-                                    {/* Level 3 Sub-Subcategories Cards Grid */}
-                                    {targetSub.children && targetSub.children.length > 0 ? (
-                                      <div className="grid grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
-                                        {targetSub.children.map((child) => {
-                                          const ChildIcon = (child.icon && ICON_MAP[child.icon]) || getCategoryIconComponent(child);
+                                {/* Subcategory Info & Deep Level 3 Submenu Tags */}
+                                <div className="p-3 space-y-2 flex flex-1 flex-col justify-between">
+                                  {(sub.description || sub.short_description) && (
+                                    <p className="text-[10.5px] font-medium text-slate-500 line-clamp-2 leading-snug">
+                                      {sub.description || sub.short_description}
+                                    </p>
+                                  )}
 
-                                          return (
-                                            <Link
-                                              key={child.id}
-                                              href={`/hub/category/${encodeURIComponent(child.slug)}`}
-                                              className="group flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-2.5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md"
-                                            >
-                                              <div className="flex items-center gap-2 truncate">
-                                                {child.image_url ? (
-                                                  <img src={child.image_url} alt={child.name} className="h-7 w-7 rounded-xl object-cover border border-slate-100" />
-                                                ) : (
-                                                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-100 text-[#ff6a00]">
-                                                    <ChildIcon className="h-3.5 w-3.5" />
-                                                  </div>
-                                                )}
-                                                <div className="truncate">
-                                                  <span className="block text-xs font-black text-slate-900 group-hover:text-[#ff6a00] truncate">
-                                                    {child.name}
-                                                  </span>
-                                                  <span className="block text-[9.5px] font-semibold text-slate-400">
-                                                    {i18n.productsCount(child.product_count || 0)}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                              <ChevronRight className="h-3.5 w-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:text-[#ff6a00] transition-all" />
-                                            </Link>
-                                          );
-                                        })}
+                                  {/* Deep Interactive Level 3 Submenu Chips */}
+                                  {sub.children && sub.children.length > 0 && (
+                                    <div className="space-y-1 pt-1 border-t border-slate-100">
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                        Submenus:
+                                      </span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {sub.children.map((child) => (
+                                          <Link
+                                            key={child.id}
+                                            href={`/hub/category/${encodeURIComponent(child.slug)}`}
+                                            className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-1.5 py-0.5 text-[9.5px] font-bold text-[#ff6a00] hover:bg-orange-600 hover:text-white transition-all"
+                                          >
+                                            <span>{child.name}</span>
+                                          </Link>
+                                        ))}
                                       </div>
-                                    ) : (
-                                      <div className="p-3 text-center text-xs font-semibold text-slate-400">
-                                        No further subcategories inside this section
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          )}
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#ff6a00]">
+                                      <Box className="h-3 w-3" />
+                                      {i18n.productsCount(sub.product_count || 0)}
+                                    </span>
+                                    <Link
+                                      href={`/hub/category/${encodeURIComponent(sub.slug)}`}
+                                      className="text-[10px] font-bold text-slate-400 group-hover:text-[#ff6a00] transition-colors"
+                                    >
+                                      {i18n.exploreDept} ➔
+                                    </Link>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ) : marketplaceSettings?.hub_megamenu_style === 'ultra_rich' ? (
                     /* ========================================================================= */

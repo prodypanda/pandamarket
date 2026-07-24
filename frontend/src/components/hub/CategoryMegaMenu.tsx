@@ -322,12 +322,12 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                 })}
               </div>
 
-              {/* Right Main Showcase Container with Interactive Submenus */}
+              {/* Right Main Showcase Container */}
               <div className="col-span-9 max-h-[580px] overflow-y-auto space-y-5 pr-1">
                 {activeCategory && (
                   <>
-                    {/* Large Hero Banner */}
-                    <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
+                    {/* Large 220px Tall Hero Banner */}
+                    <div className="relative h-52 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
                       {activeCategory.image_url ? (
                         <img
                           src={activeCategory.image_url}
@@ -342,18 +342,18 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent" />
 
-                      <div className="relative z-10 flex h-full flex-col justify-between p-5">
+                      <div className="relative z-10 flex h-full flex-col justify-between p-6">
                         <div className="flex items-center justify-between">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1 text-[11px] font-black uppercase text-slate-950 shadow-md">
                             <Sparkles className="h-3.5 w-3.5" />
-                            {locale === 'ar' ? 'تصفح كلي مع الأقسام الفرعية' : locale === 'en' ? 'Interactive Multi-Level Catalog' : 'Catalogue Multi-Niveaux Interactif'}
+                            {locale === 'ar' ? 'عرض تصفح كامل بالصور الكبيرة والأقسام الفرعية' : locale === 'en' ? 'Large Pictures & Deep Submenus Showcase' : 'Showcase Grandes Images & Sous-Menus'}
                           </span>
                           <span className="rounded-xl bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-bold text-slate-200 border border-white/20">
-                            {activeCategory.children?.length || 0} {locale === 'ar' ? 'قسم رئيسي فرعي' : locale === 'en' ? 'Level 2 Subcategories' : 'Sous-Catégories Niveau 2'}
+                            {activeCategory.children?.length || 0} {locale === 'ar' ? 'قسم فرعي' : locale === 'en' ? 'Subcategories' : 'Sous-Catégories'}
                           </span>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           <h2 className="text-2xl font-black tracking-wide text-white drop-shadow-md">{activeCategory.name}</h2>
                           {getLocalizedDescription(activeCategory) && (
                             <p className="text-xs text-slate-200 max-w-[85%] leading-relaxed line-clamp-2 drop-shadow-sm">
@@ -374,135 +374,94 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                       </div>
                     </div>
 
-                    {/* Level 2 Subcategory Navigation Tabs Bar */}
-                    {activeCategory.children && activeCategory.children.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
-                            <Layers className="h-4 w-4 text-orange-500" />
-                            <span>{locale === 'ar' ? 'اختر قسمًا فرعيًا لاستعراض التفاصيل' : locale === 'en' ? 'Explore Level 2 & 3 Submenus' : 'Explorer les Sous-Menus Niveau 2 & 3'}</span>
-                          </h4>
-                          <span className="text-[11px] font-bold text-slate-400">
-                            {locale === 'ar' ? 'انقر لعرض الأقسام الفرعية الدقيقة' : locale === 'en' ? 'Hover/Click to view sub-subcategories' : 'Survolez pour afficher les sous-catégories'}
-                          </span>
-                        </div>
+                    {/* Large Picture Subcategory Card Grid (Style 3 Layout) with Deep Level 2/3 Submenus */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {activeCategory.children?.map((sub, idx) => {
+                        const SubIcon = getCategoryIconComponent(sub);
+                        const subDesc = getLocalizedDescription(sub);
+                        const isExpanded = activeSubcategory?.id === sub.id;
 
-                        {/* Subcategory Horizontal Tab Selector */}
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                          {activeCategory.children.map((sub) => {
-                            const isSubActive = activeSubcategory?.id === sub.id;
-                            const SubIcon = getCategoryIconComponent(sub);
-
-                            return (
-                              <button
-                                key={sub.id}
-                                onClick={() => setActiveSubcategory(sub)}
-                                onMouseEnter={() => setActiveSubcategory(sub)}
-                                className={`flex items-center gap-2 shrink-0 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all border ${
-                                  isSubActive
-                                    ? 'border-orange-500 bg-orange-50 text-[#ff6a00] shadow-sm dark:bg-orange-950/40 dark:border-orange-400 dark:text-orange-300'
-                                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300'
-                                }`}
-                              >
-                                {sub.image_url ? (
-                                  <img src={sub.image_url} alt={sub.name} className="h-5 w-5 rounded-lg object-cover" />
-                                ) : (
-                                  <SubIcon className="h-4 w-4" />
-                                )}
-                                <span>{sub.name}</span>
-                                {sub.children && sub.children.length > 0 && (
-                                  <span className="rounded-full bg-slate-200 dark:bg-slate-700 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-600 dark:text-slate-300">
-                                    {sub.children.length}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Active Subcategory Deep Showcase Panel */}
-                        {activeSubcategory && (
-                          <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-inner dark:border-white/10 dark:bg-slate-900/60 space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 dark:border-white/10">
-                              <div className="flex items-center gap-3">
-                                {activeSubcategory.image_url ? (
-                                  <img src={activeSubcategory.image_url} alt={activeSubcategory.name} className="h-12 w-12 rounded-2xl object-cover border border-slate-200 shadow-sm" />
-                                ) : (
-                                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white font-black">
-                                    {activeSubcategory.name.substring(0, 2)}
-                                  </div>
-                                )}
-                                <div>
-                                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <span>{activeSubcategory.name}</span>
-                                    <span className="rounded-lg bg-orange-100 px-2 py-0.5 text-[10px] font-black text-[#ff6a00]">
-                                      Level 2
-                                    </span>
-                                  </h3>
-                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                    {getLocalizedDescription(activeSubcategory) || (locale === 'ar' ? 'قسم فرعي مميز' : locale === 'en' ? 'Featured subcategory' : 'Sous-catégorie en vedette')}
-                                  </p>
+                        return (
+                          <div
+                            key={sub.id}
+                            className={`group relative flex flex-col overflow-hidden rounded-3xl border transition-all duration-300 ${
+                              isExpanded
+                                ? 'border-orange-500 bg-white shadow-2xl ring-2 ring-orange-500/20 dark:bg-slate-900'
+                                : 'border-slate-200/80 bg-white shadow-md hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-orange-500/15 dark:border-white/10 dark:bg-slate-900'
+                            }`}
+                          >
+                            {/* Large 136px Picture Frame (Exactly like Style 3) */}
+                            <Link
+                              href={`/hub/category/${sub.slug}`}
+                              onClick={() => setIsOpen(false)}
+                              className="relative h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
+                            >
+                              {sub.image_url ? (
+                                <img
+                                  src={sub.image_url}
+                                  alt={sub.name}
+                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${getCategoryGradient(idx)} text-white`}>
+                                  <SubIcon className="h-10 w-10 opacity-80" />
                                 </div>
-                              </div>
-                              <Link
-                                href={`/hub/category/${activeSubcategory.slug}`}
-                                onClick={() => setIsOpen(false)}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-orange-600 transition-colors"
-                              >
-                                <span>{locale === 'ar' ? 'زيارة القسم' : locale === 'en' ? 'Visit Department' : 'Visiter le rayon'}</span>
-                                <ArrowRight className="h-3.5 w-3.5" />
-                              </Link>
-                            </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-transparent" />
+                              <span className="absolute bottom-2.5 left-3 right-3 text-xs font-black text-white truncate drop-shadow-md">
+                                {sub.name}
+                              </span>
+                            </Link>
 
-                            {/* Level 3 & Level 4 Sub-Subcategories Cards Grid */}
-                            {activeSubcategory.children && activeSubcategory.children.length > 0 ? (
-                              <div className="space-y-2">
-                                <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                                  {locale === 'ar' ? 'الأقسام الفرعية الدقيقة (المستوى 3)' : locale === 'en' ? 'Level 3 Sub-Subcategories' : 'Sous-Catégories Niveau 3'}
-                                </h5>
-                                <div className="grid grid-cols-3 gap-3">
-                                  {activeSubcategory.children.map((child, idx) => {
-                                    const ChildIcon = getCategoryIconComponent(child);
+                            {/* Subcategory Info & Deep Interactive Submenus */}
+                            <div className="flex flex-1 flex-col justify-between p-3.5 space-y-2.5">
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 line-clamp-2 leading-snug">
+                                {subDesc || (locale === 'ar' ? 'تشكيلة منتجات ممتازة' : locale === 'en' ? 'Premium product selection' : 'Sélection premium')}
+                              </p>
 
-                                    return (
+                              {/* Interactive Deep Level 3 Sub-Subcategories Grid / Chips */}
+                              {sub.children && sub.children.length > 0 && (
+                                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-white/5">
+                                  <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">
+                                    {locale === 'ar' ? 'الأقسام الفرعية الدقيقة:' : locale === 'en' ? 'Level 3 Submenus:' : 'Sous-menus Niveau 3:'}
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {sub.children.map((child) => (
                                       <Link
                                         key={child.id}
                                         href={`/hub/category/${child.slug}`}
                                         onClick={() => setIsOpen(false)}
-                                        className="group flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-3 shadow-xs transition-all hover:-translate-y-1 hover:border-orange-400 hover:shadow-md dark:border-white/10 dark:bg-slate-800"
+                                        className="inline-flex items-center gap-1 rounded-lg bg-orange-50/80 px-2 py-1 text-[10px] font-bold text-[#ff6a00] hover:bg-orange-600 hover:text-white transition-all dark:bg-white/10 dark:text-orange-300"
                                       >
-                                        <div className="flex items-center gap-2.5 truncate">
-                                          {child.image_url ? (
-                                            <img src={child.image_url} alt={child.name} className="h-8 w-8 rounded-xl object-cover border border-slate-100" />
-                                          ) : (
-                                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${getCategoryGradient(idx)} text-white`}>
-                                              <ChildIcon className="h-4 w-4" />
-                                            </div>
-                                          )}
-                                          <div className="truncate">
-                                            <span className="block text-xs font-black text-slate-900 group-hover:text-[#ff6a00] dark:text-white truncate">
-                                              {child.name}
-                                            </span>
-                                            <span className="block text-[10px] font-semibold text-slate-400">
-                                              {child.product_count || 0} {locale === 'ar' ? 'منتج' : locale === 'en' ? 'products' : 'produits'}
-                                            </span>
-                                          </div>
-                                        </div>
-                                        <ChevronRight className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:text-[#ff6a00] transition-all" />
+                                        <span>{child.name}</span>
                                       </Link>
-                                    );
-                                  })}
+                                    ))}
+                                  </div>
                                 </div>
+                              )}
+
+                              <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-white/5">
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#ff6a00] border border-orange-100">
+                                  <Package className="h-3 w-3" />
+                                  {sub.product_count || 0} {locale === 'ar' ? 'منتج' : locale === 'en' ? 'products' : 'produits'}
+                                </span>
+                                <Link
+                                  href={`/hub/category/${sub.slug}`}
+                                  onClick={() => setIsOpen(false)}
+                                  className="flex items-center gap-1 text-[11px] font-black text-slate-900 group-hover:text-amber-500 dark:text-white transition-colors"
+                                >
+                                  <span>{locale === 'ar' ? 'تصفح' : locale === 'en' ? 'View' : 'Voir'}</span>
+                                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                                </Link>
                               </div>
-                            ) : (
-                              <div className="p-4 text-center text-xs font-semibold text-slate-400">
-                                {locale === 'ar' ? 'لا توجد أقسام فرعية إضافية داخل هذا القسم' : locale === 'en' ? 'No further subcategories inside this section' : 'Aucune sous-catégorie supplémentaire dans ce rayon'}
-                              </div>
-                            )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
                   </>
                 )}
               </div>
