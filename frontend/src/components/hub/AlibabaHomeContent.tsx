@@ -199,6 +199,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
   const [treeCategories, setTreeCategories] = useState<TreeCategoryNode[]>([]);
   const [activeCategory, setActiveCategory] = useState<TreeCategoryNode | null>(null);
+  const [activeSubcategory, setActiveSubcategory] = useState<TreeCategoryNode | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const countdown = useCountdown();
 
@@ -221,11 +222,16 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
     };
   }, [locale]);
 
-  // Keep active category synced when treeCategories reloads in another locale
+  // Keep active category and active subcategory synced
   useEffect(() => {
     if (activeCategory && treeCategories.length > 0) {
       const match = treeCategories.find((c) => c.id === activeCategory.id);
-      if (match) setActiveCategory(match);
+      if (match) {
+        setActiveCategory(match);
+        if (match.children && match.children.length > 0) {
+          setActiveSubcategory(match.children[0]);
+        }
+      }
     }
   }, [treeCategories]);
 
@@ -422,7 +428,10 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   const isActive = activeCategory?.id === category.id;
 
                   return (
-                    <li key={category.id} onMouseEnter={() => setActiveCategory(category)}>
+                    <li key={category.id} onMouseEnter={() => {
+                      setActiveCategory(category);
+                      setActiveSubcategory(category.children && category.children.length > 0 ? category.children[0] : null);
+                    }}>
                       <Link
                         href={`/hub/category/${encodeURIComponent(category.slug)}`}
                         className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-extrabold transition-all ${
@@ -451,14 +460,192 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   className={`absolute ${
                     rtl ? 'right-full mr-3' : 'left-full ml-3'
                   } top-0 z-50 ${
-                    marketplaceSettings?.hub_megamenu_style === 'ultra_rich'
-                      ? 'w-[880px]'
-                      : marketplaceSettings?.hub_megamenu_style === 'visual_rich'
-                        ? 'w-[820px]'
-                        : 'w-[720px]'
+                    marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
+                      ? 'w-[920px]'
+                      : marketplaceSettings?.hub_megamenu_style === 'ultra_rich'
+                        ? 'w-[880px]'
+                        : marketplaceSettings?.hub_megamenu_style === 'visual_rich'
+                          ? 'w-[820px]'
+                          : 'w-[720px]'
                   } max-w-[92vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-200`}
                 >
-                  {marketplaceSettings?.hub_megamenu_style === 'ultra_rich' ? (
+                  {marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep' ? (
+                    /* ========================================================================= */
+                    /* VERSION 4: ULTRA-RICH DEEP SHOWCASE WITH INTERACTIVE MULTI-LEVEL SUBMENUS  */
+                    /* ========================================================================= */
+                    <div className="space-y-4">
+                      {/* Large 200px Hero Banner */}
+                      <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
+                        {activeCategory.image_url ? (
+                          <img
+                            src={activeCategory.image_url}
+                            alt={activeCategory.name}
+                            className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-r from-[#ff6a00] to-amber-600 opacity-90" />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-transparent" />
+
+                        <div className="relative z-10 flex h-full flex-col justify-between p-5">
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-0.5 text-[10px] font-black uppercase text-slate-950 shadow-md">
+                              <Sparkles className="h-3 w-3" />
+                              {i18n.tradeAssuranceVerified}
+                            </span>
+                            <span className="rounded-xl bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/20">
+                              {i18n.subcategoriesAvailable(activeCategory.children?.length || 0)}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <h2 className="text-xl font-black tracking-wide text-white drop-shadow-md">{activeCategory.name}</h2>
+                            {(activeCategory.description || activeCategory.short_description) && (
+                              <p className="text-xs text-slate-200 max-w-[85%] leading-relaxed line-clamp-2 drop-shadow-sm">
+                                {activeCategory.description || activeCategory.short_description}
+                              </p>
+                            )}
+                            <div className="pt-1">
+                              <Link
+                                href={`/hub/category/${encodeURIComponent(activeCategory.slug)}`}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff6a00] px-4 py-2 text-xs font-black text-white shadow-lg transition-all hover:bg-orange-600 hover:scale-105"
+                              >
+                                <span>{i18n.browseAll}</span>
+                                <ChevronRight className={`h-3.5 w-3.5 ${rtl ? 'rotate-180' : ''}`} />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Level 2 Subcategories Horizontal Tab Selector */}
+                      {activeCategory.children && activeCategory.children.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                              <Layers className="h-4 w-4 text-[#ff6a00]" />
+                              <span>Subcategories & Deep Submenus</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Hover to view sub-subcategories
+                            </span>
+                          </div>
+
+                          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                            {activeCategory.children.map((sub) => {
+                              const isSubActive = (activeSubcategory?.id === sub.id) || false;
+                              const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
+
+                              return (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => setActiveSubcategory(sub)}
+                                  onMouseEnter={() => setActiveSubcategory(sub)}
+                                  className={`flex items-center gap-2 shrink-0 rounded-2xl px-3 py-2 text-xs font-bold transition-all border ${
+                                    isSubActive
+                                      ? 'border-[#ff6a00] bg-orange-50 text-[#ff6a00] shadow-sm'
+                                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {sub.image_url ? (
+                                    <img src={sub.image_url} alt={sub.name} className="h-5 w-5 rounded-lg object-cover" />
+                                  ) : (
+                                    <SubIcon className="h-4 w-4" />
+                                  )}
+                                  <span>{sub.name}</span>
+                                  {sub.children && sub.children.length > 0 && (
+                                    <span className="rounded-full bg-slate-200 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-600">
+                                      {sub.children.length}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Active Subcategory Deep Showcase Panel */}
+                          {(activeSubcategory || (activeCategory.children && activeCategory.children[0])) && (
+                            <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4 space-y-3">
+                              {(() => {
+                                const targetSub = activeSubcategory || activeCategory.children[0];
+                                return (
+                                  <>
+                                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                                      <div className="flex items-center gap-3">
+                                        {targetSub.image_url ? (
+                                          <img src={targetSub.image_url} alt={targetSub.name} className="h-10 w-10 rounded-2xl object-cover border border-slate-200" />
+                                        ) : (
+                                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500 text-white font-black text-xs">
+                                            {targetSub.name.substring(0, 2)}
+                                          </div>
+                                        )}
+                                        <div>
+                                          <h4 className="text-sm font-black text-slate-900">{targetSub.name}</h4>
+                                          <p className="text-[11px] font-semibold text-slate-500">
+                                            {targetSub.description || targetSub.short_description || i18n.defaultCategoryDesc}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <Link
+                                        href={`/hub/category/${encodeURIComponent(targetSub.slug)}`}
+                                        className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-black text-white hover:bg-orange-600 transition-colors"
+                                      >
+                                        <span>{i18n.browseAll}</span>
+                                        <ChevronRight className={`h-3 w-3 ${rtl ? 'rotate-180' : ''}`} />
+                                      </Link>
+                                    </div>
+
+                                    {/* Level 3 Sub-Subcategories Cards Grid */}
+                                    {targetSub.children && targetSub.children.length > 0 ? (
+                                      <div className="grid grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                                        {targetSub.children.map((child) => {
+                                          const ChildIcon = (child.icon && ICON_MAP[child.icon]) || getCategoryIconComponent(child);
+
+                                          return (
+                                            <Link
+                                              key={child.id}
+                                              href={`/hub/category/${encodeURIComponent(child.slug)}`}
+                                              className="group flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-2.5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md"
+                                            >
+                                              <div className="flex items-center gap-2 truncate">
+                                                {child.image_url ? (
+                                                  <img src={child.image_url} alt={child.name} className="h-7 w-7 rounded-xl object-cover border border-slate-100" />
+                                                ) : (
+                                                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-100 text-[#ff6a00]">
+                                                    <ChildIcon className="h-3.5 w-3.5" />
+                                                  </div>
+                                                )}
+                                                <div className="truncate">
+                                                  <span className="block text-xs font-black text-slate-900 group-hover:text-[#ff6a00] truncate">
+                                                    {child.name}
+                                                  </span>
+                                                  <span className="block text-[9.5px] font-semibold text-slate-400">
+                                                    {i18n.productsCount(child.product_count || 0)}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              <ChevronRight className="h-3.5 w-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:text-[#ff6a00] transition-all" />
+                                            </Link>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <div className="p-3 text-center text-xs font-semibold text-slate-400">
+                                        No further subcategories inside this section
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : marketplaceSettings?.hub_megamenu_style === 'ultra_rich' ? (
                     /* ========================================================================= */
                     /* ULTRA-RICH MODE: LARGE HERO BANNER + LARGE SUBCATEGORY PICTURE CARDS      */
                     /* ========================================================================= */
