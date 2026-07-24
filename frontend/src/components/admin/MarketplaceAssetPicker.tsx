@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { FileText, ImageIcon, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder } from 'lucide-react';
+import { FileText, ImageIcon, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface FileAsset {
@@ -46,13 +46,16 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
   const [error, setError] = useState('');
   const [notification, setNotification] = useState('');
 
-  // Optimization & Folder State
+  // Optimization, Drag&Drop & Folder State
   const [autoOptimize, setAutoOptimize] = useState(true);
   const [selectedFolder, setSelectedFolder] = useState<'categories' | 'branding' | 'banners' | 'general'>('categories');
   const [optimizingId, setOptimizingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // Auto-infer folder from picker title
+  // Auto-infer folder from picker title when modal opens
   useEffect(() => {
+    if (!open) return;
     const lower = (title || '').toLowerCase();
     if (lower.includes('category')) {
       setSelectedFolder('categories');
@@ -63,13 +66,13 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     } else {
       setSelectedFolder('general');
     }
-  }, [title]);
+  }, [title, open]);
 
   const loadAssets = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/assets?type=${type}&limit=80`, { credentials: 'include' });
+      const res = await fetchWithCsrf(`/api/pd/admin/assets?type=${type}&folder=${selectedFolder}&limit=80`, { credentials: 'include' });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load media library'));
       const data = await res.json();
       setAssets(data.data || []);
@@ -78,23 +81,23 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     } finally {
       setLoading(false);
     }
-  }, [type]);
+  }, [type, selectedFolder]);
 
   useEffect(() => {
     if (open) void loadAssets();
-  }, [loadAssets, open]);
+  }, [loadAssets, open, selectedFolder]);
 
   const filteredAssets = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return assets;
-    return assets.filter((asset) => asset.filename.toLowerCase().includes(needle) || asset.url.toLowerCase().includes(needle));
+    return assets.filter((asset) => {
+      if (needle && !asset.filename.toLowerCase().includes(needle) && !asset.url.toLowerCase().includes(needle)) {
+        return false;
+      }
+      return true;
+    });
   }, [assets, query]);
 
-  const uploadAsset = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
+  const processSingleFile = async (file: File) => {
     setUploading(true);
     setError('');
     setNotification('');
@@ -149,7 +152,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
             );
           }
         } catch {
-          // Ignore compression failure & fallback to uncompressed image
+          // Ignore compression failure & fallback
         }
       }
 
@@ -162,11 +165,42 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     }
   };
 
+  const uploadAsset = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    processSingleFile(file);
+  };
+
+  // Drag & Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processSingleFile(file);
+    }
+  };
+
   const handleInlineOptimize = async (asset: FileAsset, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!asset.key && !asset.url) return;
 
-    // Derive key from asset key or URL
     const rawKey = asset.key || asset.url.replace(/^\//, '');
     setOptimizingId(asset.id);
     setError('');
@@ -203,10 +237,58 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     }
   };
 
+  const handleDeleteAsset = async (asset: FileAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete picture "${asset.filename}" completely?`)) return;
+
+    const rawKey = asset.key || asset.url.replace(/^\//, '');
+    setDeletingId(asset.id);
+    setError('');
+    setNotification('');
+
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/platform-media', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: rawKey }),
+      });
+
+      if (!res.ok) throw new Error('Failed to delete picture asset');
+
+      setNotification(`Picture "${asset.filename}" deleted completely.`);
+      setAssets((prev) => prev.filter((item) => item.id !== asset.id && item.url !== asset.url));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Deletion failed');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs"
+    >
+      {/* Full Modal Drag Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-8 backdrop-blur-md rounded-3xl">
+          <div className="flex flex-col items-center justify-center rounded-3xl border-4 border-dashed border-[#ff6a00] bg-white p-10 text-center shadow-2xl space-y-3">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-[#ff6a00] animate-bounce">
+              <Upload className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Drop Picture Here</h3>
+            <p className="text-xs font-bold text-slate-500">
+              Uploads and auto-compresses into folder: <strong className="text-[#ff6a00] uppercase font-black">{selectedFolder}</strong>
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl space-y-0 overflow-hidden border border-slate-200/80">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-slate-50/70">
@@ -217,7 +299,9 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                 Sharp Compressed
               </span>
             </div>
-            <p className="text-xs font-semibold text-gray-500 mt-0.5">Upload a new picture or select an existing marketplace asset.</p>
+            <p className="text-xs font-semibold text-gray-500 mt-0.5">
+              Drag & drop picture anywhere onto popup or select from gallery.
+            </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-700">
             <X className="h-5 w-5" />
@@ -253,7 +337,10 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                 <span className="text-[10px] uppercase text-slate-400">Folder:</span>
                 <select
                   value={selectedFolder}
-                  onChange={(e) => setSelectedFolder(e.target.value as any)}
+                  onChange={(e) => {
+                    const newF = e.target.value as any;
+                    setSelectedFolder(newF);
+                  }}
                   className="bg-transparent font-black text-slate-900 outline-none cursor-pointer text-xs"
                 >
                   <option value="categories">Categories</option>
@@ -290,12 +377,15 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : filteredAssets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-xs font-semibold text-gray-500">No assets found.</div>
+            <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-xs font-semibold text-gray-500">
+              No assets found in folder "{selectedFolder}".
+            </div>
           ) : (
             <div className="grid max-h-[500px] grid-cols-2 gap-3.5 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
               {filteredAssets.map((asset) => {
                 const isImage = asset.content_type.startsWith('image/');
                 const isOptimizingThis = optimizingId === asset.id;
+                const isDeletingThis = deletingId === asset.id;
 
                 return (
                   <div
@@ -305,23 +395,42 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                   >
                     <div className="relative flex aspect-square items-center justify-center bg-gray-50 overflow-hidden">
                       {isImage ? (
-                        <img src={asset.url} alt={asset.filename} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        <img
+                          src={asset.url}
+                          alt={asset.filename}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                              'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="12">Broken Image</text></svg>';
+                          }}
+                        />
                       ) : (
                         <FileText className="h-10 w-10 text-gray-400" />
                       )}
 
-                      {/* Inline Quick Compression Button */}
-                      {isImage && (
+                      {/* Hover Action Overlay (Compress & Delete) */}
+                      <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/40 opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100">
+                        {isImage && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleInlineOptimize(asset, e)}
+                            disabled={isOptimizingThis}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md hover:bg-amber-300"
+                            title="Compress & Convert to WebP"
+                          >
+                            {isOptimizingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={(e) => handleInlineOptimize(asset, e)}
-                          disabled={isOptimizingThis}
-                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-xl bg-slate-950/70 text-amber-400 backdrop-blur-md opacity-0 transition-opacity group-hover:opacity-100 hover:bg-amber-400 hover:text-slate-950 shadow-md"
-                          title="Compress & Convert to WebP"
+                          onClick={(e) => handleDeleteAsset(asset, e)}
+                          disabled={isDeletingThis}
+                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
+                          title="Delete Picture Asset"
                         >
-                          {isOptimizingThis ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                          {isDeletingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </button>
-                      )}
+                      </div>
                     </div>
 
                     <div className="space-y-1 p-3">

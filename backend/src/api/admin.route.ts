@@ -156,6 +156,7 @@ router.get(
 
 const assetListQuerySchema = z.object({
   type: z.enum(['image', 'document']).optional(),
+  folder: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(60),
 });
 
@@ -174,10 +175,11 @@ router.get(
   '/assets',
   validate(assetListQuerySchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const queryParams = req.query as unknown as { type?: 'image' | 'document'; limit: number };
+    const queryParams = req.query as unknown as { type?: 'image' | 'document'; folder?: string; limit: number };
     const assets = await fileAssetService.listAssets({
       scope: 'platform',
       type: queryParams.type,
+      folder: queryParams.folder,
       limit: queryParams.limit,
     });
     res.status(200).json({ data: assets });
@@ -2801,6 +2803,10 @@ router.delete(
     }
 
     await query('DELETE FROM pd_file_blobs WHERE key = $1', [key]);
+    await query(
+      'DELETE FROM pd_file_asset WHERE file_key = $1 OR file_key LIKE $2 OR url LIKE $2',
+      [key, `%${key}%`],
+    );
 
     try {
       const diskPath = path.join(resolveDataPath(), key);

@@ -63,24 +63,28 @@ export class FileAssetService {
     return rows[0];
   }
 
-  async listAssets(opts: { scope?: 'store' | 'platform'; storeId?: string; type?: 'image' | 'document'; limit?: number } = {}) {
+  async listAssets(opts: { scope?: 'store' | 'platform'; storeId?: string; type?: 'image' | 'document'; folder?: string; limit?: number } = {}) {
     const limit = Math.min(100, Math.max(1, opts.limit ?? 60));
     const params: unknown[] = [];
     const where: string[] = [];
 
     if (opts.scope) {
       params.push(opts.scope);
-      where.push(`scope = $${params.length}`);
+      where.push(`a.scope = $${params.length}`);
     }
     if (opts.storeId) {
       params.push(opts.storeId);
-      where.push(`store_id = $${params.length}`);
+      where.push(`a.store_id = $${params.length}`);
     }
     if (opts.type === 'image') {
-      where.push(`content_type LIKE 'image/%'`);
+      where.push(`a.content_type LIKE 'image/%'`);
     }
     if (opts.type === 'document') {
-      where.push(`content_type NOT LIKE 'image/%'`);
+      where.push(`a.content_type NOT LIKE 'image/%'`);
+    }
+    if (opts.folder && opts.folder !== 'all') {
+      params.push(`%/${opts.folder}/%`);
+      where.push(`(a.file_key LIKE $${params.length} OR a.url LIKE $${params.length} OR b.key LIKE $${params.length})`);
     }
 
     params.push(limit);
@@ -90,8 +94,8 @@ export class FileAssetService {
               COALESCE(OCTET_LENGTH(b.data), a.file_size) as file_size,
               a.owner_user_id, a.store_id, a.metadata, a.created_at, a.updated_at
        FROM pd_file_asset a
-       LEFT JOIN pd_file_blobs b ON (b.key = a.file_key OR b.key = 'pd-product-images/' || a.file_key OR a.url LIKE '%' || b.key)
-       ${where.length ? `WHERE ${where.map((w) => 'a.' + w).join(' AND ')}` : ''}
+       INNER JOIN pd_file_blobs b ON (b.key = a.file_key OR b.key = 'pd-product-images/' || a.file_key OR a.url LIKE '%' || b.key OR b.key LIKE '%' || a.file_key)
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
        ORDER BY a.created_at DESC
        LIMIT $${params.length}`,
       params,
