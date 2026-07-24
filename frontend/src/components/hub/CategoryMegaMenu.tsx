@@ -105,7 +105,7 @@ function getCategoryGradient(index: number): string {
 export interface CategoryMegaMenuProps {
   variant?: 'classic' | 'aliexpress' | 'aliexpress2';
   marketplaceTheme?: 'panda' | 'aliexpress' | 'aliexpress2';
-  megamenuStyle?: 'standard' | 'visual_rich';
+  megamenuStyle?: 'standard' | 'visual_rich' | 'ultra_rich';
 }
 
 export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: propMegamenuStyle }: CategoryMegaMenuProps) {
@@ -115,7 +115,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
   const [activeCategory, setActiveCategory] = useState<CategoryNode | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [configuredStyle, setConfiguredStyle] = useState<'standard' | 'visual_rich'>('standard');
+  const [configuredStyle, setConfiguredStyle] = useState<'standard' | 'visual_rich' | 'ultra_rich'>('standard');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const theme = marketplaceTheme || variant || 'panda';
@@ -124,6 +124,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
 
   const activeMegamenuStyle = propMegamenuStyle || configuredStyle;
   const isVisualRich = activeMegamenuStyle === 'visual_rich';
+  const isUltraRich = activeMegamenuStyle === 'ultra_rich';
 
   useEffect(() => {
     let active = true;
@@ -217,9 +218,11 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
         <div
           dir={isRtl ? 'rtl' : 'ltr'}
           className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
-            isVisualRich
-              ? 'w-[980px] max-w-[96vw] rounded-3xl border border-slate-200/80 bg-white/98 p-5 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#111827]/98'
-              : 'w-[850px] max-w-[95vw] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#1A1A2E]/95'
+            isUltraRich
+              ? 'w-[1040px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
+              : isVisualRich
+                ? 'w-[980px] max-w-[96vw] rounded-3xl border border-slate-200/80 bg-white/98 p-5 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#111827]/98'
+                : 'w-[850px] max-w-[95vw] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#1A1A2E]/95'
           }`}
         >
           {loading ? (
@@ -235,9 +238,189 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             <div className="p-8 text-center text-xs font-semibold text-slate-500">
               {locale === 'ar' ? 'لا توجد أقسام متوفرة' : locale === 'en' ? 'No categories available' : 'Aucune catégorie disponible'}
             </div>
+          ) : isUltraRich ? (
+            /* ========================================================================= */
+            /* VERSION 3: ULTRA-RICH SHOWCASE (LARGE HERO BANNERS & LARGE PICTURE CARDS) */
+            /* ========================================================================= */
+            <div className="grid grid-cols-12 gap-6">
+              {/* Left Column: Department List */}
+              <div className="col-span-3 max-h-[560px] overflow-y-auto space-y-2 pr-2 border-r border-slate-100 dark:border-white/10">
+                <div className="px-2 py-1 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {locale === 'ar' ? 'الأقسام الرئيسية' : locale === 'en' ? 'Main Departments' : 'Rayons Principaux'}
+                  </span>
+                </div>
+                {categories.map((cat, idx) => {
+                  const IconComp = getCategoryIconComponent(cat);
+                  const isActive = activeCategory?.id === cat.id;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onMouseEnter={() => setActiveCategory(cat)}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`group flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-xs font-bold transition-all ${
+                        isActive
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        {cat.image_url ? (
+                          <img
+                            src={cat.image_url}
+                            alt={cat.name}
+                            className="h-10 w-10 rounded-2xl object-cover shrink-0 border border-slate-200/50 shadow-sm"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${getCategoryGradient(
+                              idx
+                            )} text-white shadow-sm`}
+                          >
+                            <IconComp className="h-5 w-5" />
+                          </div>
+                        )}
+                        <div className="flex flex-col text-left rtl:text-right truncate">
+                          <span className="truncate text-xs font-black">{cat.name}</span>
+                          <span
+                            className={`truncate text-[10px] font-semibold ${
+                              isActive ? 'text-orange-100' : 'text-slate-400'
+                            }`}
+                          >
+                            {cat.children?.length || 0}{' '}
+                            {locale === 'ar' ? 'قسم فرعي' : locale === 'en' ? 'subcategories' : 'sous-catégories'}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight
+                        className={`h-4 w-4 shrink-0 transition-transform ${
+                          isActive ? 'translate-x-0.5 opacity-100 text-white' : 'opacity-30 group-hover:opacity-70'
+                        } ${isRtl ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right Main Showcase Container */}
+              <div className="col-span-9 max-h-[560px] overflow-y-auto space-y-5 pr-1">
+                {activeCategory && (
+                  <>
+                    {/* Large 220px Tall Hero Banner */}
+                    <div className="relative h-52 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
+                      {activeCategory.image_url ? (
+                        <img
+                          src={activeCategory.image_url}
+                          alt={activeCategory.name}
+                          className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className={`absolute inset-0 bg-gradient-to-r ${getCategoryGradient(0)} opacity-80`} />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent" />
+
+                      <div className="relative z-10 flex h-full flex-col justify-between p-6">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1 text-[11px] font-black uppercase text-slate-950 shadow-md">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {locale === 'ar' ? 'تشكيلة مميزة' : locale === 'en' ? 'Featured Collection' : 'Rayon d\'Exception'}
+                          </span>
+                          <span className="rounded-xl bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-bold text-slate-200 border border-white/20">
+                            {activeCategory.children?.length || 0} {locale === 'ar' ? 'قسم فرعي' : locale === 'en' ? 'Subcategories' : 'Sous-Catégories'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <h2 className="text-2xl font-black tracking-wide text-white drop-shadow-md">{activeCategory.name}</h2>
+                          {getLocalizedDescription(activeCategory) && (
+                            <p className="text-xs text-slate-200 max-w-[85%] leading-relaxed line-clamp-2 drop-shadow-sm">
+                              {getLocalizedDescription(activeCategory)}
+                            </p>
+                          )}
+                          <div className="pt-1">
+                            <Link
+                              href={`/hub/category/${activeCategory.slug}`}
+                              onClick={() => setIsOpen(false)}
+                              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg transition-all hover:scale-105 hover:shadow-orange-500/25"
+                            >
+                              <span>{locale === 'ar' ? 'تصفح جميع المنتجات' : locale === 'en' ? 'Explore Full Collection' : 'Explorer Toute La Collection'}</span>
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Large Picture Subcategory Card Grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {activeCategory.children?.map((sub, idx) => {
+                        const SubIcon = getCategoryIconComponent(sub);
+                        const subDesc = getLocalizedDescription(sub);
+
+                        return (
+                          <Link
+                            key={sub.id}
+                            href={`/hub/category/${sub.slug}`}
+                            onClick={() => setIsOpen(false)}
+                            className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-orange-500/15 dark:border-white/10 dark:bg-slate-900"
+                          >
+                            {/* Large 130px Picture Frame */}
+                            <div className="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                              {sub.image_url ? (
+                                <img
+                                  src={sub.image_url}
+                                  alt={sub.name}
+                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${getCategoryGradient(idx)} text-white`}>
+                                  <SubIcon className="h-10 w-10 opacity-80" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                              <span className="absolute bottom-2.5 left-3 right-3 text-xs font-black text-white truncate drop-shadow-md">
+                                {sub.name}
+                              </span>
+                            </div>
+
+                            {/* Subcategory Info & Localized Description */}
+                            <div className="flex flex-1 flex-col justify-between p-3.5 space-y-2">
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 line-clamp-2 leading-snug">
+                                {subDesc || (locale === 'ar' ? 'تشكيلة منتجات ممتازة' : locale === 'en' ? 'Premium product selection' : 'Sélection premium')}
+                              </p>
+
+                              <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-white/5">
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#ff6a00] border border-orange-100">
+                                  <Package className="h-3 w-3" />
+                                  {sub.product_count || 0} {locale === 'ar' ? 'منتج' : locale === 'en' ? 'products' : 'produits'}
+                                </span>
+                                <span className="flex items-center gap-1 text-[11px] font-black text-slate-900 group-hover:text-amber-500 dark:text-white transition-colors">
+                                  <span>{locale === 'ar' ? 'عرض' : locale === 'en' ? 'View' : 'Voir'}</span>
+                                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           ) : isVisualRich ? (
             /* ========================================================= */
-            /* VERSION 2: VISUAL RICH MEGAMENU (PICTURES & DESCRIPTIONS)  */
+            /* VERSION 2: VISUAL RICH MEGAMENU (COMPACT PICTURE CARDS)   */
             /* ========================================================= */
             <div className="grid grid-cols-12 gap-5">
               {/* Left Column: Department Selector List */}
@@ -268,6 +451,9 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                             src={cat.image_url}
                             alt={cat.name}
                             className="h-8 w-8 rounded-xl object-cover shrink-0 border border-slate-200/50 shadow-sm"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
                           />
                         ) : (
                           <div
@@ -368,6 +554,9 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                                           src={sub.image_url}
                                           alt={sub.name}
                                           className="h-9 w-9 rounded-xl object-cover border border-slate-200/50 shadow-sm"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLElement).style.display = 'none';
+                                          }}
                                         />
                                       ) : (
                                         <div

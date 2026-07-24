@@ -51,7 +51,7 @@ interface PlatformSettings {
   catalog_featured_category_slugs: string;
   catalog_default_sort: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc';
   hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
-  hub_megamenu_style: 'standard' | 'visual_rich';
+  hub_megamenu_style: 'standard' | 'visual_rich' | 'ultra_rich';
   hub_homepage_banner_title: string;
   hub_homepage_banner_subtitle: string;
   hub_homepage_banner_cta_label: string;
@@ -1536,7 +1536,8 @@ export default function AdminSettingsPage() {
               className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
             >
               <option value="standard">Version 1: Standard List (Alibaba Compact)</option>
-              <option value="visual_rich">Version 2: Visual Rich (Pictures & Descriptions Showcase)</option>
+              <option value="visual_rich">Version 2: Visual Cards (Compact Pictures & Descriptions)</option>
+              <option value="ultra_rich">Version 3: Ultra-Rich Showcase (Large Pictures & Hero Banners)</option>
             </select>
           </div>
           <div className="space-y-1.5">
