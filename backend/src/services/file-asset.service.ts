@@ -85,9 +85,14 @@ export class FileAssetService {
 
     params.push(limit);
     const { rows } = await query<FileAssetRow>(
-      `SELECT * FROM pd_file_asset
-       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-       ORDER BY created_at DESC
+      `SELECT a.id, a.scope, a.purpose, a.url, a.file_key, a.bucket, a.filename,
+              COALESCE(b.content_type, a.content_type) as content_type,
+              COALESCE(OCTET_LENGTH(b.data), a.file_size) as file_size,
+              a.owner_user_id, a.store_id, a.metadata, a.created_at, a.updated_at
+       FROM pd_file_asset a
+       LEFT JOIN pd_file_blobs b ON (b.key = a.file_key OR b.key = 'pd-product-images/' || a.file_key OR a.url LIKE '%' || b.key)
+       ${where.length ? `WHERE ${where.map((w) => 'a.' + w).join(' AND ')}` : ''}
+       ORDER BY a.created_at DESC
        LIMIT $${params.length}`,
       params,
     );

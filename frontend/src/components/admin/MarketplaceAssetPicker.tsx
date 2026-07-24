@@ -188,6 +188,13 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
       if (!res.ok) throw new Error('Failed to compress image');
       const optJson = await res.json();
       setNotification(`⚡ Picture compressed! Saved ${optJson.saved_percentage}% space (${formatSize(optJson.original_size)} ➔ ${formatSize(optJson.new_size)})`);
+      setAssets((prev) =>
+        prev.map((item) =>
+          item.id === asset.id || item.url === asset.url || item.key === rawKey
+            ? { ...item, file_size: optJson.new_size, content_type: optJson.content_type }
+            : item,
+        ),
+      );
       await loadAssets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Optimization failed');

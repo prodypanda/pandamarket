@@ -2817,6 +2817,13 @@ router.post(
       [compressedBuffer, targetContentType, key],
     );
 
+    await query(
+      `UPDATE pd_file_asset
+       SET file_size = $1, content_type = $2, updated_at = NOW()
+       WHERE file_key = $3 OR file_key LIKE $4 OR url LIKE $4`,
+      [newSize, targetContentType, key, `%${key}%`],
+    );
+
     try {
       const diskPath = path.join(resolveDataPath(), key);
       if (fs.existsSync(diskPath)) {
@@ -2898,6 +2905,13 @@ router.post(
           await query(
             'UPDATE pd_file_blobs SET data = $1, content_type = $2 WHERE key = $3',
             [compressedBuffer, 'image/webp', rawKey],
+          );
+
+          await query(
+            `UPDATE pd_file_asset
+             SET file_size = $1, content_type = $2, updated_at = NOW()
+             WHERE file_key = $3 OR file_key LIKE $4 OR url LIKE $4`,
+            [newSize, 'image/webp', rawKey, `%${rawKey}%`],
           );
 
           try {
