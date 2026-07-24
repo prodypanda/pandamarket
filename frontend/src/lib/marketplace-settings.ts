@@ -48,6 +48,16 @@ export interface MarketplaceSettings {
   hub_homepage_banner_cta_url?: string;
   hub_homepage_banner_image_url?: string;
   hub_homepage_blocks?: string;
+  hub_hero_show_category_sidebar?: boolean;
+  hub_hero_show_carousel?: boolean;
+  hub_hero_show_seller_rail?: boolean;
+  hub_hero_category_sidebar_max_items?: number;
+  hub_hero_carousel_slides?: string;
+  hub_hero_seller_rail_title?: string;
+  hub_hero_seller_rail_subtitle?: string;
+  hub_hero_seller_rail_cta_label?: string;
+  hub_hero_seller_rail_cta_url?: string;
+  hub_hero_seller_rail_badge_text?: string;
   analytics_ga4_enabled?: boolean;
   analytics_ga4_measurement_id?: string;
   analytics_gtm_enabled?: boolean;

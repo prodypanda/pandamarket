@@ -7,7 +7,7 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 
 interface PlatformSettings {
@@ -60,6 +60,16 @@ interface PlatformSettings {
   hub_homepage_banner_cta_url: string;
   hub_homepage_banner_image_url: string;
   hub_homepage_blocks: string;
+  hub_hero_show_category_sidebar: boolean;
+  hub_hero_show_carousel: boolean;
+  hub_hero_show_seller_rail: boolean;
+  hub_hero_category_sidebar_max_items: number;
+  hub_hero_carousel_slides: string;
+  hub_hero_seller_rail_title: string;
+  hub_hero_seller_rail_subtitle: string;
+  hub_hero_seller_rail_cta_label: string;
+  hub_hero_seller_rail_cta_url: string;
+  hub_hero_seller_rail_badge_text: string;
   analytics_ga4_enabled: boolean;
   analytics_ga4_measurement_id: string;
   analytics_gtm_enabled: boolean;
@@ -237,6 +247,16 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_banner_cta_url: '/hub/search',
   hub_homepage_banner_image_url: '',
   hub_homepage_blocks: '',
+  hub_hero_show_category_sidebar: true,
+  hub_hero_show_carousel: true,
+  hub_hero_show_seller_rail: true,
+  hub_hero_category_sidebar_max_items: 14,
+  hub_hero_carousel_slides: '[]',
+  hub_hero_seller_rail_title: 'Accès Vendeurs & Fournisseurs',
+  hub_hero_seller_rail_subtitle: 'Ouvrez votre boutique B2B ou accédez à votre espace fournisseur',
+  hub_hero_seller_rail_cta_label: 'Espace Vendeur',
+  hub_hero_seller_rail_cta_url: '/hub/dashboard',
+  hub_hero_seller_rail_badge_text: 'PandaMarket B2B',
   analytics_ga4_enabled: false,
   analytics_ga4_measurement_id: '',
   analytics_gtm_enabled: false,
@@ -438,6 +458,12 @@ const TEXT_SETTING_KEYS = [
   'hub_homepage_banner_cta_url',
   'hub_homepage_banner_image_url',
   'hub_homepage_blocks',
+  'hub_hero_carousel_slides',
+  'hub_hero_seller_rail_title',
+  'hub_hero_seller_rail_subtitle',
+  'hub_hero_seller_rail_cta_label',
+  'hub_hero_seller_rail_cta_url',
+  'hub_hero_seller_rail_badge_text',
   'analytics_ga4_measurement_id',
   'analytics_gtm_container_id',
   'analytics_meta_pixel_id',
@@ -486,6 +512,7 @@ const NUMBER_SETTING_KEYS = [
   'security_login_max_attempts',
   'security_login_lockout_minutes',
   'security_password_min_length',
+  'hub_hero_category_sidebar_max_items',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -535,6 +562,9 @@ const BOOLEAN_SETTING_KEYS = [
   'analytics_meta_pixel_enabled',
   'cloudflare_integration_enabled',
   'cloudflare_custom_hostnames_enabled',
+  'hub_hero_show_category_sidebar',
+  'hub_hero_show_carousel',
+  'hub_hero_show_seller_rail',
 ] as const satisfies readonly BooleanSettingKey[];
 
 const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSettings)[]> = {
@@ -588,6 +618,16 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_homepage_banner_cta_url',
     'hub_homepage_banner_image_url',
     'hub_homepage_blocks',
+    'hub_hero_show_category_sidebar',
+    'hub_hero_show_carousel',
+    'hub_hero_show_seller_rail',
+    'hub_hero_category_sidebar_max_items',
+    'hub_hero_carousel_slides',
+    'hub_hero_seller_rail_title',
+    'hub_hero_seller_rail_subtitle',
+    'hub_hero_seller_rail_cta_label',
+    'hub_hero_seller_rail_cta_url',
+    'hub_hero_seller_rail_badge_text',
   ],
   commerce: [
     'marketplace_enabled',
@@ -756,6 +796,10 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
         : 'standard';
   payload.hub_megamenu_lazy_loading = Boolean(payload.hub_megamenu_lazy_loading);
   payload.hub_category_page_style = payload.hub_category_page_style === 'v2_modern_showcase' ? 'v2_modern_showcase' : 'v1_classic';
+  payload.hub_hero_show_category_sidebar = Boolean(payload.hub_hero_show_category_sidebar);
+  payload.hub_hero_show_carousel = Boolean(payload.hub_hero_show_carousel);
+  payload.hub_hero_show_seller_rail = Boolean(payload.hub_hero_show_seller_rail);
+  payload.hub_hero_category_sidebar_max_items = Math.max(1, Math.min(30, Number(payload.hub_hero_category_sidebar_max_items) || 14));
   payload.shipping_default_provider = payload.shipping_default_provider === 'aramex'
     ? 'aramex'
     : payload.shipping_default_provider === 'laposte'
@@ -1610,6 +1654,83 @@ export default function AdminSettingsPage() {
           value={settings.hub_homepage_blocks}
           onChange={(next) => updateSetting('hub_homepage_blocks', next)}
         />
+      </section>
+
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<LayoutGrid className="h-5 w-5" />}
+          title="Alibaba B2B Hero Section (Categories, Carousel & Seller Rail)"
+          description="Configure the Hero area of the Alibaba B2B homepage — toggle category sidebar, carousel, and seller rail visibility; customize max categories, seller rail text, and custom carousel slides."
+        />
+        <div className="space-y-6">
+          {/* Visibility Toggles */}
+          <div>
+            <h4 className="mb-3 text-sm font-black text-slate-700">Hero Column Visibility</h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              {[
+                { key: 'hub_hero_show_category_sidebar' as const, label: 'Category Sidebar', description: 'Show the vertical category department sidebar on the left.' },
+                { key: 'hub_hero_show_carousel' as const, label: 'Hero Carousel', description: 'Show the main hero carousel/banner in the center.' },
+                { key: 'hub_hero_show_seller_rail' as const, label: 'Seller Rail', description: 'Show the seller/supplier rail on the right.' },
+              ].map(renderToggle)}
+            </div>
+          </div>
+
+          {/* Category Sidebar Settings */}
+          {settings.hub_hero_show_category_sidebar && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+              <h4 className="mb-3 text-sm font-black text-slate-800 flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-[#ff6a00]" /> Category Sidebar Settings
+              </h4>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Max Categories Displayed</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={settings.hub_hero_category_sidebar_max_items}
+                    onChange={(e) => updateSetting('hub_hero_category_sidebar_max_items', Math.max(1, Math.min(30, Number(e.target.value) || 14)))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-400">Controls how many top-level categories appear in the vertical department menu (1 to 30).</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Seller Rail Settings */}
+          {settings.hub_hero_show_seller_rail && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+              <h4 className="mb-3 text-sm font-black text-slate-800 flex items-center gap-2">
+                <Store className="h-4 w-4 text-[#ff6a00]" /> Seller Rail Configuration
+              </h4>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {renderTextInput('hub_hero_seller_rail_title', 'Rail Card Title', 'Accès Vendeurs & Fournisseurs')}
+                {renderTextInput('hub_hero_seller_rail_subtitle', 'Rail Subtitle', 'Ouvrez votre boutique B2B...')}
+                {renderTextInput('hub_hero_seller_rail_cta_label', 'CTA Button Label', 'Espace Vendeur')}
+                {renderTextInput('hub_hero_seller_rail_cta_url', 'CTA Button URL', '/hub/dashboard')}
+                {renderTextInput('hub_hero_seller_rail_badge_text', 'Badge Text', 'PandaMarket B2B')}
+              </div>
+            </div>
+          )}
+
+          {/* Carousel Slides Configuration */}
+          {settings.hub_hero_show_carousel && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+              <h4 className="mb-3 text-sm font-black text-slate-800 flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Custom Carousel Slides (JSON)
+              </h4>
+              <p className="mb-2 text-xs text-gray-500">Define custom hero carousel slides as JSON. Each slide can specify: <code>title</code>, <code>subtitle</code>, <code>ctaLabel</code>, <code>ctaUrl</code>, and <code>imageUrl</code>. Leave as <code>[]</code> to automatically generate slides from categories.</p>
+              <textarea
+                rows={5}
+                value={settings.hub_hero_carousel_slides}
+                onChange={(e) => updateSetting('hub_hero_carousel_slides', e.target.value)}
+                placeholder='[{"title":"Welcome","subtitle":"Explore our marketplace","ctaLabel":"Shop Now","ctaUrl":"/hub/search","imageUrl":""}]'
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-xs text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+              />
+            </div>
+          )}
+        </div>
       </section>
 
       <section className={`${activeTab === 'commerce' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>

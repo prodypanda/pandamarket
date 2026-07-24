@@ -253,8 +253,33 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   const blockTitle = (id: string, fallback: string) => blockById.get(id)?.title || fallback;
   const blockLimit = (id: string, fallback: number) => blockById.get(id)?.limit || fallback;
 
+  // Configurable Hero Section Settings
+  const showCategorySidebar = marketplaceSettings.hub_hero_show_category_sidebar !== false;
+  const showCarousel = marketplaceSettings.hub_hero_show_carousel !== false;
+  const showSellerRail = marketplaceSettings.hub_hero_show_seller_rail !== false;
+  const sidebarMaxItems = Math.max(1, Math.min(30, Number(marketplaceSettings.hub_hero_category_sidebar_max_items) || 14));
+
   // Admin-managed hero carousel
   const slides = useMemo<HeroSlide[]>(() => {
+    // 1. Try custom JSON carousel slides setting
+    if (marketplaceSettings.hub_hero_carousel_slides) {
+      try {
+        const parsed = JSON.parse(marketplaceSettings.hub_hero_carousel_slides);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: any) => ({
+            title: String(item.title || item.name || marketplaceName),
+            subtitle: String(item.subtitle || item.description || ''),
+            ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
+            ctaUrl: String(item.ctaUrl || item.cta_url || '/hub/search'),
+            imageUrl: item.imageUrl || item.image_url || null,
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to parse hub_hero_carousel_slides JSON:', err);
+      }
+    }
+
+    // 2. Try homepage block slides
     const configured = (blockById.get('hero')?.slides ?? []).map((entry) => ({
       title: entry.title,
       subtitle: entry.subtitle || '',
@@ -263,6 +288,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       imageUrl: entry.image_url || null,
     }));
     if (configured.length > 0) return configured;
+
+    // 3. Fallback to banner settings + categories
     const result: HeroSlide[] = [];
     if (marketplaceSettings.hub_homepage_banner_title) {
       result.push({
@@ -414,22 +441,35 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       </div>
 
       {/* Hero: persistent Alibaba B2B category sidebar + multi-column mega flyout + carousel + seller rail */}
-      {isBlockEnabled('hero') && (
+      {isBlockEnabled('hero') && (showCategorySidebar || showCarousel || showSellerRail) && (
         <>
-          <section className="mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[260px_1fr_240px] lg:px-8">
-            <aside
-              className={`relative hidden rounded-3xl border border-gray-200 bg-white lg:block transition-all ${
-                activeCategory ? 'z-50 shadow-2xl ring-1 ring-orange-200' : 'z-10 shadow-md'
-              }`}
-              onMouseLeave={() => setActiveCategory(null)}
-            >
-              <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700">
-                <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
-              </p>
+          <section
+            className={`mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 ${
+              showCategorySidebar && showCarousel && showSellerRail
+                ? 'lg:grid-cols-[260px_1fr_240px]'
+                : showCategorySidebar && showCarousel
+                  ? 'lg:grid-cols-[260px_1fr]'
+                  : showCarousel && showSellerRail
+                    ? 'lg:grid-cols-[1fr_240px]'
+                    : showCategorySidebar && showSellerRail
+                      ? 'lg:grid-cols-[260px_1fr]'
+                      : 'grid-cols-1'
+            } lg:px-8`}
+          >
+            {showCategorySidebar && (
+              <aside
+                className={`relative hidden rounded-3xl border border-gray-200 bg-white lg:block transition-all ${
+                  activeCategory ? 'z-50 shadow-2xl ring-1 ring-orange-200' : 'z-10 shadow-md'
+                }`}
+                onMouseLeave={() => setActiveCategory(null)}
+              >
+                <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700">
+                  <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
+                </p>
 
-              {/* Sidebar Category Department List */}
-              <ul className="max-h-[410px] overflow-y-auto py-1 divide-y divide-slate-50">
-                {displayCategories.slice(0, 14).map((category) => {
+                {/* Sidebar Category Department List */}
+                <ul className="max-h-[410px] overflow-y-auto py-1 divide-y divide-slate-50">
+                  {displayCategories.slice(0, sidebarMaxItems).map((category) => {
                   const IconComp = (category.icon && ICON_MAP[category.icon]) || getCategoryIconComponent(category);
                   const isActive = activeCategory?.id === category.id;
 
@@ -849,62 +889,71 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 </div>
               )}
             </aside>
+            )}
 
-            <div className="relative overflow-hidden rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(120deg, ${NAVY}, #163060)` }}>
-              {slide.imageUrl && (
-                <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${slide.imageUrl})` }} />
-              )}
-              <div className="relative flex h-full min-h-[280px] flex-col justify-center p-8">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider">
-                  <Globe2 className="h-3.5 w-3.5" /> {marketplaceName} B2B
-                </span>
-                <h1 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>
-                {slide.subtitle && <p className="mt-3 max-w-md text-sm font-semibold text-white/75">{slide.subtitle}</p>}
-                <Link href={slide.ctaUrl} className="mt-6 inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg" style={{ backgroundColor: ORANGE }}>
-                  {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
-                </Link>
+            {/* Hero Carousel */}
+            {showCarousel && slide && (
+              <div className="relative overflow-hidden rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(120deg, ${NAVY}, #163060)` }}>
+                {slide.imageUrl && (
+                  <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${slide.imageUrl})` }} />
+                )}
+                <div className="relative flex h-full min-h-[280px] flex-col justify-center p-8">
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider">
+                    <Globe2 className="h-3.5 w-3.5" /> {marketplaceSettings.hub_hero_seller_rail_badge_text || `${marketplaceName} B2B`}
+                  </span>
+                  <h1 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>
+                  {slide.subtitle && <p className="mt-3 max-w-md text-sm font-semibold text-white/75">{slide.subtitle}</p>}
+                  <Link href={slide.ctaUrl} className="mt-6 inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg" style={{ backgroundColor: ORANGE }}>
+                    {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                {slides.length > 1 && (
+                  <>
+                    <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
+                      {slides.map((entry, idx) => (
+                        <button key={`${entry.title}-${idx}`} type="button" aria-label={`Slide ${idx + 1}`} onClick={() => setSlideIndex(idx)} className={`h-1.5 rounded-full transition-all ${idx === slideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40'}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-              {slides.length > 1 && (
-                <>
-                  <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-                    {slides.map((entry, idx) => (
-                      <button key={`${entry.title}-${idx}`} type="button" aria-label={`Slide ${idx + 1}`} onClick={() => setSlideIndex(idx)} className={`h-1.5 rounded-full transition-all ${idx === slideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40'}`} />
+            )}
+
+            {/* Seller / Supplier Welcome Rail */}
+            {showSellerRail && (
+              <aside className="hidden flex-col gap-3 lg:flex">
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
+                    <Store className="h-4 w-4" style={{ color: ORANGE }} /> {marketplaceSettings.hub_hero_seller_rail_title || i18n.topSellers}
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {topSellers.slice(0, 5).map((seller) => (
+                      <li key={seller.name}>
+                        <Link href={seller.subdomain ? `/store/${encodeURIComponent(seller.subdomain)}` : '/hub/search'} className="flex items-center justify-between rounded-xl px-2 py-1.5 text-xs font-bold text-gray-700 hover:bg-orange-50">
+                          <span className="truncate">{seller.name}</span>
+                          <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        </Link>
+                      </li>
                     ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <aside className="hidden flex-col gap-3 lg:flex">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
-                  <Store className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.topSellers}
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {topSellers.slice(0, 5).map((seller) => (
-                    <li key={seller.name}>
-                      <Link href={seller.subdomain ? `/store/${encodeURIComponent(seller.subdomain)}` : '/hub/search'} className="flex items-center justify-between rounded-xl px-2 py-1.5 text-xs font-bold text-gray-700 hover:bg-orange-50">
-                        <span className="truncate">{seller.name}</span>
-                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                      </Link>
-                    </li>
-                  ))}
-                  {topSellers.length === 0 && <li className="text-xs text-gray-400">{i18n.noSellers}</li>}
-                </ul>
-              </div>
-              <div className="rounded-2xl p-4 text-white shadow-sm" style={{ backgroundColor: NAVY }}>
-                <Factory className="h-5 w-5" style={{ color: ORANGE }} />
-                <p className="mt-2 text-sm font-black">{i18n.rfqTitle}</p>
-                <p className="mt-1 text-[11px] leading-4 text-white/70">{i18n.rfqSubtitle}</p>
-                <Link href="/hub/messages" className="mt-3 inline-flex rounded-full bg-white/10 px-4 py-2 text-[11px] font-black hover:bg-white/20">{i18n.rfqButton}</Link>
-              </div>
-            </aside>
+                    {topSellers.length === 0 && <li className="text-xs text-gray-400">{i18n.noSellers}</li>}
+                  </ul>
+                </div>
+                <div className="rounded-2xl p-4 text-white shadow-sm" style={{ backgroundColor: NAVY }}>
+                  <Factory className="h-5 w-5" style={{ color: ORANGE }} />
+                  <p className="mt-2 text-sm font-black">{marketplaceSettings.hub_hero_seller_rail_subtitle || i18n.rfqTitle}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-white/70">{i18n.rfqSubtitle}</p>
+                  <Link href={marketplaceSettings.hub_hero_seller_rail_cta_url || '/hub/dashboard'} className="mt-3 inline-flex rounded-full bg-white/10 px-4 py-2 text-[11px] font-black hover:bg-white/20">
+                    {marketplaceSettings.hub_hero_seller_rail_cta_label || i18n.rfqButton}
+                  </Link>
+                </div>
+              </aside>
+            )}
           </section>
 
           {/* Mobile category access */}
