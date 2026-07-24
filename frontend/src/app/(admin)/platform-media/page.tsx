@@ -23,6 +23,9 @@ import {
   RefreshCw,
   X,
   ExternalLink,
+  Zap,
+  Sliders,
+  CheckCircle2,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 
@@ -66,6 +69,17 @@ export default function PlatformMediaPage() {
   const [uploadFolder, setUploadFolder] = useState<'categories' | 'branding' | 'banners' | 'general'>('categories');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
+
+  // Single Optimization Modal State
+  const [optimizingItem, setOptimizingItem] = useState<MediaItem | null>(null);
+  const [optQuality, setOptQuality] = useState<number>(80);
+  const [optMaxWidth, setOptMaxWidth] = useState<number>(1600);
+  const [optFormat, setOptFormat] = useState<'webp' | 'jpeg' | 'png' | 'original'>('webp');
+  const [optimizing, setOptimizing] = useState(false);
+  const [optResult, setOptResult] = useState<{ original_size: number; new_size: number; saved_percentage: string } | null>(null);
+
+  // Bulk Optimization State
+  const [bulkOptimizing, setBulkOptimizing] = useState(false);
 
   // Toast / Feedback
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -112,7 +126,6 @@ export default function PlatformMediaPage() {
     setSuccess('');
 
     try {
-      // 1. Presign upload URL
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
         method: 'POST',
         credentials: 'include',
@@ -130,9 +143,8 @@ export default function PlatformMediaPage() {
         throw new Error('Failed to get presigned upload URL');
       }
 
-      const { upload_url, file_key, public_url } = await presignRes.json();
+      const { upload_url } = await presignRes.json();
 
-      // 2. Upload file binary directly
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.type || 'image/jpeg' },
@@ -152,6 +164,79 @@ export default function PlatformMediaPage() {
       setUploading(false);
       setUploadProgress('');
       e.target.value = '';
+    }
+  }
+
+  async function handleSingleOptimize() {
+    if (!optimizingItem) return;
+    setOptimizing(true);
+    setError('');
+    setOptResult(null);
+
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/platform-media/optimize', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: optimizingItem.key,
+          quality: optQuality,
+          maxWidth: optMaxWidth,
+          format: optFormat,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to compress picture');
+      }
+
+      const json = await res.json();
+      setOptResult({
+        original_size: json.original_size,
+        new_size: json.new_size,
+        saved_percentage: json.saved_percentage,
+      });
+
+      setSuccess(`Optimized picture! Reduced file size by ${json.saved_percentage}% (${formatBytes(json.original_size)} ➔ ${formatBytes(json.new_size)})`);
+      loadMedia();
+    } catch (err: any) {
+      setError(err.message || 'Optimization failed');
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
+  async function handleBulkOptimize() {
+    const folderName = activeFolder === 'all' ? 'Entire Library' : activeFolder;
+    if (!confirm(`Are you sure you want to bulk compress all pictures in ${folderName}?`)) return;
+
+    setBulkOptimizing(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/platform-media/optimize-all', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder: activeFolder,
+          quality: 80,
+          maxWidth: 1600,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Bulk optimization failed');
+      }
+
+      const json = await res.json();
+      setSuccess(`Bulk optimization complete! Processed ${json.processed_count} images and saved ${formatBytes(json.total_saved_bytes)} (-${json.total_saved_percentage}% space saved).`);
+      loadMedia();
+    } catch (err: any) {
+      setError(err.message || 'Bulk optimization error');
+    } finally {
+      setBulkOptimizing(false);
     }
   }
 
@@ -210,12 +295,21 @@ export default function PlatformMediaPage() {
               </span>
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-1">
-              Organize marketplace categories, logos, banners, and platform images in distinct folders.
+              Organize marketplace categories, logos, banners, and platform images with Sharp picture compression.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleBulkOptimize}
+            disabled={bulkOptimizing || filteredItems.length === 0}
+            className="flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs font-black text-[#ff6a00] shadow-xs hover:bg-orange-100 disabled:opacity-50"
+            title="Bulk compress images in active folder"
+          >
+            <Zap className={`h-4 w-4 ${bulkOptimizing ? 'animate-bounce text-[#ff6a00]' : ''}`} />
+            {bulkOptimizing ? 'Compressing Folder...' : '⚡ Bulk Compress Folder'}
+          </button>
           <button
             onClick={loadMedia}
             className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50"
@@ -362,17 +456,27 @@ export default function PlatformMediaPage() {
                 </span>
 
                 {/* Quick Action Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/40 opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100">
+                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/40 opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100">
+                  <button
+                    onClick={() => {
+                      setOptimizingItem(item);
+                      setOptResult(null);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md hover:bg-amber-300"
+                    title="Optimize Picture"
+                  >
+                    <Zap className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => setPreviewItem(item)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-800 shadow-md hover:bg-orange-500 hover:text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-800 shadow-md hover:bg-orange-500 hover:text-white"
                     title="Zoom Preview"
                   >
                     <Maximize2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleCopyUrl(item.url, item.key)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-800 shadow-md hover:bg-orange-500 hover:text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-800 shadow-md hover:bg-orange-500 hover:text-white"
                     title="Copy URL"
                   >
                     {copiedKey === item.key ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -380,7 +484,7 @@ export default function PlatformMediaPage() {
                   <button
                     onClick={() => handleDelete(item.key)}
                     disabled={deletingKey === item.key}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
                     title="Delete File"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -437,6 +541,17 @@ export default function PlatformMediaPage() {
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={() => {
+                          setOptimizingItem(item);
+                          setOptResult(null);
+                        }}
+                        className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-900 hover:bg-amber-400"
+                        title="Optimize Picture"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                        <span>Optimize</span>
+                      </button>
+                      <button
                         onClick={() => handleCopyUrl(item.url, item.key)}
                         className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-orange-400 hover:text-[#ff6a00]"
                         title="Copy URL"
@@ -463,6 +578,139 @@ export default function PlatformMediaPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* SINGLE PICTURE OPTIMIZATION MODAL */}
+      {optimizingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Optimize & Compress Picture</h3>
+                  <p className="text-[11px] font-bold text-slate-400 truncate max-w-xs">{optimizingItem.filename}</p>
+                </div>
+              </div>
+              <button onClick={() => setOptimizingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Target Image Preview & Current Size */}
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-3">
+              <img src={optimizingItem.url} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
+              <div className="space-y-1 text-xs">
+                <span className="block font-black text-slate-900">{optimizingItem.filename}</span>
+                <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500">
+                  <span>Current Size: <strong className="text-slate-800">{formatBytes(optimizingItem.size)}</strong></span>
+                  <span>Type: <strong className="text-slate-800">{optimizingItem.content_type}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Compression Settings Controls */}
+            <div className="space-y-4 pt-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-[#ff6a00]" />
+                    <span>Compression Quality: {optQuality}%</span>
+                  </label>
+                  <span className="text-[10px] font-extrabold text-slate-400">
+                    {optQuality >= 85 ? 'High Visual Fidelity' : optQuality >= 70 ? 'Recommended Balance' : 'Maximum Compression'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="30"
+                  max="95"
+                  step="5"
+                  value={optQuality}
+                  onChange={(e) => setOptQuality(parseInt(e.target.value, 10))}
+                  className="w-full accent-[#ff6a00] cursor-pointer"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Target Output Format</label>
+                  <select
+                    value={optFormat}
+                    onChange={(e) => setOptFormat(e.target.value as any)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  >
+                    <option value="webp">WebP (Best & Smallest)</option>
+                    <option value="jpeg">JPEG (High Compatibility)</option>
+                    <option value="png">PNG (Lossless)</option>
+                    <option value="original">Keep Original Format</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Max Resolution / Width</label>
+                  <select
+                    value={optMaxWidth}
+                    onChange={(e) => setOptMaxWidth(parseInt(e.target.value, 10))}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  >
+                    <option value={1920}>1920px (Ultra HD / Hero)</option>
+                    <option value={1600}>1600px (Recommended)</option>
+                    <option value={1200}>1200px (Banner Cover)</option>
+                    <option value={800}>800px (Category Card)</option>
+                    <option value={400}>400px (Compact Thumbnail)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Optimization Live Result Summary */}
+            {optResult && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-black text-emerald-900">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>Compression Succeeded!</span>
+                </div>
+                <div className="flex items-center justify-between font-bold text-emerald-800 pt-1">
+                  <span>Before: {formatBytes(optResult.original_size)}</span>
+                  <span>After: {formatBytes(optResult.new_size)}</span>
+                  <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-950">
+                    -{optResult.saved_percentage}% Savings
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+              <button
+                onClick={() => setOptimizingItem(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSingleOptimize}
+                disabled={optimizing}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#ff6a00] to-amber-500 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:scale-105 disabled:opacity-50"
+              >
+                {optimizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Compressing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <span>Compress & Save</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -547,11 +795,21 @@ export default function PlatformMediaPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    setOptimizingItem(previewItem);
+                    setOptResult(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-amber-300 transition-colors"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  <span>Optimize Picture</span>
+                </button>
+                <button
                   onClick={() => handleCopyUrl(previewItem.url, previewItem.key)}
                   className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-colors"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  <span>Copy Image Link</span>
+                  <span>Copy Link</span>
                 </button>
                 <a
                   href={previewItem.url}

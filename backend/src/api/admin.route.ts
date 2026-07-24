@@ -6,6 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { PdValidationError } from '../errors';
@@ -2747,6 +2748,184 @@ router.delete(
     res.status(200).json({
       success: true,
       message: 'Platform media asset deleted successfully',
+    });
+  }),
+);
+
+const optimizeMediaSchema = z.object({
+  key: z.string().min(1),
+  quality: z.number().int().min(30).max(100).optional().default(80),
+  maxWidth: z.number().int().min(100).max(3840).optional().default(1600),
+  format: z.enum(['webp', 'jpeg', 'png', 'original']).optional().default('webp'),
+});
+
+/**
+ * POST /admin/platform-media/optimize — Compress and optimize a single platform picture asset
+ */
+router.post(
+  '/platform-media/optimize',
+  validate(optimizeMediaSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { key, quality, maxWidth, format } = req.body;
+
+    const findResult = await query('SELECT data, content_type FROM pd_file_blobs WHERE key = $1', [key]);
+    if (findResult.rows.length === 0) {
+      throw new PdValidationError('Media asset not found in database');
+    }
+
+    const row = findResult.rows[0];
+    const originalBuffer = row.data as Buffer;
+    const originalSize = originalBuffer ? originalBuffer.length : 0;
+
+    if (!originalBuffer || originalSize === 0) {
+      throw new PdValidationError('Media file is empty');
+    }
+
+    let pipeline = sharp(originalBuffer);
+    const metadata = await pipeline.metadata();
+
+    if (metadata.width && metadata.width > maxWidth) {
+      pipeline = pipeline.resize({ width: maxWidth, withoutEnlargement: true });
+    }
+
+    let targetContentType = row.content_type || 'image/jpeg';
+    let targetFormat = format;
+    if (targetFormat === 'original') {
+      if (row.content_type === 'image/png') targetFormat = 'png';
+      else if (row.content_type === 'image/webp') targetFormat = 'webp';
+      else targetFormat = 'jpeg';
+    }
+
+    if (targetFormat === 'webp') {
+      pipeline = pipeline.webp({ quality, effort: 4 });
+      targetContentType = 'image/webp';
+    } else if (targetFormat === 'jpeg') {
+      pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+      targetContentType = 'image/jpeg';
+    } else if (targetFormat === 'png') {
+      pipeline = pipeline.png({ quality, compressionLevel: 8 });
+      targetContentType = 'image/png';
+    }
+
+    const compressedBuffer = await pipeline.toBuffer();
+    const newSize = compressedBuffer.length;
+    const savedBytes = Math.max(0, originalSize - newSize);
+    const savedPercentage = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) : '0';
+
+    await query(
+      'UPDATE pd_file_blobs SET data = $1, content_type = $2, created_at = NOW() WHERE key = $3',
+      [compressedBuffer, targetContentType, key],
+    );
+
+    try {
+      const diskPath = path.join(resolveDataPath(), key);
+      if (fs.existsSync(diskPath)) {
+        fs.writeFileSync(diskPath, compressedBuffer);
+      }
+    } catch {
+      // Ignore disk sync error
+    }
+
+    logger.info(
+      { admin_id: req.user!.id, key, originalSize, newSize, savedBytes, savedPercentage },
+      'Admin compressed platform media picture',
+    );
+
+    res.status(200).json({
+      success: true,
+      key,
+      original_size: originalSize,
+      new_size: newSize,
+      saved_bytes: savedBytes,
+      saved_percentage: savedPercentage,
+      content_type: targetContentType,
+    });
+  }),
+);
+
+/**
+ * POST /admin/platform-media/optimize-all — Bulk optimize all pictures in a folder
+ */
+router.post(
+  '/platform-media/optimize-all',
+  asyncHandler(async (req: Request, res: Response) => {
+    const folderFilter = (req.body.folder || 'all') as string;
+    const quality = req.body.quality || 80;
+    const maxWidth = req.body.maxWidth || 1600;
+
+    const findResult = await query(
+      "SELECT key, data, content_type FROM pd_file_blobs WHERE bucket = 'pd-product-images' ORDER BY created_at DESC",
+    );
+
+    let totalOriginal = 0;
+    let totalNew = 0;
+    let processedCount = 0;
+
+    for (const row of findResult.rows) {
+      const rawKey = row.key as string;
+      const pathParts = rawKey.split('/');
+
+      let folder = 'general';
+      if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
+        folder = pathParts[2];
+      } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
+        folder = 'categories';
+      } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
+        folder = 'branding';
+      } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
+        folder = 'banners';
+      }
+
+      if (folderFilter !== 'all' && folder !== folderFilter) continue;
+
+      const originalBuffer = row.data as Buffer;
+      if (!originalBuffer || originalBuffer.length === 0) continue;
+
+      const originalSize = originalBuffer.length;
+
+      try {
+        let pipeline = sharp(originalBuffer);
+        const metadata = await pipeline.metadata();
+
+        if (metadata.width && metadata.width > maxWidth) {
+          pipeline = pipeline.resize({ width: maxWidth, withoutEnlargement: true });
+        }
+
+        const compressedBuffer = await pipeline.webp({ quality, effort: 4 }).toBuffer();
+        const newSize = compressedBuffer.length;
+
+        if (newSize < originalSize) {
+          await query(
+            'UPDATE pd_file_blobs SET data = $1, content_type = $2 WHERE key = $3',
+            [compressedBuffer, 'image/webp', rawKey],
+          );
+
+          try {
+            const diskPath = path.join(resolveDataPath(), rawKey);
+            if (fs.existsSync(diskPath)) {
+              fs.writeFileSync(diskPath, compressedBuffer);
+            }
+          } catch {}
+
+          totalOriginal += originalSize;
+          totalNew += newSize;
+          processedCount++;
+        }
+      } catch (err) {
+        logger.warn({ key: rawKey, err }, 'Failed to optimize picture during bulk operation');
+      }
+    }
+
+    const totalSavedBytes = Math.max(0, totalOriginal - totalNew);
+    const totalSavedPercentage = totalOriginal > 0 ? ((totalSavedBytes / totalOriginal) * 100).toFixed(1) : '0';
+
+    res.status(200).json({
+      success: true,
+      processed_count: processedCount,
+      total_original_size: totalOriginal,
+      total_new_size: totalNew,
+      total_saved_bytes: totalSavedBytes,
+      total_saved_percentage: totalSavedPercentage,
     });
   }),
 );
