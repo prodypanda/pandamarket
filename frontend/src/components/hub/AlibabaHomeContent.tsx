@@ -464,7 +464,6 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 <div
                   className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
                   onClick={() => setActiveCategory(null)}
-                  onMouseEnter={() => setActiveCategory(null)}
                 />,
                 document.body
               )}
@@ -473,9 +472,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
               {activeCategory && (
                 <div
                   dir={rtl ? 'rtl' : 'ltr'}
-                  onMouseLeave={() => setActiveCategory(null)}
                   className={`absolute ${
-                    rtl ? 'right-full pr-2' : 'left-full pl-2'
+                    rtl ? 'right-full mr-3' : 'left-full ml-3'
                   } top-0 z-50 ${
                     marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
                       ? 'w-[920px]'
