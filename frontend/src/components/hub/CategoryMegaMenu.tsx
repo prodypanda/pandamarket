@@ -245,6 +245,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
         <div
           className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
           onClick={() => setIsOpen(false)}
+          onMouseEnter={() => setIsOpen(false)}
         />,
         document.body
       )}
