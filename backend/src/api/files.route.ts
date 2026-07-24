@@ -149,7 +149,10 @@ router.post(
         break;
       case 'marketplace_asset':
         bucket = config.s3.bucketPublic;
-        keyPrefix = `marketplace/${req.user!.id}`;
+        const subFolder = req.body.folder && ['categories', 'branding', 'banners', 'general'].includes(req.body.folder)
+          ? req.body.folder
+          : 'general';
+        keyPrefix = `marketplace/${subFolder}/${req.user!.id}`;
         break;
       case 'report_evidence':
         bucket = config.s3.bucketPrivate;

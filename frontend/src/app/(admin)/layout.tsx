@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Activity,
   Megaphone,
+  FolderOpen,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -129,6 +130,7 @@ export default function AdminLayout({
     { href: '/ads', label: 'PandaMarket Ads', icon: Megaphone },
     { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },
     { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories'), icon: Tags },
+    { href: '/platform-media', label: 'Platform Media', icon: FolderOpen },
     { href: '/ai-costs', label: t('admin.sidebar.aiCosts'), icon: Sparkles },
     {
       label: 'Logs',

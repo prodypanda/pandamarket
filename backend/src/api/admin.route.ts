@@ -4,8 +4,12 @@
  * vendor management, and platform statistics.
  */
 
+import fs from 'fs';
+import path from 'path';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { PdValidationError } from '../errors';
+import { resolveDataPath } from '../utils/data-dir';
 import {
   asyncHandler,
   requireAuth,
@@ -2644,6 +2648,106 @@ router.post(
     );
 
     res.status(result.success ? 200 : 422).json(result);
+  }),
+);
+
+/**
+ * GET /admin/platform-media — List platform media assets stored in database pd_file_blobs
+ * Query: ?folder=all|categories|branding|banners|general&search=...
+ */
+router.get(
+  '/platform-media',
+  asyncHandler(async (req: Request, res: Response) => {
+    const folderFilter = typeof req.query.folder === 'string' ? req.query.folder.trim() : 'all';
+    const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+
+    const sql = `
+      SELECT key, bucket, content_type, OCTET_LENGTH(data) as size, created_at
+      FROM pd_file_blobs
+      WHERE bucket = 'pd-product-images'
+      ORDER BY created_at DESC
+    `;
+
+    const result = await query(sql);
+
+    const items = result.rows.map((row: any) => {
+      const rawKey = row.key as string;
+      const pathParts = rawKey.split('/');
+
+      let folder = 'general';
+      if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
+        folder = pathParts[2];
+      } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
+        folder = 'categories';
+      } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
+        folder = 'branding';
+      } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
+        folder = 'banners';
+      }
+
+      const filename = pathParts[pathParts.length - 1] || rawKey;
+      const url = `/${rawKey}`;
+
+      return {
+        key: rawKey,
+        url,
+        filename,
+        folder,
+        content_type: row.content_type || 'image/jpeg',
+        size: parseInt(row.size, 10) || 0,
+        created_at: row.created_at,
+      };
+    });
+
+    const filtered = items.filter((item: any) => {
+      if (folderFilter !== 'all' && item.folder !== folderFilter) return false;
+      if (searchQuery && !item.filename.toLowerCase().includes(searchQuery) && !item.key.toLowerCase().includes(searchQuery)) return false;
+      return true;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filtered,
+      summary: {
+        total: items.length,
+        categories: items.filter((i: any) => i.folder === 'categories').length,
+        branding: items.filter((i: any) => i.folder === 'branding').length,
+        banners: items.filter((i: any) => i.folder === 'banners').length,
+        general: items.filter((i: any) => i.folder === 'general').length,
+      },
+    });
+  }),
+);
+
+/**
+ * DELETE /admin/platform-media — Delete a platform media asset from database pd_file_blobs and local cache
+ * Body or Query: { key: string }
+ */
+router.delete(
+  '/platform-media',
+  asyncHandler(async (req: Request, res: Response) => {
+    const key = (req.body.key || req.query.key || '') as string;
+    if (!key) {
+      throw new PdValidationError('Asset key is required');
+    }
+
+    await query('DELETE FROM pd_file_blobs WHERE key = $1', [key]);
+
+    try {
+      const diskPath = path.join(resolveDataPath(), key);
+      if (fs.existsSync(diskPath)) {
+        fs.unlinkSync(diskPath);
+      }
+    } catch {
+      // Ignore disk delete error
+    }
+
+    logger.info({ admin_id: req.user!.id, key }, 'Admin deleted platform media asset');
+
+    res.status(200).json({
+      success: true,
+      message: 'Platform media asset deleted successfully',
+    });
   }),
 );
 

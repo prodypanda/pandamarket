@@ -79,6 +79,7 @@ const ADMIN_ROUTE_PREFIXES = [
   '/withdrawals',
   '/plans',
   '/marketplace-categories',
+  '/platform-media',
   '/ai-costs',
   '/audit-log',
   '/seller-audit-log',
