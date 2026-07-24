@@ -18,11 +18,11 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/pd-product-images/:path*',
-        destination: `${publicStorageUrl}/pd-product-images/:path*`,
+        destination: `${backendUrl}/pd-product-images/:path*`,
       },
       {
         source: '/pd-themes/:path*',
-        destination: `${publicStorageUrl}/pd-themes/:path*`,
+        destination: `${backendUrl}/pd-themes/:path*`,
       },
     ];
   },
