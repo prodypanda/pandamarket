@@ -163,6 +163,13 @@ async function bootstrap() {
   // Serve public uploads and themes statically from backend/data.
   // getDataDir() resolves correctly for both tsx dev mode (src/) and the
   // compiled production build (dist/backend/src/), unlike __dirname-relative paths.
+  // Redirect legacy / storage URL patterns to local persistent file server
+  app.get('/storage/v1/object/public/:bucket/*', (req, res) => {
+    const bucket = req.params.bucket;
+    const fileKey = (req.params as Record<string, string>)[0] || '';
+    res.redirect(`/${bucket}/${fileKey}`);
+  });
+
   app.use('/pd-product-images', express.static(path.join(getDataDir(), 'pd-product-images')));
   app.use('/pd-themes', express.static(path.join(getDataDir(), 'pd-themes')));
 
