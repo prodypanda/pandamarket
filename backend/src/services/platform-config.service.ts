@@ -313,6 +313,8 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'catalog_default_sort',
     'hub_homepage_layout',
     'hub_megamenu_style',
+    'hub_megamenu_lazy_loading',
+    'hub_category_page_style',
     'hub_homepage_banner_title',
     'hub_homepage_banner_subtitle',
     'hub_homepage_banner_cta_label',

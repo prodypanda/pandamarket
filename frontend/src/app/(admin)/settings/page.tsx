@@ -747,6 +747,15 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
           : payload.hub_homepage_layout === 'amazon'
             ? 'amazon'
             : 'theme_default';
+  payload.hub_megamenu_style = payload.hub_megamenu_style === 'visual_rich'
+    ? 'visual_rich'
+    : payload.hub_megamenu_style === 'ultra_rich'
+      ? 'ultra_rich'
+      : payload.hub_megamenu_style === 'ultra_rich_deep'
+        ? 'ultra_rich_deep'
+        : 'standard';
+  payload.hub_megamenu_lazy_loading = Boolean(payload.hub_megamenu_lazy_loading);
+  payload.hub_category_page_style = payload.hub_category_page_style === 'v2_modern_showcase' ? 'v2_modern_showcase' : 'v1_classic';
   payload.shipping_default_provider = payload.shipping_default_provider === 'aramex'
     ? 'aramex'
     : payload.shipping_default_provider === 'laposte'
