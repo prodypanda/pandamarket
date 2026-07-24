@@ -7,6 +7,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
+import { LazyBlurImage } from '../ui/LazyBlurImage';
 import { RecentlyViewedRail, isRtlLocale } from './home-template-shared';
 
 interface Product {
@@ -216,7 +217,12 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
             className="group relative min-h-[210px] overflow-hidden rounded-3xl bg-slate-950 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-900/15"
           >
             {cat.image_url ? (
-              <img src={normalizePublicAssetUrl(cat.image_url)} alt={cat.name} className="absolute inset-0 h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105" />
+              <LazyBlurImage
+                src={normalizePublicAssetUrl(cat.image_url)}
+                alt={cat.name}
+                containerClassName="absolute inset-0 h-full w-full"
+                className="h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105"
+              />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(22,199,132,0.45),transparent_40%),linear-gradient(135deg,#0f172a,#16C784)]" />
             )}

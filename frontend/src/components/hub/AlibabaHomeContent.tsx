@@ -33,6 +33,7 @@ import {
   Watch,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
+import { LazyBlurImage } from '../ui/LazyBlurImage';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
@@ -477,13 +478,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       {/* Large 200px Hero Banner (Exact Style 3) */}
                       <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
                         {activeCategory.image_url ? (
-                          <img
+                          <LazyBlurImage
                             src={activeCategory.image_url}
                             alt={activeCategory.name}
-                            className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
+                            containerClassName="absolute inset-0 h-full w-full"
+                            className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
                           />
                         ) : (
                           <div className="absolute inset-0 bg-gradient-to-r from-[#ff6a00] to-amber-600 opacity-90" />
@@ -538,13 +537,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                   className="relative h-28 w-full overflow-hidden bg-slate-100"
                                 >
                                   {sub.image_url ? (
-                                    <img
+                                    <LazyBlurImage
                                       src={sub.image_url}
                                       alt={sub.name}
+                                      containerClassName="h-full w-full"
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLElement).style.display = 'none';
-                                      }}
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-500 to-amber-600 text-white">
@@ -612,13 +609,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       {/* Large 200px Hero Banner */}
                       <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
                         {activeCategory.image_url ? (
-                          <img
+                          <LazyBlurImage
                             src={activeCategory.image_url}
                             alt={activeCategory.name}
-                            className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
+                            containerClassName="absolute inset-0 h-full w-full"
+                            className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
                           />
                         ) : (
                           <div className="absolute inset-0 bg-gradient-to-r from-[#ff6a00] to-amber-600 opacity-90" />
@@ -671,13 +666,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                 {/* Large 120px Picture Frame */}
                                 <div className="relative h-28 w-full overflow-hidden bg-slate-100">
                                   {sub.image_url ? (
-                                    <img
+                                    <LazyBlurImage
                                       src={sub.image_url}
                                       alt={sub.name}
+                                      containerClassName="h-full w-full"
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLElement).style.display = 'none';
-                                      }}
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-500 to-amber-600 text-white">
@@ -722,13 +715,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                         <div className="flex items-center gap-3.5 max-w-[75%]">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 text-[#ff6a00] shadow-sm border border-orange-100">
                             {activeCategory.image_url ? (
-                              <img
+                              <LazyBlurImage
                                 src={activeCategory.image_url}
                                 alt={activeCategory.name}
-                                className="h-full w-full object-cover rounded-2xl"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLElement).style.display = 'none';
-                                }}
+                                containerClassName="h-full w-full rounded-2xl"
+                                className="h-full w-full object-cover"
                               />
                             ) : (
                               (() => {
@@ -768,13 +759,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
                                       {sub.image_url ? (
-                                        <img
+                                        <LazyBlurImage
                                           src={sub.image_url}
                                           alt={sub.name}
-                                          className="h-7 w-7 rounded-xl object-cover border border-slate-200/60 shadow-xs"
-                                          onError={(e) => {
-                                            (e.currentTarget as HTMLElement).style.display = 'none';
-                                          }}
+                                          containerClassName="h-7 w-7 rounded-xl border border-slate-200/60 shadow-xs shrink-0"
+                                          className="h-full w-full object-cover"
                                         />
                                       ) : (
                                         <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-100/70 text-[#ff6a00]">
