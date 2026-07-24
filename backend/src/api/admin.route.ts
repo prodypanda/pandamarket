@@ -11,6 +11,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { PdValidationError } from '../errors';
 import { resolveDataPath } from '../utils/data-dir';
+import { pdId } from '../utils/crypto';
 import {
   asyncHandler,
   requireAuth,
@@ -2663,42 +2664,60 @@ router.get(
     const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
 
     const sql = `
-      SELECT key, bucket, content_type, OCTET_LENGTH(data) as size, created_at
-      FROM pd_file_blobs
-      WHERE bucket = 'pd-product-images'
-      ORDER BY created_at DESC
+      SELECT b.key, b.bucket, b.content_type, OCTET_LENGTH(b.data) as size, b.created_at, b.data, a.filename as asset_filename
+      FROM pd_file_blobs b
+      LEFT JOIN pd_file_asset a ON (a.file_key = b.key OR a.url LIKE '%' || b.key)
+      WHERE b.bucket = 'pd-product-images'
+      ORDER BY b.created_at DESC
     `;
 
     const result = await query(sql);
 
-    const items = result.rows.map((row: any) => {
-      const rawKey = row.key as string;
-      const pathParts = rawKey.split('/');
+    const items = await Promise.all(
+      result.rows.map(async (row: any) => {
+        const rawKey = row.key as string;
+        const pathParts = rawKey.split('/');
 
-      let folder = 'general';
-      if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
-        folder = pathParts[2];
-      } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
-        folder = 'categories';
-      } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
-        folder = 'branding';
-      } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
-        folder = 'banners';
-      }
+        let folder = 'general';
+        if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
+          folder = pathParts[2];
+        } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
+          folder = 'categories';
+        } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
+          folder = 'branding';
+        } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
+          folder = 'banners';
+        }
 
-      const filename = pathParts[pathParts.length - 1] || rawKey;
-      const url = `/${rawKey}`;
+        const filename = row.asset_filename || pathParts[pathParts.length - 1] || rawKey;
+        const url = `/${rawKey}`;
+        let width: number | null = null;
+        let height: number | null = null;
 
-      return {
-        key: rawKey,
-        url,
-        filename,
-        folder,
-        content_type: row.content_type || 'image/jpeg',
-        size: parseInt(row.size, 10) || 0,
-        created_at: row.created_at,
-      };
-    });
+        if (row.data && row.content_type?.startsWith('image/')) {
+          try {
+            const meta = await sharp(row.data).metadata();
+            width = meta.width ?? null;
+            height = meta.height ?? null;
+          } catch {
+            // Ignore sharp metadata error
+          }
+        }
+
+        return {
+          key: rawKey,
+          url,
+          filename,
+          folder,
+          content_type: row.content_type || 'image/jpeg',
+          size: parseInt(row.size, 10) || 0,
+          width,
+          height,
+          dimensions: width && height ? `${width} × ${height} px` : null,
+          created_at: row.created_at,
+        };
+      }),
+    );
 
     const filtered = items.filter((item: any) => {
       if (folderFilter !== 'all' && item.folder !== folderFilter) return false;
@@ -2716,6 +2735,55 @@ router.get(
         banners: items.filter((i: any) => i.folder === 'banners').length,
         general: items.filter((i: any) => i.folder === 'general').length,
       },
+    });
+  }),
+);
+
+const renameMediaSchema = z.object({
+  key: z.string().min(1),
+  new_filename: z.string().min(1).max(255),
+});
+
+/**
+ * PATCH /admin/platform-media/rename — Rename a platform picture while preserving original file extension
+ */
+router.patch(
+  '/platform-media/rename',
+  validate(renameMediaSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { key, new_filename } = req.body;
+
+    const findResult = await query('SELECT key, content_type FROM pd_file_blobs WHERE key = $1', [key]);
+    if (findResult.rows.length === 0) {
+      throw new PdValidationError('Media asset not found in database');
+    }
+
+    const rawKey = findResult.rows[0].key as string;
+    const pathParts = rawKey.split('/');
+    const originalFilename = pathParts[pathParts.length - 1] || rawKey;
+    const extMatch = originalFilename.match(/\.([a-zA-Z0-9]+)$/);
+    const originalExt = extMatch ? extMatch[1].toLowerCase() : '';
+
+    let cleanName = new_filename.trim().replace(/[/\\]/g, '');
+    if (originalExt) {
+      cleanName = cleanName.replace(new RegExp(`\\.${originalExt}$`, 'i'), '');
+      cleanName = cleanName.replace(/\.[a-zA-Z0-9]+$/, '');
+      cleanName = `${cleanName}.${originalExt}`;
+    }
+
+    await query(
+      `INSERT INTO pd_file_asset (id, scope, purpose, url, file_key, bucket, filename, content_type, file_size)
+       VALUES ($1, 'platform', 'marketplace_asset', $2, $3, 'pd-product-images', $4, $5, 0)
+       ON CONFLICT (file_key) DO UPDATE SET filename = EXCLUDED.filename, updated_at = NOW()`,
+      [pdId('asset'), `/${key}`, key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
+    );
+
+    logger.info({ admin_id: req.user!.id, key, new_filename: cleanName }, 'Admin renamed platform media picture');
+
+    res.status(200).json({
+      success: true,
+      key,
+      new_filename: cleanName,
     });
   }),
 );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Folder,
   FolderOpen,
@@ -26,6 +26,10 @@ import {
   Zap,
   Sliders,
   CheckCircle2,
+  Edit3,
+  Maximize,
+  Download,
+  FileType,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 
@@ -36,6 +40,9 @@ interface MediaItem {
   folder: 'categories' | 'branding' | 'banners' | 'general';
   content_type: string;
   size: number;
+  width?: number | null;
+  height?: number | null;
+  dimensions?: string | null;
   created_at: string;
 }
 
@@ -64,6 +71,10 @@ export default function PlatformMediaPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
+  // Drag & Drop State
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [dragTargetFolder, setDragTargetFolder] = useState<'categories' | 'branding' | 'banners' | 'general' | 'active'>('active');
+
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadFolder, setUploadFolder] = useState<'categories' | 'branding' | 'banners' | 'general'>('categories');
@@ -80,6 +91,11 @@ export default function PlatformMediaPage() {
 
   // Bulk Optimization State
   const [bulkOptimizing, setBulkOptimizing] = useState(false);
+
+  // Rename Modal State
+  const [renamingItem, setRenamingItem] = useState<MediaItem | null>(null);
+  const [newFilename, setNewFilename] = useState('');
+  const [savingRename, setSavingRename] = useState(false);
 
   // Toast / Feedback
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -115,13 +131,10 @@ export default function PlatformMediaPage() {
     loadMedia();
   }, [activeFolder]);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
+  // Upload file logic
+  async function processFileUpload(file: File, targetFolder: 'categories' | 'branding' | 'banners' | 'general') {
     setUploading(true);
-    setUploadProgress(`Uploading ${file.name}...`);
+    setUploadProgress(`Uploading & optimizing ${file.name}...`);
     setError('');
     setSuccess('');
 
@@ -134,7 +147,7 @@ export default function PlatformMediaPage() {
           filename: file.name,
           content_type: file.type || 'image/jpeg',
           purpose: 'marketplace_asset',
-          folder: uploadFolder,
+          folder: targetFolder,
           file_size: file.size,
         }),
       });
@@ -143,7 +156,7 @@ export default function PlatformMediaPage() {
         throw new Error('Failed to get presigned upload URL');
       }
 
-      const { upload_url } = await presignRes.json();
+      const { upload_url, file_key } = await presignRes.json();
 
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
@@ -155,7 +168,21 @@ export default function PlatformMediaPage() {
         throw new Error('Binary upload failed');
       }
 
-      setSuccess(`File uploaded successfully to ${uploadFolder} folder!`);
+      // Auto-compress image to WebP
+      if (file.type.startsWith('image/') && file_key) {
+        try {
+          await fetchWithCsrf('/api/pd/admin/platform-media/optimize', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: file_key, quality: 80, maxWidth: 1600, format: 'webp' }),
+          });
+        } catch {
+          // Fallback if optimization fails
+        }
+      }
+
+      setSuccess(`File "${file.name}" uploaded to ${targetFolder} folder!`);
       setIsUploadOpen(false);
       loadMedia();
     } catch (err: any) {
@@ -163,10 +190,85 @@ export default function PlatformMediaPage() {
     } finally {
       setUploading(false);
       setUploadProgress('');
-      e.target.value = '';
     }
   }
 
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    processFileUpload(files[0], uploadFolder);
+    e.target.value = '';
+  }
+
+  // Drag & Drop Handlers
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set false if leaving main container
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent, folderOverride?: 'categories' | 'branding' | 'banners' | 'general') {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    let targetFolder: 'categories' | 'branding' | 'banners' | 'general' = 'general';
+    if (folderOverride) {
+      targetFolder = folderOverride;
+    } else if (activeFolder !== 'all' && ['categories', 'branding', 'banners', 'general'].includes(activeFolder)) {
+      targetFolder = activeFolder as any;
+    }
+
+    processFileUpload(files[0], targetFolder);
+  }
+
+  // Rename logic
+  async function handleSaveRename() {
+    if (!renamingItem || !newFilename.trim()) return;
+    setSavingRename(true);
+    setError('');
+
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/platform-media/rename', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: renamingItem.key,
+          new_filename: newFilename.trim(),
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to rename picture');
+      const json = await res.json();
+
+      setSuccess(`Renamed picture to "${json.new_filename}"`);
+      setItems((prev) =>
+        prev.map((item) => (item.key === renamingItem.key ? { ...item, filename: json.new_filename } : item)),
+      );
+      if (previewItem?.key === renamingItem.key) {
+        setPreviewItem({ ...previewItem, filename: json.new_filename });
+      }
+      setRenamingItem(null);
+    } catch (err: any) {
+      setError(err.message || 'Rename failed');
+    } finally {
+      setSavingRename(false);
+    }
+  }
+
+  // Optimization logic
   async function handleSingleOptimize() {
     if (!optimizingItem) return;
     setOptimizing(true);
@@ -186,9 +288,7 @@ export default function PlatformMediaPage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to compress picture');
-      }
+      if (!res.ok) throw new Error('Failed to compress picture');
 
       const json = await res.json();
       setOptResult({
@@ -197,7 +297,7 @@ export default function PlatformMediaPage() {
         saved_percentage: json.saved_percentage,
       });
 
-      setSuccess(`Optimized picture! Reduced file size by ${json.saved_percentage}% (${formatBytes(json.original_size)} ➔ ${formatBytes(json.new_size)})`);
+      setSuccess(`Optimized picture! Size reduced by ${json.saved_percentage}% (${formatBytes(json.original_size)} ➔ ${formatBytes(json.new_size)})`);
       loadMedia();
     } catch (err: any) {
       setError(err.message || 'Optimization failed');
@@ -226,9 +326,7 @@ export default function PlatformMediaPage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Bulk optimization failed');
-      }
+      if (!res.ok) throw new Error('Bulk optimization failed');
 
       const json = await res.json();
       setSuccess(`Bulk optimization complete! Processed ${json.processed_count} images and saved ${formatBytes(json.total_saved_bytes)} (-${json.total_saved_percentage}% space saved).`);
@@ -280,7 +378,32 @@ export default function PlatformMediaPage() {
   });
 
   return (
-    <div className="space-y-6 p-6 font-sans">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={(e) => handleDrop(e)}
+      className="relative min-h-screen space-y-6 p-6 font-sans"
+    >
+      {/* Full-Page Drag & Drop Overlay */}
+      {isDraggingOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-8 backdrop-blur-md transition-all">
+          <div className="flex flex-col items-center justify-center rounded-3xl border-4 border-dashed border-[#ff6a00] bg-white/95 p-12 text-center shadow-2xl space-y-4">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-orange-100 text-[#ff6a00] animate-bounce">
+              <Upload className="h-10 w-10" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Drop Picture to Upload</h2>
+              <p className="text-sm font-bold text-slate-500 mt-1">
+                Will be uploaded to folder:{' '}
+                <strong className="text-[#ff6a00] uppercase font-black">
+                  {activeFolder === 'all' ? 'general' : activeFolder}
+                </strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/40">
         <div className="flex items-center gap-4">
@@ -295,7 +418,7 @@ export default function PlatformMediaPage() {
               </span>
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-1">
-              Organize marketplace categories, logos, banners, and platform images with Sharp picture compression.
+              Drag & drop pictures from your computer directly onto folders or grid to upload, optimize, and rename.
             </p>
           </div>
         </div>
@@ -341,7 +464,7 @@ export default function PlatformMediaPage() {
         </div>
       )}
 
-      {/* Folder Navigation Tabs */}
+      {/* Folder Navigation Tabs (Drag & Drop Targetable) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { id: 'all', label: 'All Assets', icon: HardDrive, count: summary.total, color: 'from-slate-700 to-slate-900' },
@@ -357,7 +480,12 @@ export default function PlatformMediaPage() {
             <button
               key={tab.id}
               onClick={() => setActiveFolder(tab.id)}
-              className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition-all ${
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => handleDrop(e, tab.id === 'all' ? 'general' : (tab.id as any))}
+              className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition-all relative group ${
                 isActive
                   ? 'border-orange-500 bg-white shadow-xl shadow-orange-500/10 ring-2 ring-orange-500/20'
                   : 'border-slate-200/80 bg-white hover:bg-slate-50 shadow-xs'
@@ -374,6 +502,9 @@ export default function PlatformMediaPage() {
               <div className="mt-3">
                 <span className={`block text-xs font-black ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                   {tab.label}
+                </span>
+                <span className="block text-[9.5px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Drop file here to upload
                 </span>
               </div>
             </button>
@@ -426,6 +557,7 @@ export default function PlatformMediaPage() {
         <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs font-semibold text-slate-400">
           <FileImage className="h-10 w-10 text-slate-300 mb-2" />
           <p>No platform media files found in this folder.</p>
+          <p className="text-[11px] text-[#ff6a00] font-bold mt-1">Drag and drop pictures from your computer to upload directly!</p>
           <button
             onClick={() => setIsUploadOpen(true)}
             className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
@@ -457,6 +589,16 @@ export default function PlatformMediaPage() {
 
                 {/* Quick Action Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/40 opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100">
+                  <button
+                    onClick={() => {
+                      setRenamingItem(item);
+                      setNewFilename(item.filename);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-800 shadow-md hover:bg-orange-500 hover:text-white"
+                    title="Rename Picture"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => {
                       setOptimizingItem(item);
@@ -492,14 +634,14 @@ export default function PlatformMediaPage() {
                 </div>
               </div>
 
-              {/* Item Info Footer */}
+              {/* Item Info Footer with Dimensions */}
               <div className="p-3">
                 <span className="block truncate text-xs font-extrabold text-slate-800" title={item.filename}>
                   {item.filename}
                 </span>
                 <div className="mt-1 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                  <span className="text-slate-600 font-extrabold">{item.dimensions || 'Image'}</span>
                   <span>{formatBytes(item.size)}</span>
-                  <span>{new Date(item.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -513,6 +655,7 @@ export default function PlatformMediaPage() {
               <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-black uppercase tracking-wider text-slate-400">
                 <th className="p-4">Preview</th>
                 <th className="p-4">Filename</th>
+                <th className="p-4">Dimensions</th>
                 <th className="p-4">Folder</th>
                 <th className="p-4">File Size</th>
                 <th className="p-4">Created At</th>
@@ -532,6 +675,11 @@ export default function PlatformMediaPage() {
                     <span className="block text-[10px] font-mono text-slate-400 truncate max-w-xs">{item.key}</span>
                   </td>
                   <td className="p-4">
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-700">
+                      {item.dimensions || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="p-4">
                     <span className="rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-black uppercase text-[#ff6a00]">
                       {item.folder}
                     </span>
@@ -540,6 +688,16 @@ export default function PlatformMediaPage() {
                   <td className="p-4">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setRenamingItem(item);
+                          setNewFilename(item.filename);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-orange-400 hover:text-[#ff6a00]"
+                        title="Rename"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => {
                           setOptimizingItem(item);
@@ -581,6 +739,58 @@ export default function PlatformMediaPage() {
         </div>
       )}
 
+      {/* RENAME PICTURE MODAL */}
+      {renamingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-[#ff6a00]" />
+                Rename Picture
+              </h3>
+              <button onClick={() => setRenamingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">New Filename</label>
+                <input
+                  type="text"
+                  value={newFilename}
+                  onChange={(e) => setNewFilename(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-900 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  placeholder="Enter new file name..."
+                />
+                <p className="text-[10px] text-slate-400 font-semibold">
+                  Original extension will be preserved automatically.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setRenamingItem(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRename}
+                disabled={savingRename || !newFilename.trim()}
+                className="flex items-center gap-2 rounded-xl bg-[#ff6a00] px-5 py-2.5 text-xs font-black text-white hover:bg-orange-600 shadow-md disabled:opacity-50"
+              >
+                {savingRename ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                <span>Save New Name</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SINGLE PICTURE OPTIMIZATION MODAL */}
       {optimizingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
@@ -605,9 +815,9 @@ export default function PlatformMediaPage() {
               <img src={optimizingItem.url} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
               <div className="space-y-1 text-xs">
                 <span className="block font-black text-slate-900">{optimizingItem.filename}</span>
-                <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500">
-                  <span>Current Size: <strong className="text-slate-800">{formatBytes(optimizingItem.size)}</strong></span>
-                  <span>Type: <strong className="text-slate-800">{optimizingItem.content_type}</strong></span>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-slate-500">
+                  <span>Dimensions: <strong className="text-slate-800">{optimizingItem.dimensions || 'N/A'}</strong></span>
+                  <span>Size: <strong className="text-slate-800">{formatBytes(optimizingItem.size)}</strong></span>
                 </div>
               </div>
             </div>
@@ -745,13 +955,13 @@ export default function PlatformMediaPage() {
 
               <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-8 text-center transition-all hover:bg-orange-50/30 hover:border-orange-400">
                 <Upload className="h-10 w-10 text-slate-400 mb-2" />
-                <p className="text-xs font-bold text-slate-700">Choose a image file to upload</p>
+                <p className="text-xs font-bold text-slate-700">Choose an image file or drop it here</p>
                 <p className="text-[10px] text-slate-400 mt-1">Supports PNG, JPEG, WEBP, SVG</p>
 
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                  onChange={handleFileUpload}
+                  onChange={handleFileInputChange}
                   disabled={uploading}
                   className="absolute inset-0 cursor-pointer opacity-0"
                 />
@@ -789,11 +999,22 @@ export default function PlatformMediaPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
-              <div className="space-x-3">
-                <span>Size: {formatBytes(previewItem.size)}</span>
+              <div className="space-x-4">
+                <span>Dimensions: <strong className="text-slate-900 font-extrabold">{previewItem.dimensions || 'N/A'}</strong></span>
+                <span>Size: <strong className="text-slate-900 font-extrabold">{formatBytes(previewItem.size)}</strong></span>
                 <span>Type: {previewItem.content_type}</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setRenamingItem(previewItem);
+                    setNewFilename(previewItem.filename);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  <span>Rename</span>
+                </button>
                 <button
                   onClick={() => {
                     setOptimizingItem(previewItem);
