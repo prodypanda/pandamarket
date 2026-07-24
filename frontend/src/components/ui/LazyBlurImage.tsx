@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Wind } from 'lucide-react';
 
 export interface LazyBlurImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -21,12 +21,23 @@ export function LazyBlurImage({
 }: LazyBlurImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+
+    // Instant check for cached / preloaded images
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setIsLoaded(true);
+    }
+  }, [src]);
 
   return (
     <div className={`relative overflow-hidden ${containerClassName}`}>
-      {/* Wind / Shimmer Loading Skeleton Overlay */}
+      {/* Wind / Shimmer Loading Skeleton Overlay (z-0 & pointer-events-none to NEVER block text on top) */}
       {!isLoaded && !hasError && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center animate-wind-shimmer bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100">
+        <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-wind-shimmer bg-slate-200/60 dark:bg-slate-800/60">
           <Wind className="h-4 w-4 animate-pulse text-slate-400/60" />
         </div>
       )}
@@ -34,21 +45,25 @@ export function LazyBlurImage({
       {/* Actual Image with Blur-Up Transition */}
       {!hasError ? (
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           loading="lazy"
           onLoad={() => setIsLoaded(true)}
           onError={() => setHasError(true)}
+          style={
+            !isLoaded
+              ? { opacity: 0, filter: 'blur(12px)', transform: 'scale(1.05)' }
+              : undefined
+          }
           className={`transition-all duration-500 ease-out ${
-            isLoaded
-              ? 'blur-0 scale-100 opacity-100'
-              : 'blur-md scale-105 opacity-0'
+            isLoaded ? 'blur-0 scale-100' : ''
           } ${className}`}
           {...props}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
-          {fallbackIcon || <Wind className="h-5 w-5" />}
+        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800">
+          {fallbackIcon || <Wind className="h-5 w-5 opacity-40" />}
         </div>
       )}
     </div>
