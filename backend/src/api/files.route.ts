@@ -22,6 +22,7 @@ import { fileAssetService } from '../services/file-asset.service';
 import { resolveDataPath } from '../utils/data-dir';
 import { reportService } from '../services/report.service';
 import { chatService } from '../services/chat.service';
+import { query } from '../db/pool';
 import { UserRole } from '@pandamarket/types';
 
 const router = Router();
@@ -262,7 +263,7 @@ router.get(
   }),
 );
 
-// S3 Local Upload Mock Route
+// S3 Upload Route (Stores to disk & database pd_file_blobs for 100% persistent storage)
 router.put(
   '/upload-s3-mock/:bucket/*',
   express.raw({ type: '*/*', limit: '110mb' }),
@@ -280,14 +281,35 @@ router.put(
       res.status(400).send('Bad Request');
       return;
     }
+
+    const fileBuffer = req.body as Buffer;
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream');
+    const blobKey = `${bucket}/${key.replace(/^\/+/, '')}`;
+
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(filePath, req.body);
-    logger.info({ bucket, key, path: filePath }, 'S3-Mock file uploaded');
+    await fs.promises.writeFile(filePath, fileBuffer);
+
+    // Persist permanently in Supabase PostgreSQL database pd_file_blobs
+    try {
+      await query(
+        `INSERT INTO pd_file_blobs (key, bucket, content_type, data)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (key) DO UPDATE SET
+           content_type = EXCLUDED.content_type,
+           data = EXCLUDED.data,
+           created_at = NOW()`,
+        [blobKey, bucket, contentType, fileBuffer],
+      );
+    } catch (dbErr) {
+      logger.error({ err: dbErr, blobKey }, 'Failed to persist upload blob to database');
+    }
+
+    logger.info({ bucket, key, path: filePath }, 'File uploaded and persisted to database');
     res.status(200).send('OK');
   }),
 );
 
-// S3 Local Download Mock Route
+// S3 Download Route (Restores from database pd_file_blobs if missing on disk)
 router.get(
   '/download-s3-mock/:bucket/*',
   asyncHandler(async (req: Request, res: Response) => {
@@ -304,7 +326,25 @@ router.get(
       res.status(400).send('Bad Request');
       return;
     }
+
     if (!fs.existsSync(filePath)) {
+      const blobKey = `${bucket}/${key.replace(/^\/+/, '')}`;
+      try {
+        const { rows } = await query<{ content_type: string; data: Buffer }>(
+          'SELECT content_type, data FROM pd_file_blobs WHERE key = $1',
+          [blobKey],
+        );
+        if (rows.length > 0) {
+          await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.promises.writeFile(filePath, rows[0].data);
+          res.setHeader('Content-Type', rows[0].content_type);
+          res.send(rows[0].data);
+          return;
+        }
+      } catch (err) {
+        logger.error({ err, blobKey }, 'Failed to restore file from pd_file_blobs');
+      }
+
       res.status(404).send('Not Found');
       return;
     }

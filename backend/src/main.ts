@@ -13,7 +13,8 @@ import { auditLog } from './middlewares/audit-log.middleware';
 import { initSentry, sentryRequestHandler, sentryErrorHandler } from './utils/sentry';
 import { metricsMiddleware, metricsRouter, logMetricsStatus } from './utils/metrics';
 
-import { getPool } from './db/pool';
+import fs from 'fs';
+import { getPool, query } from './db/pool';
 import { getRedis } from './db/redis';
 
 // Routers
@@ -164,6 +165,30 @@ async function bootstrap() {
   // compiled production build (dist/backend/src/), unlike __dirname-relative paths.
   app.use('/pd-product-images', express.static(path.join(getDataDir(), 'pd-product-images')));
   app.use('/pd-themes', express.static(path.join(getDataDir(), 'pd-themes')));
+
+  // Restore static image files from Supabase PostgreSQL database pd_file_blobs if missing on disk after a deploy
+  app.use(['/pd-product-images', '/pd-themes'], async (req, res, next) => {
+    try {
+      const bucket = req.baseUrl.replace(/^\//, '');
+      const key = req.path.replace(/^\//, '');
+      const blobKey = `${bucket}/${key}`;
+      const { rows } = await query<{ content_type: string; data: Buffer }>(
+        'SELECT content_type, data FROM pd_file_blobs WHERE key = $1',
+        [blobKey],
+      );
+      if (rows.length > 0) {
+        const filePath = path.join(getDataDir(), bucket, key);
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.promises.writeFile(filePath, rows[0].data);
+        res.setHeader('Content-Type', rows[0].content_type);
+        res.send(rows[0].data);
+        return;
+      }
+    } catch {
+      // Pass to next middleware / 404 handler
+    }
+    next();
+  });
 
   // Base Middlewares
   app.use(requestId);
