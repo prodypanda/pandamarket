@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Folder,
   FolderOpen,
-  Image as ImageIcon,
   Upload,
   Trash2,
   Copy,
@@ -16,7 +15,6 @@ import {
   Maximize2,
   FileImage,
   Tags,
-  Sparkles,
   Palette,
   LayoutTemplate,
   HardDrive,
@@ -27,9 +25,8 @@ import {
   Sliders,
   CheckCircle2,
   Edit3,
-  Maximize,
-  Download,
-  FileType,
+  Calendar,
+  ArrowUpDown,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 
@@ -63,6 +60,12 @@ function formatBytes(bytes: number, decimals = 1) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export default function PlatformMediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [summary, setSummary] = useState<SummaryCounts>({ total: 0, categories: 0, branding: 0, banners: 0, general: 0 });
@@ -71,9 +74,11 @@ export default function PlatformMediaPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
+  // Sorting State: date_desc | date_asc | name_asc | name_desc
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'>('date_desc');
+
   // Drag & Drop State
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [dragTargetFolder, setDragTargetFolder] = useState<'categories' | 'branding' | 'banners' | 'general' | 'active'>('active');
 
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -210,7 +215,6 @@ export default function PlatformMediaPage() {
   function handleDragLeave(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    // Only set false if leaving main container
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDraggingOver(false);
   }
@@ -268,7 +272,7 @@ export default function PlatformMediaPage() {
     }
   }
 
-  // Optimization logic
+  // Single Optimization logic
   async function handleSingleOptimize() {
     if (!optimizingItem) return;
     setOptimizing(true);
@@ -371,11 +375,20 @@ export default function PlatformMediaPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   }
 
-  const filteredItems = items.filter((item) => {
-    if (activeFolder !== 'all' && item.folder !== activeFolder) return false;
-    if (searchQuery.trim() && !item.filename.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  // Filtered & Sorted Items
+  const filteredItems = items
+    .filter((item) => {
+      if (activeFolder !== 'all' && item.folder !== activeFolder) return false;
+      if (searchQuery.trim() && !item.filename.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date_desc') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (sortBy === 'date_asc') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (sortBy === 'name_asc') return a.filename.localeCompare(b.filename);
+      if (sortBy === 'name_desc') return b.filename.localeCompare(a.filename);
+      return 0;
+    });
 
   return (
     <div
@@ -464,7 +477,7 @@ export default function PlatformMediaPage() {
         </div>
       )}
 
-      {/* Folder Navigation Tabs (Drag & Drop Targetable) */}
+      {/* Folder Navigation Tabs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { id: 'all', label: 'All Assets', icon: HardDrive, count: summary.total, color: 'from-slate-700 to-slate-900' },
@@ -512,7 +525,7 @@ export default function PlatformMediaPage() {
         })}
       </div>
 
-      {/* Toolbar: Search & View Mode */}
+      {/* Toolbar: Search, Sorting & View Mode */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -525,7 +538,23 @@ export default function PlatformMediaPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Sorting Dropdown */}
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700">
+            <ArrowUpDown className="h-3.5 w-3.5 text-[#ff6a00]" />
+            <span className="text-[10px] uppercase text-slate-400">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent font-black text-slate-900 outline-none cursor-pointer text-xs"
+            >
+              <option value="date_desc">📅 Date: Newest First</option>
+              <option value="date_asc">📅 Date: Oldest First</option>
+              <option value="name_asc">🔤 Name: A to Z</option>
+              <option value="name_desc">🔤 Name: Z to A</option>
+            </select>
+          </div>
+
           <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
               onClick={() => setViewMode('grid')}
@@ -566,7 +595,7 @@ export default function PlatformMediaPage() {
           </button>
         </div>
       ) : viewMode === 'grid' ? (
-        /* GRID VIEW */
+        /* GRID VIEW WITH CREATED AT DATE & DIMENSIONS */
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {filteredItems.map((item) => (
             <div
@@ -634,14 +663,18 @@ export default function PlatformMediaPage() {
                 </div>
               </div>
 
-              {/* Item Info Footer with Dimensions */}
-              <div className="p-3">
+              {/* Item Info Footer with Dimensions & Created At Date */}
+              <div className="p-3 space-y-1">
                 <span className="block truncate text-xs font-extrabold text-slate-800" title={item.filename}>
                   {item.filename}
                 </span>
-                <div className="mt-1 flex items-center justify-between text-[10px] font-bold text-slate-400">
-                  <span className="text-slate-600 font-extrabold">{item.dimensions || 'Image'}</span>
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                  <span className="text-slate-700 font-black">{item.dimensions || 'Image'}</span>
                   <span>{formatBytes(item.size)}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-400 pt-0.5 border-t border-slate-100">
+                  <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
+                  <span>{formatDate(item.created_at)}</span>
                 </div>
               </div>
             </div>
@@ -810,7 +843,6 @@ export default function PlatformMediaPage() {
               </button>
             </div>
 
-            {/* Target Image Preview & Current Size */}
             <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-3">
               <img src={optimizingItem.url} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
               <div className="space-y-1 text-xs">
@@ -822,7 +854,6 @@ export default function PlatformMediaPage() {
               </div>
             </div>
 
-            {/* Compression Settings Controls */}
             <div className="space-y-4 pt-1">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -877,7 +908,6 @@ export default function PlatformMediaPage() {
               </div>
             </div>
 
-            {/* Optimization Live Result Summary */}
             {optResult && (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-black text-emerald-900">
@@ -894,7 +924,6 @@ export default function PlatformMediaPage() {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
               <button
                 onClick={() => setOptimizingItem(null)}
@@ -1002,7 +1031,7 @@ export default function PlatformMediaPage() {
               <div className="space-x-4">
                 <span>Dimensions: <strong className="text-slate-900 font-extrabold">{previewItem.dimensions || 'N/A'}</strong></span>
                 <span>Size: <strong className="text-slate-900 font-extrabold">{formatBytes(previewItem.size)}</strong></span>
-                <span>Type: {previewItem.content_type}</span>
+                <span>Created: <strong className="text-slate-900 font-extrabold">{formatDate(previewItem.created_at)}</strong></span>
               </div>
               <div className="flex items-center gap-2">
                 <button

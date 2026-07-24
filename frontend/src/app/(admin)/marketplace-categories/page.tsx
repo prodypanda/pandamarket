@@ -33,8 +33,11 @@ import {
   Utensils,
   Watch,
   X,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 // Icon library options for categories
 const ICON_OPTIONS = [
@@ -75,6 +78,7 @@ interface Category {
   seo_description?: string | null;
   is_default: boolean;
   is_active: boolean;
+  show_in_megamenu?: boolean;
   position: number;
   product_count: number;
   parent_name?: string | null;
@@ -89,6 +93,110 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
   } catch {
     return `${fallback} (${res.status})`;
   }
+}
+
+// Searchable Parent Category Selector Component
+function SearchableParentCategorySelect({
+  value,
+  onChange,
+  options,
+  currentCategoryId,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  options: Array<{ id: string; name: string }>;
+  currentCategoryId?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const validOptions = useMemo(() => {
+    return options.filter((opt) => opt.id !== currentCategoryId);
+  }, [options, currentCategoryId]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return validOptions;
+    const q = search.toLowerCase();
+    return validOptions.filter((opt) => opt.name.toLowerCase().includes(q));
+  }, [validOptions, search]);
+
+  const selectedOption = validOptions.find((opt) => opt.id === value);
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none hover:bg-white"
+      >
+        <span className="truncate">{selectedOption ? selectedOption.name : 'None (Top-Level Department)'}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl space-y-1">
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search parent category..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+              autoFocus
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onChange('');
+              setIsOpen(false);
+            }}
+            className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
+              !value ? 'bg-amber-50 text-[#B91C1C]' : 'text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <span>None (Top-Level Department)</span>
+            {!value && <Check className="h-4 w-4 text-[#B91C1C]" />}
+          </button>
+
+          {filtered.length === 0 ? (
+            <div className="py-3 text-center text-xs font-semibold text-slate-400">No parent category matches "{search}"</div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  onChange(opt.id);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-left transition-colors ${
+                  value === opt.id ? 'bg-amber-50 text-[#B91C1C]' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span className="truncate">{opt.name}</span>
+                {value === opt.id && <Check className="h-4 w-4 text-[#B91C1C]" />}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function RecursiveCategoryItem({
@@ -123,6 +231,7 @@ function RecursiveCategoryItem({
 
   const isCollapsed = collapsedParents[node.id];
   const hasChildren = node.children && node.children.length > 0;
+  const isMegamenuVisible = node.show_in_megamenu ?? true;
 
   const levelColors = [
     'border-slate-200 bg-white shadow-xs',
@@ -202,17 +311,41 @@ function RecursiveCategoryItem({
           </div>
         </div>
 
+        {/* Action Controls */}
         <div className="flex items-center gap-2">
-          <div className="rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-center">
-            <p className="text-xs font-black text-slate-800">{node.product_count}</p>
-            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Products</p>
-          </div>
+          {/* Show / Hide Megamenu Selector Toggle */}
+          <button
+            type="button"
+            onClick={() => updateCategory(node, { show_in_megamenu: !isMegamenuVisible })}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold transition-colors ${
+              isMegamenuVisible
+                ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                : 'border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-200'
+            }`}
+            title="Toggle visibility in public Megamenu"
+          >
+            {isMegamenuVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            <span>{isMegamenuVisible ? 'Megamenu: Visible' : 'Megamenu: Hidden'}</span>
+          </button>
 
-          <div className="flex items-center gap-0.5">
+          {/* Active / Inactive Status Toggle */}
+          <button
+            type="button"
+            onClick={() => updateCategory(node, { is_active: !node.is_active })}
+            disabled={node.is_default}
+            className={`rounded-full border px-3 py-1 text-xs font-extrabold ${
+              node.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
+            }`}
+          >
+            {node.is_active ? 'Active' : 'Inactive'}
+          </button>
+
+          {/* Position Reordering Buttons */}
+          <div className="flex items-center rounded-xl border border-slate-200 bg-white p-0.5">
             <button
               type="button"
               onClick={() => movePosition(node, 'up')}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               title="Move Up"
             >
               <ArrowUp className="h-3.5 w-3.5" />
@@ -220,61 +353,51 @@ function RecursiveCategoryItem({
             <button
               type="button"
               onClick={() => movePosition(node, 'down')}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               title="Move Down"
             >
               <ArrowDown className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          {!node.is_default && (
-            <button
-              type="button"
-              onClick={() => updateCategory(node, { is_active: !node.is_active })}
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-extrabold transition-all ${
-                node.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
-              }`}
-            >
-              {node.is_active ? 'Active' : 'Inactive'}
-            </button>
-          )}
-
+          {/* Add Subcategory */}
           <button
             type="button"
-            onClick={() => {
-              setParentId(node.id);
-              window.scrollTo({ top: 300, behavior: 'smooth' });
-            }}
-            className="inline-flex items-center rounded-xl bg-orange-50 px-2.5 py-1.5 text-[11px] font-bold text-[#ff6a00] hover:bg-orange-100 transition-colors"
+            onClick={() => setParentId(node.id)}
+            className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-[#B91C1C]"
+            title="Add Subcategory under this category"
           >
-            <Plus className="mr-1 h-3 w-3" />
-            Add Sub
+            <Plus className="h-3.5 w-3.5 text-[#B91C1C]" />
+            <span>Add Sub</span>
           </button>
 
+          {/* Edit Button */}
           <button
             type="button"
             onClick={() => setEditingCategory(node)}
-            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
-            title="Edit Category"
+            className="rounded-xl border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
+            title="Edit Category Details"
           >
-            <Settings2 className="h-3.5 w-3.5" />
+            <Settings2 className="h-4 w-4" />
           </button>
 
+          {/* Delete Button */}
           {!node.is_default && (
             <button
               type="button"
               onClick={() => requestDelete(node)}
-              className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              className="rounded-xl border border-slate-200 bg-white p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
               title="Delete Category"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
-      {!isCollapsed && hasChildren && (
-        <div className="space-y-2 pt-1">
+      {/* Recursive Children Display */}
+      {hasChildren && !isCollapsed && (
+        <div className="space-y-2">
           {node.children!.map((child) => (
             <RecursiveCategoryItem
               key={child.id}
@@ -303,24 +426,12 @@ export default function MarketplaceCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteWarning, setDeleteWarning] = useState<Category | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [deleteWarning, setDeleteWarning] = useState<Category | null>(null);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [assetPickerTarget, setAssetPickerTarget] = useState<'new' | 'edit_image' | 'edit_banner' | string | null>(null);
 
-  // View mode & Filters
-  const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'root' | 'sub'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
-
-  // Language tabs for Form & Modal
+  // Multilingual Form States
   const [formLang, setFormLang] = useState<'fr' | 'ar' | 'en'>('fr');
-  const [editLang, setEditLang] = useState<'fr' | 'ar' | 'en'>('fr');
-
-  // Create category form state
   const [nameFr, setNameFr] = useState('');
   const [nameAr, setNameAr] = useState('');
   const [nameEn, setNameEn] = useState('');
@@ -330,14 +441,29 @@ export default function MarketplaceCategoriesPage() {
   const [descAr, setDescAr] = useState('');
   const [descEn, setDescEn] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [icon, setIcon] = useState('Layers');
+  const [showInMegamenu, setShowInMegamenu] = useState(true);
+
+  // Edit Drawer Modal State
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // View & Filter States
+  const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'root' | 'sub'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
+
+  // MarketplaceAssetPicker state
+  const [assetPickerTarget, setAssetPickerTarget] = useState<string | null>(null); // 'new' | 'edit_image' | 'edit_banner' | category.id
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf('/api/pd/admin/marketplace-categories', { credentials: 'include' });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load categories'));
+      const res = await fetchWithCsrf('/api/pd/admin/marketplace-categories?tree=false', { credentials: 'include' });
+      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to fetch categories'));
       const data = await res.json();
       setCategories(data.data || []);
     } catch (err) {
@@ -351,52 +477,43 @@ export default function MarketplaceCategoriesPage() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // Compute Statistics
-  const stats = useMemo(() => {
-    const total = categories.length;
-    const rootCount = categories.filter((c) => !c.parent_id).length;
-    const subCount = categories.filter((c) => !!c.parent_id).length;
-    const activeCount = categories.filter((c) => c.is_active).length;
-    const totalProducts = categories.reduce((sum, c) => sum + (c.product_count || 0), 0);
-    const fullyLocalized = categories.filter((c) => c.name_fr && c.name_ar && c.name_en).length;
-    const locPercent = total > 0 ? Math.round((fullyLocalized / total) * 100) : 0;
-
-    return { total, rootCount, subCount, activeCount, totalProducts, locPercent };
-  }, [categories]);
-
-  // Category Tree Hierarchy
+  // Construct Category Tree from Flat Array (Preserving Position Sorting)
   const categoryTree = useMemo(() => {
-    const parentMap = new Map<string, Category>();
+    const map = new Map<string, Category>();
     const roots: Category[] = [];
 
     categories.forEach((cat) => {
-      parentMap.set(cat.id, { ...cat, children: [] });
+      map.set(cat.id, { ...cat, children: [] });
     });
 
     categories.forEach((cat) => {
-      const node = parentMap.get(cat.id)!;
-      if (cat.parent_id && parentMap.has(cat.parent_id)) {
-        parentMap.get(cat.parent_id)!.children!.push(node);
+      const current = map.get(cat.id)!;
+      if (cat.parent_id && map.has(cat.parent_id)) {
+        map.get(cat.parent_id)!.children!.push(current);
       } else {
-        roots.push(node);
+        roots.push(current);
       }
     });
 
-    return roots.sort((a, b) => (a.is_default ? -1 : 0) || a.position - b.position);
+    // Sort roots & children by position
+    const sortNodes = (nodes: Category[]) => {
+      nodes.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      nodes.forEach((n) => {
+        if (n.children && n.children.length > 0) sortNodes(n.children);
+      });
+    };
+    sortNodes(roots);
+
+    return roots;
   }, [categories]);
 
-  // Flattened Category Tree for N-Level Parent Dropdown Selectors (>3 levels)
+  // Flattened Options for Parent Category Selector
   const flattenedCategoryOptions = useMemo(() => {
-    const buildOptions = (nodes: Category[], level = 0): Array<{ id: string; name: string; level: number }> => {
-      const result: Array<{ id: string; name: string; level: number }> = [];
+    const buildOptions = (nodes: Category[], level = 0): Array<{ id: string; name: string }> => {
+      const result: Array<{ id: string; name: string }> = [];
       nodes.forEach((node) => {
-        const indent = '\u00A0\u00A0'.repeat(level * 2);
-        const prefix = level === 0 ? '📁 ' : level === 1 ? '📂 ' : level === 2 ? '📄 ' : '🏷️ ';
-        result.push({
-          id: node.id,
-          name: `${indent}${prefix}${node.name} (Level ${level + 1})`,
-          level,
-        });
+        const indent = '─ '.repeat(level);
+        result.push({ id: node.id, name: `${indent}${node.name}` });
         if (node.children && node.children.length > 0) {
           result.push(...buildOptions(node.children, level + 1));
         }
@@ -431,6 +548,10 @@ export default function MarketplaceCategoriesPage() {
     });
   }, [categories, searchQuery, typeFilter, statusFilter]);
 
+  const toggleParentCollapse = (id: string) => {
+    setCollapsedParents((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const createCategory = async () => {
     const primaryName = nameFr.trim() || nameEn.trim() || nameAr.trim();
     if (!primaryName) return;
@@ -454,7 +575,9 @@ export default function MarketplaceCategoriesPage() {
           short_description: shortDescription.trim() || undefined,
           long_description: descFr.trim() || undefined,
           image_url: imageUrl.trim() || null,
+          banner_url: bannerUrl.trim() || null,
           icon: icon || 'Layers',
+          show_in_megamenu: showInMegamenu,
         }),
       });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to create category'));
@@ -467,7 +590,9 @@ export default function MarketplaceCategoriesPage() {
       setDescAr('');
       setDescEn('');
       setImageUrl('');
+      setBannerUrl('');
       setIcon('Layers');
+      setShowInMegamenu(true);
       setSuccess('Marketplace category created successfully.');
       await fetchCategories();
     } catch (err) {
@@ -493,7 +618,7 @@ export default function MarketplaceCategoriesPage() {
       setCategories((current) => current.map((item) => (item.id === category.id ? { ...item, ...data.category } : item)));
       setSuccess(`Category "${category.name}" updated successfully.`);
       if (editingCategory?.id === category.id) {
-        setEditingCategory(null);
+        setEditingCategory((prev) => (prev ? { ...prev, ...data.category } : null));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update category');
@@ -555,17 +680,18 @@ export default function MarketplaceCategoriesPage() {
 
   const confirmDelete = async () => {
     if (!deleteWarning) return;
-    setDeletingId(deleteWarning.id);
+    const cat = deleteWarning;
+    setDeletingId(cat.id);
     setError('');
+    setSuccess('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/marketplace-categories/${deleteWarning.id}?confirm=true`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/marketplace-categories/${cat.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to delete category'));
-      const data = await res.json();
-      setSuccess(`Category deleted. ${data.reassigned_products || 0} product(s) moved to Non categorized products.`);
       setDeleteWarning(null);
+      setSuccess(`Category "${cat.name}" deleted.`);
       await fetchCategories();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete category');
@@ -574,127 +700,58 @@ export default function MarketplaceCategoriesPage() {
     }
   };
 
-  const selectCategoryImage = (url: string) => {
-    if (assetPickerTarget === 'new') {
-      setImageUrl(url);
-    } else if (assetPickerTarget === 'edit_image' && editingCategory) {
-      setEditingCategory({ ...editingCategory, image_url: url });
-    } else if (assetPickerTarget === 'edit_banner' && editingCategory) {
-      setEditingCategory({ ...editingCategory, banner_url: url });
-    } else if (assetPickerTarget) {
-      setCategories((current) =>
-        current.map((item) => (item.id === assetPickerTarget ? { ...item, image_url: url } : item)),
-      );
-    }
-    setAssetPickerTarget(null);
-  };
-
-  const toggleParentCollapse = (id: string) => {
-    setCollapsedParents((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
   return (
-    <div className="space-y-8">
-      {/* Premium Hero Header */}
-      <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-8 text-white shadow-2xl shadow-slate-950/20">
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay" />
-        <div className="absolute -right-12 -top-16 h-64 w-64 rounded-full bg-amber-500/20 blur-[80px] animate-pulse" />
-        <div className="absolute right-48 top-20 h-48 w-48 rounded-full bg-amber-300/20 blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
-
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200/30 bg-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-amber-100 backdrop-blur-md">
-              <Tags className="h-3.5 w-3.5" />
-              Taxonomy & Department Management
-            </span>
-            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Marketplace Categories</h1>
-            <p className="mt-4 text-sm font-medium leading-relaxed text-white/80">
-              Configure top-level departments, subcategories, Lucide icons, and multilingual translations (FR, AR, EN) for the PandaMarket Hub & Storefronts.
-            </p>
+    <div className="min-h-screen space-y-8 p-6 font-sans">
+      {/* Header Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/40">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#B91C1C] to-red-600 text-white shadow-lg shadow-red-900/20">
+            <Tags className="h-7 w-7" />
           </div>
-
-          {/* Top Analytics Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:items-center lg:gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-              <p className="text-2xl font-black text-white">{stats.total}</p>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-100/70">Total Categories</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-              <p className="text-2xl font-black text-amber-300">{stats.rootCount}</p>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-100/70">Departments</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-              <p className="text-2xl font-black text-amber-200">{stats.subCount}</p>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-100/70">Subcategories</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-              <p className="text-2xl font-black text-emerald-300">{stats.locPercent}%</p>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-100/70">FR/AR/EN Ready</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Marketplace Categories</h1>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Manage multi-level category trees, set Megamenu visibility, and reorder categories.
+            </p>
           </div>
         </div>
       </div>
 
-      {error && (
-        <div className="flex items-center justify-between rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-800 border border-red-200">
-          <span>{error}</span>
-          <button type="button" onClick={() => setError('')} className="text-red-500 hover:text-red-800"><X className="h-4 w-4" /></button>
-        </div>
-      )}
-      {success && (
-        <div className="flex items-center justify-between rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 border border-emerald-200">
-          <span>{success}</span>
-          <button type="button" onClick={() => setSuccess('')} className="text-emerald-500 hover:text-emerald-800"><X className="h-4 w-4" /></button>
-        </div>
-      )}
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">{error}</div>}
+      {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-700">{success}</div>}
 
-      {/* Add New Category Panel */}
-      <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/80 bg-white p-6 shadow-2xl shadow-slate-200/50">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      {/* CREATE NEW CATEGORY FORM */}
+      <div className="rounded-[2.5rem] border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/40 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C] shadow-sm">
-              <Plus className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 text-[#B91C1C]">
+              <Plus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Add New Category / Department</h2>
-              <p className="text-xs font-semibold text-slate-500">Create top-level departments or sub-categories with multilingual metadata.</p>
+              <h3 className="text-base font-black text-slate-900">Add New Category or Subcategory</h3>
+              <p className="text-xs font-semibold text-slate-400">Configure multilingual names, parent category, and Megamenu visibility.</p>
             </div>
           </div>
 
-          {/* Form Language Tab Selector */}
+          {/* Form Language Selector */}
           <div className="flex items-center gap-1 rounded-2xl bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => setFormLang('fr')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-extrabold transition-all ${
-                formLang === 'fr' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              🇫🇷 French (Default)
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormLang('ar')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-extrabold transition-all ${
-                formLang === 'ar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              🇸🇦 العربية
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormLang('en')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-extrabold transition-all ${
-                formLang === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              🇬🇧 English
-            </button>
+            {(['fr', 'ar', 'en'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setFormLang(lang)}
+                className={`rounded-xl px-3 py-1 text-xs font-black uppercase transition-all ${
+                  formLang === lang ? 'bg-white text-[#B91C1C] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {lang === 'fr' ? '🇫🇷 FR' : lang === 'ar' ? '🇸🇦 AR' : '🇬🇧 EN'}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Dynamic Language Title Inputs */}
+          {/* Dynamic Language Name Inputs */}
           {formLang === 'fr' && (
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nom de la catégorie (FR 🇫🇷)</label>
@@ -703,7 +760,7 @@ export default function MarketplaceCategoriesPage() {
                 value={nameFr}
                 onChange={(e) => setNameFr(e.target.value)}
                 placeholder="ex. Électronique & High-Tech"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white"
               />
             </div>
           )}
@@ -716,7 +773,7 @@ export default function MarketplaceCategoriesPage() {
                 value={nameAr}
                 onChange={(e) => setNameAr(e.target.value)}
                 placeholder="مثال: الإلكترونيات والتكنولوجيا"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white"
               />
             </div>
           )}
@@ -728,104 +785,83 @@ export default function MarketplaceCategoriesPage() {
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
                 placeholder="e.g. Electronics & High-Tech"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white"
               />
             </div>
           )}
 
-          {/* Parent Category Selector */}
+          {/* Searchable Parent Category Selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department</label>
-            <select
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
+            <SearchableParentCategorySelect
               value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-            >
-              <option value="">None (Top-Level Department)</option>
-              {flattenedCategoryOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.name}
-                </option>
-              ))}
-            </select>
+              onChange={(id) => setParentId(id)}
+              options={flattenedCategoryOptions}
+            />
           </div>
 
-          {/* Icon Picker */}
+          {/* Megamenu Visibility Selector Toggle */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lucide Category Icon</label>
-            <div className="flex gap-2">
-              <select
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-              >
-                {ICON_OPTIONS.map((opt) => (
-                  <option key={opt.name} value={opt.name}>
-                    {opt.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
+            <button
+              type="button"
+              onClick={() => setShowInMegamenu(!showInMegamenu)}
+              className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
+                showInMegamenu
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                  : 'border-slate-200 bg-slate-100 text-slate-500'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {showInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
+                <span>{showInMegamenu ? 'Show in Public Megamenu' : 'Hide from Public Megamenu'}</span>
+              </span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${showInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
+                {showInMegamenu ? 'ON' : 'OFF'}
+              </span>
+            </button>
           </div>
 
-          {/* Dynamic Language Description Inputs */}
-          {formLang === 'fr' && (
-            <div className="space-y-1.5 md:col-span-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (FR 🇫🇷)</label>
-              <textarea
-                value={descFr}
-                onChange={(e) => setDescFr(e.target.value)}
-                placeholder="Description détaillée du rayon en français..."
-                rows={2}
-                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-              />
-            </div>
-          )}
-          {formLang === 'ar' && (
-            <div className="space-y-1.5 md:col-span-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">الوصف (العربية AR 🇸🇦)</label>
-              <textarea
-                dir="rtl"
-                value={descAr}
-                onChange={(e) => setDescAr(e.target.value)}
-                placeholder="وصف تفصيلي باللغة العربية للقسم..."
-                rows={2}
-                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-              />
-            </div>
-          )}
-          {formLang === 'en' && (
-            <div className="space-y-1.5 md:col-span-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (EN 🇬🇧)</label>
-              <textarea
-                value={descEn}
-                onChange={(e) => setDescEn(e.target.value)}
-                placeholder="Detailed description in English..."
-                rows={2}
-                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-              />
-            </div>
-          )}
-
-          {/* Hero Image Selector */}
+          {/* Picture Preview Placeholder for Category Image */}
           <div className="space-y-1.5 md:col-span-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Department Image URL</label>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-              />
-              <button
-                type="button"
-                onClick={() => setAssetPickerTarget('new')}
-                className="inline-flex items-center rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-[#B91C1C] transition-all hover:bg-amber-100"
-              >
-                <ImagePlus className="mr-2 h-4 w-4" />
-                Gallery
-              </button>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                {imageUrl ? (
+                  <img src={imageUrl} alt="Category preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center text-slate-300">
+                    <ImageIcon className="h-6 w-6" />
+                    <span className="text-[9px] font-bold">No Image</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-1">
+                <p className="text-xs font-black text-slate-800">
+                  {imageUrl ? 'Picture Selected' : 'No Picture Selected'}
+                </p>
+                <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{imageUrl || 'Upload or select a picture from gallery.'}</p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAssetPickerTarget('new')}
+                    className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                  >
+                    <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                    {imageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
+                  </button>
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -845,7 +881,6 @@ export default function MarketplaceCategoriesPage() {
 
       {/* Toolbar: Search, Filters, View Modes */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        {/* Search Input */}
         <div className="relative min-w-[280px] flex-1 sm:max-w-md">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -853,12 +888,11 @@ export default function MarketplaceCategoriesPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search categories by FR, AR, EN name or slug..."
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#B91C1C] focus:bg-white"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Type Filter */}
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as any)}
@@ -869,7 +903,6 @@ export default function MarketplaceCategoriesPage() {
             <option value="sub">Subcategories Only</option>
           </select>
 
-          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -880,7 +913,6 @@ export default function MarketplaceCategoriesPage() {
             <option value="inactive">Inactive Only</option>
           </select>
 
-          {/* View Mode Toggle */}
           <div className="flex items-center gap-1 rounded-2xl bg-slate-100 p-1">
             <button
               type="button"
@@ -917,7 +949,7 @@ export default function MarketplaceCategoriesPage() {
             No categories found matching criteria.
           </div>
         ) : viewMode === 'tree' ? (
-          /* TREE VIEW 🌳 (Supports Unlimited N-Level Subcategories) */
+          /* TREE VIEW 🌳 */
           <div className="space-y-4">
             {categoryTree.map((root) => (
               <RecursiveCategoryItem
@@ -945,82 +977,91 @@ export default function MarketplaceCategoriesPage() {
                 <tr className="border-b border-slate-100 bg-slate-50/50">
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Category Details</th>
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Parent</th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Inventory</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Megamenu</th>
                   <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Status</th>
                   <th className="px-6 py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCategories.map((category) => (
-                  <tr key={category.id} className="group hover:bg-slate-50/80 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="shrink-0">
-                          {category.image_url ? (
-                            <img src={category.image_url} alt={category.name} className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
-                          ) : (
-                            <div className="h-12 w-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-300">
-                              <ImageIcon className="w-6 h-6" />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900">{category.name}</p>
-                          <p className="text-xs font-mono text-slate-400">/{category.slug}</p>
-                          <div className="mt-0.5 flex gap-2 text-[11px] text-slate-500">
-                            {category.name_fr && <span>FR: {category.name_fr}</span>}
-                            {category.name_ar && <span>AR: {category.name_ar}</span>}
-                            {category.name_en && <span>EN: {category.name_en}</span>}
+                {filteredCategories.map((category) => {
+                  const isMegamenuVisible = category.show_in_megamenu ?? true;
+                  return (
+                    <tr key={category.id} className="group hover:bg-slate-50/80 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="shrink-0">
+                            {category.image_url ? (
+                              <img src={category.image_url} alt={category.name} className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
+                            ) : (
+                              <div className="h-12 w-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-300">
+                                <ImageIcon className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{category.name}</p>
+                            <p className="text-xs font-mono text-slate-400">/{category.slug}</p>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-slate-600">
-                      {category.parent_name ? (
-                        <span className="rounded-md bg-amber-50 px-2.5 py-1 text-amber-800 border border-amber-200">
-                          └─ {category.parent_name}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">Top-Level</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-black text-slate-700">
-                      {category.product_count}
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        onClick={() => updateCategory(category, { is_active: !category.is_active })}
-                        disabled={category.is_default}
-                        className={`rounded-full border px-3 py-1 text-xs font-extrabold ${
-                          category.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {category.is_active ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                        {category.parent_name ? (
+                          <span className="rounded-md bg-amber-50 px-2.5 py-1 text-amber-800 border border-amber-200">
+                            └─ {category.parent_name}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">Top-Level</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
                         <button
                           type="button"
-                          onClick={() => setEditingCategory(category)}
-                          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
+                          onClick={() => updateCategory(category, { show_in_megamenu: !isMegamenuVisible })}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold transition-colors ${
+                            isMegamenuVisible
+                              ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                              : 'border-slate-200 bg-slate-100 text-slate-400'
+                          }`}
                         >
-                          <Settings2 className="h-4 w-4" />
+                          {isMegamenuVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                          <span>{isMegamenuVisible ? 'Visible' : 'Hidden'}</span>
                         </button>
-                        {!category.is_default && (
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => updateCategory(category, { is_active: !category.is_active })}
+                          disabled={category.is_default}
+                          className={`rounded-full border px-3 py-1 text-xs font-extrabold ${
+                            category.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {category.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => requestDelete(category)}
-                            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => setEditingCategory(category)}
+                            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Settings2 className="h-4 w-4" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {!category.is_default && (
+                            <button
+                              type="button"
+                              onClick={() => requestDelete(category)}
+                              className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1030,15 +1071,15 @@ export default function MarketplaceCategoriesPage() {
       {/* Comprehensive Category Edit Drawer / Modal */}
       {editingCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C]">
                   <Settings2 className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">Edit Category — {editingCategory.name}</h3>
-                  <p className="text-xs font-semibold text-slate-400">Update multilingual names, descriptions, icon, and SEO.</p>
+                  <p className="text-xs font-semibold text-slate-400">Update parent category, Megamenu visibility, and picture preview.</p>
                 </div>
               </div>
               <button type="button" onClick={() => setEditingCategory(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
@@ -1046,209 +1087,128 @@ export default function MarketplaceCategoriesPage() {
               </button>
             </div>
 
-            {/* Modal Language Selector */}
-            <div className="mb-4 flex items-center gap-1 rounded-2xl bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => setEditLang('fr')}
-                className={`flex-1 rounded-xl py-1.5 text-center text-xs font-extrabold ${
-                  editLang === 'fr' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                🇫🇷 French
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditLang('ar')}
-                className={`flex-1 rounded-xl py-1.5 text-center text-xs font-extrabold ${
-                  editLang === 'ar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                🇸🇦 Arabic
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditLang('en')}
-                className={`flex-1 rounded-xl py-1.5 text-center text-xs font-extrabold ${
-                  editLang === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                🇬🇧 English
-              </button>
+            {/* Parent Category & Megamenu Visibility */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
+                <SearchableParentCategorySelect
+                  value={editingCategory.parent_id || ''}
+                  onChange={(id) => updateCategory(editingCategory, { parent_id: id || null })}
+                  options={flattenedCategoryOptions}
+                  currentCategoryId={editingCategory.id}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
+                <button
+                  type="button"
+                  onClick={() => updateCategory(editingCategory, { show_in_megamenu: !(editingCategory.show_in_megamenu ?? true) })}
+                  className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
+                    (editingCategory.show_in_megamenu ?? true)
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                      : 'border-slate-200 bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {(editingCategory.show_in_megamenu ?? true) ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
+                    <span>{(editingCategory.show_in_megamenu ?? true) ? 'Visible in Megamenu' : 'Hidden from Megamenu'}</span>
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${(editingCategory.show_in_megamenu ?? true) ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
+                    {(editingCategory.show_in_megamenu ?? true) ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Localized Name */}
-              {editLang === 'fr' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nom (FR 🇫🇷)</label>
-                  <input
-                    type="text"
-                    value={editingCategory.name_fr || editingCategory.name}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, name_fr: e.target.value, name: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C]"
-                  />
+            {/* Category Image Picture Preview Placeholder */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
+              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                  {editingCategory.image_url ? (
+                    <img src={editingCategory.image_url} alt={editingCategory.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-300">
+                      <ImageIcon className="h-7 w-7" />
+                      <span className="text-[9px] font-bold">No Image</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {editLang === 'ar' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">الاسم (العربية AR 🇸🇦)</label>
-                  <input
-                    type="text"
-                    dir="rtl"
-                    value={editingCategory.name_ar || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, name_ar: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C]"
-                  />
-                </div>
-              )}
-              {editLang === 'en' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Name (EN 🇬🇧)</label>
-                  <input
-                    type="text"
-                    value={editingCategory.name_en || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, name_en: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C]"
-                  />
-                </div>
-              )}
 
-              {/* Localized Description */}
-              {editLang === 'fr' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (FR 🇫🇷)</label>
-                  <textarea
-                    rows={3}
-                    value={editingCategory.description_fr || editingCategory.long_description || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, description_fr: e.target.value, long_description: e.target.value })}
-                    className="mt-1 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  />
-                </div>
-              )}
-              {editLang === 'ar' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">الوصف (العربية AR 🇸🇦)</label>
-                  <textarea
-                    dir="rtl"
-                    rows={3}
-                    value={editingCategory.description_ar || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, description_ar: e.target.value })}
-                    className="mt-1 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  />
-                </div>
-              )}
-              {editLang === 'en' && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (EN 🇬🇧)</label>
-                  <textarea
-                    rows={3}
-                    value={editingCategory.description_en || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, description_en: e.target.value })}
-                    className="mt-1 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  />
-                </div>
-              )}
-
-              {/* Parent & Icon Selection */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Category</label>
-                  <select
-                    value={editingCategory.parent_id || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, parent_id: e.target.value || null })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  >
-                    <option value="">None (Top-Level)</option>
-                    {flattenedCategoryOptions
-                      .filter((opt) => opt.id !== editingCategory.id)
-                      .map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lucide Icon</label>
-                  <select
-                    value={editingCategory.icon || 'Layers'}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  >
-                    {ICON_OPTIONS.map((opt) => (
-                      <option key={opt.name} value={opt.name}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs font-black text-slate-800">
+                    {editingCategory.image_url ? 'Picture Set' : 'No Picture Selected'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold truncate max-w-sm">{editingCategory.image_url || 'Choose an image from gallery.'}</p>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAssetPickerTarget(editingCategory.id)}
+                      className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                    >
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                      {editingCategory.image_url ? 'Change Picture' : 'Choose / Upload Asset'}
+                    </button>
+                    {editingCategory.image_url && (
+                      <button
+                        type="button"
+                        onClick={() => updateCategory(editingCategory, { image_url: null })}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Hero Image */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero Image URL</label>
-                <div className="mt-1 flex gap-2">
-                  <input
-                    type="url"
-                    value={editingCategory.image_url || ''}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, image_url: e.target.value })}
-                    className="flex-1 rounded-xl border border-slate-200 p-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#B91C1C]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setAssetPickerTarget('edit_image')}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-[#B91C1C]"
-                  >
-                    Gallery
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setEditingCategory(null)}
-                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateCategory(editingCategory, editingCategory)}
-                  disabled={savingId === editingCategory.id}
-                  className="inline-flex items-center rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#991B1B]"
-                >
-                  {savingId === editingCategory.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save All Changes
-                </button>
-              </div>
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Impact Warning Modal */}
+      {/* Delete Confirmation Warning Modal */}
       {deleteWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <div className="rounded-2xl bg-amber-50 p-3 text-amber-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-red-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">Delete category "{deleteWarning.name}"?</h3>
-                <p className="mt-1 text-xs font-semibold text-slate-600">
-                  This category currently contains <strong>{deleteWarning.product_count}</strong> product(s). If deleted, all products will be re-assigned to <strong>Non categorized products</strong>.
-                </p>
+                <h3 className="text-base font-black text-slate-900">Delete Category</h3>
+                <p className="text-xs font-semibold text-slate-500">"{deleteWarning.name}"</p>
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-3">
-              <button type="button" onClick={() => setDeleteWarning(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+
+            <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+              Are you sure you want to delete this category? Associated products will be re-assigned to Non Categorized.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setDeleteWarning(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
                 Cancel
               </button>
-              <button type="button" onClick={confirmDelete} disabled={deletingId === deleteWarning.id} className="rounded-xl bg-red-600 px-5 py-2 text-xs font-black text-white hover:bg-red-700">
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deletingId === deleteWarning.id}
+                className="rounded-xl bg-red-600 px-5 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
+              >
                 {deletingId === deleteWarning.id ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
@@ -1256,13 +1216,23 @@ export default function MarketplaceCategoriesPage() {
         </div>
       )}
 
-      {/* Media Gallery Asset Picker */}
+      {/* Central Asset Picker Modal */}
       <MarketplaceAssetPicker
-        open={assetPickerTarget !== null}
-        title="Marketplace category assets"
+        open={Boolean(assetPickerTarget)}
+        title="Choose Category Image"
         type="image"
         onClose={() => setAssetPickerTarget(null)}
-        onSelect={selectCategoryImage}
+        onSelect={(url) => {
+          if (assetPickerTarget === 'new') {
+            setImageUrl(url);
+          } else if (assetPickerTarget && editingCategory) {
+            updateCategory(editingCategory, { image_url: url });
+          } else if (assetPickerTarget) {
+            const targetCat = categories.find((c) => c.id === assetPickerTarget);
+            if (targetCat) updateCategory(targetCat, { image_url: url });
+          }
+          setAssetPickerTarget(null);
+        }}
       />
     </div>
   );

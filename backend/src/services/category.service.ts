@@ -25,6 +25,7 @@ export interface MarketplaceCategoryRow {
   seo_description?: string | null;
   is_default: boolean;
   is_active: boolean;
+  show_in_megamenu?: boolean;
   position: number;
   product_count?: string;
   parent_name?: string | null;
@@ -222,7 +223,7 @@ export class CategoryService {
        FROM pd_marketplace_category c
        LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
-       WHERE c.is_active = true
+       WHERE c.is_active = true AND (c.show_in_megamenu IS NULL OR c.show_in_megamenu = true)
        GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
        ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
     );
@@ -316,6 +317,7 @@ export class CategoryService {
     seo_title?: string | null;
     seo_description?: string | null;
     position?: number;
+    show_in_megamenu?: boolean;
   }): Promise<MarketplaceCategoryRow> {
     const name = input.name.trim();
     if (name.length < 2) throw new PdValidationError('Category name is required');
@@ -325,8 +327,8 @@ export class CategoryService {
     const id = pdId('cat');
     const slug = await this.uniqueMarketplaceSlug(slugify(name));
     const { rows } = await query<MarketplaceCategoryRow>(
-      `INSERT INTO pd_marketplace_category (id, parent_id, name, name_fr, name_ar, name_en, slug, description, description_fr, description_ar, description_en, position)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO pd_marketplace_category (id, parent_id, name, name_fr, name_ar, name_en, slug, description, description_fr, description_ar, description_en, position, show_in_megamenu)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         id,
@@ -341,6 +343,7 @@ export class CategoryService {
         input.description_ar?.trim() || null,
         input.description_en?.trim() || null,
         input.position ?? 100,
+        input.show_in_megamenu ?? true,
       ],
     );
     if (
@@ -384,6 +387,7 @@ export class CategoryService {
     seo_description?: string | null;
     is_active?: boolean;
     position?: number;
+    show_in_megamenu?: boolean;
   }): Promise<MarketplaceCategoryRow> {
     const current = await this.getMarketplaceCategory(id);
     const fields: string[] = [];
@@ -481,6 +485,10 @@ export class CategoryService {
     if (patch.position !== undefined) {
       values.push(patch.position);
       fields.push(`position = $${values.length}`);
+    }
+    if (patch.show_in_megamenu !== undefined) {
+      values.push(patch.show_in_megamenu);
+      fields.push(`show_in_megamenu = $${values.length}`);
     }
 
     if (!fields.length) return current;

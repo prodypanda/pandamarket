@@ -229,6 +229,7 @@ const categorySchema = z.object({
   seo_title: z.string().max(255).nullable().optional(),
   seo_description: z.string().max(2000).nullable().optional(),
   position: z.number().int().optional(),
+  show_in_megamenu: z.boolean().optional(),
 });
 
 const updateCategorySchema = categorySchema.partial().extend({
