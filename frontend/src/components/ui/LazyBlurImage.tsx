@@ -33,8 +33,11 @@ export function LazyBlurImage({
     }
   }, [src]);
 
+  const isAbsolute = containerClassName.includes('absolute') || containerClassName.includes('fixed');
+  const positionClass = isAbsolute ? '' : 'relative';
+
   return (
-    <div className={`relative overflow-hidden ${containerClassName}`}>
+    <div className={`${positionClass} overflow-hidden ${containerClassName}`}>
       {/* Wind / Shimmer Loading Skeleton Overlay (z-0 & pointer-events-none to NEVER block text on top) */}
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-wind-shimmer bg-slate-200/60 dark:bg-slate-800/60">
