@@ -456,20 +456,26 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
               {/* Alibaba B2B Multi-Column Mega Flyout Panel */}
               {activeCategory && (
-                <div
-                  dir={rtl ? 'rtl' : 'ltr'}
-                  className={`absolute ${
-                    rtl ? 'right-full mr-3' : 'left-full ml-3'
-                  } top-0 z-50 ${
-                    marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
-                      ? 'w-[920px]'
-                      : marketplaceSettings?.hub_megamenu_style === 'ultra_rich'
-                        ? 'w-[880px]'
-                        : marketplaceSettings?.hub_megamenu_style === 'visual_rich'
-                          ? 'w-[820px]'
-                          : 'w-[720px]'
-                  } max-w-[92vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-200`}
-                >
+                <>
+                  {/* Lightly Black Backdrop (20% Opacity) to Isolate View */}
+                  <div
+                    className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
+                    onClick={() => setActiveCategory(null)}
+                  />
+                  <div
+                    dir={rtl ? 'rtl' : 'ltr'}
+                    className={`absolute ${
+                      rtl ? 'right-full mr-3' : 'left-full ml-3'
+                    } top-0 z-50 ${
+                      marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
+                        ? 'w-[920px]'
+                        : marketplaceSettings?.hub_megamenu_style === 'ultra_rich'
+                          ? 'w-[880px]'
+                          : marketplaceSettings?.hub_megamenu_style === 'visual_rich'
+                            ? 'w-[820px]'
+                            : 'w-[720px]'
+                    } max-w-[92vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-200`}
+                  >
                   {marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep' ? (
                     /* ========================================================================= */
                     /* VERSION 4: ULTRA-RICH DEEP SHOWCASE WITH LARGE PICTURE CARDS & DEEP SUBMENUS*/
@@ -833,6 +839,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                     </div>
                   </div>
                 </div>
+                </>
               )}
             </aside>
 

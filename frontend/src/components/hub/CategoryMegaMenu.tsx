@@ -239,18 +239,24 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
       </button>
 
       {isOpen && (
-        <div
-          dir={isRtl ? 'rtl' : 'ltr'}
-          className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
-            isUltraRichDeep
-              ? 'w-[1120px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
-              : isUltraRich
-                ? 'w-[1040px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
-                : isVisualRich
-                  ? 'w-[980px] max-w-[96vw] rounded-3xl border border-slate-200/80 bg-white/98 p-5 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#111827]/98'
-                  : 'w-[850px] max-w-[95vw] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#1A1A2E]/95'
-          }`}
-        >
+        <>
+          {/* Lightly Black Backdrop (20% Opacity) to Isolate View */}
+          <div
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
+              isUltraRichDeep
+                ? 'w-[1120px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
+                : isUltraRich
+                  ? 'w-[1040px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
+                  : isVisualRich
+                    ? 'w-[980px] max-w-[96vw] rounded-3xl border border-slate-200/80 bg-white/98 p-5 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#111827]/98'
+                    : 'w-[850px] max-w-[95vw] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#1A1A2E]/95'
+            }`}
+          >
           {loading ? (
             <div className="flex h-64 items-center justify-center">
               <div className="flex items-center gap-3 text-xs font-bold text-slate-400">
@@ -997,6 +1003,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

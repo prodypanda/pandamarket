@@ -399,39 +399,6 @@ export default async function CategoryPage({
                   </div>
                 </div>
               </div>
-
-              {/* Subcategories Horizontal Scroll Chips */}
-              {result.subcategories && result.subcategories.length > 0 && (
-                <div className="pt-3 border-t border-slate-100">
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1">
-                      {i18n.allSubcat}:
-                    </span>
-                    {result.subcategories.map((sub) => (
-                      <Link
-                        key={sub.id}
-                        href={`/hub/category/${encodeURIComponent(sub.slug)}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-extrabold text-slate-700 hover:border-orange-400 hover:bg-orange-50 hover:text-[#ff6a00] transition-all shrink-0 shadow-2xs"
-                      >
-                        {sub.image_url && (
-                          <LazyBlurImage
-                            src={sub.image_url}
-                            alt={sub.name}
-                            containerClassName="h-4 w-4 rounded-md shrink-0"
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                        <span>{sub.name}</span>
-                        {sub.product_count !== undefined && (
-                          <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[9.5px] font-black text-slate-600">
-                            {sub.product_count}
-                          </span>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         ) : (
