@@ -48,7 +48,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
 
   // Optimization, Drag&Drop & Folder State
   const [autoOptimize, setAutoOptimize] = useState(true);
-  const [selectedFolder, setSelectedFolder] = useState<'categories' | 'branding' | 'banners' | 'general'>('categories');
+  const [selectedFolder, setSelectedFolder] = useState<'categories' | 'branding' | 'banners' | 'general' | 'all'>('categories');
   const [optimizingId, setOptimizingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -347,6 +347,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                   <option value="branding">Branding & Logos</option>
                   <option value="banners">Banners</option>
                   <option value="general">General</option>
+                  <option value="all">All Assets</option>
                 </select>
               </div>
 

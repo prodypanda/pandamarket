@@ -83,8 +83,27 @@ export class FileAssetService {
       where.push(`a.content_type NOT LIKE 'image/%'`);
     }
     if (opts.folder && opts.folder !== 'all') {
-      params.push(`%/${opts.folder}/%`);
-      where.push(`(a.file_key LIKE $${params.length} OR a.url LIKE $${params.length} OR b.key LIKE $${params.length})`);
+      const f = opts.folder.toLowerCase();
+      if (f === 'categories') {
+        where.push(
+          `(a.file_key LIKE '%/categories/%' OR a.file_key LIKE '%marketplace/pd_user_%' OR a.file_key LIKE '%category%' OR a.file_key LIKE '%cat_%' OR b.key LIKE '%/categories/%' OR b.key LIKE '%marketplace/pd_user_%' OR a.purpose = 'marketplace_asset')`,
+        );
+      } else if (f === 'branding') {
+        where.push(
+          `(a.file_key LIKE '%/branding/%' OR a.file_key LIKE '%logo%' OR a.file_key LIKE '%favicon%' OR a.file_key LIKE '%brand%' OR b.key LIKE '%/branding/%')`,
+        );
+      } else if (f === 'banners') {
+        where.push(
+          `(a.file_key LIKE '%/banners/%' OR a.file_key LIKE '%banner%' OR a.file_key LIKE '%hero%' OR a.file_key LIKE '%slide%' OR b.key LIKE '%/banners/%')`,
+        );
+      } else if (f === 'general') {
+        where.push(
+          `(a.file_key LIKE '%/general/%' OR b.key LIKE '%/general/%' OR (a.file_key NOT LIKE '%/categories/%' AND a.file_key NOT LIKE '%/branding/%' AND a.file_key NOT LIKE '%/banners/%'))`,
+        );
+      } else {
+        params.push(`%/${opts.folder}/%`);
+        where.push(`(a.file_key LIKE $${params.length} OR a.url LIKE $${params.length} OR b.key LIKE $${params.length})`);
+      }
     }
 
     params.push(limit);
