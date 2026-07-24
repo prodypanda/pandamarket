@@ -52,6 +52,7 @@ interface PlatformSettings {
   catalog_default_sort: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc';
   hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
   hub_megamenu_style: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep';
+  hub_megamenu_lazy_loading: boolean;
   hub_homepage_banner_title: string;
   hub_homepage_banner_subtitle: string;
   hub_homepage_banner_cta_label: string;
@@ -227,6 +228,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   catalog_default_sort: 'newest',
   hub_homepage_layout: 'theme_default',
   hub_megamenu_style: 'standard',
+  hub_megamenu_lazy_loading: true,
   hub_homepage_banner_title: '',
   hub_homepage_banner_subtitle: '',
   hub_homepage_banner_cta_label: 'Explorer le Hub',
@@ -576,6 +578,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'catalog_default_sort',
     'hub_homepage_layout',
     'hub_megamenu_style',
+    'hub_megamenu_lazy_loading',
     'hub_homepage_banner_title',
     'hub_homepage_banner_subtitle',
     'hub_homepage_banner_cta_label',
@@ -1541,6 +1544,12 @@ export default function AdminSettingsPage() {
               <option value="ultra_rich_deep">Version 4: Ultra-Rich Deep Showcase (Large Pictures & Interactive Submenus)</option>
             </select>
           </div>
+          {renderToggle({
+            key: 'hub_megamenu_lazy_loading',
+            label: 'Megamenu Lazy Loading',
+            description:
+              'When enabled, category trees are lazy-loaded on demand when hovering or clicking the Megamenu, improving initial page load speed.',
+          })}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Default Product Sort</label>
             <select

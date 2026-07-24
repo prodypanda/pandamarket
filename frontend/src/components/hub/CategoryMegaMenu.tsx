@@ -118,6 +118,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [configuredStyle, setConfiguredStyle] = useState<'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep'>('standard');
+  const [lazyLoadingEnabled, setLazyLoadingEnabled] = useState<boolean>(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const theme = marketplaceTheme || variant || 'panda';
@@ -138,6 +139,9 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
           const json = await res.json();
           if (json.data?.hub_megamenu_style) {
             setConfiguredStyle(json.data.hub_megamenu_style);
+          }
+          if (json.data?.hub_megamenu_lazy_loading !== undefined) {
+            setLazyLoadingEnabled(Boolean(json.data.hub_megamenu_lazy_loading));
           }
         }
       } catch {
@@ -181,14 +185,20 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
       }
     }
 
-    if (isOpen) {
-      fetchCategories();
+    if (lazyLoadingEnabled) {
+      if (isOpen && categories.length === 0) {
+        fetchCategories();
+      }
+    } else {
+      if (categories.length === 0) {
+        fetchCategories();
+      }
     }
 
     return () => {
       cancelled = true;
     };
-  }, [isOpen, locale]);
+  }, [isOpen, locale, lazyLoadingEnabled, categories.length]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
