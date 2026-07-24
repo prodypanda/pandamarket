@@ -300,8 +300,8 @@ export default async function CategoryPage({
           /* VERSION 2: MODERN SHOWCASE (BIGGER PICTURE HERO & COMPACT INFORMATION AREA)*/
           /* ========================================================================= */
           <div className="space-y-6">
-            {/* Ultra-Large 360px Tall Hero Showcase Banner */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 text-white shadow-2xl h-80 md:h-96 flex flex-col justify-between p-6 md:p-8">
+            {/* Compact 60% Height Hero Showcase Banner */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 text-white shadow-xl h-48 sm:h-52 md:h-60 flex flex-col justify-between p-5 md:p-6">
               {category.banner_url || category.image_url ? (
                 <LazyBlurImage
                   src={category.banner_url || category.image_url!}
@@ -316,16 +316,16 @@ export default async function CategoryPage({
 
               {/* Top Hero Pills */}
               <div className="relative z-10 flex items-center justify-between gap-4">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-950 shadow-lg">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-0.5 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-950 shadow-md">
+                  <Sparkles className="h-3 w-3" />
                   {i18n.tradeAssurance}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-2xl bg-white/15 backdrop-blur-md px-3.5 py-1 text-xs font-black text-white border border-white/20 shadow-sm">
+                  <span className="rounded-xl bg-white/15 backdrop-blur-md px-3 py-0.5 text-xs font-black text-white border border-white/20 shadow-xs">
                     {i18n.productsFound(meta.total)}
                   </span>
                   {result.subcategories && result.subcategories.length > 0 && (
-                    <span className="rounded-2xl bg-[#ff6a00] px-3.5 py-1 text-xs font-black text-white shadow-sm">
+                    <span className="rounded-xl bg-[#ff6a00] px-3 py-0.5 text-xs font-black text-white shadow-xs">
                       {i18n.subcategoriesCount(result.subcategories.length)}
                     </span>
                   )}
@@ -333,23 +333,23 @@ export default async function CategoryPage({
               </div>
 
               {/* Bottom Hero Info Area */}
-              <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="flex items-center gap-5">
-                  <div className="flex h-20 w-20 md:h-24 md:w-24 shrink-0 items-center justify-center rounded-3xl bg-white/15 text-amber-400 backdrop-blur-xl border border-white/30 shadow-2xl p-1.5 overflow-hidden">
+              <div className="relative z-10 flex items-end justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-amber-400 backdrop-blur-xl border border-white/30 shadow-xl p-1 overflow-hidden">
                     {category.image_url ? (
                       <LazyBlurImage
                         src={category.image_url}
                         alt={category.name}
-                        containerClassName="h-full w-full rounded-2xl"
+                        containerClassName="h-full w-full rounded-xl"
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <CategoryIconComp className="h-10 w-10 text-amber-400" />
+                      <CategoryIconComp className="h-7 w-7 text-amber-400" />
                     )}
                   </div>
-                  <div className="space-y-1.5">
-                    <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-md">{category.name}</h1>
-                    <p className="text-xs md:text-sm text-slate-200 max-w-2xl leading-relaxed font-medium line-clamp-2 drop-shadow-sm">
+                  <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">{category.name}</h1>
+                    <p className="text-xs text-slate-200 max-w-xl leading-relaxed font-medium line-clamp-1 drop-shadow-sm">
                       {category.short_description || category.description || `${i18n.productsFound(meta.total)}.`}
                     </p>
                   </div>
@@ -357,10 +357,10 @@ export default async function CategoryPage({
 
                 <Link
                   href={`/hub/search?category=${encodeURIComponent(category.name)}`}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/30 bg-white/20 px-6 py-3.5 text-xs font-black text-white backdrop-blur-md hover:bg-white/30 hover:scale-105 transition-all shadow-xl shrink-0 w-fit"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-2 text-xs font-black text-white backdrop-blur-md hover:bg-white/30 hover:scale-105 transition-all shadow-md shrink-0"
                 >
-                  <SlidersHorizontal className="h-4 w-4 text-amber-400" />
-                  {i18n.advancedFilters}
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-amber-400" />
+                  <span>{i18n.advancedFilters}</span>
                 </Link>
               </div>
             </div>
@@ -500,7 +500,7 @@ export default async function CategoryPage({
         )}
 
         {/* Subcategories Grid */}
-        <SubcategoryGrid parentName={category.name} subcategories={result.subcategories || []} locale={activeLocale} />
+        <SubcategoryGrid parentName={category.name} subcategories={result.subcategories || []} locale={activeLocale} isV2Showcase={isV2Showcase} />
 
         <SponsoredAdsRail placement="search.top_results" title={i18n.sponsoredInCat} locale={activeLocale as 'fr' | 'ar' | 'en'} category={slug} />
 
