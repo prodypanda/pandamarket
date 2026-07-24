@@ -29,6 +29,7 @@ import {
   Package,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
+import { LazyBlurImage } from '../ui/LazyBlurImage';
 
 interface CategoryNode {
   id: string;
@@ -301,13 +302,11 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                     >
                       <div className="flex items-center gap-3 truncate">
                         {cat.image_url ? (
-                          <img
+                          <LazyBlurImage
                             src={cat.image_url}
                             alt={cat.name}
-                            className="h-10 w-10 rounded-2xl object-cover shrink-0 border border-slate-200/50 shadow-sm"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
+                            containerClassName="h-10 w-10 shrink-0 rounded-2xl border border-slate-200/50 shadow-sm"
+                            className="h-full w-full object-cover"
                           />
                         ) : (
                           <div
@@ -347,13 +346,11 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                     {/* Large 220px Tall Hero Banner */}
                     <div className="relative h-52 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
                       {activeCategory.image_url ? (
-                        <img
+                        <LazyBlurImage
                           src={activeCategory.image_url}
                           alt={activeCategory.name}
-                          className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
+                          containerClassName="absolute inset-0 h-full w-full"
+                          className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
                         />
                       ) : (
                         <div className={`absolute inset-0 bg-gradient-to-r ${getCategoryGradient(0)} opacity-80`} />
@@ -415,13 +412,11 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                               className="relative h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
                             >
                               {sub.image_url ? (
-                                <img
+                                <LazyBlurImage
                                   src={sub.image_url}
                                   alt={sub.name}
+                                  containerClassName="h-full w-full"
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLElement).style.display = 'none';
-                                  }}
                                 />
                               ) : (
                                 <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${getCategoryGradient(idx)} text-white`}>

@@ -149,6 +149,26 @@ body {
   100% { background-position: 200% 0; }
 }
 
+@keyframes wind-shimmer {
+  0% {
+    background-position: -200% 0;
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% 0;
+    opacity: 0.7;
+  }
+}
+
+.animate-wind-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 0%, #cbd5e1 25%, #f8fafc 50%, #cbd5e1 75%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: wind-shimmer 1.8s infinite ease-in-out;
+}
+
 /* Notification bell ring animation (triggered on real-time push) */
 @keyframes ring {
   0% { transform: rotate(0deg); }
