@@ -91,6 +91,213 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
   }
 }
 
+function RecursiveCategoryItem({
+  node,
+  depth = 0,
+  collapsedParents,
+  toggleParentCollapse,
+  setAssetPickerTarget,
+  movePosition,
+  updateCategory,
+  requestDelete,
+  setParentId,
+  setEditingCategory,
+  filteredCategories,
+  searchQuery,
+}: {
+  node: Category;
+  depth?: number;
+  collapsedParents: Record<string, boolean>;
+  toggleParentCollapse: (id: string) => void;
+  setAssetPickerTarget: (id: string) => void;
+  movePosition: (cat: Category, direction: 'up' | 'down') => void;
+  updateCategory: (cat: Category, patch: Partial<Category>) => void;
+  requestDelete: (cat: Category) => void;
+  setParentId: (id: string) => void;
+  setEditingCategory: (cat: Category) => void;
+  filteredCategories: Category[];
+  searchQuery: string;
+}) {
+  const matchesFilter = filteredCategories.some((c) => c.id === node.id || c.parent_id === node.id);
+  if (!matchesFilter && searchQuery.trim()) return null;
+
+  const isCollapsed = collapsedParents[node.id];
+  const hasChildren = node.children && node.children.length > 0;
+
+  const levelColors = [
+    'border-slate-200 bg-white shadow-xs',
+    'border-amber-200 bg-amber-50/40 shadow-xs',
+    'border-blue-200 bg-blue-50/40 shadow-xs',
+    'border-purple-200 bg-purple-50/40 shadow-xs',
+    'border-emerald-200 bg-emerald-50/40 shadow-xs',
+  ];
+  const badgeColors = [
+    'bg-slate-900 text-white',
+    'bg-amber-600 text-white',
+    'bg-blue-600 text-white',
+    'bg-purple-600 text-white',
+    'bg-emerald-600 text-white',
+  ];
+
+  const currentLevelColor = levelColors[Math.min(depth, levelColors.length - 1)];
+  const currentBadgeColor = badgeColors[Math.min(depth, badgeColors.length - 1)];
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 transition-all hover:border-orange-300 ${currentLevelColor}`}
+        style={{ marginLeft: `${depth * 1.5}rem` }}
+      >
+        <div className="flex items-center gap-3">
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={() => toggleParentCollapse(node.id)}
+              className="rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+            </button>
+          ) : (
+            <span className="w-5 text-center font-mono text-xs font-bold text-slate-300">└──</span>
+          )}
+
+          <div className="relative shrink-0">
+            {node.image_url ? (
+              <img src={node.image_url} alt={node.name} className="h-10 w-10 rounded-xl border border-slate-200 object-cover shadow-xs" />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                <Tags className="h-4 w-4" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setAssetPickerTarget(node.id)}
+              className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-400 shadow-xs ring-1 ring-slate-200 hover:bg-[#B91C1C] hover:text-white"
+              title="Change Image"
+            >
+              <ImagePlus className="h-2.5 w-2.5" />
+            </button>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${currentBadgeColor}`}>
+                Level {depth + 1}
+              </span>
+              <h4 className="text-sm font-black text-slate-900">{node.name}</h4>
+              {node.is_default && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase text-[#B91C1C]">
+                  Default
+                </span>
+              )}
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-500">
+                /{node.slug}
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500">
+              {node.name_fr && <span>🇫🇷 {node.name_fr}</span>}
+              {node.name_ar && <span>🇸🇦 {node.name_ar}</span>}
+              {node.name_en && <span>🇬🇧 {node.name_en}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-center">
+            <p className="text-xs font-black text-slate-800">{node.product_count}</p>
+            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Products</p>
+          </div>
+
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => movePosition(node, 'up')}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              title="Move Up"
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => movePosition(node, 'down')}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              title="Move Down"
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {!node.is_default && (
+            <button
+              type="button"
+              onClick={() => updateCategory(node, { is_active: !node.is_active })}
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-extrabold transition-all ${
+                node.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
+              }`}
+            >
+              {node.is_active ? 'Active' : 'Inactive'}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setParentId(node.id);
+              window.scrollTo({ top: 300, behavior: 'smooth' });
+            }}
+            className="inline-flex items-center rounded-xl bg-orange-50 px-2.5 py-1.5 text-[11px] font-bold text-[#ff6a00] hover:bg-orange-100 transition-colors"
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            Add Sub
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEditingCategory(node)}
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
+            title="Edit Category"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+
+          {!node.is_default && (
+            <button
+              type="button"
+              onClick={() => requestDelete(node)}
+              className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              title="Delete Category"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!isCollapsed && hasChildren && (
+        <div className="space-y-2 pt-1">
+          {node.children!.map((child) => (
+            <RecursiveCategoryItem
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              collapsedParents={collapsedParents}
+              toggleParentCollapse={toggleParentCollapse}
+              setAssetPickerTarget={setAssetPickerTarget}
+              movePosition={movePosition}
+              updateCategory={updateCategory}
+              requestDelete={requestDelete}
+              setParentId={setParentId}
+              setEditingCategory={setEditingCategory}
+              filteredCategories={filteredCategories}
+              searchQuery={searchQuery}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MarketplaceCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +384,27 @@ export default function MarketplaceCategoriesPage() {
 
     return roots.sort((a, b) => (a.is_default ? -1 : 0) || a.position - b.position);
   }, [categories]);
+
+  // Flattened Category Tree for N-Level Parent Dropdown Selectors (>3 levels)
+  const flattenedCategoryOptions = useMemo(() => {
+    const buildOptions = (nodes: Category[], level = 0): Array<{ id: string; name: string; level: number }> => {
+      const result: Array<{ id: string; name: string; level: number }> = [];
+      nodes.forEach((node) => {
+        const indent = '\u00A0\u00A0'.repeat(level * 2);
+        const prefix = level === 0 ? '📁 ' : level === 1 ? '📂 ' : level === 2 ? '📄 ' : '🏷️ ';
+        result.push({
+          id: node.id,
+          name: `${indent}${prefix}${node.name} (Level ${level + 1})`,
+          level,
+        });
+        if (node.children && node.children.length > 0) {
+          result.push(...buildOptions(node.children, level + 1));
+        }
+      });
+      return result;
+    };
+    return buildOptions(categoryTree);
+  }, [categoryTree]);
 
   // Filtered categories
   const filteredCategories = useMemo(() => {
@@ -514,9 +742,9 @@ export default function MarketplaceCategoriesPage() {
               className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
             >
               <option value="">None (Top-Level Department)</option>
-              {categoryTree.map((parent) => (
-                <option key={parent.id} value={parent.id}>
-                  📁 {parent.name}
+              {flattenedCategoryOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
                 </option>
               ))}
             </select>
@@ -689,216 +917,25 @@ export default function MarketplaceCategoriesPage() {
             No categories found matching criteria.
           </div>
         ) : viewMode === 'tree' ? (
-          /* TREE VIEW 🌳 */
-          <div className="space-y-6">
-            {categoryTree.map((root) => {
-              const matchesFilter = filteredCategories.some((c) => c.id === root.id || c.parent_id === root.id);
-              if (!matchesFilter && searchQuery.trim()) return null;
-
-              const isCollapsed = collapsedParents[root.id];
-
-              return (
-                <div key={root.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/50 shadow-sm transition-all hover:border-orange-200">
-                  {/* Department Parent Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5">
-                    <div className="flex items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={() => toggleParentCollapse(root.id)}
-                        className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        <ChevronDown className={`h-5 w-5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
-                      </button>
-
-                      {/* Image Thumbnail */}
-                      <div className="relative shrink-0">
-                        {root.image_url ? (
-                          <img src={root.image_url} alt={root.name} className="h-14 w-14 rounded-2xl border border-slate-200 object-cover shadow-sm" />
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-400">
-                            <Layers className="h-6 w-6" />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setAssetPickerTarget(root.id)}
-                          className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400 shadow-md ring-1 ring-slate-200 hover:bg-[#B91C1C] hover:text-white"
-                          title="Change Image"
-                        >
-                          <ImagePlus className="h-3 w-3" />
-                        </button>
-                      </div>
-
-                      {/* Title & Info */}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-black text-slate-900">{root.name}</h3>
-                          {root.is_default && (
-                            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#B91C1C]">
-                              Default
-                            </span>
-                          )}
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-bold text-slate-500">
-                            /{root.slug}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
-                          {root.name_fr && <span className="text-slate-600">🇫🇷 {root.name_fr}</span>}
-                          {root.name_ar && <span className="text-slate-600">🇸🇦 {root.name_ar}</span>}
-                          {root.name_en && <span className="text-slate-600">🇬🇧 {root.name_en}</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {/* Products Counter */}
-                      <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-1.5 text-center">
-                        <p className="text-sm font-black text-slate-800">{root.product_count}</p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Products</p>
-                      </div>
-
-                      {/* Move Position Controls */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => movePosition(root, 'up')}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          title="Move Up"
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => movePosition(root, 'down')}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          title="Move Down"
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {/* Status Toggle */}
-                      {!root.is_default && (
-                        <button
-                          type="button"
-                          onClick={() => updateCategory(root, { is_active: !root.is_active })}
-                          className={`rounded-full border px-3 py-1 text-xs font-extrabold transition-all ${
-                            root.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {root.is_active ? 'Active' : 'Inactive'}
-                        </button>
-                      )}
-
-                      {/* Quick Add Subcategory */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setParentId(root.id);
-                          window.scrollTo({ top: 300, behavior: 'smooth' });
-                        }}
-                        className="inline-flex items-center rounded-xl bg-orange-50 px-3 py-2 text-xs font-bold text-[#ff6a00] hover:bg-orange-100 transition-colors"
-                      >
-                        <Plus className="mr-1 h-3.5 w-3.5" />
-                        Add Sub
-                      </button>
-
-                      {/* Edit Modal Trigger */}
-                      <button
-                        type="button"
-                        onClick={() => setEditingCategory(root)}
-                        className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:bg-slate-50 hover:text-[#B91C1C]"
-                        title="Edit Metadata"
-                      >
-                        <Settings2 className="h-4 w-4" />
-                      </button>
-
-                      {/* Delete Trigger */}
-                      {!root.is_default && (
-                        <button
-                          type="button"
-                          onClick={() => requestDelete(root)}
-                          className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                          title="Delete Department"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Subcategories Branch List */}
-                  {!isCollapsed && root.children && root.children.length > 0 && (
-                    <div className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50/70 pl-8">
-                      {root.children.map((sub) => (
-                        <div key={sub.id} className="flex flex-wrap items-center justify-between gap-4 p-4 pr-5 transition-colors hover:bg-white/80">
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-sm font-bold text-slate-300">└──</span>
-                            <div className="shrink-0">
-                              {sub.image_url ? (
-                                <img src={sub.image_url} alt={sub.name} className="h-10 w-10 rounded-xl border border-slate-200 object-cover" />
-                              ) : (
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-300">
-                                  <Tags className="h-4 w-4" />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-slate-900">{sub.name}</span>
-                                <span className="rounded-md bg-slate-200/60 px-2 py-0.5 text-[10px] font-mono text-slate-500">
-                                  /{sub.slug}
-                                </span>
-                              </div>
-                              <div className="mt-0.5 flex gap-2 text-[11px] font-medium text-slate-400">
-                                {sub.name_fr && <span>🇫🇷 {sub.name_fr}</span>}
-                                {sub.name_ar && <span>🇸🇦 {sub.name_ar}</span>}
-                                {sub.name_en && <span>🇬🇧 {sub.name_en}</span>}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-extrabold text-slate-600">{sub.product_count} products</span>
-
-                            <div className="flex items-center gap-0.5">
-                              <button type="button" onClick={() => movePosition(sub, 'up')} className="p-1 text-slate-400 hover:text-slate-700"><ArrowUp className="h-3.5 w-3.5" /></button>
-                              <button type="button" onClick={() => movePosition(sub, 'down')} className="p-1 text-slate-400 hover:text-slate-700"><ArrowDown className="h-3.5 w-3.5" /></button>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => updateCategory(sub, { is_active: !sub.is_active })}
-                              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
-                                sub.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'
-                              }`}
-                            >
-                              {sub.is_active ? 'Active' : 'Inactive'}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setEditingCategory(sub)}
-                              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 hover:text-[#B91C1C]"
-                            >
-                              <Settings2 className="h-3.5 w-3.5" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => requestDelete(sub)}
-                              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          /* TREE VIEW 🌳 (Supports Unlimited N-Level Subcategories) */
+          <div className="space-y-4">
+            {categoryTree.map((root) => (
+              <RecursiveCategoryItem
+                key={root.id}
+                node={root}
+                depth={0}
+                collapsedParents={collapsedParents}
+                toggleParentCollapse={toggleParentCollapse}
+                setAssetPickerTarget={setAssetPickerTarget}
+                movePosition={movePosition}
+                updateCategory={updateCategory}
+                requestDelete={requestDelete}
+                setParentId={setParentId}
+                setEditingCategory={setEditingCategory}
+                filteredCategories={filteredCategories}
+                searchQuery={searchQuery}
+              />
+            ))}
           </div>
         ) : (
           /* DENSE TABLE VIEW 📋 */
@@ -1123,11 +1160,13 @@ export default function MarketplaceCategoriesPage() {
                     className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
                   >
                     <option value="">None (Top-Level)</option>
-                    {categories.filter((c) => c.id !== editingCategory.id).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {flattenedCategoryOptions
+                      .filter((opt) => opt.id !== editingCategory.id)
+                      .map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div>

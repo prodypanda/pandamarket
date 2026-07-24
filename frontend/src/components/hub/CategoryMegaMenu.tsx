@@ -399,6 +399,25 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                                 {subDesc || (locale === 'ar' ? 'تشكيلة منتجات ممتازة' : locale === 'en' ? 'Premium product selection' : 'Sélection premium')}
                               </p>
 
+                              {/* Deeper Level 3+ Subcategory Chips */}
+                              {sub.children && sub.children.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                  {sub.children.slice(0, 3).map((child) => (
+                                    <span
+                                      key={child.id}
+                                      className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300"
+                                    >
+                                      {child.name}
+                                    </span>
+                                  ))}
+                                  {sub.children.length > 3 && (
+                                    <span className="text-[9px] font-extrabold text-orange-500 self-center">
+                                      +{sub.children.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-white/5">
                                 <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#ff6a00] border border-orange-100">
                                   <Package className="h-3 w-3" />
