@@ -42,6 +42,7 @@ interface CategoryNode {
   description_ar?: string | null;
   description_en?: string | null;
   product_count?: number;
+  position?: number;
   children?: CategoryNode[];
 }
 
@@ -158,6 +159,13 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
         if (!cancelled && res.ok) {
           const data = await res.json();
           const treeData: CategoryNode[] = data.data || [];
+          const sortNodes = (nodes: CategoryNode[]) => {
+            nodes.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+            nodes.forEach((n) => {
+              if (n.children && n.children.length > 0) sortNodes(n.children);
+            });
+          };
+          sortNodes(treeData);
           setCategories(treeData);
           if (treeData.length > 0) {
             setActiveCategory(treeData[0]);

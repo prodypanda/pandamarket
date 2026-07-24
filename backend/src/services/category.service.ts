@@ -184,6 +184,15 @@ export class CategoryService {
 
     roots.forEach((root) => aggregateProductCount(root));
 
+    // Sort roots & children by position
+    const sortTreeNodes = (list: MarketplaceCategoryRow[]) => {
+      list.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      list.forEach((n) => {
+        if (n.children && n.children.length > 0) sortTreeNodes(n.children);
+      });
+    };
+    sortTreeNodes(roots);
+
     return roots;
   }
 
@@ -201,7 +210,7 @@ export class CategoryService {
        LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id
        GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
-       ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
+       ORDER BY c.position ASC, c.name ASC`,
     );
     const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
     if (options.tree) {
@@ -225,7 +234,7 @@ export class CategoryService {
        LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
        WHERE c.is_active = true AND (c.show_in_megamenu IS NULL OR c.show_in_megamenu = true)
        GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
-       ORDER BY c.is_default DESC, c.position ASC, c.name ASC`,
+       ORDER BY c.position ASC, c.name ASC`,
     );
     const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
     if (options.tree) {

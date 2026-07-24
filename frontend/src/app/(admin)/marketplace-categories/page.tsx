@@ -111,7 +111,6 @@ function SearchableParentCategorySelect({
   const [search, setSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -313,19 +312,18 @@ function RecursiveCategoryItem({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Show / Hide Megamenu Selector Toggle */}
+          {/* ICON-ONLY Megamenu Visibility Toggle (Tooltip on Hover) */}
           <button
             type="button"
             onClick={() => updateCategory(node, { show_in_megamenu: !isMegamenuVisible })}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold transition-colors ${
+            className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-all ${
               isMegamenuVisible
-                ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-xs'
                 : 'border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-200'
             }`}
-            title="Toggle visibility in public Megamenu"
+            title={isMegamenuVisible ? 'Show in Megamenu (Currently Visible)' : 'Hide from Megamenu (Currently Hidden)'}
           >
-            {isMegamenuVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            <span>{isMegamenuVisible ? 'Megamenu: Visible' : 'Megamenu: Hidden'}</span>
+            {isMegamenuVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </button>
 
           {/* Active / Inactive Status Toggle */}
@@ -430,7 +428,7 @@ export default function MarketplaceCategoriesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Multilingual Form States
+  // Multilingual Form States for Create Form
   const [formLang, setFormLang] = useState<'fr' | 'ar' | 'en'>('fr');
   const [nameFr, setNameFr] = useState('');
   const [nameAr, setNameAr] = useState('');
@@ -445,8 +443,24 @@ export default function MarketplaceCategoriesPage() {
   const [icon, setIcon] = useState('Layers');
   const [showInMegamenu, setShowInMegamenu] = useState(true);
 
-  // Edit Drawer Modal State
+  // Edit Drawer Modal State & Fields
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editLang, setEditLang] = useState<'fr' | 'ar' | 'en'>('fr');
+  const [editNameFr, setEditNameFr] = useState('');
+  const [editNameAr, setEditNameAr] = useState('');
+  const [editNameEn, setEditNameEn] = useState('');
+  const [editParentId, setEditParentId] = useState('');
+  const [editDescFr, setEditDescFr] = useState('');
+  const [editDescAr, setEditDescAr] = useState('');
+  const [editDescEn, setEditDescEn] = useState('');
+  const [editShortDesc, setEditShortDesc] = useState('');
+  const [editLongDesc, setEditLongDesc] = useState('');
+  const [editSeoTitle, setEditSeoTitle] = useState('');
+  const [editSeoDesc, setEditSeoDesc] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editBannerUrl, setEditBannerUrl] = useState('');
+  const [editIcon, setEditIcon] = useState('Layers');
+  const [editShowInMegamenu, setEditShowInMegamenu] = useState(true);
 
   // View & Filter States
   const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
@@ -455,8 +469,8 @@ export default function MarketplaceCategoriesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
 
-  // MarketplaceAssetPicker state
-  const [assetPickerTarget, setAssetPickerTarget] = useState<string | null>(null); // 'new' | 'edit_image' | 'edit_banner' | category.id
+  // Asset picker target: 'new' | 'edit_image' | 'edit_banner' | category.id
+  const [assetPickerTarget, setAssetPickerTarget] = useState<string | null>(null);
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -477,6 +491,27 @@ export default function MarketplaceCategoriesPage() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // Sync Edit Modal Fields whenever editingCategory changes
+  useEffect(() => {
+    if (editingCategory) {
+      setEditNameFr(editingCategory.name_fr || editingCategory.name || '');
+      setEditNameAr(editingCategory.name_ar || '');
+      setEditNameEn(editingCategory.name_en || '');
+      setEditParentId(editingCategory.parent_id || '');
+      setEditDescFr(editingCategory.description_fr || editingCategory.description || '');
+      setEditDescAr(editingCategory.description_ar || '');
+      setEditDescEn(editingCategory.description_en || '');
+      setEditShortDesc(editingCategory.short_description || '');
+      setEditLongDesc(editingCategory.long_description || '');
+      setEditSeoTitle(editingCategory.seo_title || '');
+      setEditSeoDesc(editingCategory.seo_description || '');
+      setEditImageUrl(editingCategory.image_url || '');
+      setEditBannerUrl(editingCategory.banner_url || '');
+      setEditIcon(editingCategory.icon || 'Layers');
+      setEditShowInMegamenu(editingCategory.show_in_megamenu ?? true);
+    }
+  }, [editingCategory]);
+
   // Construct Category Tree from Flat Array (Preserving Position Sorting)
   const categoryTree = useMemo(() => {
     const map = new Map<string, Category>();
@@ -495,7 +530,7 @@ export default function MarketplaceCategoriesPage() {
       }
     });
 
-    // Sort roots & children by position
+    // Sort roots & children strictly by position
     const sortNodes = (nodes: Category[]) => {
       nodes.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       nodes.forEach((n) => {
@@ -625,6 +660,33 @@ export default function MarketplaceCategoriesPage() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const handleSaveEditModal = async () => {
+    if (!editingCategory) return;
+    const primaryName = editNameFr.trim() || editNameEn.trim() || editNameAr.trim();
+    if (!primaryName) return;
+
+    await updateCategory(editingCategory, {
+      name: primaryName,
+      name_fr: editNameFr.trim() || primaryName,
+      name_ar: editNameAr.trim() || null,
+      name_en: editNameEn.trim() || null,
+      parent_id: editParentId || null,
+      description_fr: editDescFr.trim() || null,
+      description_ar: editDescAr.trim() || null,
+      description_en: editDescEn.trim() || null,
+      short_description: editShortDesc.trim() || null,
+      long_description: editLongDesc.trim() || null,
+      seo_title: editSeoTitle.trim() || null,
+      seo_description: editSeoDesc.trim() || null,
+      image_url: editImageUrl.trim() || null,
+      banner_url: editBannerUrl.trim() || null,
+      icon: editIcon,
+      show_in_megamenu: editShowInMegamenu,
+    });
+
+    setEditingCategory(null);
   };
 
   const movePosition = async (category: Category, direction: 'up' | 'down') => {
@@ -1014,17 +1076,18 @@ export default function MarketplaceCategoriesPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
+                        {/* ICON-ONLY Megamenu Visibility Button in Table View */}
                         <button
                           type="button"
                           onClick={() => updateCategory(category, { show_in_megamenu: !isMegamenuVisible })}
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold transition-colors ${
+                          className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-colors ${
                             isMegamenuVisible
-                              ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                              : 'border-slate-200 bg-slate-100 text-slate-400'
+                              ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-xs'
+                              : 'border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-200'
                           }`}
+                          title={isMegamenuVisible ? 'Show in Megamenu (Currently Visible)' : 'Hide from Megamenu (Currently Hidden)'}
                         >
-                          {isMegamenuVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                          <span>{isMegamenuVisible ? 'Visible' : 'Hidden'}</span>
+                          {isMegamenuVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                         </button>
                       </td>
                       <td className="px-6 py-4">
@@ -1068,10 +1131,11 @@ export default function MarketplaceCategoriesPage() {
         )}
       </div>
 
-      {/* Comprehensive Category Edit Drawer / Modal */}
+      {/* FULL-FEATURED CATEGORY EDIT MODAL (RESTORED ALL SETTINGS) */}
       {editingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl space-y-6">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C]">
@@ -1079,7 +1143,7 @@ export default function MarketplaceCategoriesPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">Edit Category — {editingCategory.name}</h3>
-                  <p className="text-xs font-semibold text-slate-400">Update parent category, Megamenu visibility, and picture preview.</p>
+                  <p className="text-xs font-semibold text-slate-400">Configure all category settings, multilingual descriptions, icon, and images.</p>
                 </div>
               </div>
               <button type="button" onClick={() => setEditingCategory(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
@@ -1087,90 +1151,248 @@ export default function MarketplaceCategoriesPage() {
               </button>
             </div>
 
-            {/* Parent Category & Megamenu Visibility */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
-                <SearchableParentCategorySelect
-                  value={editingCategory.parent_id || ''}
-                  onChange={(id) => updateCategory(editingCategory, { parent_id: id || null })}
-                  options={flattenedCategoryOptions}
-                  currentCategoryId={editingCategory.id}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
-                <button
-                  type="button"
-                  onClick={() => updateCategory(editingCategory, { show_in_megamenu: !(editingCategory.show_in_megamenu ?? true) })}
-                  className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
-                    (editingCategory.show_in_megamenu ?? true)
-                      ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
-                      : 'border-slate-200 bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {(editingCategory.show_in_megamenu ?? true) ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
-                    <span>{(editingCategory.show_in_megamenu ?? true) ? 'Visible in Megamenu' : 'Hidden from Megamenu'}</span>
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${(editingCategory.show_in_megamenu ?? true) ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
-                    {(editingCategory.show_in_megamenu ?? true) ? 'ON' : 'OFF'}
-                  </span>
-                </button>
+            {/* Language Selector Tabs */}
+            <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-1">
+              <span className="text-xs font-extrabold text-slate-600 pl-3">Multilingual Names & Descriptions</span>
+              <div className="flex items-center gap-1">
+                {(['fr', 'ar', 'en'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setEditLang(lang)}
+                    className={`rounded-xl px-3 py-1 text-xs font-black uppercase transition-all ${
+                      editLang === lang ? 'bg-white text-[#B91C1C] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {lang === 'fr' ? '🇫🇷 FR' : lang === 'ar' ? '🇸🇦 AR' : '🇬🇧 EN'}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Category Image Picture Preview Placeholder */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
-              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                  {editingCategory.image_url ? (
-                    <img src={editingCategory.image_url} alt={editingCategory.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center text-slate-300">
-                      <ImageIcon className="h-7 w-7" />
-                      <span className="text-[9px] font-bold">No Image</span>
-                    </div>
-                  )}
+            {/* Form Fields Grid */}
+            <div className="space-y-4">
+              {/* Dynamic Multilingual Name Input */}
+              {editLang === 'fr' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Name (FR 🇫🇷)</label>
+                  <input
+                    type="text"
+                    value={editNameFr}
+                    onChange={(e) => setEditNameFr(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'ar' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Name (AR 🇸🇦)</label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={editNameAr}
+                    onChange={(e) => setEditNameAr(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'en' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Name (EN 🇬🇧)</label>
+                  <input
+                    type="text"
+                    value={editNameEn}
+                    onChange={(e) => setEditNameEn(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+
+              {/* Parent Category & Megamenu Visibility */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
+                  <SearchableParentCategorySelect
+                    value={editParentId}
+                    onChange={(id) => setEditParentId(id)}
+                    options={flattenedCategoryOptions}
+                    currentCategoryId={editingCategory.id}
+                  />
                 </div>
 
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs font-black text-slate-800">
-                    {editingCategory.image_url ? 'Picture Set' : 'No Picture Selected'}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-semibold truncate max-w-sm">{editingCategory.image_url || 'Choose an image from gallery.'}</p>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAssetPickerTarget(editingCategory.id)}
-                      className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
-                    >
-                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                      {editingCategory.image_url ? 'Change Picture' : 'Choose / Upload Asset'}
-                    </button>
-                    {editingCategory.image_url && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditShowInMegamenu(!editShowInMegamenu)}
+                    className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
+                      editShowInMegamenu
+                        ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                        : 'border-slate-200 bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {editShowInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
+                      <span>{editShowInMegamenu ? 'Visible in Megamenu' : 'Hidden from Megamenu'}</span>
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${editShowInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
+                      {editShowInMegamenu ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dynamic Multilingual Description Textarea */}
+              {editLang === 'fr' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Description (FR 🇫🇷)</label>
+                  <textarea
+                    value={editDescFr}
+                    onChange={(e) => setEditDescFr(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'ar' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Description (AR 🇸🇦)</label>
+                  <textarea
+                    dir="rtl"
+                    value={editDescAr}
+                    onChange={(e) => setEditDescAr(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'en' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Description (EN 🇬🇧)</label>
+                  <textarea
+                    value={editDescEn}
+                    onChange={(e) => setEditDescEn(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+
+              {/* Short Description & Category Icon */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Short Description</label>
+                  <input
+                    type="text"
+                    value={editShortDesc}
+                    onChange={(e) => setEditShortDesc(e.target.value)}
+                    placeholder="Brief summary..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Icon</label>
+                  <select
+                    value={editIcon}
+                    onChange={(e) => setEditIcon(e.target.value)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  >
+                    {ICON_OPTIONS.map((opt) => (
+                      <option key={opt.name} value={opt.name}>
+                        {opt.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* SEO Title & Description */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Title</label>
+                  <input
+                    type="text"
+                    value={editSeoTitle}
+                    onChange={(e) => setEditSeoTitle(e.target.value)}
+                    placeholder="Meta title for Google search..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Description</label>
+                  <input
+                    type="text"
+                    value={editSeoDesc}
+                    onChange={(e) => setEditSeoDesc(e.target.value)}
+                    placeholder="Meta description for search engines..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Category Image Picture Preview Placeholder */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Hero Preview)</label>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                    {editImageUrl ? (
+                      <img src={editImageUrl} alt={editingCategory.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center text-slate-300">
+                        <ImageIcon className="h-7 w-7" />
+                        <span className="text-[9px] font-bold">No Image</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs font-black text-slate-800">
+                      {editImageUrl ? 'Picture Selected' : 'No Picture Selected'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-semibold truncate max-w-sm">{editImageUrl || 'Choose an image from gallery.'}</p>
+                    <div className="flex gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => updateCategory(editingCategory, { image_url: null })}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                        onClick={() => setAssetPickerTarget('edit_image')}
+                        className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
                       >
-                        Remove
+                        <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                        {editImageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
                       </button>
-                    )}
+                      {editImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrl('')}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-100">
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setEditingCategory(null)}
-                className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
               >
-                Close
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditModal}
+                disabled={savingId === editingCategory.id}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-black text-white hover:bg-red-800 shadow-md disabled:opacity-50"
+              >
+                {savingId === editingCategory.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>Save All Changes</span>
               </button>
             </div>
           </div>
@@ -1225,8 +1447,10 @@ export default function MarketplaceCategoriesPage() {
         onSelect={(url) => {
           if (assetPickerTarget === 'new') {
             setImageUrl(url);
-          } else if (assetPickerTarget && editingCategory) {
-            updateCategory(editingCategory, { image_url: url });
+          } else if (assetPickerTarget === 'edit_image') {
+            setEditImageUrl(url);
+          } else if (assetPickerTarget === 'edit_banner') {
+            setEditBannerUrl(url);
           } else if (assetPickerTarget) {
             const targetCat = categories.find((c) => c.id === assetPickerTarget);
             if (targetCat) updateCategory(targetCat, { image_url: url });
