@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
 import { HomepageBlocksEditor } from '@/components/admin/HomepageBlocksEditor';
+import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
@@ -1740,14 +1741,9 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">Custom Carousel Slides (JSON)</label>
-                <p className="mb-2 text-xs text-gray-500">Define custom hero carousel slides as JSON. Each slide can specify: <code>title</code>, <code>subtitle</code>, <code>ctaLabel</code>, <code>ctaUrl</code>, and <code>imageUrl</code>. Leave as <code>[]</code> if you only want auto category slides.</p>
-                <textarea
-                  rows={5}
+                <HeroCarouselEditor
                   value={settings.hub_hero_carousel_slides}
-                  onChange={(e) => updateSetting('hub_hero_carousel_slides', e.target.value)}
-                  placeholder='[{"title":"Welcome","subtitle":"Explore our marketplace","ctaLabel":"Shop Now","ctaUrl":"/hub/search","imageUrl":""}]'
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-xs text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+                  onChange={(next) => updateSetting('hub_hero_carousel_slides', next)}
                 />
               </div>
             </div>
