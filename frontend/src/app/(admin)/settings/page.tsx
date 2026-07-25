@@ -1388,7 +1388,8 @@ export default function AdminSettingsPage() {
       {error && <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
-      <div className="grid gap-3 rounded-[2rem] border border-slate-200/70 bg-white p-3 shadow-xl shadow-slate-200/40 md:grid-cols-2 xl:grid-cols-7">
+      {/* Modern Compact Settings Navigation Pills */}
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm">
         {SETTINGS_TABS.map((tab) => {
           const Icon = tab.icon;
           const selected = activeTab === tab.id;
@@ -1397,19 +1398,19 @@ export default function AdminSettingsPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex min-h-[96px] items-start gap-3 rounded-[1.35rem] border p-4 text-left transition-all ${
+              title={tab.description}
+              className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
                 selected
-                  ? 'border-[#B91C1C]/35 bg-gradient-to-br from-amber-50 to-red-50 text-[#7F1D1D] shadow-md shadow-red-900/10'
-                  : 'border-transparent bg-white text-slate-600 hover:border-amber-100 hover:bg-stone-50'
+                  ? 'bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-md shadow-red-900/25 scale-[1.02]'
+                  : 'bg-stone-50 text-slate-600 hover:bg-amber-50/70 hover:text-slate-900 hover:border-amber-200'
               }`}
             >
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${selected ? 'bg-[#B91C1C] text-white' : 'bg-slate-100 text-slate-500'}`}>
-                <Icon className="h-5 w-5" />
+              <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
+                selected ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700'
+              }`}>
+                <Icon className="h-3.5 w-3.5" />
               </span>
-              <span>
-                <span className="block text-sm font-black">{tab.label}</span>
-                <span className="mt-1 block text-xs font-medium leading-5 text-slate-500">{tab.description}</span>
-              </span>
+              <span className="whitespace-nowrap tracking-tight">{tab.label}</span>
             </button>
           );
         })}

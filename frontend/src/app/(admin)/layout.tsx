@@ -170,56 +170,56 @@ export default function AdminLayout({
   return (
     <div className="admin-shell min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(180,83,9,0.10),transparent_28%),linear-gradient(180deg,#fafaf9_0%,#eef2f7_100%)] text-gray-900">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-hidden bg-[#0F0F23] text-white shadow-2xl shadow-slate-950/20">
-        <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-7 text-slate-950">
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col overflow-hidden bg-[#0F0F23] text-white shadow-2xl shadow-slate-950/30">
+        <div className="shrink-0 border-b border-white/10 bg-[#09091A] px-4 py-4 text-white">
           <MarketplaceBrand
             href="/dashboard"
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
             marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
             marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-            logoSurface="light"
-            imageClassName="h-10 max-w-[170px] object-contain"
-            textClassName="text-xl font-black text-white"
-            fallbackMarkClassName="text-3xl font-black text-[#B91C1C]"
+            logoSurface="dark"
+            imageClassName="h-8 max-w-[150px] object-contain"
+            textClassName="text-base font-black text-white"
+            fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
           />
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav className="no-scrollbar flex-1 overflow-y-auto px-2.5 py-3 space-y-1">
           {navItems.map((item) => {
             if (item.subItems) {
               const isOpen = openMenus[item.label];
               const isActiveChild = item.subItems.some((sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/'));
 
               return (
-                <div key={item.label} className="mx-3 mb-1">
+                <div key={item.label} className="mb-0.5">
                   <button
                     type="button"
                     onClick={() => toggleMenu(item.label)}
-                    className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm font-semibold transition-all ${
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                       isActiveChild || isOpen
-                        ? 'bg-white/10 text-white'
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                        ? 'bg-white/10 text-amber-200'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <item.icon className={`w-5 h-5 ${isActiveChild ? 'text-amber-300' : ''}`} />
-                      {item.label}
+                    <div className="flex items-center gap-2.5">
+                      <item.icon className={`w-4 h-4 ${isActiveChild ? 'text-amber-300' : 'text-slate-400'}`} />
+                      <span>{item.label}</span>
                     </div>
-                    {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                   </button>
                   {isOpen && (
-                    <div className="mt-1 flex flex-col gap-1 pl-11 pr-3">
+                    <div className="mt-1 flex flex-col gap-0.5 pl-9 pr-2">
                       {item.subItems.map((sub) => {
                         const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
                         return (
                           <Link
                             key={sub.href}
                             href={sub.href}
-                            className={`rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
                               isSubActive
-                                ? 'bg-amber-300/15 text-amber-200'
-                                : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                ? 'bg-[#B91C1C]/40 text-amber-200 border-l-2 border-amber-400 pl-2'
+                                : 'text-slate-400 hover:bg-white/5 hover:text-white'
                             }`}
                           >
                             {sub.label}
@@ -237,45 +237,45 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href!}
-                className={`mx-3 mb-1 flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition-all ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                   isActive
-                    ? 'bg-white/10 text-amber-200 shadow-inner shadow-white/5'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-gradient-to-r from-[#B91C1C] to-red-800 text-white shadow-md shadow-red-950/40'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <item.icon className="w-5 h-5" />
-                {item.label}
+                <item.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="mt-auto shrink-0 border-t border-white/10 bg-[#09091A] p-4">
+        <div className="mt-auto shrink-0 border-t border-white/10 bg-[#09091A] p-3 space-y-1">
           <Link
             href="/settings"
-            className={`flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition-colors ${
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
               pathname === '/settings' || pathname?.startsWith('/settings/')
-                ? 'bg-white text-[#0F0F23]'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                ? 'bg-gradient-to-r from-[#B91C1C] to-red-800 text-white shadow-md'
+                : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <Settings className="w-5 h-5" />
-            {t('admin.sidebar.settings')}
+            <Settings className="w-4 h-4 text-amber-300" />
+            <span>{t('admin.sidebar.settings')}</span>
           </Link>
           <button
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="mt-2 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-red-200 transition-colors hover:bg-red-500/10 hover:text-amber-100 disabled:opacity-60"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-red-300 transition-colors hover:bg-red-500/15 hover:text-red-100 disabled:opacity-60"
           >
-            <LogOut className="w-5 h-5" />
-            {loggingOut ? t('admin.loggingOut') : t('nav.logout')}
+            <LogOut className="w-4 h-4" />
+            <span>{loggingOut ? t('admin.loggingOut') : t('nav.logout')}</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 min-h-screen overflow-auto">
+      <main className="ml-60 min-h-screen overflow-auto">
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-8 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl flex items-center justify-between">
           <div>
             <h2 className="text-lg font-black text-gray-900">{t('admin.title')}</h2>
