@@ -969,6 +969,7 @@ export default function AdminSettingsPage() {
   const [smtpTestStatus, setSmtpTestStatus] = useState<SmtpTestStatus>('idle');
   const [smtpTestMessage, setSmtpTestMessage] = useState('');
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   function updateSetting<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -1328,26 +1329,50 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-40 -mx-4 flex flex-col gap-4 rounded-b-3xl border-b border-amber-100 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-xl sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#B91C1C] text-white shadow-lg shadow-red-900/20">
-            <Settings className="h-6 w-6" />
+      <div className="sticky top-0 z-40 -mx-4 flex flex-col gap-4 rounded-b-3xl border-b border-amber-100 bg-white/95 px-4 py-3.5 shadow-sm backdrop-blur-xl sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#B91C1C] text-white shadow-lg shadow-red-900/20">
+            <Settings className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-950">Settings editor</h2>
-            <p className={`text-sm font-medium ${hasUnsavedPlatformChanges ? 'text-amber-600' : 'text-slate-500'}`}>
+            <h2 className="text-lg font-black text-slate-950">Settings Control Center</h2>
+            <p className={`text-xs font-medium ${hasUnsavedPlatformChanges ? 'text-amber-600 font-bold' : 'text-slate-500'}`}>
               {hasUnsavedPlatformChanges ? 'Unsaved changes in this section — save before leaving.' : 'Review changes carefully, then save once.'}
             </p>
           </div>
         </div>
+
+        {/* Real-time Setting Filter Bar */}
+        <div className="flex flex-1 items-center gap-3 max-w-md">
+          <div className="relative w-full">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search setting (e.g. logo, aramex, flouci, theme, hero, smtp)..."
+              className="w-full rounded-full border border-slate-200 bg-slate-50/80 pl-9 pr-8 py-2 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#ff6a00] focus:bg-white focus:ring-2 focus:ring-[#ff6a00]/15"
+            />
+            <SlidersHorizontal className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2 text-xs font-black text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         <button
           onClick={activeTab === 'plans' ? undefined : activeTab === 'email' ? handleSmtpSave : handleSave}
           disabled={activeTab === 'plans' || (activeTab === 'email' ? smtpSaving || smtpLoading : saving)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-900/25 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-red-900/30 disabled:opacity-50 disabled:hover:translate-y-0"
+          className="flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-900/25 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-red-900/30 disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {activeTab === 'email'
-            ? smtpSaving ? <RotateCcw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />
-            : saving ? <RotateCcw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            ? smtpSaving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
+            : saving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {activeTab === 'plans' ? 'Use Plan Actions Below' : activeTab === 'email' ? smtpSaved ? 'Email Saved!' : 'Save Email Config' : saved ? 'Saved Successfully!' : 'Save Changes'}
         </button>
       </div>
