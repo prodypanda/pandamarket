@@ -52,6 +52,7 @@ export interface MarketplaceSettings {
   hub_hero_show_carousel?: boolean;
   hub_hero_show_seller_rail?: boolean;
   hub_hero_category_sidebar_max_items?: number;
+  hub_hero_carousel_max_categories?: number;
   hub_hero_carousel_slides?: string;
   hub_hero_seller_rail_title?: string;
   hub_hero_seller_rail_subtitle?: string;

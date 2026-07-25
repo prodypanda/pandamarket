@@ -258,28 +258,35 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   const showCarousel = marketplaceSettings.hub_hero_show_carousel !== false;
   const showSellerRail = marketplaceSettings.hub_hero_show_seller_rail !== false;
   const sidebarMaxItems = Math.max(1, Math.min(30, Number(marketplaceSettings.hub_hero_category_sidebar_max_items) || 14));
+  const carouselMaxCategories = Math.max(1, Math.min(10, Number(marketplaceSettings.hub_hero_carousel_max_categories) || 5));
 
   // Admin-managed hero carousel
   const slides = useMemo<HeroSlide[]>(() => {
-    // 1. Try custom JSON carousel slides setting
+    const result: HeroSlide[] = [];
+
+    // 1. Try custom JSON carousel slides setting provided by superadmin
     if (marketplaceSettings.hub_hero_carousel_slides) {
       try {
         const parsed = JSON.parse(marketplaceSettings.hub_hero_carousel_slides);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((item: any) => ({
-            title: String(item.title || item.name || marketplaceName),
-            subtitle: String(item.subtitle || item.description || ''),
-            ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
-            ctaUrl: String(item.ctaUrl || item.cta_url || '/hub/search'),
-            imageUrl: item.imageUrl || item.image_url || null,
-          }));
+          parsed.forEach((item: any) => {
+            if (item.title || item.name) {
+              result.push({
+                title: String(item.title || item.name),
+                subtitle: String(item.subtitle || item.description || ''),
+                ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
+                ctaUrl: String(item.ctaUrl || item.cta_url || '/hub/search'),
+                imageUrl: item.imageUrl || item.image_url || null,
+              });
+            }
+          });
         }
       } catch (err) {
         console.warn('Failed to parse hub_hero_carousel_slides JSON:', err);
       }
     }
 
-    // 2. Try homepage block slides
+    // 2. Try homepage block slides if configured
     const configured = (blockById.get('hero')?.slides ?? []).map((entry) => ({
       title: entry.title,
       subtitle: entry.subtitle || '',
@@ -287,11 +294,12 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       ctaUrl: entry.cta_url || '/hub/search',
       imageUrl: entry.image_url || null,
     }));
-    if (configured.length > 0) return configured;
+    if (configured.length > 0 && result.length === 0) {
+      result.push(...configured);
+    }
 
-    // 3. Fallback to banner settings + categories
-    const result: HeroSlide[] = [];
-    if (marketplaceSettings.hub_homepage_banner_title) {
+    // 3. Try homepage banner setting if no slides yet
+    if (marketplaceSettings.hub_homepage_banner_title && result.length === 0) {
       result.push({
         title: marketplaceSettings.hub_homepage_banner_title,
         subtitle: marketplaceSettings.hub_homepage_banner_subtitle || '',
@@ -300,7 +308,9 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         imageUrl: marketplaceSettings.hub_homepage_banner_image_url,
       });
     }
-    displayCategories.slice(0, 3).forEach((category) => {
+
+    // 4. Auto category slides up to carouselMaxCategories
+    displayCategories.slice(0, carouselMaxCategories).forEach((category) => {
       result.push({
         title: category.name,
         subtitle: category.short_description || category.description || i18n.defaultCategoryDesc,
@@ -309,6 +319,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         imageUrl: category.image_url,
       });
     });
+
     if (result.length === 0) {
       result.push({
         title: marketplaceName,
@@ -318,7 +329,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       });
     }
     return result;
-  }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings]);
+  }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings, carouselMaxCategories]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -467,8 +478,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
                 </p>
 
-                {/* Sidebar Category Department List */}
-                <ul className="max-h-[410px] overflow-y-auto py-1 divide-y divide-slate-50">
+                {/* Sidebar Category Department List (Height limited to 7 items with custom thin scrollbar) */}
+                <ul className="max-h-[308px] overflow-y-auto py-1 divide-y divide-slate-50 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-orange-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#ff6a00]">
                   {displayCategories.slice(0, sidebarMaxItems).map((category) => {
                   const IconComp = (category.icon && ICON_MAP[category.icon]) || getCategoryIconComponent(category);
                   const isActive = activeCategory?.id === category.id;

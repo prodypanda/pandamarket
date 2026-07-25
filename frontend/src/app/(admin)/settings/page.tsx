@@ -64,6 +64,7 @@ interface PlatformSettings {
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
   hub_hero_category_sidebar_max_items: number;
+  hub_hero_carousel_max_categories: number;
   hub_hero_carousel_slides: string;
   hub_hero_seller_rail_title: string;
   hub_hero_seller_rail_subtitle: string;
@@ -251,6 +252,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
   hub_hero_category_sidebar_max_items: 14,
+  hub_hero_carousel_max_categories: 5,
   hub_hero_carousel_slides: '[]',
   hub_hero_seller_rail_title: 'Accès Vendeurs & Fournisseurs',
   hub_hero_seller_rail_subtitle: 'Ouvrez votre boutique B2B ou accédez à votre espace fournisseur',
@@ -513,6 +515,7 @@ const NUMBER_SETTING_KEYS = [
   'security_login_lockout_minutes',
   'security_password_min_length',
   'hub_hero_category_sidebar_max_items',
+  'hub_hero_carousel_max_categories',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -622,6 +625,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_show_carousel',
     'hub_hero_show_seller_rail',
     'hub_hero_category_sidebar_max_items',
+    'hub_hero_carousel_max_categories',
     'hub_hero_carousel_slides',
     'hub_hero_seller_rail_title',
     'hub_hero_seller_rail_subtitle',
@@ -800,6 +804,7 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
   payload.hub_hero_show_carousel = Boolean(payload.hub_hero_show_carousel);
   payload.hub_hero_show_seller_rail = Boolean(payload.hub_hero_show_seller_rail);
   payload.hub_hero_category_sidebar_max_items = Math.max(1, Math.min(30, Number(payload.hub_hero_category_sidebar_max_items) || 14));
+  payload.hub_hero_carousel_max_categories = Math.max(1, Math.min(10, Number(payload.hub_hero_carousel_max_categories) || 5));
   payload.shipping_default_provider = payload.shipping_default_provider === 'aramex'
     ? 'aramex'
     : payload.shipping_default_provider === 'laposte'
@@ -1716,18 +1721,35 @@ export default function AdminSettingsPage() {
 
           {/* Carousel Slides Configuration */}
           {settings.hub_hero_show_carousel && (
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
-              <h4 className="mb-3 text-sm font-black text-slate-800 flex items-center gap-2">
-                <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Custom Carousel Slides (JSON)
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4">
+              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Hero Carousel Configuration
               </h4>
-              <p className="mb-2 text-xs text-gray-500">Define custom hero carousel slides as JSON. Each slide can specify: <code>title</code>, <code>subtitle</code>, <code>ctaLabel</code>, <code>ctaUrl</code>, and <code>imageUrl</code>. Leave as <code>[]</code> to automatically generate slides from categories.</p>
-              <textarea
-                rows={5}
-                value={settings.hub_hero_carousel_slides}
-                onChange={(e) => updateSetting('hub_hero_carousel_slides', e.target.value)}
-                placeholder='[{"title":"Welcome","subtitle":"Explore our marketplace","ctaLabel":"Shop Now","ctaUrl":"/hub/search","imageUrl":""}]'
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-xs text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Auto Category Slides Count</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={settings.hub_hero_carousel_max_categories}
+                    onChange={(e) => updateSetting('hub_hero_carousel_max_categories', Math.max(1, Math.min(10, Number(e.target.value) || 5)))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-400">How many top-level categories to automatically generate slides for in the carousel (1 to 10).</p>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-gray-600">Custom Carousel Slides (JSON)</label>
+                <p className="mb-2 text-xs text-gray-500">Define custom hero carousel slides as JSON. Each slide can specify: <code>title</code>, <code>subtitle</code>, <code>ctaLabel</code>, <code>ctaUrl</code>, and <code>imageUrl</code>. Leave as <code>[]</code> if you only want auto category slides.</p>
+                <textarea
+                  rows={5}
+                  value={settings.hub_hero_carousel_slides}
+                  onChange={(e) => updateSetting('hub_hero_carousel_slides', e.target.value)}
+                  placeholder='[{"title":"Welcome","subtitle":"Explore our marketplace","ctaLabel":"Shop Now","ctaUrl":"/hub/search","imageUrl":""}]'
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-xs text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+                />
+              </div>
             </div>
           )}
         </div>
