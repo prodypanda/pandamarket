@@ -221,28 +221,6 @@ export function RoleScopedLoginPage({
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                 <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
                 <div className="relative">
-                  {/* Role Switcher Bar */}
-                  <div className="mb-6 flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5 backdrop-blur-xl">
-                    <Link
-                      href="/login/admin"
-                      className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-2 text-center text-xs font-black text-white shadow-md"
-                    >
-                      👑 Admin
-                    </Link>
-                    <Link
-                      href="/login/seller"
-                      className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-400 hover:bg-white/5 hover:text-white transition-all"
-                    >
-                      🏪 Vendeur
-                    </Link>
-                    <Link
-                      href="/login"
-                      className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-400 hover:bg-white/5 hover:text-white transition-all"
-                    >
-                      🛍️ Acheteur
-                    </Link>
-                  </div>
-
                   <div className="mb-7 flex items-start justify-between gap-5">
                     <div>
                       <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.26em] text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
@@ -409,28 +387,6 @@ export function RoleScopedLoginPage({
           </div>
 
           <div className="rounded-[2rem] border border-white/70 bg-white p-7 text-gray-950 shadow-2xl shadow-black/25 sm:p-8">
-            {/* Role Switcher Bar */}
-            <div className="mb-6 flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-100/70 p-1.5">
-              <Link
-                href="/login/admin"
-                className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
-              >
-                👑 Admin
-              </Link>
-              <Link
-                href="/login/seller"
-                className="flex-1 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 py-2 text-center text-xs font-black text-white shadow-md"
-              >
-                🏪 Vendeur
-              </Link>
-              <Link
-                href="/login"
-                className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
-              >
-                🛍️ Acheteur
-              </Link>
-            </div>
-
             <div className="mb-7">
               <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ring-1 ${accentSoft}`}>
                 {isAdmin ? 'Accès protégé' : 'Dashboard vendeur'}

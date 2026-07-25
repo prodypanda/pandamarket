@@ -65,29 +65,36 @@ export default function AdminLayout({
 
   useEffect(() => {
     let cancelled = false;
-    async function checkAuth() {
+
+    async function verifyAdminAccess() {
       try {
         const res = await fetchWithCsrf('/api/pd/auth/me', { credentials: 'include' });
         if (!res.ok) {
-          window.location.href = '/login/admin';
+          window.location.href = `/login/admin?next=${encodeURIComponent(pathname || '/dashboard')}`;
           return;
         }
+
         const data = await res.json();
-        const role = data.data?.role || data.role;
-        if (role !== 'superadmin' && role !== 'admin' && role !== 'SuperAdmin' && role !== 'Admin') {
-          window.location.href = '/login/admin';
+        const user = (data.user || data.data) as CurrentUser | null;
+        if (!isAdminRole(user?.role)) {
+          window.location.href = isVendorRole(user?.role) ? '/hub/dashboard' : '/hub';
           return;
         }
-        if (!cancelled) setAuthorized(true);
+
+        if (!cancelled) {
+          setAuthorized(true);
+        }
       } catch {
-        window.location.href = '/login/admin';
+        window.location.href = `/login/admin?next=${encodeURIComponent(pathname || '/dashboard')}`;
       }
     }
-    checkAuth();
+
+    verifyAdminAccess();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;

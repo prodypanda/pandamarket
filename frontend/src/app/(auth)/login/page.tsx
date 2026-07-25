@@ -154,27 +154,6 @@ export default function LoginPage() {
           </div>
 
           <div className="p-7 sm:p-8">
-            {/* Role Switcher Bar */}
-            <div className="mb-6 flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-100/70 p-1.5">
-              <Link
-                href="/login/admin"
-                className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
-              >
-                👑 Admin
-              </Link>
-              <Link
-                href="/login/seller"
-                className="flex-1 rounded-xl py-2 text-center text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
-              >
-                🏪 Vendeur
-              </Link>
-              <Link
-                href="/login"
-                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-2 text-center text-xs font-black text-white shadow-md"
-              >
-                🛍️ Acheteur
-              </Link>
-            </div>
 
           {error && (
             <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
