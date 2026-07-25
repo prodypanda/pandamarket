@@ -67,6 +67,7 @@ interface PlatformSettings {
   hub_hero_category_sidebar_max_items: number;
   hub_hero_carousel_max_categories: number;
   hub_hero_carousel_slides: string;
+  hub_hero_carousel_source_mode: string;
   hub_hero_carousel_autoplay: boolean;
   hub_hero_carousel_interval: number;
   hub_hero_carousel_transition: string;
@@ -260,6 +261,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_hero_category_sidebar_max_items: 14,
   hub_hero_carousel_max_categories: 5,
   hub_hero_carousel_slides: '[]',
+  hub_hero_carousel_source_mode: 'hybrid',
   hub_hero_carousel_autoplay: true,
   hub_hero_carousel_interval: 6000,
   hub_hero_carousel_transition: 'slide',
@@ -472,6 +474,7 @@ const TEXT_SETTING_KEYS = [
   'hub_homepage_banner_image_url',
   'hub_homepage_blocks',
   'hub_hero_carousel_slides',
+  'hub_hero_carousel_source_mode',
   'hub_hero_carousel_transition',
   'hub_hero_carousel_dots_style',
   'hub_hero_seller_rail_title',
@@ -643,6 +646,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_category_sidebar_max_items',
     'hub_hero_carousel_max_categories',
     'hub_hero_carousel_slides',
+    'hub_hero_carousel_source_mode',
     'hub_hero_carousel_autoplay',
     'hub_hero_carousel_interval',
     'hub_hero_carousel_transition',
@@ -1749,7 +1753,19 @@ export default function AdminSettingsPage() {
               <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
                 <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Hero Carousel Configuration
               </h4>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 border-b border-slate-200/80 pb-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4 border-b border-slate-200/80 pb-4">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Slide Source Mode</label>
+                  <select
+                    value={settings.hub_hero_carousel_source_mode}
+                    onChange={(e) => updateSetting('hub_hero_carousel_source_mode', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                  >
+                    <option value="hybrid">🔀 Hybrid (Custom Slides + Categories)</option>
+                    <option value="custom_only">🎯 Custom Carousel Slides Only</option>
+                    <option value="auto_categories_only">🏷️ Auto Category Banners Only</option>
+                  </select>
+                </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold text-gray-600">Auto Category Slides Count</label>
                   <input

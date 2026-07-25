@@ -277,9 +277,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
   const sidebarMaxItems = Math.max(1, Math.min(30, Number(marketplaceSettings.hub_hero_category_sidebar_max_items) || 14));
   const carouselMaxCategories = Math.max(1, Math.min(10, Number(marketplaceSettings.hub_hero_carousel_max_categories) || 5));
 
+  const sourceMode = marketplaceSettings.hub_hero_carousel_source_mode || 'hybrid';
+
   // Admin-managed hero carousel
   const slides = useMemo<HeroSlide[]>(() => {
-    const result: HeroSlide[] = [];
+    const customSlides: HeroSlide[] = [];
 
     // 1. Try custom JSON carousel slides setting provided by superadmin
     if (marketplaceSettings.hub_hero_carousel_slides) {
@@ -288,7 +290,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         if (Array.isArray(parsed) && parsed.length > 0) {
           parsed.forEach((item: any) => {
             if (item.title || item.name) {
-              result.push({
+              customSlides.push({
                 title: String(item.title || item.name),
                 subtitle: String(item.subtitle || item.description || ''),
                 ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
@@ -318,24 +320,14 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       ctaUrl: entry.cta_url || '/hub/search',
       imageUrl: entry.image_url || null,
     }));
-    if (configured.length > 0 && result.length === 0) {
-      result.push(...configured);
+    if (configured.length > 0 && customSlides.length === 0) {
+      customSlides.push(...configured);
     }
 
-    // 3. Try homepage banner setting if no slides yet
-    if (marketplaceSettings.hub_homepage_banner_title && result.length === 0) {
-      result.push({
-        title: marketplaceSettings.hub_homepage_banner_title,
-        subtitle: marketplaceSettings.hub_homepage_banner_subtitle || '',
-        ctaLabel: marketplaceSettings.hub_homepage_banner_cta_label || 'Shop now',
-        ctaUrl: marketplaceSettings.hub_homepage_banner_cta_url || '/hub/search',
-        imageUrl: marketplaceSettings.hub_homepage_banner_image_url,
-      });
-    }
-
-    // 4. Auto category slides up to carouselMaxCategories
+    // 3. Auto category slides up to carouselMaxCategories
+    const categorySlides: HeroSlide[] = [];
     displayCategories.slice(0, carouselMaxCategories).forEach((category) => {
-      result.push({
+      categorySlides.push({
         title: category.name,
         subtitle: category.short_description || category.description || i18n.defaultCategoryDesc,
         ctaLabel: 'Source now',
@@ -343,6 +335,16 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
         imageUrl: category.image_url,
       });
     });
+
+    if (sourceMode === 'custom_only') {
+      return customSlides.length > 0 ? customSlides : categorySlides;
+    }
+    if (sourceMode === 'auto_categories_only') {
+      return categorySlides.length > 0 ? categorySlides : customSlides;
+    }
+
+    // Hybrid mode (custom slides + auto category banners)
+    const result = [...customSlides, ...categorySlides];
 
     if (result.length === 0) {
       result.push({
@@ -353,7 +355,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       });
     }
     return result;
-  }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings, carouselMaxCategories]);
+  }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings, carouselMaxCategories, sourceMode]);
 
   const autoPlay = marketplaceSettings.hub_hero_carousel_autoplay ?? true;
   const autoPlayInterval = marketplaceSettings.hub_hero_carousel_interval ?? 6000;
