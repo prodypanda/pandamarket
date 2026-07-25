@@ -1639,6 +1639,16 @@ const marketplaceSettingsSchema = globalSettingsSchema.pick({
   hub_homepage_banner_cta_url: true,
   hub_homepage_banner_image_url: true,
   hub_homepage_blocks: true,
+  hub_hero_show_category_sidebar: true,
+  hub_hero_show_carousel: true,
+  hub_hero_show_seller_rail: true,
+  hub_hero_category_sidebar_max_items: true,
+  hub_hero_carousel_slides: true,
+  hub_hero_seller_rail_title: true,
+  hub_hero_seller_rail_subtitle: true,
+  hub_hero_seller_rail_cta_label: true,
+  hub_hero_seller_rail_cta_url: true,
+  hub_hero_seller_rail_badge_text: true,
 }).strict();
 
 const commerceSettingsSchema = globalSettingsSchema.pick({
