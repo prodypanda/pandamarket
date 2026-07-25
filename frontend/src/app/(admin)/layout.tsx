@@ -19,7 +19,6 @@ import {
   Tags,
   Store,
   ChevronDown,
-  ChevronRight,
   Activity,
   Megaphone,
   FolderOpen,
@@ -266,32 +265,23 @@ export default function AdminLayout({
 
                   return (
                     <div key={item.label} className="space-y-0.5">
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => toggleMenu(item.label)}
                         className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all ${
                           isActiveParent || isActiveChild
                             ? 'bg-amber-50 text-[#B91C1C] border-l-2 border-[#B91C1C]'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                       >
-                        <Link
-                          href={item.href}
-                          className="flex flex-1 items-center gap-2.5 truncate py-0.5"
-                        >
+                        <span className="flex flex-1 items-center gap-2.5 truncate">
                           <item.icon className={`w-4 h-4 shrink-0 ${isActiveParent || isActiveChild ? 'text-[#B91C1C]' : 'text-slate-400'}`} />
                           <span className="truncate">{item.label}</span>
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleMenu(item.label);
-                          }}
-                          title="Toggle submenu"
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition-colors ml-1"
-                        >
-                          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
+                        </span>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-200 ${isOpen ? 'rotate-0' : dir === 'rtl' ? 'rotate-90' : '-rotate-90'}`}>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                        </span>
+                      </button>
                       {isOpen && (
                         <div className={`flex flex-col gap-0.5 pt-0.5 ${dir === 'rtl' ? 'pr-6 pl-1' : 'pl-6 pr-1'}`}>
                           {item.subItems.map((sub) => {
