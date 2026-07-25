@@ -22,6 +22,7 @@ import {
   Activity,
   Megaphone,
   FolderOpen,
+  StickyNote,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -119,6 +120,7 @@ export default function AdminLayout({
       title: t('admin.sidebar.overview') || 'OVERVIEW',
       items: [
         { href: '/dashboard', label: t('admin.sidebar.dashboard') || 'Dashboard', icon: LayoutDashboard },
+        { href: '/admin-notes', label: t('admin.sidebar.notesReminders') || 'Notes & Reminders', icon: StickyNote },
       ],
     },
     {

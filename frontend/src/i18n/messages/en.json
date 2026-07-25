@@ -417,7 +417,8 @@
       "auditLog": "Audit Log",
       "settings": "Settings",
       "aiCosts": "AI Costs",
-      "smtpConfig": "Email Config"
+      "smtpConfig": "Email Config",
+      "notesReminders": "Notes & Reminders"
     },
     "urgentActions": "Urgent Actions",
     "kycPending": "{count} KYC pending",

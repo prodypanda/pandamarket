@@ -417,7 +417,8 @@
       "auditLog": "Journal d'audit",
       "settings": "Paramètres",
       "aiCosts": "Coûts IA",
-      "smtpConfig": "Config Email"
+      "smtpConfig": "Config Email",
+      "notesReminders": "Notes & Rappels"
     },
     "urgentActions": "Actions Urgentes",
     "kycPending": "{count} KYC en attente",

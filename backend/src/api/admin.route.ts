@@ -3091,4 +3091,132 @@ router.post(
   }),
 );
 
+// ───────────────────────────────────────────────────────────
+// Admin Notes / Reminders / Drafts
+// ───────────────────────────────────────────────────────────
+import { adminNotesService } from '../services/admin-notes.service';
+
+const noteTypeSchema = z.enum(['note', 'reminder', 'draft']);
+const notePrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+
+const createNoteSchema = z.object({
+  type: noteTypeSchema,
+  title: z.string().min(1).max(500),
+  content: z.string().max(50000).optional(),
+  color: z.string().max(20).optional(),
+  priority: notePrioritySchema.optional(),
+  is_pinned: z.boolean().optional(),
+  reminder_at: z.string().nullable().optional(),
+  due_at: z.string().nullable().optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+});
+
+const updateNoteSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  content: z.string().max(50000).optional(),
+  type: noteTypeSchema.optional(),
+  color: z.string().max(20).optional(),
+  priority: notePrioritySchema.optional(),
+  is_pinned: z.boolean().optional(),
+  is_completed: z.boolean().optional(),
+  reminder_at: z.string().nullable().optional(),
+  due_at: z.string().nullable().optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+});
+
+const noteListSchema = z.object({
+  type: noteTypeSchema.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+// List notes
+router.get(
+  '/notes',
+  requireAuth,
+  requireAdmin,
+  validate(noteListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { type, page, limit } = req.query as unknown as { type?: string; page: number; limit: number };
+    const result = await adminNotesService.list(req.user!.id, { type, page, limit });
+    res.status(200).json(result);
+  }),
+);
+
+// Create note
+router.post(
+  '/notes',
+  requireAuth,
+  requireAdmin,
+  validate(createNoteSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.create({
+      admin_id: req.user!.id,
+      ...req.body,
+    });
+    res.status(201).json({ data: note });
+  }),
+);
+
+// Get single note
+router.get(
+  '/notes/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.getById(req.params.id, req.user!.id);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    res.status(200).json({ data: note });
+  }),
+);
+
+// Update note
+router.put(
+  '/notes/:id',
+  requireAuth,
+  requireAdmin,
+  validate(updateNoteSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.update(req.params.id, req.user!.id, req.body);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    res.status(200).json({ data: note });
+  }),
+);
+
+// Delete note
+router.delete(
+  '/notes/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const deleted = await adminNotesService.delete(req.params.id, req.user!.id);
+    if (!deleted) return res.status(404).json({ error: 'Note not found' });
+    res.status(200).json({ success: true });
+  }),
+);
+
+// Toggle pin
+router.patch(
+  '/notes/:id/pin',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.togglePin(req.params.id, req.user!.id);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    res.status(200).json({ data: note });
+  }),
+);
+
+// Toggle complete
+router.patch(
+  '/notes/:id/complete',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.toggleComplete(req.params.id, req.user!.id);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    res.status(200).json({ data: note });
+  }),
+);
+
 export default router;

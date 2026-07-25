@@ -417,7 +417,8 @@
       "auditLog": "سجل المراجعة",
       "settings": "الإعدادات",
       "aiCosts": "تكاليف الذكاء الاصطناعي",
-      "smtpConfig": "إعدادات البريد"
+      "smtpConfig": "إعدادات البريد",
+      "notesReminders": "ملاحظات وتذكيرات"
     },
     "urgentActions": "إجراءات عاجلة",
     "kycPending": "{count} تحقق قيد الانتظار",
