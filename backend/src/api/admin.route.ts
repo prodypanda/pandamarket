@@ -3165,7 +3165,10 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const note = await adminNotesService.getById(req.params.id, req.user!.id);
-    if (!note) return res.status(404).json({ error: 'Note not found' });
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
     res.status(200).json({ data: note });
   }),
 );
@@ -3178,7 +3181,10 @@ router.put(
   validate(updateNoteSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const note = await adminNotesService.update(req.params.id, req.user!.id, req.body);
-    if (!note) return res.status(404).json({ error: 'Note not found' });
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
     res.status(200).json({ data: note });
   }),
 );
@@ -3190,7 +3196,10 @@ router.delete(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const deleted = await adminNotesService.delete(req.params.id, req.user!.id);
-    if (!deleted) return res.status(404).json({ error: 'Note not found' });
+    if (!deleted) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
     res.status(200).json({ success: true });
   }),
 );
@@ -3202,7 +3211,10 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const note = await adminNotesService.togglePin(req.params.id, req.user!.id);
-    if (!note) return res.status(404).json({ error: 'Note not found' });
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
     res.status(200).json({ data: note });
   }),
 );
@@ -3214,7 +3226,10 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const note = await adminNotesService.toggleComplete(req.params.id, req.user!.id);
-    if (!note) return res.status(404).json({ error: 'Note not found' });
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
     res.status(200).json({ data: note });
   }),
 );
