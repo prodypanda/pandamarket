@@ -8,7 +8,7 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 
 interface PlatformSettings {
@@ -178,7 +178,7 @@ interface PlatformSettings {
   payment_platform_credentials_source: 'environment' | 'platform_config' | 'vendor_direct_only';
 }
 
-type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'operations' | 'integrations' | 'plans' | 'email';
+type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 interface SmtpConfigPublic {
@@ -394,13 +394,15 @@ const SMTP_PROVIDER_PRESETS: Record<string, { host: string; port: number; secure
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; description: string; icon: typeof Store }> = [
-  { id: 'marketplace', label: 'Marketplace', description: 'Identity, branding, social and footer links', icon: Globe2 },
-  { id: 'commerce', label: 'Commerce', description: 'Availability, moderation and order workflows', icon: SlidersHorizontal },
-  { id: 'finance', label: 'Finance', description: 'Commissions, payouts and payment instructions', icon: CreditCard },
-  { id: 'operations', label: 'Operations', description: 'Security, maintenance, upload and chat limits', icon: Shield },
-  { id: 'integrations', label: 'Integrations', description: 'Analytics, verification and Cloudflare metadata', icon: BarChart3 },
-  { id: 'plans', label: 'Plans', description: 'Seller plans, prices, quotas and included features', icon: Crown },
-  { id: 'email', label: 'Email', description: 'SMTP provider, sender identity and test email', icon: Mail },
+  { id: 'marketplace', label: 'Marketplace & Hero', description: 'Identity, branding, themes, megamenu & hero builder', icon: Globe2 },
+  { id: 'commerce', label: 'Commerce & Catalog', description: 'Product rules, moderation, reviews, AI & builder', icon: SlidersHorizontal },
+  { id: 'finance', label: 'Finance & Payments', description: 'Gateways, Flouci, Konnect, commissions & payouts', icon: CreditCard },
+  { id: 'shipping', label: 'Shipping & Delivery', description: 'Aramex, La Poste, platform delivery & zone rates', icon: Truck },
+  { id: 'security', label: 'Security & Governance', description: 'Login security, password rules, custom domains & 2FA', icon: ShieldCheck },
+  { id: 'operations', label: 'Platform Operations', description: 'Maintenance mode, storage limits & chat quotas', icon: Shield },
+  { id: 'integrations', label: 'Integrations & Webmaster', description: 'GA4, GTM, Meta Pixel, Cloudflare & Search Console', icon: BarChart3 },
+  { id: 'plans', label: 'Subscription Plans', description: 'Seller plans, prices, quotas and feature matrix', icon: Crown },
+  { id: 'email', label: 'Transactional Emails', description: 'SMTP provider, credentials, test sender & templates', icon: Mail },
 ];
 
 type BooleanSettingKey = {
@@ -673,21 +675,8 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'plugins_marketplace_enabled',
     'email_marketing_enabled',
     'cart_enabled',
-    'shipping_enabled',
-    'shipping_self_managed_enabled',
-    'shipping_platform_unified_enabled',
-    'shipping_default_provider',
-    'shipping_aramex_enabled',
-    'shipping_laposte_enabled',
-    'shipping_platform_fallback_enabled',
-    'shipping_default_origin_city',
-    'shipping_default_origin_country',
-    'shipping_domestic_zone_cities',
-    'shipping_remote_zone_cities',
-    'shipping_platform_flat_rate_tnd',
-    'shipping_domestic_zone_rate_tnd',
-    'shipping_remote_zone_rate_tnd',
-    'shipping_free_shipping_threshold_tnd',
+    'catalog_featured_category_slugs',
+    'catalog_default_sort',
     'order_splitting_enabled',
     'tax_mode',
     'default_tax_rate',
@@ -715,6 +704,36 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'mandat_recipient_cin',
     'mandat_recipient_city',
   ],
+  shipping: [
+    'shipping_enabled',
+    'shipping_self_managed_enabled',
+    'shipping_platform_unified_enabled',
+    'shipping_default_provider',
+    'shipping_aramex_enabled',
+    'shipping_laposte_enabled',
+    'shipping_platform_fallback_enabled',
+    'shipping_default_origin_city',
+    'shipping_default_origin_country',
+    'shipping_domestic_zone_cities',
+    'shipping_remote_zone_cities',
+    'shipping_platform_flat_rate_tnd',
+    'shipping_domestic_zone_rate_tnd',
+    'shipping_remote_zone_rate_tnd',
+    'shipping_free_shipping_threshold_tnd',
+  ],
+  security: [
+    'security_login_max_attempts',
+    'security_login_lockout_minutes',
+    'security_password_min_length',
+    'security_password_require_uppercase',
+    'security_password_require_lowercase',
+    'security_password_require_number',
+    'security_password_require_symbol',
+    'security_2fa_required_roles',
+    'security_custom_domains_enabled',
+    'security_custom_domain_allowed_suffixes',
+    'security_custom_domain_blocked_suffixes',
+  ],
   operations: [
     'chat_bubble_enabled',
     'chat_bubble_position',
@@ -732,17 +751,6 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'notifications_sms_enabled',
     'notifications_sms_provider',
     'notifications_sms_sender_name',
-    'security_login_max_attempts',
-    'security_login_lockout_minutes',
-    'security_password_min_length',
-    'security_password_require_uppercase',
-    'security_password_require_lowercase',
-    'security_password_require_number',
-    'security_password_require_symbol',
-    'security_2fa_required_roles',
-    'security_custom_domains_enabled',
-    'security_custom_domain_allowed_suffixes',
-    'security_custom_domain_blocked_suffixes',
     'maintenance_enabled',
     'maintenance_title',
     'maintenance_message',
@@ -1407,7 +1415,7 @@ export default function AdminSettingsPage() {
         })}
       </div>
 
-      <div className={activeTab === 'operations' ? 'rounded-[2rem] border border-slate-200/70 bg-white p-6 shadow-xl shadow-slate-200/40' : 'hidden'}>
+      <div className={activeTab === 'security' ? 'rounded-[2rem] border border-slate-200/70 bg-white p-6 shadow-xl shadow-slate-200/40' : 'hidden'}>
         <AccountTwoFactorPanel accentClass="bg-[#B91C1C]" />
       </div>
 
@@ -1896,9 +1904,9 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
-      <section className={`${activeTab === 'commerce' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+      <section className={`${activeTab === 'shipping' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <SectionHeader
-          icon={<Store className="h-5 w-5" />}
+          icon={<Truck className="h-5 w-5" />}
           title="Shipping Carriers, Zones and Rates"
           description="Configure platform shipping carriers, default origin, city zones, and fallback rates used at checkout."
         />
@@ -2085,7 +2093,7 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
-      <section className={`${activeTab === 'operations' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+      <section className={`${activeTab === 'security' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <SectionHeader
           icon={<ShieldCheck className="h-5 w-5" />}
           title="Security Controls"

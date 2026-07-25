@@ -1775,14 +1775,48 @@ const integrationsSettingsSchema = globalSettingsSchema.pick({
   cloudflare_custom_hostnames_enabled: true,
 }).strict();
 
+const shippingSettingsSchema = globalSettingsSchema.pick({
+  shipping_enabled: true,
+  shipping_self_managed_enabled: true,
+  shipping_platform_unified_enabled: true,
+  shipping_default_provider: true,
+  shipping_aramex_enabled: true,
+  shipping_laposte_enabled: true,
+  shipping_platform_fallback_enabled: true,
+  shipping_default_origin_city: true,
+  shipping_default_origin_country: true,
+  shipping_domestic_zone_cities: true,
+  shipping_remote_zone_cities: true,
+  shipping_platform_flat_rate_tnd: true,
+  shipping_domestic_zone_rate_tnd: true,
+  shipping_remote_zone_rate_tnd: true,
+  shipping_free_shipping_threshold_tnd: true,
+}).strict();
+
+const securitySettingsSchema = globalSettingsSchema.pick({
+  security_login_max_attempts: true,
+  security_login_lockout_minutes: true,
+  security_password_min_length: true,
+  security_password_require_uppercase: true,
+  security_password_require_lowercase: true,
+  security_password_require_number: true,
+  security_password_require_symbol: true,
+  security_2fa_required_roles: true,
+  security_custom_domains_enabled: true,
+  security_custom_domain_allowed_suffixes: true,
+  security_custom_domain_blocked_suffixes: true,
+}).strict();
+
 const settingsSectionParamSchema = z.object({
-  section: z.enum(['marketplace', 'commerce', 'finance', 'operations', 'integrations']),
+  section: z.enum(['marketplace', 'commerce', 'finance', 'shipping', 'security', 'operations', 'integrations']),
 });
 
 const settingsSectionSchemas: Record<PlatformSettingSection, z.ZodTypeAny> = {
   marketplace: marketplaceSettingsSchema,
   commerce: commerceSettingsSchema,
   finance: financeSettingsSchema,
+  shipping: shippingSettingsSchema,
+  security: securitySettingsSchema,
   operations: operationsSettingsSchema,
   integrations: integrationsSettingsSchema,
 };
