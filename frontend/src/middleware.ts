@@ -88,6 +88,7 @@ const ADMIN_ROUTE_PREFIXES = [
   '/smtp-config',
   '/settings',
   '/ads',
+  '/admin-notes',
 ];
 
 function matchesRoutePrefix(pathname: string, prefixes: string[]) {
