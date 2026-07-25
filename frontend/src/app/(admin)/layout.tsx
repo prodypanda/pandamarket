@@ -119,27 +119,49 @@ export default function AdminLayout({
 
   const navItems = [
     { href: '/dashboard', label: t('admin.sidebar.dashboard'), icon: LayoutDashboard },
-    { href: '/kyc', label: t('admin.sidebar.kyc'), icon: ShieldCheck },
-    { href: '/mandats', label: t('admin.sidebar.mandats'), icon: Receipt },
-    { href: '/messages', label: 'Messages', icon: MessageSquare },
-    { href: '/reports', label: t('admin.sidebar.reports'), icon: Flag },
-    { href: '/stores', label: 'Stores', icon: Store },
-    { href: '/users', label: t('admin.sidebar.vendors'), icon: Users },
-    { href: '/buyers', label: 'Buyers', icon: Users },
-    { href: '/withdrawals', label: t('admin.sidebar.withdrawals'), icon: Wallet },
-    { href: '/ads', label: 'PandaMarket Ads', icon: Megaphone },
-    { href: '/plans', label: t('admin.sidebar.plans'), icon: Crown },
-    { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories'), icon: Tags },
-    { href: '/platform-media', label: 'Platform Media', icon: FolderOpen },
-    { href: '/ai-costs', label: t('admin.sidebar.aiCosts'), icon: Sparkles },
     {
-      label: 'Logs',
-      icon: Activity,
+      label: 'Commerce & Vendors',
+      icon: Store,
+      href: '/stores',
       subItems: [
-        { href: '/audit-log', label: 'Administration' },
-        { href: '/seller-audit-log', label: 'Seller' },
-        { href: '/buyer-audit-log', label: 'Buyer' },
-        { href: '/system-logs', label: 'Server' },
+        { href: '/stores', label: 'Stores Overview' },
+        { href: '/users', label: t('admin.sidebar.vendors') },
+        { href: '/buyers', label: 'Buyers Directory' },
+        { href: '/kyc', label: t('admin.sidebar.kyc') },
+        { href: '/mandats', label: t('admin.sidebar.mandats') },
+        { href: '/withdrawals', label: t('admin.sidebar.withdrawals') },
+      ],
+    },
+    {
+      label: 'Catalog & Content',
+      icon: Tags,
+      href: '/marketplace-categories',
+      subItems: [
+        { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories') },
+        { href: '/platform-media', label: 'Platform Media' },
+        { href: '/messages', label: 'Customer Messages' },
+        { href: '/reports', label: t('admin.sidebar.reports') },
+      ],
+    },
+    {
+      label: 'Growth & Ads',
+      icon: Megaphone,
+      href: '/ads',
+      subItems: [
+        { href: '/ads', label: 'PandaMarket Ads' },
+        { href: '/plans', label: t('admin.sidebar.plans') },
+        { href: '/ai-costs', label: t('admin.sidebar.aiCosts') },
+      ],
+    },
+    {
+      label: 'System Logs',
+      icon: Activity,
+      href: '/audit-log',
+      subItems: [
+        { href: '/audit-log', label: 'Admin Logs' },
+        { href: '/seller-audit-log', label: 'Seller Logs' },
+        { href: '/buyer-audit-log', label: 'Buyer Logs' },
+        { href: '/system-logs', label: 'Server Logs' },
       ],
     },
   ];
@@ -171,16 +193,16 @@ export default function AdminLayout({
     <div className="admin-shell min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(180,83,9,0.10),transparent_28%),linear-gradient(180deg,#fafaf9_0%,#eef2f7_100%)] text-gray-900">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col overflow-hidden bg-[#0F0F23] text-white shadow-2xl shadow-slate-950/30">
-        <div className="shrink-0 border-b border-white/10 bg-[#09091A] px-4 py-4 text-white">
+        <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 py-4 text-slate-950">
           <MarketplaceBrand
             href="/dashboard"
             marketplaceName={marketplaceSettings.marketplace_name}
             marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
             marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
             marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-            logoSurface="dark"
+            logoSurface="light"
             imageClassName="h-8 max-w-[150px] object-contain"
-            textClassName="text-base font-black text-white"
+            textClassName="text-base font-black text-slate-900"
             fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
           />
         </div>
@@ -188,41 +210,54 @@ export default function AdminLayout({
         <nav className="no-scrollbar flex-1 overflow-y-auto px-2.5 py-3 space-y-1">
           {navItems.map((item) => {
             if (item.subItems) {
-              const isOpen = openMenus[item.label];
+              const isOpen = openMenus[item.label] ?? false;
               const isActiveChild = item.subItems.some((sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/'));
+              const isActiveParent = item.href && (pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/')));
 
               return (
-                <div key={item.label} className="mb-0.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleMenu(item.label)}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all ${
-                      isActiveChild || isOpen
-                        ? 'bg-white/10 text-amber-200'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                <div key={item.label} className="mb-1">
+                  <div
+                    className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all ${
+                      isActiveParent || isActiveChild
+                        ? 'bg-gradient-to-r from-[#B91C1C]/40 to-amber-900/30 text-amber-200 border-l-2 border-[#B91C1C]'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <item.icon className={`w-4 h-4 ${isActiveChild ? 'text-amber-300' : 'text-slate-400'}`} />
-                      <span>{item.label}</span>
-                    </div>
-                    {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                  </button>
+                    <Link
+                      href={item.href}
+                      className="flex flex-1 items-center gap-2.5 truncate py-0.5"
+                    >
+                      <item.icon className={`w-4 h-4 shrink-0 ${isActiveParent || isActiveChild ? 'text-amber-300' : 'text-slate-400'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMenu(item.label);
+                      }}
+                      title="Toggle submenu"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors ml-1"
+                    >
+                      {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                   {isOpen && (
-                    <div className="mt-1 flex flex-col gap-0.5 pl-9 pr-2">
+                    <div className="mt-1 flex flex-col gap-0.5 pl-7 pr-1">
                       {item.subItems.map((sub) => {
                         const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
                         return (
                           <Link
                             key={sub.href}
                             href={sub.href}
-                            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all flex items-center gap-2 ${
                               isSubActive
-                                ? 'bg-[#B91C1C]/40 text-amber-200 border-l-2 border-amber-400 pl-2'
+                                ? 'bg-amber-400/15 text-amber-200 font-bold border-l-2 border-amber-300 pl-2'
                                 : 'text-slate-400 hover:bg-white/5 hover:text-white'
                             }`}
                           >
-                            {sub.label}
+                            <span className="h-1 w-1 rounded-full bg-slate-500 shrink-0" />
+                            <span className="truncate">{sub.label}</span>
                           </Link>
                         );
                       })}

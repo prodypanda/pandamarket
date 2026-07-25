@@ -1388,8 +1388,11 @@ export default function AdminSettingsPage() {
       {error && <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
-      {/* Modern Compact Settings Navigation Pills */}
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm">
+      {/* Modern Compact Settings Navigation Pills with Custom Red Scrollbar */}
+      <div
+        className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2.5 shadow-sm scrollbar-thin scrollbar-thumb-[#B91C1C]/40 scrollbar-track-slate-100 hover:scrollbar-thumb-[#B91C1C]"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: '#B91C1C #F1F5F9' }}
+      >
         {SETTINGS_TABS.map((tab) => {
           const Icon = tab.icon;
           const selected = activeTab === tab.id;
