@@ -67,6 +67,11 @@ interface PlatformSettings {
   hub_hero_category_sidebar_max_items: number;
   hub_hero_carousel_max_categories: number;
   hub_hero_carousel_slides: string;
+  hub_hero_carousel_autoplay: boolean;
+  hub_hero_carousel_interval: number;
+  hub_hero_carousel_transition: string;
+  hub_hero_carousel_dots_style: string;
+  hub_hero_carousel_show_arrows: boolean;
   hub_hero_seller_rail_title: string;
   hub_hero_seller_rail_subtitle: string;
   hub_hero_seller_rail_cta_label: string;
@@ -255,6 +260,11 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_hero_category_sidebar_max_items: 14,
   hub_hero_carousel_max_categories: 5,
   hub_hero_carousel_slides: '[]',
+  hub_hero_carousel_autoplay: true,
+  hub_hero_carousel_interval: 6000,
+  hub_hero_carousel_transition: 'slide',
+  hub_hero_carousel_dots_style: 'pill',
+  hub_hero_carousel_show_arrows: true,
   hub_hero_seller_rail_title: 'Accès Vendeurs & Fournisseurs',
   hub_hero_seller_rail_subtitle: 'Ouvrez votre boutique B2B ou accédez à votre espace fournisseur',
   hub_hero_seller_rail_cta_label: 'Espace Vendeur',
@@ -462,6 +472,8 @@ const TEXT_SETTING_KEYS = [
   'hub_homepage_banner_image_url',
   'hub_homepage_blocks',
   'hub_hero_carousel_slides',
+  'hub_hero_carousel_transition',
+  'hub_hero_carousel_dots_style',
   'hub_hero_seller_rail_title',
   'hub_hero_seller_rail_subtitle',
   'hub_hero_seller_rail_cta_label',
@@ -517,6 +529,7 @@ const NUMBER_SETTING_KEYS = [
   'security_password_min_length',
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
+  'hub_hero_carousel_interval',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -569,6 +582,8 @@ const BOOLEAN_SETTING_KEYS = [
   'hub_hero_show_category_sidebar',
   'hub_hero_show_carousel',
   'hub_hero_show_seller_rail',
+  'hub_hero_carousel_autoplay',
+  'hub_hero_carousel_show_arrows',
 ] as const satisfies readonly BooleanSettingKey[];
 
 const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSettings)[]> = {
@@ -628,6 +643,11 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_category_sidebar_max_items',
     'hub_hero_carousel_max_categories',
     'hub_hero_carousel_slides',
+    'hub_hero_carousel_autoplay',
+    'hub_hero_carousel_interval',
+    'hub_hero_carousel_transition',
+    'hub_hero_carousel_dots_style',
+    'hub_hero_carousel_show_arrows',
     'hub_hero_seller_rail_title',
     'hub_hero_seller_rail_subtitle',
     'hub_hero_seller_rail_cta_label',
@@ -806,6 +826,9 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
   payload.hub_hero_show_seller_rail = Boolean(payload.hub_hero_show_seller_rail);
   payload.hub_hero_category_sidebar_max_items = Math.max(1, Math.min(30, Number(payload.hub_hero_category_sidebar_max_items) || 14));
   payload.hub_hero_carousel_max_categories = Math.max(1, Math.min(10, Number(payload.hub_hero_carousel_max_categories) || 5));
+  payload.hub_hero_carousel_autoplay = Boolean(payload.hub_hero_carousel_autoplay);
+  payload.hub_hero_carousel_interval = Math.max(2000, Math.min(30000, Number(payload.hub_hero_carousel_interval) || 6000));
+  payload.hub_hero_carousel_show_arrows = Boolean(payload.hub_hero_carousel_show_arrows);
   payload.shipping_default_provider = payload.shipping_default_provider === 'aramex'
     ? 'aramex'
     : payload.shipping_default_provider === 'laposte'
@@ -1726,7 +1749,7 @@ export default function AdminSettingsPage() {
               <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
                 <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Hero Carousel Configuration
               </h4>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 border-b border-slate-200/80 pb-4">
                 <div>
                   <label className="mb-1 block text-xs font-bold text-gray-600">Auto Category Slides Count</label>
                   <input
@@ -1735,10 +1758,44 @@ export default function AdminSettingsPage() {
                     max={10}
                     value={settings.hub_hero_carousel_max_categories}
                     onChange={(e) => updateSetting('hub_hero_carousel_max_categories', Math.max(1, Math.min(10, Number(e.target.value) || 5)))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
                   />
-                  <p className="mt-1 text-[11px] text-gray-400">How many top-level categories to automatically generate slides for in the carousel (1 to 10).</p>
+                  <p className="mt-1 text-[11px] text-gray-400">Number of top categories to auto-generate banners for (1 to 10).</p>
                 </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Slide Rotation Delay (ms)</label>
+                  <select
+                    value={settings.hub_hero_carousel_interval}
+                    onChange={(e) => updateSetting('hub_hero_carousel_interval', Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                  >
+                    <option value={3000}>3 Seconds (Fast)</option>
+                    <option value={5000}>5 Seconds (Recommended)</option>
+                    <option value={6000}>6 Seconds (Standard)</option>
+                    <option value={8000}>8 Seconds (Slow)</option>
+                    <option value={10000}>10 Seconds (Very Slow)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Indicator Dots Style</label>
+                  <select
+                    value={settings.hub_hero_carousel_dots_style}
+                    onChange={(e) => updateSetting('hub_hero_carousel_dots_style', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                  >
+                    <option value="pill">Pill Dots</option>
+                    <option value="circle">Circle Dots</option>
+                    <option value="numbers">Numbers / Counter</option>
+                    <option value="hidden">Hidden</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 pb-2">
+                {[
+                  { key: 'hub_hero_carousel_autoplay' as const, label: 'Auto-Play Slide Rotation', description: 'Automatically advance to the next slide.' },
+                  { key: 'hub_hero_carousel_show_arrows' as const, label: 'Navigation Arrows', description: 'Show left/right arrow buttons on the banner.' },
+                ].map(renderToggle)}
               </div>
               <div>
                 <HeroCarouselEditor
@@ -2373,6 +2430,39 @@ export default function AdminSettingsPage() {
           setMarketplaceLogoPickerTarget(null);
         }}
       />
+
+      {/* Floating Sticky Save Settings Bar */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border border-slate-700/80 bg-slate-900/95 px-5 py-3 text-white shadow-2xl backdrop-blur-md transition-all hover:border-[#ff6a00]/50">
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full ${JSON.stringify(settings) !== JSON.stringify(savedSettings) ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+          <span className="text-xs font-extrabold">{JSON.stringify(settings) !== JSON.stringify(savedSettings) ? 'Unsaved changes' : 'Settings up to date'}</span>
+        </div>
+        <div className="h-4 w-px bg-slate-700" />
+        <button
+          type="button"
+          onClick={() => { setSettings(savedSettings); setSaved(false); setError(''); }}
+          disabled={JSON.stringify(settings) === JSON.stringify(savedSettings) || saving}
+          className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> Reset
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-full bg-[#ff6a00] px-5 py-2 text-xs font-black text-white shadow-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+        >
+          {saving ? (
+            <>
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-3.5 w-3.5" /> Save Changes
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

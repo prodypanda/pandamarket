@@ -74,6 +74,8 @@ interface HeroSlide {
   subtitle: string;
   ctaLabel: string;
   ctaUrl: string;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaUrl?: string | null;
   imageUrl?: string | null;
   mobileImageUrl?: string | null;
   badgeText?: string | null;
@@ -291,6 +293,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 subtitle: String(item.subtitle || item.description || ''),
                 ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
                 ctaUrl: String(item.ctaUrl || item.cta_url || '/hub/search'),
+                secondaryCtaLabel: item.secondaryCtaLabel || item.secondary_cta_label || null,
+                secondaryCtaUrl: item.secondaryCtaUrl || item.secondary_cta_url || null,
                 imageUrl: item.imageUrl || item.image_url || null,
                 mobileImageUrl: item.mobileImageUrl || item.mobile_image_url || null,
                 badgeText: item.badgeText || item.badge_text || null,
@@ -351,11 +355,14 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
     return result;
   }, [blockById, displayCategories, i18n.defaultCategoryDesc, marketplaceName, marketplaceSettings, carouselMaxCategories]);
 
+  const autoPlay = marketplaceSettings.hub_hero_carousel_autoplay ?? true;
+  const autoPlayInterval = marketplaceSettings.hub_hero_carousel_interval ?? 6000;
+
   useEffect(() => {
-    if (slides.length <= 1) return;
-    const id = setInterval(() => setSlideIndex((prev) => (prev + 1) % slides.length), 6000);
+    if (!autoPlay || slides.length <= 1) return;
+    const id = setInterval(() => setSlideIndex((prev) => (prev + 1) % slides.length), autoPlayInterval);
     return () => clearInterval(id);
-  }, [slides.length]);
+  }, [autoPlay, autoPlayInterval, slides.length]);
 
   const slide = slides[slideIndex % slides.length] ?? slides[0];
 
@@ -960,23 +967,52 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   </span>
                   <h1 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>
                   {slide.subtitle && <p className="mt-3 max-w-md text-sm font-semibold text-white/75">{slide.subtitle}</p>}
-                  <Link href={slide.ctaUrl} className="mt-6 inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg transition-transform hover:scale-105" style={{ backgroundColor: ORANGE }}>
-                    {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Link href={slide.ctaUrl} className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg transition-transform hover:scale-105" style={{ backgroundColor: ORANGE }}>
+                      {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    {slide.secondaryCtaLabel && slide.secondaryCtaUrl && (
+                      <Link href={slide.secondaryCtaUrl} className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-md backdrop-blur-md transition-all hover:bg-white/20 hover:scale-105">
+                        {slide.secondaryCtaLabel}
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 {slides.length > 1 && (
                   <>
-                    <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-                      {slides.map((entry, idx) => (
-                        <button key={`${entry.title}-${idx}`} type="button" aria-label={`Slide ${idx + 1}`} onClick={() => setSlideIndex(idx)} className={`h-1.5 rounded-full transition-all ${idx === slideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40'}`} />
-                      ))}
-                    </div>
+                    {(marketplaceSettings.hub_hero_carousel_show_arrows ?? true) && (
+                      <>
+                        <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                    {(marketplaceSettings.hub_hero_carousel_dots_style || 'pill') !== 'hidden' && (
+                      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+                        {marketplaceSettings.hub_hero_carousel_dots_style === 'numbers' ? (
+                          <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-black tracking-wider text-white backdrop-blur-md border border-white/20">
+                            {slideIndex + 1} / {slides.length}
+                          </span>
+                        ) : (
+                          slides.map((entry, idx) => (
+                            <button
+                              key={`${entry.title}-${idx}`}
+                              type="button"
+                              aria-label={`Slide ${idx + 1}`}
+                              onClick={() => setSlideIndex(idx)}
+                              className={`transition-all ${
+                                marketplaceSettings.hub_hero_carousel_dots_style === 'circle'
+                                  ? `h-2 w-2 rounded-full ${idx === slideIndex ? 'bg-white ring-2 ring-orange-500 scale-125' : 'bg-white/40'}`
+                                  : `h-1.5 rounded-full ${idx === slideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40'}`
+                              }`}
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

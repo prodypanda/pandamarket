@@ -10,6 +10,8 @@ export interface CarouselSlide {
   subtitle: string;
   ctaLabel: string;
   ctaUrl: string;
+  secondaryCtaLabel?: string;
+  secondaryCtaUrl?: string;
   imageUrl: string;
   mobileImageUrl?: string;
   badgeText?: string;
@@ -56,6 +58,8 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
             subtitle: item.subtitle || item.description || '',
             ctaLabel: item.ctaLabel || item.cta_label || 'Shop now',
             ctaUrl: item.ctaUrl || item.cta_url || '/hub/search',
+            secondaryCtaLabel: item.secondaryCtaLabel || item.secondary_cta_label || '',
+            secondaryCtaUrl: item.secondaryCtaUrl || item.secondary_cta_url || '',
             imageUrl: item.imageUrl || item.image_url || '',
             mobileImageUrl: item.mobileImageUrl || item.mobile_image_url || '',
             badgeText: item.badgeText || item.badge_text || '',
@@ -83,6 +87,8 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
       subtitle: 'Description attractive de votre offre spéciale ou catégorie.',
       ctaLabel: 'Découvrir',
       ctaUrl: '/hub/search',
+      secondaryCtaLabel: '',
+      secondaryCtaUrl: '',
       imageUrl: '',
       mobileImageUrl: '',
       badgeText: 'PROMO EXCLUSIVE',
@@ -201,10 +207,15 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
                   {currentSlide.subtitle}
                 </p>
               )}
-              <div className="mt-5">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full bg-[#ff6a00] px-5 py-2 text-xs font-black text-white shadow-lg">
                   {currentSlide.ctaLabel || 'Shop now'} ➔
                 </span>
+                {currentSlide.secondaryCtaLabel && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-black text-white backdrop-blur-md">
+                    {currentSlide.secondaryCtaLabel}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -339,29 +350,77 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
                 />
               </div>
 
-              {/* CTA Button & Target URL */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-slate-600">CTA Button Label</label>
-                  <input
-                    type="text"
-                    value={currentSlide.ctaLabel}
-                    onChange={(e) => handleUpdateSlide(selectedIndex, { ctaLabel: e.target.value })}
-                    placeholder="e.g. Explorer le Hub"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white focus:ring-2 focus:ring-[#ff6a00]/15"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-slate-600">CTA Link Target URL</label>
-                  <div className="relative">
+              {/* Primary CTA Button & Target URL */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400">Primary Action Button (CTA 1)</label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Button Label</label>
                     <input
                       type="text"
-                      value={currentSlide.ctaUrl}
-                      onChange={(e) => handleUpdateSlide(selectedIndex, { ctaUrl: e.target.value })}
-                      placeholder="e.g. /hub/search or /hub/category/electronics"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white focus:ring-2 focus:ring-[#ff6a00]/15"
+                      value={currentSlide.ctaLabel}
+                      onChange={(e) => handleUpdateSlide(selectedIndex, { ctaLabel: e.target.value })}
+                      placeholder="e.g. Explorer le Hub"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
                     />
-                    <LinkIcon className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Link Target URL</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={currentSlide.ctaUrl}
+                        onChange={(e) => handleUpdateSlide(selectedIndex, { ctaUrl: e.target.value })}
+                        placeholder="e.g. /hub/search"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
+                      />
+                      <LinkIcon className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Quick Target Selector</label>
+                    <select
+                      onChange={(e) => { if (e.target.value) handleUpdateSlide(selectedIndex, { ctaUrl: e.target.value }); }}
+                      value=""
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#ff6a00]"
+                    >
+                      <option value="">-- Choose Quick Link Target --</option>
+                      <option value="/hub/search">🔍 Marketplace Search</option>
+                      <option value="/hub/vendor-signup">🏪 Become a Supplier / Vendor Signup</option>
+                      <option value="/hub/pricing">💎 Pricing & Subscription Plans</option>
+                      <option value="/hub/messages">✉️ Messages & RFQ Requests</option>
+                      <option value="/hub/cases">🛡️ Buyer Protection & Cases</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary CTA Button (Optional CTA 2) */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400">Secondary Button (CTA 2 - Optional)</label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Secondary Button Label</label>
+                    <input
+                      type="text"
+                      value={currentSlide.secondaryCtaLabel || ''}
+                      onChange={(e) => handleUpdateSlide(selectedIndex, { secondaryCtaLabel: e.target.value })}
+                      placeholder="e.g. En savoir plus"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Secondary Target URL</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={currentSlide.secondaryCtaUrl || ''}
+                        onChange={(e) => handleUpdateSlide(selectedIndex, { secondaryCtaUrl: e.target.value })}
+                        placeholder="e.g. /hub/vendor-signup"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
+                      />
+                      <LinkIcon className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                    </div>
                   </div>
                 </div>
               </div>
