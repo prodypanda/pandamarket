@@ -478,8 +478,8 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
                 </p>
 
-                {/* Sidebar Category Department List (Height limited to 7 items with custom thin scrollbar) */}
-                <ul className="max-h-[308px] overflow-y-auto py-1 divide-y divide-slate-50 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-orange-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#ff6a00]">
+                {/* Sidebar Category Department List (Height limited to exactly 7 items with custom thin scrollbar) */}
+                <ul className="max-h-[258px] overflow-y-auto py-1 divide-y divide-slate-50 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-orange-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#ff6a00]">
                   {displayCategories.slice(0, sidebarMaxItems).map((category) => {
                   const IconComp = (category.icon && ICON_MAP[category.icon]) || getCategoryIconComponent(category);
                   const isActive = activeCategory?.id === category.id;
