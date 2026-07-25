@@ -37,8 +37,8 @@ const mandatUploadSchema = z.object({
  * Flouci sends the signature in the `x-flouci-signature` header.
  */
 function verifyFlouciSignature(req: Request): boolean {
-  const signature = req.headers['x-flouci-signature'] as string | undefined;
-  if (!signature) {
+  const signature = req.headers['x-flouci-signature'];
+  if (typeof signature !== 'string' || !signature) {
     logger.warn('Flouci webhook missing signature header');
     return false;
   }
@@ -48,10 +48,10 @@ function verifyFlouciSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const signatureBuf = Buffer.from(signature, 'hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (signatureBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(signatureBuf, expectedBuf);
   } catch {
     return false;
   }
@@ -62,8 +62,8 @@ function verifyFlouciSignature(req: Request): boolean {
  * Konnect sends the signature in the `x-konnect-signature` header.
  */
 function verifyKonnectSignature(req: Request): boolean {
-  const signature = req.headers['x-konnect-signature'] as string | undefined;
-  if (!signature) {
+  const signature = req.headers['x-konnect-signature'];
+  if (typeof signature !== 'string' || !signature) {
     logger.warn('Konnect webhook missing signature header');
     return false;
   }
@@ -73,10 +73,10 @@ function verifyKonnectSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const signatureBuf = Buffer.from(signature, 'hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (signatureBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(signatureBuf, expectedBuf);
   } catch {
     return false;
   }
