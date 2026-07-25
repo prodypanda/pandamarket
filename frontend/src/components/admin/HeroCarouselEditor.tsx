@@ -11,8 +11,11 @@ export interface CarouselSlide {
   ctaLabel: string;
   ctaUrl: string;
   imageUrl: string;
+  mobileImageUrl?: string;
   badgeText?: string;
+  badgeColor?: string;
   bgPreset?: string;
+  bgOpacity?: number;
 }
 
 interface HeroCarouselEditorProps {
@@ -26,6 +29,8 @@ const PRESET_GRADIENTS: Record<string, { label: string; bg: string }> = {
   emerald: { label: 'Emerald Luxury', bg: 'linear-gradient(120deg, #059669, #064e3b)' },
   dark: { label: 'Dark Cyber', bg: 'linear-gradient(120deg, #0f172a, #1e293b)' },
   gold: { label: 'Golden Elegance', bg: 'linear-gradient(120deg, #d97706, #78350f)' },
+  violet: { label: 'Deep Violet', bg: 'linear-gradient(120deg, #6d28d9, #4c1d95)' },
+  crimson: { label: 'Crimson Fire', bg: 'linear-gradient(120deg, #be123c, #881337)' },
 };
 
 export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps) {
@@ -33,6 +38,7 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [showPreview, setShowPreview] = useState<boolean>(true);
   const [isAssetPickerOpen, setIsAssetPickerOpen] = useState<boolean>(false);
+  const [assetTarget, setAssetTarget] = useState<'desktop' | 'mobile'>('desktop');
 
   // Parse JSON value on initial load or change
   useEffect(() => {
@@ -51,8 +57,11 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
             ctaLabel: item.ctaLabel || item.cta_label || 'Shop now',
             ctaUrl: item.ctaUrl || item.cta_url || '/hub/search',
             imageUrl: item.imageUrl || item.image_url || '',
+            mobileImageUrl: item.mobileImageUrl || item.mobile_image_url || '',
             badgeText: item.badgeText || item.badge_text || '',
+            badgeColor: item.badgeColor || item.badge_color || '',
             bgPreset: item.bgPreset || item.bg_preset || 'navy',
+            bgOpacity: Number(item.bgOpacity ?? item.bg_opacity ?? 40),
           }))
         );
       }
@@ -75,8 +84,11 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
       ctaLabel: 'Découvrir',
       ctaUrl: '/hub/search',
       imageUrl: '',
+      mobileImageUrl: '',
       badgeText: 'PROMO EXCLUSIVE',
+      badgeColor: '#FF6A00',
       bgPreset: 'navy',
+      bgOpacity: 40,
     };
     const next = [...slides, newSlide];
     updateSlides(next);
@@ -160,28 +172,40 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
             <span className="text-slate-500">Theme: {PRESET_GRADIENTS[currentSlide.bgPreset || 'navy']?.label || 'Custom Image'}</span>
           </div>
           <div
-            className="relative flex min-h-[220px] flex-col justify-center p-6 text-white sm:p-8"
+            className="relative overflow-hidden flex min-h-[220px] flex-col justify-center p-6 text-white sm:p-8 transition-all duration-300"
             style={{
-              background: currentSlide.imageUrl
-                ? `linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.65)), url(${currentSlide.imageUrl}) center/cover no-repeat`
-                : PRESET_GRADIENTS[currentSlide.bgPreset || 'navy']?.bg || PRESET_GRADIENTS.navy.bg,
+              background: PRESET_GRADIENTS[currentSlide.bgPreset || 'navy']?.bg || PRESET_GRADIENTS.navy.bg,
             }}
           >
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md">
-              {currentSlide.badgeText || 'PANDAMARKET B2B'}
-            </span>
-            <h3 className="mt-3 max-w-lg text-2xl font-black leading-tight sm:text-3xl">
-              {currentSlide.title || 'Slide Title'}
-            </h3>
-            {currentSlide.subtitle && (
-              <p className="mt-2 max-w-md text-xs font-semibold text-white/80 line-clamp-2">
-                {currentSlide.subtitle}
-              </p>
+            {currentSlide.imageUrl && (
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-all duration-300"
+                style={{
+                  backgroundImage: `url(${currentSlide.imageUrl})`,
+                  opacity: (currentSlide.bgOpacity ?? 40) / 100,
+                }}
+              />
             )}
-            <div className="mt-5">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#ff6a00] px-5 py-2 text-xs font-black text-white shadow-lg">
-                {currentSlide.ctaLabel || 'Shop now'} ➔
+            <div className="relative">
+              <span
+                className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md"
+                style={currentSlide.badgeColor ? { color: currentSlide.badgeColor, borderColor: currentSlide.badgeColor } : undefined}
+              >
+                {currentSlide.badgeText || 'PANDAMARKET B2B'}
               </span>
+              <h3 className="mt-3 max-w-lg text-2xl font-black leading-tight sm:text-3xl">
+                {currentSlide.title || 'Slide Title'}
+              </h3>
+              {currentSlide.subtitle && (
+                <p className="mt-2 max-w-md text-xs font-semibold text-white/80 line-clamp-2">
+                  {currentSlide.subtitle}
+                </p>
+              )}
+              <div className="mt-5">
+                <span className="inline-flex items-center gap-2 rounded-full bg-[#ff6a00] px-5 py-2 text-xs font-black text-white shadow-lg">
+                  {currentSlide.ctaLabel || 'Shop now'} ➔
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -343,45 +367,88 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
               </div>
 
               {/* Background Color Preset & Image Picker */}
-              <div className="space-y-3 pt-2 border-t border-slate-100">
-                <label className="block text-xs font-bold text-slate-700">Background Style & Theme Preset</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  {Object.entries(PRESET_GRADIENTS).map(([key, preset]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleUpdateSlide(selectedIndex, { bgPreset: key })}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center transition-all ${
-                        (currentSlide.bgPreset || 'navy') === key
-                          ? 'border-[#ff6a00] ring-2 ring-[#ff6a00]/20 bg-orange-50/40'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <div className="h-6 w-full rounded-lg shadow-inner" style={{ background: preset.bg }} />
-                      <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">{preset.label}</span>
-                    </button>
-                  ))}
+              <div className="space-y-4 pt-3 border-t border-slate-100">
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-slate-700">Theme Preset & Gradient Style</label>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {Object.entries(PRESET_GRADIENTS).map(([key, preset]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleUpdateSlide(selectedIndex, { bgPreset: key })}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center transition-all ${
+                          (currentSlide.bgPreset || 'navy') === key
+                            ? 'border-[#ff6a00] ring-2 ring-[#ff6a00]/25 bg-orange-50/50'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="h-6 w-full rounded-lg shadow-inner" style={{ background: preset.bg }} />
+                        <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="pt-2">
-                  <label className="mb-1 block text-xs font-bold text-slate-600">Custom Background Image URL (Optional)</label>
-                  <div className="flex items-center gap-2">
+                {/* Background Image Overlay Opacity Slider */}
+                {currentSlide.imageUrl && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600">Image Dark Overlay Opacity</label>
+                      <span className="text-xs font-mono font-bold text-slate-500">{currentSlide.bgOpacity ?? 40}%</span>
+                    </div>
                     <input
-                      type="text"
-                      value={currentSlide.imageUrl}
-                      onChange={(e) => handleUpdateSlide(selectedIndex, { imageUrl: e.target.value })}
-                      placeholder="e.g. /pd-product-images/banners/hero.jpg"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white focus:ring-2 focus:ring-[#ff6a00]/15"
+                      type="range"
+                      min={10}
+                      max={90}
+                      step={5}
+                      value={currentSlide.bgOpacity ?? 40}
+                      onChange={(e) => handleUpdateSlide(selectedIndex, { bgOpacity: Number(e.target.value) })}
+                      className="w-full accent-[#ff6a00] cursor-pointer"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setIsAssetPickerOpen(true)}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                      <ImageIcon className="h-4 w-4 text-[#ff6a00]" /> Select Asset
-                    </button>
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-400">High-res banner image URL. If provided, it overrides the gradient theme.</p>
+                )}
+
+                {/* Desktop & Mobile Background Images */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Desktop Image Banner URL</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={currentSlide.imageUrl}
+                        onChange={(e) => handleUpdateSlide(selectedIndex, { imageUrl: e.target.value })}
+                        placeholder="e.g. /pd-product-images/banners/hero.jpg"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setAssetTarget('desktop'); setIsAssetPickerOpen(true); }}
+                        className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5 text-[#ff6a00]" /> Select
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Mobile Banner Image URL (Optional)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={currentSlide.mobileImageUrl || ''}
+                        onChange={(e) => handleUpdateSlide(selectedIndex, { mobileImageUrl: e.target.value })}
+                        placeholder="e.g. /pd-product-images/banners/hero-mobile.jpg"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#ff6a00] focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setAssetTarget('mobile'); setIsAssetPickerOpen(true); }}
+                        className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5 text-[#ff6a00]" /> Select
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -394,10 +461,16 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
           open={isAssetPickerOpen}
           onClose={() => setIsAssetPickerOpen(false)}
           onSelect={(url) => {
-            if (currentSlide) handleUpdateSlide(selectedIndex, { imageUrl: url });
+            if (currentSlide) {
+              if (assetTarget === 'mobile') {
+                handleUpdateSlide(selectedIndex, { mobileImageUrl: url });
+              } else {
+                handleUpdateSlide(selectedIndex, { imageUrl: url });
+              }
+            }
             setIsAssetPickerOpen(false);
           }}
-          title="Select Carousel Background Image"
+          title={assetTarget === 'mobile' ? 'Select Mobile Banner Image' : 'Select Desktop Banner Image'}
           type="image"
         />
       )}

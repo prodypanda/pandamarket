@@ -75,10 +75,25 @@ interface HeroSlide {
   ctaLabel: string;
   ctaUrl: string;
   imageUrl?: string | null;
+  mobileImageUrl?: string | null;
+  badgeText?: string | null;
+  badgeColor?: string | null;
+  bgPreset?: string | null;
+  bgOpacity?: number | null;
 }
 
 const NAVY = '#0b1e3f';
 const ORANGE = '#ff6a00';
+
+const PRESET_GRADIENTS: Record<string, string> = {
+  navy: 'linear-gradient(120deg, #0b1e3f, #163060)',
+  sunset: 'linear-gradient(120deg, #ff6a00, #ee0979)',
+  emerald: 'linear-gradient(120deg, #059669, #064e3b)',
+  dark: 'linear-gradient(120deg, #0f172a, #1e293b)',
+  gold: 'linear-gradient(120deg, #d97706, #78350f)',
+  violet: 'linear-gradient(120deg, #6d28d9, #4c1d95)',
+  crimson: 'linear-gradient(120deg, #be123c, #881337)',
+};
 
 const ICON_MAP: Record<string, any> = {
   Layers,
@@ -277,6 +292,11 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                 ctaLabel: String(item.ctaLabel || item.cta_label || 'Shop now'),
                 ctaUrl: String(item.ctaUrl || item.cta_url || '/hub/search'),
                 imageUrl: item.imageUrl || item.image_url || null,
+                mobileImageUrl: item.mobileImageUrl || item.mobile_image_url || null,
+                badgeText: item.badgeText || item.badge_text || null,
+                badgeColor: item.badgeColor || item.badge_color || null,
+                bgPreset: item.bgPreset || item.bg_preset || 'navy',
+                bgOpacity: Number(item.bgOpacity ?? item.bg_opacity ?? 40),
               });
             }
           });
@@ -904,17 +924,43 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
             {/* Hero Carousel */}
             {showCarousel && slide && (
-              <div className="relative overflow-hidden rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(120deg, ${NAVY}, #163060)` }}>
+              <div
+                className="relative overflow-hidden rounded-2xl text-white shadow-lg transition-all duration-500"
+                style={{
+                  background: PRESET_GRADIENTS[slide.bgPreset || 'navy'] || PRESET_GRADIENTS.navy,
+                }}
+              >
+                {/* Desktop Background Image Overlay */}
                 {slide.imageUrl && (
-                  <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${slide.imageUrl})` }} />
+                  <div
+                    className="absolute inset-0 hidden sm:block bg-cover bg-center transition-all duration-500"
+                    style={{
+                      backgroundImage: `url(${slide.imageUrl})`,
+                      opacity: (slide.bgOpacity ?? 40) / 100,
+                    }}
+                  />
                 )}
+                {/* Mobile Background Image Overlay (or desktop fallback) */}
+                {(slide.mobileImageUrl || slide.imageUrl) && (
+                  <div
+                    className="absolute inset-0 sm:hidden bg-cover bg-center transition-all duration-500"
+                    style={{
+                      backgroundImage: `url(${slide.mobileImageUrl || slide.imageUrl})`,
+                      opacity: (slide.bgOpacity ?? 40) / 100,
+                    }}
+                  />
+                )}
+
                 <div className="relative flex h-full min-h-[280px] flex-col justify-center p-8">
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider">
-                    <Globe2 className="h-3.5 w-3.5" /> {marketplaceSettings.hub_hero_seller_rail_badge_text || `${marketplaceName} B2B`}
+                  <span
+                    className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider backdrop-blur-md"
+                    style={slide.badgeColor ? { color: slide.badgeColor, borderColor: slide.badgeColor } : undefined}
+                  >
+                    <Globe2 className="h-3.5 w-3.5" /> {slide.badgeText || marketplaceSettings.hub_hero_seller_rail_badge_text || `${marketplaceName} B2B`}
                   </span>
                   <h1 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>
                   {slide.subtitle && <p className="mt-3 max-w-md text-sm font-semibold text-white/75">{slide.subtitle}</p>}
-                  <Link href={slide.ctaUrl} className="mt-6 inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg" style={{ backgroundColor: ORANGE }}>
+                  <Link href={slide.ctaUrl} className="mt-6 inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-black text-white shadow-lg transition-transform hover:scale-105" style={{ backgroundColor: ORANGE }}>
                     {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
