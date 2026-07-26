@@ -222,11 +222,13 @@ export class PaymentService {
         ? settings.payment_flouci_enabled
         : gateway === PaymentGateway.Konnect
           ? settings.payment_konnect_enabled
-          : gateway === PaymentGateway.ManualMandat
-            ? settings.payment_mandat_enabled
-            : gateway === PaymentGateway.Cod
-              ? settings.payment_cod_enabled
-              : false;
+          : gateway === PaymentGateway.PayPal
+            ? settings.payment_paypal_enabled
+            : gateway === PaymentGateway.ManualMandat
+              ? settings.payment_mandat_enabled
+              : gateway === PaymentGateway.Cod
+                ? settings.payment_cod_enabled
+                : false;
 
     if (!gatewayEnabled) {
       throw new PdValidationError('Payment gateway is disabled', { gateway });

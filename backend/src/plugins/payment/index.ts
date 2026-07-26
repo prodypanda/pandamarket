@@ -9,6 +9,7 @@ import { flouciProvider } from './flouci.provider';
 import { konnectProvider } from './konnect.provider';
 import { manualMandatProvider } from './manual-mandat.provider';
 import { codProvider } from './cod.provider';
+import { paypalProvider } from './paypal.provider';
 import { decrypt } from '../../utils/crypto';
 import { PdValidationError, PdErrorCode } from '../../errors';
 
@@ -17,6 +18,7 @@ const providers: Record<PaymentGateway, PaymentProvider> = {
   [PaymentGateway.Konnect]: konnectProvider,
   [PaymentGateway.ManualMandat]: manualMandatProvider,
   [PaymentGateway.Cod]: codProvider,
+  [PaymentGateway.PayPal]: paypalProvider,
 };
 
 export function getPaymentProvider(gateway: PaymentGateway): PaymentProvider {
@@ -48,4 +50,5 @@ export {
   konnectProvider,
   manualMandatProvider,
   codProvider,
+  paypalProvider,
 };

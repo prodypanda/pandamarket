@@ -18,6 +18,7 @@ const initPaymentSchema = z.object({
   gateway: z.enum([
     PaymentGateway.Flouci,
     PaymentGateway.Konnect,
+    PaymentGateway.PayPal,
     PaymentGateway.ManualMandat,
     PaymentGateway.Cod,
   ]),
@@ -242,6 +243,32 @@ router.post(
       rawPayload: req.body,
       sourceIp: req.ip ?? undefined,
       signatureValid,
+    });
+
+    res.status(200).send('OK');
+  }),
+);
+
+// PayPal Webhook / Capture Verification Callback
+router.post(
+  '/webhook/paypal',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { resource } = req.body || {};
+    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
+    const paypalOrderId = resource?.id || req.body.paypal_order_id;
+
+    if (!paypalOrderId || !orderId) {
+      res.status(400).json({ error: { message: 'Missing paypal_order_id or order_id' } });
+      return;
+    }
+
+    await paymentService.processPaymentWebhook({
+      gateway: PaymentGateway.PayPal,
+      gatewayEventId: String(paypalOrderId),
+      orderId: String(orderId),
+      rawPayload: req.body,
+      sourceIp: req.ip ?? undefined,
+      signatureValid: true,
     });
 
     res.status(200).send('OK');

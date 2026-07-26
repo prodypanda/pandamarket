@@ -135,6 +135,7 @@ export default function StoreCheckoutPage() {
   const gateways = [
     { id: 'flouci', name: 'Flouci', icon: CreditCard, desc: 'Paiement sécurisé par carte bancaire ou wallet Flouci.' },
     { id: 'konnect', name: 'Konnect', icon: CreditCard, desc: 'Paiement en ligne via le réseau Konnect.' },
+    { id: 'paypal', name: 'PayPal (International)', icon: CreditCard, desc: 'Paiement international sécurisé via PayPal.' },
     { id: 'manual_mandat', name: 'Mandat Minute', icon: Banknote, desc: 'Payez à la poste et uploadez votre reçu.' },
     { id: 'cod', name: 'Cash on Delivery', icon: Truck, desc: 'Paiement à la livraison.' },
   ];

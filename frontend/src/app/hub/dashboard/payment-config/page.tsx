@@ -39,6 +39,8 @@ export default function PaymentConfigPage() {
   const [flouciAppSecret, setFlouciAppSecret] = useState('');
   const [konnectApiKey, setKonnectApiKey] = useState('');
   const [konnectReceiverWallet, setKonnectReceiverWallet] = useState('');
+  const [paypalClientId, setPaypalClientId] = useState('');
+  const [paypalClientSecret, setPaypalClientSecret] = useState('');
 
   useEffect(() => {
     async function fetchStore() {
@@ -79,6 +81,8 @@ export default function PaymentConfigPage() {
       if (flouciAppSecret) body.flouci_app_secret = flouciAppSecret;
       if (konnectApiKey) body.konnect_api_key = konnectApiKey;
       if (konnectReceiverWallet) body.konnect_receiver_wallet = konnectReceiverWallet;
+      if (paypalClientId) body.paypal_client_id = paypalClientId;
+      if (paypalClientSecret) body.paypal_client_secret = paypalClientSecret;
 
       if (Object.keys(body).length === 0) {
         setError('Please fill in at least one field');
@@ -100,6 +104,8 @@ export default function PaymentConfigPage() {
         setFlouciAppSecret('');
         setKonnectApiKey('');
         setKonnectReceiverWallet('');
+        setPaypalClientId('');
+        setPaypalClientSecret('');
       } else {
         setError(await getErrorMessage(res, 'Failed to save payment configuration'));
       }
@@ -243,6 +249,41 @@ export default function PaymentConfigPage() {
               value={konnectReceiverWallet}
               onChange={(e) => setKonnectReceiverWallet(e.target.value)}
               placeholder="Enter your Konnect wallet ID"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* PayPal Configuration */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-yellow-50 rounded-lg">
+            <CreditCard className="w-5 h-5 text-yellow-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">PayPal (International)</h2>
+            <p className="text-sm text-gray-500">Accept direct global payments via PayPal</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+            <input
+              type="password"
+              value={paypalClientId}
+              onChange={(e) => setPaypalClientId(e.target.value)}
+              placeholder="Enter your PayPal Client ID"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+            <input
+              type="password"
+              value={paypalClientSecret}
+              onChange={(e) => setPaypalClientSecret(e.target.value)}
+              placeholder="Enter your PayPal Client Secret"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
           </div>

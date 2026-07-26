@@ -45,6 +45,7 @@ export default function CheckoutPage() {
   const gateways = [
     { id: 'flouci', name: t('checkout.payment.flouci'), icon: CreditCard, desc: t('checkout.payment.flouci') },
     { id: 'konnect', name: t('checkout.payment.konnect'), icon: CreditCard, desc: t('checkout.payment.konnect') },
+    { id: 'paypal', name: 'PayPal (International)', icon: CreditCard, desc: 'Pay safely with credit card or PayPal account globally' },
     { id: 'manual_mandat', name: t('checkout.payment.mandat'), icon: Banknote, desc: t('checkout.payment.mandatInstructions') },
     { id: 'cod', name: t('checkout.payment.cod'), icon: Truck, desc: t('checkout.payment.codInstructions') },
   ];

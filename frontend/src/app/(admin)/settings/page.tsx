@@ -172,6 +172,11 @@ interface PlatformSettings {
   payment_sandbox_mode: boolean;
   payment_flouci_enabled: boolean;
   payment_konnect_enabled: boolean;
+  payment_paypal_enabled: boolean;
+  payment_paypal_mode: 'sandbox' | 'live';
+  payment_paypal_client_id: string;
+  payment_paypal_client_secret: string;
+  payment_paypal_webhook_id: string;
   payment_mandat_enabled: boolean;
   payment_cod_enabled: boolean;
   payment_vendor_direct_enabled: boolean;
@@ -359,6 +364,11 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   payment_sandbox_mode: true,
   payment_flouci_enabled: true,
   payment_konnect_enabled: true,
+  payment_paypal_enabled: true,
+  payment_paypal_mode: 'sandbox',
+  payment_paypal_client_id: '',
+  payment_paypal_client_secret: '',
+  payment_paypal_webhook_id: '',
   payment_mandat_enabled: true,
   payment_cod_enabled: true,
   payment_vendor_direct_enabled: true,
@@ -484,6 +494,10 @@ const TEXT_SETTING_KEYS = [
   'hub_hero_seller_rail_cta_label',
   'hub_hero_seller_rail_cta_url',
   'hub_hero_seller_rail_badge_text',
+  'payment_paypal_mode',
+  'payment_paypal_client_id',
+  'payment_paypal_client_secret',
+  'payment_paypal_webhook_id',
   'analytics_ga4_measurement_id',
   'analytics_gtm_container_id',
   'analytics_meta_pixel_id',
@@ -565,6 +579,7 @@ const BOOLEAN_SETTING_KEYS = [
   'payment_sandbox_mode',
   'payment_flouci_enabled',
   'payment_konnect_enabled',
+  'payment_paypal_enabled',
   'payment_mandat_enabled',
   'payment_cod_enabled',
   'payment_vendor_direct_enabled',
@@ -696,6 +711,11 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'payment_sandbox_mode',
     'payment_flouci_enabled',
     'payment_konnect_enabled',
+    'payment_paypal_enabled',
+    'payment_paypal_mode',
+    'payment_paypal_client_id',
+    'payment_paypal_client_secret',
+    'payment_paypal_webhook_id',
     'payment_mandat_enabled',
     'payment_cod_enabled',
     'payment_vendor_direct_enabled',
@@ -2063,6 +2083,7 @@ export default function AdminSettingsPage() {
           {[
             { key: 'payment_flouci_enabled' as const, label: 'Flouci', description: 'Allow checkout payments through Flouci.' },
             { key: 'payment_konnect_enabled' as const, label: 'Konnect', description: 'Allow checkout payments through Konnect.' },
+            { key: 'payment_paypal_enabled' as const, label: 'PayPal (International)', description: 'Allow global checkout payments via PayPal.' },
             { key: 'payment_mandat_enabled' as const, label: 'Mandat Minute', description: 'Allow manual Mandat Minute payment instructions.' },
             { key: 'payment_cod_enabled' as const, label: 'Cash on Delivery', description: 'Allow COD orders when supported.' },
             { key: 'payment_sandbox_mode' as const, label: 'Sandbox Mode', description: 'Mark payment configuration as test/preproduction mode.' },
@@ -2080,6 +2101,31 @@ export default function AdminSettingsPage() {
               <option value="vendor_direct_only">Vendor direct only</option>
             </select>
           </div>
+        </div>
+      </section>
+
+      {/* PayPal Configuration Details */}
+      <section className={`${activeTab === 'finance' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<CreditCard className="h-5 w-5 text-blue-600" />}
+          title="PayPal Configuration"
+          description="Configure platform-wide API credentials for PayPal REST API v2."
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">PayPal Environment Mode</label>
+            <select
+              value={settings.payment_paypal_mode}
+              onChange={(e) => updateSetting('payment_paypal_mode', e.target.value as 'sandbox' | 'live')}
+              className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+            >
+              <option value="sandbox">Sandbox (Testing / Preproduction)</option>
+              <option value="live">Live (Production)</option>
+            </select>
+          </div>
+          {renderTextInput('payment_paypal_client_id', 'Client ID', 'e.g. A21AAH...')}
+          {renderTextInput('payment_paypal_client_secret', 'Client Secret', 'e.g. E...')}
+          {renderTextInput('payment_paypal_webhook_id', 'Webhook ID (Optional)', 'e.g. 8WH...')}
         </div>
       </section>
 

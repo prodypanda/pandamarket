@@ -134,6 +134,12 @@ export const config = {
     apiKey: optional('PD_KONNECT_API_KEY', 'sandbox_key')!,
     receiverWallet: optional('PD_KONNECT_RECEIVER_WALLET', 'sandbox_wallet')!,
   },
+  paypal: {
+    clientId: optional('PD_PAYPAL_CLIENT_ID', '')!,
+    clientSecret: optional('PD_PAYPAL_CLIENT_SECRET', '')!,
+    mode: (optional('PD_PAYPAL_MODE', 'sandbox') || 'sandbox') as 'sandbox' | 'live',
+    webhookId: optional('PD_PAYPAL_WEBHOOK_ID', '')!,
+  },
 
   // AI
   gemini: {

@@ -88,6 +88,7 @@ export enum PaymentGateway {
   Konnect = 'konnect',
   ManualMandat = 'manual_mandat',
   Cod = 'cod',
+  PayPal = 'paypal',
 }
 
 export enum PaymentStatus {
