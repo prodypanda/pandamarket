@@ -494,7 +494,6 @@ const TEXT_SETTING_KEYS = [
   'hub_hero_seller_rail_cta_label',
   'hub_hero_seller_rail_cta_url',
   'hub_hero_seller_rail_badge_text',
-  'payment_paypal_mode',
   'payment_paypal_client_id',
   'payment_paypal_client_secret',
   'payment_paypal_webhook_id',
@@ -822,6 +821,7 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
 
   payload.marketplace_theme = payload.marketplace_theme === 'aliexpress2' ? 'aliexpress2' : payload.marketplace_theme === 'aliexpress' ? 'aliexpress' : 'panda';
   payload.marketplace_default_locale = payload.marketplace_default_locale === 'ar' ? 'ar' : payload.marketplace_default_locale === 'en' ? 'en' : 'fr';
+  payload.payment_paypal_mode = payload.payment_paypal_mode === 'live' ? 'live' : 'sandbox';
   payload.marketplace_primary_color = /^#[0-9A-Fa-f]{6}$/.test(payload.marketplace_primary_color) ? payload.marketplace_primary_color : DEFAULT_SETTINGS.marketplace_primary_color;
   payload.marketplace_secondary_color = /^#[0-9A-Fa-f]{6}$/.test(payload.marketplace_secondary_color) ? payload.marketplace_secondary_color : DEFAULT_SETTINGS.marketplace_secondary_color;
   payload.catalog_default_sort = payload.catalog_default_sort === 'oldest'
