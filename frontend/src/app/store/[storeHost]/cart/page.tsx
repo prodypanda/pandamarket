@@ -229,6 +229,7 @@ export default function StoreCartPage() {
                     <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        aria-label="Diminuer la quantité"
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-600" />
@@ -238,6 +239,7 @@ export default function StoreCartPage() {
                       </span>
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        aria-label="Augmenter la quantité"
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5 text-gray-600" />
@@ -254,6 +256,7 @@ export default function StoreCartPage() {
                     {/* Remove */}
                     <button
                       onClick={() => removeFromCart(item.id)}
+                      aria-label="Supprimer l'article"
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />

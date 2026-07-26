@@ -165,6 +165,7 @@ export default function CartPage() {
                         <div className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200' : 'border-gray-300'}`}>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            aria-label="Diminuer la quantité"
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
                             <Minus className="w-3.5 h-3.5 text-gray-600" />
@@ -174,6 +175,7 @@ export default function CartPage() {
                           </span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            aria-label="Augmenter la quantité"
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
                             <Plus className="w-3.5 h-3.5 text-gray-600" />
@@ -190,6 +192,7 @@ export default function CartPage() {
                         {/* Remove */}
                         <button
                           onClick={() => removeFromCart(item.id)}
+                          aria-label="Supprimer l'article"
                           className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
