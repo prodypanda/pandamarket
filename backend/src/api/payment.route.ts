@@ -49,10 +49,10 @@ function verifyFlouciSignature(req: Request): boolean {
     .update(payload)
     .digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const supplied = Buffer.from(signature, 'hex');
+    const wanted = Buffer.from(expected, 'hex');
+    if (supplied.length !== wanted.length) return false;
+    return crypto.timingSafeEqual(supplied, wanted);
   } catch {
     return false;
   }
@@ -69,15 +69,12 @@ function verifyKonnectSignature(req: Request): boolean {
     return false;
   }
   const payload = JSON.stringify(req.body);
-  const expected = crypto
-    .createHmac('sha256', config.konnect.apiKey)
-    .update(payload)
-    .digest('hex');
+  const expected = crypto.createHmac('sha256', config.konnect.apiKey).update(payload).digest('hex');
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
+    const supplied = Buffer.from(signature, 'hex');
+    const wanted = Buffer.from(expected, 'hex');
+    if (supplied.length !== wanted.length) return false;
+    return crypto.timingSafeEqual(supplied, wanted);
   } catch {
     return false;
   }
@@ -136,7 +133,10 @@ router.post(
       return;
     }
 
-    const belongsToStore = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    const belongsToStore = await orderService.hasStoreItems(
+      order_id,
+      req.storefrontCustomer!.store_id,
+    );
     if (!belongsToStore) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
@@ -254,7 +254,8 @@ router.post(
   '/webhook/paypal',
   asyncHandler(async (req: Request, res: Response) => {
     const { resource } = req.body || {};
-    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
+    const orderId =
+      resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
     const paypalOrderId = resource?.id || req.body.paypal_order_id;
 
     if (!paypalOrderId || !orderId) {
