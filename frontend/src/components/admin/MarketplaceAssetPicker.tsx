@@ -303,7 +303,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
               Drag & drop picture anywhere onto popup or select from gallery.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-700">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-700">
             <X className="h-5 w-5" />
           </button>
         </div>
