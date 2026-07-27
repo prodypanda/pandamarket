@@ -12,12 +12,7 @@ import { z } from 'zod';
 import { PdValidationError } from '../errors';
 import { resolveDataPath } from '../utils/data-dir';
 import { pdId } from '../utils/crypto';
-import {
-  asyncHandler,
-  requireAuth,
-  requireAdmin,
-  validate,
-} from '../middlewares';
+import { asyncHandler, requireAuth, requireAdmin, validate } from '../middlewares';
 import { invalidateMaintenanceCache } from '../middlewares/maintenance.middleware';
 import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
@@ -66,80 +61,356 @@ const router = Router();
 // All admin routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
 
-const adsReviewSchema = z.object({
-  decision: z.enum(['approved', 'rejected', 'changes_requested']),
-  reason: z.string().trim().max(2000).optional(),
-}).refine((value) => value.decision === 'approved' || Boolean(value.reason), { message: 'A reason is required when an ad is not approved', path: ['reason'] });
-const adsConfigSchema=z.object({ads_enabled:z.boolean().optional(),ads_moderation_required:z.boolean().optional(),ads_min_refill_tnd:z.number().min(1).max(100000).optional(),ads_max_refill_tnd:z.number().min(1).max(1000000).optional(),ads_min_daily_budget_tnd:z.number().min(.001).max(100000).optional(),ads_max_campaign_days:z.number().int().min(1).max(365).optional(),ads_frequency_cap_daily:z.number().int().min(1).max(100).optional(),ads_click_attribution_days:z.number().int().min(1).max(90).optional(),ads_view_attribution_days:z.number().int().min(1).max(30).optional(),ads_sponsored_products_enabled:z.boolean().optional(),ads_sponsored_brands_enabled:z.boolean().optional(),ads_sponsored_content_enabled:z.boolean().optional(),ads_prohibited_terms:z.string().trim().max(5000).optional(),ads_creative_image_required:z.boolean().optional(),ads_max_creative_description_length:z.number().int().min(50).max(5000).optional()}).refine(v=>Object.keys(v).length>0).refine(v=>v.ads_min_refill_tnd===undefined||v.ads_max_refill_tnd===undefined||v.ads_max_refill_tnd>=v.ads_min_refill_tnd,{message:'Maximum refill must be at least the minimum refill',path:['ads_max_refill_tnd']});
-const adsAccountStatusSchema=z.object({status:z.enum(['active','suspended'])});
-const adsPlacementSchema=z.object({enabled:z.boolean().optional(),default_price:z.number().min(0).max(100000).optional(),default_pricing_model:z.enum(['cpc','cpm','fixed_daily']).optional()}).refine(v=>Object.keys(v).length>0);
-const adsBulkPricingSchema=z.object({pricing_model:z.enum(['cpc','cpm','fixed_daily']),default_price:z.number().positive().max(100000),placement_ids:z.array(z.string().min(1)).max(100).optional()});
-const adsCouponSchema=z.object({code:z.string().trim().min(4).max(40),amount:z.number().positive().max(1000000),max_redemptions:z.number().int().min(1).max(100000),expires_at:z.string().datetime().optional(),enabled:z.boolean().optional()});
-const adsCreditSchema=z.object({store_id:z.string().min(8).max(100),amount:z.number().positive().max(1000000),reason:z.string().trim().min(3).max(500),idempotency_key:z.string().min(8).max(160)});
-const adsRefundSchema=z.object({reason:z.string().trim().min(3).max(500)});
-const adsManualRefillListSchema=z.object({status:z.enum(['pending_review','captured','rejected']).optional().default('pending_review')});
-const adsManualRefillReviewSchema=z.object({decision:z.enum(['approved','rejected']),reason:z.string().trim().max(1000).optional()}).refine(value=>value.decision==='approved'||Boolean(value.reason),{message:'A rejection reason is required',path:['reason']});
+const adsReviewSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected', 'changes_requested']),
+    reason: z.string().trim().max(2000).optional(),
+  })
+  .refine((value) => value.decision === 'approved' || Boolean(value.reason), {
+    message: 'A reason is required when an ad is not approved',
+    path: ['reason'],
+  });
+const adsConfigSchema = z
+  .object({
+    ads_enabled: z.boolean().optional(),
+    ads_moderation_required: z.boolean().optional(),
+    ads_min_refill_tnd: z.number().min(1).max(100000).optional(),
+    ads_max_refill_tnd: z.number().min(1).max(1000000).optional(),
+    ads_min_daily_budget_tnd: z.number().min(0.001).max(100000).optional(),
+    ads_max_campaign_days: z.number().int().min(1).max(365).optional(),
+    ads_frequency_cap_daily: z.number().int().min(1).max(100).optional(),
+    ads_click_attribution_days: z.number().int().min(1).max(90).optional(),
+    ads_view_attribution_days: z.number().int().min(1).max(30).optional(),
+    ads_sponsored_products_enabled: z.boolean().optional(),
+    ads_sponsored_brands_enabled: z.boolean().optional(),
+    ads_sponsored_content_enabled: z.boolean().optional(),
+    ads_prohibited_terms: z.string().trim().max(5000).optional(),
+    ads_creative_image_required: z.boolean().optional(),
+    ads_max_creative_description_length: z.number().int().min(50).max(5000).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0)
+  .refine(
+    (v) =>
+      v.ads_min_refill_tnd === undefined ||
+      v.ads_max_refill_tnd === undefined ||
+      v.ads_max_refill_tnd >= v.ads_min_refill_tnd,
+    { message: 'Maximum refill must be at least the minimum refill', path: ['ads_max_refill_tnd'] },
+  );
+const adsAccountStatusSchema = z.object({ status: z.enum(['active', 'suspended']) });
+const adsPlacementSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    default_price: z.number().min(0).max(100000).optional(),
+    default_pricing_model: z.enum(['cpc', 'cpm', 'fixed_daily']).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0);
+const adsBulkPricingSchema = z.object({
+  pricing_model: z.enum(['cpc', 'cpm', 'fixed_daily']),
+  default_price: z.number().positive().max(100000),
+  placement_ids: z.array(z.string().min(1)).max(100).optional(),
+});
+const adsCouponSchema = z.object({
+  code: z.string().trim().min(4).max(40),
+  amount: z.number().positive().max(1000000),
+  max_redemptions: z.number().int().min(1).max(100000),
+  expires_at: z.string().datetime().optional(),
+  enabled: z.boolean().optional(),
+});
+const adsCreditSchema = z.object({
+  store_id: z.string().min(8).max(100),
+  amount: z.number().positive().max(1000000),
+  reason: z.string().trim().min(3).max(500),
+  idempotency_key: z.string().min(8).max(160),
+});
+const adsRefundSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+const adsManualRefillListSchema = z.object({
+  status: z.enum(['pending_review', 'captured', 'rejected']).optional().default('pending_review'),
+});
+const adsManualRefillReviewSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected']),
+    reason: z.string().trim().max(1000).optional(),
+  })
+  .refine((value) => value.decision === 'approved' || Boolean(value.reason), {
+    message: 'A rejection reason is required',
+    path: ['reason'],
+  });
 const adsAdjustmentSchema = z.object({
   store_id: z.string().min(8).max(100),
-  amount: z.number().finite().refine((value) => value !== 0),
+  amount: z
+    .number()
+    .finite()
+    .refine((value) => value !== 0),
   reason: z.string().trim().min(3).max(500),
   idempotency_key: z.string().trim().min(8).max(160),
 });
 
-router.get('/ads', asyncHandler(async (req: Request, res: Response) => {
-  res.status(200).json(await adsService.adminOverview({
-    from: req.query.from as string,
-    to: req.query.to as string,
-    granularity: req.query.granularity as any,
-  }));
-}));
-router.get('/ads/config',asyncHandler(async(_req:Request,res:Response)=>{const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
-router.patch('/ads/config',validate(adsConfigSchema),asyncHandler(async(req:Request,res:Response)=>{await platformConfigService.updateSettings(req.body,req.user!.id);const s=await platformConfigService.getSettings();res.json({config:{ads_enabled:s.ads_enabled,ads_moderation_required:s.ads_moderation_required,ads_min_refill_tnd:s.ads_min_refill_tnd,ads_max_refill_tnd:s.ads_max_refill_tnd,ads_min_daily_budget_tnd:s.ads_min_daily_budget_tnd,ads_max_campaign_days:s.ads_max_campaign_days,ads_frequency_cap_daily:s.ads_frequency_cap_daily,ads_click_attribution_days:s.ads_click_attribution_days,ads_view_attribution_days:s.ads_view_attribution_days,ads_sponsored_products_enabled:s.ads_sponsored_products_enabled,ads_sponsored_brands_enabled:s.ads_sponsored_brands_enabled,ads_sponsored_content_enabled:s.ads_sponsored_content_enabled,ads_prohibited_terms:s.ads_prohibited_terms,ads_creative_image_required:s.ads_creative_image_required,ads_max_creative_description_length:s.ads_max_creative_description_length}});}));
-router.post('/ads/campaigns/:id/review', validate(adsReviewSchema), asyncHandler(async (req: Request, res: Response) => {
-  const campaign = await adsService.reviewCampaign(req.params.id, req.user!.id, req.body.decision, req.body.reason);
-  res.status(200).json({ campaign });
-}));
-router.post('/ads/campaigns/:id/suspend', asyncHandler(async (req: Request, res: Response) => {
-  const campaign = await adsService.adminSuspendCampaign(req.params.id, req.user!.id, req.body?.reason);
-  res.status(200).json({ campaign });
-}));
-router.post('/ads/accounts/adjust', validate(adsAdjustmentSchema), asyncHandler(async (req: Request, res: Response) => {
-  const result = await adsService.adjustAccount(req.body.store_id, req.body.amount, req.user!.id, req.body.reason, req.body.idempotency_key);
-  res.status(200).json(result);
-}));
-router.get('/ads/coupons',asyncHandler(async(_req:Request,res:Response)=>res.json({coupons:await adsService.listCoupons()})));
-router.post('/ads/coupons',validate(adsCouponSchema),asyncHandler(async(req:Request,res:Response)=>res.status(201).json({coupon:await adsService.createCoupon({code:req.body.code,amount:req.body.amount,maxRedemptions:req.body.max_redemptions,expiresAt:req.body.expires_at,enabled:req.body.enabled},req.user!.id)})));
-router.post('/ads/credits',validate(adsCreditSchema),asyncHandler(async(req:Request,res:Response)=>res.status(201).json({transaction:await adsService.grantPromotionalCredit(req.body.store_id,req.body.amount,req.user!.id,req.body.reason,req.body.idempotency_key)})));
-router.post('/ads/transactions/:id/refund',validate(adsRefundSchema),asyncHandler(async(req:Request,res:Response)=>res.json({transaction:await adsService.refundTransaction(req.params.id,req.user!.id,req.body.reason)})));
-router.patch('/ads/accounts/:storeId/status',validate(adsAccountStatusSchema),asyncHandler(async(req:Request,res:Response)=>res.json({account:await adsService.setAccountStatus(req.params.storeId,req.body.status)})));
-router.get('/ads/placements',asyncHandler(async(_req:Request,res:Response)=>res.json({placements:await adsService.listAdminPlacements()})));
-router.get('/ads/transactions',asyncHandler(async(req:Request,res:Response)=>res.json({transactions:await adsService.listAdminTransactions(Number(req.query.limit)||100)})));
-router.get('/ads/manual-refills',validate(adsManualRefillListSchema,'query'),asyncHandler(async(req:Request,res:Response)=>res.json({refills:await adsRefillService.listManualForAdmin(String(req.query.status||'pending_review'))})));
-router.post('/ads/manual-refills/:id/review',validate(adsManualRefillReviewSchema),asyncHandler(async(req:Request,res:Response)=>res.json({refill:await adsRefillService.reviewManual(req.params.id,req.user!.id,req.body.decision,req.body.reason)})));
-router.patch('/ads/placements/bulk-pricing',validate(adsBulkPricingSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placements:await adsService.bulkUpdatePlacementPricing(req.body.pricing_model,req.body.default_price,req.body.placement_ids)})));
-router.patch('/ads/placements/:id',validate(adsPlacementSchema),asyncHandler(async(req:Request,res:Response)=>res.json({placement:await adsService.updatePlacement(req.params.id,{enabled:req.body.enabled,defaultPrice:req.body.default_price,defaultPricingModel:req.body.default_pricing_model})})));
+router.get(
+  '/ads',
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(
+      await adsService.adminOverview({
+        from: req.query.from as string,
+        to: req.query.to as string,
+        granularity: req.query.granularity as any,
+      }),
+    );
+  }),
+);
+router.get(
+  '/ads/config',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const s = await platformConfigService.getSettings();
+    res.json({
+      config: {
+        ads_enabled: s.ads_enabled,
+        ads_moderation_required: s.ads_moderation_required,
+        ads_min_refill_tnd: s.ads_min_refill_tnd,
+        ads_max_refill_tnd: s.ads_max_refill_tnd,
+        ads_min_daily_budget_tnd: s.ads_min_daily_budget_tnd,
+        ads_max_campaign_days: s.ads_max_campaign_days,
+        ads_frequency_cap_daily: s.ads_frequency_cap_daily,
+        ads_click_attribution_days: s.ads_click_attribution_days,
+        ads_view_attribution_days: s.ads_view_attribution_days,
+        ads_sponsored_products_enabled: s.ads_sponsored_products_enabled,
+        ads_sponsored_brands_enabled: s.ads_sponsored_brands_enabled,
+        ads_sponsored_content_enabled: s.ads_sponsored_content_enabled,
+        ads_prohibited_terms: s.ads_prohibited_terms,
+        ads_creative_image_required: s.ads_creative_image_required,
+        ads_max_creative_description_length: s.ads_max_creative_description_length,
+      },
+    });
+  }),
+);
+router.patch(
+  '/ads/config',
+  validate(adsConfigSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await platformConfigService.updateSettings(req.body, req.user!.id);
+    const s = await platformConfigService.getSettings();
+    res.json({
+      config: {
+        ads_enabled: s.ads_enabled,
+        ads_moderation_required: s.ads_moderation_required,
+        ads_min_refill_tnd: s.ads_min_refill_tnd,
+        ads_max_refill_tnd: s.ads_max_refill_tnd,
+        ads_min_daily_budget_tnd: s.ads_min_daily_budget_tnd,
+        ads_max_campaign_days: s.ads_max_campaign_days,
+        ads_frequency_cap_daily: s.ads_frequency_cap_daily,
+        ads_click_attribution_days: s.ads_click_attribution_days,
+        ads_view_attribution_days: s.ads_view_attribution_days,
+        ads_sponsored_products_enabled: s.ads_sponsored_products_enabled,
+        ads_sponsored_brands_enabled: s.ads_sponsored_brands_enabled,
+        ads_sponsored_content_enabled: s.ads_sponsored_content_enabled,
+        ads_prohibited_terms: s.ads_prohibited_terms,
+        ads_creative_image_required: s.ads_creative_image_required,
+        ads_max_creative_description_length: s.ads_max_creative_description_length,
+      },
+    });
+  }),
+);
+router.post(
+  '/ads/campaigns/:id/review',
+  validate(adsReviewSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const campaign = await adsService.reviewCampaign(
+      req.params.id,
+      req.user!.id,
+      req.body.decision,
+      req.body.reason,
+    );
+    res.status(200).json({ campaign });
+  }),
+);
+router.post(
+  '/ads/campaigns/:id/suspend',
+  asyncHandler(async (req: Request, res: Response) => {
+    const campaign = await adsService.adminSuspendCampaign(
+      req.params.id,
+      req.user!.id,
+      req.body?.reason,
+    );
+    res.status(200).json({ campaign });
+  }),
+);
+router.post(
+  '/ads/accounts/adjust',
+  validate(adsAdjustmentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await adsService.adjustAccount(
+      req.body.store_id,
+      req.body.amount,
+      req.user!.id,
+      req.body.reason,
+      req.body.idempotency_key,
+    );
+    res.status(200).json(result);
+  }),
+);
+router.get(
+  '/ads/coupons',
+  asyncHandler(async (_req: Request, res: Response) =>
+    res.json({ coupons: await adsService.listCoupons() }),
+  ),
+);
+router.post(
+  '/ads/coupons',
+  validate(adsCouponSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res
+      .status(201)
+      .json({
+        coupon: await adsService.createCoupon(
+          {
+            code: req.body.code,
+            amount: req.body.amount,
+            maxRedemptions: req.body.max_redemptions,
+            expiresAt: req.body.expires_at,
+            enabled: req.body.enabled,
+          },
+          req.user!.id,
+        ),
+      }),
+  ),
+);
+router.post(
+  '/ads/credits',
+  validate(adsCreditSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res
+      .status(201)
+      .json({
+        transaction: await adsService.grantPromotionalCredit(
+          req.body.store_id,
+          req.body.amount,
+          req.user!.id,
+          req.body.reason,
+          req.body.idempotency_key,
+        ),
+      }),
+  ),
+);
+router.post(
+  '/ads/transactions/:id/refund',
+  validate(adsRefundSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      transaction: await adsService.refundTransaction(req.params.id, req.user!.id, req.body.reason),
+    }),
+  ),
+);
+router.patch(
+  '/ads/accounts/:storeId/status',
+  validate(adsAccountStatusSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({ account: await adsService.setAccountStatus(req.params.storeId, req.body.status) }),
+  ),
+);
+router.get(
+  '/ads/placements',
+  asyncHandler(async (_req: Request, res: Response) =>
+    res.json({ placements: await adsService.listAdminPlacements() }),
+  ),
+);
+router.get(
+  '/ads/transactions',
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      transactions: await adsService.listAdminTransactions(Number(req.query.limit) || 100),
+    }),
+  ),
+);
+router.get(
+  '/ads/manual-refills',
+  validate(adsManualRefillListSchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      refills: await adsRefillService.listManualForAdmin(
+        String(req.query.status || 'pending_review'),
+      ),
+    }),
+  ),
+);
+router.post(
+  '/ads/manual-refills/:id/review',
+  validate(adsManualRefillReviewSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      refill: await adsRefillService.reviewManual(
+        req.params.id,
+        req.user!.id,
+        req.body.decision,
+        req.body.reason,
+      ),
+    }),
+  ),
+);
+router.patch(
+  '/ads/placements/bulk-pricing',
+  validate(adsBulkPricingSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      placements: await adsService.bulkUpdatePlacementPricing(
+        req.body.pricing_model,
+        req.body.default_price,
+        req.body.placement_ids,
+      ),
+    }),
+  ),
+);
+router.patch(
+  '/ads/placements/:id',
+  validate(adsPlacementSchema),
+  asyncHandler(async (req: Request, res: Response) =>
+    res.json({
+      placement: await adsService.updatePlacement(req.params.id, {
+        enabled: req.body.enabled,
+        defaultPrice: req.body.default_price,
+        defaultPricingModel: req.body.default_pricing_model,
+      }),
+    }),
+  ),
+);
 
-const blockIpSchema = z.object({ ip_hash: z.string().min(1).max(128), reason: z.string().trim().min(3).max(1000) });
-router.get('/ads/fraud/blocked-ips', asyncHandler(async (_req: Request, res: Response) => {
-  const result = await query('SELECT ip_hash, reason, blocked_at FROM pd_ads_blocked_ip ORDER BY blocked_at DESC LIMIT 100');
-  res.json({ blocked_ips: result.rows });
-}));
-router.post('/ads/fraud/block-ip', validate(blockIpSchema), asyncHandler(async (req: Request, res: Response) => {
-  const result = await query(
-    `INSERT INTO pd_ads_blocked_ip (ip_hash, reason) VALUES ($1, $2)
+const blockIpSchema = z.object({
+  ip_hash: z.string().min(1).max(128),
+  reason: z.string().trim().min(3).max(1000),
+});
+router.get(
+  '/ads/fraud/blocked-ips',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const result = await query(
+      'SELECT ip_hash, reason, blocked_at FROM pd_ads_blocked_ip ORDER BY blocked_at DESC LIMIT 100',
+    );
+    res.json({ blocked_ips: result.rows });
+  }),
+);
+router.post(
+  '/ads/fraud/block-ip',
+  validate(blockIpSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await query(
+      `INSERT INTO pd_ads_blocked_ip (ip_hash, reason) VALUES ($1, $2)
      ON CONFLICT (ip_hash) DO UPDATE SET reason = EXCLUDED.reason, blocked_at = NOW() RETURNING *`,
-    [req.body.ip_hash, req.body.reason]
-  );
-  res.status(201).json({ blocked: result.rows[0] });
-}));
-router.delete('/ads/fraud/blocked-ips/:ipHash', asyncHandler(async (req: Request, res: Response) => {
-  const result = await query('DELETE FROM pd_ads_blocked_ip WHERE ip_hash = $1 RETURNING ip_hash', [req.params.ipHash]);
-  if (!result.rows[0]) {
-    res.status(404).json({ error: { message: 'Blocked IP not found' } });
-    return;
-  }
-  res.json({ unblocked: req.params.ipHash });
-}));
+      [req.body.ip_hash, req.body.reason],
+    );
+    res.status(201).json({ blocked: result.rows[0] });
+  }),
+);
+router.delete(
+  '/ads/fraud/blocked-ips/:ipHash',
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await query(
+      'DELETE FROM pd_ads_blocked_ip WHERE ip_hash = $1 RETURNING ip_hash',
+      [req.params.ipHash],
+    );
+    if (!result.rows[0]) {
+      res.status(404).json({ error: { message: 'Blocked IP not found' } });
+      return;
+    }
+    res.json({ unblocked: req.params.ipHash });
+  }),
+);
 
 const userSecurityActivityParamsSchema = z.object({
   id: z.string().min(8).max(100),
@@ -175,7 +446,11 @@ router.get(
   '/assets',
   validate(assetListQuerySchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const queryParams = req.query as unknown as { type?: 'image' | 'document'; folder?: string; limit: number };
+    const queryParams = req.query as unknown as {
+      type?: 'image' | 'document';
+      folder?: string;
+      limit: number;
+    };
     const assets = await fileAssetService.listAssets({
       scope: 'platform',
       type: queryParams.type,
@@ -240,10 +515,12 @@ router.get(
   '/marketplace-categories',
   asyncHandler(async (req: Request, res: Response) => {
     const isTree = req.query.tree === 'true';
-    const categories = (await categoryService.listMarketplaceCategories({ tree: isTree })).map((category) => ({
-      ...category,
-      product_count: parseInt(category.product_count || '0', 10),
-    }));
+    const categories = (await categoryService.listMarketplaceCategories({ tree: isTree })).map(
+      (category) => ({
+        ...category,
+        product_count: parseInt(category.product_count || '0', 10),
+      }),
+    );
     res.status(200).json({ data: categories });
   }),
 );
@@ -315,7 +592,11 @@ router.get(
   '/verifications/pending',
   validate(kycStatusSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: VerificationStatus; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: VerificationStatus;
+      page: number;
+      limit: number;
+    };
     const result = await kycService.listByStatus(status, { page, limit });
     res.status(200).json(result);
   }),
@@ -363,7 +644,11 @@ router.get(
   '/mandats/pending',
   validate(mandatListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: MandatStatus; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: MandatStatus;
+      page: number;
+      limit: number;
+    };
     const result = await mandatService.listByStatus(status, { page, limit });
     res.status(200).json(result);
   }),
@@ -397,7 +682,9 @@ router.put(
 // =====================================================
 
 const reportListSchema = z.object({
-  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']).optional(),
+  status: z
+    .enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed'])
+    .optional(),
   target_type: z.enum(['seller', 'buyer']).optional(),
   source: z.enum(['buyer', 'admin']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
@@ -411,16 +698,17 @@ router.get(
   '/reports',
   validate(reportListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, target_type, source, priority, search, store_id, page, limit } = req.query as unknown as {
-      status?: ReportStatus;
-      target_type?: ReportTargetType;
-      source?: ReportSource;
-      priority?: ReportPriority;
-      search?: string;
-      store_id?: string;
-      page: number;
-      limit: number;
-    };
+    const { status, target_type, source, priority, search, store_id, page, limit } =
+      req.query as unknown as {
+        status?: ReportStatus;
+        target_type?: ReportTargetType;
+        source?: ReportSource;
+        priority?: ReportPriority;
+        search?: string;
+        store_id?: string;
+        page: number;
+        limit: number;
+      };
     const result = await reportService.list({
       status,
       targetType: target_type,
@@ -445,7 +733,11 @@ router.get(
   '/reports/targets',
   validate(reportTargetListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, search, limit } = req.query as unknown as { type: ReportTargetType; search?: string; limit: number };
+    const { type, search, limit } = req.query as unknown as {
+      type: ReportTargetType;
+      search?: string;
+      limit: number;
+    };
     const data = await reportService.listTargets(type, search, limit);
     res.status(200).json({ data });
   }),
@@ -485,19 +777,33 @@ router.post(
 );
 
 const updateReportSchema = z.object({
-  status: z.enum(['open', 'investigating', 'awaiting_buyer', 'awaiting_seller', 'resolved', 'dismissed']),
+  status: z.enum([
+    'open',
+    'investigating',
+    'awaiting_buyer',
+    'awaiting_seller',
+    'resolved',
+    'dismissed',
+  ]),
   admin_notes: z.string().max(2000).optional(),
 });
 
-const reportAttachmentInputSchema = z.object({
-  file_url: z.string().url().optional(),
-  file_key: z.string().min(1).max(1024).optional(),
-  file_name: z.string().min(1).max(255),
-  content_type: z.string().min(1).max(120),
-  file_size: z.number().int().min(0).max(20 * 1024 * 1024).optional(),
-}).refine((value) => value.file_url || value.file_key, {
-  message: 'Either file_url or file_key is required',
-});
+const reportAttachmentInputSchema = z
+  .object({
+    file_url: z.string().url().optional(),
+    file_key: z.string().min(1).max(1024).optional(),
+    file_name: z.string().min(1).max(255),
+    content_type: z.string().min(1).max(120),
+    file_size: z
+      .number()
+      .int()
+      .min(0)
+      .max(20 * 1024 * 1024)
+      .optional(),
+  })
+  .refine((value) => value.file_url || value.file_key, {
+    message: 'Either file_url or file_key is required',
+  });
 
 const createReportMessageSchema = z.object({
   visibility: z.enum(['buyer_admin', 'seller_admin', 'all_parties', 'admin_internal']),
@@ -561,7 +867,10 @@ router.put(
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
     }
-    logger.warn({ buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer');
+    logger.warn(
+      { buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended buyer',
+    );
     res.status(200).json({ success: true, user: rows[0] });
   }),
 );
@@ -590,7 +899,10 @@ router.put(
 // =====================================================
 
 const productListSchema = z.object({
-  status: z.enum(['pending_approval', 'published', 'rejected']).optional().default('pending_approval'),
+  status: z
+    .enum(['pending_approval', 'published', 'rejected'])
+    .optional()
+    .default('pending_approval'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -599,7 +911,11 @@ router.get(
   '/products/pending',
   validate(productListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query as unknown as { status: string; page: number; limit: number };
+    const { status, page, limit } = req.query as unknown as {
+      status: string;
+      page: number;
+      limit: number;
+    };
     const offset = (page - 1) * limit;
     const { rows } = await query<{
       id: string;
@@ -622,7 +938,9 @@ router.get(
       [status],
     );
     const total = parseInt(countRows[0].count, 10);
-    res.status(200).json({ data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } });
+    res
+      .status(200)
+      .json({ data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } });
   }),
 );
 
@@ -733,7 +1051,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
     await authService.logout(rows[0].id);
-    logger.warn({ owner_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor account');
+    logger.warn(
+      { owner_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended vendor account',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -751,7 +1072,10 @@ router.put(
       [req.params.id, 'vendor'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Vendor account not found');
-    logger.info({ owner_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated vendor account');
+    logger.info(
+      { owner_id: rows[0].id, admin_id: req.user!.id },
+      'Admin reactivated vendor account',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -809,7 +1133,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
     await authService.logout(rows[0].id);
-    logger.warn({ buyer_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended buyer account');
+    logger.warn(
+      { buyer_id: rows[0].id, admin_id: req.user!.id, reason: req.body.reason },
+      'Admin suspended buyer account',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -827,7 +1154,10 @@ router.put(
       [req.params.id, 'customer'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
-    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id }, 'Admin reactivated buyer account');
+    logger.info(
+      { buyer_id: rows[0].id, admin_id: req.user!.id },
+      'Admin reactivated buyer account',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -860,7 +1190,10 @@ router.put(
       [req.params.id, req.body.email_verified, 'customer'],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer account not found');
-    logger.info({ buyer_id: rows[0].id, admin_id: req.user!.id, email_verified: rows[0].email_verified }, 'Admin updated buyer email verification');
+    logger.info(
+      { buyer_id: rows[0].id, admin_id: req.user!.id, email_verified: rows[0].email_verified },
+      'Admin updated buyer email verification',
+    );
     res.status(200).json({ success: true, buyer: rows[0] });
   }),
 );
@@ -869,7 +1202,16 @@ router.get(
   '/vendors',
   validate(vendorListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, search, owner_id, status, verified_only, seller_type, pending_seller_type_request } = req.query as unknown as {
+    const {
+      page,
+      limit,
+      search,
+      owner_id,
+      status,
+      verified_only,
+      seller_type,
+      pending_seller_type_request,
+    } = req.query as unknown as {
       page: number;
       limit: number;
       search?: string;
@@ -916,7 +1258,10 @@ router.put(
   validate(updateVendorSellerTypeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.updateSellerType(req.params.id, req.body.seller_type);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: req.body.seller_type }, 'Admin updated seller type');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, seller_type: req.body.seller_type },
+      'Admin updated seller type',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -925,7 +1270,10 @@ router.put(
   '/vendors/:id/seller-type-request/approve',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.approveSellerTypeChange(req.params.id);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, seller_type: store.seller_type }, 'Admin approved seller type change');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, seller_type: store.seller_type },
+      'Admin approved seller type change',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -935,7 +1283,10 @@ router.put(
   validate(rejectSellerTypeRequestSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.rejectSellerTypeChange(req.params.id, req.body.reason);
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin rejected seller type change');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin rejected seller type change',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -966,7 +1317,15 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
     await authService.logout(rows[0].owner_id);
-    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id, reason: req.body.reason }, 'Admin suspended vendor owner');
+    logger.warn(
+      {
+        store_id: req.params.id,
+        owner_id: rows[0].owner_id,
+        admin_id: req.user!.id,
+        reason: req.body.reason,
+      },
+      'Admin suspended vendor owner',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -985,7 +1344,10 @@ router.put(
       [req.params.id],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
-    logger.info({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reactivated vendor owner');
+    logger.info(
+      { store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id },
+      'Admin reactivated vendor owner',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -1002,7 +1364,10 @@ router.put(
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Vendor owner not found');
     await authService.resetTwoFactorForUser(rows[0].owner_id);
-    logger.warn({ store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id }, 'Admin reset vendor owner 2FA');
+    logger.warn(
+      { store_id: req.params.id, owner_id: rows[0].owner_id, admin_id: req.user!.id },
+      'Admin reset vendor owner 2FA',
+    );
     res.status(200).json({ success: true, owner: rows[0] });
   }),
 );
@@ -1018,7 +1383,10 @@ router.put(
       req.body.subscription_type,
       req.body.subscription_expires_at,
     );
-    logger.info({ store_id: req.params.id, admin_id: req.user!.id, plan: req.body.subscription_plan }, 'Admin updated vendor subscription');
+    logger.info(
+      { store_id: req.params.id, admin_id: req.user!.id, plan: req.body.subscription_plan },
+      'Admin updated vendor subscription',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -1027,7 +1395,10 @@ router.delete(
   '/vendors/:id/payment-config',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.clearPaymentConfig(req.params.id);
-    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor payment config');
+    logger.warn(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin cleared vendor payment config',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -1036,7 +1407,10 @@ router.delete(
   '/vendors/:id/custom-domain',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.clearCustomDomain(req.params.id);
-    logger.warn({ store_id: req.params.id, admin_id: req.user!.id }, 'Admin cleared vendor custom domain');
+    logger.warn(
+      { store_id: req.params.id, admin_id: req.user!.id },
+      'Admin cleared vendor custom domain',
+    );
     res.status(200).json({ success: true, store });
   }),
 );
@@ -1098,7 +1472,10 @@ const createPlanSchema = updatePlanSchema.extend({
 });
 
 const deletePlanSchema = z.object({
-  replacement_plan_id: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
+  replacement_plan_id: z
+    .string()
+    .optional()
+    .transform((value) => (value ? normalizePlanId(value) : undefined)),
 });
 
 router.get(
@@ -1132,9 +1509,10 @@ router.post(
   validate(createPlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = req.body.plan_id;
-    const commissionRate = Number(req.body.commission_rate) > 1
-      ? Number(req.body.commission_rate) / 100
-      : Number(req.body.commission_rate);
+    const commissionRate =
+      Number(req.body.commission_rate) > 1
+        ? Number(req.body.commission_rate) / 100
+        : Number(req.body.commission_rate);
     const { rows } = await query(
       `INSERT INTO pd_subscription_limits (
          plan_id,
@@ -1185,9 +1563,10 @@ router.put(
   validate(updatePlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = normalizePlanId(req.params.planId);
-    const commissionRate = Number(req.body.commission_rate) > 1
-      ? Number(req.body.commission_rate) / 100
-      : Number(req.body.commission_rate);
+    const commissionRate =
+      Number(req.body.commission_rate) > 1
+        ? Number(req.body.commission_rate) / 100
+        : Number(req.body.commission_rate);
     const { rows } = await query(
       `UPDATE pd_subscription_limits
        SET max_products = $2,
@@ -1233,7 +1612,10 @@ router.put(
 
     subscriptionService.invalidateCache();
     const syncedWallets = await creditsService.syncForPlan(planId, req.body.ai_tokens_included);
-    logger.info({ admin_id: req.user!.id, plan_id: planId, synced_wallets: syncedWallets }, 'Admin updated subscription plan');
+    logger.info(
+      { admin_id: req.user!.id, plan_id: planId, synced_wallets: syncedWallets },
+      'Admin updated subscription plan',
+    );
     res.status(200).json({ data: rows[0], plan: rows[0] });
   }),
 );
@@ -1250,7 +1632,9 @@ router.delete(
 
     const replacementPlanId = req.body.replacement_plan_id;
     if (replacementPlanId === planId) {
-      res.status(400).json({ error: { message: 'Replacement plan must be different from the deleted plan' } });
+      res
+        .status(400)
+        .json({ error: { message: 'Replacement plan must be different from the deleted plan' } });
       return;
     }
 
@@ -1288,7 +1672,13 @@ router.delete(
                updated_at = NOW()
            WHERE subscription_plan = $1
            RETURNING id`,
-          [planId, replacementPlanId, SubscriptionPlan.Free, SubscriptionType.Commission, SubscriptionType.Yearly],
+          [
+            planId,
+            replacementPlanId,
+            SubscriptionPlan.Free,
+            SubscriptionType.Commission,
+            SubscriptionType.Yearly,
+          ],
         );
         if (movedStores.rows.length > 0) {
           await client.query(
@@ -1324,12 +1714,15 @@ router.delete(
     }
 
     subscriptionService.invalidateCache();
-    logger.warn({
-      admin_id: req.user!.id,
-      plan_id: planId,
-      replacement_plan_id: result.replacementPlanId ?? null,
-      stores_count: result.storeCount,
-    }, 'Admin deleted subscription plan');
+    logger.warn(
+      {
+        admin_id: req.user!.id,
+        plan_id: planId,
+        replacement_plan_id: result.replacementPlanId ?? null,
+        stores_count: result.storeCount,
+      },
+      'Admin deleted subscription plan',
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -1404,20 +1797,45 @@ router.get(
 // Global Platform Settings
 // =====================================================
 
-const publicLinkSettingSchema = z.coerce.string().trim().max(2048).refine(
-  (value) => value === '' || (/^\/(?!\/)/.test(value)) || /^https?:\/\//i.test(value),
-  'Must be a relative path or http(s) URL',
-);
+const publicLinkSettingSchema = z.coerce
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (value) => value === '' || /^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value),
+    'Must be a relative path or http(s) URL',
+  );
 
-const hexColorSettingSchema = z.coerce.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color like #B91C1C');
-const ga4MeasurementIdSchema = z.coerce.string().trim().regex(/^(|G-[A-Z0-9]{4,20})$/, 'Must be blank or a GA4 measurement ID like G-XXXXXXXXXX');
-const gtmContainerIdSchema = z.coerce.string().trim().regex(/^(|GTM-[A-Z0-9]{4,20})$/, 'Must be blank or a GTM container ID like GTM-XXXXXXX');
-const metaPixelIdSchema = z.coerce.string().trim().regex(/^(|\d{5,30})$/, 'Must be blank or a numeric Meta Pixel ID');
-const searchConsoleVerificationSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
-const cloudflareIdentifierSchema = z.coerce.string().trim().regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+const hexColorSettingSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color like #B91C1C');
+const ga4MeasurementIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|G-[A-Z0-9]{4,20})$/, 'Must be blank or a GA4 measurement ID like G-XXXXXXXXXX');
+const gtmContainerIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|GTM-[A-Z0-9]{4,20})$/, 'Must be blank or a GTM container ID like GTM-XXXXXXX');
+const metaPixelIdSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^(|\d{5,30})$/, 'Must be blank or a numeric Meta Pixel ID');
+const searchConsoleVerificationSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{0,255}$/, 'Must contain only letters, numbers, underscores, or hyphens');
+const cloudflareIdentifierSchema = z.coerce
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{0,128}$/, 'Must contain only letters, numbers, underscores, or hyphens');
 
-const hubHomepageBlocksSchema = z.coerce.string().trim().max(40000).refine(
-  (value) => {
+const hubHomepageBlocksSchema = z.coerce
+  .string()
+  .trim()
+  .max(40000)
+  .refine((value) => {
     if (value === '') return true;
     try {
       const parsed = JSON.parse(value);
@@ -1425,9 +1843,7 @@ const hubHomepageBlocksSchema = z.coerce.string().trim().max(40000).refine(
     } catch {
       return false;
     }
-  },
-  'Must be blank or a JSON object describing homepage blocks',
-);
+  }, 'Must be blank or a JSON object describing homepage blocks');
 
 const globalSettingsSchema = z.object({
   marketplace_name: z.coerce.string().min(1).max(120).optional(),
@@ -1468,9 +1884,15 @@ const globalSettingsSchema = z.object({
   marketplace_cookie_policy_url: publicLinkSettingSchema.optional(),
   marketplace_contact_url: publicLinkSettingSchema.optional(),
   catalog_featured_category_slugs: z.coerce.string().trim().max(1000).optional(),
-  catalog_default_sort: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc']).optional(),
-  hub_homepage_layout: z.enum(['theme_default', 'classic', 'deals', 'premium_deals', 'alibaba', 'amazon']).optional(),
-  hub_megamenu_style: z.enum(['standard', 'visual_rich', 'ultra_rich', 'ultra_rich_deep']).optional(),
+  catalog_default_sort: z
+    .enum(['newest', 'oldest', 'price_asc', 'price_desc', 'title_asc'])
+    .optional(),
+  hub_homepage_layout: z
+    .enum(['theme_default', 'classic', 'deals', 'premium_deals', 'alibaba', 'amazon'])
+    .optional(),
+  hub_megamenu_style: z
+    .enum(['standard', 'visual_rich', 'ultra_rich', 'ultra_rich_deep'])
+    .optional(),
   hub_megamenu_lazy_loading: z.boolean().optional(),
   hub_category_page_style: z.enum(['v1_classic', 'v2_modern_showcase']).optional(),
   hub_homepage_banner_title: z.coerce.string().trim().max(160).optional(),
@@ -1485,7 +1907,9 @@ const globalSettingsSchema = z.object({
   hub_hero_category_sidebar_max_items: z.coerce.number().int().min(1).max(30).optional(),
   hub_hero_carousel_max_categories: z.coerce.number().int().min(1).max(10).optional(),
   hub_hero_carousel_slides: z.coerce.string().max(10000).optional(),
-  hub_hero_carousel_source_mode: z.enum(['hybrid', 'custom_only', 'auto_categories_only']).optional(),
+  hub_hero_carousel_source_mode: z
+    .enum(['hybrid', 'custom_only', 'auto_categories_only'])
+    .optional(),
   hub_hero_carousel_autoplay: z.boolean().optional(),
   hub_hero_carousel_interval: z.coerce.number().int().min(2000).max(30000).optional(),
   hub_hero_carousel_transition: z.enum(['slide', 'fade', 'zoom']).optional(),
@@ -1541,7 +1965,9 @@ const globalSettingsSchema = z.object({
   order_splitting_enabled: z.boolean().optional(),
   tax_mode: z.enum(['none', 'included', 'exclusive']).optional(),
   default_tax_rate: z.coerce.number().min(0).max(100).optional(),
-  price_rounding_mode: z.enum(['none', 'nearest_0_001', 'nearest_0_010', 'nearest_0_100']).optional(),
+  price_rounding_mode: z
+    .enum(['none', 'nearest_0_001', 'nearest_0_010', 'nearest_0_100'])
+    .optional(),
   auto_cancel_unpaid_enabled: z.boolean().optional(),
   auto_cancel_unpaid_minutes: z.coerce.number().int().min(5).max(10080).optional(),
   retention_days_flouci: z.coerce.number().int().min(1).max(90).optional(),
@@ -1563,7 +1989,9 @@ const globalSettingsSchema = z.object({
   payment_mandat_enabled: z.boolean().optional(),
   payment_cod_enabled: z.boolean().optional(),
   payment_vendor_direct_enabled: z.boolean().optional(),
-  payment_platform_credentials_source: z.enum(['environment', 'platform_config', 'vendor_direct_only']).optional(),
+  payment_platform_credentials_source: z
+    .enum(['environment', 'platform_config', 'vendor_direct_only'])
+    .optional(),
   mandat_recipient_name: z.coerce.string().max(200).optional(),
   mandat_recipient_cin: z.coerce.string().max(20).optional(),
   mandat_recipient_city: z.coerce.string().max(100).optional(),
@@ -1601,224 +2029,246 @@ const globalSettingsSchema = z.object({
   maintenance_block_storefronts: z.boolean().optional(),
 });
 
-const marketplaceSettingsSchema = globalSettingsSchema.pick({
-  marketplace_name: true,
-  marketplace_tagline: true,
-  marketplace_logo_url: true,
-  marketplace_logo_light_url: true,
-  marketplace_logo_dark_url: true,
-  marketplace_favicon_url: true,
-  marketplace_og_image_url: true,
-  marketplace_public_url: true,
-  marketplace_theme: true,
-  marketplace_primary_color: true,
-  marketplace_secondary_color: true,
-  marketplace_default_locale: true,
-  marketplace_supported_locales: true,
-  marketplace_rtl_enabled: true,
-  marketplace_support_email: true,
-  marketplace_support_phone: true,
-  marketplace_support_whatsapp: true,
-  marketplace_address: true,
-  marketplace_city: true,
-  marketplace_country: true,
-  marketplace_business_hours: true,
-  marketplace_facebook_url: true,
-  marketplace_instagram_url: true,
-  marketplace_x_url: true,
-  marketplace_tiktok_url: true,
-  marketplace_youtube_url: true,
-  marketplace_linkedin_url: true,
-  marketplace_whatsapp_url: true,
-  marketplace_telegram_url: true,
-  marketplace_pinterest_url: true,
-  marketplace_snapchat_url: true,
-  marketplace_help_url: true,
-  marketplace_terms_url: true,
-  marketplace_privacy_url: true,
-  marketplace_refund_url: true,
-  marketplace_cookie_policy_url: true,
-  marketplace_contact_url: true,
-  catalog_featured_category_slugs: true,
-  catalog_default_sort: true,
-  hub_homepage_layout: true,
-  hub_megamenu_style: true,
-  hub_megamenu_lazy_loading: true,
-  hub_category_page_style: true,
-  hub_homepage_banner_title: true,
-  hub_homepage_banner_subtitle: true,
-  hub_homepage_banner_cta_label: true,
-  hub_homepage_banner_cta_url: true,
-  hub_homepage_banner_image_url: true,
-  hub_homepage_blocks: true,
-  hub_hero_show_category_sidebar: true,
-  hub_hero_show_carousel: true,
-  hub_hero_show_seller_rail: true,
-  hub_hero_category_sidebar_max_items: true,
-  hub_hero_carousel_max_categories: true,
-  hub_hero_carousel_slides: true,
-  hub_hero_carousel_source_mode: true,
-  hub_hero_carousel_autoplay: true,
-  hub_hero_carousel_interval: true,
-  hub_hero_carousel_transition: true,
-  hub_hero_carousel_dots_style: true,
-  hub_hero_carousel_show_arrows: true,
-  hub_hero_seller_rail_title: true,
-  hub_hero_seller_rail_subtitle: true,
-  hub_hero_seller_rail_cta_label: true,
-  hub_hero_seller_rail_cta_url: true,
-  hub_hero_seller_rail_badge_text: true,
-}).strict();
+const marketplaceSettingsSchema = globalSettingsSchema
+  .pick({
+    marketplace_name: true,
+    marketplace_tagline: true,
+    marketplace_logo_url: true,
+    marketplace_logo_light_url: true,
+    marketplace_logo_dark_url: true,
+    marketplace_favicon_url: true,
+    marketplace_og_image_url: true,
+    marketplace_public_url: true,
+    marketplace_theme: true,
+    marketplace_primary_color: true,
+    marketplace_secondary_color: true,
+    marketplace_default_locale: true,
+    marketplace_supported_locales: true,
+    marketplace_rtl_enabled: true,
+    marketplace_support_email: true,
+    marketplace_support_phone: true,
+    marketplace_support_whatsapp: true,
+    marketplace_address: true,
+    marketplace_city: true,
+    marketplace_country: true,
+    marketplace_business_hours: true,
+    marketplace_facebook_url: true,
+    marketplace_instagram_url: true,
+    marketplace_x_url: true,
+    marketplace_tiktok_url: true,
+    marketplace_youtube_url: true,
+    marketplace_linkedin_url: true,
+    marketplace_whatsapp_url: true,
+    marketplace_telegram_url: true,
+    marketplace_pinterest_url: true,
+    marketplace_snapchat_url: true,
+    marketplace_help_url: true,
+    marketplace_terms_url: true,
+    marketplace_privacy_url: true,
+    marketplace_refund_url: true,
+    marketplace_cookie_policy_url: true,
+    marketplace_contact_url: true,
+    catalog_featured_category_slugs: true,
+    catalog_default_sort: true,
+    hub_homepage_layout: true,
+    hub_megamenu_style: true,
+    hub_megamenu_lazy_loading: true,
+    hub_category_page_style: true,
+    hub_homepage_banner_title: true,
+    hub_homepage_banner_subtitle: true,
+    hub_homepage_banner_cta_label: true,
+    hub_homepage_banner_cta_url: true,
+    hub_homepage_banner_image_url: true,
+    hub_homepage_blocks: true,
+    hub_hero_show_category_sidebar: true,
+    hub_hero_show_carousel: true,
+    hub_hero_show_seller_rail: true,
+    hub_hero_category_sidebar_max_items: true,
+    hub_hero_carousel_max_categories: true,
+    hub_hero_carousel_slides: true,
+    hub_hero_carousel_source_mode: true,
+    hub_hero_carousel_autoplay: true,
+    hub_hero_carousel_interval: true,
+    hub_hero_carousel_transition: true,
+    hub_hero_carousel_dots_style: true,
+    hub_hero_carousel_show_arrows: true,
+    hub_hero_seller_rail_title: true,
+    hub_hero_seller_rail_subtitle: true,
+    hub_hero_seller_rail_cta_label: true,
+    hub_hero_seller_rail_cta_url: true,
+    hub_hero_seller_rail_badge_text: true,
+  })
+  .strict();
 
-const commerceSettingsSchema = globalSettingsSchema.pick({
-  marketplace_enabled: true,
-  vendor_registration_enabled: true,
-  buyer_registration_enabled: true,
-  product_moderation_required: true,
-  product_auto_publish_verified: true,
-  seller_type_change_auto_approval: true,
-  reviews_enabled: true,
-  review_auto_publish: true,
-  wishlist_enabled: true,
-  ai_tools_enabled: true,
-  page_builder_enabled: true,
-  plugins_marketplace_enabled: true,
-  email_marketing_enabled: true,
-  cart_enabled: true,
-  shipping_enabled: true,
-  shipping_self_managed_enabled: true,
-  shipping_platform_unified_enabled: true,
-  shipping_default_provider: true,
-  shipping_aramex_enabled: true,
-  shipping_laposte_enabled: true,
-  shipping_platform_fallback_enabled: true,
-  shipping_default_origin_city: true,
-  shipping_default_origin_country: true,
-  shipping_domestic_zone_cities: true,
-  shipping_remote_zone_cities: true,
-  shipping_platform_flat_rate_tnd: true,
-  shipping_domestic_zone_rate_tnd: true,
-  shipping_remote_zone_rate_tnd: true,
-  shipping_free_shipping_threshold_tnd: true,
-  order_splitting_enabled: true,
-  tax_mode: true,
-  default_tax_rate: true,
-  price_rounding_mode: true,
-  auto_cancel_unpaid_enabled: true,
-  auto_cancel_unpaid_minutes: true,
-}).strict();
+const commerceSettingsSchema = globalSettingsSchema
+  .pick({
+    marketplace_enabled: true,
+    vendor_registration_enabled: true,
+    buyer_registration_enabled: true,
+    product_moderation_required: true,
+    product_auto_publish_verified: true,
+    seller_type_change_auto_approval: true,
+    reviews_enabled: true,
+    review_auto_publish: true,
+    wishlist_enabled: true,
+    ai_tools_enabled: true,
+    page_builder_enabled: true,
+    plugins_marketplace_enabled: true,
+    email_marketing_enabled: true,
+    cart_enabled: true,
+    shipping_enabled: true,
+    shipping_self_managed_enabled: true,
+    shipping_platform_unified_enabled: true,
+    shipping_default_provider: true,
+    shipping_aramex_enabled: true,
+    shipping_laposte_enabled: true,
+    shipping_platform_fallback_enabled: true,
+    shipping_default_origin_city: true,
+    shipping_default_origin_country: true,
+    shipping_domestic_zone_cities: true,
+    shipping_remote_zone_cities: true,
+    shipping_platform_flat_rate_tnd: true,
+    shipping_domestic_zone_rate_tnd: true,
+    shipping_remote_zone_rate_tnd: true,
+    shipping_free_shipping_threshold_tnd: true,
+    order_splitting_enabled: true,
+    tax_mode: true,
+    default_tax_rate: true,
+    price_rounding_mode: true,
+    auto_cancel_unpaid_enabled: true,
+    auto_cancel_unpaid_minutes: true,
+  })
+  .strict();
 
-const financeSettingsSchema = globalSettingsSchema.pick({
-  retention_days_flouci: true,
-  retention_days_konnect: true,
-  retention_days_mandat: true,
-  retention_days_cod: true,
-  payout_schedule: true,
-  min_withdrawal_tnd: true,
-  platform_commission_rate: true,
-  default_currency: true,
-  payment_sandbox_mode: true,
-  payment_flouci_enabled: true,
-  payment_konnect_enabled: true,
-  payment_paypal_enabled: true,
-  payment_paypal_mode: true,
-  payment_paypal_client_id: true,
-  payment_paypal_client_secret: true,
-  payment_paypal_webhook_id: true,
-  payment_mandat_enabled: true,
-  payment_cod_enabled: true,
-  payment_vendor_direct_enabled: true,
-  payment_platform_credentials_source: true,
-  mandat_recipient_name: true,
-  mandat_recipient_cin: true,
-  mandat_recipient_city: true,
-}).strict();
+const financeSettingsSchema = globalSettingsSchema
+  .pick({
+    retention_days_flouci: true,
+    retention_days_konnect: true,
+    retention_days_mandat: true,
+    retention_days_cod: true,
+    payout_schedule: true,
+    min_withdrawal_tnd: true,
+    platform_commission_rate: true,
+    default_currency: true,
+    payment_sandbox_mode: true,
+    payment_flouci_enabled: true,
+    payment_konnect_enabled: true,
+    payment_paypal_enabled: true,
+    payment_paypal_mode: true,
+    payment_paypal_client_id: true,
+    payment_paypal_client_secret: true,
+    payment_paypal_webhook_id: true,
+    payment_mandat_enabled: true,
+    payment_cod_enabled: true,
+    payment_vendor_direct_enabled: true,
+    payment_platform_credentials_source: true,
+    mandat_recipient_name: true,
+    mandat_recipient_cin: true,
+    mandat_recipient_city: true,
+  })
+  .strict();
 
-const operationsSettingsSchema = globalSettingsSchema.pick({
-  chat_bubble_enabled: true,
-  chat_bubble_position: true,
-  max_upload_size_mb: true,
-  max_product_images: true,
-  max_products_per_store_free: true,
-  default_low_stock_threshold: true,
-  chat_message_rate_limit_per_minute: true,
-  chat_max_images_per_message: true,
-  chat_max_image_size_mb: true,
-  chat_max_message_length: true,
-  notifications_in_app_enabled: true,
-  notifications_realtime_enabled: true,
-  notifications_email_enabled: true,
-  notifications_sms_enabled: true,
-  notifications_sms_provider: true,
-  notifications_sms_sender_name: true,
-  security_login_max_attempts: true,
-  security_login_lockout_minutes: true,
-  security_password_min_length: true,
-  security_password_require_uppercase: true,
-  security_password_require_lowercase: true,
-  security_password_require_number: true,
-  security_password_require_symbol: true,
-  security_2fa_required_roles: true,
-  security_custom_domains_enabled: true,
-  security_custom_domain_allowed_suffixes: true,
-  security_custom_domain_blocked_suffixes: true,
-  maintenance_enabled: true,
-  maintenance_title: true,
-  maintenance_message: true,
-  maintenance_illustration_url: true,
-  maintenance_eta: true,
-  maintenance_allowed_ips: true,
-  maintenance_block_storefronts: true,
-}).strict();
+const operationsSettingsSchema = globalSettingsSchema
+  .pick({
+    chat_bubble_enabled: true,
+    chat_bubble_position: true,
+    max_upload_size_mb: true,
+    max_product_images: true,
+    max_products_per_store_free: true,
+    default_low_stock_threshold: true,
+    chat_message_rate_limit_per_minute: true,
+    chat_max_images_per_message: true,
+    chat_max_image_size_mb: true,
+    chat_max_message_length: true,
+    notifications_in_app_enabled: true,
+    notifications_realtime_enabled: true,
+    notifications_email_enabled: true,
+    notifications_sms_enabled: true,
+    notifications_sms_provider: true,
+    notifications_sms_sender_name: true,
+    security_login_max_attempts: true,
+    security_login_lockout_minutes: true,
+    security_password_min_length: true,
+    security_password_require_uppercase: true,
+    security_password_require_lowercase: true,
+    security_password_require_number: true,
+    security_password_require_symbol: true,
+    security_2fa_required_roles: true,
+    security_custom_domains_enabled: true,
+    security_custom_domain_allowed_suffixes: true,
+    security_custom_domain_blocked_suffixes: true,
+    maintenance_enabled: true,
+    maintenance_title: true,
+    maintenance_message: true,
+    maintenance_illustration_url: true,
+    maintenance_eta: true,
+    maintenance_allowed_ips: true,
+    maintenance_block_storefronts: true,
+  })
+  .strict();
 
-const integrationsSettingsSchema = globalSettingsSchema.pick({
-  analytics_ga4_enabled: true,
-  analytics_ga4_measurement_id: true,
-  analytics_gtm_enabled: true,
-  analytics_gtm_container_id: true,
-  analytics_meta_pixel_enabled: true,
-  analytics_meta_pixel_id: true,
-  search_console_verification: true,
-  cloudflare_integration_enabled: true,
-  cloudflare_account_id: true,
-  cloudflare_zone_id: true,
-  cloudflare_custom_hostnames_enabled: true,
-}).strict();
+const integrationsSettingsSchema = globalSettingsSchema
+  .pick({
+    analytics_ga4_enabled: true,
+    analytics_ga4_measurement_id: true,
+    analytics_gtm_enabled: true,
+    analytics_gtm_container_id: true,
+    analytics_meta_pixel_enabled: true,
+    analytics_meta_pixel_id: true,
+    search_console_verification: true,
+    cloudflare_integration_enabled: true,
+    cloudflare_account_id: true,
+    cloudflare_zone_id: true,
+    cloudflare_custom_hostnames_enabled: true,
+  })
+  .strict();
 
-const shippingSettingsSchema = globalSettingsSchema.pick({
-  shipping_enabled: true,
-  shipping_self_managed_enabled: true,
-  shipping_platform_unified_enabled: true,
-  shipping_default_provider: true,
-  shipping_aramex_enabled: true,
-  shipping_laposte_enabled: true,
-  shipping_platform_fallback_enabled: true,
-  shipping_default_origin_city: true,
-  shipping_default_origin_country: true,
-  shipping_domestic_zone_cities: true,
-  shipping_remote_zone_cities: true,
-  shipping_platform_flat_rate_tnd: true,
-  shipping_domestic_zone_rate_tnd: true,
-  shipping_remote_zone_rate_tnd: true,
-  shipping_free_shipping_threshold_tnd: true,
-}).strict();
+const shippingSettingsSchema = globalSettingsSchema
+  .pick({
+    shipping_enabled: true,
+    shipping_self_managed_enabled: true,
+    shipping_platform_unified_enabled: true,
+    shipping_default_provider: true,
+    shipping_aramex_enabled: true,
+    shipping_laposte_enabled: true,
+    shipping_platform_fallback_enabled: true,
+    shipping_default_origin_city: true,
+    shipping_default_origin_country: true,
+    shipping_domestic_zone_cities: true,
+    shipping_remote_zone_cities: true,
+    shipping_platform_flat_rate_tnd: true,
+    shipping_domestic_zone_rate_tnd: true,
+    shipping_remote_zone_rate_tnd: true,
+    shipping_free_shipping_threshold_tnd: true,
+  })
+  .strict();
 
-const securitySettingsSchema = globalSettingsSchema.pick({
-  security_login_max_attempts: true,
-  security_login_lockout_minutes: true,
-  security_password_min_length: true,
-  security_password_require_uppercase: true,
-  security_password_require_lowercase: true,
-  security_password_require_number: true,
-  security_password_require_symbol: true,
-  security_2fa_required_roles: true,
-  security_custom_domains_enabled: true,
-  security_custom_domain_allowed_suffixes: true,
-  security_custom_domain_blocked_suffixes: true,
-}).strict();
+const securitySettingsSchema = globalSettingsSchema
+  .pick({
+    security_login_max_attempts: true,
+    security_login_lockout_minutes: true,
+    security_password_min_length: true,
+    security_password_require_uppercase: true,
+    security_password_require_lowercase: true,
+    security_password_require_number: true,
+    security_password_require_symbol: true,
+    security_2fa_required_roles: true,
+    security_custom_domains_enabled: true,
+    security_custom_domain_allowed_suffixes: true,
+    security_custom_domain_blocked_suffixes: true,
+  })
+  .strict();
 
 const settingsSectionParamSchema = z.object({
-  section: z.enum(['marketplace', 'commerce', 'finance', 'shipping', 'security', 'operations', 'integrations']),
+  section: z.enum([
+    'marketplace',
+    'commerce',
+    'finance',
+    'shipping',
+    'security',
+    'operations',
+    'integrations',
+  ]),
 });
 
 const settingsSectionSchemas: Record<PlatformSettingSection, z.ZodTypeAny> = {
@@ -1856,10 +2306,7 @@ router.put(
       req.user!.id,
     );
 
-    logger.info(
-      { admin_id: req.user!.id, keys: updatedKeys },
-      'Admin updated platform settings',
-    );
+    logger.info({ admin_id: req.user!.id, keys: updatedKeys }, 'Admin updated platform settings');
 
     if (updatedKeys.some((key) => key.startsWith('maintenance_'))) {
       invalidateMaintenanceCache();
@@ -1894,7 +2341,11 @@ router.put(
       return;
     }
     const parsed = parsedResult.data as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
-    const updatedKeys = await platformConfigService.updateSectionSettings(section, parsed, req.user!.id);
+    const updatedKeys = await platformConfigService.updateSectionSettings(
+      section,
+      parsed,
+      req.user!.id,
+    );
 
     logger.info(
       { admin_id: req.user!.id, section, keys: updatedKeys },
@@ -1952,7 +2403,8 @@ function buildAuditLogWhere(filters: AuditLogFilters) {
   const params: unknown[] = [];
   let paramIdx = 1;
 
-  const statusExpr = "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
+  const statusExpr =
+    "CASE WHEN a.metadata->>'status_code' ~ '^[0-9]+$' THEN (a.metadata->>'status_code')::int ELSE NULL END";
   const methodExpr = "UPPER(COALESCE(a.metadata->>'method', split_part(a.action, ' ', 1)))";
 
   if (filters.log_type === 'buyer') {
@@ -2054,20 +2506,27 @@ const systemLogClearFilterSchema = z.object({
   search: z.string().max(200).optional(),
 });
 
-const systemLogClearSchema = z.object({
-  confirm: z.literal('CLEAR LOGS'),
-  ids: z.array(z.string().min(1).max(64)).max(1000).optional(),
-  older_than_days: z.number().int().min(1).max(3650).optional(),
-  clear_all: z.boolean().optional(),
-  filters: systemLogClearFilterSchema.optional(),
-}).refine(
-  (value) =>
-    value.clear_all === true ||
-    Boolean(value.older_than_days) ||
-    Boolean(value.ids?.length) ||
-    Boolean(value.filters && Object.values(value.filters).some((filterValue) => filterValue !== undefined && filterValue !== '')),
-  { message: 'Provide logs to clear, an age limit, filters, or clear_all=true' },
-);
+const systemLogClearSchema = z
+  .object({
+    confirm: z.literal('CLEAR LOGS'),
+    ids: z.array(z.string().min(1).max(64)).max(1000).optional(),
+    older_than_days: z.number().int().min(1).max(3650).optional(),
+    clear_all: z.boolean().optional(),
+    filters: systemLogClearFilterSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      value.clear_all === true ||
+      Boolean(value.older_than_days) ||
+      Boolean(value.ids?.length) ||
+      Boolean(
+        value.filters &&
+        Object.values(value.filters).some(
+          (filterValue) => filterValue !== undefined && filterValue !== '',
+        ),
+      ),
+    { message: 'Provide logs to clear, an age limit, filters, or clear_all=true' },
+  );
 
 const systemLogParamSchema = z.object({
   id: z.string().min(1).max(64),
@@ -2249,7 +2708,13 @@ router.get(
     );
 
     res.status(200).json({
-      summary: summaryRows[0] ?? { total: '0', last_24h: '0', failed: '0', actors: '0', writes: '0' },
+      summary: summaryRows[0] ?? {
+        total: '0',
+        last_24h: '0',
+        failed: '0',
+        actors: '0',
+        writes: '0',
+      },
       actions: actionRows,
       resources: resourceRows,
     });
@@ -2264,7 +2729,8 @@ router.get(
       page: number;
       limit: number;
     } & AuditLogFilters;
-    const { whereClause, params, nextParamIdx, statusExpr, methodExpr } = buildAuditLogWhere(filters);
+    const { whereClause, params, nextParamIdx, statusExpr, methodExpr } =
+      buildAuditLogWhere(filters);
     const limitParamIdx = nextParamIdx;
     const offsetParamIdx = nextParamIdx + 1;
     const offset = (page - 1) * limit;
@@ -2370,7 +2836,8 @@ router.get(
       params,
     );
 
-    const csvHeader = 'id,actor_email,actor_role,action,resource_type,method,status_code,ip,created_at\\n';
+    const csvHeader =
+      'id,actor_email,actor_role,action,resource_type,method,status_code,ip,created_at\\n';
     const csvRows = rows
       .map((r) =>
         [
@@ -2388,10 +2855,7 @@ router.get(
       .join('\\n');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="audit-log-${Date.now()}.csv"`,
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="audit-log-${Date.now()}.csv"`);
     res.send(csvHeader + csvRows);
   }),
 );
@@ -2401,10 +2865,15 @@ router.delete(
   validate(auditLogPurgeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
-    const roleFilter = log_type === 'buyer' ? "'customer'" : log_type === 'seller' ? "'vendor'" : "'admin', 'super_admin'";
+    const roleFilter =
+      log_type === 'buyer'
+        ? "'customer'"
+        : log_type === 'seller'
+          ? "'vendor'"
+          : "'admin', 'super_admin'";
 
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`,
     );
 
     res.status(200).json({ deleted: rowCount });
@@ -2416,20 +2885,21 @@ router.delete(
 // =====================================================
 
 const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
-  const [summary, topConsumers, dailyUsage, byType, byStatus, recentFailures, creditWallets] = await Promise.all([
-    query<{
-      total_jobs: string;
-      total_tokens_consumed: string;
-      jobs_today: string;
-      tokens_today: string;
-      compression_jobs: string;
-      seo_jobs: string;
-      page_copy_jobs: string;
-      failed_jobs: string;
-      processing_jobs: string;
-      queued_jobs: string;
-    }>(
-      `SELECT COUNT(*)::text AS total_jobs,
+  const [summary, topConsumers, dailyUsage, byType, byStatus, recentFailures, creditWallets] =
+    await Promise.all([
+      query<{
+        total_jobs: string;
+        total_tokens_consumed: string;
+        jobs_today: string;
+        tokens_today: string;
+        compression_jobs: string;
+        seo_jobs: string;
+        page_copy_jobs: string;
+        failed_jobs: string;
+        processing_jobs: string;
+        queued_jobs: string;
+      }>(
+        `SELECT COUNT(*)::text AS total_jobs,
               COALESCE(SUM(tokens_consumed), 0)::text AS total_tokens_consumed,
               COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::text AS jobs_today,
               COALESCE(SUM(tokens_consumed) FILTER (WHERE created_at >= CURRENT_DATE), 0)::text AS tokens_today,
@@ -2440,9 +2910,9 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
               COUNT(*) FILTER (WHERE status = 'processing')::text AS processing_jobs,
               COUNT(*) FILTER (WHERE status = 'queued')::text AS queued_jobs
        FROM pd_ai_jobs`,
-    ),
-    query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
-      `SELECT j.store_id,
+      ),
+      query<{ store_id: string; store_name: string; tokens_used: string; job_count: string }>(
+        `SELECT j.store_id,
               s.name AS store_name,
               COALESCE(SUM(j.tokens_consumed), 0)::text AS tokens_used,
               COUNT(*)::text AS job_count
@@ -2451,54 +2921,59 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
        GROUP BY j.store_id, s.name
        ORDER BY SUM(j.tokens_consumed) DESC
        LIMIT 10`,
-    ),
-    query<{ date: string; tokens: string; jobs: string }>(
-      `SELECT DATE(created_at)::text AS date,
+      ),
+      query<{ date: string; tokens: string; jobs: string }>(
+        `SELECT DATE(created_at)::text AS date,
               COALESCE(SUM(tokens_consumed), 0)::text AS tokens,
               COUNT(*)::text AS jobs
        FROM pd_ai_jobs
        WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
        GROUP BY DATE(created_at)
        ORDER BY date ASC`,
-    ),
-    query<{ type: string; count: string; tokens: string }>(
-      `SELECT type,
+      ),
+      query<{ type: string; count: string; tokens: string }>(
+        `SELECT type,
               COUNT(*)::text AS count,
               COALESCE(SUM(tokens_consumed), 0)::text AS tokens
        FROM pd_ai_jobs
        GROUP BY type
        ORDER BY count DESC`,
-    ),
-    query<{ status: string; count: string }>(
-      `SELECT status, COUNT(*)::text AS count
+      ),
+      query<{ status: string; count: string }>(
+        `SELECT status, COUNT(*)::text AS count
        FROM pd_ai_jobs
        GROUP BY status
        ORDER BY count DESC`,
-    ),
-    query<{
-      id: string;
-      store_id: string;
-      store_name: string;
-      type: string;
-      error_message: string | null;
-      created_at: Date;
-      completed_at: Date | null;
-    }>(
-      `SELECT j.id, j.store_id, s.name AS store_name, j.type, j.error_message, j.created_at, j.completed_at
+      ),
+      query<{
+        id: string;
+        store_id: string;
+        store_name: string;
+        type: string;
+        error_message: string | null;
+        created_at: Date;
+        completed_at: Date | null;
+      }>(
+        `SELECT j.id, j.store_id, s.name AS store_name, j.type, j.error_message, j.created_at, j.completed_at
        FROM pd_ai_jobs j
        JOIN pd_store s ON s.id = j.store_id
        WHERE j.status = 'failed'
        ORDER BY COALESCE(j.completed_at, j.created_at) DESC
        LIMIT 8`,
-    ),
-    query<{ active_wallets: string; unlimited_wallets: string; finite_tokens_remaining: string; tokens_used: string }>(
-      `SELECT COUNT(*)::text AS active_wallets,
+      ),
+      query<{
+        active_wallets: string;
+        unlimited_wallets: string;
+        finite_tokens_remaining: string;
+        tokens_used: string;
+      }>(
+        `SELECT COUNT(*)::text AS active_wallets,
               COUNT(*) FILTER (WHERE ai_tokens = -1)::text AS unlimited_wallets,
               COALESCE(SUM(ai_tokens) FILTER (WHERE ai_tokens >= 0), 0)::text AS finite_tokens_remaining,
               COALESCE(SUM(tokens_used), 0)::text AS tokens_used
        FROM pd_vendor_credits`,
-    ),
-  ]);
+      ),
+    ]);
 
   const row = summary.rows[0];
   const totalTokens = parseInt(row.total_tokens_consumed, 10);
@@ -2516,17 +2991,19 @@ const aiStatsHandler = asyncHandler(async (_req: Request, res: Response) => {
     processing_jobs: parseInt(row.processing_jobs, 10),
     queued_jobs: parseInt(row.queued_jobs, 10),
     estimated_cost_tnd: totalTokens * 0.005,
-    credits: creditWallets.rows[0] ? {
-      active_wallets: parseInt(creditWallets.rows[0].active_wallets, 10),
-      unlimited_wallets: parseInt(creditWallets.rows[0].unlimited_wallets, 10),
-      finite_tokens_remaining: parseInt(creditWallets.rows[0].finite_tokens_remaining, 10),
-      tokens_used: parseInt(creditWallets.rows[0].tokens_used, 10),
-    } : {
-      active_wallets: 0,
-      unlimited_wallets: 0,
-      finite_tokens_remaining: 0,
-      tokens_used: 0,
-    },
+    credits: creditWallets.rows[0]
+      ? {
+          active_wallets: parseInt(creditWallets.rows[0].active_wallets, 10),
+          unlimited_wallets: parseInt(creditWallets.rows[0].unlimited_wallets, 10),
+          finite_tokens_remaining: parseInt(creditWallets.rows[0].finite_tokens_remaining, 10),
+          tokens_used: parseInt(creditWallets.rows[0].tokens_used, 10),
+        }
+      : {
+          active_wallets: 0,
+          unlimited_wallets: 0,
+          finite_tokens_remaining: 0,
+          tokens_used: 0,
+        },
     by_type: byType.rows.map((r) => ({
       type: r.type,
       count: parseInt(r.count, 10),
@@ -2580,10 +3057,15 @@ const aiProviderParamSchema = z.object({
 });
 
 const aiPricingSchema = z.object({
-  prices: z.array(z.object({
-    job_type: z.nativeEnum(AiJobType),
-    tokens_required: z.coerce.number().int().min(0).max(10000),
-  })).min(1).max(20),
+  prices: z
+    .array(
+      z.object({
+        job_type: z.nativeEnum(AiJobType),
+        tokens_required: z.coerce.number().int().min(0).max(10000),
+      }),
+    )
+    .min(1)
+    .max(20),
 });
 
 router.get(
@@ -2746,7 +3228,8 @@ router.get(
   '/platform-media',
   asyncHandler(async (req: Request, res: Response) => {
     const folderFilter = typeof req.query.folder === 'string' ? req.query.folder.trim() : 'all';
-    const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+    const searchQuery =
+      typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
 
     const sql = `
       SELECT b.key, b.bucket, b.content_type, OCTET_LENGTH(b.data) as size, b.created_at, b.data, a.filename as asset_filename
@@ -2764,13 +3247,28 @@ router.get(
         const pathParts = rawKey.split('/');
 
         let folder = 'general';
-        if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
+        if (
+          pathParts.length >= 3 &&
+          ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])
+        ) {
           folder = pathParts[2];
-        } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
+        } else if (
+          rawKey.toLowerCase().includes('category') ||
+          rawKey.toLowerCase().includes('cat_') ||
+          rawKey.toLowerCase().includes('marketplace/pd_user_')
+        ) {
           folder = 'categories';
-        } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
+        } else if (
+          rawKey.toLowerCase().includes('logo') ||
+          rawKey.toLowerCase().includes('favicon') ||
+          rawKey.toLowerCase().includes('brand')
+        ) {
           folder = 'branding';
-        } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
+        } else if (
+          rawKey.toLowerCase().includes('banner') ||
+          rawKey.toLowerCase().includes('hero') ||
+          rawKey.toLowerCase().includes('slide')
+        ) {
           folder = 'banners';
         }
 
@@ -2806,7 +3304,12 @@ router.get(
 
     const filtered = items.filter((item: any) => {
       if (folderFilter !== 'all' && item.folder !== folderFilter) return false;
-      if (searchQuery && !item.filename.toLowerCase().includes(searchQuery) && !item.key.toLowerCase().includes(searchQuery)) return false;
+      if (
+        searchQuery &&
+        !item.filename.toLowerCase().includes(searchQuery) &&
+        !item.key.toLowerCase().includes(searchQuery)
+      )
+        return false;
       return true;
     });
 
@@ -2838,7 +3341,9 @@ router.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { key, new_filename } = req.body;
 
-    const findResult = await query('SELECT key, content_type FROM pd_file_blobs WHERE key = $1', [key]);
+    const findResult = await query('SELECT key, content_type FROM pd_file_blobs WHERE key = $1', [
+      key,
+    ]);
     if (findResult.rows.length === 0) {
       throw new PdValidationError('Media asset not found in database');
     }
@@ -2863,7 +3368,10 @@ router.patch(
       [pdId('asset'), `/${key}`, key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
     );
 
-    logger.info({ admin_id: req.user!.id, key, new_filename: cleanName }, 'Admin renamed platform media picture');
+    logger.info(
+      { admin_id: req.user!.id, key, new_filename: cleanName },
+      'Admin renamed platform media picture',
+    );
 
     res.status(200).json({
       success: true,
@@ -2925,7 +3433,9 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { key, quality, maxWidth, format } = req.body;
 
-    const findResult = await query('SELECT data, content_type FROM pd_file_blobs WHERE key = $1', [key]);
+    const findResult = await query('SELECT data, content_type FROM pd_file_blobs WHERE key = $1', [
+      key,
+    ]);
     if (findResult.rows.length === 0) {
       throw new PdValidationError('Media asset not found in database');
     }
@@ -3030,13 +3540,28 @@ router.post(
       const pathParts = rawKey.split('/');
 
       let folder = 'general';
-      if (pathParts.length >= 3 && ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])) {
+      if (
+        pathParts.length >= 3 &&
+        ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])
+      ) {
         folder = pathParts[2];
-      } else if (rawKey.toLowerCase().includes('category') || rawKey.toLowerCase().includes('cat_') || rawKey.toLowerCase().includes('marketplace/pd_user_')) {
+      } else if (
+        rawKey.toLowerCase().includes('category') ||
+        rawKey.toLowerCase().includes('cat_') ||
+        rawKey.toLowerCase().includes('marketplace/pd_user_')
+      ) {
         folder = 'categories';
-      } else if (rawKey.toLowerCase().includes('logo') || rawKey.toLowerCase().includes('favicon') || rawKey.toLowerCase().includes('brand')) {
+      } else if (
+        rawKey.toLowerCase().includes('logo') ||
+        rawKey.toLowerCase().includes('favicon') ||
+        rawKey.toLowerCase().includes('brand')
+      ) {
         folder = 'branding';
-      } else if (rawKey.toLowerCase().includes('banner') || rawKey.toLowerCase().includes('hero') || rawKey.toLowerCase().includes('slide')) {
+      } else if (
+        rawKey.toLowerCase().includes('banner') ||
+        rawKey.toLowerCase().includes('hero') ||
+        rawKey.toLowerCase().includes('slide')
+      ) {
         folder = 'banners';
       }
 
@@ -3059,10 +3584,11 @@ router.post(
         const newSize = compressedBuffer.length;
 
         if (newSize < originalSize) {
-          await query(
-            'UPDATE pd_file_blobs SET data = $1, content_type = $2 WHERE key = $3',
-            [compressedBuffer, 'image/webp', rawKey],
-          );
+          await query('UPDATE pd_file_blobs SET data = $1, content_type = $2 WHERE key = $3', [
+            compressedBuffer,
+            'image/webp',
+            rawKey,
+          ]);
 
           await query(
             `UPDATE pd_file_asset
@@ -3088,7 +3614,8 @@ router.post(
     }
 
     const totalSavedBytes = Math.max(0, totalOriginal - totalNew);
-    const totalSavedPercentage = totalOriginal > 0 ? ((totalSavedBytes / totalOriginal) * 100).toFixed(1) : '0';
+    const totalSavedPercentage =
+      totalOriginal > 0 ? ((totalSavedBytes / totalOriginal) * 100).toFixed(1) : '0';
 
     res.status(200).json({
       success: true,
@@ -3102,54 +3629,244 @@ router.post(
 );
 
 // ───────────────────────────────────────────────────────────
-// Admin Notes / Reminders / Drafts
+// Admin Notes / Reminders / Drafts (v2)
 // ───────────────────────────────────────────────────────────
 import { adminNotesService } from '../services/admin-notes.service';
 
 const noteTypeSchema = z.enum(['note', 'reminder', 'draft']);
 const notePrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+const noteStatusSchema = z.enum(['active', 'archived', 'trashed']);
+const noteContentFormatSchema = z.enum(['plain', 'markdown']);
 
 const createNoteSchema = z.object({
   type: noteTypeSchema,
   title: z.string().min(1).max(500),
   content: z.string().max(50000).optional(),
+  content_format: noteContentFormatSchema.optional(),
   color: z.string().max(20).optional(),
   priority: notePrioritySchema.optional(),
   is_pinned: z.boolean().optional(),
-  reminder_at: z.string().nullable().optional(),
-  due_at: z.string().nullable().optional(),
+  reminder_at: z
+    .string()
+    .datetime()
+    .nullable()
+    .optional()
+    .or(z.literal('').transform(() => null)),
+  due_at: z
+    .string()
+    .datetime()
+    .nullable()
+    .optional()
+    .or(z.literal('').transform(() => null)),
   tags: z.array(z.string().max(50)).max(20).optional(),
 });
 
 const updateNoteSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   content: z.string().max(50000).optional(),
+  content_format: noteContentFormatSchema.optional(),
   type: noteTypeSchema.optional(),
   color: z.string().max(20).optional(),
   priority: notePrioritySchema.optional(),
   is_pinned: z.boolean().optional(),
   is_completed: z.boolean().optional(),
-  reminder_at: z.string().nullable().optional(),
-  due_at: z.string().nullable().optional(),
+  reminder_at: z
+    .string()
+    .datetime()
+    .nullable()
+    .optional()
+    .or(z.literal('').transform(() => null)),
+  due_at: z
+    .string()
+    .datetime()
+    .nullable()
+    .optional()
+    .or(z.literal('').transform(() => null)),
   tags: z.array(z.string().max(50)).max(20).optional(),
 });
 
 const noteListSchema = z.object({
   type: noteTypeSchema.optional(),
+  status: noteStatusSchema.optional(),
+  priority: notePrioritySchema.optional(),
+  pinned: z.coerce.boolean().optional(),
+  completed: z.coerce.boolean().optional(),
+  overdue: z.coerce.boolean().optional(),
+  upcoming: z.coerce.boolean().optional(),
+  upcoming_within_hours: z.coerce.number().int().min(1).max(168).optional(),
+  search: z.string().max(200).optional(),
+  tag: z.string().max(50).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
-// List notes
+const bulkNoteIdsSchema = z.object({
+  ids: z.array(z.string().max(64)).min(1).max(200),
+});
+
+const bulkCompleteSchema = z.object({
+  ids: z.array(z.string().max(64)).min(1).max(200),
+  completed: z.boolean(),
+});
+
+const checklistItemSchema = z.object({
+  content: z.string().min(1).max(1000),
+  sort_order: z.number().int().min(0).optional(),
+});
+
+const checklistItemUpdateSchema = z.object({
+  content: z.string().min(1).max(1000).optional(),
+  is_done: z.boolean().optional(),
+  sort_order: z.number().int().min(0).optional(),
+});
+
+const attachmentSchema = z.object({
+  file_key: z.string().min(1).max(1024),
+  bucket: z.string().min(1).max(128),
+  filename: z.string().min(1).max(500),
+  content_type: z.string().max(128).default('application/octet-stream'),
+  file_size: z
+    .number()
+    .int()
+    .min(0)
+    .max(110 * 1024 * 1024),
+  scope: z.string().max(20).optional(),
+});
+
+// List notes (supports all v2 filters)
 router.get(
   '/notes',
   requireAuth,
   requireAdmin,
   validate(noteListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, page, limit } = req.query as unknown as { type?: string; page: number; limit: number };
-    const result = await adminNotesService.list(req.user!.id, { type, page, limit });
+    const q = req.query as unknown as {
+      type?: string;
+      status?: 'active' | 'archived' | 'trashed';
+      priority?: 'low' | 'normal' | 'high' | 'urgent';
+      pinned?: boolean;
+      completed?: boolean;
+      overdue?: boolean;
+      upcoming?: boolean;
+      upcoming_within_hours?: number;
+      search?: string;
+      tag?: string;
+      page?: number;
+      limit?: number;
+    };
+    const result = await adminNotesService.list(req.user!.id, {
+      type: q.type,
+      status: q.status,
+      priority: q.priority,
+      pinned: typeof q.pinned === 'string' ? q.pinned === 'true' : q.pinned,
+      completed: typeof q.completed === 'string' ? q.completed === 'true' : q.completed,
+      overdue: typeof q.overdue === 'string' ? q.overdue === 'true' : q.overdue,
+      upcoming: typeof q.upcoming === 'string' ? q.upcoming === 'true' : q.upcoming,
+      upcoming_within_hours: q.upcoming_within_hours,
+      search: q.search,
+      tag: q.tag,
+      page: q.page,
+      limit: q.limit,
+    });
     res.status(200).json(result);
+  }),
+);
+
+// Dashboard statistics
+router.get(
+  '/notes/stats',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const stats = await adminNotesService.stats(req.user!.id);
+    res.status(200).json({ data: stats });
+  }),
+);
+
+// Export (CSV / JSON)
+router.get(
+  '/notes/export',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const format = req.query.format === 'json' ? 'json' : 'csv';
+    const { contentType, body, filename } = await adminNotesService.exportNotes(
+      req.user!.id,
+      format,
+    );
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(body);
+  }),
+);
+
+// Bulk operations
+router.post(
+  '/notes/bulk/archive',
+  requireAuth,
+  requireAdmin,
+  validate(bulkNoteIdsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.bulkArchive(req.body.ids, req.user!.id);
+    res.status(200).json({ affected: count });
+  }),
+);
+
+router.post(
+  '/notes/bulk/trash',
+  requireAuth,
+  requireAdmin,
+  validate(bulkNoteIdsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.bulkTrash(req.body.ids, req.user!.id);
+    res.status(200).json({ affected: count });
+  }),
+);
+
+router.post(
+  '/notes/bulk/restore',
+  requireAuth,
+  requireAdmin,
+  validate(bulkNoteIdsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.bulkRestore(req.body.ids, req.user!.id);
+    res.status(200).json({ affected: count });
+  }),
+);
+
+router.post(
+  '/notes/bulk/delete',
+  requireAuth,
+  requireAdmin,
+  validate(bulkNoteIdsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.bulkDelete(req.body.ids, req.user!.id);
+    res.status(200).json({ affected: count });
+  }),
+);
+
+router.post(
+  '/notes/bulk/complete',
+  requireAuth,
+  requireAdmin,
+  validate(bulkCompleteSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.bulkComplete(
+      req.body.ids,
+      req.user!.id,
+      req.body.completed,
+    );
+    res.status(200).json({ affected: count });
+  }),
+);
+
+router.delete(
+  '/notes/trash/empty',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const count = await adminNotesService.emptyTrash(req.user!.id);
+    res.status(200).json({ affected: count });
   }),
 );
 
@@ -3168,7 +3885,7 @@ router.post(
   }),
 );
 
-// Get single note
+// Get single note (with checklist + attachments)
 router.get(
   '/notes/:id',
   requireAuth,
@@ -3199,7 +3916,50 @@ router.put(
   }),
 );
 
-// Delete note
+// Lifecycle: archive / trash / restore
+router.patch(
+  '/notes/:id/archive',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.archive(req.params.id, req.user!.id);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(200).json({ data: note });
+  }),
+);
+
+router.patch(
+  '/notes/:id/trash',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.trash(req.params.id, req.user!.id);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(200).json({ data: note });
+  }),
+);
+
+router.patch(
+  '/notes/:id/restore',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.restore(req.params.id, req.user!.id);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(200).json({ data: note });
+  }),
+);
+
+// Permanently delete (only from trash)
 router.delete(
   '/notes/:id',
   requireAuth,
@@ -3241,6 +4001,110 @@ router.patch(
       return;
     }
     res.status(200).json({ data: note });
+  }),
+);
+
+// Checklist items
+router.post(
+  '/notes/:id/checklist',
+  requireAuth,
+  requireAdmin,
+  validate(checklistItemSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const item = await adminNotesService.addChecklistItem(
+      req.params.id,
+      req.user!.id,
+      req.body.content,
+      req.body.sort_order ?? 0,
+    );
+    if (!item) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(201).json({ data: item });
+  }),
+);
+
+router.patch(
+  '/notes/:id/checklist/:itemId',
+  requireAuth,
+  requireAdmin,
+  validate(checklistItemUpdateSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const item = await adminNotesService.updateChecklistItem(
+      req.params.id,
+      req.params.itemId,
+      req.user!.id,
+      req.body,
+    );
+    if (!item) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.status(200).json({ data: item });
+  }),
+);
+
+router.delete(
+  '/notes/:id/checklist/:itemId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const ok = await adminNotesService.removeChecklistItem(
+      req.params.id,
+      req.params.itemId,
+      req.user!.id,
+    );
+    if (!ok) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.status(200).json({ success: true });
+  }),
+);
+
+// Attachments
+router.post(
+  '/notes/:id/attachments',
+  requireAuth,
+  requireAdmin,
+  validate(attachmentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const att = await adminNotesService.addAttachment(req.params.id, req.user!.id, req.body);
+    if (!att) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(201).json({ data: att });
+  }),
+);
+
+router.delete(
+  '/notes/:id/attachments/:attachmentId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const ok = await adminNotesService.removeAttachment(
+      req.params.id,
+      req.params.attachmentId,
+      req.user!.id,
+    );
+    if (!ok) {
+      res.status(404).json({ error: 'Attachment not found' });
+      return;
+    }
+    res.status(200).json({ success: true });
+  }),
+);
+
+// Activity log
+router.get(
+  '/notes/:id/activity',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const activities = await adminNotesService.listActivity(req.params.id, req.user!.id);
+    res.status(200).json({ data: activities });
   }),
 );
 

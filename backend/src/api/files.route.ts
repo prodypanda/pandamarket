@@ -38,7 +38,12 @@ const uploadRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.id ?? req.ip ?? 'unknown',
-  message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many upload requests. Please wait before uploading more files.' } },
+  message: {
+    error: {
+      code: PdErrorCode.RATE_LIMITED,
+      message: 'Too many upload requests. Please wait before uploading more files.',
+    },
+  },
 });
 
 // Allowed MIME types per purpose
@@ -58,19 +63,28 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   report_evidence: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/plain'],
   chat_image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   delivery_proof: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+  admin_note_attachment: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+    'application/zip',
+  ],
 };
 
 // Max file sizes per purpose (bytes)
 const MAX_SIZES: Record<string, number> = {
-  product_image: 10 * 1024 * 1024,   // 10 MB
+  product_image: 10 * 1024 * 1024, // 10 MB
   digital_product: 100 * 1024 * 1024,
-  kyc_document: 10 * 1024 * 1024,    // 10 MB
-  mandat_proof: 10 * 1024 * 1024,    // 10 MB
-  theme_asset: 5 * 1024 * 1024,      // 5 MB
+  kyc_document: 10 * 1024 * 1024, // 10 MB
+  mandat_proof: 10 * 1024 * 1024, // 10 MB
+  theme_asset: 5 * 1024 * 1024, // 5 MB
   marketplace_asset: 25 * 1024 * 1024,
   report_evidence: 20 * 1024 * 1024,
   chat_image: 5 * 1024 * 1024,
   delivery_proof: 10 * 1024 * 1024,
+  admin_note_attachment: 25 * 1024 * 1024,
 };
 
 /**
@@ -113,7 +127,10 @@ router.post(
       req.user!.role !== UserRole.Admin &&
       req.user!.role !== UserRole.SuperAdmin
     ) {
-      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only admins can upload marketplace assets');
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        'Only admins can upload marketplace assets',
+      );
     }
 
     // Determine bucket and key path
@@ -130,7 +147,10 @@ router.post(
         break;
       case 'digital_product':
         if (!req.user!.store_id) {
-          throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only vendors can upload digital products');
+          throw new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            'Only vendors can upload digital products',
+          );
         }
         bucket = config.s3.bucketPrivate;
         keyPrefix = `digital/${req.user!.store_id}`;
@@ -149,9 +169,11 @@ router.post(
         break;
       case 'marketplace_asset':
         bucket = config.s3.bucketPublic;
-        const subFolder = req.body.folder && ['categories', 'branding', 'banners', 'general'].includes(req.body.folder)
-          ? req.body.folder
-          : 'general';
+        const subFolder =
+          req.body.folder &&
+          ['categories', 'branding', 'banners', 'general'].includes(req.body.folder)
+            ? req.body.folder
+            : 'general';
         keyPrefix = `marketplace/${subFolder}/${req.user!.id}`;
         break;
       case 'report_evidence':
@@ -164,10 +186,23 @@ router.post(
         break;
       case 'delivery_proof':
         if (!req.user!.store_id) {
-          throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Only vendors can upload delivery proof');
+          throw new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            'Only vendors can upload delivery proof',
+          );
         }
         bucket = config.s3.bucketPrivate;
         keyPrefix = `delivery-proofs/${req.user!.store_id}`;
+        break;
+      case 'admin_note_attachment':
+        if (req.user!.role !== UserRole.Admin && req.user!.role !== UserRole.SuperAdmin) {
+          throw new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            'Only admins can upload note attachments',
+          );
+        }
+        bucket = config.s3.bucketPrivate;
+        keyPrefix = `admin-notes/${req.user!.id}`;
         break;
       default:
         throw new PdValidationError('Invalid purpose');
@@ -175,7 +210,8 @@ router.post(
 
     const fileKey = `${keyPrefix}/${safeFilename}`;
 
-    const isS3Local = config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+    const isS3Local =
+      config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
     const host = req.get('host');
     const protocol = req.protocol;
 
@@ -199,17 +235,17 @@ router.post(
     const publicAssetUrl = isPublic ? publicUrl(fileKey) : undefined;
     const asset = publicAssetUrl
       ? await fileAssetService.registerAsset({
-        scope: purpose === 'marketplace_asset' ? 'platform' : 'store',
-        purpose,
-        url: publicAssetUrl,
-        file_key: fileKey,
-        bucket,
-        filename,
-        content_type,
-        file_size: file_size ?? null,
-        owner_user_id: req.user!.id,
-        store_id: purpose === 'marketplace_asset' ? null : req.user!.store_id ?? null,
-      })
+          scope: purpose === 'marketplace_asset' ? 'platform' : 'store',
+          purpose,
+          url: publicAssetUrl,
+          file_key: fileKey,
+          bucket,
+          filename,
+          content_type,
+          file_size: file_size ?? null,
+          owner_user_id: req.user!.id,
+          store_id: purpose === 'marketplace_asset' ? null : (req.user!.store_id ?? null),
+        })
       : null;
 
     res.status(200).json({
@@ -246,11 +282,15 @@ router.get(
       key,
     );
 
-    if (key.includes('..') || (!reportAllowed && !chatAllowed && ((!isAdmin && !userAllowed) || (isAdmin && !adminAllowed)))) {
+    if (
+      key.includes('..') ||
+      (!reportAllowed && !chatAllowed && ((!isAdmin && !userAllowed) || (isAdmin && !adminAllowed)))
+    ) {
       throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You cannot access this file');
     }
 
-    const isS3Local = config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+    const isS3Local =
+      config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
     const host = req.get('host');
     const protocol = req.protocol;
 

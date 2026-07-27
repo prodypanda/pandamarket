@@ -60,6 +60,8 @@ import { startSearchWorker } from './workers/search.worker';
 import { startSubscriptionWorker } from './workers/subscription.worker';
 import { startWebhookWorker } from './workers/webhook.worker';
 import { adsService } from './services/ads.service';
+import { adminNotesService } from './services/admin-notes.service';
+import { notificationService } from './services/notification.service';
 
 async function bootstrap() {
   // Initialise Sentry (no-op if DSN not configured)
@@ -116,11 +118,7 @@ async function bootstrap() {
             'https://api.konnect.network',
             'https://api.preprod.konnect.network',
           ],
-          frameSrc: [
-            "'self'",
-            'https://flouci.com',
-            'https://pay.konnect.network',
-          ],
+          frameSrc: ["'self'", 'https://flouci.com', 'https://pay.konnect.network'],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
@@ -152,14 +150,14 @@ async function bootstrap() {
         callback(new Error('Not allowed by CORS'));
       },
       credentials: true,
-    })
+    }),
   );
 
   // Parsers
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(config.cookieSecret));
-  
+
   // Serve public uploads and themes statically from backend/data.
   // getDataDir() resolves correctly for both tsx dev mode (src/) and the
   // compiled production build (dist/backend/src/), unlike __dirname-relative paths.
@@ -242,10 +240,14 @@ async function bootstrap() {
   app.use('/api/pd', apiRouter);
 
   // Swagger API documentation
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'PandaMarket API Documentation',
-  }));
+  app.use(
+    '/api/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'PandaMarket API Documentation',
+    }),
+  );
   app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
   // Health check (liveness)
@@ -284,7 +286,9 @@ async function bootstrap() {
     // Meilisearch
     try {
       const start = Date.now();
-      const meiliRes = await fetch(`${config.meili.host}/health`, { signal: AbortSignal.timeout(5000) });
+      const meiliRes = await fetch(`${config.meili.host}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (meiliRes.ok) {
         checks.meilisearch = { status: 'ok', latency_ms: Date.now() - start };
       } else {
@@ -299,7 +303,9 @@ async function bootstrap() {
     // MinIO / S3
     try {
       const start = Date.now();
-      const s3Res = await fetch(`${config.s3.endpoint}/minio/health/live`, { signal: AbortSignal.timeout(5000) });
+      const s3Res = await fetch(`${config.s3.endpoint}/minio/health/live`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (s3Res.ok) {
         checks.s3 = { status: 'ok', latency_ms: Date.now() - start };
       } else {
@@ -337,7 +343,8 @@ async function bootstrap() {
   const keepAliveEnabled = (process.env.PD_KEEP_ALIVE_ENABLED ?? 'true') !== 'false';
   if (keepAliveEnabled && keepAliveUrl && config.env === 'production') {
     const parsedInterval = Number(process.env.PD_KEEP_ALIVE_INTERVAL_MS);
-    const keepAliveIntervalMs = Number.isFinite(parsedInterval) && parsedInterval >= 60_000 ? parsedInterval : 10 * 60 * 1000;
+    const keepAliveIntervalMs =
+      Number.isFinite(parsedInterval) && parsedInterval >= 60_000 ? parsedInterval : 10 * 60 * 1000;
     const keepAliveTarget = `${keepAliveUrl.replace(/\/$/, '')}/health`;
     const keepAliveTimer = setInterval(() => {
       fetch(keepAliveTarget, { signal: AbortSignal.timeout(15000) })
@@ -345,16 +352,66 @@ async function bootstrap() {
         .catch((err) => logger.warn({ err }, 'Keep-alive ping failed.'));
     }, keepAliveIntervalMs);
     keepAliveTimer.unref();
-    logger.info({ target: keepAliveTarget, interval_ms: keepAliveIntervalMs }, 'Keep-alive self-ping enabled.');
+    logger.info(
+      { target: keepAliveTarget, interval_ms: keepAliveIntervalMs },
+      'Keep-alive self-ping enabled.',
+    );
   }
 
-  const adsLifecycleTimer=setInterval(()=>{
-    adsService.processLifecycle().then(result=>{
-      if(result.activated||result.completed||result.exhausted||result.charged)logger.info({ads:result},'Ads lifecycle processed');
-    }).catch(err=>logger.error({err},'Ads lifecycle processing failed'));
-  },5*60*1000);
+  const adsLifecycleTimer = setInterval(
+    () => {
+      adsService
+        .processLifecycle()
+        .then((result) => {
+          if (result.activated || result.completed || result.exhausted || result.charged)
+            logger.info({ ads: result }, 'Ads lifecycle processed');
+        })
+        .catch((err) => logger.error({ err }, 'Ads lifecycle processing failed'));
+    },
+    5 * 60 * 1000,
+  );
   adsLifecycleTimer.unref();
-  void adsService.processLifecycle().catch(err=>logger.error({err},'Initial Ads lifecycle processing failed'));
+  void adsService
+    .processLifecycle()
+    .catch((err) => logger.error({ err }, 'Initial Ads lifecycle processing failed'));
+
+  // Admin notes reminder scheduler — poll due reminders every 2 minutes
+  // and emit in-app + realtime notifications for admins.
+  const handledReminderIds = new Set<string>();
+  const reminderTimer = setInterval(
+    () => {
+      (async () => {
+        try {
+          const res = await query('SELECT id, admin_id FROM pd_user WHERE role IN ($1, $2)', [
+            'admin',
+            'superadmin',
+          ]);
+          for (const admin of res.rows as Array<{ id: string; admin_id: string }>) {
+            const due = await adminNotesService.fetchDueReminders(admin.id, 2 / 60);
+            for (const note of due) {
+              const key = `${admin.id}:${note.id}`;
+              if (handledReminderIds.has(key)) continue;
+              handledReminderIds.add(key);
+              await notificationService
+                .create({
+                  user_id: admin.id,
+                  type: 'admin_note_reminder',
+                  title: 'Reminder due',
+                  message: note.title || 'A note reminder is due',
+                  data: { note_id: note.id, reminder_at: note.reminder_at },
+                })
+                .catch(() => undefined);
+            }
+          }
+          if (handledReminderIds.size > 1000) handledReminderIds.clear();
+        } catch (err) {
+          logger.warn({ err }, 'Admin notes reminder sweep failed');
+        }
+      })();
+    },
+    2 * 60 * 1000,
+  );
+  reminderTimer.unref();
 
   // Attach WebSocket gateway for real-time notifications
   socketGateway.attach(server);
