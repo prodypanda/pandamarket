@@ -39,8 +39,10 @@ export default function PaymentConfigPage() {
   const [flouciAppSecret, setFlouciAppSecret] = useState('');
   const [konnectApiKey, setKonnectApiKey] = useState('');
   const [konnectReceiverWallet, setKonnectReceiverWallet] = useState('');
-  const [paypalClientId, setPaypalClientId] = useState('');
-  const [paypalClientSecret, setPaypalClientSecret] = useState('');
+  const [paypalSandboxClientId, setPaypalSandboxClientId] = useState('');
+  const [paypalSandboxClientSecret, setPaypalSandboxClientSecret] = useState('');
+  const [paypalLiveClientId, setPaypalLiveClientId] = useState('');
+  const [paypalLiveClientSecret, setPaypalLiveClientSecret] = useState('');
 
   useEffect(() => {
     async function fetchStore() {
@@ -81,8 +83,11 @@ export default function PaymentConfigPage() {
       if (flouciAppSecret) body.flouci_app_secret = flouciAppSecret;
       if (konnectApiKey) body.konnect_api_key = konnectApiKey;
       if (konnectReceiverWallet) body.konnect_receiver_wallet = konnectReceiverWallet;
-      if (paypalClientId) body.paypal_client_id = paypalClientId;
-      if (paypalClientSecret) body.paypal_client_secret = paypalClientSecret;
+      if (paypalSandboxClientId) body.paypal_sandbox_client_id = paypalSandboxClientId;
+      if (paypalSandboxClientSecret) body.paypal_sandbox_client_secret = paypalSandboxClientSecret;
+      if (paypalLiveClientId) body.paypal_live_client_id = paypalLiveClientId;
+      if (paypalLiveClientSecret) body.paypal_live_client_secret = paypalLiveClientSecret;
+      if (paypalSandboxClientId || paypalLiveClientId) body.paypal_client_id = paypalLiveClientId || paypalSandboxClientId;
 
       if (Object.keys(body).length === 0) {
         setError('Please fill in at least one field');
@@ -104,8 +109,10 @@ export default function PaymentConfigPage() {
         setFlouciAppSecret('');
         setKonnectApiKey('');
         setKonnectReceiverWallet('');
-        setPaypalClientId('');
-        setPaypalClientSecret('');
+        setPaypalSandboxClientId('');
+        setPaypalSandboxClientSecret('');
+        setPaypalLiveClientId('');
+        setPaypalLiveClientSecret('');
       } else {
         setError(await getErrorMessage(res, 'Failed to save payment configuration'));
       }
@@ -256,36 +263,68 @@ export default function PaymentConfigPage() {
       </div>
 
       {/* PayPal Configuration */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+        <div className="flex items-center gap-3">
           <div className="p-2 bg-yellow-50 rounded-lg">
             <CreditCard className="w-5 h-5 text-yellow-600" />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">PayPal (International)</h2>
-            <p className="text-sm text-gray-500">Accept direct global payments via PayPal</p>
+            <h2 className="font-semibold text-gray-900">PayPal (International Direct Payouts)</h2>
+            <p className="text-sm text-gray-500">Configure your direct Sandbox and Live PayPal REST API credentials</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-            <input
-              type="password"
-              value={paypalClientId}
-              onChange={(e) => setPaypalClientId(e.target.value)}
-              placeholder="Enter your PayPal Client ID"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
-            />
+
+        {/* Sandbox */}
+        <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/20 space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800">1. Sandbox (Testing)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Sandbox Client ID</label>
+              <input
+                type="password"
+                value={paypalSandboxClientId}
+                onChange={(e) => setPaypalSandboxClientId(e.target.value)}
+                placeholder="Enter your Sandbox Client ID"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Sandbox Client Secret</label>
+              <input
+                type="password"
+                value={paypalSandboxClientSecret}
+                onChange={(e) => setPaypalSandboxClientSecret(e.target.value)}
+                placeholder="Enter your Sandbox Client Secret"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] outline-none text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-            <input
-              type="password"
-              value={paypalClientSecret}
-              onChange={(e) => setPaypalClientSecret(e.target.value)}
-              placeholder="Enter your PayPal Client Secret"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
-            />
+        </div>
+
+        {/* Live */}
+        <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/20 space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800">2. Live (Production)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Live Client ID</label>
+              <input
+                type="password"
+                value={paypalLiveClientId}
+                onChange={(e) => setPaypalLiveClientId(e.target.value)}
+                placeholder="Enter your Live Client ID"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Live Client Secret</label>
+              <input
+                type="password"
+                value={paypalLiveClientSecret}
+                onChange={(e) => setPaypalLiveClientSecret(e.target.value)}
+                placeholder="Enter your Live Client Secret"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] outline-none text-sm"
+              />
+            </div>
           </div>
         </div>
       </div>

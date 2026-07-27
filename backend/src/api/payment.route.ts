@@ -262,13 +262,16 @@ router.post(
       return;
     }
 
+    const { paypalProvider } = await import('../plugins/payment');
+    const signatureValid = await paypalProvider.verifyWebhookSignature(req.headers as Record<string, string>, req.body);
+
     await paymentService.processPaymentWebhook({
       gateway: PaymentGateway.PayPal,
       gatewayEventId: String(paypalOrderId),
       orderId: String(orderId),
       rawPayload: req.body,
       sourceIp: req.ip ?? undefined,
-      signatureValid: true,
+      signatureValid,
     });
 
     res.status(200).send('OK');

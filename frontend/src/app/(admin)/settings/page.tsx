@@ -174,9 +174,14 @@ interface PlatformSettings {
   payment_konnect_enabled: boolean;
   payment_paypal_enabled: boolean;
   payment_paypal_mode: 'sandbox' | 'live';
-  payment_paypal_client_id: string;
-  payment_paypal_client_secret: string;
-  payment_paypal_webhook_id: string;
+  payment_paypal_sandbox_client_id: string;
+  payment_paypal_sandbox_client_secret: string;
+  payment_paypal_sandbox_webhook_id: string;
+  payment_paypal_live_client_id: string;
+  payment_paypal_live_client_secret: string;
+  payment_paypal_live_webhook_id: string;
+  payment_paypal_currency: string;
+  payment_paypal_fx_rate_tnd_to_target: number;
   payment_mandat_enabled: boolean;
   payment_cod_enabled: boolean;
   payment_vendor_direct_enabled: boolean;
@@ -366,9 +371,14 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   payment_konnect_enabled: true,
   payment_paypal_enabled: true,
   payment_paypal_mode: 'sandbox',
-  payment_paypal_client_id: '',
-  payment_paypal_client_secret: '',
-  payment_paypal_webhook_id: '',
+  payment_paypal_sandbox_client_id: '',
+  payment_paypal_sandbox_client_secret: '',
+  payment_paypal_sandbox_webhook_id: '',
+  payment_paypal_live_client_id: '',
+  payment_paypal_live_client_secret: '',
+  payment_paypal_live_webhook_id: '',
+  payment_paypal_currency: 'EUR',
+  payment_paypal_fx_rate_tnd_to_target: 0.30,
   payment_mandat_enabled: true,
   payment_cod_enabled: true,
   payment_vendor_direct_enabled: true,
@@ -494,9 +504,13 @@ const TEXT_SETTING_KEYS = [
   'hub_hero_seller_rail_cta_label',
   'hub_hero_seller_rail_cta_url',
   'hub_hero_seller_rail_badge_text',
-  'payment_paypal_client_id',
-  'payment_paypal_client_secret',
-  'payment_paypal_webhook_id',
+  'payment_paypal_sandbox_client_id',
+  'payment_paypal_sandbox_client_secret',
+  'payment_paypal_sandbox_webhook_id',
+  'payment_paypal_live_client_id',
+  'payment_paypal_live_client_secret',
+  'payment_paypal_live_webhook_id',
+  'payment_paypal_currency',
   'analytics_ga4_measurement_id',
   'analytics_gtm_container_id',
   'analytics_meta_pixel_id',
@@ -522,6 +536,7 @@ const TEXT_SETTING_KEYS = [
 ] as const satisfies readonly FreeTextSettingKey[];
 
 const NUMBER_SETTING_KEYS = [
+  'payment_paypal_fx_rate_tnd_to_target',
   'retention_days_flouci',
   'retention_days_konnect',
   'retention_days_mandat',
@@ -712,9 +727,14 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'payment_konnect_enabled',
     'payment_paypal_enabled',
     'payment_paypal_mode',
-    'payment_paypal_client_id',
-    'payment_paypal_client_secret',
-    'payment_paypal_webhook_id',
+    'payment_paypal_sandbox_client_id',
+    'payment_paypal_sandbox_client_secret',
+    'payment_paypal_sandbox_webhook_id',
+    'payment_paypal_live_client_id',
+    'payment_paypal_live_client_secret',
+    'payment_paypal_live_webhook_id',
+    'payment_paypal_currency',
+    'payment_paypal_fx_rate_tnd_to_target',
     'payment_mandat_enabled',
     'payment_cod_enabled',
     'payment_vendor_direct_enabled',
@@ -2105,27 +2125,77 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* PayPal Configuration Details */}
-      <section className={`${activeTab === 'finance' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+      <section className={`${activeTab === 'finance' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40 space-y-6`}>
         <SectionHeader
           icon={<CreditCard className="h-5 w-5 text-blue-600" />}
-          title="PayPal Configuration"
-          description="Configure platform-wide API credentials for PayPal REST API v2."
+          title="PayPal Configuration & Credentials"
+          description="Configure platform-wide Sandbox and Live API credentials for PayPal REST API v2."
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-1.5 md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">PayPal Environment Mode</label>
-            <select
-              value={settings.payment_paypal_mode}
-              onChange={(e) => updateSetting('payment_paypal_mode', e.target.value as 'sandbox' | 'live')}
-              className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
-            >
-              <option value="sandbox">Sandbox (Testing / Preproduction)</option>
-              <option value="live">Live (Production)</option>
-            </select>
+
+        {/* Mode & Currency Conversion */}
+        <div className="rounded-2xl bg-blue-50/60 p-5 border border-blue-100 space-y-4">
+          <h4 className="text-xs font-black uppercase tracking-wider text-blue-900">Active Mode & Currency Conversion</h4>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Active Environment Mode</label>
+              <select
+                value={settings.payment_paypal_mode}
+                onChange={(e) => updateSetting('payment_paypal_mode', e.target.value as 'sandbox' | 'live')}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+              >
+                <option value="sandbox">Sandbox (Testing / Preproduction)</option>
+                <option value="live">Live (Production)</option>
+              </select>
+            </div>
+            {renderTextInput('payment_paypal_currency', 'Target PayPal Currency', 'EUR or USD')}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">TND FX Rate (1 TND = X Target)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="10"
+                value={settings.payment_paypal_fx_rate_tnd_to_target}
+                onChange={(e) => updateSetting('payment_paypal_fx_rate_tnd_to_target', Number(e.target.value) || 0.30)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+              />
+            </div>
           </div>
-          {renderTextInput('payment_paypal_client_id', 'Client ID', 'e.g. A21AAH...')}
-          {renderTextInput('payment_paypal_client_secret', 'Client Secret', 'e.g. E...')}
-          {renderTextInput('payment_paypal_webhook_id', 'Webhook ID (Optional)', 'e.g. 8WH...')}
+        </div>
+
+        {/* Sandbox Credentials */}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/30 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">1. Sandbox (Testing) Credentials</h4>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {renderTextInput('payment_paypal_sandbox_client_id', 'Sandbox Client ID', 'e.g. AUaFWDFZE...')}
+            {renderTextInput('payment_paypal_sandbox_client_secret', 'Sandbox Client Secret', 'e.g. EE2-3eVt...')}
+            <div className="md:col-span-2">
+              {renderTextInput('payment_paypal_sandbox_webhook_id', 'Sandbox Webhook ID', 'e.g. 8WH12345678... (Assigned when registering Webhook URL in PayPal Dev Dashboard)')}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Credentials */}
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900">2. Live (Production) Credentials</h4>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {renderTextInput('payment_paypal_live_client_id', 'Live Client ID', 'e.g. BAAAmZT6...')}
+            {renderTextInput('payment_paypal_live_client_secret', 'Live Client Secret', 'e.g. EHDOvLKU...')}
+            <div className="md:col-span-2">
+              {renderTextInput('payment_paypal_live_webhook_id', 'Live Webhook ID', 'e.g. 9KL98765432...')}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 p-4 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+          <p className="font-bold text-slate-800">📌 What is Webhook ID and how to get it?</p>
+          <p>When you add your platform Webhook URL (<code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-300">https://www.garbage.team/api/pd/payments/webhook/paypal</code>) in the PayPal Developer Dashboard under Apps & Credentials → Webhooks, PayPal generates a <strong>Webhook ID</strong>. Paste it above so PandaMarket can cryptographically verify every inbound payment event.</p>
         </div>
       </section>
 

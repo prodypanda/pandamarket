@@ -21,20 +21,37 @@ export class PayPalProvider implements PaymentProvider {
 
   private async getCredentials(vendor_credentials?: Record<string, string>) {
     const settings = await platformConfigService.getSettings();
-    const clientId = vendor_credentials?.paypal_client_id || (settings.payment_paypal_client_id as string) || config.paypal.clientId;
-    const clientSecret = vendor_credentials?.paypal_client_secret || (settings.payment_paypal_client_secret as string) || config.paypal.clientSecret;
     const mode = (settings.payment_paypal_mode as 'sandbox' | 'live') || config.paypal.mode || 'sandbox';
+
+    let clientId = vendor_credentials?.paypal_client_id;
+    let clientSecret = vendor_credentials?.paypal_client_secret;
+    let webhookId = '';
+
+    if (!clientId || !clientSecret) {
+      if (mode === 'live') {
+        clientId = (settings.payment_paypal_live_client_id as string) || config.paypal.clientId;
+        clientSecret = (settings.payment_paypal_live_client_secret as string) || config.paypal.clientSecret;
+        webhookId = (settings.payment_paypal_live_webhook_id as string) || config.paypal.webhookId;
+      } else {
+        clientId = (settings.payment_paypal_sandbox_client_id as string) || config.paypal.clientId;
+        clientSecret = (settings.payment_paypal_sandbox_client_secret as string) || config.paypal.clientSecret;
+        webhookId = (settings.payment_paypal_sandbox_webhook_id as string) || config.paypal.webhookId;
+      }
+    }
 
     const baseUrl = mode === 'live'
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-    return { clientId, clientSecret, mode, baseUrl };
+    const targetCurrency = (settings.payment_paypal_currency as string) || 'EUR';
+    const fxRate = Number(settings.payment_paypal_fx_rate_tnd_to_target) || 0.30;
+
+    return { clientId, clientSecret, webhookId, mode, baseUrl, targetCurrency, fxRate };
   }
 
   private async getAccessToken(clientId: string, clientSecret: string, baseUrl: string): Promise<string> {
     if (!clientId || !clientSecret) {
-      throw new Error('PayPal Client ID or Client Secret missing');
+      throw new Error('PayPal Client ID or Client Secret missing for the selected environment mode');
     }
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const { data } = await axios.post(
@@ -57,11 +74,13 @@ export class PayPalProvider implements PaymentProvider {
     try {
       const accessToken = await this.getAccessToken(creds.clientId, creds.clientSecret, creds.baseUrl);
 
-      // Convert currency to valid PayPal currency code (USD, EUR, etc. If TND, map or use USD equivalent)
       let currencyCode = (ctx.currency || 'USD').toUpperCase();
       let amountValue = ctx.amount;
+
+      // Convert TND to PayPal supported currency (EUR/USD) using configured exchange rate
       if (currencyCode === 'TND') {
-        currencyCode = 'EUR'; // Standard conversion fallback for PayPal
+        currencyCode = creds.targetCurrency;
+        amountValue = Math.round(ctx.amount * creds.fxRate * 100) / 100;
       }
 
       const { data } = await axios.post(
@@ -104,7 +123,13 @@ export class PayPalProvider implements PaymentProvider {
       return {
         redirect_url: approveLink,
         gateway_reference: orderId,
-        metadata: { provider: 'paypal', mode: creds.mode },
+        metadata: {
+          provider: 'paypal',
+          mode: creds.mode,
+          original_amount_tnd: ctx.amount,
+          converted_amount: amountValue,
+          currency: currencyCode,
+        },
       };
     } catch (err) {
       logger.error({ err: (err as Error).message }, 'PayPal init failed');
@@ -125,7 +150,6 @@ export class PayPalProvider implements PaymentProvider {
     try {
       const accessToken = await this.getAccessToken(creds.clientId, creds.clientSecret, creds.baseUrl);
 
-      // Check current PayPal order status
       const getRes = await axios.get(`${creds.baseUrl}/v2/checkout/orders/${reference}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         timeout: 10_000,
@@ -143,7 +167,6 @@ export class PayPalProvider implements PaymentProvider {
       }
 
       if (orderStatus === 'APPROVED') {
-        // Capture the approved order
         const captureRes = await axios.post(
           `${creds.baseUrl}/v2/checkout/orders/${reference}/capture`,
           {},
@@ -177,6 +200,45 @@ export class PayPalProvider implements PaymentProvider {
         502,
         { gateway: 'paypal' },
       );
+    }
+  }
+
+  /**
+   * Verify inbound PayPal Webhook signature via PayPal REST API
+   */
+  async verifyWebhookSignature(headers: Record<string, string>, rawBody: Record<string, unknown>): Promise<boolean> {
+    try {
+      const creds = await this.getCredentials();
+      if (!creds.webhookId) {
+        logger.warn('PayPal Webhook ID is not configured — skipping signature check in dev mode');
+        return true;
+      }
+      const accessToken = await this.getAccessToken(creds.clientId, creds.clientSecret, creds.baseUrl);
+
+      const { data } = await axios.post(
+        `${creds.baseUrl}/v1/notifications/verify-webhook-signature`,
+        {
+          auth_algo: headers['paypal-auth-algo'],
+          cert_url: headers['paypal-cert-url'],
+          transmission_id: headers['paypal-transmission-id'],
+          transmission_sig: headers['paypal-transmission-sig'],
+          transmission_time: headers['paypal-transmission-time'],
+          webhook_id: creds.webhookId,
+          webhook_event: rawBody,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10_000,
+        },
+      );
+
+      return data?.verification_status === 'SUCCESS';
+    } catch (err) {
+      logger.error({ err: (err as Error).message }, 'PayPal webhook signature verification failed');
+      return false;
     }
   }
 }
