@@ -102,7 +102,11 @@ export default function RegisterPage() {
         return;
       }
 
-      window.location.href = '/hub/dashboard';
+      if (selectedPlan && selectedPlan !== 'free') {
+        window.location.href = `/hub/dashboard/subscription?plan=${selectedPlan}`;
+      } else {
+        window.location.href = '/hub/dashboard';
+      }
     } catch {
       setError('Network error. Please try again.');
     } finally {

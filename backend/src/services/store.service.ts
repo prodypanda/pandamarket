@@ -274,8 +274,11 @@ export class StoreService {
     if (!isValidSubdomain(subdomain)) {
       throw new PdValidationError('Invalid subdomain', { field: 'subdomain' });
     }
-    const plan = opts.plan ?? SubscriptionPlan.Free;
-    await subscriptionService.assertPlanIsEnabled(plan);
+    const requestedPlan = opts.plan ?? SubscriptionPlan.Free;
+    const requestedLimits = await subscriptionService.assertPlanIsEnabled(requestedPlan);
+    const isPaidPlan = Number(requestedLimits.yearly_price ?? 0) > 0;
+    const plan = isPaidPlan ? SubscriptionPlan.Free : requestedPlan;
+
     if (plan === SubscriptionPlan.Free) {
       const existingFreeStore = await query<{ id: string }>(
         'SELECT id FROM pd_store WHERE owner_id = $1 AND subscription_plan = $2 LIMIT 1',
