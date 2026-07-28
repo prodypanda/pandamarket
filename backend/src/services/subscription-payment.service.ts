@@ -172,6 +172,52 @@ export class SubscriptionPaymentService {
   }
 
   // ==========================================================
+  // Visual Auditability & Invoicing Control
+  // ==========================================================
+
+  async updateRetroactiveInvoiceTaxInfo(intentId: string, vatTaxId: string, billingAddress: string, adminId?: string) {
+    const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const intent = rows[0];
+    if (!intent) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+
+    const updatedMetadata = {
+      ...(intent.metadata || {}),
+      vat_tax_id: vatTaxId.trim(),
+      billing_address: billingAddress.trim(),
+      revised_at: new Date().toISOString(),
+    };
+
+    const updated = await query(
+      `UPDATE pd_subscription_intent
+       SET metadata = $2, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [intentId, updatedMetadata],
+    );
+
+    await this.logActivity(intentId, 'retroactive_tax_update', adminId, 'admin', {
+      vat_tax_id: vatTaxId.trim(),
+      billing_address: billingAddress.trim(),
+    });
+
+    return updated.rows[0];
+  }
+
+  getGrandfatheredTermsLock(order: any) {
+    const createdAtYear = new Date(order.created_at || Date.now()).getFullYear();
+    const version = `v${createdAtYear}.1-LOCKED`;
+    const lockedPrice = Number(order.amount || 0);
+
+    return {
+      pricing_version: version,
+      locked_yearly_price: lockedPrice,
+      currency: 'TND',
+      terms_schema: `Grandfathered ${order.target_plan.toUpperCase()} Plan at ${lockedPrice} TND/year`,
+      is_locked: true,
+      agreed_at: order.created_at,
+    };
+  }
+
+  // ==========================================================
   // Smart Decline Code Routing
   // ==========================================================
 

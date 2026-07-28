@@ -4510,6 +4510,37 @@ router.get(
   }),
 );
 
+router.patch(
+  '/subscription-orders/:intentId/tax-info',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intentId } = req.params;
+    const { vat_tax_id, billing_address } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const updated = await subscriptionPaymentService.updateRetroactiveInvoiceTaxInfo(intentId, vat_tax_id || '', billing_address || '', req.user!.id);
+    res.status(200).json({ success: true, intent: updated });
+  }),
+);
+
+router.get(
+  '/subscription-orders/:intentId/terms-lock',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intentId } = req.params;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const { rows } = await (await import('../db/pool')).query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const order = rows[0];
+    if (!order) {
+      res.status(404).json({ error: { message: 'Order not found' } });
+      return;
+    }
+    const terms = subscriptionPaymentService.getGrandfatheredTermsLock(order);
+    res.status(200).json({ terms });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================

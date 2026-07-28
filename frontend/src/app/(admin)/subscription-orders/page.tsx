@@ -57,6 +57,8 @@ import {
   HeartPulse,
   Radar,
   AlertTriangle,
+  Lock,
+  Edit3,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -305,10 +307,16 @@ export default function SubscriptionOrdersPage() {
   const [newAddonName, setNewAddonName] = useState<string>('5x Extra Ad Slot Pack');
   const [newAddonAmount, setNewAddonAmount] = useState<string>('29');
 
+  // Retroactive Invoice Tax Modal
+  const [editTaxVatId, setEditTaxVatId] = useState<string>('');
+  const [editBillingAddress, setEditBillingAddress] = useState<string>('');
+  const [isEditingTaxInfo, setIsEditingTaxInfo] = useState(false);
+
   // Modals & Drawers
   const [reviewOrder, setReviewOrder] = useState<SubscriptionOrder | null>(null);
   const [drawerOrder, setDrawerOrder] = useState<SubscriptionOrder | null>(null);
   const [drawerLogs, setDrawerLogs] = useState<ActivityLog[]>([]);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [adminNoteInput, setAdminNoteInput] = useState<string>('');
   const [submittingNote, setSubmittingNote] = useState(false);
@@ -507,6 +515,25 @@ export default function SubscriptionOrdersPage() {
   };
 
   // Power Tools Handlers
+  const handleSaveRetroactiveTaxInfo = async () => {
+    if (!invoiceOrder) return;
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${invoiceOrder.id}/tax-info`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ vat_tax_id: editTaxVatId, billing_address: editBillingAddress }),
+      });
+      if (res.ok) {
+        setSuccess('Matricule Fiscale & Adresse de Facturation révisés avec succès sur la facture !');
+        setIsEditingTaxInfo(false);
+        fetchOrders();
+      }
+    } catch {
+      setError('Erreur de révision fiscale');
+    }
+  };
+
   const handleSimulateRevenue = async () => {
     if (selectedIds.length === 0) return;
     const selectedStoreIds = orders.filter((o) => selectedIds.includes(o.id)).map((o) => o.store_id);
@@ -1523,7 +1550,11 @@ export default function SubscriptionOrdersPage() {
                             <span className="text-slate-400 italic">{tr.proofNone || 'None'}</span>
                           )}
                           <button
-                            onClick={() => setInvoiceOrder(order)}
+                            onClick={() => {
+                              setInvoiceOrder(order);
+                              setEditTaxVatId(order.metadata?.vat_tax_id || '');
+                              setEditBillingAddress(order.metadata?.billing_address || '');
+                            }}
                             title={tr.invoiceTitle || 'Print B2B Invoice'}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 ml-1"
                           >
@@ -2319,7 +2350,7 @@ export default function SubscriptionOrdersPage() {
         </div>
       )}
 
-      {/* Rich Slide-Over Drawer for Order Details, Notes & Audit Trail */}
+      {/* Rich Slide-Over Drawer for Order Details, Notes & Interactive Lifecycle Scrubber */}
       {drawerOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 w-full max-w-xl h-full shadow-2xl overflow-y-auto p-6 sm:p-8 space-y-6 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
@@ -2336,6 +2367,20 @@ export default function SubscriptionOrdersPage() {
               <button onClick={() => setDrawerOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full">
                 <X className="w-6 h-6" />
               </button>
+            </div>
+
+            {/* Contract & Grandfathered Terms Lock Badge */}
+            <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-indigo-600" />
+                <div>
+                  <span className="font-bold text-indigo-900 dark:text-indigo-200">Contract & Grandfathered Terms Lock:</span>
+                  <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-mono">
+                    Locked at {Number(drawerOrder.amount).toFixed(0)} TND/year ({drawerOrder.target_plan.toUpperCase()}) • Schema v{new Date(drawerOrder.created_at).getFullYear()}.1
+                  </p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-200 text-indigo-900 uppercase">LOCKED</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800">
@@ -2407,9 +2452,10 @@ export default function SubscriptionOrdersPage() {
               )}
             </div>
 
+            {/* Interactive Subscription Lifecycle Scrubber */}
             <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <History className="w-4 h-4 text-[#B91C1C]" /> Audit Trail & History Timeline
+                <History className="w-4 h-4 text-[#B91C1C]" /> Interactive Subscription Lifecycle Scrubber
               </h4>
               {loadingLogs ? (
                 <p className="text-xs text-slate-400">Loading activity timeline...</p>
@@ -2417,23 +2463,26 @@ export default function SubscriptionOrdersPage() {
                 <p className="text-xs text-slate-400 italic">No activity recorded for this order.</p>
               ) : (
                 <div className="space-y-3 pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                  {drawerLogs.map((log) => (
-                    <div key={log.id} className="relative text-xs space-y-0.5">
-                      <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-[#B91C1C]" />
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-900 dark:text-white uppercase">{log.action}</span>
-                        <span className="text-[10px] text-slate-400">{new Date(log.created_at).toLocaleString('fr-TN')}</span>
+                  {drawerLogs.map((log) => {
+                    const isExpanded = expandedLogId === log.id;
+                    return (
+                      <div key={log.id} className="relative text-xs space-y-0.5">
+                        <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-[#B91C1C]" />
+                        <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedLogId(isExpanded ? null : log.id)}>
+                          <span className="font-bold text-slate-900 dark:text-white uppercase hover:underline">{log.action}</span>
+                          <span className="text-[10px] text-slate-400">{new Date(log.created_at).toLocaleString('fr-TN')}</span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                          By: <span className="font-semibold text-slate-700 dark:text-slate-300">{log.actor_email || log.actor_type}</span> ({log.actor_type})
+                        </p>
+                        {isExpanded && log.metadata && Object.keys(log.metadata).length > 0 && (
+                          <pre className="p-2.5 rounded-xl bg-slate-900 text-emerald-400 font-mono text-[10px] overflow-x-auto border border-slate-800">
+                            {JSON.stringify(log.metadata, null, 2)}
+                          </pre>
+                        )}
                       </div>
-                      <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                        By: <span className="font-semibold text-slate-700 dark:text-slate-300">{log.actor_email || log.actor_type}</span> ({log.actor_type})
-                      </p>
-                      {log.metadata && Object.keys(log.metadata).length > 0 && (
-                        <pre className="p-2 rounded-lg bg-slate-100 dark:bg-slate-950 text-[10px] font-mono text-slate-600 dark:text-slate-400 overflow-x-auto">
-                          {JSON.stringify(log.metadata, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -2518,7 +2567,7 @@ export default function SubscriptionOrdersPage() {
         </div>
       )}
 
-      {/* B2B Proforma Invoice Modal */}
+      {/* B2B Proforma Invoice & Retroactive Tax Adjustment Modal */}
       {invoiceOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl space-y-6 my-8 text-slate-900 border border-slate-200">
@@ -2537,10 +2586,44 @@ export default function SubscriptionOrdersPage() {
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex justify-between text-xs">
               <div>
-                <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.invoiceClient || 'Client / Seller'} :</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.invoiceClient || 'Client / Seller'} :</p>
+                  <button onClick={() => setIsEditingTaxInfo(!isEditingTaxInfo)} className="p-1 text-slate-400 hover:text-slate-600" title="Edit Retroactive Tax & Address Info">
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                </div>
                 <p className="font-bold text-slate-900 text-sm mt-0.5">{invoiceOrder.store_name}</p>
                 <p className="text-slate-600">Subdomain: {invoiceOrder.store_subdomain}.pandamarket.tn</p>
                 <p className="text-slate-600">Email: {invoiceOrder.seller_email}</p>
+
+                {isEditingTaxInfo ? (
+                  <div className="mt-2 space-y-2 bg-white p-3 rounded-xl border border-slate-300">
+                    <input
+                      type="text"
+                      value={editTaxVatId}
+                      onChange={(e) => setEditTaxVatId(e.target.value)}
+                      placeholder="EU VAT / Matricule Fiscale (e.g. TN1234567/A/M/000)"
+                      className="w-full p-1.5 border border-slate-200 rounded text-xs outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={editBillingAddress}
+                      onChange={(e) => setEditBillingAddress(e.target.value)}
+                      placeholder="Adresse de facturation complète..."
+                      className="w-full p-1.5 border border-slate-200 rounded text-xs outline-none"
+                    />
+                    <button onClick={handleSaveRetroactiveTaxInfo} className="w-full py-1.5 bg-slate-900 text-white font-bold rounded text-xs">
+                      Enregistrer Révision Fiscale
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-slate-600 font-mono">MF/VAT: {invoiceOrder.metadata?.vat_tax_id || 'Non renseigné'}</p>
+                    {invoiceOrder.metadata?.billing_address && (
+                      <p className="text-slate-600 text-[11px]">Adresse: {invoiceOrder.metadata.billing_address}</p>
+                    )}
+                  </>
+                )}
               </div>
               <div className="text-right">
                 <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.invoicePayMode || 'Payment Method'} :</p>
