@@ -1,4 +1,4 @@
-'use 'use client';
+'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, Suspense } from 'react';
