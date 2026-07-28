@@ -453,11 +453,12 @@ export class SubscriptionPaymentService {
   async getCohortLtvAnalytics() {
     const { rows: totals } = await query(`
       SELECT 
-        COUNT(DISTINCT store_id) AS total_vendors,
-        COUNT(CASE WHEN subscription_status = 'active' THEN 1 END) AS active_vendors,
-        COUNT(CASE WHEN subscription_status IN ('cancelled', 'expired') THEN 1 END) AS churned_vendors,
-        COALESCE(SUM(subscription_price), 0) AS total_arr
-      FROM pd_store
+        COUNT(DISTINCT s.id) AS total_vendors,
+        COUNT(CASE WHEN s.subscription_status = 'active' THEN 1 END) AS active_vendors,
+        COUNT(CASE WHEN s.subscription_status IN ('cancelled', 'expired') THEN 1 END) AS churned_vendors,
+        COALESCE(SUM(l.yearly_price), 0) AS total_arr
+      FROM pd_store s
+      LEFT JOIN pd_subscription_limits l ON l.plan_id = s.subscription_plan
     `);
 
     const totalVendors = Number(totals[0]?.total_vendors || 1);
