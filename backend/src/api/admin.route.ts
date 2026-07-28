@@ -4380,6 +4380,114 @@ router.post(
   }),
 );
 
+router.post(
+  '/subscription-orders/smart-decline',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intent_id, decline_code } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.handleSmartDecline(intent_id, decline_code || 'insufficient_funds');
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/simulate-revenue',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_ids, target_plan } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const simulation = await subscriptionPaymentService.simulateBulkRevenueImpact(store_ids || [], target_plan || 'pro');
+    res.status(200).json({ success: true, simulation });
+  }),
+);
+
+router.get(
+  '/subscription-orders/desyncs',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const desyncs = await subscriptionPaymentService.detectAndHealDesyncs();
+    res.status(200).json({ desyncs });
+  }),
+);
+
+router.post(
+  '/subscription-orders/resync',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.resyncGatewayState(store_id, req.user!.id);
+    res.status(200).json({ success: true, result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/magic-link',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intent_id } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.generateMagicBillingLink(intent_id, req.user!.id);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/save-offer',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, offer_type } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.applyRetentionOffer(store_id, offer_type, req.user!.id);
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/subscription-orders/addons/:storeId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { storeId } = req.params;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const addons = await subscriptionPaymentService.getStoreAddons(storeId);
+    res.status(200).json({ addons });
+  }),
+);
+
+router.post(
+  '/subscription-orders/addons',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, addon_key, addon_name, amount } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const addon = await subscriptionPaymentService.createStoreAddon(store_id, addon_key, addon_name, Number(amount));
+    res.status(201).json({ success: true, addon });
+  }),
+);
+
+router.patch(
+  '/subscription-orders/addons/:addonId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { addonId } = req.params;
+    const { status } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const addon = await subscriptionPaymentService.updateAddonStatus(addonId, status);
+    res.status(200).json({ success: true, addon });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================

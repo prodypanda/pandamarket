@@ -44,10 +44,6 @@ export class SubscriptionPaymentService {
     return rows;
   }
 
-  // ==========================================================
-  // Webhook & Sync Diagnostics & Granular Audit Logging
-  // ==========================================================
-
   async logWebhookEvent(
     intentId: string | undefined,
     gateway: string,
@@ -87,6 +83,245 @@ export class SubscriptionPaymentService {
 
     const { rows } = await query(sql, params);
     return rows;
+  }
+
+  // ==========================================================
+  // Smart Decline Code Routing
+  // ==========================================================
+
+  async handleSmartDecline(intentId: string, declineCode: string) {
+    const hardDeclineCodes = ['stolen_card', 'lost_card', 'do_not_honor', 'account_closed', 'fraudulent'];
+    const isHardDecline = hardDeclineCodes.includes(declineCode.toLowerCase());
+    const declineType = isHardDecline ? 'hard' : 'soft';
+
+    let scheduledRetryAt: Date | null = null;
+    if (!isHardDecline) {
+      const now = new Date();
+      const day = now.getDate();
+      scheduledRetryAt = new Date(now);
+      if (day < 15) {
+        scheduledRetryAt.setDate(15);
+      } else {
+        scheduledRetryAt.setMonth(scheduledRetryAt.getMonth() + 1);
+        scheduledRetryAt.setDate(1);
+      }
+    }
+
+    const { rows } = await query(
+      `UPDATE pd_subscription_intent
+       SET status = 'failed',
+           decline_code = $2,
+           decline_type = $3,
+           scheduled_retry_at = $4,
+           updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [intentId, declineCode, declineType, scheduledRetryAt],
+    );
+
+    const intent = rows[0];
+    if (intent) {
+      if (isHardDecline) {
+        await query(`UPDATE pd_store SET subscription_status = 'paused', updated_at = NOW() WHERE id = $1`, [intent.store_id]);
+      }
+      await this.logActivity(intentId, 'decline_routed', undefined, 'system', {
+        decline_code: declineCode,
+        decline_type: declineType,
+        scheduled_retry_at: scheduledRetryAt,
+      });
+    }
+
+    return { intent, isHardDecline, scheduledRetryAt };
+  }
+
+  // ==========================================================
+  // Bulk Revenue Impact Simulator
+  // ==========================================================
+
+  async simulateBulkRevenueImpact(storeIds: string[], targetPlanId: string) {
+    const targetPlanLimits = await subscriptionService.getLimits(targetPlanId);
+    const targetYearlyPrice = Number(targetPlanLimits.yearly_price ?? 0);
+
+    const { rows: stores } = await query<{
+      id: string;
+      name: string;
+      subscription_plan: string;
+      subscription_expires_at: Date | null;
+      subscription_credits: string | number;
+    }>(
+      'SELECT id, name, subscription_plan, subscription_expires_at, subscription_credits FROM pd_store WHERE id = ANY($1)',
+      [storeIds],
+    );
+
+    let currentTotalArr = 0;
+    let projectedTotalArr = 0;
+    let totalProrationCredits = 0;
+
+    const storeBreakdown: Array<{
+      store_id: string;
+      store_name: string;
+      current_plan: string;
+      current_price: number;
+      target_price: number;
+      net_change: number;
+      proration_credit: number;
+    }> = [];
+
+    for (const store of stores) {
+      const currentLimits = await subscriptionService.getLimits(store.subscription_plan);
+      const currentPrice = Number(currentLimits.yearly_price ?? 0);
+      currentTotalArr += currentPrice;
+      projectedTotalArr += targetYearlyPrice;
+
+      const netChange = targetYearlyPrice - currentPrice;
+      const proration = await this.calculateProration(store.id, targetPlanId);
+      const prorationCredit = proration.net_proration_amount < 0 ? Math.abs(proration.net_proration_amount) : 0;
+      totalProrationCredits += prorationCredit;
+
+      storeBreakdown.push({
+        store_id: store.id,
+        store_name: store.name,
+        current_plan: store.subscription_plan,
+        current_price: currentPrice,
+        target_price: targetYearlyPrice,
+        net_change: netChange,
+        proration_credit: prorationCredit,
+      });
+    }
+
+    const netArrShift = projectedTotalArr - currentTotalArr;
+    const netMrrShift = netArrShift / 12;
+
+    return {
+      affected_stores_count: stores.length,
+      target_plan: targetPlanId,
+      current_total_arr: currentTotalArr,
+      projected_total_arr: projectedTotalArr,
+      net_arr_shift: netArrShift,
+      net_mrr_shift: roundTnd(netMrrShift),
+      total_proration_credits: roundTnd(totalProrationCredits),
+      estimated_tax_adjustment: 0.0,
+      store_breakdown: storeBreakdown,
+    };
+  }
+
+  // ==========================================================
+  // Zombie & Desync Subscription Self-Healer
+  // ==========================================================
+
+  async detectAndHealDesyncs() {
+    const { rows: desyncs } = await query(`
+      SELECT s.id AS store_id, s.name AS store_name, s.subscription_plan, s.subscription_status,
+             i.id AS last_intent_id, i.status AS last_intent_status, i.gateway, i.target_plan
+      FROM pd_store s
+      JOIN LATERAL (
+        SELECT id, status, gateway, target_plan, created_at
+        FROM pd_subscription_intent
+        WHERE store_id = s.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) i ON true
+      WHERE (s.subscription_status = 'active' AND i.status IN ('cancelled', 'expired', 'rejected', 'failed'))
+         OR (s.subscription_status = 'cancelled' AND i.status = 'captured')
+    `);
+
+    return desyncs;
+  }
+
+  async resyncGatewayState(storeId: string, adminId?: string) {
+    const { rows: intentRows } = await query(
+      `SELECT * FROM pd_subscription_intent WHERE store_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [storeId],
+    );
+    const lastIntent = intentRows[0];
+    if (!lastIntent) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'No payment intents found for store');
+
+    let correctedStatus = 'active';
+    if (lastIntent.status === 'captured') {
+      correctedStatus = 'active';
+      await query(`UPDATE pd_store SET subscription_plan = $2, subscription_status = 'active', updated_at = NOW() WHERE id = $1`, [storeId, lastIntent.target_plan]);
+    } else if (['cancelled', 'expired', 'rejected', 'failed'].includes(lastIntent.status)) {
+      correctedStatus = 'cancelled';
+      await query(`UPDATE pd_store SET subscription_plan = 'free', subscription_status = 'cancelled', updated_at = NOW() WHERE id = $1`, [storeId]);
+    }
+
+    await this.logActivity(lastIntent.id, 'gateway_resync_healed', adminId, 'admin', {
+      store_id: storeId,
+      intent_status: lastIntent.status,
+      corrected_status: correctedStatus,
+    });
+
+    return { store_id: storeId, intent_id: lastIntent.id, intent_status: lastIntent.status, corrected_status: correctedStatus };
+  }
+
+  // ==========================================================
+  // Retention & Support Power Tools (Magic Links, Save Offers, Add-ons)
+  // ==========================================================
+
+  async generateMagicBillingLink(intentId: string, adminId?: string) {
+    const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const intent = rows[0];
+    if (!intent) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+
+    const magicToken = pdId('mgk');
+    const hubDomain = config.hubDomain.startsWith('http') ? config.hubDomain : `https://${config.hubDomain}`;
+    const magicUrl = `${hubDomain}/hub/dashboard/subscription?magic_token=${magicToken}&intent_id=${intentId}`;
+
+    await this.logActivity(intentId, 'magic_link_generated', adminId, 'admin', { magic_token: magicToken });
+    return { intent_id: intentId, magic_token: magicToken, magic_url: magicUrl };
+  }
+
+  async applyRetentionOffer(
+    storeId: string,
+    offerType: 'discount_20' | 'pause_60' | 'light_downgrade',
+    adminId?: string,
+  ) {
+    if (offerType === 'discount_20') {
+      const proration = await this.calculateProration(storeId, 'starter');
+      const discountCredit = roundTnd((proration.target_yearly_price || 150) * 0.20);
+      await this.createAdjustment(storeId, 'discount', discountCredit, undefined, 'Retention Save Offer - 20% Discount applied for 3 months', adminId);
+      return { success: true, offer: 'discount_20', discount_credit: discountCredit };
+    }
+
+    if (offerType === 'pause_60') {
+      const resumeAt = new Date();
+      resumeAt.setDate(resumeAt.getDate() + 60);
+      const store = await this.pauseSubscription(storeId, resumeAt.toISOString().slice(0, 10), adminId);
+      return { success: true, offer: 'pause_60', resume_at: resumeAt, store };
+    }
+
+    if (offerType === 'light_downgrade') {
+      const switchRes = await this.adminManualSwitchPlan(storeId, 'starter', 'immediate', adminId || 'system');
+      return { success: true, offer: 'light_downgrade', new_plan: 'starter', switchRes };
+    }
+
+    throw new PdValidationError('Invalid retention offer type');
+  }
+
+  async getStoreAddons(storeId: string) {
+    const { rows } = await query(
+      'SELECT * FROM pd_subscription_addon WHERE store_id = $1 ORDER BY created_at DESC',
+      [storeId],
+    );
+    return rows;
+  }
+
+  async createStoreAddon(storeId: string, addonKey: string, addonName: string, amount: number) {
+    const addonId = pdId('adn');
+    const { rows } = await query(
+      `INSERT INTO pd_subscription_addon (id, store_id, addon_key, addon_name, amount)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [addonId, storeId, addonKey, addonName, amount],
+    );
+    return rows[0];
+  }
+
+  async updateAddonStatus(addonId: string, status: 'active' | 'paused' | 'cancelled') {
+    const { rows } = await query(
+      `UPDATE pd_subscription_addon SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [addonId, status],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Add-on line item not found');
+    return rows[0];
   }
 
   // ==========================================================

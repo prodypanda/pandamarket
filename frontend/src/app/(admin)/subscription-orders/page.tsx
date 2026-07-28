@@ -48,6 +48,12 @@ import {
   MoreVertical,
   MessageSquare,
   ShieldAlert,
+  Zap,
+  TrendingDown,
+  LifeBuoy,
+  Plus,
+  Key,
+  Flame,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -132,6 +138,48 @@ interface AdjustmentRecord {
   created_at: string;
 }
 
+interface AddonRecord {
+  id: string;
+  store_id: string;
+  addon_key: string;
+  addon_name: string;
+  amount: number;
+  currency: string;
+  status: 'active' | 'paused' | 'cancelled';
+  created_at: string;
+}
+
+interface RevenueSimulation {
+  affected_stores_count: number;
+  target_plan: string;
+  current_total_arr: number;
+  projected_total_arr: number;
+  net_arr_shift: number;
+  net_mrr_shift: number;
+  total_proration_credits: number;
+  estimated_tax_adjustment: number;
+  store_breakdown: Array<{
+    store_id: string;
+    store_name: string;
+    current_plan: string;
+    current_price: number;
+    target_price: number;
+    net_change: number;
+    proration_credit: number;
+  }>;
+}
+
+interface DesyncRecord {
+  store_id: string;
+  store_name: string;
+  subscription_plan: string;
+  subscription_status: string;
+  last_intent_id: string;
+  last_intent_status: string;
+  gateway: string;
+  target_plan: string;
+}
+
 const GATEWAY_NAMES: Record<string, string> = {
   manual_mandat: 'Mandat Minute / Virement',
   flouci: 'Flouci',
@@ -195,6 +243,24 @@ export default function SubscriptionOrdersPage() {
   const [bulkRejectionReason, setBulkRejectionReason] = useState<string>('');
   const [bulkMigrationTargetPlan, setBulkMigrationTargetPlan] = useState<string>('pro');
 
+  // Revenue Simulator Modal
+  const [simulationData, setSimulationData] = useState<RevenueSimulation | null>(null);
+  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
+
+  // Desync Self-Healer
+  const [desyncsList, setDesyncsList] = useState<DesyncRecord[]>([]);
+  const [showDesyncModal, setShowDesyncModal] = useState(false);
+
+  // Retention Save Offer Modal
+  const [retentionOrder, setRetentionOrder] = useState<SubscriptionOrder | null>(null);
+
+  // Line-Item Add-ons Modal
+  const [addonOrder, setAddonOrder] = useState<SubscriptionOrder | null>(null);
+  const [storeAddons, setStoreAddons] = useState<AddonRecord[]>([]);
+  const [newAddonKey, setNewAddonKey] = useState<string>('extra_ad_slots');
+  const [newAddonName, setNewAddonName] = useState<string>('5x Extra Ad Slot Pack');
+  const [newAddonAmount, setNewAddonAmount] = useState<string>('29');
+
   // Modals & Drawers
   const [reviewOrder, setReviewOrder] = useState<SubscriptionOrder | null>(null);
   const [drawerOrder, setDrawerOrder] = useState<SubscriptionOrder | null>(null);
@@ -244,6 +310,18 @@ export default function SubscriptionOrdersPage() {
     }
   }, []);
 
+  const fetchDesyncs = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/desyncs', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDesyncsList(data.desyncs || []);
+      }
+    } catch {
+      // Ignore desync error
+    }
+  }, []);
+
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -283,7 +361,8 @@ export default function SubscriptionOrdersPage() {
   useEffect(() => {
     fetchOrders();
     fetchStats();
-  }, [fetchOrders, fetchStats]);
+    fetchDesyncs();
+  }, [fetchOrders, fetchStats, fetchDesyncs]);
 
   // Dynamic Sticky Summary Calculation based on filtered table data
   const filteredMetrics = useMemo(() => {
@@ -354,6 +433,137 @@ export default function SubscriptionOrdersPage() {
       setToDate('');
       setMinAmount('');
       setMaxAmount('');
+    }
+  };
+
+  // Power Tools Handlers
+  const handleSimulateRevenue = async () => {
+    if (selectedIds.length === 0) return;
+    const selectedStoreIds = orders.filter((o) => selectedIds.includes(o.id)).map((o) => o.store_id);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/simulate-revenue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_ids: selectedStoreIds, target_plan: bulkMigrationTargetPlan }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSimulationData(data.simulation);
+        setShowSimulatorModal(true);
+      }
+    } catch {
+      setError('Erreur lors de la simulation de revenus');
+    }
+  };
+
+  const handleResyncStore = async (storeId: string) => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/resync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_id: storeId }),
+      });
+      if (res.ok) {
+        setSuccess('Abonnement réaligné et réparé avec succès !');
+        fetchDesyncs();
+        fetchOrders();
+      }
+    } catch {
+      setError('Erreur lors du réalignement');
+    }
+  };
+
+  const handleGenerateMagicLink = async (intentId: string) => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ intent_id: intentId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        navigator.clipboard.writeText(data.magic_url);
+        setSuccess('🎉 Magic Link copié dans le presse-papier ! Envoyer au vendeur via WhatsApp/Chat.');
+        setTimeout(() => setSuccess(''), 4000);
+      }
+    } catch {
+      setError('Erreur lors de la génération du Magic Link');
+    }
+  };
+
+  const handleApplySaveOffer = async (offerType: 'discount_20' | 'pause_60' | 'light_downgrade') => {
+    if (!retentionOrder) return;
+    setSubmitting(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/save-offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_id: retentionOrder.store_id, offer_type: offerType }),
+      });
+      if (res.ok) {
+        setSuccess(`🎉 Offre de rétention (${offerType}) appliquée avec succès ! L'abonnement a été sauvegardé.`);
+        setRetentionOrder(null);
+        fetchOrders();
+      }
+    } catch {
+      setError('Erreur de rétention');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const fetchStoreAddonsList = async (storeId: string) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/addons/${storeId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setStoreAddons(data.addons || []);
+      }
+    } catch {
+      // Ignore addon error
+    }
+  };
+
+  const handleCreateAddon = async () => {
+    if (!addonOrder) return;
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/addons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: addonOrder.store_id,
+          addon_key: newAddonKey,
+          addon_name: newAddonName,
+          amount: newAddonAmount,
+        }),
+      });
+      if (res.ok) {
+        fetchStoreAddonsList(addonOrder.store_id);
+      }
+    } catch {
+      // Ignore add-on create error
+    }
+  };
+
+  const handleToggleAddonStatus = async (addonId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'active' ? 'paused' : 'active';
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/addons/${addonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok && addonOrder) {
+        fetchStoreAddonsList(addonOrder.store_id);
+      }
+    } catch {
+      // Ignore add-on update error
     }
   };
 
@@ -662,6 +872,12 @@ export default function SubscriptionOrdersPage() {
   };
 
   const handleCancelOrder = async (intentId: string) => {
+    const targetOrder = orders.find((o) => o.id === intentId);
+    if (targetOrder) {
+      setRetentionOrder(targetOrder);
+      return;
+    }
+
     if (!confirm(tr.confirmCancel || 'Voulez-vous vraiment annuler cette commande d\'abonnement ?')) return;
     setSubmitting(true);
     setError('');
@@ -821,6 +1037,14 @@ export default function SubscriptionOrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {desyncsList.length > 0 && (
+            <button
+              onClick={() => setShowDesyncModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 shadow-sm animate-pulse"
+            >
+              <LifeBuoy className="w-4 h-4" /> Zombie Self-Healer ({desyncsList.length})
+            </button>
+          )}
           <button
             onClick={exportCSV}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
@@ -834,7 +1058,7 @@ export default function SubscriptionOrdersPage() {
             <FileJson className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
           </button>
           <button
-            onClick={() => { fetchOrders(); fetchStats(); }}
+            onClick={() => { fetchOrders(); fetchStats(); fetchDesyncs(); }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
             <RefreshCw className="w-4 h-4" /> {tr.refresh || 'Refresh'}
@@ -930,7 +1154,7 @@ export default function SubscriptionOrdersPage() {
         </button>
       </div>
 
-      {/* Bulk Action Bar */}
+      {/* Bulk Action Bar & Revenue Impact Simulator Trigger */}
       {selectedIds.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-bold">
           <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
@@ -939,6 +1163,10 @@ export default function SubscriptionOrdersPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button onClick={handleSimulateRevenue} className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5" /> Simulate Revenue Impact
+            </button>
+
             <input
               type="text"
               value={bulkRejectionReason}
@@ -1139,7 +1367,7 @@ export default function SubscriptionOrdersPage() {
                         {tr.status || 'Health & Status'} <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
-                    <th className="px-4 py-4 text-right">Inline Actions</th>
+                    <th className="px-4 py-4 text-right">Inline Actions & Power Tools</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
@@ -1252,7 +1480,7 @@ export default function SubscriptionOrdersPage() {
                             </span>
                           )}
                         </td>
-                        {/* Inline Actions Menu */}
+                        {/* Inline Actions & Power Tools Menu */}
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {order.status === 'pending_review' || order.status === 'pending_proof' ? (
@@ -1265,11 +1493,19 @@ export default function SubscriptionOrdersPage() {
                             ) : null}
 
                             <button
-                              onClick={() => copyToClipboard(`https://pandamarket.tn/hub/dashboard/subscription?intent_id=${order.id}`, 'Vendor Portal Link')}
-                              title="Send / Copy Portal Direct Link"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                              onClick={() => handleGenerateMagicLink(order.id)}
+                              title="Generate Pre-Authenticated Billing Magic Link"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950/40"
                             >
-                              <Send className="w-3.5 h-3.5" />
+                              <Key className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => { setAddonOrder(order); fetchStoreAddonsList(order.store_id); }}
+                              title="Line-Item Add-On Disaggregation Manager"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                            >
+                              <Layers className="w-3.5 h-3.5" />
                             </button>
 
                             <button
@@ -1294,14 +1530,6 @@ export default function SubscriptionOrdersPage() {
                               className="p-1.5 border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40"
                             >
                               <PauseCircle className="w-3.5 h-3.5" />
-                            </button>
-
-                            <button
-                              onClick={() => setExtendModalOrder(order)}
-                              title="Extend Trial / Grace Period"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950/40"
-                            >
-                              <Gift className="w-3.5 h-3.5" />
                             </button>
 
                             <button
@@ -1353,6 +1581,253 @@ export default function SubscriptionOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Bulk Revenue Impact Simulator Modal */}
+      {showSimulatorModal && simulationData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-indigo-600">
+                  <Zap className="w-6 h-6" /> Bulk Revenue Impact Dry-Run Simulator
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Projected shift for {simulationData.affected_stores_count} selected accounts to {simulationData.target_plan.toUpperCase()}</p>
+              </div>
+              <button onClick={() => setShowSimulatorModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <p className="text-slate-400 font-bold uppercase text-[10px]">Current ARR</p>
+                <p className="font-bold text-slate-900 dark:text-white text-base">{simulationData.current_total_arr} TND</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+                <p className="text-indigo-600 font-bold uppercase text-[10px]">Projected ARR</p>
+                <p className="font-black text-indigo-700 dark:text-indigo-300 text-base">{simulationData.projected_total_arr} TND</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                <p className="text-emerald-600 font-bold uppercase text-[10px]">Net MRR Shift</p>
+                <p className="font-black text-emerald-700 dark:text-emerald-300 text-base">+{simulationData.net_mrr_shift} TND/mo</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                <p className="text-amber-600 font-bold uppercase text-[10px]">Proration Credits</p>
+                <p className="font-bold text-amber-700 dark:text-amber-300 text-base">{simulationData.total_proration_credits} TND</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-xs uppercase text-slate-500">Store-by-Store Revenue Shift Breakdown:</h4>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {simulationData.store_breakdown.map((s) => (
+                  <div key={s.store_id} className="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white">{s.store_name}</span>
+                      <span className="text-slate-400 text-[10px] ml-2">({s.current_plan.toUpperCase()} → {simulationData.target_plan.toUpperCase()})</span>
+                    </div>
+                    <div className="font-bold">
+                      <span className={s.net_change >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                        {s.net_change >= 0 ? `+${s.net_change} TND` : `${s.net_change} TND`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowSimulatorModal(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Cancel Dry-Run
+              </button>
+              <button onClick={() => { setShowSimulatorModal(false); handleBulkAction('migrate'); }} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700">
+                Commit Migration to Database
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zombie & Desync Self-Healer Modal */}
+      {showDesyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-amber-600">
+                  <LifeBuoy className="w-6 h-6" /> Zombie & Desync Subscription Self-Healer
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Found {desyncsList.length} accounts with mismatched gateway vs local DB state</p>
+              </div>
+              <button onClick={() => setShowDesyncModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto">
+              {desyncsList.map((d) => (
+                <div key={d.store_id} className="flex justify-between items-center p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs">
+                  <div>
+                    <span className="font-black text-slate-900 dark:text-white">{d.store_name}</span>
+                    <p className="text-slate-500 text-[11px]">
+                      Local DB: <span className="font-bold uppercase text-amber-700">{d.subscription_status} ({d.subscription_plan})</span> vs Intent: <span className="font-bold uppercase text-slate-700">{d.last_intent_status} ({d.target_plan})</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleResyncStore(d.store_id)}
+                    className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-xl text-xs hover:bg-amber-700"
+                  >
+                    Fetch & Re-Sync State
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={() => setShowDesyncModal(false)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin-Initiated Save Offer Prompt Modal */}
+      {retentionOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-emerald-600">
+                  <Flame className="w-6 h-6" /> Save Offer & Retention Alternatives
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Before cancelling subscription for {retentionOrder.store_name}</p>
+              </div>
+              <button onClick={() => setRetentionOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 dark:text-slate-300">
+                Instead of cancelling, propose a lower-friction retention offer to retain the vendor:
+              </p>
+
+              <button
+                onClick={() => handleApplySaveOffer('discount_20')}
+                className="w-full p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-left hover:bg-emerald-100 transition-all flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-black text-emerald-800 dark:text-emerald-300">Apply 20% Discount for 3 Months</span>
+                  <p className="text-[10px] text-emerald-600">Issues credit gesture to account balance</p>
+                </div>
+                <Gift className="w-5 h-5 text-emerald-600" />
+              </button>
+
+              <button
+                onClick={() => handleApplySaveOffer('pause_60')}
+                className="w-full p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-left hover:bg-amber-100 transition-all flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-black text-amber-800 dark:text-amber-300">Pause Billing for 60 Days</span>
+                  <p className="text-[10px] text-amber-600">Temporarily freeze billing with auto-resume</p>
+                </div>
+                <PauseCircle className="w-5 h-5 text-amber-600" />
+              </button>
+
+              <button
+                onClick={() => handleApplySaveOffer('light_downgrade')}
+                className="w-full p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-left hover:bg-blue-100 transition-all flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-black text-blue-800 dark:text-blue-300">Downgrade to Custom Starter Tier</span>
+                  <p className="text-[10px] text-blue-600">Keep vendor on low-cost entry plan</p>
+                </div>
+                <TrendingDown className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
+
+            <div className="flex gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button onClick={() => setRetentionOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Back
+              </button>
+              <button onClick={() => { setRetentionOrder(null); handleCancelOrder(retentionOrder.id); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl text-xs hover:bg-red-700">
+                Proceed to Full Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Line-Item Add-On Disaggregation Manager Modal */}
+      {addonOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-blue-600">
+                  <Layers className="w-6 h-6" /> Line-Item Add-On Disaggregation Manager
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Boutique: {addonOrder.store_name}</p>
+              </div>
+              <button onClick={() => setAddonOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                <h4 className="font-bold text-slate-700 dark:text-slate-300">Add New Line-Item Add-On</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newAddonName}
+                    onChange={(e) => setNewAddonName(e.target.value)}
+                    placeholder="Add-on Name (e.g. 5x Extra Ad Slots)"
+                    className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 outline-none"
+                  />
+                  <input
+                    type="number"
+                    value={newAddonAmount}
+                    onChange={(e) => setNewAddonAmount(e.target.value)}
+                    placeholder="Amount (TND)"
+                    className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 outline-none"
+                  />
+                </div>
+                <button onClick={handleCreateAddon} className="w-full py-2 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-700">
+                  Attach Add-On to Subscription
+                </button>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Active Line-Item Add-Ons</h4>
+                {storeAddons.length === 0 ? (
+                  <p className="text-slate-400 italic">No add-on line items attached yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {storeAddons.map((adn) => (
+                      <div key={adn.id} className="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white">{adn.addon_name}</span>
+                          <span className="text-slate-400 text-[10px] ml-2">({Number(adn.amount).toFixed(0)} TND)</span>
+                        </div>
+                        <button
+                          onClick={() => handleToggleAddonStatus(adn.id, adn.status)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${adn.status === 'active' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
+                        >
+                          {adn.status === 'active' ? 'Pause Line Item' : 'Activate Line Item'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button onClick={() => setAddonOrder(null)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Webhook & Diagnostics Modal */}
       {diagnosticsOrder && (
