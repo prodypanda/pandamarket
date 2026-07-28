@@ -41,6 +41,9 @@ import {
   Gift,
   Activity,
   Radio,
+  Bookmark,
+  RotateCcw,
+  ArrowUpRight,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -186,6 +189,7 @@ export default function SubscriptionOrdersPage() {
   // Batch Selection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkRejectionReason, setBulkRejectionReason] = useState<string>('');
+  const [bulkMigrationTargetPlan, setBulkMigrationTargetPlan] = useState<string>('pro');
 
   // Modals & Drawers
   const [reviewOrder, setReviewOrder] = useState<SubscriptionOrder | null>(null);
@@ -210,11 +214,6 @@ export default function SubscriptionOrdersPage() {
 
   const [pauseModalOrder, setPauseModalOrder] = useState<SubscriptionOrder | null>(null);
   const [pauseResumeDate, setPauseResumeDate] = useState<string>('');
-
-  const [cancelModalOrder, setCancelModalOrder] = useState<SubscriptionOrder | null>(null);
-  const [cancelMode, setCancelMode] = useState<'immediate' | 'end_of_period' | 'custom_date'>('end_of_period');
-  const [cancelCustomDate, setCancelCustomDate] = useState<string>('');
-  const [cancelReasonText, setCancelReasonText] = useState<string>('');
 
   const [extendModalOrder, setExtendModalOrder] = useState<SubscriptionOrder | null>(null);
   const [extendType, setExtendType] = useState<'trial' | 'grace_period'>('trial');
@@ -278,6 +277,45 @@ export default function SubscriptionOrdersPage() {
     fetchOrders();
     fetchStats();
   }, [fetchOrders, fetchStats]);
+
+  // Presets
+  const applyPreset = (preset: string) => {
+    setPage(1);
+    if (preset === 'high_value') {
+      setStatusFilter('all');
+      setGatewayFilter('all');
+      setTargetPlanFilter('all');
+      setMinAmount('400');
+      setMaxAmount('');
+    } else if (preset === 'pending_mandats') {
+      setStatusFilter('pending_proof');
+      setGatewayFilter('manual_mandat');
+      setTargetPlanFilter('all');
+      setMinAmount('');
+      setMaxAmount('');
+    } else if (preset === 'pending_review') {
+      setStatusFilter('pending_review');
+      setGatewayFilter('all');
+      setTargetPlanFilter('all');
+      setMinAmount('');
+      setMaxAmount('');
+    } else if (preset === 'pro_upgrades') {
+      setStatusFilter('all');
+      setGatewayFilter('all');
+      setTargetPlanFilter('pro');
+      setMinAmount('');
+      setMaxAmount('');
+    } else if (preset === 'reset') {
+      setStatusFilter('all');
+      setGatewayFilter('all');
+      setTargetPlanFilter('all');
+      setSearchTerm('');
+      setFromDate('');
+      setToDate('');
+      setMinAmount('');
+      setMaxAmount('');
+    }
+  };
 
   const fetchActivityLogs = async (intentId: string) => {
     setLoadingLogs(true);
@@ -608,20 +646,26 @@ export default function SubscriptionOrdersPage() {
     }
   };
 
-  const handleBulkAction = async (action: 'approve' | 'reject' | 'cancel' | 'delete') => {
+  const handleBulkAction = async (action: 'approve' | 'reject' | 'cancel' | 'delete' | 'pause' | 'resume' | 'migrate' | 'retry') => {
     if (selectedIds.length === 0) return;
     if (action === 'reject' && !bulkRejectionReason.trim()) {
       setError(tr.bulkReason || 'Motif commun requis pour le refus groupé.');
       return;
     }
 
+    const selectedStoreIds = orders.filter((o) => selectedIds.includes(o.id)).map((o) => o.store_id);
+
     const confirmMsg =
       action === 'approve' ? tr.confirmBulkApprove?.replace('{count}', String(selectedIds.length)) :
       action === 'reject' ? tr.confirmBulkReject?.replace('{count}', String(selectedIds.length)) :
       action === 'cancel' ? tr.confirmBulkCancel?.replace('{count}', String(selectedIds.length)) :
+      action === 'pause' ? `Mettre en pause les ${selectedIds.length} abonnements sélectionnés ?` :
+      action === 'resume' ? `Réactiver les ${selectedIds.length} abonnements sélectionnés ?` :
+      action === 'migrate' ? `Faire migrer les ${selectedIds.length} abonnements vers ${bulkMigrationTargetPlan.toUpperCase()} ?` :
+      action === 'retry' ? `Relancer la vérification de paiement pour ${selectedIds.length} commandes ?` :
       tr.confirmBulkDelete?.replace('{count}', String(selectedIds.length));
 
-    if (!confirm(confirmMsg || `Procéder à l'action sur ${selectedIds.length} commande(s) ?`)) return;
+    if (!confirm(confirmMsg || `Procéder à l'action groupée (${action}) sur ${selectedIds.length} commande(s) ?`)) return;
 
     setSubmitting(true);
     setError('');
@@ -632,8 +676,10 @@ export default function SubscriptionOrdersPage() {
         credentials: 'include',
         body: JSON.stringify({
           intent_ids: selectedIds,
+          store_ids: selectedStoreIds,
           action,
           reason: bulkRejectionReason.trim() || undefined,
+          target_plan: action === 'migrate' ? bulkMigrationTargetPlan : undefined,
         }),
       });
       if (res.ok) {
@@ -785,6 +831,28 @@ export default function SubscriptionOrdersPage() {
         </div>
       )}
 
+      {/* Saved Custom View Presets Bar */}
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs">
+        <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mr-1">
+          <Bookmark className="w-3.5 h-3.5 text-[#B91C1C]" /> Filter Presets:
+        </span>
+        <button onClick={() => applyPreset('high_value')} className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800 hover:bg-amber-100">
+          💰 High-Value (&gt; 400 TND)
+        </button>
+        <button onClick={() => applyPreset('pending_mandats')} className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 hover:bg-blue-100">
+          📑 Pending Mandat Proofs
+        </button>
+        <button onClick={() => applyPreset('pending_review')} className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 hover:bg-purple-100">
+          ⏳ Awaiting Admin Review
+        </button>
+        <button onClick={() => applyPreset('pro_upgrades')} className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 hover:bg-red-100">
+          👑 Pro/Enterprise Upgrades
+        </button>
+        <button onClick={() => applyPreset('reset')} className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto flex items-center gap-1">
+          <RotateCcw className="w-3 h-3" /> Reset Filters
+        </button>
+      </div>
+
       {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-bold">
@@ -798,36 +866,46 @@ export default function SubscriptionOrdersPage() {
               type="text"
               value={bulkRejectionReason}
               onChange={(e) => setBulkRejectionReason(e.target.value)}
-              placeholder={tr.bulkReason || 'Common rejection reason...'}
+              placeholder={tr.bulkReason || 'Rejection reason...'}
               className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none text-xs flex-1 md:flex-initial"
             />
-            <button
-              onClick={() => handleBulkAction('approve')}
-              disabled={submitting}
-              className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+
+            <select
+              value={bulkMigrationTargetPlan}
+              onChange={(e) => setBulkMigrationTargetPlan(e.target.value)}
+              className="px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none"
             >
-              {tr.bulkApprove || 'Approve Selection'}
+              <option value="starter">Migrate to Starter</option>
+              <option value="regular">Migrate to Regular</option>
+              <option value="agency">Migrate to Agency</option>
+              <option value="pro">Migrate to Pro</option>
+              <option value="golden">Migrate to Golden</option>
+              <option value="platinum">Migrate to Platinum</option>
+            </select>
+
+            <button onClick={() => handleBulkAction('approve')} disabled={submitting} className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+              Approve
             </button>
-            <button
-              onClick={() => handleBulkAction('reject')}
-              disabled={submitting}
-              className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
-            >
-              {tr.bulkReject || 'Reject Selection'}
+            <button onClick={() => handleBulkAction('reject')} disabled={submitting} className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
+              Reject
             </button>
-            <button
-              onClick={() => handleBulkAction('cancel')}
-              disabled={submitting}
-              className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50"
-            >
-              {tr.bulkCancel || 'Cancel Selection'}
+            <button onClick={() => handleBulkAction('pause')} disabled={submitting} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50">
+              Pause
             </button>
-            <button
-              onClick={() => handleBulkAction('delete')}
-              disabled={submitting}
-              className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50"
-            >
-              {tr.bulkDelete || 'Delete Selection'}
+            <button onClick={() => handleBulkAction('resume')} disabled={submitting} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
+              Resume
+            </button>
+            <button onClick={() => handleBulkAction('migrate')} disabled={submitting} className="px-3 py-1.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50">
+              Migrate Plan
+            </button>
+            <button onClick={() => handleBulkAction('retry')} disabled={submitting} className="px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50">
+              Retry Payment
+            </button>
+            <button onClick={() => handleBulkAction('cancel')} disabled={submitting} className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50">
+              Cancel
+            </button>
+            <button onClick={() => handleBulkAction('delete')} disabled={submitting} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50">
+              Delete
             </button>
           </div>
         </div>

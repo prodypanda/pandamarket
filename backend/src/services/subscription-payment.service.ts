@@ -579,6 +579,70 @@ export class SubscriptionPaymentService {
     return { processed, total: intentIds.length, errors };
   }
 
+  async bulkPause(storeIds: string[], adminId?: string) {
+    let processed = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    for (const id of storeIds) {
+      try {
+        await this.pauseSubscription(id, undefined, adminId);
+        processed++;
+      } catch (err: any) {
+        errors.push({ id, error: err.message || 'Pause failed' });
+      }
+    }
+    return { processed, total: storeIds.length, errors };
+  }
+
+  async bulkResume(storeIds: string[], adminId?: string) {
+    let processed = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    for (const id of storeIds) {
+      try {
+        await this.resumeSubscription(id, adminId);
+        processed++;
+      } catch (err: any) {
+        errors.push({ id, error: err.message || 'Resume failed' });
+      }
+    }
+    return { processed, total: storeIds.length, errors };
+  }
+
+  async bulkPlanMigration(storeIds: string[], targetPlan: string, adminId: string) {
+    let processed = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    for (const id of storeIds) {
+      try {
+        await this.adminManualSwitchPlan(id, targetPlan, 'immediate', adminId);
+        processed++;
+      } catch (err: any) {
+        errors.push({ id, error: err.message || 'Migration failed' });
+      }
+    }
+    return { processed, total: storeIds.length, errors };
+  }
+
+  async bulkPaymentRetry(intentIds: string[]) {
+    let processed = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    for (const id of intentIds) {
+      try {
+        const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [id]);
+        const intent = rows[0];
+        if (intent && intent.status === 'pending') {
+          await this.settle(intent.store_id, intent.id);
+          processed++;
+        }
+      } catch (err: any) {
+        errors.push({ id, error: err.message || 'Retry failed' });
+      }
+    }
+    return { processed, total: intentIds.length, errors };
+  }
+
   async settle(storeId: string, intentId: string) {
     const { rows } = await query(
       'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',

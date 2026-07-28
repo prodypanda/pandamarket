@@ -4135,8 +4135,10 @@ const cancelSubscriptionOrderSchema = z.object({
 
 const bulkSubscriptionOrderSchema = z.object({
   intent_ids: z.array(z.string().min(1)).min(1).max(200),
-  action: z.enum(['approve', 'reject', 'cancel', 'delete']),
+  store_ids: z.array(z.string().min(1)).optional(),
+  action: z.enum(['approve', 'reject', 'cancel', 'delete', 'pause', 'resume', 'migrate', 'retry']),
   reason: z.string().optional(),
+  target_plan: z.string().optional(),
 });
 
 router.get(
@@ -4326,7 +4328,7 @@ router.post(
   validate(bulkSubscriptionOrderSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const { intent_ids, action, reason } = req.body;
+    const { intent_ids, store_ids, action, reason, target_plan } = req.body;
     let result: any;
     if (action === 'approve') {
       result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'approved');
@@ -4334,8 +4336,16 @@ router.post(
       result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'rejected', reason);
     } else if (action === 'cancel') {
       result = await subscriptionPaymentService.bulkCancel(intent_ids, req.user!.id, reason);
-    } else {
+    } else if (action === 'delete') {
       result = await subscriptionPaymentService.bulkDelete(intent_ids, req.user!.id);
+    } else if (action === 'pause') {
+      result = await subscriptionPaymentService.bulkPause(store_ids || intent_ids, req.user!.id);
+    } else if (action === 'resume') {
+      result = await subscriptionPaymentService.bulkResume(store_ids || intent_ids, req.user!.id);
+    } else if (action === 'migrate') {
+      result = await subscriptionPaymentService.bulkPlanMigration(store_ids || intent_ids, target_plan || 'pro', req.user!.id);
+    } else if (action === 'retry') {
+      result = await subscriptionPaymentService.bulkPaymentRetry(intent_ids);
     }
     res.status(200).json({ success: true, ...result });
   }),
