@@ -61,6 +61,9 @@ import {
   Edit3,
   Gavel,
   ShieldCheck,
+  PieChart,
+  FileSpreadsheet,
+  Cpu,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -261,6 +264,7 @@ export default function SubscriptionOrdersPage() {
   const [orders, setOrders] = useState<SubscriptionOrder[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, total_pages: 1 });
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [cohortData, setCohortData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -304,6 +308,10 @@ export default function SubscriptionOrdersPage() {
   const [disputeReason, setDisputeReason] = useState<string>('Unrecognized charge');
   const [disputeRef, setDisputeRef] = useState<string>('');
   const [disputeEvidence, setDisputeEvidence] = useState<any>(null);
+
+  // General Ledger Modal
+  const [showGlModal, setShowGlModal] = useState(false);
+  const [glFormat, setGlFormat] = useState<'sage' | 'odoo' | 'quickbooks' | 'xero'>('sage');
 
   // Retention Save Offer Modal
   const [retentionOrder, setRetentionOrder] = useState<SubscriptionOrder | null>(null);
@@ -370,6 +378,18 @@ export default function SubscriptionOrdersPage() {
     }
   }, []);
 
+  const fetchCohortAnalytics = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/cohort-analytics', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setCohortData(data.analytics);
+      }
+    } catch {
+      // Ignore cohort error
+    }
+  }, []);
+
   const fetchDesyncs = useCallback(async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/desyncs', { credentials: 'include' });
@@ -381,6 +401,37 @@ export default function SubscriptionOrdersPage() {
       // Ignore desync error
     }
   }, []);
+
+  const handleRunBackgroundCron = async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/cron-job', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuccess(`⚡ Worker Cron exécute avec succès ! ${data.result.processed_count} éléments analysés & traités.`);
+        fetchOrders();
+      }
+    } catch {
+      setError('Erreur lors du lancement du worker cron.');
+    }
+  };
+
+  const handleDownloadGlExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('format', glFormat);
+      if (fromDate) params.append('from_date', fromDate);
+      if (toDate) params.append('to_date', toDate);
+
+      window.open(`/api/pd/admin/subscription-orders/gl-export?${params.toString()}`, '_blank');
+      setSuccess(`🎉 Export Grand Livre Comptable (${glFormat.toUpperCase()}) téléchargé !`);
+      setShowGlModal(false);
+    } catch {
+      setError('Erreur lors de l\'export comptable');
+    }
+  };
 
   const fetchCardExpiryQueue = async () => {
     try {
@@ -447,8 +498,9 @@ export default function SubscriptionOrdersPage() {
   useEffect(() => {
     fetchOrders();
     fetchStats();
+    fetchCohortAnalytics();
     fetchDesyncs();
-  }, [fetchOrders, fetchStats, fetchDesyncs]);
+  }, [fetchOrders, fetchStats, fetchCohortAnalytics, fetchDesyncs]);
 
   // Dynamic Sticky Summary Calculation based on filtered table data
   const filteredMetrics = useMemo(() => {
@@ -1201,6 +1253,18 @@ export default function SubscriptionOrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowGlModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Export Comptable (GL)
+          </button>
+          <button
+            onClick={handleRunBackgroundCron}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-sm"
+          >
+            <Cpu className="w-4 h-4" /> Run Cron Guardrail
+          </button>
           {desyncsList.length > 0 && (
             <button
               onClick={() => setShowDesyncModal(true)}
@@ -1234,13 +1298,48 @@ export default function SubscriptionOrdersPage() {
             <FileJson className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
           </button>
           <button
-            onClick={() => { fetchOrders(); fetchStats(); fetchDesyncs(); }}
+            onClick={() => { fetchOrders(); fetchStats(); fetchCohortAnalytics(); fetchDesyncs(); }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
             <RefreshCw className="w-4 h-4" /> {tr.refresh || 'Refresh'}
           </button>
         </div>
       </div>
+
+      {/* Cohort Churn & Customer LTV Analytics Section */}
+      {cohortData && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-purple-600" /> Cohort Retention, Churn & Customer LTV Analytics
+            </h3>
+            <span className="text-xs text-slate-400 font-bold">Real-time Platform Metrics</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+            <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
+              <p className="text-purple-600 font-bold uppercase text-[10px]">Churn Rate %</p>
+              <p className="text-base font-black text-purple-900 dark:text-purple-200">{cohortData.metrics.churn_rate_pct}%</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+              <p className="text-blue-600 font-bold uppercase text-[10px]">ARPU (Avg Revenue/Vendor)</p>
+              <p className="text-base font-black text-blue-900 dark:text-blue-200">{cohortData.metrics.arpu_tnd} TND</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+              <p className="text-emerald-600 font-bold uppercase text-[10px]">Estimated LTV</p>
+              <p className="text-base font-black text-emerald-900 dark:text-emerald-200">{cohortData.metrics.estimated_ltv_tnd} TND</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+              <p className="text-amber-600 font-bold uppercase text-[10px]">Active Vendors</p>
+              <p className="text-base font-black text-amber-900 dark:text-amber-200">{cohortData.metrics.active_vendors} / {cohortData.metrics.total_vendors}</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <p className="text-slate-500 font-bold uppercase text-[10px]">Total ARR</p>
+              <p className="text-base font-black text-slate-900 dark:text-white">{cohortData.metrics.total_arr_tnd} TND</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sticky Dynamic Top Summary Analytics Bar */}
       <div className="sticky top-2 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-md transition-all">
@@ -1770,6 +1869,54 @@ export default function SubscriptionOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* General Ledger Export Modal */}
+      {showGlModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-emerald-600">
+                  <FileSpreadsheet className="w-6 h-6" /> Export Comptable Grand Livre (GL)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Formatage automatisé pour logiciels de comptabilité</p>
+              </div>
+              <button onClick={() => setShowGlModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Format du Logiciel Comptable</label>
+                <select
+                  value={glFormat}
+                  onChange={(e) => setGlFormat(e.target.value as any)}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 outline-none font-bold"
+                >
+                  <option value="sage">Sage Comptabilité (Journal VT - 512/706)</option>
+                  <option value="odoo">Odoo Accounting (Partner Journal Entries)</option>
+                  <option value="quickbooks">QuickBooks Desktop / Online CSV</option>
+                  <option value="xero">Xero Sales Invoices & Credit Notes</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300">
+                L&apos;export inclut les encaissements, remises, ajustements prorata et révisions de TVA matricule fiscale conformes à la loi de finances.
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowGlModal(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Annuler
+              </button>
+              <button onClick={handleDownloadGlExport} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700">
+                Télécharger Export CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Native Dispute & Chargeback Workbench Modal */}
       {disputeOrder && (

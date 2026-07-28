@@ -4578,6 +4578,62 @@ router.post(
   }),
 );
 
+router.post(
+  '/subscription-orders/stripe-webhook',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.handleStripeSubscriptionWebhook(req.body);
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/subscription-orders/paypal-webhook',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.handlePayPalSubscriptionWebhook(req.body);
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/subscription-orders/gl-export',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const format = (req.query.format as any) || 'sage';
+    const fromDate = req.query.from_date as string;
+    const toDate = req.query.to_date as string;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const { filename, csvContent } = await subscriptionPaymentService.exportGeneralLedger(format, fromDate, toDate);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csvContent);
+  }),
+);
+
+router.get(
+  '/subscription-orders/cohort-analytics',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const analytics = await subscriptionPaymentService.getCohortLtvAnalytics();
+    res.status(200).json({ analytics });
+  }),
+);
+
+router.post(
+  '/subscription-orders/cron-job',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.runAutomatedSubscriptionCronJob();
+    res.status(200).json({ success: true, result });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================

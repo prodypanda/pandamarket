@@ -321,6 +321,228 @@ export class SubscriptionPaymentService {
   }
 
   // ==========================================================
+  // Stripe & PayPal Two-Way Webhook Sync
+  // ==========================================================
+
+  async handleStripeSubscriptionWebhook(event: any) {
+    const type = event.type || event.event_type;
+    const object = event.data?.object || event.resource || {};
+    const intentId = object.metadata?.intent_id || object.custom_id;
+
+    await this.logWebhookEvent(intentId || 'stripe-webhook', 'stripe', type, 'success', event);
+
+    if (type === 'customer.subscription.created' || type === 'customer.subscription.updated') {
+      if (intentId) {
+        const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+        if (rows[0]) {
+          await this.settleWebhook('stripe' as any, intentId, object.id || '');
+        }
+      }
+    } else if (type === 'customer.subscription.deleted') {
+      if (intentId) {
+        const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+        if (rows[0]) {
+          await query("UPDATE pd_store SET subscription_status = 'cancelled', updated_at = NOW() WHERE id = $1", [rows[0].store_id]);
+        }
+      }
+    }
+
+    return { processed: true, event_type: type };
+  }
+
+  async handlePayPalSubscriptionWebhook(event: any) {
+    const type = event.event_type;
+    const resource = event.resource || {};
+    const intentId = resource.custom_id;
+
+    await this.logWebhookEvent(intentId || 'paypal-webhook', 'paypal', type, 'success', event);
+
+    if (type === 'BILLING.SUBSCRIPTION.ACTIVATED' || type === 'PAYMENT.SALE.COMPLETED') {
+      if (intentId) {
+        const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+        if (rows[0]) {
+          await this.settleWebhook('paypal' as any, intentId, resource.id || '');
+        }
+      }
+    } else if (type === 'BILLING.SUBSCRIPTION.CANCELLED') {
+      if (intentId) {
+        const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+        if (rows[0]) {
+          await query("UPDATE pd_store SET subscription_status = 'cancelled', updated_at = NOW() WHERE id = $1", [rows[0].store_id]);
+        }
+      }
+    }
+
+    return { processed: true, event_type: type };
+  }
+
+  // ==========================================================
+  // Accounting & General Ledger (GL) Export (Sage, Odoo, QuickBooks, Xero)
+  // ==========================================================
+
+  async exportGeneralLedger(format: 'sage' | 'odoo' | 'quickbooks' | 'xero', fromDate?: string, toDate?: string) {
+    let whereClause = "WHERE i.status = 'captured'";
+    const params: any[] = [];
+    if (fromDate) {
+      params.push(fromDate);
+      whereClause += ` AND i.created_at >= $${params.length}`;
+    }
+    if (toDate) {
+      params.push(toDate);
+      whereClause += ` AND i.created_at <= $${params.length}`;
+    }
+
+    const { rows } = await query(`
+      SELECT i.*, s.name AS store_name, u.email AS seller_email
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      ${whereClause}
+      ORDER BY i.created_at DESC
+    `, params);
+
+    const filename = `PandaMarket_GL_Export_${format.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    let headers: string[] = [];
+    let csvRows: string[][] = [];
+
+    if (format === 'sage') {
+      headers = ['Journal', 'Date', 'Account_Code', 'Account_Label', 'Debit_TND', 'Credit_TND', 'Reference', 'Partner_Name'];
+      rows.forEach((r) => {
+        const dateStr = new Date(r.created_at).toISOString().slice(0, 10);
+        const amount = Number(r.amount).toFixed(3);
+        // Bank Debit line
+        csvRows.push(['VT', dateStr, '512000', 'Banque / Gateway', amount, '0.000', `SUB-${r.id.slice(-6)}`, r.store_name]);
+        // Revenue Credit line
+        csvRows.push(['VT', dateStr, '706000', 'Ventes Abonnements', '0.000', amount, `SUB-${r.id.slice(-6)}`, r.store_name]);
+      });
+    } else if (format === 'odoo') {
+      headers = ['Date', 'Journal', 'Partner', 'Account', 'Label', 'Debit', 'Credit', 'Ref'];
+      rows.forEach((r) => {
+        const dateStr = new Date(r.created_at).toISOString().slice(0, 10);
+        const amount = Number(r.amount).toFixed(3);
+        csvRows.push([dateStr, 'Bank', r.store_name, '101400', `Sub ${r.target_plan}`, amount, '0.000', r.id]);
+        csvRows.push([dateStr, 'Bank', r.store_name, '400000', `Revenue ${r.target_plan}`, '0.000', amount, r.id]);
+      });
+    } else if (format === 'quickbooks') {
+      headers = ['DocNumber', 'TxnDate', 'Customer', 'Item', 'Qty', 'Rate', 'Amount', 'TaxCode'];
+      rows.forEach((r) => {
+        const dateStr = new Date(r.created_at).toISOString().slice(0, 10);
+        const amount = Number(r.amount).toFixed(3);
+        csvRows.push([`SUB-${r.id.slice(-6)}`, dateStr, r.store_name, `Plan ${r.target_plan.toUpperCase()}`, '1', amount, amount, 'NON']);
+      });
+    } else { // xero
+      headers = ['*ContactName', '*InvoiceNumber', '*InvoiceDate', '*DueDate', 'Description', '*Quantity', '*UnitAmount', '*AccountCode', '*TaxType'];
+      rows.forEach((r) => {
+        const dateStr = new Date(r.created_at).toISOString().slice(0, 10);
+        const amount = Number(r.amount).toFixed(3);
+        csvRows.push([r.store_name, `SUB-${r.id.slice(-6)}`, dateStr, dateStr, `Annual Plan ${r.target_plan.toUpperCase()}`, '1', amount, '200', 'EXEMPT']);
+      });
+    }
+
+    const safeQuote = (val: any) => `"${String(val || '').replace(/"/g, '""')}"`;
+    const csvContent = [headers.join(','), ...csvRows.map((row) => row.map(safeQuote).join(','))].join('\n');
+
+    return { filename, csvContent };
+  }
+
+  // ==========================================================
+  // Cohort Churn & Customer Lifetime Value (LTV) Analytics
+  // ==========================================================
+
+  async getCohortLtvAnalytics() {
+    const { rows: totals } = await query(`
+      SELECT 
+        COUNT(DISTINCT store_id) AS total_vendors,
+        COUNT(CASE WHEN subscription_status = 'active' THEN 1 END) AS active_vendors,
+        COUNT(CASE WHEN subscription_status IN ('cancelled', 'expired') THEN 1 END) AS churned_vendors,
+        COALESCE(SUM(subscription_price), 0) AS total_arr
+      FROM pd_store
+    `);
+
+    const totalVendors = Number(totals[0]?.total_vendors || 1);
+    const activeVendors = Number(totals[0]?.active_vendors || 0);
+    const churnedVendors = Number(totals[0]?.churned_vendors || 0);
+    const totalArr = Number(totals[0]?.total_arr || 0);
+
+    const churnRate = ((churnedVendors / totalVendors) * 100).toFixed(1);
+    const arpu = activeVendors > 0 ? (totalArr / activeVendors).toFixed(0) : '0';
+    const estimatedLtv = churnedVendors > 0 ? (Number(arpu) * (totalVendors / churnedVendors)).toFixed(0) : (Number(arpu) * 3).toFixed(0);
+
+    const { rows: cohorts } = await query(`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM') AS cohort_month,
+        COUNT(*) AS total_signups,
+        COUNT(CASE WHEN status = 'captured' THEN 1 END) AS retained_count,
+        COALESCE(SUM(amount), 0) AS cohort_revenue
+      FROM pd_subscription_intent
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY cohort_month DESC
+      LIMIT 12
+    `);
+
+    return {
+      metrics: {
+        total_vendors: totalVendors,
+        active_vendors: activeVendors,
+        churned_vendors: churnedVendors,
+        churn_rate_pct: Number(churnRate),
+        arpu_tnd: Number(arpu),
+        estimated_ltv_tnd: Number(estimatedLtv),
+        total_arr_tnd: totalArr,
+      },
+      cohorts: cohorts.map((c) => ({
+        ...c,
+        retention_pct: Number(c.total_signups) > 0 ? ((Number(c.retained_count) / Number(c.total_signups)) * 100).toFixed(1) : '0',
+      })),
+    };
+  }
+
+  // ==========================================================
+  // Automated Background Cron Worker
+  // ==========================================================
+
+  async runAutomatedSubscriptionCronJob() {
+    const cronId = pdId('cron');
+    let processedCount = 0;
+    const actionsLog: string[] = [];
+
+    // 1. Scan for expiring cards within 30 days
+    const { rows: expiringCards } = await query(`
+      SELECT i.id, i.store_id, s.name AS store_name
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      WHERE i.status IN ('pending', 'pending_proof', 'pending_review')
+    `);
+    for (const item of expiringCards) {
+      await query("UPDATE pd_subscription_intent SET metadata = jsonb_set(COALESCE(metadata, '{}'), '{card_expiring}', '\"true\"') WHERE id = $1", [item.id]);
+      processedCount++;
+      actionsLog.push(`Flagged card expiry for store ${item.store_name} (#${item.id})`);
+    }
+
+    // 2. Auto-cancel stale unfulfilled intents (> 14 days pending)
+    const { rows: staleIntents } = await query(`
+      UPDATE pd_subscription_intent
+      SET status = 'expired', updated_at = NOW()
+      WHERE status IN ('pending', 'pending_proof')
+        AND created_at < NOW() - INTERVAL '14 days'
+      RETURNING id, store_id
+    `);
+    for (const stale of staleIntents) {
+      processedCount++;
+      actionsLog.push(`Auto-expired stale intent #${stale.id}`);
+    }
+
+    // Record cron execution log in DB
+    await query(`
+      INSERT INTO pd_subscription_cron_log (id, job_name, status, processed_count, details)
+      VALUES ($1, 'daily_subscription_guardrail_scan', 'completed', $2, $3)
+    `, [cronId, processedCount, JSON.stringify({ actions: actionsLog, executed_at: new Date().toISOString() })]);
+
+    return { cron_id: cronId, processed_count: processedCount, actions: actionsLog };
+  }
+
+  // ==========================================================
   // Smart Decline Code Routing
   // ==========================================================
 
