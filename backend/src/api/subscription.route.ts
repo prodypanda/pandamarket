@@ -23,6 +23,11 @@ const settleSchema = z.object({
   intent_id: z.string(),
 });
 
+const uploadProofSchema = z.object({
+  intent_id: z.string(),
+  proof_url: z.string().min(1),
+});
+
 // Public: List all available plans
 router.get(
   '/plans',
@@ -47,11 +52,21 @@ router.get(
     );
     const store = rows[0];
     const limits = await subscriptionService.getLimits(store.subscription_plan);
+
+    // Also get any active/pending subscription intents for this store
+    const { rows: intentRows } = await query(
+      `SELECT * FROM pd_subscription_intent
+       WHERE store_id = $1 AND status IN ('pending', 'pending_proof', 'pending_review')
+       ORDER BY created_at DESC LIMIT 10`,
+      [req.user!.store_id!],
+    );
+
     res.status(200).json({
       plan: store.subscription_plan,
       type: store.subscription_type,
       expires_at: store.subscription_expires_at,
       limits,
+      pending_intents: intentRows,
     });
   }),
 );
@@ -78,6 +93,21 @@ router.post(
     });
 
     res.status(200).json(result);
+  }),
+);
+
+// Vendor: Upload/Attach mandat payment proof for a pending order
+router.post(
+  '/upload-proof',
+  requireStore,
+  validate(uploadProofSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await subscriptionPaymentService.uploadProof(
+      req.body.intent_id,
+      req.user!.store_id!,
+      req.body.proof_url,
+    );
+    res.status(200).json({ success: true, intent: result });
   }),
 );
 

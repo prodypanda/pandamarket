@@ -2000,6 +2000,7 @@ const globalSettingsSchema = z.object({
   mandat_recipient_name: z.coerce.string().max(200).optional(),
   mandat_recipient_cin: z.coerce.string().max(20).optional(),
   mandat_recipient_city: z.coerce.string().max(100).optional(),
+  mandat_proof_email: z.coerce.string().email().optional(),
   max_upload_size_mb: z.coerce.number().int().min(1).max(100).optional(),
   max_product_images: z.coerce.number().int().min(1).max(50).optional(),
   max_products_per_store_free: z.coerce.number().int().min(1).max(10000).optional(),
@@ -2175,6 +2176,7 @@ const financeSettingsSchema = globalSettingsSchema
     mandat_recipient_name: true,
     mandat_recipient_cin: true,
     mandat_recipient_city: true,
+    mandat_proof_email: true,
   })
   .strict();
 
@@ -4115,6 +4117,75 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const activities = await adminNotesService.listActivity(req.params.id, req.user!.id);
     res.status(200).json({ data: activities });
+  }),
+);
+
+// ==========================================================
+// Platform Subscription Orders & Manual Mandat Approval
+// ==========================================================
+
+const reviewSubscriptionOrderSchema = z.object({
+  decision: z.enum(['approved', 'rejected']),
+  reason: z.string().optional(),
+});
+
+router.get(
+  '/subscription-orders',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const status = req.query.status as string;
+    const gateway = req.query.gateway as string;
+    const search = req.query.search as string;
+
+    let sql = `
+      SELECT i.*,
+             s.name AS store_name,
+             s.subdomain AS store_subdomain,
+             u.email AS seller_email,
+             r.email AS reviewer_email
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      LEFT JOIN pd_user r ON r.id = i.reviewed_by
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      sql += ` AND i.status = $${params.length}`;
+    }
+    if (gateway && gateway !== 'all') {
+      params.push(gateway);
+      sql += ` AND i.gateway = $${params.length}`;
+    }
+    if (search && search.trim()) {
+      params.push(`%${search.trim()}%`);
+      sql += ` AND (s.name ILIKE $${params.length} OR s.subdomain ILIKE $${params.length} OR u.email ILIKE $${params.length} OR i.id ILIKE $${params.length})`;
+    }
+
+    sql += ' ORDER BY i.created_at DESC LIMIT 200';
+
+    const { rows } = await query(sql, params);
+    res.status(200).json({ subscription_orders: rows });
+  }),
+);
+
+router.post(
+  '/subscription-orders/:intentId/review',
+  requireAuth,
+  requireAdmin,
+  validate(reviewSubscriptionOrderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.reviewManual(
+      req.params.intentId,
+      req.user!.id,
+      req.body.decision,
+      req.body.reason,
+    );
+    res.status(200).json({ success: true, intent: result });
   }),
 );
 

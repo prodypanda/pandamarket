@@ -153,6 +153,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
   mandat_recipient_city: 'Tunis',
   mandat_bank_name: 'STB (Société Tunisienne de Banque)',
   mandat_bank_rib: '10 000 0000000000000 00',
+  mandat_proof_email: 'billing@pandamarket.tn',
   mandat_bank_iban: 'TN59 1000 0000 0000 0000 0000',
   mandat_recipient_phone: '+216 71 000 000',
   max_upload_size_mb: 10,
@@ -438,6 +439,7 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'mandat_recipient_name',
     'mandat_recipient_cin',
     'mandat_recipient_city',
+    'mandat_proof_email',
   ],
   shipping: [
     'shipping_enabled',

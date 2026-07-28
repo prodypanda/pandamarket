@@ -164,9 +164,6 @@ interface PlatformSettings {
   maintenance_eta: string;
   maintenance_allowed_ips: string;
   maintenance_block_storefronts: boolean;
-  mandat_recipient_name: string;
-  mandat_recipient_cin: string;
-  mandat_recipient_city: string;
   platform_commission_rate: number;
   default_currency: string;
   payment_sandbox_mode: boolean;
@@ -186,6 +183,10 @@ interface PlatformSettings {
   payment_cod_enabled: boolean;
   payment_vendor_direct_enabled: boolean;
   payment_platform_credentials_source: 'environment' | 'platform_config' | 'vendor_direct_only';
+  mandat_recipient_name: string;
+  mandat_recipient_cin: string;
+  mandat_recipient_city: string;
+  mandat_proof_email: string;
 }
 
 type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
@@ -362,8 +363,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   security_custom_domain_allowed_suffixes: '',
   security_custom_domain_blocked_suffixes: '',
   mandat_recipient_name: 'PandaMarket SARL',
-  mandat_recipient_cin: '',
+  mandat_recipient_cin: '01234567',
   mandat_recipient_city: 'Tunis',
+  mandat_proof_email: 'billing@pandamarket.tn',
   platform_commission_rate: 15,
   default_currency: 'TND',
   payment_sandbox_mode: true,
@@ -524,6 +526,7 @@ const TEXT_SETTING_KEYS = [
   'mandat_recipient_name',
   'mandat_recipient_cin',
   'mandat_recipient_city',
+  'mandat_proof_email',
   'notifications_sms_sender_name',
   'security_2fa_required_roles',
   'security_custom_domain_allowed_suffixes',
@@ -742,6 +745,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'mandat_recipient_name',
     'mandat_recipient_cin',
     'mandat_recipient_city',
+    'mandat_proof_email',
   ],
   shipping: [
     'shipping_enabled',
@@ -2203,13 +2207,14 @@ export default function AdminSettingsPage() {
       <section className={`${activeTab === 'finance' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <SectionHeader
           icon={<Wallet className="h-5 w-5" />}
-          title="Mandat Minute Recipient"
-          description="This information is displayed to customers when they choose Mandat Minute payment."
+          title="Mandat Minute Recipient & Proof Email"
+          description="Configure the beneficiary details and email address where customers submit Mandat Minute wire receipts."
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="md:col-span-3">{renderTextInput('mandat_recipient_name', 'Recipient Name')}</div>
-          {renderTextInput('mandat_recipient_cin', 'Identifiant Number')}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">{renderTextInput('mandat_recipient_name', 'Recipient Name')}</div>
+          {renderTextInput('mandat_recipient_cin', 'Identifiant Number (CIN / MF)')}
           {renderTextInput('mandat_recipient_city', 'City')}
+          <div className="md:col-span-2">{renderTextInput('mandat_proof_email', 'Proof of Payment Email Address', 'e.g. billing@pandamarket.tn')}</div>
         </div>
       </section>
 

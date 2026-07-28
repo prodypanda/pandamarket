@@ -1,9 +1,26 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useCallback, useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useState, Suspense, ChangeEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Crown, Check, X, ArrowUp, ArrowDown, AlertCircle, Sparkles, CreditCard, Banknote, Truck } from 'lucide-react';
+import {
+  Crown,
+  Check,
+  X,
+  ArrowUp,
+  ArrowDown,
+  AlertCircle,
+  Sparkles,
+  CreditCard,
+  Banknote,
+  Truck,
+  Upload,
+  FileText,
+  Mail,
+  Building,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react';
 
 interface PlanLimits {
   plan_id: string;
@@ -22,11 +39,23 @@ interface PlanLimits {
   yearly_price: number;
 }
 
+interface PendingIntent {
+  id: string;
+  target_plan: string;
+  amount: string | number;
+  gateway: string;
+  status: string;
+  proof_url?: string;
+  created_at: string;
+  metadata?: any;
+}
+
 interface CurrentPlan {
   plan: string;
   type: string;
   expires_at: string | null;
   limits: PlanLimits;
+  pending_intents?: PendingIntent[];
 }
 
 function formatPrice(price: number): string {
@@ -51,11 +80,16 @@ function SubscriptionContent() {
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Payment modal state
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<PlanLimits | null>(null);
   const [selectedGateway, setSelectedGateway] = useState<'flouci' | 'konnect' | 'paypal' | 'manual_mandat' | 'cod'>('flouci');
   const [mandatProofUrl, setMandatProofUrl] = useState('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  // Upload proof modal state for pending order
+  const [uploadModalIntent, setUploadModalIntent] = useState<PendingIntent | null>(null);
 
   const getErrorMessage = useCallback(async (res: Response, fallback: string) => {
     try {
@@ -115,7 +149,7 @@ function SubscriptionContent() {
             setSuccess('🎉 Paiement confirmé ! Votre nouvel abonnement est maintenant actif.');
             await fetchCurrentPlan();
           } else {
-            setError(await getErrorMessage(res, 'Verification du paiement en cours...'));
+            setError(await getErrorMessage(res, 'Vérification du paiement en cours...'));
           }
         } catch {
           setError('Erreur lors de la confirmation du paiement');
@@ -128,6 +162,25 @@ function SubscriptionContent() {
   useEffect(() => {
     Promise.all([fetchCurrentPlan(), fetchAllPlans()]).finally(() => setLoading(false));
   }, [fetchAllPlans, fetchCurrentPlan]);
+
+  const handleFileUpload = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetchWithCsrf('/api/pd/media/upload', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Échec du téléversement du fichier');
+    const data = await res.json();
+    return data.url || data.path;
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setProofFile(e.target.files[0]);
+    }
+  };
 
   const handleInitiatePayment = async () => {
     if (!selectedPlanForPayment) return;
@@ -155,6 +208,13 @@ function SubscriptionContent() {
         return;
       }
 
+      let finalProofUrl = mandatProofUrl;
+      if (selectedGateway === 'manual_mandat' && proofFile) {
+        setUploading(true);
+        finalProofUrl = await handleFileUpload(proofFile);
+        setUploading(false);
+      }
+
       // Paid plan -> Initiate checkout flow with selected payment gateway
       const res = await fetchWithCsrf('/api/pd/subscriptions/initiate', {
         method: 'POST',
@@ -163,7 +223,7 @@ function SubscriptionContent() {
         body: JSON.stringify({
           plan: selectedPlanForPayment.plan_id,
           gateway: selectedGateway,
-          proof_url: selectedGateway === 'manual_mandat' ? mandatProofUrl : undefined,
+          proof_url: finalProofUrl || undefined,
         }),
       });
 
@@ -173,9 +233,16 @@ function SubscriptionContent() {
           setSuccess('Abonnement activé !');
           setSelectedPlanForPayment(null);
           await fetchCurrentPlan();
-        } else if (data.pending_review) {
-          setSuccess('Votre reçu Mandat Minute a été transmis à l\'équipe d\'administration pour validation.');
+        } else if (data.pending_review || data.pending_proof) {
+          setSuccess(
+            data.pending_review
+              ? '🎉 Commande d\'abonnement enregistrée et reçu de paiement transmis ! Notre équipe d\'administration va la valider sous peu.'
+              : '📌 Commande d\'abonnement enregistrée ! Vous pouvez effectuer le virement puis transmettre le reçu par email (billing@pandamarket.tn) ou via cette page.'
+          );
           setSelectedPlanForPayment(null);
+          setProofFile(null);
+          setMandatProofUrl('');
+          await fetchCurrentPlan();
         } else if (data.checkout_url) {
           window.location.href = data.checkout_url;
         } else {
@@ -184,10 +251,58 @@ function SubscriptionContent() {
       } else {
         setError(await getErrorMessage(res, 'Erreur lors de l\'initialisation du paiement'));
       }
-    } catch {
-      setError('Erreur réseau');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setChanging(false);
+      setUploading(false);
+    }
+  };
+
+  const handleUploadProofForPendingIntent = async () => {
+    if (!uploadModalIntent) return;
+    setError('');
+    setSuccess('');
+    setChanging(true);
+
+    try {
+      let finalUrl = mandatProofUrl;
+      if (proofFile) {
+        setUploading(true);
+        finalUrl = await handleFileUpload(proofFile);
+        setUploading(false);
+      }
+
+      if (!finalUrl) {
+        setError('Veuillez sélectionner un fichier ou indiquer un lien.');
+        setChanging(false);
+        return;
+      }
+
+      const res = await fetchWithCsrf('/api/pd/subscriptions/upload-proof', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          intent_id: uploadModalIntent.id,
+          proof_url: finalUrl,
+        }),
+      });
+
+      if (res.ok) {
+        setSuccess('🎉 Reçu de paiement transmis avec succès ! En attente de validation administrative.');
+        setUploadModalIntent(null);
+        setProofFile(null);
+        setMandatProofUrl('');
+        await fetchCurrentPlan();
+      } else {
+        setError(await getErrorMessage(res, 'Échec de la transmission du reçu'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setChanging(false);
+      setUploading(false);
     }
   };
 
@@ -216,6 +331,8 @@ function SubscriptionContent() {
     );
   }
 
+  const pendingIntents = currentPlan?.pending_intents || [];
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Abonnement & Formules</h1>
@@ -228,6 +345,41 @@ function SubscriptionContent() {
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-xl flex items-center gap-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           {error}
+        </div>
+      )}
+
+      {/* Pending Mandat Order Notification Banner */}
+      {pendingIntents.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <Clock className="w-6 h-6 text-amber-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-amber-900 text-base">Commande d&apos;abonnement en attente de paiement</h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Vous avez {pendingIntents.length} commande(s) d&apos;abonnement enregistrée(s). Vous pouvez transmettre le reçu de virement à tout moment pour faire valider votre plan.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {pendingIntents.map((intent) => (
+              <div key={intent.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-xl border border-amber-200 gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-slate-900">Plan : {intent.target_plan.toUpperCase()}</span>
+                  <span className="text-slate-500 mx-2">•</span>
+                  <span className="font-black text-[#B91C1C]">{Number(intent.amount).toFixed(0)} TND</span>
+                  <span className="text-slate-500 mx-2">•</span>
+                  <span className="text-slate-600">Statut : {intent.status === 'pending_review' ? '📑 En attente de validation' : '📌 En attente du reçu'}</span>
+                </div>
+                <button
+                  onClick={() => setUploadModalIntent(intent)}
+                  className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg text-xs hover:bg-amber-700 flex items-center gap-1 self-start sm:self-auto shadow-sm"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Transmettre le Reçu
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -374,8 +526,8 @@ function SubscriptionContent() {
 
       {/* Payment Gateway Modal for Subscription Purchase */}
       {selectedPlanForPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
@@ -408,7 +560,7 @@ function SubscriptionContent() {
                     { id: 'flouci', name: 'Flouci (Carte bancaire & Wallet)', icon: CreditCard, desc: 'Paiement instantané en TND par carte bancaire ou Flouci' },
                     { id: 'konnect', name: 'Konnect (Cartes bancaires)', icon: CreditCard, desc: 'Paiement sécurisé via le réseau Konnect' },
                     { id: 'paypal', name: 'PayPal (International Cards)', icon: CreditCard, desc: 'Paiement international sécurisé via PayPal' },
-                    { id: 'manual_mandat', name: 'Mandat Minute / Virement', icon: Banknote, desc: 'Payer à la poste ou banque puis uploader le reçu' },
+                    { id: 'manual_mandat', name: 'Mandat Minute / Virement Bancaire', icon: Banknote, desc: 'Effectuer le virement puis transmettre le reçu (Upload ou Email)' },
                     { id: 'cod', name: 'Paiement sur facture / COD', icon: Truck, desc: 'Activer sous réserve de confirmation commerciale' },
                   ].map((g) => (
                     <div
@@ -429,16 +581,38 @@ function SubscriptionContent() {
                   ))}
                 </div>
 
+                {/* Mandat Minute Instructions & File Upload */}
                 {selectedGateway === 'manual_mandat' && (
-                  <div className="space-y-2 pt-2">
-                    <label className="block text-xs font-bold text-gray-700">Lien / URL du reçu de paiement Mandat</label>
-                    <input
-                      type="url"
-                      value={mandatProofUrl}
-                      onChange={(e) => setMandatProofUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-[#B91C1C]"
-                    />
+                  <div className="space-y-4 pt-2 rounded-2xl bg-amber-50/60 p-4 border border-amber-200">
+                    <div className="space-y-1 text-xs text-amber-900">
+                      <p className="font-bold text-amber-950 flex items-center gap-1">
+                        <Building className="w-4 h-4 text-amber-700" /> Instructions pour le virement / Mandat Minute :
+                      </p>
+                      <p>• Bénéficiaire : <strong>PandaMarket SARL</strong></p>
+                      <p>• Identifiant / CIN : <strong>01234567</strong> (Tunis)</p>
+                      <p>• RIB Bancaire (STB) : <strong>10 000 0000000000000 00</strong></p>
+                      <p>• Email d&apos;envoi du reçu : <strong className="underline text-amber-950">billing@pandamarket.tn</strong></p>
+                    </div>
+
+                    <div className="space-y-2 border-t border-amber-200 pt-3">
+                      <label className="block text-xs font-bold text-slate-800">
+                        📁 Téléverser le reçu / Relevé de paiement (Optionnel lors de la commande)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleFileChange}
+                        className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#B91C1C] file:text-white hover:file:bg-[#991B1B] cursor-pointer"
+                      />
+                      {proofFile && (
+                        <p className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Fichier sélectionné : {proofFile.name}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-slate-500">
+                        Vous pouvez soumettre la commande dès maintenant et transmettre votre reçu ultérieurement sur cette page ou par email.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -453,10 +627,78 @@ function SubscriptionContent() {
               </button>
               <button
                 onClick={handleInitiatePayment}
-                disabled={changing}
+                disabled={changing || uploading}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-sm hover:bg-[#991B1B] disabled:opacity-50"
               >
-                {changing ? 'Traitement...' : selectedPlanForPayment.yearly_price === 0 ? 'Activer le plan' : 'Payer & Activer'}
+                {uploading ? 'Téléversement du reçu...' : changing ? 'Traitement...' : selectedPlanForPayment.yearly_price === 0 ? 'Activer le plan' : selectedGateway === 'manual_mandat' ? 'Passer la commande Mandat' : 'Payer & Activer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal to Upload Proof for Existing Pending Order */}
+      {uploadModalIntent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Transmettre le reçu de paiement
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Commande #{uploadModalIntent.id.slice(-8)} — Plan {uploadModalIntent.target_plan.toUpperCase()}
+                </p>
+              </div>
+              <button
+                onClick={() => setUploadModalIntent(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-900 space-y-1">
+                <p className="font-bold">📩 Envoi par Email disponible :</p>
+                <p>Vous pouvez également envoyer votre preuve de virement à <strong className="underline">billing@pandamarket.tn</strong> en précisant la référence <strong>#{uploadModalIntent.id.slice(-8)}</strong>.</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">1. Téléverser l&apos;image / PDF du reçu</label>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileChange}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#B91C1C] file:text-white hover:file:bg-[#991B1B] cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">OU 2. Lien / URL du justificatif</label>
+                <input
+                  type="url"
+                  value={mandatProofUrl}
+                  onChange={(e) => setMandatProofUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setUploadModalIntent(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleUploadProofForPendingIntent}
+                disabled={changing || uploading}
+                className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-xs hover:bg-[#991B1B] disabled:opacity-50"
+              >
+                {uploading ? 'Téléversement...' : changing ? 'Envoi...' : 'Soumettre le Reçu'}
               </button>
             </div>
           </div>

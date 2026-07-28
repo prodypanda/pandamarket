@@ -166,6 +166,7 @@ export default function AdminLayout({
           href: '/ads',
           subItems: [
             { href: '/ads', label: t('admin.sidebar.pandaAds') || 'PandaMarket Ads' },
+            { href: '/subscription-orders', label: 'Subscription Orders' },
             { href: '/plans', label: t('admin.sidebar.plans') || 'Subscription Plans' },
             { href: '/ai-costs', label: t('admin.sidebar.aiCosts') || 'AI Usage Costs' },
           ],

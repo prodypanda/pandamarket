@@ -6,6 +6,7 @@ import { roundTnd } from '../utils/money';
 import { config } from '../config';
 import { PdNotFoundError, PdValidationError, PdErrorCode } from '../errors';
 import { subscriptionService } from './subscription.service';
+import { platformConfigService } from './platform-config.service';
 import { logger } from '../utils/logger';
 
 export class SubscriptionPaymentService {
@@ -19,6 +20,7 @@ export class SubscriptionPaymentService {
   }) {
     const limits = await subscriptionService.assertPlanIsEnabled(opts.targetPlan);
     const yearlyPrice = Number(limits.yearly_price ?? 0);
+    const settings = await platformConfigService.getSettings();
 
     const { rows: storeRows } = await query<{ subscription_plan: string }>(
       'SELECT subscription_plan FROM pd_store WHERE id = $1',
@@ -42,26 +44,41 @@ export class SubscriptionPaymentService {
       ? config.hubDomain
       : `https://${config.hubDomain}`;
 
+    const instructions = {
+      recipient_name: (settings.mandat_recipient_name as string) || 'PandaMarket SARL',
+      recipient_cin: (settings.mandat_recipient_cin as string) || '',
+      recipient_city: (settings.mandat_recipient_city as string) || 'Tunis',
+      bank_name: (settings.mandat_bank_name as string) || 'STB',
+      bank_rib: (settings.mandat_bank_rib as string) || '',
+      proof_email: (settings.mandat_proof_email as string) || 'billing@pandamarket.tn',
+      amount,
+      reference: `SUB-${intentId.slice(-8).toUpperCase()}`,
+    };
+
     if (opts.gateway === PaymentGateway.ManualMandat) {
-      if (!opts.proofUrl) {
-        throw new PdValidationError('Proof URL is required for Manual Mandat payment');
-      }
+      const initialStatus = opts.proofUrl ? 'pending_review' : 'pending_proof';
       const result = await query(
         `INSERT INTO pd_subscription_intent
-          (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, proof_url)
-         VALUES ($1, $2, $3, $4, $5, $6, 'TND', 'manual_mandat', 'pending_review', $7)
+          (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, proof_url, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, 'TND', 'manual_mandat', $7, $8, $9)
          RETURNING *`,
-        [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, opts.proofUrl],
+        [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, initialStatus, opts.proofUrl || null, { instructions }],
       );
-      return { free: false, intent: result.rows[0], pending_review: true };
+      return {
+        free: false,
+        intent: result.rows[0],
+        pending_review: Boolean(opts.proofUrl),
+        pending_proof: !opts.proofUrl,
+        instructions,
+      };
     }
 
     // Initialize online payment via selected gateway (Flouci, Konnect, PayPal, COD)
     await query(
       `INSERT INTO pd_subscription_intent
-        (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'TND', $7, 'pending')`,
-      [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, opts.gateway],
+        (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, 'TND', $7, 'pending', $8)`,
+      [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, opts.gateway, { instructions }],
     );
 
     try {
@@ -77,9 +94,9 @@ export class SubscriptionPaymentService {
 
       const updated = await query(
         `UPDATE pd_subscription_intent
-         SET gateway_reference = $2, checkout_url = $3, metadata = $4, updated_at = NOW()
+         SET gateway_reference = $2, checkout_url = $3, metadata = metadata || $4, updated_at = NOW()
          WHERE id = $1 RETURNING *`,
-        [intentId, result.gateway_reference, result.redirect_url, result.metadata || {}],
+        [intentId, result.gateway_reference, result.redirect_url, JSON.stringify(result.metadata || {})],
       );
 
       return {
@@ -87,6 +104,7 @@ export class SubscriptionPaymentService {
         checkout_url: result.redirect_url,
         gateway_reference: result.gateway_reference,
         intent: updated.rows[0],
+        instructions,
       };
     } catch (err) {
       await query(
@@ -95,6 +113,28 @@ export class SubscriptionPaymentService {
       );
       throw err;
     }
+  }
+
+  async uploadProof(intentId: string, storeId: string, proofUrl: string) {
+    if (!proofUrl?.trim()) {
+      throw new PdValidationError('Proof URL or file link is required');
+    }
+    const { rows } = await query(
+      'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',
+      [intentId, storeId],
+    );
+    const intent = rows[0];
+    if (!intent) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription intent not found');
+    }
+
+    const updated = await query(
+      `UPDATE pd_subscription_intent
+       SET proof_url = $2, status = 'pending_review', updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [intentId, proofUrl.trim()],
+    );
+    return updated.rows[0];
   }
 
   async settle(storeId: string, intentId: string) {
@@ -144,37 +184,23 @@ export class SubscriptionPaymentService {
     return null;
   }
 
-  async listManualForAdmin(status = 'pending_review') {
-    const { rows } = await query(
-      `SELECT i.*, s.name AS store_name, u.email AS seller_email, r.email AS reviewer_email
-       FROM pd_subscription_intent i
-       JOIN pd_store s ON s.id = i.store_id
-       JOIN pd_user u ON u.id = i.user_id
-       LEFT JOIN pd_user r ON r.id = i.reviewed_by
-       WHERE i.gateway = 'manual_mandat' AND i.status = $1
-       ORDER BY i.created_at ASC LIMIT 100`,
-      [status],
-    );
-    return rows;
-  }
-
   async reviewManual(intentId: string, adminId: string, decision: 'approved' | 'rejected', reason?: string) {
     if (decision === 'rejected' && !reason?.trim()) {
-      throw new PdValidationError('Rejection reason is required');
+      throw new PdValidationError('Rejection reason is required when rejecting an order');
     }
 
     return transaction(async (c) => {
       const { rows } = await c.query(
-        'SELECT * FROM pd_subscription_intent WHERE id = $1 AND gateway = "manual_mandat" FOR UPDATE',
+        'SELECT * FROM pd_subscription_intent WHERE id = $1 FOR UPDATE',
         [intentId],
       );
       const intent = rows[0];
       if (!intent) {
-        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription manual intent not found');
+        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
       }
 
-      if (intent.status !== 'pending_review') {
-        throw new PdValidationError('Intent has already been reviewed');
+      if (intent.status === 'captured') {
+        throw new PdValidationError('Subscription order has already been captured & activated');
       }
 
       if (decision === 'rejected') {
@@ -187,7 +213,7 @@ export class SubscriptionPaymentService {
         return updated.rows[0];
       }
 
-      // Approve -> change plan
+      // Approve -> change plan immediately
       await subscriptionService.changePlan(intent.store_id, intent.from_plan, intent.target_plan, c);
 
       const updated = await c.query(
