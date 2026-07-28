@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
   Crown,
@@ -43,7 +43,11 @@ import {
   Radio,
   Bookmark,
   RotateCcw,
-  ArrowUpRight,
+  Copy,
+  Send,
+  MoreVertical,
+  MessageSquare,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -196,6 +200,9 @@ export default function SubscriptionOrdersPage() {
   const [drawerOrder, setDrawerOrder] = useState<SubscriptionOrder | null>(null);
   const [drawerLogs, setDrawerLogs] = useState<ActivityLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [adminNoteInput, setAdminNoteInput] = useState<string>('');
+  const [submittingNote, setSubmittingNote] = useState(false);
+
   const [invoiceOrder, setInvoiceOrder] = useState<SubscriptionOrder | null>(null);
   const [quotaOrder, setQuotaOrder] = useState<SubscriptionOrder | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
@@ -278,6 +285,39 @@ export default function SubscriptionOrdersPage() {
     fetchStats();
   }, [fetchOrders, fetchStats]);
 
+  // Dynamic Sticky Summary Calculation based on filtered table data
+  const filteredMetrics = useMemo(() => {
+    let totalArr = 0;
+    let activeCount = 0;
+    let pastDueCount = 0;
+    let failedCount = 0;
+    let cancelledCount = 0;
+
+    orders.forEach((o) => {
+      const amt = Number(o.amount || 0);
+      totalArr += amt;
+
+      if (o.status === 'captured') activeCount++;
+      else if (o.status === 'pending_proof' || o.status === 'pending_review') pastDueCount++;
+      else if (o.status === 'rejected' || o.status === 'failed') failedCount++;
+      else if (o.status === 'cancelled' || o.status === 'expired') cancelledCount++;
+    });
+
+    const totalCount = orders.length || 1;
+    const activeRatio = ((activeCount / totalCount) * 100).toFixed(1);
+    const mrr = (totalArr / 12).toFixed(0);
+
+    return {
+      totalArr: totalArr.toFixed(0),
+      mrr,
+      activeCount,
+      pastDueCount,
+      activeRatio,
+      failedCount,
+      cancelledCount,
+    };
+  }, [orders]);
+
   // Presets
   const applyPreset = (preset: string) => {
     setPage(1);
@@ -330,6 +370,33 @@ export default function SubscriptionOrdersPage() {
     } finally {
       setLoadingLogs(false);
     }
+  };
+
+  const handleAddAdminNote = async () => {
+    if (!drawerOrder || !adminNoteInput.trim()) return;
+    setSubmittingNote(true);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${drawerOrder.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ note: adminNoteInput.trim() }),
+      });
+      if (res.ok) {
+        setAdminNoteInput('');
+        fetchActivityLogs(drawerOrder.id);
+      }
+    } catch {
+      // Ignore note add error
+    } finally {
+      setSubmittingNote(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setSuccess(`Copied ${label} to clipboard!`);
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const fetchDiagnostics = async (intentId?: string) => {
@@ -775,45 +842,55 @@ export default function SubscriptionOrdersPage() {
         </div>
       </div>
 
-      {/* Analytics & KPI Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl">
-            <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+      {/* Sticky Dynamic Top Summary Analytics Bar */}
+      <div className="sticky top-2 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-md transition-all">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filtered MRR / ARR</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {filteredMetrics.mrr} TND <span className="text-xs font-normal text-slate-400">/mo ({filteredMetrics.totalArr} TND ARR)</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.pending || 'Pending Orders'}</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.pending_proof_count + stats.pending_review_count : pagination.total}</p>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active vs Past-Due Ratio</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {filteredMetrics.activeRatio}% <span className="text-xs font-normal text-slate-400">({filteredMetrics.activeCount} Active / {filteredMetrics.pastDueCount} Past Due)</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.captured || 'Activated Subscriptions'}</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.captured_count : 0}</p>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
-            <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 dark:bg-red-950/40 rounded-xl text-red-600 dark:text-red-400">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Failed / Rejected Count</p>
+              <p className="text-lg font-black text-red-600 dark:text-red-400">
+                {filteredMetrics.failedCount} <span className="text-xs font-normal text-slate-400">orders</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue (This Month)</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.revenue_this_month.toFixed(0) : 0} TND</p>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl">
-            <History className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Avg Review Speed</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? `${stats.avg_review_hours}h` : 'N/A'}</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400">
+              <Ban className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cancelled / Expired</p>
+              <p className="text-lg font-black text-slate-700 dark:text-slate-300">
+                {filteredMetrics.cancelledCount} <span className="text-xs font-normal text-slate-400">subscriptions</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1059,10 +1136,10 @@ export default function SubscriptionOrdersPage() {
                     <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
                     <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('status')}>
                       <div className="flex items-center gap-1">
-                        {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
+                        {tr.status || 'Health & Status'} <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
-                    <th className="px-4 py-4 text-right">Lifecycle & Actions</th>
+                    <th className="px-4 py-4 text-right">Inline Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
@@ -1075,12 +1152,22 @@ export default function SubscriptionOrdersPage() {
                             {isSelected ? <CheckSquare className="w-4 h-4 text-[#B91C1C]" /> : <Square className="w-4 h-4" />}
                           </button>
                         </td>
-                        <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold cursor-pointer hover:underline" onClick={() => openDrawer(order)}>
-                          #{order.id.slice(-8).toUpperCase()}
+                        <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold">
+                          <div className="flex items-center gap-1">
+                            <span className="cursor-pointer hover:underline" onClick={() => openDrawer(order)}>#{order.id.slice(-8).toUpperCase()}</span>
+                            <button onClick={() => copyToClipboard(order.id, 'Subscription ID')} className="p-1 text-slate-400 hover:text-slate-700" title="Copy Subscription ID">
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onClick={() => openDrawer(order)}>{order.store_name}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onClick={() => openDrawer(order)}>{order.store_name}</span>
+                              <a href={`https://${order.store_subdomain}.pandamarket.tn`} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-700" title="Open Storefront">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
                             <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.pandamarket.tn</span>
                             <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
                           </div>
@@ -1132,43 +1219,40 @@ export default function SubscriptionOrdersPage() {
                             <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
                           </button>
                         </td>
+                        {/* Color-Coded Health & Status Badges */}
                         <td className="px-4 py-4">
                           {order.status === 'captured' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> {tr.statusCaptured || 'Captured / Active'}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Active / Captured
                             </span>
                           )}
                           {order.status === 'pending_review' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 animate-pulse">
-                              <Clock className="w-3.5 h-3.5" /> {tr.statusPendingReview || 'Pending Review'}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
+                              <Clock className="w-3.5 h-3.5" /> Past-Due / In Review
                             </span>
                           )}
                           {order.status === 'pending_proof' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300">
-                              <FileText className="w-3.5 h-3.5" /> {tr.statusPendingProof || 'Pending Proof'}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800">
+                              <FileText className="w-3.5 h-3.5" /> Pending Proof (Grace)
                             </span>
                           )}
-                          {order.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300">
-                              <XCircle className="w-3.5 h-3.5" /> {tr.statusRejected || 'Rejected'}
+                          {(order.status === 'rejected' || order.status === 'failed') && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-800">
+                              <ShieldAlert className="w-3.5 h-3.5" /> Failed / Dunning (3+ Retries)
                             </span>
                           )}
-                          {order.status === 'cancelled' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              <Ban className="w-3.5 h-3.5" /> {tr.statusCancelled || 'Cancelled'}
-                            </span>
-                          )}
-                          {order.status === 'expired' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              <Ban className="w-3.5 h-3.5" /> {tr.statusExpired || 'Expired'}
+                          {(order.status === 'cancelled' || order.status === 'expired') && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
+                              <Ban className="w-3.5 h-3.5" /> Cancelled / Expired
                             </span>
                           )}
                           {order.status === 'pending' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              {tr.statusPending || 'Pending'}
+                              Pending Initiation
                             </span>
                           )}
                         </td>
+                        {/* Inline Actions Menu */}
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {order.status === 'pending_review' || order.status === 'pending_proof' ? (
@@ -1179,6 +1263,14 @@ export default function SubscriptionOrdersPage() {
                                 <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review'}
                               </button>
                             ) : null}
+
+                            <button
+                              onClick={() => copyToClipboard(`https://pandamarket.tn/hub/dashboard/subscription?intent_id=${order.id}`, 'Vendor Portal Link')}
+                              title="Send / Copy Portal Direct Link"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
 
                             <button
                               onClick={() => openDiagnostics(order)}
@@ -1591,14 +1683,19 @@ export default function SubscriptionOrdersPage() {
         </div>
       )}
 
-      {/* Rich Slide-Over Drawer for Order Details & Audit Trail */}
+      {/* Rich Slide-Over Drawer for Order Details, Notes & Audit Trail */}
       {drawerOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 w-full max-w-xl h-full shadow-2xl overflow-y-auto p-6 sm:p-8 space-y-6 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#B91C1C]">Order Details & Timeline</span>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">#{drawerOrder.id.slice(-8).toUpperCase()}</h3>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#B91C1C]">Subscription Slide-Over Inspector</span>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  #{drawerOrder.id.slice(-8).toUpperCase()}
+                  <button onClick={() => copyToClipboard(drawerOrder.id, 'Order ID')} className="p-1 text-slate-400 hover:text-slate-600" title="Copy Subscription ID">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </h3>
               </div>
               <button onClick={() => setDrawerOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full">
                 <X className="w-6 h-6" />
@@ -1622,6 +1719,29 @@ export default function SubscriptionOrdersPage() {
               <div>
                 <p className="text-slate-400 font-bold uppercase">Amount & Method</p>
                 <p className="font-black text-[#B91C1C] text-sm">{Number(drawerOrder.amount).toFixed(0)} TND ({GATEWAY_NAMES[drawerOrder.gateway] || drawerOrder.gateway})</p>
+              </div>
+            </div>
+
+            {/* Quick Internal Admin Notes Form */}
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-blue-600" /> Internal Admin Notes
+              </h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={adminNoteInput}
+                  onChange={(e) => setAdminNoteInput(e.target.value)}
+                  placeholder="Add internal note (e.g. Verified wire receipt via phone...)"
+                  className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs outline-none"
+                />
+                <button
+                  onClick={handleAddAdminNote}
+                  disabled={submittingNote || !adminNoteInput.trim()}
+                  className="px-3 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Save Note
+                </button>
               </div>
             </div>
 
@@ -1653,7 +1773,7 @@ export default function SubscriptionOrdersPage() {
 
             <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <History className="w-4 h-4 text-[#B91C1C]" /> Audit Trail & Timeline
+                <History className="w-4 h-4 text-[#B91C1C]" /> Audit Trail & History Timeline
               </h4>
               {loadingLogs ? (
                 <p className="text-xs text-slate-400">Loading activity timeline...</p>

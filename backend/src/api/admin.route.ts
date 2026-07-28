@@ -4363,6 +4363,23 @@ router.get(
   }),
 );
 
+router.post(
+  '/subscription-orders/:intentId/notes',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intentId } = req.params;
+    const { note } = req.body;
+    if (!note?.trim()) {
+      res.status(400).json({ error: { message: 'Note text is required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    await subscriptionPaymentService.logActivity(intentId, 'admin_note', req.user!.id, 'admin', { note: note.trim() });
+    res.status(200).json({ success: true, message: 'Admin note added successfully' });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================
