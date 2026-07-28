@@ -38,9 +38,9 @@ const mandatUploadSchema = z.object({
  * Flouci sends the signature in the `x-flouci-signature` header.
  */
 function verifyFlouciSignature(req: Request): boolean {
-  const signature = req.headers['x-flouci-signature'] as string | undefined;
-  if (!signature) {
-    logger.warn('Flouci webhook missing signature header');
+  const signature = req.headers['x-flouci-signature'];
+  if (typeof signature !== 'string' || !signature) {
+    logger.warn('Flouci webhook missing or invalid signature header');
     return false;
   }
   const payload = JSON.stringify(req.body);
@@ -48,14 +48,15 @@ function verifyFlouciSignature(req: Request): boolean {
     .createHmac('sha256', config.flouci.appSecret)
     .update(payload)
     .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+
+  const supplied = Buffer.from(signature, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+
+  if (supplied.length !== wanted.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(supplied, wanted);
 }
 
 /**
@@ -63,24 +64,22 @@ function verifyFlouciSignature(req: Request): boolean {
  * Konnect sends the signature in the `x-konnect-signature` header.
  */
 function verifyKonnectSignature(req: Request): boolean {
-  const signature = req.headers['x-konnect-signature'] as string | undefined;
-  if (!signature) {
-    logger.warn('Konnect webhook missing signature header');
+  const signature = req.headers['x-konnect-signature'];
+  if (typeof signature !== 'string' || !signature) {
+    logger.warn('Konnect webhook missing or invalid signature header');
     return false;
   }
   const payload = JSON.stringify(req.body);
-  const expected = crypto
-    .createHmac('sha256', config.konnect.apiKey)
-    .update(payload)
-    .digest('hex');
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex'),
-    );
-  } catch {
+  const expected = crypto.createHmac('sha256', config.konnect.apiKey).update(payload).digest('hex');
+
+  const supplied = Buffer.from(signature, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+
+  if (supplied.length !== wanted.length) {
     return false;
   }
+
+  return crypto.timingSafeEqual(supplied, wanted);
 }
 
 // =====================================================
@@ -136,7 +135,10 @@ router.post(
       return;
     }
 
-    const belongsToStore = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    const belongsToStore = await orderService.hasStoreItems(
+      order_id,
+      req.storefrontCustomer!.store_id,
+    );
     if (!belongsToStore) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
@@ -254,7 +256,8 @@ router.post(
   '/webhook/paypal',
   asyncHandler(async (req: Request, res: Response) => {
     const { resource } = req.body || {};
-    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
+    const orderId =
+      resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
     const paypalOrderId = resource?.id || req.body.paypal_order_id;
 
     if (!paypalOrderId || !orderId) {
@@ -263,7 +266,10 @@ router.post(
     }
 
     const { paypalProvider } = await import('../plugins/payment');
-    const signatureValid = await paypalProvider.verifyWebhookSignature(req.headers as Record<string, string>, req.body);
+    const signatureValid = await paypalProvider.verifyWebhookSignature(
+      req.headers as Record<string, string>,
+      req.body,
+    );
 
     await paymentService.processPaymentWebhook({
       gateway: PaymentGateway.PayPal,

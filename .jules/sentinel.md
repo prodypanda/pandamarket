@@ -1,0 +1,4 @@
+## 2026-07-28 - Avoid exception-based flow for crypto.timingSafeEqual
+**Vulnerability:** Denial of Service (DoS) vulnerability via CPU exhaustion on webhook signature verification.
+**Learning:** `crypto.timingSafeEqual` throws an exception if the provided buffers have different lengths. Using `try...catch` as expected control flow for invalid lengths incurs significant CPU overhead because generating stack traces is expensive. Attackers can spam endpoints with invalid signature lengths to exhaust server CPU. Additionally, without validating that headers are strings (they can be arrays in Express), `Buffer.from()` could throw unhandled TypeErrors.
+**Prevention:** Always explicitly validate that signature headers are strings and check that buffer lengths are equal before calling `crypto.timingSafeEqual`, rather than catching exceptions.

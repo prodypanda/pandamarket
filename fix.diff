@@ -1,0 +1,95 @@
+<<<<<<< SEARCH
+function verifyFlouciSignature(req: Request): boolean {
+  const signature = req.headers['x-flouci-signature'] as string | undefined;
+  if (!signature) {
+    logger.warn('Flouci webhook missing signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.flouci.appSecret)
+    .update(payload)
+    .digest('hex');
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expected, 'hex'),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify Konnect webhook signature using HMAC-SHA256.
+ * Konnect sends the signature in the `x-konnect-signature` header.
+ */
+function verifyKonnectSignature(req: Request): boolean {
+  const signature = req.headers['x-konnect-signature'] as string | undefined;
+  if (!signature) {
+    logger.warn('Konnect webhook missing signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.konnect.apiKey)
+    .update(payload)
+    .digest('hex');
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expected, 'hex'),
+    );
+  } catch {
+    return false;
+  }
+}
+=======
+function verifyFlouciSignature(req: Request): boolean {
+  const signature = req.headers['x-flouci-signature'];
+  if (typeof signature !== 'string' || !signature) {
+    logger.warn('Flouci webhook missing or invalid signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.flouci.appSecret)
+    .update(payload)
+    .digest('hex');
+
+  const supplied = Buffer.from(signature, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+
+  if (supplied.length !== wanted.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(supplied, wanted);
+}
+
+/**
+ * Verify Konnect webhook signature using HMAC-SHA256.
+ * Konnect sends the signature in the `x-konnect-signature` header.
+ */
+function verifyKonnectSignature(req: Request): boolean {
+  const signature = req.headers['x-konnect-signature'];
+  if (typeof signature !== 'string' || !signature) {
+    logger.warn('Konnect webhook missing or invalid signature header');
+    return false;
+  }
+  const payload = JSON.stringify(req.body);
+  const expected = crypto
+    .createHmac('sha256', config.konnect.apiKey)
+    .update(payload)
+    .digest('hex');
+
+  const supplied = Buffer.from(signature, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+
+  if (supplied.length !== wanted.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(supplied, wanted);
+}
+>>>>>>> REPLACE
