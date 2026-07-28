@@ -59,6 +59,8 @@ import {
   AlertTriangle,
   Lock,
   Edit3,
+  Gavel,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -297,6 +299,12 @@ export default function SubscriptionOrdersPage() {
   const [fraudRadarList, setFraudRadarList] = useState<any[]>([]);
   const [showFraudRadarModal, setShowFraudRadarModal] = useState(false);
 
+  // Dispute Workbench Modal
+  const [disputeOrder, setDisputeOrder] = useState<SubscriptionOrder | null>(null);
+  const [disputeReason, setDisputeReason] = useState<string>('Unrecognized charge');
+  const [disputeRef, setDisputeRef] = useState<string>('');
+  const [disputeEvidence, setDisputeEvidence] = useState<any>(null);
+
   // Retention Save Offer Modal
   const [retentionOrder, setRetentionOrder] = useState<SubscriptionOrder | null>(null);
 
@@ -515,6 +523,59 @@ export default function SubscriptionOrdersPage() {
   };
 
   // Power Tools Handlers
+  const handleOpenDisputeWorkbench = async (order: SubscriptionOrder) => {
+    setDisputeOrder(order);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${order.id}/evidence`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDisputeEvidence(data.evidence);
+      }
+    } catch {
+      // Ignore evidence fetch error
+    }
+  };
+
+  const handleCreateDisputeRecord = async () => {
+    if (!disputeOrder) return;
+    setSubmitting(true);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${disputeOrder.id}/disputes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason: disputeReason, dispute_reference: disputeRef }),
+      });
+      if (res.ok) {
+        setSuccess(`⚖️ Litige / Chargeback ouvert ! Garde-fou déclenché : l'abonnement de ${disputeOrder.store_name} a été immédiatement gelé.`);
+        setDisputeOrder(null);
+        fetchOrders();
+      }
+    } catch {
+      setError('Erreur lors de l\'ouverture du litige');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResolveOutOfOrderWebhooks = async () => {
+    if (!diagnosticsOrder) return;
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/webhook-resolver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ gateway: diagnosticsOrder.gateway, intent_id: diagnosticsOrder.id, event_type: 'charge.captured' }),
+      });
+      if (res.ok) {
+        setSuccess('Re-séquençage et résolution de la file d\'attente webhook effectués !');
+        fetchDiagnostics(diagnosticsOrder.id);
+      }
+    } catch {
+      setError('Erreur du résolveur webhook');
+    }
+  };
+
   const handleSaveRetroactiveTaxInfo = async () => {
     if (!invoiceOrder) return;
     try {
@@ -770,7 +831,10 @@ export default function SubscriptionOrdersPage() {
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${orderToReview.id}/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': `review-${orderToReview.id}-${Date.now()}`,
+        },
         credentials: 'include',
         body: JSON.stringify({
           decision,
@@ -1052,7 +1116,10 @@ export default function SubscriptionOrdersPage() {
     try {
       const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': `bulk-${action}-${Date.now()}`,
+        },
         credentials: 'include',
         body: JSON.stringify({
           intent_ids: selectedIds,
@@ -1607,6 +1674,14 @@ export default function SubscriptionOrdersPage() {
                             ) : null}
 
                             <button
+                              onClick={() => handleOpenDisputeWorkbench(order)}
+                              title="Native Dispute & Chargeback Workbench"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                            >
+                              <Gavel className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
                               onClick={() => handleGenerateMagicLink(order.id)}
                               title="Generate Pre-Authenticated Billing Magic Link"
                               className="p-1.5 border border-slate-200 dark:border-slate-800 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950/40"
@@ -1695,6 +1770,90 @@ export default function SubscriptionOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Native Dispute & Chargeback Workbench Modal */}
+      {disputeOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-red-600">
+                  <Gavel className="w-6 h-6" /> Native Dispute & Chargeback Workbench
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Order #{disputeOrder.id.slice(-8).toUpperCase()} ({disputeOrder.store_name})</p>
+              </div>
+              <button onClick={() => setDisputeOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 space-y-2">
+                <p className="font-bold text-red-900 dark:text-red-300 uppercase text-[10px]">Garde-Fou Automatique :</p>
+                <p className="text-red-700 dark:text-red-300">
+                  L&apos;ouverture d&apos;un litige gèle immédiatement les accès payants de la boutique <span className="font-bold">{disputeOrder.store_name}</span> pour prévenir toute fuite de ressources.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Raison du Litige</label>
+                  <input
+                    type="text"
+                    value={disputeReason}
+                    onChange={(e) => setDisputeReason(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Référence Processeur (ex: Stripe/Konnect)</label>
+                  <input
+                    type="text"
+                    value={disputeRef}
+                    onChange={(e) => setDisputeRef(e.target.value)}
+                    placeholder="DSP_REF_12345"
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 1-Click Assembled Audit Evidence Package */}
+              {disputeEvidence && (
+                <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3">
+                  <h4 className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Package de Preuves Audit d&apos;Événement Assemblé
+                  </h4>
+                  <pre className="p-3 rounded-2xl bg-slate-950 text-emerald-400 font-mono text-[10px] max-h-48 overflow-y-auto border border-slate-800">
+                    {JSON.stringify(disputeEvidence, null, 2)}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(disputeEvidence, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `dispute_evidence_${disputeOrder.id}.json`;
+                      a.click();
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 inline-flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Telecharger Package de Preuves (JSON)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setDisputeOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Annuler
+              </button>
+              <button onClick={handleCreateDisputeRecord} disabled={submitting} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl text-xs hover:bg-red-700">
+                Ouvrir le Litige & Geler l&apos;Abonnement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Card Expiry Proactive Queue Modal */}
       {showCardExpiryModal && (
@@ -2021,7 +2180,7 @@ export default function SubscriptionOrdersPage() {
         </div>
       )}
 
-      {/* Webhook & Diagnostics Modal */}
+      {/* Webhook & Diagnostics Modal with Out-of-Order Queue Resolver */}
       {diagnosticsOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
@@ -2036,6 +2195,13 @@ export default function SubscriptionOrdersPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            <button
+              onClick={handleResolveOutOfOrderWebhooks}
+              className="w-full py-2.5 bg-teal-600 text-white font-bold rounded-xl text-xs hover:bg-teal-700 flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-4 h-4" /> Resolve Out-of-Order Webhook Queue
+            </button>
 
             {loadingDiagnostics ? (
               <p className="text-xs text-slate-400">Loading webhook event diagnostics...</p>

@@ -4541,6 +4541,43 @@ router.get(
   }),
 );
 
+router.post(
+  '/subscription-orders/:intentId/disputes',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intentId } = req.params;
+    const { reason, dispute_reference } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const dispute = await subscriptionPaymentService.createDispute(intentId, reason || 'Chargeback opened', dispute_reference, req.user!.id);
+    res.status(201).json({ success: true, dispute });
+  }),
+);
+
+router.get(
+  '/subscription-orders/:intentId/evidence',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { intentId } = req.params;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const evidence = await subscriptionPaymentService.assembleDisputeEvidence(intentId);
+    res.status(200).json({ evidence });
+  }),
+);
+
+router.post(
+  '/subscription-orders/webhook-resolver',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { gateway, intent_id, event_type, payload } = req.body;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.resolveOutOfOrderWebhook(gateway || 'manual', intent_id, event_type || 'charge.captured', payload || {});
+    res.status(200).json({ success: true, result });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================

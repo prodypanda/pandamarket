@@ -218,6 +218,109 @@ export class SubscriptionPaymentService {
   }
 
   // ==========================================================
+  // Dispute, Security & Guardrail Governance
+  // ==========================================================
+
+  async createDispute(intentId: string, reason: string, disputeReference?: string, adminId?: string) {
+    const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const intent = rows[0];
+    if (!intent) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+
+    const evidencePackage = await this.assembleDisputeEvidence(intentId);
+    const disputeId = pdId('dsp');
+
+    const { rows: dspRows } = await query(
+      `INSERT INTO pd_subscription_dispute
+        (id, intent_id, store_id, dispute_reference, reason, amount, currency, status, evidence_payload)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8)
+       RETURNING *`,
+      [
+        disputeId,
+        intentId,
+        intent.store_id,
+        disputeReference || `DSP-${intentId.slice(-6).toUpperCase()}`,
+        reason,
+        intent.amount,
+        intent.currency || 'TND',
+        JSON.stringify(evidencePackage),
+      ],
+    );
+
+    // Auto-Action Guardrail: Freeze subscription immediately to prevent resource drain
+    await query(`UPDATE pd_store SET subscription_status = 'paused', updated_at = NOW() WHERE id = $1`, [intent.store_id]);
+
+    await this.logActivity(intentId, 'dispute_opened', adminId, 'admin', {
+      dispute_id: disputeId,
+      reason,
+      auto_action: 'subscription_frozen',
+    });
+
+    return dspRows[0];
+  }
+
+  async assembleDisputeEvidence(intentId: string) {
+    const { rows: intentRows } = await query(`
+      SELECT i.*, s.name AS store_name, s.subdomain AS store_subdomain, u.email AS seller_email
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      WHERE i.id = $1
+    `, [intentId]);
+    const intent = intentRows[0];
+    if (!intent) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+
+    const logs = await this.getActivityLogs(intentId);
+
+    return {
+      compiled_at: new Date().toISOString(),
+      order_id: intent.id,
+      store_name: intent.store_name,
+      subdomain: intent.store_subdomain,
+      seller_email: intent.seller_email,
+      payment_gateway: intent.gateway,
+      gateway_reference: intent.gateway_reference || 'N/A',
+      amount_tnd: intent.amount,
+      terms_accepted_at: intent.created_at,
+      activity_audit_logs: logs,
+      proof_url: intent.proof_url || null,
+      metadata: intent.metadata || {},
+    };
+  }
+
+  async verifyOrSetIdempotency(intentId: string, idempotencyKey: string) {
+    if (!idempotencyKey?.trim()) return true;
+
+    const { rows } = await query(
+      'SELECT idempotency_key FROM pd_subscription_intent WHERE id = $1',
+      [intentId],
+    );
+    const currentKey = rows[0]?.idempotency_key;
+
+    if (currentKey === idempotencyKey.trim()) {
+      throw new PdValidationError('Duplicate execution intercepted by Idempotency Guardrail. Payment operation is already processing.');
+    }
+
+    await query(
+      'UPDATE pd_subscription_intent SET idempotency_key = $2, updated_at = NOW() WHERE id = $1',
+      [intentId, idempotencyKey.trim()],
+    );
+    return true;
+  }
+
+  async resolveOutOfOrderWebhook(gateway: string, intentId: string, eventType: string, payload: any) {
+    const { rows } = await query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const intent = rows[0];
+
+    if (!intent) {
+      // Intent not present yet: Out-of-order execution detected. Queue as pending_retry.
+      await this.logWebhookEvent(intentId, gateway, eventType, 'pending_retry', payload, 'Out-of-order webhook detected: Base intent DB state not found. Queued for resolver.');
+      return { status: 'queued_out_of_order', message: 'Webhook event queued pending base intent verification.' };
+    }
+
+    return this.settleWebhook(gateway as any, intentId, intent.gateway_reference || '');
+  }
+
+  // ==========================================================
   // Smart Decline Code Routing
   // ==========================================================
 
