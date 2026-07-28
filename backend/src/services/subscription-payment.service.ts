@@ -86,6 +86,92 @@ export class SubscriptionPaymentService {
   }
 
   // ==========================================================
+  // Early Warning Signals & Intelligence
+  // ==========================================================
+
+  calculateHealthScore(order: any) {
+    let score = 100;
+    const riskFlags: string[] = [];
+
+    // 1. Payment Reliability & Retries
+    const retryCount = Number(order.metadata?.retry_count || order.retry_count || 0);
+    if (retryCount > 0) {
+      score -= retryCount * 15;
+      riskFlags.push(`${retryCount} failed payment retries`);
+    }
+
+    if (order.status === 'rejected' || order.status === 'failed') {
+      score -= 35;
+      riskFlags.push('Recent payment decline or rejection');
+    }
+
+    if (order.status === 'pending_proof' || order.status === 'pending_review') {
+      score -= 15;
+      riskFlags.push('Payment proof past-due or pending review');
+    }
+
+    // 2. Fraud & Disposable Email Radar
+    const disposableDomains = ['tempmail.com', 'mailinator.com', '10minutemail.com', 'yopmail.com', 'guerrillamail.com', 'dispostable.com'];
+    const emailDomain = (order.seller_email || '').split('@')[1]?.toLowerCase();
+    if (disposableDomains.includes(emailDomain)) {
+      score -= 30;
+      riskFlags.push(`Disposable email domain (${emailDomain})`);
+    }
+
+    // 3. Card Expiry & Grace Period
+    if (order.metadata?.card_expires_soon) {
+      score -= 20;
+      riskFlags.push('Payment card expiring within 30 days');
+    }
+
+    score = Math.max(0, Math.min(100, score));
+    let level: 'healthy' | 'at_risk' | 'critical' = 'healthy';
+    if (score < 50) level = 'critical';
+    else if (score < 80) level = 'at_risk';
+
+    return { score, level, risk_flags: riskFlags };
+  }
+
+  async getCardExpiryQueue() {
+    const { rows } = await query(`
+      SELECT i.*, s.name AS store_name, s.subdomain AS store_subdomain, u.email AS seller_email
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      WHERE i.status IN ('pending', 'pending_proof', 'pending_review')
+         OR (i.metadata->>'card_expiring' = 'true')
+      ORDER BY i.created_at DESC
+    `);
+
+    return rows.map((order) => ({
+      ...order,
+      health_scorecard: this.calculateHealthScore(order),
+    }));
+  }
+
+  async getFraudEarlyWarningRadar() {
+    const { rows } = await query(`
+      SELECT i.*, s.name AS store_name, s.subdomain AS store_subdomain, u.email AS seller_email
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      WHERE u.email LIKE '%tempmail%'
+         OR u.email LIKE '%mailinator%'
+         OR u.email LIKE '%10minutemail%'
+         OR u.email LIKE '%yopmail%'
+         OR u.email LIKE '%guerrillamail%'
+         OR i.status IN ('rejected', 'failed')
+      ORDER BY i.created_at DESC
+      LIMIT 50
+    `);
+
+    return rows.map((order) => ({
+      ...order,
+      health_scorecard: this.calculateHealthScore(order),
+    }));
+  }
+
+  // ==========================================================
   // Smart Decline Code Routing
   // ==========================================================
 

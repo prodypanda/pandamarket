@@ -4488,6 +4488,28 @@ router.patch(
   }),
 );
 
+router.get(
+  '/subscription-orders/card-expiry-queue',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const queue = await subscriptionPaymentService.getCardExpiryQueue();
+    res.status(200).json({ queue });
+  }),
+);
+
+router.get(
+  '/subscription-orders/fraud-radar',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const radar = await subscriptionPaymentService.getFraudEarlyWarningRadar();
+    res.status(200).json({ radar });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================
