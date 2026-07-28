@@ -4129,6 +4129,16 @@ const reviewSubscriptionOrderSchema = z.object({
   reason: z.string().optional(),
 });
 
+const cancelSubscriptionOrderSchema = z.object({
+  reason: z.string().optional(),
+});
+
+const bulkSubscriptionOrderSchema = z.object({
+  intent_ids: z.array(z.string().min(1)).min(1).max(200),
+  action: z.enum(['approve', 'reject', 'cancel', 'delete']),
+  reason: z.string().optional(),
+});
+
 router.get(
   '/subscription-orders',
   requireAuth,
@@ -4186,6 +4196,55 @@ router.post(
       req.body.reason,
     );
     res.status(200).json({ success: true, intent: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/:intentId/cancel',
+  requireAuth,
+  requireAdmin,
+  validate(cancelSubscriptionOrderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.cancelByAdmin(
+      req.params.intentId,
+      req.user!.id,
+      req.body.reason,
+    );
+    res.status(200).json({ success: true, intent: result });
+  }),
+);
+
+router.delete(
+  '/subscription-orders/:intentId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.deleteByAdmin(req.params.intentId);
+    res.status(200).json({ success: true, intent: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/bulk',
+  requireAuth,
+  requireAdmin,
+  validate(bulkSubscriptionOrderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const { intent_ids, action, reason } = req.body;
+    let result: any;
+    if (action === 'approve') {
+      result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'approved');
+    } else if (action === 'reject') {
+      result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'rejected', reason);
+    } else if (action === 'cancel') {
+      result = await subscriptionPaymentService.bulkCancel(intent_ids, req.user!.id, reason);
+    } else {
+      result = await subscriptionPaymentService.bulkDelete(intent_ids);
+    }
+    res.status(200).json({ success: true, ...result });
   }),
 );
 

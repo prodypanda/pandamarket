@@ -333,6 +333,28 @@ function SubscriptionContent() {
 
   const pendingIntents = currentPlan?.pending_intents || [];
 
+  const handleCancelIntent = async (intentId: string) => {
+    if (!confirm('Voulez-vous vraiment annuler cette commande d\'abonnement non payée ?')) return;
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ intent_id: intentId }),
+      });
+      if (res.ok) {
+        setSuccess('Commande d\'abonnement annulée avec succès.');
+        await fetchCurrentPlan();
+      } else {
+        setError(await getErrorMessage(res, 'Erreur lors de l\'annulation de la commande'));
+      }
+    } catch {
+      setError('Erreur réseau');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Abonnement & Formules</h1>
@@ -356,7 +378,7 @@ function SubscriptionContent() {
             <div>
               <h3 className="font-bold text-amber-900 text-base">Commande d&apos;abonnement en attente de paiement</h3>
               <p className="text-xs text-amber-800 mt-0.5">
-                Vous avez {pendingIntents.length} commande(s) d&apos;abonnement enregistrée(s). Vous pouvez transmettre le reçu de virement à tout moment pour faire valider votre plan.
+                Vous avez {pendingIntents.length} commande(s) d&apos;abonnement enregistrée(s). Vous pouvez transmettre le reçu de virement ou annuler la commande à tout moment.
               </p>
             </div>
           </div>
@@ -371,12 +393,20 @@ function SubscriptionContent() {
                   <span className="text-slate-500 mx-2">•</span>
                   <span className="text-slate-600">Statut : {intent.status === 'pending_review' ? '📑 En attente de validation' : '📌 En attente du reçu'}</span>
                 </div>
-                <button
-                  onClick={() => setUploadModalIntent(intent)}
-                  className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg text-xs hover:bg-amber-700 flex items-center gap-1 self-start sm:self-auto shadow-sm"
-                >
-                  <Upload className="w-3.5 h-3.5" /> Transmettre le Reçu
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <button
+                    onClick={() => handleCancelIntent(intent.id)}
+                    className="px-3 py-1.5 border border-slate-200 text-slate-700 font-bold rounded-lg text-xs hover:bg-slate-100"
+                  >
+                    Annuler la commande
+                  </button>
+                  <button
+                    onClick={() => setUploadModalIntent(intent)}
+                    className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg text-xs hover:bg-amber-700 flex items-center gap-1 shadow-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Transmettre le Reçu
+                  </button>
+                </div>
               </div>
             ))}
           </div>

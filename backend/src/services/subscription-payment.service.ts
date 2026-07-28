@@ -55,14 +55,14 @@ export class SubscriptionPaymentService {
       reference: `SUB-${intentId.slice(-8).toUpperCase()}`,
     };
 
-    if (opts.gateway === PaymentGateway.ManualMandat) {
+    if (opts.gateway === PaymentGateway.ManualMandat || opts.gateway === PaymentGateway.Cod) {
       const initialStatus = opts.proofUrl ? 'pending_review' : 'pending_proof';
       const result = await query(
         `INSERT INTO pd_subscription_intent
           (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, proof_url, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, 'TND', 'manual_mandat', $7, $8, $9)
+         VALUES ($1, $2, $3, $4, $5, $6, 'TND', $7, $8, $9, $10)
          RETURNING *`,
-        [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, initialStatus, opts.proofUrl || null, { instructions }],
+        [intentId, opts.storeId, opts.userId, currentPlan, opts.targetPlan, amount, opts.gateway, initialStatus, opts.proofUrl || null, { instructions }],
       );
       return {
         free: false,
@@ -73,7 +73,7 @@ export class SubscriptionPaymentService {
       };
     }
 
-    // Initialize online payment via selected gateway (Flouci, Konnect, PayPal, COD)
+    // Initialize online payment via selected gateway (Flouci, Konnect, PayPal)
     await query(
       `INSERT INTO pd_subscription_intent
         (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, metadata)
@@ -135,6 +135,109 @@ export class SubscriptionPaymentService {
       [intentId, proofUrl.trim()],
     );
     return updated.rows[0];
+  }
+
+  async cancelByVendor(intentId: string, storeId: string) {
+    const { rows } = await query(
+      'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',
+      [intentId, storeId],
+    );
+    const intent = rows[0];
+    if (!intent) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+    }
+
+    if (intent.status === 'captured') {
+      throw new PdValidationError('Cannot cancel an activated subscription order');
+    }
+
+    const updated = await query(
+      `UPDATE pd_subscription_intent SET status = 'cancelled', updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [intentId],
+    );
+    return updated.rows[0];
+  }
+
+  async cancelByAdmin(intentId: string, adminId: string, reason?: string) {
+    const { rows } = await query(
+      'SELECT * FROM pd_subscription_intent WHERE id = $1',
+      [intentId],
+    );
+    const intent = rows[0];
+    if (!intent) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+    }
+
+    const updated = await query(
+      `UPDATE pd_subscription_intent
+       SET status = 'cancelled', reviewed_by = $2, reviewed_at = NOW(), rejection_reason = $3, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [intentId, adminId, reason || 'Cancelled by Superadmin'],
+    );
+    return updated.rows[0];
+  }
+
+  async deleteByAdmin(intentId: string) {
+    const { rows } = await query(
+      'DELETE FROM pd_subscription_intent WHERE id = $1 RETURNING *',
+      [intentId],
+    );
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Subscription order not found');
+    }
+    return rows[0];
+  }
+
+  async bulkReview(intentIds: string[], adminId: string, decision: 'approved' | 'rejected', reason?: string) {
+    if (intentIds.length === 0) {
+      return { processed: 0, results: [] as any[] };
+    }
+    if (decision === 'rejected' && !reason?.trim()) {
+      throw new PdValidationError('Rejection reason is required when bulk rejecting orders');
+    }
+    const results: any[] = [];
+    for (const id of intentIds) {
+      try {
+        const r = await this.reviewManual(id, adminId, decision, reason);
+        results.push({ id, success: true, intent: r });
+      } catch (err) {
+        results.push({ id, success: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return { processed: results.filter((r) => r.success).length, total: intentIds.length, results };
+  }
+
+  async bulkCancel(intentIds: string[], adminId: string, reason?: string) {
+    if (intentIds.length === 0) {
+      return { processed: 0, results: [] as any[] };
+    }
+    const reasons = reason?.trim() || 'Cancelled by Superadmin (bulk)';
+    const results: any[] = [];
+    for (const id of intentIds) {
+      try {
+        const r = await this.cancelByAdmin(id, adminId, reasons);
+        results.push({ id, success: true, intent: r });
+      } catch (err) {
+        results.push({ id, success: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return { processed: results.filter((r) => r.success).length, total: intentIds.length, results };
+  }
+
+  async bulkDelete(intentIds: string[]) {
+    if (intentIds.length === 0) {
+      return { processed: 0, results: [] as any[] };
+    }
+    const { rows } = await query(
+      `DELETE FROM pd_subscription_intent WHERE id = ANY($1::text[]) RETURNING id`,
+      [intentIds],
+    );
+    const deletedIds = rows.map((r: any) => r.id);
+    const results = intentIds.map((id) => ({
+      id,
+      success: deletedIds.includes(id),
+    }));
+    return { processed: results.filter((r) => r.success).length, total: intentIds.length, results };
   }
 
   async settle(storeId: string, intentId: string) {

@@ -111,6 +111,20 @@ router.post(
   }),
 );
 
+// Vendor: Cancel unpaid subscription order
+router.post(
+  '/cancel',
+  requireStore,
+  validate(settleSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await subscriptionPaymentService.cancelByVendor(
+      req.body.intent_id,
+      req.user!.store_id!,
+    );
+    res.status(200).json({ success: true, intent: result });
+  }),
+);
+
 // Vendor: Settle subscription payment & activate plan after checkout return
 router.post(
   '/settle',
