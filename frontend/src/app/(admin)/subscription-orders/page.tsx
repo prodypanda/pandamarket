@@ -26,6 +26,14 @@ import {
   CheckSquare,
   Square,
   ArrowRight,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  TrendingUp,
+  CreditCard,
+  X,
+  FileJson,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -41,21 +49,56 @@ interface SubscriptionOrder {
   amount: string | number;
   currency: string;
   gateway: string;
-  status: 'pending' | 'pending_proof' | 'pending_review' | 'captured' | 'rejected' | 'failed' | 'cancelled';
+  gateway_reference?: string;
+  checkout_url?: string;
+  status: 'pending' | 'pending_proof' | 'pending_review' | 'captured' | 'rejected' | 'failed' | 'cancelled' | 'expired';
   proof_url?: string;
   rejection_reason?: string;
   created_at: string;
+  expires_at?: string;
   reviewed_at?: string;
   metadata?: any;
 }
 
+interface ActivityLog {
+  id: string;
+  action: string;
+  actor_id?: string;
+  actor_type: string;
+  actor_email?: string;
+  metadata: any;
+  created_at: string;
+}
+
+interface StatsData {
+  gateway_breakdown: Array<{ gateway: string; count: number; total_amount: number }>;
+  plan_breakdown: Array<{ target_plan: string; count: number }>;
+  revenue_this_month: number;
+  revenue_last_month: number;
+  captured_count: number;
+  rejected_count: number;
+  pending_proof_count: number;
+  pending_review_count: number;
+  avg_review_hours: number;
+  conversion_rate: number;
+  rejection_rate: number;
+}
+
+const GATEWAY_NAMES: Record<string, string> = {
+  manual_mandat: 'Mandat Minute / Virement',
+  flouci: 'Flouci',
+  konnect: 'Konnect',
+  paypal: 'PayPal',
+  cod: 'Sur Facture / COD',
+};
+
 const PLAN_BADGES: Record<string, string> = {
   free: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-  starter: 'bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200',
-  regular: 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-800 dark:text-indigo-200',
-  agency: 'bg-purple-100 dark:bg-purple-950/30 text-purple-800 dark:text-purple-200',
-  pro: 'bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-200',
-  golden: 'bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200',
+  starter: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200',
+  regular: 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200',
+  agency: 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200',
+  pro: 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-200',
+  golden: 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200',
   platinum: 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900',
 };
 
@@ -69,27 +112,61 @@ const PLAN_LIMITS_SUMMARY: Record<string, { products: string; commission: string
   platinum: { products: 'Unlimited', commission: '0%', features: 'Enterprise Suite, Own AI Provider, VIP SLA' },
 };
 
+function safeCsvValue(val: any): string {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
 export default function SubscriptionOrdersPage() {
-  const { t } = useLocale();
+  const { t, dir } = useLocale();
   const tr = (t?.('admin.subscriptionOrders') as any) || {};
 
   const [orders, setOrders] = useState<SubscriptionOrder[]>([]);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, total_pages: 1 });
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Filters & Sorting
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [gatewayFilter, setGatewayFilter] = useState<string>('all');
+  const [targetPlanFilter, setTargetPlanFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+  const [minAmount, setMinAmount] = useState<string>('');
+  const [maxAmount, setMaxAmount] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState<number>(1);
 
+  // Batch Selection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRejectionReason, setBulkRejectionReason] = useState<string>('');
+
+  // Modals & Drawers
   const [reviewOrder, setReviewOrder] = useState<SubscriptionOrder | null>(null);
+  const [drawerOrder, setDrawerOrder] = useState<SubscriptionOrder | null>(null);
+  const [drawerLogs, setDrawerLogs] = useState<ActivityLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState<SubscriptionOrder | null>(null);
   const [quotaOrder, setQuotaOrder] = useState<SubscriptionOrder | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
-  const [bulkRejectionReason, setBulkRejectionReason] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/stats', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data.stats);
+      }
+    } catch {
+      // Ignore stats error silently
+    }
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -98,7 +175,16 @@ export default function SubscriptionOrdersPage() {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (gatewayFilter !== 'all') params.append('gateway', gatewayFilter);
+      if (targetPlanFilter !== 'all') params.append('target_plan', targetPlanFilter);
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
+      if (fromDate) params.append('from_date', fromDate);
+      if (toDate) params.append('to_date', toDate);
+      if (minAmount) params.append('min_amount', minAmount);
+      if (maxAmount) params.append('max_amount', maxAmount);
+      params.append('sort_by', sortBy);
+      params.append('sort_order', sortOrder);
+      params.append('page', String(page));
+      params.append('limit', '20');
 
       const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders?${params.toString()}`, {
         credentials: 'include',
@@ -106,6 +192,7 @@ export default function SubscriptionOrdersPage() {
       if (res.ok) {
         const data = await res.json();
         setOrders(data.subscription_orders || []);
+        if (data.pagination) setPagination(data.pagination);
       } else {
         const data = await res.json().catch(() => null);
         setError(data?.error?.message || tr.errorReview || 'Failed to load subscription orders');
@@ -115,11 +202,42 @@ export default function SubscriptionOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, gatewayFilter, searchTerm, tr.errorReview]);
+  }, [statusFilter, gatewayFilter, targetPlanFilter, searchTerm, fromDate, toDate, minAmount, maxAmount, sortBy, sortOrder, page, tr.errorReview]);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchStats();
+  }, [fetchOrders, fetchStats]);
+
+  const fetchActivityLogs = async (intentId: string) => {
+    setLoadingLogs(true);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${intentId}/activity`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDrawerLogs(data.activity_logs || []);
+      }
+    } catch {
+      // Ignore log fetch error
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const openDrawer = (order: SubscriptionOrder) => {
+    setDrawerOrder(order);
+    fetchActivityLogs(order.id);
+  };
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+    setPage(1);
+  };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === orders.length) {
@@ -133,10 +251,10 @@ export default function SubscriptionOrdersPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
-  const handleReview = async (decision: 'approved' | 'rejected') => {
-    if (!reviewOrder) return;
+  const handleReview = async (decision: 'approved' | 'rejected', orderToReview = reviewOrder) => {
+    if (!orderToReview) return;
     if (decision === 'rejected' && !rejectionReason.trim()) {
-      setError(tr.rejectionReason || 'Please provide a rejection reason.');
+      setError(tr.rejectionReason || 'Veuillez fournir un motif de refus.');
       return;
     }
 
@@ -145,7 +263,7 @@ export default function SubscriptionOrdersPage() {
     setSuccess('');
 
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${reviewOrder.id}/review`, {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${orderToReview.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -158,90 +276,94 @@ export default function SubscriptionOrdersPage() {
       if (res.ok) {
         setSuccess(
           decision === 'approved'
-            ? (tr.approveSuccess || 'Order approved!').replace('{plan}', reviewOrder.target_plan.toUpperCase()).replace('{store}', reviewOrder.store_name)
-            : (tr.rejectSuccess || 'Order rejected.')
+            ? (tr.approveSuccess || '🎉 Commande d\'abonnement approuvée !').replace('{plan}', orderToReview.target_plan.toUpperCase()).replace('{store}', orderToReview.store_name)
+            : tr.rejectSuccess || 'Commande refusée. Motif transmis au vendeur.'
         );
         setReviewOrder(null);
+        setDrawerOrder(null);
         setRejectionReason('');
         await fetchOrders();
+        await fetchStats();
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || tr.errorReview || 'Error during review');
+        setError(data?.error?.message || tr.errorReview || 'Erreur lors de la révision');
       }
     } catch {
-      setError('Network error');
+      setError('Erreur réseau');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelOrder = async (intentId: string, reason?: string) => {
-    if (!confirm(tr.confirmCancel || 'Are you sure you want to cancel this subscription order?')) return;
-
+  const handleCancelOrder = async (intentId: string) => {
+    if (!confirm(tr.confirmCancel || 'Voulez-vous vraiment annuler cette commande d\'abonnement ?')) return;
+    setSubmitting(true);
     setError('');
-    setSuccess('');
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${intentId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ reason: reason || tr.bulkReason || 'Cancelled by Superadmin' }),
+        body: JSON.stringify({ reason: 'Cancelled by admin' }),
       });
-
       if (res.ok) {
-        setSuccess(tr.cancelSuccess || 'Order cancelled successfully.');
+        setSuccess(tr.cancelSuccess || 'Commande annulée avec succès.');
+        if (drawerOrder?.id === intentId) setDrawerOrder(null);
         await fetchOrders();
+        await fetchStats();
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || tr.errorCancel || 'Error during cancellation');
+        setError(data?.error?.message || tr.errorCancel || 'Erreur d\'annulation');
       }
     } catch {
-      setError('Network error');
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteOrder = async (intentId: string) => {
-    if (!confirm(tr.confirmDelete || 'Are you sure you want to permanently delete this order? This action is irreversible.')) return;
-
+    if (!confirm(tr.confirmDelete || 'Voulez-vous vraiment supprimer définitivement cette commande ? Irréversible.')) return;
+    setSubmitting(true);
     setError('');
-    setSuccess('');
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${intentId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
-
       if (res.ok) {
-        setSuccess(tr.deleteSuccess || 'Order deleted successfully.');
+        setSuccess(tr.deleteSuccess || 'Commande supprimée avec succès.');
+        if (drawerOrder?.id === intentId) setDrawerOrder(null);
         await fetchOrders();
+        await fetchStats();
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || tr.errorDelete || 'Error during deletion');
+        setError(data?.error?.message || tr.errorDelete || 'Erreur de suppression');
       }
     } catch {
-      setError('Network error');
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleBulkAction = async (action: 'approve' | 'reject' | 'cancel' | 'delete') => {
     if (selectedIds.length === 0) return;
     if (action === 'reject' && !bulkRejectionReason.trim()) {
-      setError(tr.bulkReason || 'Please provide a reason for bulk rejection.');
+      setError(tr.bulkReason || 'Motif commun requis pour le refus groupé.');
       return;
     }
 
     const confirmMsg =
-      action === 'approve' ? tr.confirmBulkApprove?.replace('{count}', String(selectedIds.length))
-      : action === 'reject' ? tr.confirmBulkReject?.replace('{count}', String(selectedIds.length))
-      : action === 'cancel' ? tr.confirmBulkCancel?.replace('{count}', String(selectedIds.length))
-      : tr.confirmBulkDelete?.replace('{count}', String(selectedIds.length));
+      action === 'approve' ? tr.confirmBulkApprove?.replace('{count}', String(selectedIds.length)) :
+      action === 'reject' ? tr.confirmBulkReject?.replace('{count}', String(selectedIds.length)) :
+      action === 'cancel' ? tr.confirmBulkCancel?.replace('{count}', String(selectedIds.length)) :
+      tr.confirmBulkDelete?.replace('{count}', String(selectedIds.length));
 
-    if (!confirm(confirmMsg)) return;
+    if (!confirm(confirmMsg || `Procéder à l'action sur ${selectedIds.length} commande(s) ?`)) return;
 
-    setBulkSubmitting(true);
+    setSubmitting(true);
     setError('');
-    setSuccess('');
-
     try {
       const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/bulk', {
         method: 'POST',
@@ -250,57 +372,41 @@ export default function SubscriptionOrdersPage() {
         body: JSON.stringify({
           intent_ids: selectedIds,
           action,
-          reason: bulkRejectionReason || tr.bulkReason || 'Bulk action by Superadmin',
+          reason: bulkRejectionReason.trim() || undefined,
         }),
       });
-
       if (res.ok) {
         const data = await res.json();
-        const processed = data.processed ?? 0;
-        const total = data.total ?? selectedIds.length;
-        if (processed === total) {
-          setSuccess(tr.bulkSuccess?.replace('{processed}', String(processed)).replace('{total}', String(total)) || `${processed}/${total} processed.`);
-        } else {
-          setSuccess(tr.bulkPartial?.replace('{processed}', String(processed)).replace('{total}', String(total)) || `${processed}/${total} succeeded.`);
-        }
+        setSuccess((tr.bulkSuccess || 'Opération effectuée : {processed}/{total} traitée(s).').replace('{processed}', String(data.processed)).replace('{total}', String(data.total)));
         setSelectedIds([]);
         setBulkRejectionReason('');
         await fetchOrders();
+        await fetchStats();
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || 'Bulk action failed');
+        setError(data?.error?.message || 'Erreur lors de l\'action groupée');
       }
     } catch {
-      setError('Network error');
+      setError('Erreur réseau');
     } finally {
-      setBulkSubmitting(false);
+      setSubmitting(false);
     }
   };
 
   const exportCSV = () => {
-    const headers = [
-      tr.order || 'Order ID',
-      tr.storeAndSeller || 'Store Name',
-      'Subdomain',
-      'Seller Email',
-      'From Plan',
-      'To Plan',
-      'Amount TND',
-      'Gateway',
-      'Status',
-      'Date',
-    ];
+    const headers = ['Order ID', 'Store Name', 'Subdomain', 'Seller Email', 'From Plan', 'Target Plan', 'Amount TND', 'Gateway', 'Status', 'Proof URL', 'Created At'];
     const rows = orders.map((o) => [
-      o.id,
-      `"${o.store_name}"`,
-      o.store_subdomain,
-      o.seller_email,
-      o.from_plan,
-      o.target_plan,
-      o.amount,
-      o.gateway,
-      o.status,
-      new Date(o.created_at).toISOString(),
+      safeCsvValue(o.id),
+      safeCsvValue(o.store_name),
+      safeCsvValue(o.store_subdomain),
+      safeCsvValue(o.seller_email),
+      safeCsvValue(o.from_plan),
+      safeCsvValue(o.target_plan),
+      safeCsvValue(o.amount),
+      safeCsvValue(o.gateway),
+      safeCsvValue(o.status),
+      safeCsvValue(o.proof_url || ''),
+      safeCsvValue(new Date(o.created_at).toISOString()),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -315,8 +421,7 @@ export default function SubscriptionOrdersPage() {
   };
 
   const exportJSON = () => {
-    const jsonContent = JSON.stringify(orders, null, 2);
-    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -326,485 +431,641 @@ export default function SubscriptionOrdersPage() {
     document.body.removeChild(link);
   };
 
-  const pendingReviewCount = orders.filter((o) => o.status === 'pending_review' || o.status === 'pending_proof').length;
-  const capturedCount = orders.filter((o) => o.status === 'captured').length;
-  const totalVolume = orders
-    .filter((o) => o.status === 'captured')
-    .reduce((acc, o) => acc + Number(o.amount), 0);
-
-  const GATEWAY_NAMES: Record<string, string> = {
-    manual_mandat: tr.gatewayMandat || 'Mandat Minute / Virement',
-    flouci: tr.gatewayFlouci || 'Flouci',
-    konnect: tr.gatewayKonnect || 'Konnect',
-    paypal: tr.gatewayPaypal || 'PayPal',
-    cod: tr.gatewayCod || 'Sur Facture / COD',
-  };
-
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header & Actions */}
+    <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Header & Main Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <Crown className="w-7 h-7 text-[#B91C1C]" />
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">{tr.title || 'Platform Subscription Orders'}</h1>
+            <Crown className="w-8 h-8 text-[#B91C1C]" />
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">
+              {tr.title || 'Platform Subscription Orders'}
+            </h1>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {tr.subtitle || 'Manage and validate seller subscription orders (Mandat Minute, B2B Invoices, Flouci, PayPal, Konnect)'}
+            {tr.subtitle || 'Manage and review vendor subscription orders across Mandat Minute, B2B Invoices, Flouci, PayPal & Konnect'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
             <Download className="w-4 h-4" /> {tr.exportCsv || 'Export CSV'}
           </button>
           <button
             onClick={exportJSON}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
-            <FileText className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
+            <FileJson className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
           </button>
           <button
-            onClick={fetchOrders}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
+            onClick={() => { fetchOrders(); fetchStats(); }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
             <RefreshCw className="w-4 h-4" /> {tr.refresh || 'Refresh'}
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl">
+      {/* Analytics & KPI Dashboard */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl">
             <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.pending || 'Pending Orders'}</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{pendingReviewCount}</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.pending_proof_count + stats.pending_review_count : pagination.total}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
             <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.captured || 'Captured Subscriptions'}</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{capturedCount}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.captured || 'Activated Subscriptions'}</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.captured_count : 0}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
-            <Banknote className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
+            <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr.stats?.volume || 'Total Volume (TND)'}</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{totalVolume.toFixed(0)} TND</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue (This Month)</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? stats.revenue_this_month.toFixed(0) : 0} TND</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl">
+            <History className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Avg Review Speed</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats ? `${stats.avg_review_hours}h` : 'N/A'}</p>
           </div>
         </div>
       </div>
 
       {/* Feedback Alerts */}
       {success && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-semibold rounded-2xl">
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-semibold rounded-2xl">
           {success}
         </div>
       )}
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm font-medium rounded-2xl flex items-center gap-2">
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-sm font-medium rounded-2xl flex items-center gap-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Filters Bar */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-md">
+      {/* Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-bold">
+          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+            <CheckSquare className="w-5 h-5 text-amber-600" />
+            <span>{(tr.selectedCount || '{count} selected').replace('{count}', String(selectedIds.length))}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <input
+              type="text"
+              value={bulkRejectionReason}
+              onChange={(e) => setBulkRejectionReason(e.target.value)}
+              placeholder={tr.bulkReason || 'Common rejection reason...'}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none text-xs flex-1 md:flex-initial"
+            />
+            <button
+              onClick={() => handleBulkAction('approve')}
+              disabled={submitting}
+              className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {tr.bulkApprove || 'Approve Selection'}
+            </button>
+            <button
+              onClick={() => handleBulkAction('reject')}
+              disabled={submitting}
+              className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
+            >
+              {tr.bulkReject || 'Reject Selection'}
+            </button>
+            <button
+              onClick={() => handleBulkAction('cancel')}
+              disabled={submitting}
+              className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50"
+            >
+              {tr.bulkCancel || 'Cancel Selection'}
+            </button>
+            <button
+              onClick={() => handleBulkAction('delete')}
+              disabled={submitting}
+              className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50"
+            >
+              {tr.bulkDelete || 'Delete Selection'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Filters & Search Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={tr.search || 'Search by store, seller email or ID...'}
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-[#B91C1C] focus:bg-white dark:focus:bg-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+              placeholder={tr.search || 'Search by store, email or ID...'}
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none focus:border-[#B91C1C] bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
             />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 outline-none"
-            >
-              <option value="all">{tr.statusFilter || 'All statuses'}</option>
-              <option value="pending_review">{tr.statusPendingReview || 'Awaiting validation'}</option>
-              <option value="pending_proof">{tr.statusPendingProof || 'Awaiting seller receipt'}</option>
-              <option value="captured">{tr.statusCaptured || 'Activated / paid'}</option>
-              <option value="rejected">{tr.statusRejected || 'Rejected'}</option>
-              <option value="cancelled">{tr.statusCancelled || 'Cancelled'}</option>
-              <option value="failed">{tr.statusFailed || 'Failed'}</option>
-              <option value="pending">{tr.statusPending || 'In progress'}</option>
-            </select>
           </div>
 
           <select
-            value={gatewayFilter}
-            onChange={(e) => setGatewayFilter(e.target.value)}
-            className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 outline-none"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
           >
-            <option value="all">{tr.gatewayFilter || 'All methods'}</option>
-            <option value="manual_mandat">{GATEWAY_NAMES.manual_mandat}</option>
-            <option value="cod">{GATEWAY_NAMES.cod}</option>
-            <option value="flouci">{GATEWAY_NAMES.flouci}</option>
-            <option value="paypal">{GATEWAY_NAMES.paypal}</option>
-            <option value="konnect">{GATEWAY_NAMES.konnect}</option>
+            <option value="all">{tr.statusFilter || 'All Statuses'}</option>
+            <option value="pending_review">⏳ {tr.statusPendingReview || 'Pending Review'}</option>
+            <option value="pending_proof">📑 {tr.statusPendingProof || 'Pending Proof'}</option>
+            <option value="captured">✅ {tr.statusCaptured || 'Captured / Active'}</option>
+            <option value="rejected">❌ {tr.statusRejected || 'Rejected'}</option>
+            <option value="cancelled">🚫 {tr.statusCancelled || 'Cancelled'}</option>
+            <option value="expired">⚠️ {tr.statusExpired || 'Expired'}</option>
           </select>
+
+          <select
+            value={gatewayFilter}
+            onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
+          >
+            <option value="all">{tr.gatewayFilter || 'All Gateways'}</option>
+            <option value="manual_mandat">{tr.gatewayMandat || 'Mandat Minute / Wire'}</option>
+            <option value="cod">{tr.gatewayCod || 'B2B Invoice / COD'}</option>
+            <option value="flouci">Flouci</option>
+            <option value="paypal">PayPal</option>
+            <option value="konnect">Konnect</option>
+          </select>
+
+          <select
+            value={targetPlanFilter}
+            onChange={(e) => { setTargetPlanFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
+          >
+            <option value="all">All Target Plans</option>
+            <option value="starter">Starter</option>
+            <option value="regular">Regular</option>
+            <option value="agency">Agency</option>
+            <option value="pro">Pro</option>
+            <option value="golden">Golden</option>
+            <option value="platinum">Platinum</option>
+          </select>
+        </div>
+
+        {/* Date Range & Amount Range Inputs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Min Amount (TND)</label>
+            <input
+              type="number"
+              value={minAmount}
+              onChange={(e) => { setMinAmount(e.target.value); setPage(1); }}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Max Amount (TND)</label>
+            <input
+              type="number"
+              value={maxAmount}
+              onChange={(e) => { setMaxAmount(e.target.value); setPage(1); }}
+              placeholder="10000"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Bulk Actions Toolbar */}
-      {selectedIds.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-amber-900 dark:text-amber-100">{tr.bulkActions || 'Bulk actions'}</span>
-            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded text-xs font-black">
-              {tr.selectedCount?.replace('{count}', String(selectedIds.length)) || `${selectedIds.length} selected`}
-            </span>
-            <button onClick={toggleSelectAll} className="text-xs text-slate-500 dark:text-slate-400 hover:underline">
-              {selectedIds.length === orders.length ? (tr.deselectAll || 'Deselect all') : (tr.selectAll || 'Select all')}
-            </button>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => handleBulkAction('approve')}
-              disabled={bulkSubmitting}
-              className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700 disabled:opacity-50 shadow-sm inline-flex items-center gap-1"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" /> {tr.bulkApprove || 'Approve selection'}
-            </button>
-            <button
-              onClick={() => handleBulkAction('reject')}
-              disabled={bulkSubmitting}
-              className="px-3 py-1.5 bg-red-600 text-white font-bold rounded-lg text-xs hover:bg-red-700 disabled:opacity-50 shadow-sm inline-flex items-center gap-1"
-            >
-              <XCircle className="w-3.5 h-3.5" /> {tr.bulkReject || 'Reject selection'}
-            </button>
-            <button
-              onClick={() => handleBulkAction('cancel')}
-              disabled={bulkSubmitting}
-              className="px-3 py-1.5 bg-slate-600 text-white font-bold rounded-lg text-xs hover:bg-slate-700 disabled:opacity-50 shadow-sm inline-flex items-center gap-1"
-            >
-              <Ban className="w-3.5 h-3.5" /> {tr.bulkCancel || 'Cancel selection'}
-            </button>
-            <button
-              onClick={() => handleBulkAction('delete')}
-              disabled={bulkSubmitting}
-              className="px-3 py-1.5 bg-red-700 text-white font-bold rounded-lg text-xs hover:bg-red-800 disabled:opacity-50 shadow-sm inline-flex items-center gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> {tr.bulkDelete || 'Delete selection'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Rejection Reason Input (shows when reject selected in bulk) */}
-      {selectedIds.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-            {tr.bulkReason || 'Common reason (required for bulk rejection)'}
-          </label>
-          <textarea
-            value={bulkRejectionReason}
-            onChange={(e) => setBulkRejectionReason(e.target.value)}
-            placeholder={tr.rejectionPlaceholder || 'Indicate the rejection reason...'}
-            rows={2}
-            className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:border-[#B91C1C] bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-          />
-        </div>
-      )}
-
       {/* Orders Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 dark:text-slate-500 font-medium">{tr.loading || 'Loading subscription orders...'}</div>
+          <div className="p-12 text-center text-slate-400 font-medium">{tr.loading || 'Loading subscription orders...'}</div>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center space-y-2">
-            <Crown className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="font-bold text-slate-700 dark:text-slate-300">{tr.empty || 'No subscription order found'}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">{tr.emptyHint || 'Try adjusting your search filters.'}</p>
+            <Crown className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
+            <p className="font-bold text-slate-700 dark:text-slate-300">{tr.empty || 'No subscription orders found'}</p>
+            <p className="text-xs text-slate-400">{tr.emptyHint || 'Try adjusting your search or filters.'}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-4 w-10">
-                    <button onClick={toggleSelectAll} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
-                      {selectedIds.length === orders.length && orders.length > 0 ? (
-                        <CheckSquare className="w-4 h-4 text-[#B91C1C]" />
-                      ) : (
-                        <Square className="w-4 h-4" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-4 py-4">{tr.order || 'Order'}</th>
-                  <th className="px-4 py-4">{tr.storeAndSeller || 'Store & Seller'}</th>
-                  <th className="px-4 py-4">{tr.planChange || 'Plan Change'}</th>
-                  <th className="px-4 py-4">{tr.amount || 'Amount'}</th>
-                  <th className="px-4 py-4">{tr.method || 'Method'}</th>
-                  <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
-                  <th className="px-4 py-4">{tr.status || 'Status'}</th>
-                  <th className="px-4 py-4 text-right">{tr.actions || 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-300">
-                {orders.map((order) => {
-                  const isSelected = selectedIds.includes(order.id);
-                  return (
-                    <tr key={order.id} className={`hover:bg-slate-50/70 dark:hover:bg-slate-700/50 transition-colors ${isSelected ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}`}>
-                      <td className="px-4 py-4">
-                        <button onClick={() => toggleSelectOrder(order.id)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
-                          {isSelected ? <CheckSquare className="w-4 h-4 text-[#B91C1C]" /> : <Square className="w-4 h-4" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold">
-                        #{order.id.slice(-8).toUpperCase()}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 dark:text-white">{order.store_name}</span>
-                          <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px]">{order.store_subdomain}.pandamarket.tn</span>
-                          <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                            {order.from_plan.toUpperCase()}
-                          </span>
-                          <span>→</span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${PLAN_BADGES[order.target_plan] || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
-                            {order.target_plan.toUpperCase()}
-                          </span>
-                          <button
-                            onClick={() => setQuotaOrder(order)}
-                            title="Compare Quotas"
-                            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                          >
-                            <Layers className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 font-black text-slate-900 dark:text-white text-sm">
-                        {Number(order.amount).toFixed(0)} TND
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          {GATEWAY_NAMES[order.gateway] || order.gateway}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 space-x-1">
-                        {order.proof_url ? (
-                          <a
-                            href={order.proof_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold hover:underline"
-                          >
-                            <FileText className="w-3.5 h-3.5" /> {tr.proof || 'Receipt'} <ExternalLink className="w-3 h-3" />
-                          </a>
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-4 w-10">
+                      <button onClick={toggleSelectAll} className="p-1 text-slate-400 hover:text-slate-700">
+                        {selectedIds.length === orders.length && orders.length > 0 ? (
+                          <CheckSquare className="w-4 h-4 text-[#B91C1C]" />
                         ) : (
-                          <span className="text-slate-400 dark:text-slate-500 italic">{tr.proofNone || 'Not provided'}</span>
+                          <Square className="w-4 h-4" />
                         )}
-                        <button
-                          onClick={() => setInvoiceOrder(order)}
-                          title={tr.invoice || 'Print B2B Invoice'}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 ml-1"
-                        >
-                          <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-4">
-                        {order.status === 'captured' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> {tr.statusCaptured || 'Activated / Paid'}
-                          </span>
-                        )}
-                        {order.status === 'pending_review' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 animate-pulse">
-                            <Clock className="w-3.5 h-3.5" /> {tr.statusPendingReview || 'To Validate'}
-                          </span>
-                        )}
-                        {order.status === 'pending_proof' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200">
-                            <FileText className="w-3.5 h-3.5" /> {tr.statusPendingProof || 'Awaiting Receipt'}
-                          </span>
-                        )}
-                        {order.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-200">
-                            <XCircle className="w-3.5 h-3.5" /> {tr.statusRejected || 'Rejected'}
-                          </span>
-                        )}
-                        {order.status === 'cancelled' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                            <Ban className="w-3.5 h-3.5" /> {tr.statusCancelled || 'Cancelled'}
-                          </span>
-                        )}
-                        {order.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {tr.statusPending || 'In progress'}
-                          </span>
-                        )}
-                        {order.status === 'failed' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-200">
-                            <XCircle className="w-3.5 h-3.5" /> {tr.statusFailed || 'Failed'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        {order.status === 'pending_review' || order.status === 'pending_proof' ? (
-                          <button
-                            onClick={() => setReviewOrder(order)}
-                            className="px-3 py-1.5 bg-[#B91C1C] text-white font-bold rounded-lg text-xs hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
-                          >
-                            <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review & Validate'}
+                      </button>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('created_at')}>
+                      <div className="flex items-center gap-1">
+                        {tr.order || 'Order'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('store_name')}>
+                      <div className="flex items-center gap-1">
+                        {tr.storeAndSeller || 'Store & Seller'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('target_plan')}>
+                      <div className="flex items-center gap-1">
+                        {tr.planChange || 'Plan Change'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('amount')}>
+                      <div className="flex items-center gap-1">
+                        {tr.amount || 'Amount'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4">{tr.method || 'Gateway'}</th>
+                    <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('status')}>
+                      <div className="flex items-center gap-1">
+                        {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 text-right">{tr.actions || 'Actions'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
+                  {orders.map((order) => {
+                    const isSelected = selectedIds.includes(order.id);
+                    return (
+                      <tr key={order.id} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${isSelected ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}`}>
+                        <td className="px-4 py-4">
+                          <button onClick={() => toggleSelectOrder(order.id)} className="p-1 text-slate-400 hover:text-slate-700">
+                            {isSelected ? <CheckSquare className="w-4 h-4 text-[#B91C1C]" /> : <Square className="w-4 h-4" />}
                           </button>
-                        ) : (
-                          <>
+                        </td>
+                        <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold cursor-pointer hover:underline" onClick={() => openDrawer(order)}>
+                          #{order.id.slice(-8).toUpperCase()}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onClick={() => openDrawer(order)}>{order.store_name}</span>
+                            <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.pandamarket.tn</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              {order.from_plan.toUpperCase()}
+                            </span>
+                            <span>→</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${PLAN_BADGES[order.target_plan] || 'bg-slate-100 text-slate-800'}`}>
+                              {order.target_plan.toUpperCase()}
+                            </span>
+                            <button
+                              onClick={() => setQuotaOrder(order)}
+                              title={tr.quotaTitle || 'Compare Quotas'}
+                              className="p-1 text-slate-400 hover:text-slate-700"
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 font-black text-slate-900 dark:text-white text-sm">
+                          {Number(order.amount).toFixed(0)} TND
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {GATEWAY_NAMES[order.gateway] || order.gateway}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 space-x-1">
+                          {order.proof_url ? (
+                            <a
+                              href={order.proof_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold hover:underline"
+                            >
+                              <FileText className="w-3.5 h-3.5" /> {tr.proof || 'Proof'} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 italic">{tr.proofNone || 'None'}</span>
+                          )}
+                          <button
+                            onClick={() => setInvoiceOrder(order)}
+                            title={tr.invoiceTitle || 'Print B2B Invoice'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 ml-1"
+                          >
+                            <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4">
+                          {order.status === 'captured' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> {tr.statusCaptured || 'Captured / Active'}
+                            </span>
+                          )}
+                          {order.status === 'pending_review' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 animate-pulse">
+                              <Clock className="w-3.5 h-3.5" /> {tr.statusPendingReview || 'Pending Review'}
+                            </span>
+                          )}
+                          {order.status === 'pending_proof' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300">
+                              <FileText className="w-3.5 h-3.5" /> {tr.statusPendingProof || 'Pending Proof'}
+                            </span>
+                          )}
+                          {order.status === 'rejected' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300">
+                              <XCircle className="w-3.5 h-3.5" /> {tr.statusRejected || 'Rejected'}
+                            </span>
+                          )}
+                          {order.status === 'cancelled' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              <Ban className="w-3.5 h-3.5" /> {tr.statusCancelled || 'Cancelled'}
+                            </span>
+                          )}
+                          {order.status === 'expired' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              <Ban className="w-3.5 h-3.5" /> {tr.statusExpired || 'Expired'}
+                            </span>
+                          )}
+                          {order.status === 'pending' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {tr.statusPending || 'Pending'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          {order.status === 'pending_review' || order.status === 'pending_proof' ? (
                             <button
                               onClick={() => setReviewOrder(order)}
-                              className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-700 inline-flex items-center gap-1 mr-1"
+                              className="px-3 py-1.5 bg-[#B91C1C] text-white font-bold rounded-lg text-xs hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
                             >
-                              {tr.details || 'Details'}
+                              <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review & Approve'}
                             </button>
-                            {((order.status as string) === 'pending' || (order.status as string) === 'pending_review' || (order.status as string) === 'pending_proof') && (
+                          ) : (
+                            <>
                               <button
-                                onClick={() => handleCancelOrder(order.id)}
-                                className="px-3 py-1.5 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1 mr-1"
+                                onClick={() => openDrawer(order)}
+                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1 mr-1"
                               >
-                                <Ban className="w-3.5 h-3.5" /> {tr.cancel || 'Cancel'}
+                                {tr.details || 'Details'}
                               </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteOrder(order.id)}
-                              className="px-3 py-1.5 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> {tr.delete || 'Delete'}
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                              {((order.status as string) === 'pending' || (order.status as string) === 'pending_review' || (order.status as string) === 'pending_proof') && (
+                                <button
+                                  onClick={() => handleCancelOrder(order.id)}
+                                  className="px-3 py-1.5 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1 mr-1"
+                                >
+                                  <Ban className="w-3.5 h-3.5" /> {tr.cancel || 'Cancel'}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="px-3 py-1.5 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> {tr.delete || 'Delete'}
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div>
+                Showing Page <span className="font-bold text-slate-900 dark:text-white">{pagination.page}</span> of{' '}
+                <span className="font-bold text-slate-900 dark:text-white">{pagination.total_pages}</span> ({pagination.total} total orders)
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </button>
+                <button
+                  disabled={pagination.page >= pagination.total_pages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Review & Approve Modal */}
-      {reviewOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+      {/* Rich Slide-Over Drawer for Order Details & Audit Trail */}
+      {drawerOrder && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-xl h-full shadow-2xl overflow-y-auto p-6 sm:p-8 space-y-6 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                  {tr.reviewTitle || 'Order validation'} #{reviewOrder.id.slice(-8).toUpperCase()}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {tr.storeAndSeller || 'Store'}: <span className="font-bold text-slate-900 dark:text-white">{reviewOrder.store_name}</span> ({reviewOrder.seller_email})
-                </p>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#B91C1C]">Order Details & Timeline</span>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">#{drawerOrder.id.slice(-8).toUpperCase()}</h3>
               </div>
-              <button
-                onClick={() => setReviewOrder(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                ✕
+              <button onClick={() => setDrawerOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full">
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Vendor & Plan Details */}
-            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+            {/* General Info Grid */}
+            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800">
               <div>
-                <p className="text-slate-400 dark:text-slate-500 font-bold uppercase">{tr.targetPlan || 'Requested plan'}</p>
-                <p className="text-base font-black text-slate-900 dark:text-white">{reviewOrder.target_plan.toUpperCase()}</p>
+                <p className="text-slate-400 font-bold uppercase">Store Name</p>
+                <p className="font-bold text-slate-900 dark:text-white">{drawerOrder.store_name}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px]">{drawerOrder.store_subdomain}.pandamarket.tn</p>
               </div>
               <div>
-                <p className="text-slate-400 dark:text-slate-500 font-bold uppercase">{tr.expectedAmount || 'Expected amount'}</p>
-                <p className="text-base font-black text-[#B91C1C]">{Number(reviewOrder.amount).toFixed(0)} TND</p>
+                <p className="text-slate-400 font-bold uppercase">Seller Email</p>
+                <p className="font-bold text-slate-900 dark:text-white">{drawerOrder.seller_email}</p>
               </div>
               <div>
-                <p className="text-slate-400 dark:text-slate-500 font-bold uppercase">{tr.sellerEmail || 'Seller email'}</p>
-                <p className="font-bold text-slate-800 dark:text-slate-200">{reviewOrder.seller_email}</p>
+                <p className="text-slate-400 font-bold uppercase">Plan Change</p>
+                <p className="font-bold text-slate-900 dark:text-white">{drawerOrder.from_plan.toUpperCase()} → {drawerOrder.target_plan.toUpperCase()}</p>
               </div>
               <div>
-                <p className="text-slate-400 dark:text-slate-500 font-bold uppercase">{tr.method || 'Method'}</p>
-                <p className="font-bold text-slate-800 dark:text-slate-200">{GATEWAY_NAMES[reviewOrder.gateway] || reviewOrder.gateway}</p>
+                <p className="text-slate-400 font-bold uppercase">Amount & Method</p>
+                <p className="font-black text-[#B91C1C] text-sm">{Number(drawerOrder.amount).toFixed(0)} TND ({GATEWAY_NAMES[drawerOrder.gateway] || drawerOrder.gateway})</p>
               </div>
             </div>
 
             {/* Proof Preview */}
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">{tr.proofTitle || 'Receipt / proof submitted'}</h4>
-              {reviewOrder.proof_url ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Proof of Payment</h4>
+              {drawerOrder.proof_url ? (
                 <div className="space-y-2">
                   <a
-                    href={reviewOrder.proof_url}
+                    href={drawerOrder.proof_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200 font-bold text-xs hover:bg-blue-100 dark:hover:bg-blue-950/50 transition-all border border-blue-200 dark:border-blue-800"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 font-bold text-xs hover:bg-blue-100 transition-all border border-blue-200 dark:border-blue-800"
                   >
-                    <ExternalLink className="w-4 h-4" /> {tr.viewProof || 'View document'}
+                    <ExternalLink className="w-4 h-4" /> Open Full Receipt Document
                   </a>
-                  {/\.(jpg|jpeg|png|webp)/i.test(reviewOrder.proof_url) && (
-                    <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-48">
-                      <img src={reviewOrder.proof_url} alt="Proof" className="w-full object-contain max-h-48 bg-slate-900/5" />
+                  {/\.(jpg|jpeg|png|webp)/i.test(drawerOrder.proof_url) && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-56">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={drawerOrder.proof_url} alt="Proof" className="w-full object-contain max-h-56 bg-slate-950/5" />
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
-                  {tr.proofMissing || 'The seller submitted the order without a direct receipt. You can validate manually upon receiving the transfer on the PandaMarket account.'}
+                <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
+                  No proof receipt file attached to this order yet.
                 </p>
               )}
             </div>
 
-            {/* Rejection Reason (If rejecting) */}
+            {/* Audit Trail Timeline */}
+            <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <History className="w-4 h-4 text-[#B91C1C]" /> Audit Trail & Timeline
+              </h4>
+              {loadingLogs ? (
+                <p className="text-xs text-slate-400">Loading activity timeline...</p>
+              ) : drawerLogs.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">No activity recorded for this order.</p>
+              ) : (
+                <div className="space-y-3 pl-3 border-l-2 border-slate-200 dark:border-slate-800">
+                  {drawerLogs.map((log) => (
+                    <div key={log.id} className="relative text-xs space-y-0.5">
+                      <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-[#B91C1C]" />
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-white uppercase">{log.action}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(log.created_at).toLocaleString('fr-TN')}</span>
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        By: <span className="font-semibold text-slate-700 dark:text-slate-300">{log.actor_email || log.actor_type}</span> ({log.actor_type})
+                      </p>
+                      {log.metadata && Object.keys(log.metadata).length > 0 && (
+                        <pre className="p-2 rounded-lg bg-slate-100 dark:bg-slate-950 text-[10px] font-mono text-slate-600 dark:text-slate-400 overflow-x-auto">
+                          {JSON.stringify(log.metadata, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button
+                onClick={() => setInvoiceOrder(drawerOrder)}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs hover:bg-slate-200"
+              >
+                View Invoice
+              </button>
+              {((drawerOrder.status as string) === 'pending' || (drawerOrder.status as string) === 'pending_review' || (drawerOrder.status as string) === 'pending_proof') && (
+                <button
+                  onClick={() => handleCancelOrder(drawerOrder.id)}
+                  className="flex-1 py-2.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-bold rounded-xl text-xs hover:bg-red-100"
+                >
+                  Cancel Order
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  {tr.reviewTitle || 'Validation Commande'} #{reviewOrder.id.slice(-8).toUpperCase()}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Boutique: <span className="font-bold text-slate-900 dark:text-white">{reviewOrder.store_name}</span> ({reviewOrder.seller_email})
+                </p>
+              </div>
+              <button onClick={() => setReviewOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+              <div>
+                <p className="text-slate-400 font-bold uppercase">{tr.targetPlan || 'Target Plan'}</p>
+                <p className="text-base font-black text-slate-900 dark:text-white">{reviewOrder.target_plan.toUpperCase()}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-bold uppercase">{tr.expectedAmount || 'Amount'}</p>
+                <p className="text-base font-black text-[#B91C1C]">{Number(reviewOrder.amount).toFixed(0)} TND</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{tr.rejectionReason || 'Rejection reason (required if rejected)'}</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{tr.rejectionReason || 'Rejection reason'}</label>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder={tr.rejectionPlaceholder || 'Indicate the rejection reason...'}
+                placeholder={tr.rejectionPlaceholder || 'Indicate reason if rejecting...'}
                 rows={2}
-                className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:border-[#B91C1C] bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                className="w-full p-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl text-xs outline-none focus:border-[#B91C1C]"
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => handleReview('rejected')}
                 disabled={submitting}
-                className="flex-1 py-3 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold rounded-xl text-xs hover:bg-red-100 dark:hover:bg-red-950/50 disabled:opacity-50"
+                className="flex-1 py-3 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold rounded-xl text-xs hover:bg-red-100 disabled:opacity-50"
               >
-                {tr.reject || 'Reject order'}
+                {tr.reject || 'Reject Order'}
               </button>
               <button
                 onClick={() => handleReview('approved')}
                 disabled={submitting}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-xs hover:bg-[#991B1B] shadow-md disabled:opacity-50"
               >
-                {submitting ? (tr.approving || 'Activating...') : `${tr.approve || 'Approve & activate plan'} ${reviewOrder.target_plan.toUpperCase()}`}
+                {submitting ? (tr.approving || 'Activating...') : (tr.approve || 'Approve & Activate Plan')}
               </button>
             </div>
           </div>
@@ -814,79 +1075,75 @@ export default function SubscriptionOrdersPage() {
       {/* B2B Proforma Invoice Modal */}
       {invoiceOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full p-8 shadow-2xl space-y-6 my-8 text-slate-900 dark:text-white">
-            <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-700 pb-6">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl space-y-6 my-8 text-slate-900 border border-slate-200">
+            <div className="flex justify-between items-start border-b border-slate-200 pb-6">
               <div>
                 <h2 className="text-2xl font-black text-[#B91C1C]">PandaMarket SARL</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Plateforme B2B e-Commerce & Marketplace</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">MF / CIN: 01234567 • Tunis, Tunisie</p>
+                <p className="text-xs text-slate-500 mt-1">Plateforme B2B e-Commerce & Marketplace</p>
+                <p className="text-xs text-slate-500">MF / CIN: 01234567 • Tunis, Tunisie</p>
               </div>
               <div className="text-right">
-                <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-xs rounded-full uppercase">{tr.invoiceTitle || 'PROFORMA INVOICE B2B'}</span>
+                <span className="px-3 py-1 bg-slate-100 text-slate-800 font-black text-xs rounded-full uppercase">{tr.invoiceTitle || 'FACTURE PROFORMA B2B'}</span>
                 <p className="text-xs font-mono font-bold mt-2">{tr.invoiceNumber || 'No.'} : SUB-{invoiceOrder.id.slice(-8).toUpperCase()}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{tr.invoiceDate || 'Date'} : {new Date(invoiceOrder.created_at).toLocaleDateString('fr-TN')}</p>
+                <p className="text-xs text-slate-500">{tr.invoiceDate || 'Date'} : {new Date(invoiceOrder.created_at).toLocaleDateString('fr-TN')}</p>
               </div>
             </div>
 
-            {/* Vendor Client Info */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex justify-between text-xs">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex justify-between text-xs">
               <div>
-                <p className="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px]">{tr.invoiceClient || 'Client / seller'} :</p>
-                <p className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{invoiceOrder.store_name}</p>
-                <p className="text-slate-600 dark:text-slate-400">Subdomaine: {invoiceOrder.store_subdomain}.pandamarket.tn</p>
-                <p className="text-slate-600 dark:text-slate-400">Email: {invoiceOrder.seller_email}</p>
+                <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.invoiceClient || 'Client / Seller'} :</p>
+                <p className="font-bold text-slate-900 text-sm mt-0.5">{invoiceOrder.store_name}</p>
+                <p className="text-slate-600">Subdomain: {invoiceOrder.store_subdomain}.pandamarket.tn</p>
+                <p className="text-slate-600">Email: {invoiceOrder.seller_email}</p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px]">{tr.invoicePayMode || 'Payment method'} :</p>
-                <p className="font-bold text-slate-900 dark:text-white mt-0.5">{GATEWAY_NAMES[invoiceOrder.gateway] || invoiceOrder.gateway}</p>
-                <p className="text-slate-600 dark:text-slate-400">{tr.invoiceStatus || 'Status'} : <span className="font-bold uppercase">{invoiceOrder.status}</span></p>
+                <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.invoicePayMode || 'Payment Method'} :</p>
+                <p className="font-bold text-slate-900 mt-0.5">{GATEWAY_NAMES[invoiceOrder.gateway] || invoiceOrder.gateway}</p>
+                <p className="text-slate-600">{tr.invoiceStatus || 'Status'} : <span className="font-bold uppercase">{invoiceOrder.status}</span></p>
               </div>
             </div>
 
-            {/* Invoice Items Table */}
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase">
+                <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase">
                   <th className="py-2">{tr.invoiceDesignation || 'Designation'}</th>
                   <th className="py-2 text-center">{tr.invoiceDuration || 'Duration'}</th>
                   <th className="py-2 text-right">{tr.invoiceAmountHt || 'Amount HT'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 <tr>
                   <td className="py-3">
-                    <p className="font-bold text-slate-900 dark:text-white">{tr.invoiceAnnual || 'Annual subscription'} {invoiceOrder.target_plan.toUpperCase()}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{tr.invoiceAnnualDesc || 'Unlimited access to e-Commerce features & platform services'}</p>
+                    <p className="font-bold text-slate-900">{tr.invoiceAnnual || 'Annual Subscription'} {invoiceOrder.target_plan.toUpperCase()}</p>
+                    <p className="text-[11px] text-slate-500">{tr.invoiceAnnualDesc || 'Full access to e-Commerce features & platform services'}</p>
                   </td>
-                  <td className="py-3 text-center">{tr.invoiceYear || '1 year (365 days)'}</td>
+                  <td className="py-3 text-center">{tr.invoiceYear || '1 Year'}</td>
                   <td className="py-3 text-right font-bold">{Number(invoiceOrder.amount).toFixed(3)} TND</td>
                 </tr>
               </tbody>
             </table>
 
-            {/* Total */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
+            <div className="border-t border-slate-200 pt-4 flex justify-end">
               <div className="w-64 space-y-1.5 text-xs text-right">
-                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <div className="flex justify-between text-slate-600">
                   <span>{tr.invoiceSubtotal || 'Subtotal HT'} :</span>
                   <span className="font-bold">{Number(invoiceOrder.amount).toFixed(3)} TND</span>
                 </div>
-                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <div className="flex justify-between text-slate-600">
                   <span>{tr.invoiceVat || 'VAT (0% exempt)'} :</span>
                   <span className="font-bold">0.000 TND</span>
                 </div>
-                <div className="flex justify-between text-base font-black text-[#B91C1C] border-t border-slate-200 dark:border-slate-700 pt-2">
+                <div className="flex justify-between text-base font-black text-[#B91C1C] border-t border-slate-200 pt-2">
                   <span>{tr.invoiceTotal || 'Total TTC'} :</span>
                   <span>{Number(invoiceOrder.amount).toFixed(3)} TND</span>
                 </div>
               </div>
             </div>
 
-            {/* Footer Buttons */}
-            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
               <button
                 onClick={() => setInvoiceOrder(null)}
-                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-200 dark:hover:bg-slate-700"
+                className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200"
               >
                 {tr.close || 'Close'}
               </button>
@@ -894,48 +1151,46 @@ export default function SubscriptionOrdersPage() {
                 onClick={() => window.print()}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-xs hover:bg-[#991B1B] shadow-md flex items-center justify-center gap-2"
               >
-                <Printer className="w-4 h-4" /> {tr.invoicePrint || 'Print / PDF'}
+                <Printer className="w-4 h-4" /> {tr.invoicePrint || 'Print / Save PDF'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Quota & Plan Comparison Drawer */}
+      {/* Quota Drawer */}
       {quotaOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                  {tr.quotaTitle || 'Quotas & limits comparison'}
+                  {tr.quotaTitle || 'Quota Comparison'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{tr.quotaStore || 'Store'}: {quotaOrder.store_name}</p>
               </div>
-              <button onClick={() => setQuotaOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full">
-                ✕
+              <button onClick={() => setQuotaOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-2">
-                <p className="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px]">{tr.quotaOldPlan || 'Old plan'} ({quotaOrder.from_plan.toUpperCase()})</p>
-                <p className="font-bold text-slate-900 dark:text-white">• {tr.quotaProducts || 'Products'}: {PLAN_LIMITS_SUMMARY[quotaOrder.from_plan]?.products || tr.quotaStandard || 'Standard'}</p>
-                <p className="font-bold text-slate-900 dark:text-white">• {tr.quotaCommission || 'Commission'}: {PLAN_LIMITS_SUMMARY[quotaOrder.from_plan]?.commission || '15%'}</p>
-                <p className="text-slate-600 dark:text-slate-400">• {tr.quotaFeatures || 'Features'}: {PLAN_LIMITS_SUMMARY[quotaOrder.from_plan]?.features || tr.quotaStandard || 'Standard'}</p>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                <p className="font-bold text-slate-500 uppercase text-[10px]">{tr.quotaOldPlan || 'Old Plan'} ({quotaOrder.from_plan.toUpperCase()})</p>
+                <p className="font-bold text-slate-900 dark:text-white">• {PLAN_LIMITS_SUMMARY[quotaOrder.from_plan]?.products || 'Standard'}</p>
+                <p className="font-bold text-slate-900 dark:text-white">• Commission: {PLAN_LIMITS_SUMMARY[quotaOrder.from_plan]?.commission || '15%'}</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 space-y-2">
-                <p className="font-bold text-red-700 dark:text-red-300 uppercase text-[10px]">{tr.quotaNewPlan || 'New plan'} ({quotaOrder.target_plan.toUpperCase()})</p>
-                <p className="font-bold text-slate-900 dark:text-white">• {tr.quotaProducts || 'Products'}: {PLAN_LIMITS_SUMMARY[quotaOrder.target_plan]?.products || tr.quotaUnlimited || 'Unlimited'}</p>
-                <p className="font-bold text-slate-900 dark:text-white">• {tr.quotaCommission || 'Commission'}: {PLAN_LIMITS_SUMMARY[quotaOrder.target_plan]?.commission || '0%'}</p>
-                <p className="text-slate-600 dark:text-slate-400">• {tr.quotaFeatures || 'Features'}: {PLAN_LIMITS_SUMMARY[quotaOrder.target_plan]?.features || tr.quotaUnlimited || 'Unlimited'}</p>
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 space-y-2">
+                <p className="font-bold text-red-700 dark:text-red-300 uppercase text-[10px]">{tr.quotaNewPlan || 'New Plan'} ({quotaOrder.target_plan.toUpperCase()})</p>
+                <p className="font-bold text-slate-900 dark:text-white">• {PLAN_LIMITS_SUMMARY[quotaOrder.target_plan]?.products || 'Unlimited'}</p>
+                <p className="font-bold text-slate-900 dark:text-white">• Commission: {PLAN_LIMITS_SUMMARY[quotaOrder.target_plan]?.commission || '0%'}</p>
               </div>
             </div>
 
             <button
               onClick={() => setQuotaOrder(null)}
-              className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-200 dark:hover:bg-slate-700"
+              className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs hover:bg-slate-200"
             >
               {tr.close || 'Close'}
             </button>

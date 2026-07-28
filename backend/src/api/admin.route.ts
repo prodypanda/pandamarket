@@ -4140,15 +4140,113 @@ const bulkSubscriptionOrderSchema = z.object({
 });
 
 router.get(
+  '/subscription-orders/stats',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const stats = await subscriptionPaymentService.getExpandedStats();
+    res.status(200).json({ stats });
+  }),
+);
+
+router.get(
+  '/subscription-orders/:intentId/activity',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const logs = await subscriptionPaymentService.getActivityLogs(req.params.intentId);
+    res.status(200).json({ activity_logs: logs });
+  }),
+);
+
+router.post(
+  '/subscription-orders/cleanup',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const expired = await subscriptionPaymentService.cleanupStaleIntents();
+    res.status(200).json({ success: true, count: expired.length, expired });
+  }),
+);
+
+router.get(
   '/subscription-orders',
   requireAuth,
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const status = req.query.status as string;
     const gateway = req.query.gateway as string;
+    const targetPlan = req.query.target_plan as string;
     const search = req.query.search as string;
+    const fromDate = req.query.from_date as string;
+    const toDate = req.query.to_date as string;
+    const minAmount = req.query.min_amount ? Number(req.query.min_amount) : undefined;
+    const maxAmount = req.query.max_amount ? Number(req.query.max_amount) : undefined;
+    const sortBy = (req.query.sort_by as string) || 'created_at';
+    const sortOrder = ((req.query.sort_order as string) || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
 
-    let sql = `
+    const allowedSortFields: Record<string, string> = {
+      created_at: 'i.created_at',
+      amount: 'i.amount',
+      store_name: 's.name',
+      status: 'i.status',
+      target_plan: 'i.target_plan',
+    };
+    const sortColumn = allowedSortFields[sortBy] || 'i.created_at';
+
+    let whereClause = ' WHERE 1=1';
+    const params: any[] = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      whereClause += ` AND i.status = $${params.length}`;
+    }
+    if (gateway && gateway !== 'all') {
+      params.push(gateway);
+      whereClause += ` AND i.gateway = $${params.length}`;
+    }
+    if (targetPlan && targetPlan !== 'all') {
+      params.push(targetPlan);
+      whereClause += ` AND i.target_plan = $${params.length}`;
+    }
+    if (fromDate) {
+      params.push(fromDate);
+      whereClause += ` AND i.created_at >= $${params.length}::timestamptz`;
+    }
+    if (toDate) {
+      params.push(toDate);
+      whereClause += ` AND i.created_at <= $${params.length}::timestamptz`;
+    }
+    if (minAmount !== undefined && !isNaN(minAmount)) {
+      params.push(minAmount);
+      whereClause += ` AND i.amount >= $${params.length}`;
+    }
+    if (maxAmount !== undefined && !isNaN(maxAmount)) {
+      params.push(maxAmount);
+      whereClause += ` AND i.amount <= $${params.length}`;
+    }
+    if (search && search.trim()) {
+      params.push(`%${search.trim()}%`);
+      whereClause += ` AND (s.name ILIKE $${params.length} OR s.subdomain ILIKE $${params.length} OR u.email ILIKE $${params.length} OR i.id ILIKE $${params.length})`;
+    }
+
+    const countSql = `
+      SELECT COUNT(*)::int AS total
+      FROM pd_subscription_intent i
+      JOIN pd_store s ON s.id = i.store_id
+      JOIN pd_user u ON u.id = i.user_id
+      ${whereClause}
+    `;
+    const { rows: countRows } = await query(countSql, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataSql = `
       SELECT i.*,
              s.name AS store_name,
              s.subdomain AS store_subdomain,
@@ -4158,27 +4256,22 @@ router.get(
       JOIN pd_store s ON s.id = i.store_id
       JOIN pd_user u ON u.id = i.user_id
       LEFT JOIN pd_user r ON r.id = i.reviewed_by
-      WHERE 1=1
+      ${whereClause}
+      ORDER BY ${sortColumn} ${sortOrder}
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-    const params: any[] = [];
 
-    if (status && status !== 'all') {
-      params.push(status);
-      sql += ` AND i.status = $${params.length}`;
-    }
-    if (gateway && gateway !== 'all') {
-      params.push(gateway);
-      sql += ` AND i.gateway = $${params.length}`;
-    }
-    if (search && search.trim()) {
-      params.push(`%${search.trim()}%`);
-      sql += ` AND (s.name ILIKE $${params.length} OR s.subdomain ILIKE $${params.length} OR u.email ILIKE $${params.length} OR i.id ILIKE $${params.length})`;
-    }
+    const { rows } = await query(dataSql, [...params, limit, offset]);
 
-    sql += ' ORDER BY i.created_at DESC LIMIT 200';
-
-    const { rows } = await query(sql, params);
-    res.status(200).json({ subscription_orders: rows });
+    res.status(200).json({
+      subscription_orders: rows,
+      pagination: {
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit) || 1,
+      },
+    });
   }),
 );
 
@@ -4221,7 +4314,7 @@ router.delete(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.deleteByAdmin(req.params.intentId);
+    const result = await subscriptionPaymentService.deleteByAdmin(req.params.intentId, req.user!.id);
     res.status(200).json({ success: true, intent: result });
   }),
 );
@@ -4242,7 +4335,7 @@ router.post(
     } else if (action === 'cancel') {
       result = await subscriptionPaymentService.bulkCancel(intent_ids, req.user!.id, reason);
     } else {
-      result = await subscriptionPaymentService.bulkDelete(intent_ids);
+      result = await subscriptionPaymentService.bulkDelete(intent_ids, req.user!.id);
     }
     res.status(200).json({ success: true, ...result });
   }),
