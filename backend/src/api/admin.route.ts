@@ -4341,6 +4341,18 @@ router.post(
   }),
 );
 
+router.get(
+  '/subscription-orders/diagnostics',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const intentId = req.query.intent_id as string;
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const logs = await subscriptionPaymentService.getWebhookDiagnostics(intentId);
+    res.status(200).json({ webhook_logs: logs });
+  }),
+);
+
 // ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================

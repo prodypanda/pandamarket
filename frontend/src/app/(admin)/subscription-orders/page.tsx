@@ -39,7 +39,8 @@ import {
   DollarSign,
   Calculator,
   Gift,
-  ShieldAlert,
+  Activity,
+  Radio,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -73,6 +74,18 @@ interface ActivityLog {
   actor_type: string;
   actor_email?: string;
   metadata: any;
+  created_at: string;
+}
+
+interface WebhookLog {
+  id: string;
+  intent_id?: string;
+  gateway: string;
+  event_type: string;
+  status: 'success' | 'failed' | 'pending_retry';
+  payload: any;
+  error_message?: string;
+  retry_count: number;
   created_at: string;
 }
 
@@ -184,6 +197,11 @@ export default function SubscriptionOrdersPage() {
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Diagnostics & Webhook Modal
+  const [diagnosticsOrder, setDiagnosticsOrder] = useState<SubscriptionOrder | null>(null);
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+
   // Lifecycle Feature Modals
   const [prorationOrder, setProrationOrder] = useState<SubscriptionOrder | null>(null);
   const [prorationData, setProrationData] = useState<ProrationData | null>(null);
@@ -276,9 +294,32 @@ export default function SubscriptionOrdersPage() {
     }
   };
 
+  const fetchDiagnostics = async (intentId?: string) => {
+    setLoadingDiagnostics(true);
+    try {
+      const url = intentId
+        ? `/api/pd/admin/subscription-orders/diagnostics?intent_id=${intentId}`
+        : '/api/pd/admin/subscription-orders/diagnostics';
+      const res = await fetchWithCsrf(url, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setWebhookLogs(data.webhook_logs || []);
+      }
+    } catch {
+      // Ignore diagnostics fetch error
+    } finally {
+      setLoadingDiagnostics(false);
+    }
+  };
+
   const openDrawer = (order: SubscriptionOrder) => {
     setDrawerOrder(order);
     fetchActivityLogs(order.id);
+  };
+
+  const openDiagnostics = (order: SubscriptionOrder) => {
+    setDiagnosticsOrder(order);
+    fetchDiagnostics(order.id);
   };
 
   const handleSort = (column: string) => {
@@ -433,37 +474,6 @@ export default function SubscriptionOrdersPage() {
       if (res.ok) {
         setSuccess('Abonnement réactivé avec succès !');
         await fetchOrders();
-      }
-    } catch {
-      setError('Erreur réseau');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCancelSubscriptionLifecycle = async () => {
-    if (!cancelModalOrder) return;
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/cancel-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          store_id: cancelModalOrder.store_id,
-          mode: cancelMode,
-          cancel_date: cancelCustomDate || undefined,
-          reason: cancelReasonText || undefined,
-        }),
-      });
-      if (res.ok) {
-        setSuccess(`Résiliation d'abonnement enregistrée pour ${cancelModalOrder.store_name}.`);
-        setCancelModalOrder(null);
-        await fetchOrders();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || 'Erreur lors de la résiliation');
       }
     } catch {
       setError('Erreur réseau');
@@ -1092,7 +1102,14 @@ export default function SubscriptionOrdersPage() {
                               </button>
                             ) : null}
 
-                            {/* Lifecycle Menu Actions */}
+                            <button
+                              onClick={() => openDiagnostics(order)}
+                              title="Webhook & Sync Diagnostics"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-teal-600 dark:text-teal-400 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                            >
+                              <Activity className="w-3.5 h-3.5" />
+                            </button>
+
                             <button
                               onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
                               title="Prorated Manual Switch"
@@ -1166,6 +1183,67 @@ export default function SubscriptionOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Webhook & Diagnostics Modal */}
+      {diagnosticsOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-teal-600" /> Webhook & Payment Sync Diagnostics
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Order #{diagnosticsOrder.id.slice(-8).toUpperCase()} ({diagnosticsOrder.store_name})</p>
+              </div>
+              <button onClick={() => setDiagnosticsOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {loadingDiagnostics ? (
+              <p className="text-xs text-slate-400">Loading webhook event diagnostics...</p>
+            ) : webhookLogs.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800">
+                No external webhook callbacks received yet for this order.
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {webhookLogs.map((log) => (
+                  <div key={log.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white uppercase">{log.gateway} - {log.event_type}</span>
+                        {log.status === 'success' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">SYNC SUCCESS</span>
+                        )}
+                        {log.status === 'failed' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">SYNC FAILED</span>
+                        )}
+                        {log.status === 'pending_retry' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">PENDING RETRY</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400">{new Date(log.created_at).toLocaleString('fr-TN')}</span>
+                    </div>
+
+                    {log.error_message && (
+                      <p className="text-red-600 font-mono text-[11px] bg-red-50 dark:bg-red-950/40 p-2 rounded-lg">{log.error_message}</p>
+                    )}
+
+                    <pre className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 font-mono text-[10px] text-slate-600 dark:text-slate-400 overflow-x-auto">
+                      {JSON.stringify(log.payload, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setDiagnosticsOrder(null)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Proration & Manual Switch Modal */}
       {prorationOrder && (

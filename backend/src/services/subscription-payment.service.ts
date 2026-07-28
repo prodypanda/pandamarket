@@ -45,6 +45,51 @@ export class SubscriptionPaymentService {
   }
 
   // ==========================================================
+  // Webhook & Sync Diagnostics & Granular Audit Logging
+  // ==========================================================
+
+  async logWebhookEvent(
+    intentId: string | undefined,
+    gateway: string,
+    eventType: string,
+    status: 'success' | 'failed' | 'pending_retry',
+    payload: any,
+    errorMessage?: string,
+    retryCount: number = 0,
+  ) {
+    const logId = pdId('whlog');
+    try {
+      await query(
+        `INSERT INTO pd_subscription_webhook_log
+          (id, intent_id, gateway, event_type, status, payload, error_message, retry_count)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [logId, intentId || null, gateway, eventType, status, JSON.stringify(payload || {}), errorMessage || null, retryCount],
+      );
+    } catch (err) {
+      logger.error({ err, intentId, gateway }, 'Failed to log subscription webhook event');
+    }
+  }
+
+  async getWebhookDiagnostics(intentId?: string) {
+    let sql = `
+      SELECT w.*, i.store_id, s.name AS store_name
+      FROM pd_subscription_webhook_log w
+      LEFT JOIN pd_subscription_intent i ON i.id = w.intent_id
+      LEFT JOIN pd_store s ON s.id = i.store_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    if (intentId) {
+      params.push(intentId);
+      sql += ` AND w.intent_id = $${params.length}`;
+    }
+    sql += ' ORDER BY w.created_at DESC LIMIT 100';
+
+    const { rows } = await query(sql, params);
+    return rows;
+  }
+
+  // ==========================================================
   // Subscription Lifecycle Controls (Proration, Pause, Cancel, Trial, Adjustments)
   // ==========================================================
 
@@ -90,7 +135,7 @@ export class SubscriptionPaymentService {
       target_yearly_price: targetYearlyPrice,
       unused_current_credit: unusedCurrentCredit,
       remaining_target_cost: remainingTargetCost,
-      net_proration_amount: netProrationAmount, // >0 means charge needed, <0 means credit refund
+      net_proration_amount: netProrationAmount,
       available_store_credits: availableStoreCredits,
     };
   }
@@ -113,10 +158,8 @@ export class SubscriptionPaymentService {
       return { success: true, mode: 'next_cycle', proration };
     }
 
-    // Immediate switch
     await subscriptionService.changePlan(storeId, proration.current_plan, targetPlanId);
 
-    // Apply proration credit if net < 0
     if (proration.net_proration_amount < 0) {
       const creditAmount = Math.abs(proration.net_proration_amount);
       await this.createAdjustment(storeId, 'proration_credit', creditAmount, undefined, `Proration credit for switching from ${proration.current_plan} to ${targetPlanId}`, adminId);
@@ -308,7 +351,6 @@ export class SubscriptionPaymentService {
       throw new PdValidationError('Store is already on this plan');
     }
 
-    // Free plan -> activate immediately without payment
     if (yearlyPrice === 0 || opts.targetPlan === 'free') {
       await subscriptionService.changePlan(opts.storeId, currentPlan, 'free');
       return { free: true, plan: 'free', message: 'Free plan activated successfully' };
@@ -362,7 +404,6 @@ export class SubscriptionPaymentService {
       };
     }
 
-    // Initialize online payment via selected gateway (Flouci, Konnect, PayPal)
     await query(
       `INSERT INTO pd_subscription_intent
         (id, store_id, user_id, from_plan, target_plan, amount, currency, gateway, status, metadata)
@@ -560,9 +601,11 @@ export class SubscriptionPaymentService {
     const verifyResult = await provider.verify(intent.gateway_reference);
 
     if (verifyResult.status !== 'captured') {
+      await this.logWebhookEvent(intentId, intent.gateway, 'verify_attempt', 'failed', verifyResult, 'Payment not captured yet');
       throw new PdValidationError('Subscription payment has not been captured yet');
     }
 
+    await this.logWebhookEvent(intentId, intent.gateway, 'verify_attempt', 'success', verifyResult);
     return this.captureAndActivate(intent);
   }
 
@@ -572,16 +615,24 @@ export class SubscriptionPaymentService {
       [intentId, gateway, gatewayReference],
     );
     const intent = rows[0];
-    if (!intent) return null;
+    if (!intent) {
+      await this.logWebhookEvent(intentId, gateway, 'webhook_receive', 'failed', { gatewayReference }, 'Intent not found');
+      return null;
+    }
 
-    if (intent.status === 'captured') return intent;
+    if (intent.status === 'captured') {
+      await this.logWebhookEvent(intentId, gateway, 'webhook_receive', 'success', { message: 'Already captured' });
+      return intent;
+    }
 
     const provider = getPaymentProvider(gateway);
     const verifyResult = await provider.verify(gatewayReference);
 
     if (verifyResult.status === 'captured') {
+      await this.logWebhookEvent(intentId, gateway, 'webhook_receive', 'success', verifyResult);
       return this.captureAndActivate(intent);
     }
+    await this.logWebhookEvent(intentId, gateway, 'webhook_receive', 'pending_retry', verifyResult, 'Verification status not captured');
     return null;
   }
 
@@ -611,11 +662,10 @@ export class SubscriptionPaymentService {
            WHERE id = $1 RETURNING *`,
           [intentId, adminId, reason!.trim()],
         );
-        await this.logActivity(intentId, 'rejected', adminId, 'admin', { reason: reason!.trim() }, c);
+        await this.logActivity(intentId, 'rejected', adminId, 'admin', { reason: reason!.trim(), prev_status: intent.status, new_status: 'rejected' }, c);
         return updated.rows[0];
       }
 
-      // Approve -> change plan immediately
       await subscriptionService.changePlan(intent.store_id, intent.from_plan, intent.target_plan, c);
 
       const updated = await c.query(
@@ -624,27 +674,24 @@ export class SubscriptionPaymentService {
          WHERE id = $1 RETURNING *`,
         [intentId, adminId],
       );
-      await this.logActivity(intentId, 'approved', adminId, 'admin', { target_plan: intent.target_plan, amount: intent.amount }, c);
+      await this.logActivity(intentId, 'approved', adminId, 'admin', { target_plan: intent.target_plan, amount: intent.amount, prev_status: intent.status, new_status: 'captured' }, c);
       return updated.rows[0];
     });
   }
 
   async getExpandedStats() {
-    // Gateway breakdown
     const { rows: gatewayRows } = await query(`
       SELECT gateway, COUNT(*)::int AS count, SUM(amount)::numeric AS total_amount
       FROM pd_subscription_intent
       GROUP BY gateway
     `);
 
-    // Target plan breakdown
     const { rows: planRows } = await query(`
       SELECT target_plan, COUNT(*)::int AS count
       FROM pd_subscription_intent
       GROUP BY target_plan
     `);
 
-    // Revenue this month vs last month
     const { rows: revRows } = await query(`
       SELECT
         COALESCE(SUM(CASE WHEN created_at >= date_trunc('month', NOW()) THEN amount ELSE 0 END), 0) AS rev_this_month,
