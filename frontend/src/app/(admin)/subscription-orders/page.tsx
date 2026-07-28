@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import Link from 'next/link';
 import {
   Crown,
   Search,
@@ -299,10 +300,6 @@ export default function SubscriptionOrdersPage() {
   const [cardExpiryQueue, setCardExpiryQueue] = useState<any[]>([]);
   const [showCardExpiryModal, setShowCardExpiryModal] = useState(false);
 
-  // Fraud Radar Modal
-  const [fraudRadarList, setFraudRadarList] = useState<any[]>([]);
-  const [showFraudRadarModal, setShowFraudRadarModal] = useState(false);
-
   // Dispute Workbench Modal
   const [disputeOrder, setDisputeOrder] = useState<SubscriptionOrder | null>(null);
   const [disputeReason, setDisputeReason] = useState<string>('Unrecognized charge');
@@ -410,7 +407,7 @@ export default function SubscriptionOrdersPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setSuccess(`⚡ Worker Cron exécute avec succès ! ${data.result.processed_count} éléments analysés & traités.`);
+        setSuccess(`⚡ Worker Cron exécuté avec succès ! ${data.result.processed_count} éléments analysés & traités.`);
         fetchOrders();
       }
     } catch {
@@ -443,19 +440,6 @@ export default function SubscriptionOrdersPage() {
       }
     } catch {
       // Ignore card expiry error
-    }
-  };
-
-  const fetchFraudRadar = async () => {
-    try {
-      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/fraud-radar', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setFraudRadarList(data.radar || []);
-        setShowFraudRadarModal(true);
-      }
-    } catch {
-      // Ignore fraud radar error
     }
   };
 
@@ -787,8 +771,6 @@ export default function SubscriptionOrdersPage() {
       }
     } catch {
       // Ignore log fetch error
-    } finally {
-      setLoadingLogs(false);
     }
   };
 
@@ -1253,6 +1235,12 @@ export default function SubscriptionOrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/fraud-radar"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-sm animate-pulse"
+          >
+            <Radar className="w-4 h-4" /> Fraud Radar Page
+          </Link>
           <button
             onClick={() => setShowGlModal(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm"
@@ -1278,12 +1266,6 @@ export default function SubscriptionOrdersPage() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
           >
             <CreditCard className="w-4 h-4 text-purple-600" /> Expiring Cards Queue
-          </button>
-          <button
-            onClick={fetchFraudRadar}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
-          >
-            <Radar className="w-4 h-4 text-red-600" /> Fraud Radar
           </button>
           <button
             onClick={exportCSV}
@@ -1637,8 +1619,8 @@ export default function SubscriptionOrdersPage() {
                     </th>
                     <th className="px-4 py-4">{tr.method || 'Gateway'}</th>
                     <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
-                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('status')}>
-                      <div className="flex items-center gap-1">
+                    <th className="px-4 py-4 cursor-pointer text-center" onClick={() => handleSort('status')}>
+                      <div className="flex items-center justify-center gap-1">
                         {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
@@ -1727,113 +1709,156 @@ export default function SubscriptionOrdersPage() {
                             <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
                           </button>
                         </td>
-                        {/* Color-Coded Health & Status Badges */}
-                        <td className="px-4 py-4">
+
+                        {/* Simplified Status Column with Icon Pills & Hover Tooltips */}
+                        <td className="px-4 py-4 text-center">
                           {order.status === 'captured' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Active / Captured
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-sm cursor-help">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Active / Captured
+                              </div>
+                            </div>
                           )}
+
                           {order.status === 'pending_review' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
-                              <Clock className="w-3.5 h-3.5" /> Past-Due / In Review
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-sm animate-pulse cursor-help">
+                                <Clock className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Past-Due / In Review
+                              </div>
+                            </div>
                           )}
+
                           {order.status === 'pending_proof' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800">
-                              <FileText className="w-3.5 h-3.5" /> Pending Proof (Grace)
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 shadow-sm cursor-help">
+                                <FileText className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Pending Proof (Grace Period)
+                              </div>
+                            </div>
                           )}
+
                           {(order.status === 'rejected' || order.status === 'failed') && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-800">
-                              <ShieldAlert className="w-3.5 h-3.5" /> Failed / Dunning (3+ Retries)
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800 shadow-sm cursor-help">
+                                <ShieldAlert className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Failed / Dunning (3+ Retries)
+                              </div>
+                            </div>
                           )}
+
                           {(order.status === 'cancelled' || order.status === 'expired') && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                              <Ban className="w-3.5 h-3.5" /> Cancelled / Expired
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shadow-sm cursor-help">
+                                <Ban className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Cancelled / Expired
+                              </div>
+                            </div>
                           )}
+
                           {order.status === 'pending' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              Pending Initiation
-                            </span>
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm cursor-help">
+                                <Clock className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Pending Initiation
+                              </div>
+                            </div>
                           )}
                         </td>
-                        {/* Inline Actions & Power Tools Menu */}
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {order.status === 'pending_review' || order.status === 'pending_proof' ? (
+
+                        {/* Inline Actions & Power Tools (Split into 2 Rows) */}
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex flex-col items-end gap-1.5">
+                            {/* Row 1: Primary Review & Inspection Actions */}
+                            <div className="flex items-center gap-1">
+                              {order.status === 'pending_review' || order.status === 'pending_proof' ? (
+                                <button
+                                  onClick={() => setReviewOrder(order)}
+                                  className="px-2.5 py-1 bg-[#B91C1C] text-white font-bold rounded-md text-[11px] hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
+                                >
+                                  <Eye className="w-3 h-3" /> {tr.review || 'Review'}
+                                </button>
+                              ) : null}
+
                               <button
-                                onClick={() => setReviewOrder(order)}
-                                className="px-2.5 py-1.5 bg-[#B91C1C] text-white font-bold rounded-lg text-xs hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
+                                onClick={() => openDrawer(order)}
+                                className="px-2 py-1 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-md text-[11px] hover:bg-slate-100 dark:hover:bg-slate-800"
                               >
-                                <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review'}
+                                {tr.details || 'Details'}
                               </button>
-                            ) : null}
+                            </div>
 
-                            <button
-                              onClick={() => handleOpenDisputeWorkbench(order)}
-                              title="Native Dispute & Chargeback Workbench"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
-                            >
-                              <Gavel className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Row 2: Secondary Power Tools Icon Bar */}
+                            <div className="flex items-center gap-1 bg-slate-100/70 dark:bg-slate-800/70 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+                              <button
+                                onClick={() => handleOpenDisputeWorkbench(order)}
+                                title="Native Dispute & Chargeback Workbench"
+                                className="p-1 text-red-600 dark:text-red-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Gavel className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => handleGenerateMagicLink(order.id)}
-                              title="Generate Pre-Authenticated Billing Magic Link"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950/40"
-                            >
-                              <Key className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => handleGenerateMagicLink(order.id)}
+                                title="Generate Pre-Authenticated Billing Magic Link"
+                                className="p-1 text-purple-600 dark:text-purple-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => { setAddonOrder(order); fetchStoreAddonsList(order.store_id); }}
-                              title="Line-Item Add-On Disaggregation Manager"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => { setAddonOrder(order); fetchStoreAddonsList(order.store_id); }}
+                                title="Line-Item Add-On Disaggregation Manager"
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => openDiagnostics(order)}
-                              title="Webhook & Sync Diagnostics"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-teal-600 dark:text-teal-400 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-950/40"
-                            >
-                              <Activity className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => openDiagnostics(order)}
+                                title="Webhook & Sync Diagnostics"
+                                className="p-1 text-teal-600 dark:text-teal-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Activity className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
-                              title="Prorated Manual Switch"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                            >
-                              <Calculator className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
+                                title="Prorated Manual Switch"
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Calculator className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => setPauseModalOrder(order)}
-                              title="Pause / Resume"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                            >
-                              <PauseCircle className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => setPauseModalOrder(order)}
+                                title="Pause / Resume"
+                                className="p-1 text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <PauseCircle className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              onClick={() => { setCreditModalOrder(order); fetchStoreAdjustments(order.store_id); }}
-                              title="One-Off Credits & Adjustments"
-                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                            >
-                              <DollarSign className="w-3.5 h-3.5" />
-                            </button>
-
-                            <button
-                              onClick={() => openDrawer(order)}
-                              className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                              {tr.details || 'Details'}
-                            </button>
+                              <button
+                                onClick={() => { setCreditModalOrder(order); fetchStoreAdjustments(order.store_id); }}
+                                title="One-Off Credits & Adjustments"
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <DollarSign className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -2038,42 +2063,6 @@ export default function SubscriptionOrdersPage() {
             </div>
 
             <button onClick={() => setShowCardExpiryModal(false)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Fraud & Early Warning Radar Modal */}
-      {showFraudRadarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-              <div>
-                <h3 className="text-xl font-bold flex items-center gap-2 text-red-600">
-                  <Radar className="w-6 h-6" /> Fraud & Chargeback Early Warning Radar
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{fraudRadarList.length} high-risk flags & suspicious disposable accounts</p>
-              </div>
-              <button onClick={() => setShowFraudRadarModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-72 overflow-y-auto">
-              {fraudRadarList.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-2xl bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-xs space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-black text-slate-900 dark:text-white">{item.store_name}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">RISK SCORE {item.health_scorecard.score}/100</span>
-                  </div>
-                  <p className="text-slate-500 text-[11px]">Email: <span className="font-mono text-red-600">{item.seller_email}</span></p>
-                  <p className="text-red-700 dark:text-red-300 text-[11px] font-bold">Flags: {item.health_scorecard.risk_flags.join(' • ')}</p>
-                </div>
-              ))}
-            </div>
-
-            <button onClick={() => setShowFraudRadarModal(false)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
               Close
             </button>
           </div>

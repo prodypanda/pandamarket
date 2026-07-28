@@ -90,6 +90,7 @@ const ADMIN_ROUTE_PREFIXES = [
   '/ads',
   '/admin-notes',
   '/subscription-orders',
+  '/fraud-radar',
 ];
 
 function matchesRoutePrefix(pathname: string, prefixes: string[]) {
