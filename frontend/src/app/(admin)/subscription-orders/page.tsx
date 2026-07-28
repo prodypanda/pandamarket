@@ -25,7 +25,6 @@ import {
   Sparkles,
   CheckSquare,
   Square,
-  ArrowRight,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
@@ -34,6 +33,13 @@ import {
   CreditCard,
   X,
   FileJson,
+  PauseCircle,
+  PlayCircle,
+  Calendar,
+  DollarSign,
+  Calculator,
+  Gift,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SubscriptionOrder {
@@ -82,6 +88,28 @@ interface StatsData {
   avg_review_hours: number;
   conversion_rate: number;
   rejection_rate: number;
+}
+
+interface ProrationData {
+  current_plan: string;
+  target_plan: string;
+  remaining_days: number;
+  current_yearly_price: number;
+  target_yearly_price: number;
+  unused_current_credit: number;
+  remaining_target_cost: number;
+  net_proration_amount: number;
+  available_store_credits: number;
+}
+
+interface AdjustmentRecord {
+  id: string;
+  type: string;
+  amount: number;
+  currency: string;
+  reason?: string;
+  created_by_email?: string;
+  created_at: string;
 }
 
 const GATEWAY_NAMES: Record<string, string> = {
@@ -155,6 +183,30 @@ export default function SubscriptionOrdersPage() {
   const [quotaOrder, setQuotaOrder] = useState<SubscriptionOrder | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Lifecycle Feature Modals
+  const [prorationOrder, setProrationOrder] = useState<SubscriptionOrder | null>(null);
+  const [prorationData, setProrationData] = useState<ProrationData | null>(null);
+  const [prorationTargetPlan, setProrationTargetPlan] = useState<string>('pro');
+  const [prorationTiming, setProrationTiming] = useState<'immediate' | 'next_cycle'>('immediate');
+
+  const [pauseModalOrder, setPauseModalOrder] = useState<SubscriptionOrder | null>(null);
+  const [pauseResumeDate, setPauseResumeDate] = useState<string>('');
+
+  const [cancelModalOrder, setCancelModalOrder] = useState<SubscriptionOrder | null>(null);
+  const [cancelMode, setCancelMode] = useState<'immediate' | 'end_of_period' | 'custom_date'>('end_of_period');
+  const [cancelCustomDate, setCancelCustomDate] = useState<string>('');
+  const [cancelReasonText, setCancelReasonText] = useState<string>('');
+
+  const [extendModalOrder, setExtendModalOrder] = useState<SubscriptionOrder | null>(null);
+  const [extendType, setExtendType] = useState<'trial' | 'grace_period'>('trial');
+  const [extensionDays, setExtensionDays] = useState<number>(14);
+
+  const [creditModalOrder, setCreditModalOrder] = useState<SubscriptionOrder | null>(null);
+  const [creditType, setCreditType] = useState<'credit' | 'discount' | 'refund'>('credit');
+  const [creditAmount, setCreditAmount] = useState<string>('50');
+  const [creditReasonText, setCreditReasonText] = useState<string>('');
+  const [storeAdjustments, setStoreAdjustments] = useState<AdjustmentRecord[]>([]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -292,6 +344,205 @@ export default function SubscriptionOrdersPage() {
       setError('Erreur réseau');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Lifecycle Action Handlers
+  const handleCalculateProration = async (storeId: string, plan: string) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/proration?store_id=${storeId}&target_plan=${plan}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setProrationData(data);
+      }
+    } catch {
+      // Ignore proration fetch error
+    }
+  };
+
+  const handleExecuteProrationSwitch = async () => {
+    if (!prorationOrder) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/manual-switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: prorationOrder.store_id,
+          target_plan: prorationTargetPlan,
+          effective_timing: prorationTiming,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(`🎉 Plan changé avec succès vers ${prorationTargetPlan.toUpperCase()} (${prorationTiming === 'immediate' ? 'Immédiat' : 'Prochain cycle'}) !`);
+        setProrationOrder(null);
+        setProrationData(null);
+        await fetchOrders();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || 'Erreur lors du changement de plan');
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePauseSubscription = async () => {
+    if (!pauseModalOrder) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: pauseModalOrder.store_id,
+          resume_at: pauseResumeDate || undefined,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(`Abonnement de la boutique ${pauseModalOrder.store_name} mis en pause.`);
+        setPauseModalOrder(null);
+        await fetchOrders();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || 'Erreur lors de la mise en pause');
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResumeSubscription = async (storeId: string) => {
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_id: storeId }),
+      });
+      if (res.ok) {
+        setSuccess('Abonnement réactivé avec succès !');
+        await fetchOrders();
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCancelSubscriptionLifecycle = async () => {
+    if (!cancelModalOrder) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: cancelModalOrder.store_id,
+          mode: cancelMode,
+          cancel_date: cancelCustomDate || undefined,
+          reason: cancelReasonText || undefined,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(`Résiliation d'abonnement enregistrée pour ${cancelModalOrder.store_name}.`);
+        setCancelModalOrder(null);
+        await fetchOrders();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || 'Erreur lors de la résiliation');
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleExtendTrial = async () => {
+    if (!extendModalOrder) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/extend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: extendModalOrder.store_id,
+          type: extendType,
+          extension_days: extensionDays,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(`Période de ${extendType === 'trial' ? 'essai' : 'grâce'} prolongée de ${extensionDays} jours !`);
+        setExtendModalOrder(null);
+        await fetchOrders();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || 'Erreur lors de la prolongation');
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddAdjustment = async () => {
+    if (!creditModalOrder) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          store_id: creditModalOrder.store_id,
+          intent_id: creditModalOrder.id,
+          type: creditType,
+          amount: creditAmount,
+          reason: creditReasonText || undefined,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(`Ajustement / crédit de ${creditAmount} TND appliqué avec succès !`);
+        setCreditModalOrder(null);
+        await fetchOrders();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || 'Erreur d\'ajustement');
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const fetchStoreAdjustments = async (storeId: string) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/adjustments/${storeId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setStoreAdjustments(data.adjustments || []);
+      }
+    } catch {
+      // Ignore adjustment fetch error
     }
   };
 
@@ -723,7 +974,7 @@ export default function SubscriptionOrdersPage() {
                         {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
-                    <th className="px-4 py-4 text-right">{tr.actions || 'Actions'}</th>
+                    <th className="px-4 py-4 text-right">Lifecycle & Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
@@ -831,37 +1082,56 @@ export default function SubscriptionOrdersPage() {
                           )}
                         </td>
                         <td className="px-4 py-4 text-right">
-                          {order.status === 'pending_review' || order.status === 'pending_proof' ? (
+                          <div className="flex items-center justify-end gap-1">
+                            {order.status === 'pending_review' || order.status === 'pending_proof' ? (
+                              <button
+                                onClick={() => setReviewOrder(order)}
+                                className="px-2.5 py-1.5 bg-[#B91C1C] text-white font-bold rounded-lg text-xs hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review'}
+                              </button>
+                            ) : null}
+
+                            {/* Lifecycle Menu Actions */}
                             <button
-                              onClick={() => setReviewOrder(order)}
-                              className="px-3 py-1.5 bg-[#B91C1C] text-white font-bold rounded-lg text-xs hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
+                              onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
+                              title="Prorated Manual Switch"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40"
                             >
-                              <Eye className="w-3.5 h-3.5" /> {tr.review || 'Review & Approve'}
+                              <Calculator className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => openDrawer(order)}
-                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1 mr-1"
-                              >
-                                {tr.details || 'Details'}
-                              </button>
-                              {((order.status as string) === 'pending' || (order.status as string) === 'pending_review' || (order.status as string) === 'pending_proof') && (
-                                <button
-                                  onClick={() => handleCancelOrder(order.id)}
-                                  className="px-3 py-1.5 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1 mr-1"
-                                >
-                                  <Ban className="w-3.5 h-3.5" /> {tr.cancel || 'Cancel'}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="px-3 py-1.5 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-bold rounded-lg text-xs hover:bg-red-50 dark:hover:bg-red-950/30 inline-flex items-center gap-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> {tr.delete || 'Delete'}
-                              </button>
-                            </>
-                          )}
+
+                            <button
+                              onClick={() => setPauseModalOrder(order)}
+                              title="Pause / Resume"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                            >
+                              <PauseCircle className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => setExtendModalOrder(order)}
+                              title="Extend Trial / Grace Period"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                            >
+                              <Gift className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => { setCreditModalOrder(order); fetchStoreAdjustments(order.store_id); }}
+                              title="One-Off Credits & Adjustments"
+                              className="p-1.5 border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                            >
+                              <DollarSign className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => openDrawer(order)}
+                              className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              {tr.details || 'Details'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -897,6 +1167,274 @@ export default function SubscriptionOrdersPage() {
         )}
       </div>
 
+      {/* Proration & Manual Switch Modal */}
+      {prorationOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-[#B91C1C]" /> Prorated Manual Plan Switch
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Boutique: {prorationOrder.store_name}</p>
+              </div>
+              <button onClick={() => setProrationOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Target Plan</label>
+                <select
+                  value={prorationTargetPlan}
+                  onChange={(e) => {
+                    setProrationTargetPlan(e.target.value);
+                    handleCalculateProration(prorationOrder.store_id, e.target.value);
+                  }}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                >
+                  <option value="starter">Starter (50 TND/year)</option>
+                  <option value="regular">Regular (150 TND/year)</option>
+                  <option value="agency">Agency (400 TND/year)</option>
+                  <option value="pro">Pro (800 TND/year)</option>
+                  <option value="golden">Golden (1,500 TND/year)</option>
+                  <option value="platinum">Platinum (3,000 TND/year)</option>
+                </select>
+              </div>
+
+              {prorationData && (
+                <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs space-y-2">
+                  <p className="font-bold text-blue-900 dark:text-blue-200 uppercase text-[10px]">Calcul de Prorata Automatique :</p>
+                  <div className="flex justify-between"><span>Jours restants sur plan actuel :</span><span className="font-bold">{prorationData.remaining_days} jours</span></div>
+                  <div className="flex justify-between"><span>Crédit plan actuel non utilisé :</span><span className="font-bold text-emerald-600">{prorationData.unused_current_credit.toFixed(3)} TND</span></div>
+                  <div className="flex justify-between"><span>Coût plan cible restant :</span><span className="font-bold text-blue-600">{prorationData.remaining_target_cost.toFixed(3)} TND</span></div>
+                  <div className="flex justify-between border-t border-blue-200 dark:border-blue-800 pt-2 font-black text-sm">
+                    <span>Net à régulariser :</span>
+                    <span className={prorationData.net_proration_amount >= 0 ? 'text-[#B91C1C]' : 'text-emerald-600'}>
+                      {prorationData.net_proration_amount >= 0 ? `+${prorationData.net_proration_amount.toFixed(3)} TND (À payer)` : `${prorationData.net_proration_amount.toFixed(3)} TND (Crédit)`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Prise d&apos;effet</label>
+                <div className="flex gap-4 text-xs font-bold">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing"
+                      checked={prorationTiming === 'immediate'}
+                      onChange={() => setProrationTiming('immediate')}
+                    /> Immédiat avec prorata
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing"
+                      checked={prorationTiming === 'next_cycle'}
+                      onChange={() => setProrationTiming('next_cycle')}
+                    /> Au prochain cycle d&apos;échéance
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setProrationOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Annuler
+              </button>
+              <button onClick={handleExecuteProrationSwitch} disabled={submitting} className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-xs hover:bg-[#991B1B]">
+                {submitting ? 'Application...' : 'Basculer le Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pause / Resume Modal */}
+      {pauseModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <PauseCircle className="w-5 h-5 text-amber-600" /> Pause & Reprise d&apos;Abonnement
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Boutique: {pauseModalOrder.store_name}</p>
+              </div>
+              <button onClick={() => setPauseModalOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 dark:text-slate-300">
+                Mettre en pause l&apos;abonnement bloquera temporairement les limites payantes sans supprimer les données de la boutique.
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Date de reprise automatique (Optionnel)</label>
+                <input
+                  type="date"
+                  value={pauseResumeDate}
+                  onChange={(e) => setPauseResumeDate(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => handleResumeSubscription(pauseModalOrder.store_id)} disabled={submitting} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700">
+                <PlayCircle className="w-4 h-4 inline mr-1" /> Reprendre Direct
+              </button>
+              <button onClick={handlePauseSubscription} disabled={submitting} className="flex-1 py-3 bg-amber-600 text-white font-bold rounded-xl text-xs hover:bg-amber-700">
+                Mettre en Pause
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trial & Grace Period Extension Modal */}
+      {extendModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-purple-600" /> Prolongation Essai & Période de Grâce
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Boutique: {extendModalOrder.store_name}</p>
+              </div>
+              <button onClick={() => setExtendModalOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Type de Prolongation</label>
+                <select
+                  value={extendType}
+                  onChange={(e) => setExtendType(e.target.value as any)}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                >
+                  <option value="trial">Période d&apos;essai gratuite (Trial)</option>
+                  <option value="grace_period">Période de grâce après échéance (Grace Period)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre de jours à ajouter</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={extensionDays}
+                  onChange={(e) => setExtensionDays(Number(e.target.value))}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setExtendModalOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Annuler
+              </button>
+              <button onClick={handleExtendTrial} disabled={submitting} className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-700">
+                Prolonger
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual One-Off Credits & Adjustments Modal */}
+      {creditModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" /> Crédits & Ajustements Vendeur
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Boutique: {creditModalOrder.store_name}</p>
+              </div>
+              <button onClick={() => setCreditModalOrder(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Type d&apos;ajustement</label>
+                  <select
+                    value={creditType}
+                    onChange={(e) => setCreditType(e.target.value as any)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                  >
+                    <option value="credit">Ajout de Crédit Solde (TND)</option>
+                    <option value="discount">Remise / Remise Commerciale</option>
+                    <option value="refund">Remboursement Partiel</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Montant (TND)</label>
+                  <input
+                    type="number"
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Raison / Note Interne</label>
+                <input
+                  type="text"
+                  value={creditReasonText}
+                  onChange={(e) => setCreditReasonText(e.target.value)}
+                  placeholder="ex: Geste commercial suite au retard de validation..."
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 outline-none"
+                />
+              </div>
+
+              {/* Adjustments History */}
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Historique des Ajustements</h4>
+                {storeAdjustments.length === 0 ? (
+                  <p className="text-slate-400 italic">Aucun ajustement enregistré.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {storeAdjustments.map((adj) => (
+                      <div key={adj.id} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                        <div>
+                          <span className="font-bold uppercase text-[10px] text-slate-700 dark:text-slate-300">{adj.type}</span>
+                          <p className="text-[10px] text-slate-500">{adj.reason || 'Pas de motif'}</p>
+                        </div>
+                        <span className="font-black text-emerald-600">{Number(adj.amount).toFixed(3)} TND</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setCreditModalOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
+                Annuler
+              </button>
+              <button onClick={handleAddAdjustment} disabled={submitting} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700">
+                Appliquer l&apos;ajustement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rich Slide-Over Drawer for Order Details & Audit Trail */}
       {drawerOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
@@ -911,7 +1449,6 @@ export default function SubscriptionOrdersPage() {
               </button>
             </div>
 
-            {/* General Info Grid */}
             <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800">
               <div>
                 <p className="text-slate-400 font-bold uppercase">Store Name</p>
@@ -932,7 +1469,6 @@ export default function SubscriptionOrdersPage() {
               </div>
             </div>
 
-            {/* Proof Preview */}
             <div className="space-y-2">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Proof of Payment</h4>
               {drawerOrder.proof_url ? (
@@ -959,7 +1495,6 @@ export default function SubscriptionOrdersPage() {
               )}
             </div>
 
-            {/* Audit Trail Timeline */}
             <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <History className="w-4 h-4 text-[#B91C1C]" /> Audit Trail & Timeline
@@ -991,7 +1526,6 @@ export default function SubscriptionOrdersPage() {
               )}
             </div>
 
-            {/* Quick Actions */}
             <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setInvoiceOrder(drawerOrder)}
@@ -1015,7 +1549,7 @@ export default function SubscriptionOrdersPage() {
       {/* Review Modal */}
       {reviewOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white">
@@ -1161,7 +1695,7 @@ export default function SubscriptionOrdersPage() {
       {/* Quota Drawer */}
       {quotaOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">

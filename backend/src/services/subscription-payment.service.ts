@@ -44,6 +44,248 @@ export class SubscriptionPaymentService {
     return rows;
   }
 
+  // ==========================================================
+  // Subscription Lifecycle Controls (Proration, Pause, Cancel, Trial, Adjustments)
+  // ==========================================================
+
+  async calculateProration(storeId: string, targetPlanId: string) {
+    const { rows: storeRows } = await query<{
+      subscription_plan: string;
+      subscription_expires_at: Date | null;
+      subscription_credits: string | number;
+    }>(
+      'SELECT subscription_plan, subscription_expires_at, subscription_credits FROM pd_store WHERE id = $1',
+      [storeId],
+    );
+    const store = storeRows[0];
+    if (!store) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Store not found');
+
+    const currentPlanLimits = await subscriptionService.getLimits(store.subscription_plan);
+    const targetPlanLimits = await subscriptionService.getLimits(targetPlanId);
+
+    const currentYearlyPrice = Number(currentPlanLimits.yearly_price ?? 0);
+    const targetYearlyPrice = Number(targetPlanLimits.yearly_price ?? 0);
+
+    const now = new Date();
+    const expiresAt = store.subscription_expires_at ? new Date(store.subscription_expires_at) : null;
+
+    let remainingDays = 0;
+    if (expiresAt && expiresAt > now) {
+      remainingDays = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    const currentDailyRate = currentYearlyPrice / 365;
+    const targetDailyRate = targetYearlyPrice / 365;
+
+    const unusedCurrentCredit = roundTnd(remainingDays * currentDailyRate);
+    const remainingTargetCost = roundTnd(remainingDays * targetDailyRate);
+    const netProrationAmount = roundTnd(remainingTargetCost - unusedCurrentCredit);
+    const availableStoreCredits = Number(store.subscription_credits || 0);
+
+    return {
+      current_plan: store.subscription_plan,
+      target_plan: targetPlanId,
+      remaining_days: remainingDays,
+      current_yearly_price: currentYearlyPrice,
+      target_yearly_price: targetYearlyPrice,
+      unused_current_credit: unusedCurrentCredit,
+      remaining_target_cost: remainingTargetCost,
+      net_proration_amount: netProrationAmount, // >0 means charge needed, <0 means credit refund
+      available_store_credits: availableStoreCredits,
+    };
+  }
+
+  async adminManualSwitchPlan(
+    storeId: string,
+    targetPlanId: string,
+    effectiveTiming: 'immediate' | 'next_cycle' = 'immediate',
+    adminId: string,
+  ) {
+    const proration = await this.calculateProration(storeId, targetPlanId);
+
+    if (effectiveTiming === 'next_cycle') {
+      await query(
+        `UPDATE pd_store
+         SET subscription_cancellation_reason = $2, updated_at = NOW()
+         WHERE id = $1`,
+        [storeId, `Scheduled plan upgrade to ${targetPlanId} on next billing cycle`],
+      );
+      return { success: true, mode: 'next_cycle', proration };
+    }
+
+    // Immediate switch
+    await subscriptionService.changePlan(storeId, proration.current_plan, targetPlanId);
+
+    // Apply proration credit if net < 0
+    if (proration.net_proration_amount < 0) {
+      const creditAmount = Math.abs(proration.net_proration_amount);
+      await this.createAdjustment(storeId, 'proration_credit', creditAmount, undefined, `Proration credit for switching from ${proration.current_plan} to ${targetPlanId}`, adminId);
+    }
+
+    return { success: true, mode: 'immediate', proration };
+  }
+
+  async pauseSubscription(storeId: string, resumeAtDate?: string, _adminId?: string) {
+    const { rows } = await query(
+      `UPDATE pd_store
+       SET subscription_status = 'paused',
+           subscription_paused_at = NOW(),
+           subscription_resume_at = $2,
+           updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [storeId, resumeAtDate ? new Date(resumeAtDate) : null],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Store not found');
+    logger.info({ storeId, resumeAtDate }, 'Subscription paused');
+    return rows[0];
+  }
+
+  async resumeSubscription(storeId: string, _adminId?: string) {
+    const { rows } = await query(
+      `UPDATE pd_store
+       SET subscription_status = 'active',
+           subscription_paused_at = NULL,
+           subscription_resume_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [storeId],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Store not found');
+    logger.info({ storeId }, 'Subscription resumed');
+    return rows[0];
+  }
+
+  async cancelSubscription(
+    storeId: string,
+    mode: 'immediate' | 'end_of_period' | 'custom_date' = 'immediate',
+    cancelDate?: string,
+    reason?: string,
+    _adminId?: string,
+  ) {
+    const { rows: storeRows } = await query<{ subscription_plan: string; subscription_expires_at: Date | null }>(
+      'SELECT subscription_plan, subscription_expires_at FROM pd_store WHERE id = $1',
+      [storeId],
+    );
+    const store = storeRows[0];
+    if (!store) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Store not found');
+
+    if (mode === 'immediate') {
+      await subscriptionService.changePlan(storeId, store.subscription_plan, 'free');
+      const updated = await query(
+        `UPDATE pd_store
+         SET subscription_status = 'cancelled',
+             subscription_cancel_at = NOW(),
+             subscription_cancellation_reason = $2,
+             updated_at = NOW()
+         WHERE id = $1 RETURNING *`,
+        [storeId, reason || 'Immediate cancellation'],
+      );
+      return updated.rows[0];
+    }
+
+    const effectiveCancelDate = mode === 'end_of_period'
+      ? (store.subscription_expires_at || new Date())
+      : (cancelDate ? new Date(cancelDate) : new Date());
+
+    const updated = await query(
+      `UPDATE pd_store
+       SET subscription_status = 'cancelled_pending_expire',
+           subscription_cancel_at = $2,
+           subscription_cancellation_reason = $3,
+           updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [storeId, effectiveCancelDate, reason || `Scheduled cancellation (${mode})`],
+    );
+    return updated.rows[0];
+  }
+
+  async extendTrialOrGrace(
+    storeId: string,
+    type: 'trial' | 'grace_period',
+    extensionDays: number,
+    _adminId?: string,
+  ) {
+    if (extensionDays <= 0) throw new PdValidationError('Extension days must be greater than 0');
+
+    const column = type === 'trial' ? 'trial_ends_at' : 'grace_period_ends_at';
+    const statusVal = type === 'trial' ? 'trial' : 'grace_period';
+
+    const { rows } = await query(
+      `UPDATE pd_store
+       SET ${column} = COALESCE(${column}, NOW()) + ($2 || ' days')::INTERVAL,
+           subscription_expires_at = COALESCE(subscription_expires_at, NOW()) + ($2 || ' days')::INTERVAL,
+           subscription_status = $3,
+           updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [storeId, extensionDays, statusVal],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Store not found');
+    return rows[0];
+  }
+
+  async createAdjustment(
+    storeId: string,
+    type: 'credit' | 'discount' | 'refund' | 'proration_credit',
+    amount: number,
+    intentId?: string,
+    reason?: string,
+    createdBy?: string,
+  ) {
+    if (amount <= 0) throw new PdValidationError('Adjustment amount must be positive');
+    const adjId = pdId('adj');
+
+    return transaction(async (c) => {
+      const { rows } = await c.query(
+        `INSERT INTO pd_subscription_adjustment
+          (id, store_id, intent_id, type, amount, currency, reason, created_by)
+         VALUES ($1, $2, $3, $4, $5, 'TND', $6, $7)
+         RETURNING *`,
+        [adjId, storeId, intentId || null, type, amount, reason || null, createdBy || null],
+      );
+
+      if (type === 'credit' || type === 'proration_credit') {
+        await c.query(
+          `UPDATE pd_store
+           SET subscription_credits = COALESCE(subscription_credits, 0) + $2, updated_at = NOW()
+           WHERE id = $1`,
+          [storeId, amount],
+        );
+      } else if (type === 'refund') {
+        await c.query(
+          `UPDATE pd_store
+           SET subscription_credits = GREATEST(0, COALESCE(subscription_credits, 0) - $2), updated_at = NOW()
+           WHERE id = $1`,
+          [storeId, amount],
+        );
+      }
+
+      return rows[0];
+    });
+  }
+
+  async getAdjustments(storeId: string) {
+    const { rows } = await query(
+      `SELECT a.*, u.email AS created_by_email
+       FROM pd_subscription_adjustment a
+       LEFT JOIN pd_user u ON u.id = a.created_by
+       WHERE a.store_id = $1
+       ORDER BY a.created_at DESC`,
+      [storeId],
+    );
+    const { rows: storeRows } = await query<{ subscription_credits: string | number }>(
+      'SELECT subscription_credits FROM pd_store WHERE id = $1',
+      [storeId],
+    );
+    return {
+      adjustments: rows,
+      available_credits: Number(storeRows[0]?.subscription_credits || 0),
+    };
+  }
+
+  // ==========================================================
+  // Standard Initiation & Verification
+  // ==========================================================
+
   async initiate(opts: {
     storeId: string;
     userId: string;
@@ -437,7 +679,6 @@ export class SubscriptionPaymentService {
   }
 
   async cleanupStaleIntents() {
-    // Mark intents as expired if pending > 48 hours or past expires_at
     const { rows } = await query(`
       UPDATE pd_subscription_intent
       SET status = 'expired', updated_at = NOW()

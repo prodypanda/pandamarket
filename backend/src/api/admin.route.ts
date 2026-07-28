@@ -4341,4 +4341,155 @@ router.post(
   }),
 );
 
+// ==========================================================
+// Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
+// ==========================================================
+
+router.get(
+  '/subscription-orders/proration',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.query.store_id as string;
+    const targetPlan = req.query.target_plan as string;
+    if (!storeId || !targetPlan) {
+      res.status(400).json({ error: { message: 'store_id and target_plan are required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.calculateProration(storeId, targetPlan);
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/subscription-orders/manual-switch',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, target_plan, effective_timing } = req.body;
+    if (!store_id || !target_plan) {
+      res.status(400).json({ error: { message: 'store_id and target_plan are required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.adminManualSwitchPlan(
+      store_id,
+      target_plan,
+      effective_timing || 'immediate',
+      req.user!.id,
+    );
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/subscription-orders/pause',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, resume_at } = req.body;
+    if (!store_id) {
+      res.status(400).json({ error: { message: 'store_id is required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.pauseSubscription(store_id, resume_at, req.user!.id);
+    res.status(200).json({ success: true, store: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/resume',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id } = req.body;
+    if (!store_id) {
+      res.status(400).json({ error: { message: 'store_id is required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.resumeSubscription(store_id, req.user!.id);
+    res.status(200).json({ success: true, store: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/cancel-subscription',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, mode, cancel_date, reason } = req.body;
+    if (!store_id) {
+      res.status(400).json({ error: { message: 'store_id is required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.cancelSubscription(
+      store_id,
+      mode || 'immediate',
+      cancel_date,
+      reason,
+      req.user!.id,
+    );
+    res.status(200).json({ success: true, store: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/extend',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, type, extension_days } = req.body;
+    if (!store_id || !extension_days) {
+      res.status(400).json({ error: { message: 'store_id and extension_days are required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.extendTrialOrGrace(
+      store_id,
+      type || 'trial',
+      Number(extension_days),
+      req.user!.id,
+    );
+    res.status(200).json({ success: true, store: result });
+  }),
+);
+
+router.post(
+  '/subscription-orders/adjustments',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { store_id, type, amount, intent_id, reason } = req.body;
+    if (!store_id || !type || !amount) {
+      res.status(400).json({ error: { message: 'store_id, type, and amount are required' } });
+      return;
+    }
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.createAdjustment(
+      store_id,
+      type,
+      Number(amount),
+      intent_id,
+      reason,
+      req.user!.id,
+    );
+    res.status(200).json({ success: true, adjustment: result });
+  }),
+);
+
+router.get(
+  '/subscription-orders/adjustments/:storeId',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.getAdjustments(req.params.storeId);
+    res.status(200).json(result);
+  }),
+);
+
 export default router;
