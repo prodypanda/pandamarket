@@ -1,6 +1,6 @@
 /**
  * Manual Mandat Minute provider — there is no remote gateway.
- * `init()` simply returns a redirect to the in-app upload page;
+ * `init()` simply returns a redirect to the in-app upload page or success_url;
  * `verify()` queries the local mandat_proofs table.
  */
 
@@ -17,9 +17,8 @@ export class ManualMandatProvider implements PaymentProvider {
   readonly gateway = PaymentGateway.ManualMandat;
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
-    // No external call. Frontend will route the customer to the upload page.
     return {
-      redirect_url: `/orders/${ctx.order_id}/mandat-upload`,
+      redirect_url: ctx.success_url || `/hub/checkout/mandat-upload?order_id=${ctx.order_id}`,
       gateway_reference: ctx.order_id,
       metadata: {
         instructions: {

@@ -16,7 +16,7 @@ export class CodProvider implements PaymentProvider {
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
     return {
-      redirect_url: `/orders/${ctx.order_id}/confirmation`,
+      redirect_url: ctx.success_url || `/hub/checkout/success?order_id=${ctx.order_id}`,
       gateway_reference: ctx.order_id,
       metadata: { mode: 'cod' },
     };

@@ -417,7 +417,7 @@ describe('ManualMandatProvider', () => {
     it('should return redirect to mandat upload page', async () => {
       const result = await provider.init(baseCtx);
 
-      expect(result.redirect_url).toBe('/orders/pd_order_test123/mandat-upload');
+      expect(result.redirect_url).toBe('/hub/checkout/mandat-upload?order_id=pd_order_test123');
       expect(result.gateway_reference).toBe('pd_order_test123');
       expect(result.metadata).toEqual(
         expect.objectContaining({
@@ -534,7 +534,7 @@ describe('CodProvider', () => {
     it('should return redirect to order confirmation page', async () => {
       const result = await provider.init(baseCtx);
 
-      expect(result.redirect_url).toBe('/orders/pd_order_test123/confirmation');
+      expect(result.redirect_url).toBe('/hub/checkout/success?order_id=pd_order_test123');
       expect(result.gateway_reference).toBe('pd_order_test123');
       expect(result.metadata).toEqual({ mode: 'cod' });
     });
