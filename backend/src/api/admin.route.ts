@@ -4712,6 +4712,31 @@ router.get(
       `).catch(() => ({ rows: [{ active_sessions: 0 }] }))
     ]);
 
+    // Mock data for new visualizations
+    const radarMetrics = [
+      { label: 'Security', value: 96, angle: 0 },
+      { label: 'Monetization', value: 89, angle: 72 },
+      { label: 'Retention', value: 81, angle: 144 },
+      { label: 'Conversion', value: 75, angle: 216 },
+      { label: 'System Speed', value: 98, angle: 288 },
+    ];
+    
+    const regionalData = [
+      { region: 'Grand Tunis', stores: 52, percentage: '41%', growth: '+15%' },
+      { region: 'Sousse & Sahel', stores: 30, percentage: '24%', growth: '+12%' },
+      { region: 'Sfax & Sud', stores: 25, percentage: '20%', growth: '+18%' },
+      { region: 'Cap Bon', stores: 12, percentage: '9%', growth: '+8%' },
+      { region: 'Bizerte', stores: 8, percentage: '6%', growth: '+4%' },
+    ];
+    
+    const cohortRows = [
+      { cohort: 'Jan 2026', size: 130, m1: '100%', m2: '89%', m3: '81%', m4: '77%', m5: '72%', m6: '68%' },
+      { cohort: 'Feb 2026', size: 155, m1: '100%', m2: '92%', m3: '84%', m4: '79%', m5: '75%', m6: '-' },
+      { cohort: 'Mar 2026', size: 190, m1: '100%', m2: '94%', m3: '88%', m4: '83%', m5: '-', m6: '-' },
+      { cohort: 'Apr 2026', size: 220, m1: '100%', m2: '95%', m3: '91%', m4: '-', m5: '-', m6: '-' },
+      { cohort: 'May 2026', size: 280, m1: '100%', m2: '96%', m3: '-', m4: '-', m5: '-', m6: '-' },
+    ];
+
     res.status(200).json({
       success: true,
       data: {
@@ -4724,6 +4749,9 @@ router.get(
         user_growth_trend: userGrowthRes.rows,
         monthly_revenue_trend: monthlyRevenueRes.rows,
         active_sessions: activeSessionsRes.rows[0]?.active_sessions || 0,
+        radar_metrics: radarMetrics,
+        regional_data: regionalData,
+        cohort_rows: cohortRows
       }
     });
   }),
