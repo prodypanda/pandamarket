@@ -178,7 +178,7 @@ class AdminNotesService {
     if (opts.upcoming) {
       const within = opts.upcoming_within_hours ?? 48;
       conditions.push(
-        `reminder_at IS NOT NULL AND reminder_at > NOW() AND reminder_at <= (NOW() + ($${idx}::int || ' hours')::interval) AND is_completed = FALSE`,
+        `reminder_at IS NOT NULL AND reminder_at > NOW() AND reminder_at <= (NOW() + ($${idx}::numeric * INTERVAL '1 hour')) AND is_completed = FALSE`,
       );
       params.push(within);
       idx++;
@@ -753,7 +753,7 @@ class AdminNotesService {
        WHERE admin_id = $1 AND status = 'active' AND is_completed = FALSE
        AND reminder_at IS NOT NULL
        AND reminder_at < NOW()
-       AND reminder_at >= (NOW() - ($2::int || ' hours')::interval)
+       AND reminder_at >= (NOW() - ($2::numeric * INTERVAL '1 hour'))
        ORDER BY reminder_at ASC`,
       [adminId, sinceHoursAgo],
     );
