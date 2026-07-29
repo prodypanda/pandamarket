@@ -4798,14 +4798,75 @@ router.get(
   }),
 );
 
-router.post(
-  '/subscription-orders/cron-job',
+// ==========================================================
+// Superadmin Modular Platform Analytics APIs
+// ==========================================================
+
+router.get(
+  '/analytics/overview',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getGlobalOverview(req.query);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/revenue',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getRevenueAndSaaSMetrics(req.query);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/vendors',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getVendorAnalytics(req.query);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/ads',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getAdsAnalytics(req.query);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/system',
   requireAuth,
   requireAdmin,
   asyncHandler(async (_req: Request, res: Response) => {
-    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.runAutomatedSubscriptionCronJob();
-    res.status(200).json({ success: true, result });
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getSystemHealthMetrics();
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.post(
+  '/analytics/export',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const csvContent = await analyticsService.generateExportCSV(req.body?.type || 'overview');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=platform_analytics_report.csv');
+    res.status(200).send(csvContent);
   }),
 );
 
