@@ -122,11 +122,8 @@ function isHubHost(hostname: string) {
     return true;
   }
   const host = getHostNameOnly(hostname).toLowerCase();
-  if (host.endsWith('.vercel.app')) {
-    const parts = host.split('.');
-    if (parts.length === 3) {
-      return true;
-    }
+  if (host.endsWith('.vercel.app') || host.endsWith('.onrender.com') || host.endsWith('.render.com')) {
+    return true;
   }
   return false;
 }
@@ -137,9 +134,9 @@ function isAdminHost(hostname: string) {
     return true;
   }
   const host = getHostNameOnly(hostname).toLowerCase();
-  if (host.endsWith('.vercel.app')) {
+  if (host.endsWith('.vercel.app') || host.endsWith('.onrender.com') || host.endsWith('.render.com')) {
     const parts = host.split('.');
-    if (parts.length === 4 && parts[0] === 'admin') {
+    if (parts.length >= 2 && parts[0] === 'admin') {
       return true;
     }
   }
@@ -232,6 +229,14 @@ export async function middleware(req: NextRequest) {
 
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
+
+  // Priority Guard: Platform Admin Routes MUST NEVER be rewritten to storefront paths regardless of host domain
+  if (matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES)) {
+    if (!hasAuthCookie(req)) {
+      return redirectToLogin(req, '/login/admin');
+    }
+    return NextResponse.next();
+  }
 
   // 1. Hub central (pandamarket.tn)
   if (isHubHost(hostname)) {
