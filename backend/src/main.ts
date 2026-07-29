@@ -382,11 +382,12 @@ async function bootstrap() {
     () => {
       (async () => {
         try {
-          const res = await query('SELECT id, admin_id FROM pd_user WHERE role IN ($1, $2)', [
+          const res = await query('SELECT id FROM pd_user WHERE role IN ($1, $2, $3)', [
             'admin',
             'superadmin',
+            'super_admin',
           ]);
-          for (const admin of res.rows as Array<{ id: string; admin_id: string }>) {
+          for (const admin of res.rows as Array<{ id: string }>) {
             const due = await adminNotesService.fetchDueReminders(admin.id, 2 / 60);
             for (const note of due) {
               const key = `${admin.id}:${note.id}`;
