@@ -471,13 +471,25 @@ export class SubscriptionPaymentService {
     const estimatedLtv = churnedVendors > 0 ? (Number(arpu) * (totalVendors / churnedVendors)).toFixed(0) : (Number(arpu) * 3).toFixed(0);
 
     const { rows: cohorts } = await query(`
+      WITH store_cohorts AS (
+        SELECT 
+          id,
+          TO_CHAR(created_at, 'YYYY-MM') AS cohort_month,
+          created_at,
+          subscription_expires_at
+        FROM pd_store
+      )
       SELECT 
-        TO_CHAR(created_at, 'YYYY-MM') AS cohort_month,
-        COUNT(*) AS total_signups,
-        COUNT(CASE WHEN status = 'captured' THEN 1 END) AS retained_count,
-        COALESCE(SUM(amount), 0) AS cohort_revenue
-      FROM pd_subscription_intent
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+        cohort_month,
+        COUNT(id) AS total_signups,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '1 month' THEN 1 END) AS m1_retained,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '2 month' THEN 1 END) AS m2_retained,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '3 month' THEN 1 END) AS m3_retained,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '4 month' THEN 1 END) AS m4_retained,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '5 month' THEN 1 END) AS m5_retained,
+        COUNT(CASE WHEN subscription_expires_at >= created_at + INTERVAL '6 month' THEN 1 END) AS m6_retained
+      FROM store_cohorts
+      GROUP BY cohort_month
       ORDER BY cohort_month DESC
       LIMIT 12
     `);
@@ -494,7 +506,7 @@ export class SubscriptionPaymentService {
       },
       cohorts: cohorts.map((c) => ({
         ...c,
-        retention_pct: Number(c.total_signups) > 0 ? ((Number(c.retained_count) / Number(c.total_signups)) * 100).toFixed(1) : '0',
+        retention_pct: Number(c.total_signups) > 0 ? ((Number(c.m1_retained) / Number(c.total_signups)) * 100).toFixed(1) : '0',
       })),
     };
   }
