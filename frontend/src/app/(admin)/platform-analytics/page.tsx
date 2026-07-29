@@ -331,9 +331,10 @@ export default function ComprehensivePlatformAnalyticsPage() {
               </div>
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{overviewData?.users.total_users || 0}</p>
-                <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
-                  <span>Sellers: <strong>{overviewData?.users.sellers || 0}</strong></span>
-                  <span>Buyers: <strong>{overviewData?.users.buyers || 0}</strong></span>
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 mt-1 gap-1 font-semibold">
+                  <span>Vendors: <strong className="text-slate-900 dark:text-white">{overviewData?.users.sellers || 0}</strong></span>
+                  <span>Buyers: <strong className="text-slate-900 dark:text-white">{overviewData?.users.buyers || 0}</strong></span>
+                  <span>Admins: <strong className="text-slate-900 dark:text-white">{overviewData?.users.admins || 0}</strong></span>
                 </div>
               </div>
             </div>

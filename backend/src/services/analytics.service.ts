@@ -128,8 +128,9 @@ export class AnalyticsService {
       }
 
       const totalUsers = userStats.reduce((acc, r) => acc + Number(r.count), 0);
-      const sellerCount = Number(userStats.find((r) => r.role === 'seller')?.count || 0);
-      const buyerCount = Number(userStats.find((r) => r.role === 'buyer')?.count || 0);
+      const sellerCount = Number(userStats.find((r) => r.role === 'vendor' || r.role === 'seller')?.count || 0);
+      const buyerCount = Number(userStats.find((r) => r.role === 'customer' || r.role === 'buyer')?.count || 0);
+      const adminCount = Number(userStats.find((r) => r.role === 'super_admin' || r.role === 'admin')?.count || 0);
 
       return {
         financials: {
@@ -146,6 +147,7 @@ export class AnalyticsService {
           total_users: totalUsers,
           sellers: sellerCount,
           buyers: buyerCount,
+          admins: adminCount,
         },
         active_sessions: Number(sessionStats[0]?.active_sessions || 0),
         monthly_revenue_trend: monthlyRevenue.map((r) => ({
