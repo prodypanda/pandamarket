@@ -215,6 +215,14 @@ export default function ComprehensivePlatformAnalyticsPage() {
         </div>
       </div>
 
+      {/* Conversion Warning Badge when USD/EUR selected */}
+      {currency !== 'TND' && (
+        <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center justify-between">
+          <span>Requested Display Currency: <strong>{currency}</strong> (Live USD/EUR conversion service unavailable — displaying native TND figures)</span>
+          <span className="px-2 py-0.5 bg-indigo-200/50 dark:bg-indigo-900/60 rounded text-[10px] font-black uppercase">Native TND</span>
+        </div>
+      )}
+
       {/* Threshold Alerts Banner */}
       {overviewData?.threshold_alerts?.map((alert) => (
         <div key={alert.id} className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-sm">
@@ -279,10 +287,14 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {(overviewData?.financials.total_gmv || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">{currency}</span>
+                  <span className="text-xs font-normal text-slate-500">TND</span>
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.gmv_growth_pop || '0.0%'} vs prev period
+                <div className="flex items-center gap-1 mt-1 text-slate-500 text-xs font-bold">
+                  {overviewData?.financials.gmv_growth_mom ? (
+                    <span className="text-emerald-600 flex items-center gap-0.5"><ArrowUpRight className="w-3.5 h-3.5" /> {overviewData.financials.gmv_growth_mom}</span>
+                  ) : (
+                    <span className="text-slate-400 font-normal">Growth: Unavailable</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -297,10 +309,10 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {(overviewData?.financials.net_revenue || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">{currency}</span>
+                  <span className="text-xs font-normal text-slate-500">TND</span>
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.net_growth_pop || '0.0%'} net growth
+                <div className="flex items-center gap-1 mt-1 text-slate-500 text-xs font-bold">
+                  <span className="text-slate-400 font-normal">Captured platform income</span>
                 </div>
               </div>
             </div>
@@ -315,7 +327,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {(overviewData?.financials.funds_in_escrow || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">{currency}</span>
+                  <span className="text-xs font-normal text-slate-500">TND</span>
                 </p>
                 <span className="text-[10px] text-purple-600 font-bold">Held for payouts</span>
               </div>
@@ -406,7 +418,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                               <g key={i} className="group cursor-pointer">
                                 <circle cx={x} cy={y} r="5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="3" />
                                 <text x={x} y={y - 12} textAnchor="middle" className="text-[10px] font-bold fill-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {Number(p.revenue).toFixed(0)} {currency}
+                                  {Number(p.revenue).toFixed(0)} TND
                                 </text>
                                 <text x={x} y="205" textAnchor="middle" className="text-[10px] font-medium fill-slate-400">
                                   {p.month}
@@ -478,33 +490,33 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-indigo-600 uppercase">Monthly Recurring (MRR)</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {(revenueData?.mrr_movement.total_mrr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {(revenueData?.mrr_movement.total_mrr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
               </p>
-              <span className="text-xs text-slate-500 font-semibold">New MRR: +{(revenueData?.mrr_movement.new_mrr || 0).toLocaleString()}</span>
+              <span className="text-xs text-slate-400 font-normal">MRR Movement: Not tracked yet</span>
             </div>
 
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-emerald-600 uppercase">Annual Recurring (ARR)</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {(revenueData?.mrr_movement.total_arr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {(revenueData?.mrr_movement.total_arr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
               </p>
-              <span className="text-xs text-slate-500 font-semibold">Expansion: +{(revenueData?.mrr_movement.expansion_mrr || 0).toLocaleString()}</span>
+              <span className="text-xs text-slate-400 font-normal">Calculated from active plans</span>
             </div>
 
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-purple-600 uppercase">Avg Revenue Per User (ARPU)</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.arpu_converted || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {revenueData?.saas_metrics.arpu_tnd !== null ? `${revenueData?.saas_metrics.arpu_tnd} TND` : 'Unavailable'}
               </p>
-              <span className="text-xs text-slate-500 font-semibold">Churn Rate: {revenueData?.saas_metrics.churn_rate_pct || 0}%</span>
+              <span className="text-xs text-slate-400 font-normal">Churn Rate: {revenueData?.saas_metrics.churn_rate_pct !== null ? `${revenueData?.saas_metrics.churn_rate_pct}%` : 'Unavailable'}</span>
             </div>
 
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-amber-600 uppercase">Estimated Vendor LTV</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.estimated_ltv_converted || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {revenueData?.saas_metrics.estimated_ltv_tnd !== null ? `${revenueData?.saas_metrics.estimated_ltv_tnd} TND` : 'Unavailable'}
               </p>
-              <span className="text-xs text-slate-500 font-semibold">Calculated from retention curve</span>
+              <span className="text-xs text-slate-400 font-normal">LTV:CAC: Not tracked yet</span>
             </div>
           </div>
 
@@ -624,7 +636,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] text-purple-600 font-black uppercase">Ad Revenue Share</span>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {(adsData?.ads_financials.total_ad_revenue || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {(adsData?.ads_financials.total_ad_revenue_tnd || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
               </p>
               <span className="text-xs text-slate-500 font-semibold">{adsData?.ads_financials.active_campaigns || 0} active campaigns</span>
             </div>
@@ -642,7 +654,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <p className="text-3xl font-black text-slate-900 dark:text-white">
                 {adsData?.performance_metrics.avg_ctr_pct || 0}%
               </p>
-              <span className="text-xs text-slate-500 font-semibold">Avg CPC: {adsData?.performance_metrics.avg_cpc || 0} {currency}</span>
+              <span className="text-xs text-slate-500 font-semibold">Avg CPC: {adsData?.performance_metrics.avg_cpc_tnd || 0} TND | ROAS: {adsData?.performance_metrics.estimated_roas !== null ? adsData?.performance_metrics.estimated_roas : 'Unavailable'}</span>
             </div>
           </div>
         </div>
@@ -654,26 +666,26 @@ export default function ComprehensivePlatformAnalyticsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
               <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-                <Activity className="w-4 h-4 animate-pulse" /> System Uptime
+                <Activity className="w-4 h-4" /> System Uptime
               </div>
-              <p className="text-3xl font-black">{systemData?.server_telemetry.uptime_pct || 99.98}%</p>
-              <p className="text-xs text-slate-400">p95 Latency: {systemData?.server_telemetry.p95_latency_ms || 42}ms</p>
+              <p className="text-3xl font-black">{systemData?.server_telemetry.uptime_pct !== null ? `${systemData?.server_telemetry.uptime_pct}%` : 'Unavailable'}</p>
+              <p className="text-xs text-slate-400">p95 Latency: {systemData?.server_telemetry.p95_latency_ms !== null ? `${systemData?.server_telemetry.p95_latency_ms}ms` : 'Not tracked yet'}</p>
             </div>
 
             <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
               <div className="flex items-center gap-2 text-blue-400 text-xs font-bold">
-                <Server className="w-4 h-4" /> Database Index Hit Ratio
+                <Server className="w-4 h-4" /> Database 24h Log Events
               </div>
-              <p className="text-3xl font-black">{systemData?.database_health.index_hit_ratio_pct || 99.4}%</p>
-              <p className="text-xs text-slate-400">Active DB Connections: {systemData?.database_health.active_connections || 12}</p>
+              <p className="text-3xl font-black">{systemData?.database_health.logs_24h || 0} events</p>
+              <p className="text-xs text-slate-400">DB Pool Connections: {systemData?.database_health.active_connections !== null ? systemData?.database_health.active_connections : 'Unavailable'}</p>
             </div>
 
             <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
               <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
                 <Printer className="w-4 h-4" /> Print Production Queue
               </div>
-              <p className="text-3xl font-black">{systemData?.print_production_queue.pending_jobs || 0} pending</p>
-              <p className="text-xs text-slate-400">Completed today: {systemData?.print_production_queue.completed_today || 0}</p>
+              <p className="text-3xl font-black">{systemData?.print_production_queue.pending_jobs !== null ? systemData?.print_production_queue.pending_jobs : 'Unavailable'}</p>
+              <p className="text-xs text-slate-400">Queue Metrics: Not tracked yet</p>
             </div>
           </div>
 

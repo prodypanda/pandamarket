@@ -4753,31 +4753,6 @@ router.get(
       };
     });
 
-    // 3. Regional Data (Proxy simulated via deterministic DAY hash of real store records)
-    const regionNames = ['Grand Tunis', 'Sousse & Sahel', 'Sfax & Sud', 'Cap Bon', 'Bizerte'];
-    const { rows: regionCounts } = await query(`
-      SELECT 
-        MOD(EXTRACT(DAY FROM created_at)::int, 5) AS bucket,
-        COUNT(*) AS stores
-      FROM pd_store
-      GROUP BY bucket
-      ORDER BY bucket ASC
-    `);
-
-    let tStores = totalStoresCount || 1;
-    let fallbackGrowth = ['+14%', '+18%', '+11%', '+22%', '+8%'];
-
-    const regionalData = regionNames.map((name, i) => {
-      const count = Number(regionCounts.find((r: any) => r.bucket === i)?.stores || 0);
-      const pct = Math.round((count / tStores) * 100);
-      return {
-        region: name,
-        stores: count,
-        percentage: pct + '%',
-        growth: fallbackGrowth[i]
-      };
-    }).sort((a, b) => b.stores - a.stores);
-
     res.status(200).json({
       success: true,
       data: {
@@ -4791,7 +4766,8 @@ router.get(
         monthly_revenue_trend: monthlyRevenueRes.rows,
         active_sessions: activeSessionsRes.rows[0]?.active_sessions || 0,
         radar_metrics: radarMetrics,
-        regional_data: regionalData,
+        regional_data: [],
+        regional_data_available: false,
         cohort_rows: cohortRows
       }
     });

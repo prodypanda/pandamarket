@@ -1,5 +1,5 @@
 /**
- * Frontend Superadmin Platform Analytics TypeScript Contracts
+ * Frontend Superadmin Platform Analytics TypeScript Contracts — Clean & Truthful Schema
  */
 
 export type AnalyticsTimeRange = '7d' | '30d' | '90d' | '12m' | 'all';
@@ -14,9 +14,11 @@ export interface PlatformOverviewData {
     funds_in_escrow: number;
     released_payouts: number;
     total_orders: number;
-    currency: string;
-    gmv_growth_pop: string;
-    net_growth_pop: string;
+    currency: 'TND';
+    requested_currency: string;
+    currency_conversion_available: boolean;
+    gmv_source_note: string;
+    gmv_growth_mom: string | null;
   };
   stores: {
     total_stores: number;
@@ -39,18 +41,22 @@ export interface PlatformRevenueData {
   saas_metrics: {
     total_mrr_tnd: number;
     total_arr_tnd: number;
-    arpu_converted: number;
-    churn_rate_pct: number;
-    estimated_ltv_converted: number;
-    currency: string;
+    arpu_tnd: number | null;
+    churn_rate_pct: number | null;
+    estimated_ltv_tnd: number | null;
+    currency: 'TND';
+    requested_currency: string;
+    currency_conversion_available: boolean;
   };
   mrr_movement: {
-    new_mrr: number;
-    expansion_mrr: number;
-    contraction_mrr: number;
-    churned_mrr: number;
+    new_mrr: number | null;
+    expansion_mrr: number | null;
+    contraction_mrr: number | null;
+    churned_mrr: number | null;
     total_mrr: number;
     total_arr: number;
+    mrr_movement_available: boolean;
+    mrr_movement_unavailable_reason?: string;
   };
   active_subscriptions_by_plan: Array<{
     plan_id: string;
@@ -78,8 +84,6 @@ export interface PlatformVendorData {
     subscription_plan: string;
     created_at: string;
     products_count: number;
-    total_orders_count?: number;
-    total_gmv_tnd?: number;
   }>;
   activation_funnel: Array<{
     stage: string;
@@ -95,39 +99,46 @@ export interface PlatformVendorData {
 
 export interface PlatformAdsData {
   ads_financials: {
-    total_ad_revenue: number;
+    total_ad_revenue_tnd: number;
     total_campaigns: number;
     active_campaigns: number;
-    currency: string;
+    currency: 'TND';
+    requested_currency: string;
+    currency_conversion_available: boolean;
   };
   performance_metrics: {
     total_impressions: number;
     total_clicks: number;
     avg_ctr_pct: number;
-    avg_cpc: number;
-    estimated_roas: number;
+    avg_cpc_tnd: number;
+    estimated_roas: number | null;
+    conversion_attribution_available: boolean;
   };
-  slot_utilization_pct: number;
+  slot_utilization_pct: number | null;
+  slot_inventory_available: boolean;
 }
 
 export interface PlatformSystemData {
   server_telemetry: {
-    status: 'healthy' | 'degraded' | 'critical';
-    uptime_pct: number;
-    p95_latency_ms: number;
-    p99_latency_ms: number;
-    error_rate_pct: number;
+    status: 'healthy' | 'unknown';
+    uptime_pct: number | null;
+    p95_latency_ms: number | null;
+    p99_latency_ms: number | null;
+    error_rate_pct: number | null;
+    telemetry_available: boolean;
   };
   print_production_queue: {
-    pending_jobs: number;
-    processing_jobs: number;
-    completed_today: number;
-    delayed_jobs: number;
+    pending_jobs: number | null;
+    processing_jobs: number | null;
+    completed_today: number | null;
+    delayed_jobs: number | null;
+    print_queue_metrics_available: boolean;
   };
   database_health: {
-    active_connections: number;
+    active_connections: number | null;
     logs_24h: number;
-    index_hit_ratio_pct: number;
+    index_hit_ratio_pct: number | null;
+    database_pool_metrics_available: boolean;
   };
   live_audit_feed: Array<{
     action: string;

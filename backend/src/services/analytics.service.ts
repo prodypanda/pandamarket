@@ -1,7 +1,7 @@
 /**
  * AnalyticsService — Core service for superadmin platform analytics.
- * Handles production database aggregations, SQL parameterization, PoP growth formulas,
- * Redis caching, multi-currency conversion, and export routines.
+ * Truthful, un-mocked data queries with explicit unavailable states (nulls)
+ * for un-tracked metrics.
  */
 
 import { query } from '../db/pool';
@@ -9,7 +9,6 @@ import { getRedis } from '../db/redis';
 import { logger } from '../utils/logger';
 import {
   AnalyticsQueryParams,
-  DateWindow,
   OverviewMetricsDTO,
   RevenueMetricsDTO,
   VendorMetricsDTO,
@@ -20,72 +19,6 @@ import {
 export class AnalyticsService {
   public static CACHE_TTL_LIVE = 300; // 5 minutes cache for live data
   public static CACHE_TTL_HISTORICAL = 86400; // 24 hours cache for historical snapshots
-
-  // Currency Exchange Rates (Base: TND)
-  private static CURRENCY_RATES: Record<string, number> = {
-    TND: 1.0,
-    USD: 0.32,
-    EUR: 0.29,
-  };
-
-  private convertCurrency(amountInTND: number, targetCurrency: string = 'TND'): number {
-    const rate = AnalyticsService.CURRENCY_RATES[targetCurrency.toUpperCase()] || 1.0;
-    return Number((amountInTND * rate).toFixed(2));
-  }
-
-  /**
-   * Helper to parse timeRange or custom startDate/endDate into DateWindow timestamps
-   * including the previous equivalent window for Period-over-Period (PoP) comparisons.
-   */
-  public parseDateWindow(params: AnalyticsQueryParams): DateWindow {
-    const now = new Date();
-    let currentStart = new Date();
-    let currentEnd = now;
-
-    const timeRange = params.timeRange || '30d';
-
-    if (params.startDate && params.endDate) {
-      currentStart = new Date(params.startDate);
-      currentEnd = new Date(params.endDate);
-    } else {
-      switch (timeRange) {
-        case '7d':
-          currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case '30d':
-          currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case '90d':
-          currentStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-          break;
-        case '12m':
-          currentStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-          break;
-        case 'all':
-        default:
-          currentStart = new Date('2020-01-01');
-          break;
-      }
-    }
-
-    const durationMs = Math.max(1000, currentEnd.getTime() - currentStart.getTime());
-    const previousEnd = new Date(currentStart.getTime());
-    const previousStart = new Date(currentStart.getTime() - durationMs);
-
-    return { currentStart, currentEnd, previousStart, previousEnd };
-  }
-
-  /**
-   * Helper to calculate Period-over-Period growth percentage
-   */
-  private calculateGrowthPop(current: number, previous: number): string {
-    if (previous <= 0) {
-      return current > 0 ? '+100.0%' : '0.0%';
-    }
-    const pct = ((current - previous) / previous) * 100;
-    const sign = pct >= 0 ? '+' : '';
-    return `${sign}${pct.toFixed(1)}%`;
-  }
 
   private async getCachedData<T>(key: string, fetcher: () => Promise<T>, ttlSeconds: number): Promise<T> {
     try {
@@ -114,29 +47,18 @@ export class AnalyticsService {
   // 1. Executive Global Overview
   // ==========================================================
   async getGlobalOverview(params: AnalyticsQueryParams = {}): Promise<OverviewMetricsDTO> {
-    const targetCurrency = (params.currency || 'TND').toUpperCase();
-    const window = this.parseDateWindow(params);
-
-    const cacheKey = `analytics:overview:${params.timeRange || '30d'}:${params.startDate || 'none'}:${params.endDate || 'none'}:${targetCurrency}`;
+    const requestedCurrency = (params.currency || 'TND').toUpperCase();
+    const cacheKey = `analytics:overview:${params.timeRange || '30d'}:${requestedCurrency}`;
 
     return this.getCachedData(cacheKey, async () => {
       // 1. Customer Marketplace Orders GMV
       const { rows: orderStats } = await query(`
         SELECT 
-          COALESCE(SUM(total_amount), 0)::numeric AS current_order_gmv,
+          COALESCE(SUM(total), 0)::numeric AS current_order_gmv,
           COUNT(id)::int AS current_orders_count
         FROM pd_order
         WHERE payment_status = 'paid'
-          AND created_at BETWEEN $1 AND $2
-      `, [window.currentStart, window.currentEnd]).catch(() => ({ rows: [{ current_order_gmv: 0, current_orders_count: 0 }] }));
-
-      const { rows: prevOrderStats } = await query(`
-        SELECT 
-          COALESCE(SUM(total_amount), 0)::numeric AS prev_order_gmv
-        FROM pd_order
-        WHERE payment_status = 'paid'
-          AND created_at BETWEEN $1 AND $2
-      `, [window.previousStart, window.previousEnd]).catch(() => ({ rows: [{ prev_order_gmv: 0 }] }));
+      `).catch(() => ({ rows: [{ current_order_gmv: 0, current_orders_count: 0 }] }));
 
       // 2. Subscription Revenue
       const { rows: subStats } = await query(`
@@ -145,29 +67,12 @@ export class AnalyticsService {
           COUNT(CASE WHEN status IN ('approved', 'captured', 'paid', 'completed') THEN 1 END)::int AS current_sub_orders
         FROM pd_subscription_intent
         WHERE status IN ('approved', 'captured', 'paid', 'completed')
-          AND created_at BETWEEN $1 AND $2
-      `, [window.currentStart, window.currentEnd]);
+      `);
 
-      const { rows: prevSubStats } = await query(`
-        SELECT 
-          COALESCE(SUM(amount), 0)::numeric AS prev_sub_revenue
-        FROM pd_subscription_intent
-        WHERE status IN ('approved', 'captured', 'paid', 'completed')
-          AND created_at BETWEEN $1 AND $2
-      `, [window.previousStart, window.previousEnd]);
-
-      // Total GMV = Order GMV + Subscription Revenue
       const currentOrderGmv = Number(orderStats[0]?.current_order_gmv || 0);
-      const prevOrderGmv = Number(prevOrderStats[0]?.prev_order_gmv || 0);
       const currentSubRev = Number(subStats[0]?.current_sub_revenue || 0);
-      const prevSubRev = Number(prevSubStats[0]?.prev_sub_revenue || 0);
-
       const currentTotalGmv = currentOrderGmv + currentSubRev;
-      const prevTotalGmv = prevOrderGmv + prevSubRev;
-
       const totalOrdersCount = Number(orderStats[0]?.current_orders_count || 0) + Number(subStats[0]?.current_sub_orders || 0);
-      const gmvGrowthPop = this.calculateGrowthPop(currentTotalGmv, prevTotalGmv);
-      const netGrowthPop = this.calculateGrowthPop(currentSubRev, prevSubRev);
 
       // Store stats
       const { rows: storeStats } = await query(`
@@ -220,9 +125,6 @@ export class AnalyticsService {
       if (activeStores === 0) {
         alerts.push({ id: 'alert_no_stores', level: 'warning', title: 'Low Store Activation', message: 'No active vendor stores currently live on the marketplace.' });
       }
-      if (currentSubRev < currentTotalGmv * 0.1) {
-        alerts.push({ id: 'alert_margin', level: 'info', title: 'Healthy Platform Escrow', message: 'Funds held in escrow are processing normally.' });
-      }
 
       const totalUsers = userStats.reduce((acc, r) => acc + Number(r.count), 0);
       const sellerCount = Number(userStats.find((r) => r.role === 'vendor' || r.role === 'seller')?.count || 0);
@@ -231,16 +133,18 @@ export class AnalyticsService {
 
       return {
         financials: {
-          total_gmv: this.convertCurrency(currentTotalGmv, targetCurrency),
-          marketplace_order_gmv: this.convertCurrency(currentOrderGmv, targetCurrency),
-          subscription_revenue: this.convertCurrency(currentSubRev, targetCurrency),
-          net_revenue: this.convertCurrency(currentSubRev, targetCurrency),
-          funds_in_escrow: this.convertCurrency(Number(escrowStats[0]?.funds_in_escrow || 0), targetCurrency),
-          released_payouts: this.convertCurrency(Number(escrowStats[0]?.released_payouts || 0), targetCurrency),
+          total_gmv: currentTotalGmv,
+          marketplace_order_gmv: currentOrderGmv,
+          subscription_revenue: currentSubRev,
+          net_revenue: currentSubRev,
+          funds_in_escrow: Number(escrowStats[0]?.funds_in_escrow || 0),
+          released_payouts: Number(escrowStats[0]?.released_payouts || 0),
           total_orders: totalOrdersCount,
-          currency: targetCurrency,
-          gmv_growth_pop: gmvGrowthPop,
-          net_growth_pop: netGrowthPop,
+          currency: 'TND',
+          requested_currency: requestedCurrency,
+          currency_conversion_available: false,
+          gmv_source_note: 'order_and_subscription_totals',
+          gmv_growth_mom: null, // Truthful explicit null until period comparison is fully implemented
         },
         stores: {
           total_stores: Number(storeStats[0]?.total_stores || 0),
@@ -257,7 +161,7 @@ export class AnalyticsService {
         active_sessions: Number(sessionStats[0]?.active_sessions || 0),
         monthly_revenue_trend: monthlyRevenue.map((r) => ({
           month: r.month,
-          revenue: this.convertCurrency(Number(r.revenue), targetCurrency),
+          revenue: Number(r.revenue),
         })),
         threshold_alerts: alerts,
       };
@@ -268,8 +172,8 @@ export class AnalyticsService {
   // 2. Financials & SaaS Subscription Engine
   // ==========================================================
   async getRevenueAndSaaSMetrics(params: AnalyticsQueryParams = {}): Promise<RevenueMetricsDTO> {
-    const targetCurrency = (params.currency || 'TND').toUpperCase();
-    const cacheKey = `analytics:saas:${params.timeRange || '30d'}:${targetCurrency}`;
+    const requestedCurrency = (params.currency || 'TND').toUpperCase();
+    const cacheKey = `analytics:saas:${params.timeRange || '30d'}:${requestedCurrency}`;
 
     return this.getCachedData(cacheKey, async () => {
       const { subscriptionPaymentService } = await import('./subscription-payment.service');
@@ -293,29 +197,31 @@ export class AnalyticsService {
       });
       const totalMrrTND = totalArrTND / 12;
 
-      const mrrMovement = {
-        new_mrr: this.convertCurrency(Math.round(totalMrrTND * 0.4), targetCurrency),
-        expansion_mrr: this.convertCurrency(Math.round(totalMrrTND * 0.25), targetCurrency),
-        contraction_mrr: this.convertCurrency(Math.round(totalMrrTND * 0.05), targetCurrency),
-        churned_mrr: this.convertCurrency(Math.round(totalMrrTND * 0.1), targetCurrency),
-        total_mrr: this.convertCurrency(Math.round(totalMrrTND), targetCurrency),
-        total_arr: this.convertCurrency(Math.round(totalArrTND), targetCurrency),
-      };
-
       return {
         saas_metrics: {
-          total_mrr_tnd: this.convertCurrency(totalMrrTND, targetCurrency),
-          total_arr_tnd: this.convertCurrency(totalArrTND, targetCurrency),
-          arpu_converted: this.convertCurrency(Number(cohortAnalytics.metrics.arpu_tnd || 0), targetCurrency),
-          churn_rate_pct: Number(cohortAnalytics.metrics.churn_rate_pct || 0),
-          estimated_ltv_converted: this.convertCurrency(Number(cohortAnalytics.metrics.estimated_ltv_tnd || 0), targetCurrency),
-          currency: targetCurrency,
+          total_mrr_tnd: Math.round(totalMrrTND),
+          total_arr_tnd: Math.round(totalArrTND),
+          arpu_tnd: Number(cohortAnalytics.metrics.arpu_tnd) || null,
+          churn_rate_pct: Number(cohortAnalytics.metrics.churn_rate_pct) || null,
+          estimated_ltv_tnd: Number(cohortAnalytics.metrics.estimated_ltv_tnd) || null,
+          currency: 'TND',
+          requested_currency: requestedCurrency,
+          currency_conversion_available: false,
         },
-        mrr_movement: mrrMovement,
+        mrr_movement: {
+          new_mrr: null,
+          expansion_mrr: null,
+          contraction_mrr: null,
+          churned_mrr: null,
+          total_mrr: Math.round(totalMrrTND),
+          total_arr: Math.round(totalArrTND),
+          mrr_movement_available: false,
+          mrr_movement_unavailable_reason: 'Subscription lifecycle events are not tracked yet.',
+        },
         active_subscriptions_by_plan: activeSubs.map((row) => ({
           plan_id: row.subscription_plan,
           active_count: Number(row.count),
-          annual_value: this.convertCurrency(Number(row.count) * Number(row.yearly_price), targetCurrency),
+          annual_value: Number(row.count) * Number(row.yearly_price),
         })),
         cohort_matrix: cohortAnalytics.cohorts.map((c: any) => ({
           cohort: c.cohort_month,
@@ -337,7 +243,7 @@ export class AnalyticsService {
   async getVendorAnalytics(params: AnalyticsQueryParams = {}): Promise<VendorMetricsDTO> {
     const cacheKey = `analytics:vendors:${params.timeRange || '30d'}`;
     return this.getCachedData(cacheKey, async () => {
-      // Top performing stores ordered by product count and GMV
+      // Top performing stores ordered by product count
       const { rows: topStores } = await query(`
         SELECT 
           s.id,
@@ -385,7 +291,7 @@ export class AnalyticsService {
         activation_funnel: activationFunnel,
         dispute_and_refund_rate: {
           total_refunds_issued: 0,
-          dispute_rate_pct: 0.4,
+          dispute_rate_pct: 0,
           high_risk_vendors_flagged: 0,
         },
       };
@@ -396,8 +302,8 @@ export class AnalyticsService {
   // 4. PandaMarket Ads Integration
   // ==========================================================
   async getAdsAnalytics(params: AnalyticsQueryParams = {}): Promise<AdsMetricsDTO> {
-    const targetCurrency = (params.currency || 'TND').toUpperCase();
-    const cacheKey = `analytics:ads:${params.timeRange || '30d'}:${targetCurrency}`;
+    const requestedCurrency = (params.currency || 'TND').toUpperCase();
+    const cacheKey = `analytics:ads:${params.timeRange || '30d'}:${requestedCurrency}`;
 
     return this.getCachedData(cacheKey, async () => {
       const { rows: adStats } = await query(`
@@ -421,23 +327,26 @@ export class AnalyticsService {
 
       const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
       const cpcTND = clicks > 0 ? totalSpendTND / clicks : 0;
-      const roas = totalSpendTND > 0 ? 3.8 : 0;
 
       return {
         ads_financials: {
-          total_ad_revenue: this.convertCurrency(totalSpendTND, targetCurrency),
+          total_ad_revenue_tnd: totalSpendTND,
           total_campaigns: Number(adStats[0]?.total_campaigns || 0),
           active_campaigns: Number(adStats[0]?.active_campaigns || 0),
-          currency: targetCurrency,
+          currency: 'TND',
+          requested_currency: requestedCurrency,
+          currency_conversion_available: false,
         },
         performance_metrics: {
           total_impressions: impressions,
           total_clicks: clicks,
           avg_ctr_pct: Number(ctr.toFixed(2)),
-          avg_cpc: this.convertCurrency(cpcTND, targetCurrency),
-          estimated_roas: roas,
+          avg_cpc_tnd: Number(cpcTND.toFixed(2)),
+          estimated_roas: null, // Explicit null: ROAS is unavailable without order attribution tracking
+          conversion_attribution_available: false,
         },
-        slot_utilization_pct: impressions > 0 ? 84.5 : 0,
+        slot_utilization_pct: null, // Explicit null: slot utilization is unavailable without slot inventory tracking
+        slot_inventory_available: false,
       };
     }, AnalyticsService.CACHE_TTL_LIVE);
   }
@@ -464,21 +373,24 @@ export class AnalyticsService {
       return {
         server_telemetry: {
           status: 'healthy',
-          uptime_pct: 99.98,
-          p95_latency_ms: 42,
-          p99_latency_ms: 110,
-          error_rate_pct: 0.04,
+          uptime_pct: null, // Explicit null until real uptime monitor integration
+          p95_latency_ms: null,
+          p99_latency_ms: null,
+          error_rate_pct: null,
+          telemetry_available: false,
         },
         print_production_queue: {
-          pending_jobs: 0,
-          processing_jobs: 0,
-          completed_today: 0,
-          delayed_jobs: 0,
+          pending_jobs: null,
+          processing_jobs: null,
+          completed_today: null,
+          delayed_jobs: null,
+          print_queue_metrics_available: false,
         },
         database_health: {
-          active_connections: 12,
+          active_connections: null,
           logs_24h: Number(logsCount[0]?.count || 0),
-          index_hit_ratio_pct: 99.4,
+          index_hit_ratio_pct: null,
+          database_pool_metrics_available: false,
         },
         live_audit_feed: recentAudit.map((log) => ({
           action: String(log.action),
@@ -534,12 +446,12 @@ export class AnalyticsService {
         avg_cpc = EXCLUDED.avg_cpc;
     `, [
       today,
-      ads.ads_financials.total_ad_revenue,
+      ads.ads_financials.total_ad_revenue_tnd,
       ads.performance_metrics.total_impressions,
       ads.performance_metrics.total_clicks,
       ads.ads_financials.active_campaigns,
       ads.performance_metrics.avg_ctr_pct,
-      ads.performance_metrics.avg_cpc,
+      ads.performance_metrics.avg_cpc_tnd,
     ]);
 
     logger.info({ today }, 'Daily analytics snapshot computation completed successfully.');
@@ -556,21 +468,27 @@ export class AnalyticsService {
 
     const headers = ['Category', 'Metric', 'Value'];
     const rows: Array<[string, string, string | number]> = [
-      ['Financials', 'Total GMV', overview.financials.total_gmv],
-      ['Financials', 'Marketplace Orders GMV', overview.financials.marketplace_order_gmv],
-      ['Financials', 'Subscription Revenue', overview.financials.subscription_revenue],
-      ['Financials', 'Net Platform Revenue', overview.financials.net_revenue],
-      ['Financials', 'Funds in Escrow', overview.financials.funds_in_escrow],
-      ['Financials', 'Released Vendor Payouts', overview.financials.released_payouts],
+      ['Financials', 'Currency', 'TND (Native)'],
+      ['Financials', 'Currency Conversion Available', 'No'],
+      ['Financials', 'Total GMV (TND)', overview.financials.total_gmv],
+      ['Financials', 'Marketplace Orders GMV (TND)', overview.financials.marketplace_order_gmv],
+      ['Financials', 'Subscription Revenue (TND)', overview.financials.subscription_revenue],
+      ['Financials', 'Net Platform Revenue (TND)', overview.financials.net_revenue],
+      ['Financials', 'GMV Growth (MoM)', overview.financials.gmv_growth_mom || 'Unavailable'],
+      ['Financials', 'Funds in Escrow (TND)', overview.financials.funds_in_escrow],
+      ['Financials', 'Released Vendor Payouts (TND)', overview.financials.released_payouts],
       ['Financials', 'Total Orders', overview.financials.total_orders],
       ['Stores', 'Total Stores', overview.stores.total_stores],
       ['Stores', 'Active Stores', overview.stores.active_stores],
-      ['SaaS', 'Total ARR', saas.mrr_movement.total_arr],
-      ['SaaS', 'Total MRR', saas.mrr_movement.total_mrr],
+      ['SaaS', 'Total ARR (TND)', saas.mrr_movement.total_arr],
+      ['SaaS', 'Total MRR (TND)', saas.mrr_movement.total_mrr],
+      ['SaaS', 'New MRR', saas.mrr_movement.new_mrr || 'Unavailable'],
       ['Vendors', 'Top Vendor Count', vendors.top_performing_vendors.length],
-      ['Ads', 'Ad Revenue', ads.ads_financials.total_ad_revenue],
+      ['Ads', 'Ad Revenue (TND)', ads.ads_financials.total_ad_revenue_tnd],
       ['Ads', 'Ad Impressions', ads.performance_metrics.total_impressions],
       ['Ads', 'Ad Clicks', ads.performance_metrics.total_clicks],
+      ['Ads', 'Estimated ROAS', ads.performance_metrics.estimated_roas || 'Unavailable'],
+      ['Ads', 'Slot Utilization', ads.slot_utilization_pct || 'Unavailable'],
     ];
 
     const csvLines = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))];
