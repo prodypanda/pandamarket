@@ -34,6 +34,9 @@ import {
   Server,
   Printer,
   Coins,
+  Lock,
+  DollarSign,
+  FileText,
 } from 'lucide-react';
 
 export default function ComprehensivePlatformAnalyticsPage() {
@@ -199,6 +202,20 @@ export default function ComprehensivePlatformAnalyticsPage() {
         </div>
       </div>
 
+      {/* Threshold Alerts Banner */}
+      {overviewData?.threshold_alerts?.map((alert: any) => (
+        <div key={alert.id} className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <div>
+              <span className="font-black uppercase tracking-wider">{alert.title}: </span>
+              <span className="font-normal">{alert.message}</span>
+            </div>
+          </div>
+          <span className="px-2 py-0.5 bg-amber-200/50 dark:bg-amber-900/60 rounded text-[10px] uppercase font-black">Active Alert</span>
+        </div>
+      ))}
+
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-bold text-slate-500 overflow-x-auto pb-1">
         {[
@@ -234,7 +251,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
       {/* TAB 1: EXECUTIVE OVERVIEW */}
       {activeTab === 'overview' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Platform GMV</span>
@@ -243,25 +260,25 @@ export default function ComprehensivePlatformAnalyticsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-900 dark:text-white">
+                <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {(overviewData?.financials.total_gmv || 0).toLocaleString()}{' '}
                   <span className="text-xs font-normal text-slate-500">{currency}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.gmv_growth_mom || '+18.4%'} vs last period
+                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.gmv_growth_mom || '+18.4%'} MoM
                 </div>
               </div>
             </div>
 
             <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Net Platform Revenue</span>
+                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Net Revenue</span>
                 <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600">
                   <Coins className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-900 dark:text-white">
+                <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {(overviewData?.financials.net_revenue || 0).toLocaleString()}{' '}
                   <span className="text-xs font-normal text-slate-500">{currency}</span>
                 </p>
@@ -271,17 +288,33 @@ export default function ComprehensivePlatformAnalyticsPage() {
               </div>
             </div>
 
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-purple-950/40 border border-purple-200/60 dark:border-purple-800/60 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">Escrow Balance</span>
+                <div className="p-2 bg-purple-500/10 rounded-xl text-purple-600">
+                  <Lock className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">
+                  {(overviewData?.financials.funds_in_escrow || 0).toLocaleString()}{' '}
+                  <span className="text-xs font-normal text-slate-500">{currency}</span>
+                </p>
+                <span className="text-[10px] text-purple-600 font-bold">Held for payouts</span>
+              </div>
+            </div>
+
             <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 to-sky-50 dark:from-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-800/60 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Active Merchant Stores</span>
+                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Active Stores</span>
                 <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                   <Store className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-900 dark:text-white">
+                <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {overviewData?.stores.active_stores || 0}{' '}
-                  <span className="text-xs font-normal text-slate-400">/ {overviewData?.stores.total_stores || 0} total</span>
+                  <span className="text-xs font-normal text-slate-400">/ {overviewData?.stores.total_stores || 0}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-1 text-blue-600 text-xs font-bold">
                   <Activity className="w-3.5 h-3.5" /> Live active tenants
@@ -291,13 +324,13 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
             <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-900 dark:to-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Registered Accounts</span>
+                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Accounts</span>
                 <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-900 dark:text-white">{overviewData?.users.total_users || 0}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{overviewData?.users.total_users || 0}</p>
                 <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
                   <span>Sellers: <strong>{overviewData?.users.sellers || 0}</strong></span>
                   <span>Buyers: <strong>{overviewData?.users.buyers || 0}</strong></span>
@@ -443,7 +476,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-purple-600 uppercase">Avg Revenue Per User (ARPU)</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.arpu_tnd || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {revenueData?.saas_metrics.arpu_converted || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
               </p>
               <span className="text-xs text-slate-500 font-semibold">Churn Rate: {revenueData?.saas_metrics.churn_rate_pct || 0}%</span>
             </div>
@@ -451,7 +484,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] font-black text-amber-600 uppercase">Estimated Vendor LTV</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.estimated_ltv_tnd || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {revenueData?.saas_metrics.estimated_ltv_converted || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
               </p>
               <span className="text-xs text-slate-500 font-semibold">LTV:CAC Ratio: 4.2x</span>
             </div>
@@ -573,7 +606,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
               <span className="text-[10px] text-purple-600 font-black uppercase">Ad Revenue Share</span>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {(adsData?.ads_financials.total_ad_revenue_tnd || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
+                {(adsData?.ads_financials.total_ad_revenue || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
               </p>
               <span className="text-xs text-slate-500 font-semibold">{adsData?.ads_financials.active_campaigns || 0} active campaigns</span>
             </div>
@@ -591,7 +624,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <p className="text-3xl font-black text-slate-900 dark:text-white">
                 {adsData?.performance_metrics.avg_ctr_pct || 0}%
               </p>
-              <span className="text-xs text-slate-500 font-semibold">Avg CPC: {adsData?.performance_metrics.avg_cpc_tnd || 0} {currency}</span>
+              <span className="text-xs text-slate-500 font-semibold">Avg CPC: {adsData?.performance_metrics.avg_cpc || 0} {currency}</span>
             </div>
           </div>
         </div>
@@ -625,6 +658,23 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <p className="text-xs text-slate-400">Completed today: {systemData?.print_production_queue.completed_today || 0}</p>
             </div>
           </div>
+
+          {/* Live Audit Stream Feed */}
+          {systemData?.live_audit_feed?.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" /> Live Audit Event Feed
+              </h3>
+              <div className="space-y-2">
+                {systemData.live_audit_feed.map((log: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white">{log.action}</span>
+                    <span className="text-slate-400">{new Date(log.created_at).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
