@@ -13,84 +13,97 @@ import {
   Megaphone,
   Download,
   RefreshCw,
-  Sparkles,
-  Filter,
-  ShieldCheck,
-  Zap,
-  Activity,
   Layers,
   ArrowUpRight,
-  ArrowDownRight,
-  Package,
-  Globe,
-  Compass,
-  MapPin,
+  Activity,
   Flame,
-  Target,
-  Clock,
-  Eye,
-  CheckCircle2,
   AlertTriangle,
   Server,
   Printer,
   Coins,
   Lock,
-  DollarSign,
   FileText,
+  Zap,
 } from 'lucide-react';
+import {
+  AnalyticsTimeRange,
+  AnalyticsCurrency,
+  PlatformOverviewData,
+  PlatformRevenueData,
+  PlatformVendorData,
+  PlatformAdsData,
+  PlatformSystemData,
+} from '@/types/analytics';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '12m' | 'all'>('30d');
-  const [currency, setCurrency] = useState<'TND' | 'USD' | 'EUR'>('TND');
+  const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>('30d');
+  const [currency, setCurrency] = useState<AnalyticsCurrency>('TND');
   const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'vendors' | 'ads' | 'system'>('overview');
 
-  // Modular Data States
-  const [overviewData, setOverviewData] = useState<any>(null);
-  const [revenueData, setRevenueData] = useState<any>(null);
-  const [vendorData, setVendorData] = useState<any>(null);
-  const [adsData, setAdsData] = useState<any>(null);
-  const [systemData, setSystemData] = useState<any>(null);
+  // Strongly-typed per-tab data states
+  const [overviewData, setOverviewData] = useState<PlatformOverviewData | null>(null);
+  const [revenueData, setRevenueData] = useState<PlatformRevenueData | null>(null);
+  const [vendorData, setVendorData] = useState<PlatformVendorData | null>(null);
+  const [adsData, setAdsData] = useState<PlatformAdsData | null>(null);
+  const [systemData, setSystemData] = useState<PlatformSystemData | null>(null);
+
+  // Tab Loading and Error states
+  const [tabLoading, setTabLoading] = useState<Record<string, boolean>>({
+    overview: false,
+    financials: false,
+    vendors: false,
+    ads: false,
+    system: false,
+  });
+  const [tabError, setTabError] = useState<Record<string, string>>({});
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
-  const fetchTabAnalytics = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
+  // Lazy Tab Data Fetcher
+  const fetchTabData = useCallback(
+    async (tab: 'overview' | 'financials' | 'vendors' | 'ads' | 'system', forceRefresh: boolean = false) => {
+      setTabLoading((prev) => ({ ...prev, [tab]: true }));
+      setTabError((prev) => ({ ...prev, [tab]: '' }));
+
       const params = new URLSearchParams({ timeRange, currency }).toString();
-      
-      const [overviewRes, revenueRes, vendorRes, adsRes, systemRes] = await Promise.all([
-        fetchWithCsrf(`/api/pd/admin/analytics/overview?${params}`, { credentials: 'include' }),
-        fetchWithCsrf(`/api/pd/admin/analytics/revenue?${params}`, { credentials: 'include' }),
-        fetchWithCsrf(`/api/pd/admin/analytics/vendors?${params}`, { credentials: 'include' }),
-        fetchWithCsrf(`/api/pd/admin/analytics/ads?${params}`, { credentials: 'include' }),
-        fetchWithCsrf(`/api/pd/admin/analytics/system`, { credentials: 'include' }),
-      ]);
+      let endpoint = `/api/pd/admin/analytics/${tab}`;
+      if (tab === 'financials') endpoint = `/api/pd/admin/analytics/revenue?${params}`;
+      else if (tab === 'system') endpoint = `/api/pd/admin/analytics/system`;
+      else endpoint = `${endpoint}?${params}`;
 
-      if (overviewRes.ok) setOverviewData((await overviewRes.json()).data);
-      if (revenueRes.ok) setRevenueData((await revenueRes.json()).data);
-      if (vendorRes.ok) setVendorData((await vendorRes.json()).data);
-      if (adsRes.ok) setAdsData((await adsRes.json()).data);
-      if (systemRes.ok) setSystemData((await systemRes.json()).data);
-    } catch {
-      setError('Network error while fetching superadmin analytics telemetry.');
-    } finally {
-      setLoading(false);
-    }
-  }, [timeRange, currency]);
+      try {
+        const res = await fetchWithCsrf(endpoint, { credentials: 'include' });
+        if (!res.ok) {
+          throw new Error(`Failed to load ${tab} analytics data.`);
+        }
+        const json = await res.json();
+        const data = json.data;
 
+        if (tab === 'overview') setOverviewData(data);
+        else if (tab === 'financials') setRevenueData(data);
+        else if (tab === 'vendors') setVendorData(data);
+        else if (tab === 'ads') setAdsData(data);
+        else if (tab === 'system') setSystemData(data);
+      } catch (err: any) {
+        setTabError((prev) => ({ ...prev, [tab]: err?.message || 'Network error' }));
+      } finally {
+        setTabLoading((prev) => ({ ...prev, [tab]: false }));
+      }
+    },
+    [timeRange, currency]
+  );
+
+  // Load Overview initially or on filter change
   useEffect(() => {
-    fetchTabAnalytics();
-  }, [fetchTabAnalytics]);
+    fetchTabData(activeTab, true);
+  }, [activeTab, timeRange, currency, fetchTabData]);
 
   const handleExportCSV = async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/admin/analytics/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: activeTab }),
+        body: JSON.stringify({ type: activeTab, timeRange, currency }),
         credentials: 'include',
       });
       if (res.ok) {
@@ -98,7 +111,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `platform_analytics_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `platform_analytics_${activeTab}_${timeRange}_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
       }
     } catch {
@@ -108,7 +121,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
   // Overview Helpers
   const monthlyRevenuePoints = overviewData?.monthly_revenue_trend || [];
-  const maxRevenue = Math.max(...monthlyRevenuePoints.map((p: any) => Number(p.revenue) || 1), 1000);
+  const maxRevenue = Math.max(...monthlyRevenuePoints.map((p) => Number(p.revenue) || 1), 1000);
 
   const storeStats = [
     { label: 'Active / Verified', count: overviewData?.stores.active_stores || 0, color: '#10B981', bgClass: 'bg-emerald-500' },
@@ -193,17 +206,17 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <Download className="w-4 h-4 text-slate-500" /> Export Report
           </button>
           <button
-            onClick={fetchTabAnalytics}
-            disabled={loading}
+            onClick={() => fetchTabData(activeTab, true)}
+            disabled={tabLoading[activeTab]}
             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`w-4 h-4 ${tabLoading[activeTab] ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
       </div>
 
       {/* Threshold Alerts Banner */}
-      {overviewData?.threshold_alerts?.map((alert: any) => (
+      {overviewData?.threshold_alerts?.map((alert) => (
         <div key={alert.id} className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -237,14 +250,18 @@ export default function ComprehensivePlatformAnalyticsPage() {
               }`}
             >
               <Icon className="w-4 h-4" /> {tab.label}
+              {tabLoading[tab.id] && <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />}
             </button>
           );
         })}
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl text-red-600 text-xs font-bold flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" /> {error}
+      {tabError[activeTab] && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl text-red-600 text-xs font-bold flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> {tabError[activeTab]}
+          </div>
+          <button onClick={() => fetchTabData(activeTab, true)} className="underline text-xs">Retry</button>
         </div>
       )}
 
@@ -265,7 +282,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   <span className="text-xs font-normal text-slate-500">{currency}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.gmv_growth_mom || '+18.4%'} MoM
+                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.gmv_growth_pop || '0.0%'} vs prev period
                 </div>
               </div>
             </div>
@@ -283,7 +300,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   <span className="text-xs font-normal text-slate-500">{currency}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> Net captured income
+                  <ArrowUpRight className="w-3.5 h-3.5" /> {overviewData?.financials.net_growth_pop || '0.0%'} net growth
                 </div>
               </div>
             </div>
@@ -347,7 +364,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-indigo-600" /> Real-Time Monthly Revenue Trajectory
                   </h3>
-                  <p className="text-xs text-slate-400">Captured subscription income aggregated from PostgreSQL tables</p>
+                  <p className="text-xs text-slate-400">Captured subscription & marketplace income from PostgreSQL tables</p>
                 </div>
               </div>
 
@@ -371,7 +388,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
                     {(() => {
                       const step = 500 / (monthlyRevenuePoints.length - 1 || 1);
-                      const points = monthlyRevenuePoints.map((p: any, i: number) => {
+                      const points = monthlyRevenuePoints.map((p, i) => {
                         const x = i * step;
                         const y = 190 - ((Number(p.revenue) || 0) / maxRevenue) * 150;
                         return `${x},${y}`;
@@ -382,7 +399,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                         <>
                           <path d={pathStr} fill="url(#areaGradientOverview)" />
                           <path d={lineStr} fill="none" stroke="#6366F1" strokeWidth="3" />
-                          {monthlyRevenuePoints.map((p: any, i: number) => {
+                          {monthlyRevenuePoints.map((p, i) => {
                             const x = i * step;
                             const y = 190 - ((Number(p.revenue) || 0) / maxRevenue) * 150;
                             return (
@@ -487,7 +504,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <p className="text-2xl font-black text-slate-900 dark:text-white">
                 {revenueData?.saas_metrics.estimated_ltv_converted || 0} <span className="text-xs font-normal text-slate-400">{currency}</span>
               </p>
-              <span className="text-xs text-slate-500 font-semibold">LTV:CAC Ratio: 4.2x</span>
+              <span className="text-xs text-slate-500 font-semibold">Calculated from retention curve</span>
             </div>
           </div>
 
@@ -517,7 +534,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {(revenueData?.cohort_matrix || []).map((row: any) => (
+                  {(revenueData?.cohort_matrix || []).map((row) => (
                     <tr key={row.cohort} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                       <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{row.cohort}</td>
                       <td className="py-3 px-4 text-slate-500">{row.total_signups} stores</td>
@@ -561,7 +578,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(vendorData?.top_performing_vendors || []).map((v: any) => (
+                    {(vendorData?.top_performing_vendors || []).map((v) => (
                       <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">{v.name}</td>
                         <td className="py-3 px-3 text-slate-500">{v.subdomain}.pandamarket.tn</td>
@@ -585,7 +602,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
                 <Zap className="w-5 h-5 text-amber-500" /> Vendor Onboarding Funnel
               </h3>
               <div className="space-y-3">
-                {(vendorData?.activation_funnel || []).map((step: any, idx: number) => (
+                {(vendorData?.activation_funnel || []).map((step, idx) => (
                   <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1">
                     <div className="flex items-center justify-between text-xs font-bold">
                       <span className="text-slate-700 dark:text-slate-300">{step.stage}</span>
@@ -661,13 +678,13 @@ export default function ComprehensivePlatformAnalyticsPage() {
           </div>
 
           {/* Live Audit Stream Feed */}
-          {systemData?.live_audit_feed?.length > 0 && (
+          {systemData?.live_audit_feed && systemData.live_audit_feed.length > 0 && (
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600" /> Live Audit Event Feed
               </h3>
               <div className="space-y-2">
-                {systemData.live_audit_feed.map((log: any, idx: number) => (
+                {systemData.live_audit_feed.map((log, idx) => (
                   <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900 dark:text-white">{log.action}</span>
                     <span className="text-slate-400">{new Date(log.created_at).toLocaleString()}</span>
