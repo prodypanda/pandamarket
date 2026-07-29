@@ -111,8 +111,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const maxRevenue = Math.max(...monthlyRevenuePoints.map((p: any) => Number(p.revenue) || 1), 1000);
 
   const storeStats = [
-    { label: 'Active Stores', count: overviewData?.stores.active_stores || 0, color: '#10B981', bgClass: 'bg-emerald-500' },
-    { label: 'Paused Stores', count: overviewData?.stores.paused_stores || 0, color: '#F59E0B', bgClass: 'bg-amber-500' },
+    { label: 'Active / Verified', count: overviewData?.stores.active_stores || 0, color: '#10B981', bgClass: 'bg-emerald-500' },
+    { label: 'Unverified / Pending', count: overviewData?.stores.paused_stores || 0, color: '#F59E0B', bgClass: 'bg-amber-500' },
     { label: 'Suspended', count: overviewData?.stores.suspended_stores || 0, color: '#EF4444', bgClass: 'bg-red-500' },
   ];
   const totalStoreCount = storeStats.reduce((acc, curr) => acc + curr.count, 0) || 1;

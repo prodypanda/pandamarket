@@ -70,12 +70,12 @@ export class AnalyticsService {
         FROM pd_subscription_intent
       `);
 
-      // Store stats
+      // Store stats (handling 'verified' as active and 'unverified' as paused/pending)
       const { rows: storeStats } = await query(`
         SELECT 
           COUNT(*)::int AS total_stores,
-          COUNT(CASE WHEN status = 'active' THEN 1 END)::int AS active_stores,
-          COUNT(CASE WHEN status = 'paused' THEN 1 END)::int AS paused_stores,
+          COUNT(CASE WHEN status IN ('active', 'verified', 'published') THEN 1 END)::int AS active_stores,
+          COUNT(CASE WHEN status IN ('paused', 'unverified', 'pending') THEN 1 END)::int AS paused_stores,
           COUNT(CASE WHEN status = 'suspended' THEN 1 END)::int AS suspended_stores
         FROM pd_store
       `);
@@ -176,7 +176,7 @@ export class AnalyticsService {
           COALESCE(l.yearly_price, 0) AS yearly_price
         FROM pd_store s
         LEFT JOIN pd_subscription_limits l ON l.plan_id = s.subscription_plan
-        WHERE s.status = 'active'
+        WHERE s.status IN ('active', 'verified', 'published')
         GROUP BY s.subscription_plan, l.yearly_price
       `);
 
@@ -241,16 +241,16 @@ export class AnalyticsService {
           COUNT(p.id)::int AS products_count
         FROM pd_store s
         LEFT JOIN pd_product p ON p.store_id = s.id
-        GROUP BY s.id
+        GROUP BY s.id, s.name, s.subdomain, s.status, s.subscription_plan, s.created_at
         ORDER BY products_count DESC
         LIMIT 10
       `);
 
       // Vendor activation funnel
-      const { rows: userCount } = await query(`SELECT COUNT(*)::int AS count FROM pd_user WHERE role = 'seller'`);
+      const { rows: userCount } = await query(`SELECT COUNT(*)::int AS count FROM pd_user WHERE role IN ('seller', 'vendor', 'admin')`);
       const { rows: storeCount } = await query(`SELECT COUNT(*)::int AS count FROM pd_store`);
-      const { rows: activeStoreCount } = await query(`SELECT COUNT(*)::int AS count FROM pd_store WHERE status = 'active'`);
-      const { rows: adStoreCount } = await query(`SELECT COUNT(DISTINCT store_id)::int AS count FROM pd_ad_campaign`);
+      const { rows: activeStoreCount } = await query(`SELECT COUNT(*)::int AS count FROM pd_store WHERE status IN ('active', 'verified', 'published')`);
+      const { rows: adStoreCount } = await query(`SELECT COUNT(DISTINCT store_id)::int AS count FROM pd_ads_campaign`).catch(() => ({ rows: [{ count: 0 }] }));
 
       const totalSellers = Number(userCount[0]?.count || 1);
       const totalStores = Number(storeCount[0]?.count || 0);
@@ -284,19 +284,20 @@ export class AnalyticsService {
     const cacheKey = `analytics:ads:${params.startDate || 'all'}:${params.endDate || 'all'}:${targetCurrency}`;
 
     return this.getCachedData(cacheKey, async () => {
+      // Query correct database table names: pd_ads_campaign and pd_ads_event
       const { rows: adStats } = await query(`
         SELECT 
           COALESCE(SUM(spent_amount), 0)::numeric AS total_spend,
           COUNT(id)::int AS total_campaigns,
-          COUNT(CASE WHEN status = 'active' THEN 1 END)::int AS active_campaigns
-        FROM pd_ad_campaign
+          COUNT(CASE WHEN status IN ('active', 'approved', 'running') THEN 1 END)::int AS active_campaigns
+        FROM pd_ads_campaign
       `).catch(() => ({ rows: [{ total_spend: 0, total_campaigns: 0, active_campaigns: 0 }] }));
 
       const { rows: eventStats } = await query(`
         SELECT 
           COALESCE(SUM(CASE WHEN event_type = 'impression' THEN 1 ELSE 0 END), 0)::bigint AS impressions,
           COALESCE(SUM(CASE WHEN event_type = 'click' THEN 1 ELSE 0 END), 0)::bigint AS clicks
-        FROM pd_ad_event
+        FROM pd_ads_event
       `).catch(() => ({ rows: [{ impressions: 0, clicks: 0 }] }));
 
       const impressions = Number(eventStats[0]?.impressions || 0);
