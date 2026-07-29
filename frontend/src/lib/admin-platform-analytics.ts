@@ -6,6 +6,7 @@ import {
   PlatformVendorAnalytics,
   PlatformAdsAnalytics,
   PlatformSystemAnalytics,
+  PlatformBusinessAnalytics,
 } from '@/types/analytics';
 
 function buildQueryString(filters: AnalyticsFilterParams): string {
@@ -54,6 +55,11 @@ export async function fetchAdsAnalytics(filters: AnalyticsFilterParams = {}): Pr
 export async function fetchSystemAnalytics(filters: AnalyticsFilterParams = {}): Promise<PlatformSystemAnalytics> {
   const q = buildQueryString(filters);
   return requestAnalyticsEndpoint<PlatformSystemAnalytics>(`/api/pd/admin/analytics/system${q}`);
+}
+
+export async function fetchBusinessAnalytics(filters: AnalyticsFilterParams = {}): Promise<PlatformBusinessAnalytics> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint<PlatformBusinessAnalytics>(`/api/pd/admin/analytics/business${q}`);
 }
 
 export async function exportPlatformAnalytics(

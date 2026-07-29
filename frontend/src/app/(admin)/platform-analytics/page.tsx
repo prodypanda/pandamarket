@@ -12,6 +12,7 @@ import {
   PlatformVendorAnalytics,
   PlatformAdsAnalytics,
   PlatformSystemAnalytics,
+  PlatformBusinessAnalytics,
 } from '@/types/analytics';
 import {
   fetchOverviewAnalytics,
@@ -19,6 +20,7 @@ import {
   fetchVendorAnalytics,
   fetchAdsAnalytics,
   fetchSystemAnalytics,
+  fetchBusinessAnalytics,
   exportPlatformAnalytics,
 } from '@/lib/admin-platform-analytics';
 import { PlatformAnalyticsHeader } from '@/components/admin/platform-analytics/PlatformAnalyticsHeader';
@@ -31,6 +33,7 @@ import { FinancialsAnalyticsTab } from '@/components/admin/platform-analytics/Fi
 import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/VendorsAnalyticsTab';
 import { AdsAnalyticsTab } from '@/components/admin/platform-analytics/AdsAnalyticsTab';
 import { SystemAnalyticsTab } from '@/components/admin/platform-analytics/SystemAnalyticsTab';
+import { BusinessAnalyticsTab } from '@/components/admin/platform-analytics/BusinessAnalyticsTab';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
@@ -44,10 +47,12 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const [vendorData, setVendorData] = useState<PlatformVendorAnalytics | null>(null);
   const [adsData, setAdsData] = useState<PlatformAdsAnalytics | null>(null);
   const [systemData, setSystemData] = useState<PlatformSystemAnalytics | null>(null);
+  const [businessData, setBusinessData] = useState<PlatformBusinessAnalytics | null>(null);
 
   // Tab Loading and Error states
   const [tabLoading, setTabLoading] = useState<Record<AnalyticsTabID, boolean>>({
     overview: false,
+    business: false,
     financials: false,
     vendors: false,
     ads: false,
@@ -55,6 +60,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   });
   const [tabError, setTabError] = useState<Record<AnalyticsTabID, string>>({
     overview: '',
+    business: '',
     financials: '',
     vendors: '',
     ads: '',
@@ -73,6 +79,9 @@ export default function ComprehensivePlatformAnalyticsPage() {
         if (tab === 'overview') {
           const data = await fetchOverviewAnalytics(filters);
           setOverviewData(data);
+        } else if (tab === 'business') {
+          const data = await fetchBusinessAnalytics(filters);
+          setBusinessData(data);
         } else if (tab === 'financials') {
           const data = await fetchRevenueAnalytics(filters);
           setRevenueData(data);
@@ -118,6 +127,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
   const activeRange =
     overviewData?.range ||
+    businessData?.range ||
     revenueData?.range ||
     vendorData?.range ||
     adsData?.range ||
@@ -182,6 +192,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
           <AnalyticsErrorState message={currentTabError} onRetry={() => fetchTabData(activeTab)} />
         ) : currentTabLoading &&
           ((activeTab === 'overview' && !overviewData) ||
+            (activeTab === 'business' && !businessData) ||
             (activeTab === 'financials' && !revenueData) ||
             (activeTab === 'vendors' && !vendorData) ||
             (activeTab === 'ads' && !adsData) ||
@@ -190,6 +201,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
         ) : (
           <>
             {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
+            {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
             {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
             {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
             {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}

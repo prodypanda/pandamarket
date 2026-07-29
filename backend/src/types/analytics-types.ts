@@ -196,3 +196,80 @@ export interface SystemMetricsDTO {
     created_at: string;
   }>;
 }
+
+export interface PlatformBusinessAnalyticsDTO {
+  range: NormalizedAnalyticsRange;
+  metric_scope: Record<string, 'selected_period' | 'current_state' | 'unavailable'>;
+
+  orders: {
+    available: true;
+    total_orders: number;
+    paid_orders: number;
+    cancelled_orders: number;
+    fulfilled_orders: number;
+    marketplace_gmv_tnd: number;
+    average_order_value_tnd: number | null;
+    order_growth_pct: number | null;
+    gmv_growth_pct: number | null;
+  };
+
+  checkout: {
+    available: false;
+    checkout_started: null;
+    payment_started: null;
+    payment_completed: null;
+    checkout_completion_rate_pct: null;
+    unavailable_reason: 'Checkout funnel events are not tracked yet.';
+  };
+
+  buyers: {
+    available: true;
+    total_buyers_current: number;
+    new_buyers: number;
+    active_buyers: number;
+    repeat_buyers: number;
+    repeat_buyer_rate_pct: number | null;
+    buyer_growth_pct: number | null;
+  };
+
+  sellers: {
+    available: true;
+    total_sellers_current: number;
+    new_sellers: number;
+    stores_created: number;
+    active_stores_current: number;
+    stores_with_products: number;
+    stores_with_orders: number;
+    activation_rate_pct: number | null;
+    seller_growth_pct: number | null;
+  };
+
+  payouts: {
+    available: true;
+    total_wallet_balance_tnd: number;
+    pending_wallet_balance_tnd: number;
+    total_withdrawn_tnd: number;
+    payout_transactions_in_period: number;
+    payout_amount_in_period_tnd: number;
+  };
+
+  risk: {
+    available: true;
+    reports_count: number;
+    open_reports_count: number;
+    open_disputes_count: number;
+    refunds_count: number;
+    refunds_amount_tnd: number;
+    high_risk_vendors_count: number;
+  };
+
+  operations: {
+    available: true;
+    pending_kyc_count: number;
+    approved_kyc_count: number;
+    rejected_kyc_count: number;
+    kyc_approval_rate_pct: number | null;
+    open_support_tickets: number;
+    urgent_support_tickets: number;
+  };
+}

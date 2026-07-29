@@ -18,6 +18,7 @@ import {
   VendorMetricsDTO,
   AdsMetricsDTO,
   SystemMetricsDTO,
+  PlatformBusinessAnalyticsDTO,
 } from '../types/analytics-types';
 
 export class AnalyticsService {
@@ -664,7 +665,312 @@ export class AnalyticsService {
   }
 
   // ==========================================================
-  // 6. Daily Snapshot Computation Worker
+  // 6. Marketplace Business Analytics Engine
+  // ==========================================================
+  async getBusinessAnalytics(params: AnalyticsQueryParams = {}): Promise<PlatformBusinessAnalyticsDTO> {
+    const range = this.parseDateWindow(params);
+    const tenantKey = params.tenantId || 'global';
+    const cacheKey = `analytics:business:${range.timeRange}:${range.startDate || 'null'}:${range.endDate}:${tenantKey}`;
+
+    return this.getCachedData(cacheKey, async () => {
+      // 1. Orders & Marketplace GMV
+      const { rows: currentOrders } = await query(`
+        SELECT 
+          COUNT(*)::int AS total_orders,
+          COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN 1 END)::int AS paid_orders,
+          COUNT(CASE WHEN status = 'cancelled' THEN 1 END)::int AS cancelled_orders,
+          COUNT(CASE WHEN status IN ('fulfilled', 'delivered') THEN 1 END)::int AS fulfilled_orders,
+          COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
+        FROM pd_order
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `, [range.startDate, range.endDate]);
+
+      let prevPaidOrders = 0;
+      let prevGmvTnd = 0;
+      if (range.comparison_available && range.previousStartDate && range.previousEndDate) {
+        const { rows: prevOrders } = await query(`
+          SELECT 
+            COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN 1 END)::int AS paid_orders,
+            COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
+          FROM pd_order
+          WHERE created_at >= $1::timestamp AND created_at <= $2::timestamp
+        `, [range.previousStartDate, range.previousEndDate]);
+        prevPaidOrders = Number(prevOrders[0]?.paid_orders || 0);
+        prevGmvTnd = Number(prevOrders[0]?.gmv_tnd || 0);
+      }
+
+      const totalOrders = Number(currentOrders[0]?.total_orders || 0);
+      const paidOrders = Number(currentOrders[0]?.paid_orders || 0);
+      const cancelledOrders = Number(currentOrders[0]?.cancelled_orders || 0);
+      const fulfilledOrders = Number(currentOrders[0]?.fulfilled_orders || 0);
+      const gmvTnd = Number(currentOrders[0]?.gmv_tnd || 0);
+      const averageOrderValue = paidOrders > 0 ? Number((gmvTnd / paidOrders).toFixed(2)) : null;
+
+      const orderGrowthPct = range.comparison_available ? this.calculateGrowthPct(paidOrders, prevPaidOrders) : null;
+      const gmvGrowthPct = range.comparison_available ? this.calculateGrowthPct(gmvTnd, prevGmvTnd) : null;
+
+      // 2. Buyer Analytics
+      const { rows: buyerStats } = await query(`
+        SELECT 
+          COUNT(CASE WHEN role = 'customer' THEN 1 END)::int AS total_buyers_current,
+          COUNT(CASE WHEN role = 'customer' AND ($1::timestamp IS NULL OR created_at >= $1::timestamp) AND created_at <= $2::timestamp THEN 1 END)::int AS new_buyers
+        FROM pd_user
+      `, [range.startDate, range.endDate]);
+
+      let prevNewBuyers = 0;
+      if (range.comparison_available && range.previousStartDate && range.previousEndDate) {
+        const { rows: prevBuyerRows } = await query(`
+          SELECT COUNT(*)::int AS count FROM pd_user WHERE role = 'customer' AND created_at >= $1::timestamp AND created_at <= $2::timestamp
+        `, [range.previousStartDate, range.previousEndDate]);
+        prevNewBuyers = Number(prevBuyerRows[0]?.count || 0);
+      }
+
+      const { rows: activeBuyerRows } = await query(`
+        SELECT 
+          COUNT(DISTINCT customer_id)::int AS active_buyers
+        FROM pd_order
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `, [range.startDate, range.endDate]);
+
+      const { rows: repeatBuyerRows } = await query(`
+        SELECT COUNT(*)::int AS repeat_buyers FROM (
+          SELECT customer_id FROM pd_order
+          WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+            AND created_at <= $2::timestamp
+          GROUP BY customer_id
+          HAVING COUNT(id) > 1
+        ) sub
+      `, [range.startDate, range.endDate]);
+
+      const totalBuyersCurrent = Number(buyerStats[0]?.total_buyers_current || 0);
+      const newBuyers = Number(buyerStats[0]?.new_buyers || 0);
+      const activeBuyers = Number(activeBuyerRows[0]?.active_buyers || 0);
+      const repeatBuyers = Number(repeatBuyerRows[0]?.repeat_buyers || 0);
+      const repeatBuyerRatePct = activeBuyers > 0 ? Number(((repeatBuyers / activeBuyers) * 100).toFixed(1)) : null;
+      const buyerGrowthPct = range.comparison_available ? this.calculateGrowthPct(newBuyers, prevNewBuyers) : null;
+
+      // 3. Seller / Vendor Activation
+      const { rows: sellerStats } = await query(`
+        SELECT 
+          COUNT(CASE WHEN role IN ('vendor', 'seller') THEN 1 END)::int AS total_sellers_current,
+          COUNT(CASE WHEN role IN ('vendor', 'seller') AND ($1::timestamp IS NULL OR created_at >= $1::timestamp) AND created_at <= $2::timestamp THEN 1 END)::int AS new_sellers
+        FROM pd_user
+      `, [range.startDate, range.endDate]);
+
+      let prevNewSellers = 0;
+      if (range.comparison_available && range.previousStartDate && range.previousEndDate) {
+        const { rows: prevSellerRows } = await query(`
+          SELECT COUNT(*)::int AS count FROM pd_user WHERE role IN ('vendor', 'seller') AND created_at >= $1::timestamp AND created_at <= $2::timestamp
+        `, [range.previousStartDate, range.previousEndDate]);
+        prevNewSellers = Number(prevSellerRows[0]?.count || 0);
+      }
+
+      const { rows: storeStats } = await query(`
+        SELECT 
+          COUNT(*)::int AS stores_created,
+          COUNT(CASE WHEN status IN ('active', 'verified', 'published') THEN 1 END)::int AS active_stores_current
+        FROM pd_store
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `, [range.startDate, range.endDate]);
+
+      const { rows: productStoreRows } = await query(`
+        SELECT COUNT(DISTINCT store_id)::int AS stores_with_products FROM pd_product
+      `);
+
+      const { rows: orderStoreRows } = await query(`
+        SELECT COUNT(DISTINCT store_id)::int AS stores_with_orders FROM pd_order_item
+      `);
+
+      const totalSellersCurrent = Number(sellerStats[0]?.total_sellers_current || 0);
+      const newSellers = Number(sellerStats[0]?.new_sellers || 0);
+      const storesCreated = Number(storeStats[0]?.stores_created || 0);
+      const activeStoresCurrent = Number(storeStats[0]?.active_stores_current || 0);
+      const storesWithProducts = Number(productStoreRows[0]?.stores_with_products || 0);
+      const storesWithOrders = Number(orderStoreRows[0]?.stores_with_orders || 0);
+      const activationRatePct = totalSellersCurrent > 0 ? Number(((storesWithOrders / totalSellersCurrent) * 100).toFixed(1)) : null;
+      const sellerGrowthPct = range.comparison_available ? this.calculateGrowthPct(newSellers, prevNewSellers) : null;
+
+      // 4. Payouts & Wallet Balances
+      const { rows: walletTotals } = await query(`
+        SELECT 
+          COALESCE(SUM(balance), 0)::numeric AS total_balance,
+          COALESCE(SUM(pending_balance), 0)::numeric AS pending_balance,
+          COALESCE(SUM(total_withdrawn), 0)::numeric AS total_withdrawn
+        FROM pd_vendor_wallet
+      `);
+
+      const { rows: payoutTx } = await query(`
+        SELECT 
+          COUNT(*)::int AS count,
+          COALESCE(SUM(ABS(amount)), 0)::numeric AS amount
+        FROM pd_wallet_transaction
+        WHERE type = 'payout'
+          AND ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `, [range.startDate, range.endDate]);
+
+      const totalWalletBalanceTND = Number(walletTotals[0]?.total_balance || 0);
+      const pendingWalletBalanceTND = Number(walletTotals[0]?.pending_balance || 0);
+      const totalWithdrawnTND = Number(walletTotals[0]?.total_withdrawn || 0);
+      const payoutTxInPeriod = Number(payoutTx[0]?.count || 0);
+      const payoutAmountInPeriodTND = Number(payoutTx[0]?.amount || 0);
+
+      // 5. Risk, Disputes, Reports & Refunds
+      const { rows: reportRows } = await query(`
+        SELECT 
+          COUNT(*)::int AS total_reports,
+          COUNT(CASE WHEN status IN ('open', 'investigating') THEN 1 END)::int AS open_reports
+        FROM pd_reports
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `).catch(() => ({ rows: [{ total_reports: 0, open_reports: 0 }] }));
+
+      const { rows: disputeRows } = await query(`
+        SELECT COUNT(*)::int AS open_disputes FROM pd_subscription_dispute WHERE status IN ('open', 'under_review')
+      `).catch(() => ({ rows: [{ open_disputes: 0 }] }));
+
+      const { rows: refundRows } = await query(`
+        SELECT 
+          COUNT(*)::int AS refunds_count,
+          COALESCE(SUM(CASE WHEN status IN ('approved', 'processed') THEN amount ELSE 0 END), 0)::numeric AS refunds_amount
+        FROM pd_store_order_refund
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `).catch(() => ({ rows: [{ refunds_count: 0, refunds_amount: 0 }] }));
+
+      const { rows: riskVendorRows } = await query(`
+        SELECT COUNT(DISTINCT store_id)::int AS high_risk_vendors
+        FROM pd_reports
+        WHERE status IN ('open', 'investigating')
+        GROUP BY store_id
+        HAVING COUNT(id) > 1
+      `).catch(() => ({ rows: [{ high_risk_vendors: 0 }] }));
+
+      const reportsCount = Number(reportRows[0]?.total_reports || 0);
+      const openReportsCount = Number(reportRows[0]?.open_reports || 0);
+      const openDisputesCount = Number(disputeRows[0]?.open_disputes || 0);
+      const refundsCount = Number(refundRows[0]?.refunds_count || 0);
+      const refundsAmountTND = Number(refundRows[0]?.refunds_amount || 0);
+      const highRiskVendorsCount = Number(riskVendorRows[0]?.high_risk_vendors || 0);
+
+      // 6. KYC & Operations Analytics
+      const { rows: kycRows } = await query(`
+        SELECT 
+          COUNT(CASE WHEN status = 'pending' THEN 1 END)::int AS pending_kyc,
+          COUNT(CASE WHEN status = 'approved' AND ($1::timestamp IS NULL OR created_at >= $1::timestamp) AND created_at <= $2::timestamp THEN 1 END)::int AS approved_kyc,
+          COUNT(CASE WHEN status = 'rejected' AND ($1::timestamp IS NULL OR created_at >= $1::timestamp) AND created_at <= $2::timestamp THEN 1 END)::int AS rejected_kyc
+        FROM pd_verification_documents
+      `, [range.startDate, range.endDate]).catch(() => ({ rows: [{ pending_kyc: 0, approved_kyc: 0, rejected_kyc: 0 }] }));
+
+      const { rows: supportRows } = await query(`
+        SELECT 
+          COUNT(CASE WHEN status IN ('open', 'in_progress', 'waiting_seller', 'waiting_admin') THEN 1 END)::int AS open_tickets,
+          COUNT(CASE WHEN status IN ('open', 'in_progress', 'waiting_seller', 'waiting_admin') AND priority IN ('high', 'urgent') THEN 1 END)::int AS urgent_tickets
+        FROM pd_support_ticket
+      `).catch(() => ({ rows: [{ open_tickets: 0, urgent_tickets: 0 }] }));
+
+      const pendingKycCount = Number(kycRows[0]?.pending_kyc || 0);
+      const approvedKycCount = Number(kycRows[0]?.approved_kyc || 0);
+      const rejectedKycCount = Number(kycRows[0]?.rejected_kyc || 0);
+      const totalKycReviewed = approvedKycCount + rejectedKycCount;
+      const kycApprovalRatePct = totalKycReviewed > 0 ? Number(((approvedKycCount / totalKycReviewed) * 100).toFixed(1)) : null;
+
+      const openSupportTickets = Number(supportRows[0]?.open_tickets || 0);
+      const urgentSupportTickets = Number(supportRows[0]?.urgent_tickets || 0);
+
+      return {
+        range,
+        metric_scope: {
+          total_buyers_current: 'current_state',
+          total_sellers_current: 'current_state',
+          active_stores_current: 'current_state',
+          total_wallet_balance_tnd: 'current_state',
+          pending_kyc_count: 'current_state',
+          open_support_tickets: 'current_state',
+          total_orders: 'selected_period',
+          paid_orders: 'selected_period',
+          marketplace_gmv_tnd: 'selected_period',
+          new_buyers: 'selected_period',
+          new_sellers: 'selected_period',
+          stores_created: 'selected_period',
+          payout_transactions_in_period: 'selected_period',
+          reports_count: 'selected_period',
+          checkout: 'unavailable',
+        },
+        orders: {
+          available: true,
+          total_orders: totalOrders,
+          paid_orders: paidOrders,
+          cancelled_orders: cancelledOrders,
+          fulfilled_orders: fulfilledOrders,
+          marketplace_gmv_tnd: gmvTnd,
+          average_order_value_tnd: averageOrderValue,
+          order_growth_pct: orderGrowthPct,
+          gmv_growth_pct: gmvGrowthPct,
+        },
+        checkout: {
+          available: false,
+          checkout_started: null,
+          payment_started: null,
+          payment_completed: null,
+          checkout_completion_rate_pct: null,
+          unavailable_reason: 'Checkout funnel events are not tracked yet.',
+        },
+        buyers: {
+          available: true,
+          total_buyers_current: totalBuyersCurrent,
+          new_buyers: newBuyers,
+          active_buyers: activeBuyers,
+          repeat_buyers: repeatBuyers,
+          repeat_buyer_rate_pct: repeatBuyerRatePct,
+          buyer_growth_pct: buyerGrowthPct,
+        },
+        sellers: {
+          available: true,
+          total_sellers_current: totalSellersCurrent,
+          new_sellers: newSellers,
+          stores_created: storesCreated,
+          active_stores_current: activeStoresCurrent,
+          stores_with_products: storesWithProducts,
+          stores_with_orders: storesWithOrders,
+          activation_rate_pct: activationRatePct,
+          seller_growth_pct: sellerGrowthPct,
+        },
+        payouts: {
+          available: true,
+          total_wallet_balance_tnd: totalWalletBalanceTND,
+          pending_wallet_balance_tnd: pendingWalletBalanceTND,
+          total_withdrawn_tnd: totalWithdrawnTND,
+          payout_transactions_in_period: payoutTxInPeriod,
+          payout_amount_in_period_tnd: payoutAmountInPeriodTND,
+        },
+        risk: {
+          available: true,
+          reports_count: reportsCount,
+          open_reports_count: openReportsCount,
+          open_disputes_count: openDisputesCount,
+          refunds_count: refundsCount,
+          refunds_amount_tnd: refundsAmountTND,
+          high_risk_vendors_count: highRiskVendorsCount,
+        },
+        operations: {
+          available: true,
+          pending_kyc_count: pendingKycCount,
+          approved_kyc_count: approvedKycCount,
+          rejected_kyc_count: rejectedKycCount,
+          kyc_approval_rate_pct: kycApprovalRatePct,
+          open_support_tickets: openSupportTickets,
+          urgent_support_tickets: urgentSupportTickets,
+        },
+      };
+    }, AnalyticsService.CACHE_TTL_LIVE);
+  }
+
+  // ==========================================================
+  // 7. Daily Snapshot Computation Worker
   // ==========================================================
   async computeDailySnapshots() {
     const today = new Date().toISOString().split('T')[0];
@@ -724,6 +1030,59 @@ export class AnalyticsService {
   // ==========================================================
   async generateExportCSV(params: AnalyticsQueryParams & { type?: string } = {}) {
     const range = this.parseDateWindow(params);
+
+    if (params.type === 'business') {
+      const biz = await this.getBusinessAnalytics(params);
+      const headers = ['Category', 'Metric', 'Value'];
+      const rows: Array<[string, string, string | number]> = [
+        ['Range Metadata', 'Time Range', range.timeRange],
+        ['Range Metadata', 'Start Date', range.startDate || 'All Time'],
+        ['Range Metadata', 'End Date', range.endDate],
+        ['Range Metadata', 'Previous Period', range.comparison_available ? `${range.previousStartDate} to ${range.previousEndDate}` : 'N/A'],
+        ['Marketplace Orders', 'Total Orders in Period', biz.orders.total_orders],
+        ['Marketplace Orders', 'Paid Orders in Period', biz.orders.paid_orders],
+        ['Marketplace Orders', 'Cancelled Orders', biz.orders.cancelled_orders],
+        ['Marketplace Orders', 'Fulfilled Orders', biz.orders.fulfilled_orders],
+        ['Marketplace Orders', 'Marketplace GMV (TND)', biz.orders.marketplace_gmv_tnd],
+        ['Marketplace Orders', 'Average Order Value (TND)', biz.orders.average_order_value_tnd !== null ? biz.orders.average_order_value_tnd : 'N/A'],
+        ['Marketplace Orders', 'Order Growth (PoP)', biz.orders.order_growth_pct !== null ? `${biz.orders.order_growth_pct}%` : 'Unavailable'],
+        ['Marketplace Orders', 'GMV Growth (PoP)', biz.orders.gmv_growth_pct !== null ? `${biz.orders.gmv_growth_pct}%` : 'Unavailable'],
+        ['Checkout Funnel', 'Available', biz.checkout.available ? 'Yes' : 'No (Events not tracked yet)'],
+        ['Buyers', 'Total Registered Buyers', biz.buyers.total_buyers_current],
+        ['Buyers', 'New Buyers in Period', biz.buyers.new_buyers],
+        ['Buyers', 'Active Buyers in Period', biz.buyers.active_buyers],
+        ['Buyers', 'Repeat Buyers in Period', biz.buyers.repeat_buyers],
+        ['Buyers', 'Repeat Buyer Rate', biz.buyers.repeat_buyer_rate_pct !== null ? `${biz.buyers.repeat_buyer_rate_pct}%` : 'N/A'],
+        ['Sellers', 'Total Registered Vendors', biz.sellers.total_sellers_current],
+        ['Sellers', 'New Vendors in Period', biz.sellers.new_sellers],
+        ['Sellers', 'Stores Created in Period', biz.sellers.stores_created],
+        ['Sellers', 'Active Published Stores', biz.sellers.active_stores_current],
+        ['Sellers', 'Stores With Products', biz.sellers.stores_with_products],
+        ['Sellers', 'Stores With Orders', biz.sellers.stores_with_orders],
+        ['Sellers', 'Vendor Activation Rate', biz.sellers.activation_rate_pct !== null ? `${biz.sellers.activation_rate_pct}%` : 'N/A'],
+        ['Payouts', 'Total Wallet Balance (TND)', biz.payouts.total_wallet_balance_tnd],
+        ['Payouts', 'Pending Wallet Balance (TND)', biz.payouts.pending_wallet_balance_tnd],
+        ['Payouts', 'Total Withdrawn to Date (TND)', biz.payouts.total_withdrawn_tnd],
+        ['Payouts', 'Payout Transactions in Period', biz.payouts.payout_transactions_in_period],
+        ['Payouts', 'Payout Amount in Period (TND)', biz.payouts.payout_amount_in_period_tnd],
+        ['Risk & Disputes', 'Total Reports in Period', biz.risk.reports_count],
+        ['Risk & Disputes', 'Open Reports', biz.risk.open_reports_count],
+        ['Risk & Disputes', 'Open Disputes', biz.risk.open_disputes_count],
+        ['Risk & Disputes', 'Refund Requests in Period', biz.risk.refunds_count],
+        ['Risk & Disputes', 'Refunded Amount in Period (TND)', biz.risk.refunds_amount_tnd],
+        ['Risk & Disputes', 'High Risk Vendors Flagged', biz.risk.high_risk_vendors_count],
+        ['Operations', 'Pending KYC Reviews', biz.operations.pending_kyc_count],
+        ['Operations', 'Approved KYC in Period', biz.operations.approved_kyc_count],
+        ['Operations', 'Rejected KYC in Period', biz.operations.rejected_kyc_count],
+        ['Operations', 'KYC Approval Rate', biz.operations.kyc_approval_rate_pct !== null ? `${biz.operations.kyc_approval_rate_pct}%` : 'N/A'],
+        ['Operations', 'Open Support Tickets', biz.operations.open_support_tickets],
+        ['Operations', 'Urgent Support Tickets', biz.operations.urgent_support_tickets],
+      ];
+
+      const csvLines = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))];
+      return csvLines.join('\n');
+    }
+
     const overview = await this.getGlobalOverview(params);
     const saas = await this.getRevenueAndSaaSMetrics(params);
     const vendors = await this.getVendorAnalytics(params);

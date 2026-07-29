@@ -4833,6 +4833,17 @@ router.get(
   }),
 );
 
+router.get(
+  '/analytics/business',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getBusinessAnalytics(req.query);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
 router.post(
   '/analytics/export',
   requireAuth,
