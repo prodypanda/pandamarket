@@ -702,14 +702,21 @@ export default function ComprehensivePlatformAnalyticsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-              {[
-                { stage: '1. Visitors', count: '10,000+', conversion: '100%', color: 'from-slate-700 to-slate-900', icon: Globe },
-                { stage: '2. Register', count: `${totalUsers} Users`, conversion: '65%', color: 'from-blue-600 to-indigo-600', icon: Users },
-                { stage: '3. Store Created', count: `${data?.stores.total_stores || 0} Stores`, conversion: '42%', color: 'from-emerald-600 to-teal-600', icon: Store },
-                { stage: '4. Subscribed', count: `${data?.stores.active_stores || 0} Paid`, conversion: '28%', color: 'from-purple-600 to-violet-600', icon: CreditCard },
-                { stage: '5. Running Ads', count: `${data?.ads.total_campaigns || 0} Ads`, conversion: '14%', color: 'from-amber-500 to-orange-600', icon: Megaphone },
-              ].map((step, idx) => {
-                const Icon = step.icon;
+              {(() => {
+                const visitors = totalUsers * 3 || 10000;
+                const registers = totalUsers || 1;
+                const stores = data?.stores.total_stores || 0;
+                const paid = data?.stores.active_stores || 0;
+                const ads = data?.ads.total_campaigns || 0;
+
+                return [
+                  { stage: '1. Visitors (Est)', count: visitors.toLocaleString(), conversion: '100%', color: 'from-slate-700 to-slate-900', icon: Globe },
+                  { stage: '2. Register', count: `${registers} Users`, conversion: `${Math.round((registers / visitors) * 100)}%`, color: 'from-blue-600 to-indigo-600', icon: Users },
+                  { stage: '3. Store Created', count: `${stores} Stores`, conversion: `${Math.round((stores / (visitors||1)) * 100)}%`, color: 'from-emerald-600 to-teal-600', icon: Store },
+                  { stage: '4. Subscribed', count: `${paid} Paid`, conversion: `${Math.round((paid / (visitors||1)) * 100)}%`, color: 'from-purple-600 to-violet-600', icon: CreditCard },
+                  { stage: '5. Running Ads', count: `${ads} Ads`, conversion: `${Math.round((ads / (visitors||1)) * 100)}%`, color: 'from-amber-500 to-orange-600', icon: Megaphone },
+                ].map((step, idx) => {
+                  const Icon = step.icon;
                 return (
                   <div
                     key={idx}
@@ -727,7 +734,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </div>
         </div>
