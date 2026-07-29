@@ -4,6 +4,14 @@
 
 export type AnalyticsTimeRange = '7d' | '30d' | '90d' | '12m' | 'all';
 export type AnalyticsCurrency = 'TND' | 'USD' | 'EUR';
+export type AnalyticsTabID = 'overview' | 'financials' | 'vendors' | 'ads' | 'system';
+
+export interface AnalyticsFilterParams {
+  timeRange?: AnalyticsTimeRange;
+  currency?: AnalyticsCurrency;
+  startDate?: string;
+  endDate?: string;
+}
 
 export interface NormalizedAnalyticsRange {
   timeRange: AnalyticsTimeRange;
@@ -183,7 +191,14 @@ export interface PlatformSystemData {
   };
   live_audit_feed: Array<{
     action: string;
-    details: any;
+    details: Record<string, unknown> | null;
     created_at: string;
   }>;
 }
+
+// Aliases for convenience
+export type PlatformOverviewAnalytics = PlatformOverviewData;
+export type PlatformRevenueAnalytics = PlatformRevenueData;
+export type PlatformVendorAnalytics = PlatformVendorData;
+export type PlatformAdsAnalytics = PlatformAdsData;
+export type PlatformSystemAnalytics = PlatformSystemData;

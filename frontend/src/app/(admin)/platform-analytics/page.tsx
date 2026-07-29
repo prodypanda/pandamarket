@@ -1,92 +1,94 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
-import {
-  TrendingUp,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Users,
-  Store,
-  CreditCard,
-  Megaphone,
-  Download,
-  RefreshCw,
-  Layers,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  Activity,
-  Flame,
-  AlertTriangle,
-  Server,
-  Printer,
-  Coins,
-  Lock,
-  FileText,
-  Zap,
-  Calendar,
-} from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import {
   AnalyticsTimeRange,
   AnalyticsCurrency,
-  PlatformOverviewData,
-  PlatformRevenueData,
-  PlatformVendorData,
-  PlatformAdsData,
-  PlatformSystemData,
+  AnalyticsTabID,
+  PlatformOverviewAnalytics,
+  PlatformRevenueAnalytics,
+  PlatformVendorAnalytics,
+  PlatformAdsAnalytics,
+  PlatformSystemAnalytics,
 } from '@/types/analytics';
+import {
+  fetchOverviewAnalytics,
+  fetchRevenueAnalytics,
+  fetchVendorAnalytics,
+  fetchAdsAnalytics,
+  fetchSystemAnalytics,
+  exportPlatformAnalytics,
+} from '@/lib/admin-platform-analytics';
+import { PlatformAnalyticsHeader } from '@/components/admin/platform-analytics/PlatformAnalyticsHeader';
+import { AnalyticsRangeStatus } from '@/components/admin/platform-analytics/AnalyticsRangeStatus';
+import { AnalyticsTabsNav } from '@/components/admin/platform-analytics/AnalyticsTabsNav';
+import { AnalyticsLoadingState } from '@/components/admin/platform-analytics/AnalyticsLoadingState';
+import { AnalyticsErrorState } from '@/components/admin/platform-analytics/AnalyticsErrorState';
+import { OverviewAnalyticsTab } from '@/components/admin/platform-analytics/OverviewAnalyticsTab';
+import { FinancialsAnalyticsTab } from '@/components/admin/platform-analytics/FinancialsAnalyticsTab';
+import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/VendorsAnalyticsTab';
+import { AdsAnalyticsTab } from '@/components/admin/platform-analytics/AdsAnalyticsTab';
+import { SystemAnalyticsTab } from '@/components/admin/platform-analytics/SystemAnalyticsTab';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
   const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>('30d');
   const [currency, setCurrency] = useState<AnalyticsCurrency>('TND');
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'vendors' | 'ads' | 'system'>('overview');
+  const [activeTab, setActiveTab] = useState<AnalyticsTabID>('overview');
 
-  // Strongly-typed per-tab data states
-  const [overviewData, setOverviewData] = useState<PlatformOverviewData | null>(null);
-  const [revenueData, setRevenueData] = useState<PlatformRevenueData | null>(null);
-  const [vendorData, setVendorData] = useState<PlatformVendorData | null>(null);
-  const [adsData, setAdsData] = useState<PlatformAdsData | null>(null);
-  const [systemData, setSystemData] = useState<PlatformSystemData | null>(null);
+  // Typed tab data states
+  const [overviewData, setOverviewData] = useState<PlatformOverviewAnalytics | null>(null);
+  const [revenueData, setRevenueData] = useState<PlatformRevenueAnalytics | null>(null);
+  const [vendorData, setVendorData] = useState<PlatformVendorAnalytics | null>(null);
+  const [adsData, setAdsData] = useState<PlatformAdsAnalytics | null>(null);
+  const [systemData, setSystemData] = useState<PlatformSystemAnalytics | null>(null);
 
   // Tab Loading and Error states
-  const [tabLoading, setTabLoading] = useState<Record<string, boolean>>({
+  const [tabLoading, setTabLoading] = useState<Record<AnalyticsTabID, boolean>>({
     overview: false,
     financials: false,
     vendors: false,
     ads: false,
     system: false,
   });
-  const [tabError, setTabError] = useState<Record<string, string>>({});
-  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
+  const [tabError, setTabError] = useState<Record<AnalyticsTabID, string>>({
+    overview: '',
+    financials: '',
+    vendors: '',
+    ads: '',
+    system: '',
+  });
 
   // Lazy Tab Data Fetcher
   const fetchTabData = useCallback(
-    async (tab: 'overview' | 'financials' | 'vendors' | 'ads' | 'system', _forceRefresh: boolean = false) => {
+    async (tab: AnalyticsTabID) => {
       setTabLoading((prev) => ({ ...prev, [tab]: true }));
       setTabError((prev) => ({ ...prev, [tab]: '' }));
 
-      const params = new URLSearchParams({ timeRange, currency }).toString();
-      let endpoint = `/api/pd/admin/analytics/${tab}?${params}`;
-      if (tab === 'financials') endpoint = `/api/pd/admin/analytics/revenue?${params}`;
+      const filters = { timeRange, currency };
 
       try {
-        const res = await fetchWithCsrf(endpoint, { credentials: 'include' });
-        if (!res.ok) {
-          throw new Error(`Failed to load ${tab} analytics data.`);
+        if (tab === 'overview') {
+          const data = await fetchOverviewAnalytics(filters);
+          setOverviewData(data);
+        } else if (tab === 'financials') {
+          const data = await fetchRevenueAnalytics(filters);
+          setRevenueData(data);
+        } else if (tab === 'vendors') {
+          const data = await fetchVendorAnalytics(filters);
+          setVendorData(data);
+        } else if (tab === 'ads') {
+          const data = await fetchAdsAnalytics(filters);
+          setAdsData(data);
+        } else if (tab === 'system') {
+          const data = await fetchSystemAnalytics(filters);
+          setSystemData(data);
         }
-        const json = await res.json();
-        const data = json.data;
-
-        if (tab === 'overview') setOverviewData(data);
-        else if (tab === 'financials') setRevenueData(data);
-        else if (tab === 'vendors') setVendorData(data);
-        else if (tab === 'ads') setAdsData(data);
-        else if (tab === 'system') setSystemData(data);
-      } catch (err: any) {
-        setTabError((prev) => ({ ...prev, [tab]: err?.message || 'Network error' }));
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Network error loading analytics data.';
+        setTabError((prev) => ({ ...prev, [tab]: message }));
       } finally {
         setTabLoading((prev) => ({ ...prev, [tab]: false }));
       }
@@ -94,668 +96,107 @@ export default function ComprehensivePlatformAnalyticsPage() {
     [timeRange, currency]
   );
 
-  // Load active tab data initially or on filter change
+  // Fetch active tab data whenever activeTab, timeRange, or currency changes
   useEffect(() => {
-    fetchTabData(activeTab, true);
+    fetchTabData(activeTab);
   }, [activeTab, timeRange, currency, fetchTabData]);
 
   const handleExportCSV = async () => {
     try {
-      const res = await fetchWithCsrf('/api/pd/admin/analytics/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: activeTab, timeRange, currency }),
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `platform_analytics_${activeTab}_${timeRange}_${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-      }
-    } catch {
-      alert('Failed to generate export file.');
+      const blob = await exportPlatformAnalytics({ type: activeTab, timeRange, currency });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `platform_analytics_${activeTab}_${timeRange}_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to generate export file.';
+      alert(message);
     }
   };
 
-  const renderGrowthBadge = (growthPct: number | null | undefined, label: string = 'Growth') => {
-    if (growthPct === null || growthPct === undefined) {
-      return <span className="text-slate-400 font-normal">{label}: Unavailable</span>;
-    }
-    if (growthPct > 0) {
-      return (
-        <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-bold">
-          <ArrowUpRight className="w-3.5 h-3.5" /> +{growthPct}%
-        </span>
-      );
-    }
-    if (growthPct < 0) {
-      return (
-        <span className="inline-flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-bold">
-          <ArrowDownRight className="w-3.5 h-3.5" /> {growthPct}%
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-0.5 text-slate-500 font-bold">
-        <Minus className="w-3.5 h-3.5" /> 0.00%
-      </span>
-    );
-  };
+  const activeRange =
+    overviewData?.range ||
+    revenueData?.range ||
+    vendorData?.range ||
+    adsData?.range ||
+    systemData?.range;
 
-  // Overview Helpers
-  const monthlyRevenuePoints = overviewData?.monthly_revenue_trend || [];
-  const maxRevenue = Math.max(...monthlyRevenuePoints.map((p) => Number(p.revenue) || 1), 1000);
-
-  const storeStats = [
-    { label: 'Active / Verified', count: overviewData?.stores.active_stores || 0, color: '#10B981', bgClass: 'bg-emerald-500' },
-    { label: 'Unverified / Pending', count: overviewData?.stores.paused_stores || 0, color: '#F59E0B', bgClass: 'bg-amber-500' },
-    { label: 'Suspended', count: overviewData?.stores.suspended_stores || 0, color: '#EF4444', bgClass: 'bg-red-500' },
-  ];
-  const totalStoreCount = storeStats.reduce((acc, curr) => acc + curr.count, 0) || 1;
-
-  let cumulativePercent = 0;
-  const donutSlices = storeStats.map((stat, idx) => {
-    const percent = stat.count / totalStoreCount;
-    const startAngle = cumulativePercent * 360;
-    cumulativePercent += percent;
-    const endAngle = cumulativePercent * 360;
-
-    const x1 = 50 + 40 * Math.cos((Math.PI * (startAngle - 90)) / 180);
-    const y1 = 50 + 40 * Math.sin((Math.PI * (startAngle - 90)) / 180);
-    const x2 = 50 + 40 * Math.cos((Math.PI * (endAngle - 90)) / 180);
-    const y2 = 50 + 40 * Math.sin((Math.PI * (endAngle - 90)) / 180);
-
-    const largeArc = percent > 0.5 ? 1 : 0;
-    const pathData = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`;
-    return { ...stat, pathData, percent: Math.round(percent * 100), idx };
-  });
-
-  const activeRange = overviewData?.range || revenueData?.range || vendorData?.range || adsData?.range || systemData?.range;
+  const currentTabLoading = tabLoading[activeTab];
+  const currentTabError = tabError[activeTab];
 
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
-            <TrendingUp className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              Superadmin Platform Analytics Engine
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Live database metrics, SaaS recurring revenue, marketplace health, ad telemetry & infrastructure
-            </p>
-          </div>
-        </div>
-
-        {/* Global Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            {(['7d', '30d', '90d', '12m', 'all'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setTimeRange(r)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  timeRange === r
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                {r.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            {(['TND', 'USD', 'EUR'] as const).map((c) => (
-              <button
-                key={c}
-                onClick={() => setCurrency(c)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  currency === c
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm"
-          >
-            <Download className="w-4 h-4 text-slate-500" /> Export Report
-          </button>
-          <button
-            onClick={() => fetchTabData(activeTab, true)}
-            disabled={tabLoading[activeTab]}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
-          >
-            <RefreshCw className={`w-4 h-4 ${tabLoading[activeTab] ? 'animate-spin' : ''}`} /> Refresh
-          </button>
-        </div>
-      </div>
+      {/* Top Header & Filter Bar */}
+      <PlatformAnalyticsHeader
+        timeRange={timeRange}
+        currency={currency}
+        loading={currentTabLoading}
+        onTimeRangeChange={setTimeRange}
+        onCurrencyChange={setCurrency}
+        onRefresh={() => fetchTabData(activeTab)}
+        onExport={handleExportCSV}
+      />
 
       {/* Normalized Time Range Metadata Bar */}
-      {activeRange && (
-        <div className="px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-indigo-500" />
-            {activeRange.isAllTime ? (
-              <span>Showing all-time platform data</span>
-            ) : (
-              <span>
-                Showing data from <strong className="text-slate-900 dark:text-white">{new Date(activeRange.startDate!).toLocaleDateString()}</strong> to <strong className="text-slate-900 dark:text-white">{new Date(activeRange.endDate).toLocaleDateString()}</strong>
-              </span>
-            )}
-          </div>
-
-          {activeRange.comparison_available && activeRange.previousStartDate && activeRange.previousEndDate && (
-            <span className="text-[11px] text-slate-500">
-              Compared with previous period ({new Date(activeRange.previousStartDate).toLocaleDateString()} to {new Date(activeRange.previousEndDate).toLocaleDateString()})
-            </span>
-          )}
-        </div>
-      )}
+      <AnalyticsRangeStatus range={activeRange} />
 
       {/* Conversion Warning Badge when USD/EUR selected */}
       {currency !== 'TND' && (
         <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center justify-between">
-          <span>Requested Display Currency: <strong>{currency}</strong> (Live USD/EUR conversion service unavailable — displaying native TND figures)</span>
-          <span className="px-2 py-0.5 bg-indigo-200/50 dark:bg-indigo-900/60 rounded text-[10px] font-black uppercase">Native TND</span>
+          <span>
+            Requested Display Currency: <strong>{currency}</strong> (Live USD/EUR conversion service unavailable — displaying native TND figures)
+          </span>
+          <span className="px-2 py-0.5 bg-indigo-200/50 dark:bg-indigo-900/60 rounded text-[10px] font-black uppercase">
+            Native TND
+          </span>
         </div>
       )}
 
       {/* Threshold Alerts Banner */}
       {overviewData?.threshold_alerts?.map((alert) => (
-        <div key={alert.id} className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-sm">
+        <div
+          key={alert.id}
+          className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-sm"
+        >
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertTriangle className="w-4 h-4 text-amber-600" aria-hidden="true" />
             <div>
               <span className="font-black uppercase tracking-wider">{alert.title}: </span>
               <span className="font-normal">{alert.message}</span>
             </div>
           </div>
-          <span className="px-2 py-0.5 bg-amber-200/50 dark:bg-amber-900/60 rounded text-[10px] uppercase font-black">Active Alert</span>
+          <span className="px-2 py-0.5 bg-amber-200/50 dark:bg-amber-900/60 rounded text-[10px] uppercase font-black">
+            Active Alert
+          </span>
         </div>
       ))}
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-bold text-slate-500 overflow-x-auto pb-1">
-        {[
-          { id: 'overview', label: 'Executive Overview', icon: Layers },
-          { id: 'financials', label: 'Financials & SaaS Engine', icon: CreditCard },
-          { id: 'vendors', label: 'Vendor & Marketplace Health', icon: Store },
-          { id: 'ads', label: 'PandaMarket Ads', icon: Megaphone },
-          { id: 'system', label: 'Infrastructure & Telemetry', icon: Server },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-3 flex items-center gap-2 border-b-2 whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <Icon className="w-4 h-4" /> {tab.label}
-              {tabLoading[tab.id] && <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />}
-            </button>
-          );
-        })}
+      <AnalyticsTabsNav activeTab={activeTab} tabLoading={tabLoading} onTabChange={setActiveTab} />
+
+      {/* Active Tab Panel */}
+      <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+        {currentTabError ? (
+          <AnalyticsErrorState message={currentTabError} onRetry={() => fetchTabData(activeTab)} />
+        ) : currentTabLoading &&
+          ((activeTab === 'overview' && !overviewData) ||
+            (activeTab === 'financials' && !revenueData) ||
+            (activeTab === 'vendors' && !vendorData) ||
+            (activeTab === 'ads' && !adsData) ||
+            (activeTab === 'system' && !systemData)) ? (
+          <AnalyticsLoadingState message={`Fetching live ${activeTab} telemetry...`} />
+        ) : (
+          <>
+            {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
+            {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
+            {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
+            {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}
+            {activeTab === 'system' && <SystemAnalyticsTab data={systemData} />}
+          </>
+        )}
       </div>
-
-      {tabError[activeTab] && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl text-red-600 text-xs font-bold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> {tabError[activeTab]}
-          </div>
-          <button onClick={() => fetchTabData(activeTab, true)} className="underline text-xs">Retry</button>
-        </div>
-      )}
-
-      {/* TAB 1: EXECUTIVE OVERVIEW */}
-      {activeTab === 'overview' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Platform GMV</span>
-                <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-600">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">
-                  {(overviewData?.financials.total_gmv || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">TND</span>
-                </p>
-                <div className="flex items-center gap-1 mt-1 text-xs font-bold">
-                  {renderGrowthBadge(overviewData?.financials.gmv_growth_pct, 'GMV PoP')}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Net Revenue</span>
-                <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600">
-                  <Coins className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">
-                  {(overviewData?.financials.net_revenue || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">TND</span>
-                </p>
-                <div className="flex items-center gap-1 mt-1 text-xs font-bold">
-                  {renderGrowthBadge(overviewData?.financials.net_revenue_growth_pct, 'Rev PoP')}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-purple-950/40 border border-purple-200/60 dark:border-purple-800/60 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">Escrow Balance</span>
-                <div className="p-2 bg-purple-500/10 rounded-xl text-purple-600">
-                  <Lock className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">
-                  {(overviewData?.financials.funds_in_escrow || 0).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-500">TND</span>
-                </p>
-                <span className="text-[10px] text-purple-600 font-bold">Held for payouts</span>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 to-sky-50 dark:from-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-800/60 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Active Stores</span>
-                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
-                  <Store className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">
-                  {overviewData?.stores.active_stores || 0}{' '}
-                  <span className="text-xs font-normal text-slate-400">/ {overviewData?.stores.total_stores || 0}</span>
-                </p>
-                <div className="flex items-center gap-1 mt-1 text-xs">
-                  <span className="text-slate-500">New in period: <strong>{overviewData?.stores.new_stores_in_period || 0}</strong></span>
-                  {renderGrowthBadge(overviewData?.stores.new_stores_growth_pct, 'Stores')}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-900 dark:to-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Accounts</span>
-                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{overviewData?.users.total_users || 0}</p>
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
-                  <span>New in period: <strong>{overviewData?.users.new_users_in_period || 0}</strong></span>
-                  {renderGrowthBadge(overviewData?.users.new_users_growth_pct, 'Users')}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Revenue Trajectory in Selected Period
-                  </h3>
-                  <p className="text-xs text-slate-400">Captured subscription & marketplace income from PostgreSQL tables</p>
-                </div>
-              </div>
-
-              <div className="h-64 w-full relative pt-4">
-                {monthlyRevenuePoints.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-xs font-bold text-slate-400">
-                    No monthly revenue transactions recorded in selected range.
-                  </div>
-                ) : (
-                  <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200">
-                    <defs>
-                      <linearGradient id="areaGradientOverview" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6366F1" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <line x1="0" y1="40" x2="500" y2="40" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
-                    <line x1="0" y1="90" x2="500" y2="90" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
-                    <line x1="0" y1="140" x2="500" y2="140" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
-                    <line x1="0" y1="190" x2="500" y2="190" stroke="#E2E8F0" className="dark:stroke-slate-800" />
-
-                    {(() => {
-                      const step = 500 / (monthlyRevenuePoints.length - 1 || 1);
-                      const points = monthlyRevenuePoints.map((p, i) => {
-                        const x = i * step;
-                        const y = 190 - ((Number(p.revenue) || 0) / maxRevenue) * 150;
-                        return `${x},${y}`;
-                      });
-                      const pathStr = `M 0,190 L ${points.join(' L ')} L 500,190 Z`;
-                      const lineStr = `M ${points.join(' L ')}`;
-                      return (
-                        <>
-                          <path d={pathStr} fill="url(#areaGradientOverview)" />
-                          <path d={lineStr} fill="none" stroke="#6366F1" strokeWidth="3" />
-                          {monthlyRevenuePoints.map((p, i) => {
-                            const x = i * step;
-                            const y = 190 - ((Number(p.revenue) || 0) / maxRevenue) * 150;
-                            return (
-                              <g key={i} className="group cursor-pointer">
-                                <circle cx={x} cy={y} r="5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="3" />
-                                <text x={x} y={y - 12} textAnchor="middle" className="text-[10px] font-bold fill-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {Number(p.revenue).toFixed(0)} TND
-                                </text>
-                                <text x={x} y="205" textAnchor="middle" className="text-[10px] font-medium fill-slate-400">
-                                  {p.month}
-                                </text>
-                              </g>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </svg>
-                )}
-              </div>
-            </div>
-
-            {/* Donut Graph */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <PieChartIcon className="w-5 h-5 text-emerald-500" /> Store Status Distribution
-              </h3>
-
-              <div className="flex flex-col items-center justify-center py-2">
-                <div className="w-44 h-44 relative">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    {donutSlices.map((slice) => (
-                      <path
-                        key={slice.idx}
-                        d={slice.pathData}
-                        fill={slice.color}
-                        className="transition-all duration-300 hover:opacity-80 cursor-pointer"
-                        onMouseEnter={() => setHoveredSlice(slice.idx)}
-                        onMouseLeave={() => setHoveredSlice(null)}
-                      />
-                    ))}
-                  </svg>
-                  <div className="absolute inset-0 m-auto w-24 h-24 bg-white dark:bg-slate-900 rounded-full flex flex-col items-center justify-center shadow-inner">
-                    <span className="text-2xl font-black text-slate-900 dark:text-white">
-                      {hoveredSlice !== null ? storeStats[hoveredSlice].count : overviewData?.stores.total_stores || 0}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">
-                      {hoveredSlice !== null ? storeStats[hoveredSlice].label : 'Total Stores'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                  {donutSlices.map((s) => (
-                    <div key={s.label} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-3 h-3 rounded-full ${s.bgClass}`} />
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">{s.label}</span>
-                      </div>
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {s.count} ({s.percent}%)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* TAB 2: FINANCIALS & SAAS ENGINE */}
-      {activeTab === 'financials' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] font-black text-indigo-600 uppercase">Monthly Recurring (MRR)</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {(revenueData?.mrr_movement.total_mrr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
-              </p>
-              <span className="text-xs text-slate-400 font-normal">MRR Movement: Not tracked yet</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] font-black text-emerald-600 uppercase">Annual Recurring (ARR)</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {(revenueData?.mrr_movement.total_arr || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
-              </p>
-              <span className="text-xs text-slate-400 font-normal">Calculated from active plans</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] font-black text-purple-600 uppercase">Avg Revenue Per User (ARPU)</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.arpu_tnd !== null ? `${revenueData?.saas_metrics.arpu_tnd} TND` : 'Unavailable'}
-              </p>
-              <span className="text-xs text-slate-400 font-normal">Churn Rate: {revenueData?.saas_metrics.churn_rate_pct !== null ? `${revenueData?.saas_metrics.churn_rate_pct}%` : 'Unavailable'}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] font-black text-amber-600 uppercase">Estimated Vendor LTV</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
-                {revenueData?.saas_metrics.estimated_ltv_tnd !== null ? `${revenueData?.saas_metrics.estimated_ltv_tnd} TND` : 'Unavailable'}
-              </p>
-              <span className="text-xs text-slate-400 font-normal">LTV:CAC: Not tracked yet</span>
-            </div>
-          </div>
-
-          {/* Cohort Matrix Table */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" /> Dynamic Merchant Cohort Retention Matrix
-                </h3>
-                <p className="text-xs text-slate-400">Calculated directly from subscription expiration vs store creation dates</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
-                    <th className="py-3 px-4">Cohort Month</th>
-                    <th className="py-3 px-4">Signups</th>
-                    <th className="py-3 px-4 text-center">Month 1</th>
-                    <th className="py-3 px-4 text-center">Month 2</th>
-                    <th className="py-3 px-4 text-center">Month 3</th>
-                    <th className="py-3 px-4 text-center">Month 4</th>
-                    <th className="py-3 px-4 text-center">Month 5</th>
-                    <th className="py-3 px-4 text-center">Month 6</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {(revenueData?.cohort_matrix || []).map((row) => (
-                    <tr key={row.cohort} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{row.cohort}</td>
-                      <td className="py-3 px-4 text-slate-500">{row.total_signups} stores</td>
-                      {[row.m1_retained_pct, row.m2_retained_pct, row.m3_retained_pct, row.m4_retained_pct, row.m5_retained_pct, row.m6_retained_pct].map((val, i) => (
-                        <td key={i} className="py-3 px-4 text-center">
-                          {val === '-' ? (
-                            <span className="text-slate-300 dark:text-slate-700">-</span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                              {val}
-                            </span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: VENDOR & MARKETPLACE HEALTH */}
-      {activeTab === 'vendors' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Store className="w-5 h-5 text-indigo-600" /> Top Performing Vendors Matrix
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
-                      <th className="py-2.5 px-3">Store Name</th>
-                      <th className="py-2.5 px-3">Domain</th>
-                      <th className="py-2.5 px-3">Plan</th>
-                      <th className="py-2.5 px-3">Catalog Products</th>
-                      <th className="py-2.5 px-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(vendorData?.top_performing_vendors || []).map((v) => (
-                      <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">{v.name}</td>
-                        <td className="py-3 px-3 text-slate-500">{v.subdomain}.pandamarket.tn</td>
-                        <td className="py-3 px-3 uppercase text-[10px] font-black text-indigo-600">{v.subscription_plan}</td>
-                        <td className="py-3 px-3 font-bold">{v.products_count} items</td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded-md text-[10px]">
-                            {v.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Funnel */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-500" /> Vendor Onboarding Funnel (In Period)
-              </h3>
-              <div className="space-y-3">
-                {(vendorData?.activation_funnel || []).map((step, idx) => (
-                  <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-700 dark:text-slate-300">{step.stage}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400">{step.conversion}</span>
-                    </div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{step.count} vendors</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: PANDAMARKET ADS */}
-      {activeTab === 'ads' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] text-purple-600 font-black uppercase">Ad Revenue Share in Period</span>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {(adsData?.ads_financials.total_ad_revenue_tnd || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
-              </p>
-              <div className="flex items-center gap-1 text-xs">
-                <span>{adsData?.ads_financials.active_campaigns || 0} active campaigns</span>
-                {renderGrowthBadge(adsData?.ads_financials.ad_revenue_growth_pct, 'Ad Rev')}
-              </div>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] text-blue-600 font-black uppercase">Impressions & Clicks in Period</span>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {(adsData?.performance_metrics.total_impressions || 0).toLocaleString()}
-              </p>
-              <span className="text-xs text-slate-500 font-semibold">Total Clicks: {(adsData?.performance_metrics.total_clicks || 0).toLocaleString()}</span>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] text-emerald-600 font-black uppercase">Average CTR & CPC</span>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {adsData?.performance_metrics.avg_ctr_pct || 0}%
-              </p>
-              <span className="text-xs text-slate-500 font-semibold">Avg CPC: {adsData?.performance_metrics.avg_cpc_tnd || 0} TND | ROAS: {adsData?.performance_metrics.estimated_roas !== null ? adsData?.performance_metrics.estimated_roas : 'Unavailable'}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: INFRASTRUCTURE & TELEMETRY */}
-      {activeTab === 'system' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
-              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-                <Activity className="w-4 h-4" /> System Uptime
-              </div>
-              <p className="text-3xl font-black">{systemData?.server_telemetry.uptime_pct !== null ? `${systemData?.server_telemetry.uptime_pct}%` : 'Unavailable'}</p>
-              <p className="text-xs text-slate-400">p95 Latency: {systemData?.server_telemetry.p95_latency_ms !== null ? `${systemData?.server_telemetry.p95_latency_ms}ms` : 'Not tracked yet'}</p>
-            </div>
-
-            <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
-              <div className="flex items-center gap-2 text-blue-400 text-xs font-bold">
-                <Server className="w-4 h-4" /> Database Log Events
-              </div>
-              <p className="text-3xl font-black">{systemData?.database_health.logs_in_period || 0} events</p>
-              <p className="text-xs text-slate-400">24h Logs: {systemData?.database_health.logs_24h || 0} | DB Pool: {systemData?.database_health.active_connections !== null ? systemData?.database_health.active_connections : 'Unavailable'}</p>
-            </div>
-
-            <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-                <Printer className="w-4 h-4" /> Print Production Queue
-              </div>
-              <p className="text-3xl font-black">{systemData?.print_production_queue.pending_jobs !== null ? systemData?.print_production_queue.pending_jobs : 'Unavailable'}</p>
-              <p className="text-xs text-slate-400">Queue Metrics: Not tracked yet</p>
-            </div>
-          </div>
-
-          {/* Live Audit Stream Feed */}
-          {systemData?.live_audit_feed && systemData.live_audit_feed.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" /> Live Audit Event Feed
-              </h3>
-              <div className="space-y-2">
-                {systemData.live_audit_feed.map((log, idx) => (
-                  <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-900 dark:text-white">{log.action}</span>
-                    <span className="text-slate-400">{new Date(log.created_at).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
