@@ -40,10 +40,8 @@ interface FraudRadarItem {
   created_at: string;
   health_scorecard: {
     score: number;
-    label: string;
-    badgeClass: string;
-    flags: string[];
-    risk_level: string;
+    level: string;
+    risk_flags: string[];
   };
 }
 
@@ -117,13 +115,13 @@ export default function DedicatedFraudRadarPage() {
 
   const filteredRadar = radarList.filter((item) => {
     const matchesSearch =
-      item.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.seller_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.store_subdomain.toLowerCase().includes(searchTerm.toLowerCase());
+      (item.store_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.seller_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.store_subdomain || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     if (riskFilter === 'critical') return matchesSearch && item.health_scorecard.score < 50;
     if (riskFilter === 'at_risk') return matchesSearch && item.health_scorecard.score >= 50 && item.health_scorecard.score < 80;
-    if (riskFilter === 'disposable') return matchesSearch && item.health_scorecard.flags.some((f) => f.includes('Disposable'));
+    if (riskFilter === 'disposable') return matchesSearch && (item.health_scorecard.risk_flags || []).some((f) => f.includes('Disposable'));
     return matchesSearch;
   });
 
@@ -136,7 +134,7 @@ export default function DedicatedFraudRadarPage() {
       `"${item.target_plan}"`,
       `"${item.amount}"`,
       `"${item.health_scorecard.score}"`,
-      `"${item.health_scorecard.flags.join('; ')}"`,
+      `"${(item.health_scorecard.risk_flags || []).join('; ')}"`,
       `"${new Date(item.created_at).toISOString()}"`,
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -198,7 +196,7 @@ export default function DedicatedFraudRadarPage() {
         <div className="p-5 rounded-3xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-1">
           <p className="text-purple-600 font-bold uppercase text-[10px] tracking-wider">Disposable Domains</p>
           <p className="text-2xl font-black text-purple-700 dark:text-purple-300">
-            {radarList.filter((i) => i.health_scorecard.flags.some((f) => f.includes('Disposable'))).length} <span className="text-xs font-normal text-slate-400">emails</span>
+            {radarList.filter((i) => (i.health_scorecard.risk_flags || []).some((f) => f.includes('Disposable'))).length} <span className="text-xs font-normal text-slate-400">emails</span>
           </p>
         </div>
 
@@ -263,10 +261,10 @@ export default function DedicatedFraudRadarPage() {
             <div key={item.id} className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 hover:border-red-400 transition-all">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">{item.store_name}</h3>
-                  <p className="text-slate-400 text-xs font-mono">{item.store_subdomain}.pandamarket.tn</p>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">{item.store_name || 'N/A'}</h3>
+                  <p className="text-slate-400 text-xs font-mono">{item.store_subdomain || 'unknown'}.pandamarket.tn</p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${item.health_scorecard.badgeClass} flex items-center gap-1`}>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${item.health_scorecard.level === 'critical' ? 'bg-red-100 text-red-700' : item.health_scorecard.level === 'at_risk' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} flex items-center gap-1`}>
                   <HeartPulse className="w-3 h-3" /> Score {item.health_scorecard.score}/100
                 </span>
               </div>
@@ -287,7 +285,7 @@ export default function DedicatedFraudRadarPage() {
                   <AlertTriangle className="w-3 h-3" /> Drapeaux de Risque Détectés :
                 </p>
                 <div className="space-y-1">
-                  {item.health_scorecard.flags.map((flag, idx) => (
+                  {(item.health_scorecard.risk_flags || []).map((flag, idx) => (
                     <div key={idx} className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/50 text-red-800 dark:text-red-300 text-[11px] font-bold border border-red-200 dark:border-red-900">
                       • {flag}
                     </div>
