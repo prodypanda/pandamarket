@@ -113,29 +113,9 @@ export default function ComprehensivePlatformAnalyticsPage() {
   };
 
   // Time-series trend fallbacks
-  const revenuePoints = data?.monthly_revenue_trend.length
-    ? data.monthly_revenue_trend
-    : [
-        { month: 'Jan', revenue: 1200 },
-        { month: 'Feb', revenue: 1900 },
-        { month: 'Mar', revenue: 2400 },
-        { month: 'Apr', revenue: 3100 },
-        { month: 'May', revenue: 4500 },
-        { month: 'Jun', revenue: 5200 },
-        { month: 'Jul', revenue: 6800 },
-      ];
+  const revenuePoints = data?.monthly_revenue_trend || [];
 
-  const userGrowthPoints = data?.user_growth_trend.length
-    ? data.user_growth_trend
-    : [
-        { month: 'Jan', count: 45 },
-        { month: 'Feb', count: 88 },
-        { month: 'Mar', count: 140 },
-        { month: 'Apr', count: 210 },
-        { month: 'May', count: 320 },
-        { month: 'Jun', count: 450 },
-        { month: 'Jul', count: 610 },
-      ];
+  const userGrowthPoints = data?.user_growth_trend || [];
 
   const maxRevenue = Math.max(...revenuePoints.map((p) => Number(p.revenue) || 1), 1000);
   const maxUserCount = Math.max(...userGrowthPoints.map((p) => p.count || 1), 100);
@@ -176,31 +156,13 @@ export default function ComprehensivePlatformAnalyticsPage() {
   });
 
   // Radar chart metrics (5 Vectors)
-  const radarMetrics = data?.radar_metrics?.length ? data.radar_metrics : [
-    { label: 'Security', value: 92, angle: 0 },
-    { label: 'Monetization', value: 85, angle: 72 },
-    { label: 'Retention', value: 78, angle: 144 },
-    { label: 'Conversion', value: 82, angle: 216 },
-    { label: 'System Speed', value: 95, angle: 288 },
-  ];
+  const radarMetrics = data?.radar_metrics || [];
 
   // Cohort Heatmap mock matrix
-  const cohortRows = data?.cohort_rows?.length ? data.cohort_rows : [
-    { cohort: 'Jan 2026', size: 120, m1: '100%', m2: '88%', m3: '82%', m4: '79%', m5: '76%', m6: '74%' },
-    { cohort: 'Feb 2026', size: 145, m1: '100%', m2: '90%', m3: '85%', m4: '81%', m5: '78%', m6: '-' },
-    { cohort: 'Mar 2026', size: 180, m1: '100%', m2: '92%', m3: '87%', m4: '84%', m5: '-', m6: '-' },
-    { cohort: 'Apr 2026', size: 210, m1: '100%', m2: '94%', m3: '89%', m4: '-', m5: '-', m6: '-' },
-    { cohort: 'May 2026', size: 260, m1: '100%', m2: '95%', m3: '-', m4: '-', m5: '-', m6: '-' },
-  ];
+  const cohortRows = data?.cohort_rows || [];
 
   // Tunisian Regional Map breakdown
-  const regionalData = data?.regional_data?.length ? data.regional_data : [
-    { region: 'Grand Tunis', stores: 48, percentage: '38%', growth: '+14%' },
-    { region: 'Sousse & Sahel', stores: 32, percentage: '25%', growth: '+18%' },
-    { region: 'Sfax & Sud', stores: 22, percentage: '17%', growth: '+11%' },
-    { region: 'Cap Bon (Nabeul)', stores: 14, percentage: '11%', growth: '+22%' },
-    { region: 'Bizerte & Nord', stores: 12, percentage: '9%', growth: '+8%' },
-  ];
+  const regionalData = data?.regional_data || [];
 
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
