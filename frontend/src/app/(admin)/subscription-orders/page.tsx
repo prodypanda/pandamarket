@@ -1624,7 +1624,10 @@ export default function SubscriptionOrdersPage() {
                         {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
-                    <th className="px-4 py-4 text-right">Inline Actions & Power Tools</th>
+                    <th className="px-4 py-4 text-right">
+                      <div>Inline Actions</div>
+                      <div className="text-[10px] opacity-75 font-normal">& Power Tools</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">

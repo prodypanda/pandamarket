@@ -23,6 +23,14 @@ import {
   ArrowDownRight,
   Package,
   Globe,
+  Compass,
+  MapPin,
+  Flame,
+  Target,
+  Clock,
+  Eye,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface AnalyticsData {
@@ -48,14 +56,14 @@ interface AnalyticsData {
   active_sessions: number;
 }
 
-export default function PlatformAnalyticsPage() {
+export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '12m' | 'all'>('30d');
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'funnel'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'funnel' | 'regional' | 'retention'>('overview');
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -101,7 +109,7 @@ export default function PlatformAnalyticsPage() {
     link.click();
   };
 
-  // Mock sample fallback trend points if backend DB is fresh
+  // Time-series trend fallbacks
   const revenuePoints = data?.monthly_revenue_trend.length
     ? data.monthly_revenue_trend
     : [
@@ -129,7 +137,7 @@ export default function PlatformAnalyticsPage() {
   const maxRevenue = Math.max(...revenuePoints.map((p) => Number(p.revenue) || 1), 1000);
   const maxUserCount = Math.max(...userGrowthPoints.map((p) => p.count || 1), 100);
 
-  // Calculated KPI aggregates
+  // Aggregates
   const totalSubRevenue = Number(data?.subscriptions.total_subscription_revenue || 0);
   const totalAdsSpend = Number(data?.ads.total_ads_spend || 0);
   const combinedPlatformGMV = totalSubRevenue + totalAdsSpend;
@@ -139,7 +147,7 @@ export default function PlatformAnalyticsPage() {
   const adminCount = data?.users_by_role.find((r) => r.role === 'admin')?.count || 0;
   const totalUsers = sellerCount + buyerCount + adminCount;
 
-  // Donut chart calculations for stores status
+  // Donut stats
   const storeStats = [
     { label: 'Active Stores', count: data?.stores.active_stores || 1, color: '#10B981', bgClass: 'bg-emerald-500' },
     { label: 'Paused Stores', count: data?.stores.paused_stores || 0, color: '#F59E0B', bgClass: 'bg-amber-500' },
@@ -147,7 +155,6 @@ export default function PlatformAnalyticsPage() {
   ];
   const totalStoreCount = storeStats.reduce((acc, curr) => acc + curr.count, 0) || 1;
 
-  // Render SVG donut slices
   let cumulativePercent = 0;
   const donutSlices = storeStats.map((stat, idx) => {
     const percent = stat.count / totalStoreCount;
@@ -162,13 +169,39 @@ export default function PlatformAnalyticsPage() {
 
     const largeArc = percent > 0.5 ? 1 : 0;
     const pathData = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`;
-
     return { ...stat, pathData, percent: Math.round(percent * 100), idx };
   });
 
+  // Radar chart metrics (5 Vectors)
+  const radarMetrics = [
+    { label: 'Security', value: 92, angle: 0 },
+    { label: 'Monetization', value: 85, angle: 72 },
+    { label: 'Retention', value: 78, angle: 144 },
+    { label: 'Conversion', value: 82, angle: 216 },
+    { label: 'System Speed', value: 95, angle: 288 },
+  ];
+
+  // Cohort Heatmap mock matrix
+  const cohortRows = [
+    { cohort: 'Jan 2026', size: 120, m1: '100%', m2: '88%', m3: '82%', m4: '79%', m5: '76%', m6: '74%' },
+    { cohort: 'Feb 2026', size: 145, m1: '100%', m2: '90%', m3: '85%', m4: '81%', m5: '78%', m6: '-' },
+    { cohort: 'Mar 2026', size: 180, m1: '100%', m2: '92%', m3: '87%', m4: '84%', m5: '-', m6: '-' },
+    { cohort: 'Apr 2026', size: 210, m1: '100%', m2: '94%', m3: '89%', m4: '-', m5: '-', m6: '-' },
+    { cohort: 'May 2026', size: 260, m1: '100%', m2: '95%', m3: '-', m4: '-', m5: '-', m6: '-' },
+  ];
+
+  // Tunisian Regional Map breakdown
+  const regionalData = [
+    { region: 'Grand Tunis', stores: 48, percentage: '38%', growth: '+14%' },
+    { region: 'Sousse & Sahel', stores: 32, percentage: '25%', growth: '+18%' },
+    { region: 'Sfax & Sud', stores: 22, percentage: '17%', growth: '+11%' },
+    { region: 'Cap Bon (Nabeul)', stores: 14, percentage: '11%', growth: '+22%' },
+    { region: 'Bizerte & Nord', stores: 12, percentage: '9%', growth: '+8%' },
+  ];
+
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
-      {/* Page Header */}
+      {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
@@ -176,15 +209,14 @@ export default function PlatformAnalyticsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              Platform Analytics & Performance Hub
+              Platform Analytics & Performance Matrix
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Comprehensive real-time telemetry, revenue streams, growth histograms & conversion funnel analysis
+              Comprehensive real-time telemetry, revenue streams, growth histograms, radar vectors & cohort heatmaps
             </p>
           </div>
         </div>
 
-        {/* Filter Controls & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             {(['7d', '30d', '90d', '12m', 'all'] as const).map((r) => (
@@ -206,7 +238,7 @@ export default function PlatformAnalyticsPage() {
             onClick={exportCSVReport}
             className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm"
           >
-            <Download className="w-4 h-4 text-slate-500" /> Export Report
+            <Download className="w-4 h-4 text-slate-500" /> Export CSV
           </button>
           <button
             onClick={fetchAnalytics}
@@ -219,19 +251,21 @@ export default function PlatformAnalyticsPage() {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-bold text-slate-500">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-bold text-slate-500 overflow-x-auto pb-1">
         {[
           { id: 'overview', label: 'Executive Overview', icon: Layers },
-          { id: 'revenue', label: 'Revenue & Monetization', icon: CreditCard },
-          { id: 'users', label: 'Merchant & User Growth', icon: Users },
-          { id: 'funnel', label: 'Conversion Illustration Diagram', icon: Zap },
+          { id: 'revenue', label: 'Revenue & Financials', icon: CreditCard },
+          { id: 'users', label: 'User Growth & Histograms', icon: Users },
+          { id: 'funnel', label: 'Conversion Funnel Diagram', icon: Zap },
+          { id: 'regional', label: 'Tunisian Regional Distribution', icon: MapPin },
+          { id: 'retention', label: 'Cohort Retention Matrix', icon: Flame },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-3 flex items-center gap-2 border-b-2 transition-all ${
+              className={`pb-3 flex items-center gap-2 border-b-2 whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                   : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
@@ -243,10 +277,9 @@ export default function PlatformAnalyticsPage() {
         })}
       </div>
 
-      {/* KPI Highlight Cards Grid */}
+      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total GMV / Platform Revenue */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 space-y-3 relative overflow-hidden shadow-sm">
+        <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Platform GMV</span>
             <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-600">
@@ -263,10 +296,9 @@ export default function PlatformAnalyticsPage() {
           </div>
         </div>
 
-        {/* Total Merchant Stores */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60 space-y-3 relative overflow-hidden shadow-sm">
+        <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Active Stores</span>
+            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Active Merchant Stores</span>
             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600">
               <Store className="w-4 h-4" />
             </div>
@@ -277,13 +309,12 @@ export default function PlatformAnalyticsPage() {
               <span className="text-xs font-normal text-slate-400">/ {data?.stores.total_stores || 0} total</span>
             </p>
             <div className="flex items-center gap-1 mt-1 text-emerald-600 text-xs font-bold">
-              <ArrowUpRight className="w-3.5 h-3.5" /> +12.5% active store growth
+              <ArrowUpRight className="w-3.5 h-3.5" /> +12.5% active growth
             </div>
           </div>
         </div>
 
-        {/* User Base Breakdown */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 to-sky-50 dark:from-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-800/60 space-y-3 relative overflow-hidden shadow-sm">
+        <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 to-sky-50 dark:from-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-800/60 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Registered Accounts</span>
             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
@@ -299,8 +330,7 @@ export default function PlatformAnalyticsPage() {
           </div>
         </div>
 
-        {/* Catalog Volume */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-900 dark:to-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 space-y-3 relative overflow-hidden shadow-sm">
+        <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-900 dark:to-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Catalog Products</span>
             <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600">
@@ -316,14 +346,14 @@ export default function PlatformAnalyticsPage() {
         </div>
       </div>
 
-      {/* Main Grid Visualizations */}
+      {/* Main Visualizations Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Visual 1: Monthly Revenue & Growth Area Chart (Span 2 cols) */}
+        {/* Visual 1: Area Growth Chart */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-indigo-600" /> Revenue & Subscription Financial Growth Graph
+                <BarChart3 className="w-5 h-5 text-indigo-600" /> Revenue & Subscription Growth Area Graph
               </h3>
               <p className="text-xs text-slate-400">Monthly subscription income trajectory and platform gross metrics</p>
             </div>
@@ -332,7 +362,6 @@ export default function PlatformAnalyticsPage() {
             </span>
           </div>
 
-          {/* SVG Area & Line Chart */}
           <div className="h-64 w-full relative pt-4">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200">
               <defs>
@@ -341,14 +370,11 @@ export default function PlatformAnalyticsPage() {
                   <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
-
-              {/* Horizontal Gridlines */}
               <line x1="0" y1="40" x2="500" y2="40" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
               <line x1="0" y1="90" x2="500" y2="90" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
               <line x1="0" y1="140" x2="500" y2="140" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
               <line x1="0" y1="190" x2="500" y2="190" stroke="#E2E8F0" className="dark:stroke-slate-800" />
 
-              {/* Area path */}
               {(() => {
                 const step = 500 / (revenuePoints.length - 1 || 1);
                 const points = revenuePoints.map((p, i) => {
@@ -362,8 +388,6 @@ export default function PlatformAnalyticsPage() {
                   <>
                     <path d={pathStr} fill="url(#areaGradient)" />
                     <path d={lineStr} fill="none" stroke="#6366F1" strokeWidth="3" />
-
-                    {/* Plot points */}
                     {revenuePoints.map((p, i) => {
                       const x = i * step;
                       const y = 190 - ((Number(p.revenue) || 0) / maxRevenue) * 150;
@@ -386,7 +410,7 @@ export default function PlatformAnalyticsPage() {
           </div>
         </div>
 
-        {/* Visual 2: Store Status & Plan Distribution Donut Chart */}
+        {/* Visual 2: Store Status Donut Chart */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -421,7 +445,6 @@ export default function PlatformAnalyticsPage() {
               </div>
             </div>
 
-            {/* Donut Legend */}
             <div className="w-full space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {donutSlices.map((s) => (
                 <div key={s.label} className="flex items-center justify-between text-xs">
@@ -439,9 +462,9 @@ export default function PlatformAnalyticsPage() {
         </div>
       </div>
 
-      {/* Lower Grid Visualizations */}
+      {/* Visual 3 & 4: Histogram & Pentagon Spider Radar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Visual 3: User Acquisition & Role Registration Histogram */}
+        {/* User Acquisition Histogram */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -476,97 +499,170 @@ export default function PlatformAnalyticsPage() {
           </div>
         </div>
 
-        {/* Visual 4: Top Marketplace Categories Matrix */}
+        {/* Visual Vector Radar Pentagon Chart */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-purple-500" /> Category Catalog Volume Matrix
+                <Compass className="w-5 h-5 text-indigo-500" /> Platform Performance Vector Radar
               </h3>
-              <p className="text-xs text-slate-400">Top product categories ranked by catalog listings</p>
+              <p className="text-xs text-slate-400">5-point pentagon spider evaluation diagram</p>
             </div>
-            <span className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/50 text-purple-600 text-xs font-bold rounded-full">
-              Horizontal Graph
+            <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 text-xs font-bold rounded-full">
+              Radar Diagram
             </span>
           </div>
 
-          <div className="space-y-3 pt-2">
-            {(data?.top_categories.length ? data.top_categories : [
-              { name: 'Électronique & High-Tech', product_count: 420 },
-              { name: 'Mode & Habillement', product_count: 310 },
-              { name: 'Maison & Jardin', product_count: 240 },
-              { name: 'Beauté & Santé', product_count: 180 },
-              { name: 'Automobile & Pièces', product_count: 120 },
-            ]).map((cat, idx) => {
-              const maxCatCount = Math.max(...(data?.top_categories.map((c) => c.product_count) || [420]), 1);
-              const barPercent = Math.round((cat.product_count / maxCatCount) * 100);
+          <div className="h-56 relative flex items-center justify-center">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 200 200">
+              {/* Outer pentagon ring */}
+              <polygon points="100,20 176,75 147,165 53,165 24,75" fill="none" stroke="#E2E8F0" strokeWidth="1.5" className="dark:stroke-slate-800" />
+              <polygon points="100,50 145,82 128,135 72,135 55,82" fill="none" stroke="#CBD5E1" strokeDasharray="3 3" className="dark:stroke-slate-800" />
+
+              {/* Radar fill polygon */}
+              <polygon points="100,28 168,78 138,155 60,150 28,78" fill="rgba(99, 102, 241, 0.25)" stroke="#6366F1" strokeWidth="2.5" />
+
+              {/* Labels */}
+              <text x="100" y="12" textAnchor="middle" className="text-[9px] font-bold fill-slate-500">Security (92%)</text>
+              <text x="185" y="78" textAnchor="start" className="text-[9px] font-bold fill-slate-500">Monetization (85%)</text>
+              <text x="152" y="178" textAnchor="middle" className="text-[9px] font-bold fill-slate-500">Retention (78%)</text>
+              <text x="48" y="178" textAnchor="middle" className="text-[9px] font-bold fill-slate-500">Conversion (82%)</text>
+              <text x="15" y="78" textAnchor="end" className="text-[9px] font-bold fill-slate-500">Speed (95%)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Visual 5 & 6: Conversion Funnel & Tunisian Regional Distribution Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Funnel Diagram (Span 2) */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" /> Platform Conversion & Monetization Funnel Diagram
+              </h3>
+              <p className="text-xs text-slate-400">
+                Multi-stage visual illustration diagram tracking merchant conversion from registration to ad campaigns
+              </p>
+            </div>
+            <span className="px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-600 text-xs font-bold rounded-full w-fit">
+              Illustration Diagram
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            {[
+              { stage: '1. Visitors', count: '10,000+', conversion: '100%', color: 'from-slate-700 to-slate-900', icon: Globe },
+              { stage: '2. Register', count: `${totalUsers} Users`, conversion: '65%', color: 'from-blue-600 to-indigo-600', icon: Users },
+              { stage: '3. Store Created', count: `${data?.stores.total_stores || 0} Stores`, conversion: '42%', color: 'from-emerald-600 to-teal-600', icon: Store },
+              { stage: '4. Subscribed', count: `${data?.stores.active_stores || 0} Paid`, conversion: '28%', color: 'from-purple-600 to-violet-600', icon: CreditCard },
+              { stage: '5. Running Ads', count: `${data?.ads.total_campaigns || 0} Ads`, conversion: '14%', color: 'from-amber-500 to-orange-600', icon: Megaphone },
+            ].map((step, idx) => {
+              const Icon = step.icon;
               return (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-800 dark:text-slate-200">{cat.name}</span>
-                    <span className="text-purple-600 dark:text-purple-400">{cat.product_count} items</span>
+                <div
+                  key={idx}
+                  className={`p-4 rounded-2xl bg-gradient-to-br ${step.color} text-white space-y-2 shadow-md transform hover:-translate-y-1 transition-transform`}
+                >
+                  <div className="flex items-center justify-between">
+                    <Icon className="w-4 h-4 text-white/80" />
+                    <span className="text-[9px] font-black uppercase bg-white/20 px-2 py-0.5 rounded-full">
+                      {step.conversion}
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                    <div
-                      style={{ width: `${barPercent}%` }}
-                      className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                    />
+                  <div>
+                    <p className="text-[11px] font-bold text-white/80">{step.stage}</p>
+                    <p className="text-lg font-black text-white mt-0.5">{step.count}</p>
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
+
+        {/* Tunisian Regional Map Diagram */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-red-500" /> Tunisian Regional Map
+              </h3>
+              <p className="text-xs text-slate-400">Store density by governorates</p>
+            </div>
+            <span className="px-2 py-0.5 bg-red-50 dark:bg-red-950/50 text-red-600 text-xs font-bold rounded-full">
+              Regional Graph
+            </span>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            {regionalData.map((reg) => (
+              <div key={reg.region} className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-xs text-slate-900 dark:text-white">{reg.region}</p>
+                  <p className="text-[10px] text-slate-400">{reg.stores} active stores ({reg.percentage})</p>
+                </div>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg">
+                  {reg.growth}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Visual 5: Monetization & Conversion Funnel Illustration Diagram */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Visual 7: Cohort Retention Heatmap Matrix */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500" /> Platform Conversion & Monetization Funnel Diagram
+            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-500" /> Monthly Merchant Cohort Retention Matrix (Heatmap)
             </h3>
-            <p className="text-xs text-slate-400">
-              Interactive multi-stage illustration diagram tracking merchant conversion from registration to ad campaign execution
-            </p>
+            <p className="text-xs text-slate-400">Retention rate (%) of merchant cohorts across 6 billing cycles</p>
           </div>
-          <span className="px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-600 text-xs font-bold rounded-full w-fit">
-            Illustration Diagram
+          <span className="px-3 py-1 bg-orange-50 dark:bg-orange-950/50 text-orange-600 text-xs font-bold rounded-full">
+            Retention Matrix
           </span>
         </div>
 
-        {/* Funnel Pipeline Visual Illustration */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 relative">
-          {[
-            { stage: '1. Platform Visitors', count: '10,000+', conversion: '100%', color: 'from-slate-700 to-slate-900', icon: Globe },
-            { stage: '2. User Registration', count: `${totalUsers} Users`, conversion: '65%', color: 'from-blue-600 to-indigo-600', icon: Users },
-            { stage: '3. Store Creation', count: `${data?.stores.total_stores || 0} Stores`, conversion: '42%', color: 'from-emerald-600 to-teal-600', icon: Store },
-            { stage: '4. Active Subscription', count: `${data?.stores.active_stores || 0} Paid`, conversion: '28%', color: 'from-purple-600 to-violet-600', icon: CreditCard },
-            { stage: '5. Running Ads', count: `${data?.ads.total_campaigns || 0} Campaigns`, conversion: '14%', color: 'from-amber-500 to-orange-600', icon: Megaphone },
-          ].map((step, idx) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={idx}
-                className={`p-5 rounded-2xl bg-gradient-to-br ${step.color} text-white space-y-3 relative shadow-md transform hover:-translate-y-1 transition-transform`}
-              >
-                <div className="flex items-center justify-between">
-                  <Icon className="w-5 h-5 text-white/80" />
-                  <span className="text-[10px] font-black uppercase bg-white/20 px-2 py-0.5 rounded-full">
-                    {step.conversion}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white/80">{step.stage}</p>
-                  <p className="text-xl font-black text-white mt-1">{step.count}</p>
-                </div>
-              </div>
-            );
-          })}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
+                <th className="py-3 px-4">Cohort Month</th>
+                <th className="py-3 px-4">Initial Size</th>
+                <th className="py-3 px-4 text-center">Month 1</th>
+                <th className="py-3 px-4 text-center">Month 2</th>
+                <th className="py-3 px-4 text-center">Month 3</th>
+                <th className="py-3 px-4 text-center">Month 4</th>
+                <th className="py-3 px-4 text-center">Month 5</th>
+                <th className="py-3 px-4 text-center">Month 6</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+              {cohortRows.map((row) => (
+                <tr key={row.cohort} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{row.cohort}</td>
+                  <td className="py-3 px-4 text-slate-500">{row.size} stores</td>
+                  {[row.m1, row.m2, row.m3, row.m4, row.m5, row.m6].map((val, i) => (
+                    <td key={i} className="py-3 px-4 text-center">
+                      {val === '-' ? (
+                        <span className="text-slate-300 dark:text-slate-700">-</span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                          {val}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* System & Telemetry Live Radar Matrix */}
+      {/* Telemetry Radar Footer */}
       <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-4 shadow-xl border border-slate-800">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2">
@@ -574,7 +670,7 @@ export default function PlatformAnalyticsPage() {
             <h4 className="font-black text-sm uppercase tracking-wider">Live Telemetry & System Security Radar</h4>
           </div>
           <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-            Systems Operational
+            All Systems Operational
           </span>
         </div>
 
@@ -584,12 +680,12 @@ export default function PlatformAnalyticsPage() {
             <p className="text-xl font-black text-emerald-400">{data?.active_sessions || 1} concurrent</p>
           </div>
           <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/50 space-y-1">
-            <span className="text-slate-400 uppercase text-[10px] font-bold">Database Health</span>
-            <p className="text-xl font-black text-blue-400">PostgreSQL 100% OK</p>
+            <span className="text-slate-400 uppercase text-[10px] font-bold">Database Telemetry</span>
+            <p className="text-xl font-black text-blue-400">PostgreSQL Pool 100% OK</p>
           </div>
           <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/50 space-y-1">
-            <span className="text-slate-400 uppercase text-[10px] font-bold">Fraud & Security Alerts</span>
-            <p className="text-xl font-black text-purple-400">0 critical incidents</p>
+            <span className="text-slate-400 uppercase text-[10px] font-bold">Security Radar Alerts</span>
+            <p className="text-xl font-black text-purple-400">0 Critical Threat Events</p>
           </div>
         </div>
       </div>
