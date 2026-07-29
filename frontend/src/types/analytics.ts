@@ -1,11 +1,35 @@
 /**
- * Frontend Superadmin Platform Analytics TypeScript Contracts — Clean & Truthful Schema
+ * Frontend Superadmin Platform Analytics TypeScript Contracts — Time Range & Truthful Schema
  */
 
 export type AnalyticsTimeRange = '7d' | '30d' | '90d' | '12m' | 'all';
 export type AnalyticsCurrency = 'TND' | 'USD' | 'EUR';
 
+export interface NormalizedAnalyticsRange {
+  timeRange: AnalyticsTimeRange;
+  startDate: string | null;
+  endDate: string;
+  previousStartDate: string | null;
+  previousEndDate: string | null;
+  isAllTime: boolean;
+  comparison_available: boolean;
+}
+
+export interface MetricScopeMetadata {
+  active_stores: 'current_state';
+  total_stores: 'current_state';
+  total_users: 'current_state';
+  active_sessions: 'current_state';
+  gmv: 'selected_period';
+  revenue: 'selected_period';
+  orders: 'selected_period';
+  new_users: 'selected_period';
+  new_stores: 'selected_period';
+}
+
 export interface PlatformOverviewData {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
   financials: {
     total_gmv: number;
     marketplace_order_gmv: number;
@@ -18,19 +42,26 @@ export interface PlatformOverviewData {
     requested_currency: string;
     currency_conversion_available: boolean;
     gmv_source_note: string;
-    gmv_growth_mom: string | null;
+    gmv_growth_pct: number | null;
+    net_revenue_growth_pct: number | null;
+    orders_growth_pct: number | null;
+    growth_notes?: string;
   };
   stores: {
     total_stores: number;
     active_stores: number;
     paused_stores: number;
     suspended_stores: number;
+    new_stores_in_period: number;
+    new_stores_growth_pct: number | null;
   };
   users: {
     total_users: number;
     sellers: number;
     buyers: number;
     admins: number;
+    new_users_in_period: number;
+    new_users_growth_pct: number | null;
   };
   active_sessions: number;
   monthly_revenue_trend: Array<{ month: string; revenue: number }>;
@@ -38,6 +69,8 @@ export interface PlatformOverviewData {
 }
 
 export interface PlatformRevenueData {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
   saas_metrics: {
     total_mrr_tnd: number;
     total_arr_tnd: number;
@@ -76,6 +109,8 @@ export interface PlatformRevenueData {
 }
 
 export interface PlatformVendorData {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
   top_performing_vendors: Array<{
     id: string;
     name: string;
@@ -98,6 +133,8 @@ export interface PlatformVendorData {
 }
 
 export interface PlatformAdsData {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
   ads_financials: {
     total_ad_revenue_tnd: number;
     total_campaigns: number;
@@ -105,6 +142,7 @@ export interface PlatformAdsData {
     currency: 'TND';
     requested_currency: string;
     currency_conversion_available: boolean;
+    ad_revenue_growth_pct: number | null;
   };
   performance_metrics: {
     total_impressions: number;
@@ -119,6 +157,8 @@ export interface PlatformAdsData {
 }
 
 export interface PlatformSystemData {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
   server_telemetry: {
     status: 'healthy' | 'unknown';
     uptime_pct: number | null;
@@ -137,6 +177,7 @@ export interface PlatformSystemData {
   database_health: {
     active_connections: number | null;
     logs_24h: number;
+    logs_in_period: number;
     index_hit_ratio_pct: number | null;
     database_pool_metrics_available: boolean;
   };

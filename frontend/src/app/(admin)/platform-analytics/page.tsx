@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Layers,
   ArrowUpRight,
+  ArrowDownRight,
+  Minus,
   Activity,
   Flame,
   AlertTriangle,
@@ -24,6 +26,7 @@ import {
   Lock,
   FileText,
   Zap,
+  Calendar,
 } from 'lucide-react';
 import {
   AnalyticsTimeRange,
@@ -61,15 +64,13 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
   // Lazy Tab Data Fetcher
   const fetchTabData = useCallback(
-    async (tab: 'overview' | 'financials' | 'vendors' | 'ads' | 'system', forceRefresh: boolean = false) => {
+    async (tab: 'overview' | 'financials' | 'vendors' | 'ads' | 'system', _forceRefresh: boolean = false) => {
       setTabLoading((prev) => ({ ...prev, [tab]: true }));
       setTabError((prev) => ({ ...prev, [tab]: '' }));
 
       const params = new URLSearchParams({ timeRange, currency }).toString();
-      let endpoint = `/api/pd/admin/analytics/${tab}`;
+      let endpoint = `/api/pd/admin/analytics/${tab}?${params}`;
       if (tab === 'financials') endpoint = `/api/pd/admin/analytics/revenue?${params}`;
-      else if (tab === 'system') endpoint = `/api/pd/admin/analytics/system`;
-      else endpoint = `${endpoint}?${params}`;
 
       try {
         const res = await fetchWithCsrf(endpoint, { credentials: 'include' });
@@ -93,7 +94,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
     [timeRange, currency]
   );
 
-  // Load Overview initially or on filter change
+  // Load active tab data initially or on filter change
   useEffect(() => {
     fetchTabData(activeTab, true);
   }, [activeTab, timeRange, currency, fetchTabData]);
@@ -117,6 +118,31 @@ export default function ComprehensivePlatformAnalyticsPage() {
     } catch {
       alert('Failed to generate export file.');
     }
+  };
+
+  const renderGrowthBadge = (growthPct: number | null | undefined, label: string = 'Growth') => {
+    if (growthPct === null || growthPct === undefined) {
+      return <span className="text-slate-400 font-normal">{label}: Unavailable</span>;
+    }
+    if (growthPct > 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-bold">
+          <ArrowUpRight className="w-3.5 h-3.5" /> +{growthPct}%
+        </span>
+      );
+    }
+    if (growthPct < 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-bold">
+          <ArrowDownRight className="w-3.5 h-3.5" /> {growthPct}%
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-0.5 text-slate-500 font-bold">
+        <Minus className="w-3.5 h-3.5" /> 0.00%
+      </span>
+    );
   };
 
   // Overview Helpers
@@ -146,6 +172,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
     const pathData = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`;
     return { ...stat, pathData, percent: Math.round(percent * 100), idx };
   });
+
+  const activeRange = overviewData?.range || revenueData?.range || vendorData?.range || adsData?.range || systemData?.range;
 
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
@@ -214,6 +242,28 @@ export default function ComprehensivePlatformAnalyticsPage() {
           </button>
         </div>
       </div>
+
+      {/* Normalized Time Range Metadata Bar */}
+      {activeRange && (
+        <div className="px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-indigo-500" />
+            {activeRange.isAllTime ? (
+              <span>Showing all-time platform data</span>
+            ) : (
+              <span>
+                Showing data from <strong className="text-slate-900 dark:text-white">{new Date(activeRange.startDate!).toLocaleDateString()}</strong> to <strong className="text-slate-900 dark:text-white">{new Date(activeRange.endDate).toLocaleDateString()}</strong>
+              </span>
+            )}
+          </div>
+
+          {activeRange.comparison_available && activeRange.previousStartDate && activeRange.previousEndDate && (
+            <span className="text-[11px] text-slate-500">
+              Compared with previous period ({new Date(activeRange.previousStartDate).toLocaleDateString()} to {new Date(activeRange.previousEndDate).toLocaleDateString()})
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Conversion Warning Badge when USD/EUR selected */}
       {currency !== 'TND' && (
@@ -289,12 +339,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   {(overviewData?.financials.total_gmv || 0).toLocaleString()}{' '}
                   <span className="text-xs font-normal text-slate-500">TND</span>
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-slate-500 text-xs font-bold">
-                  {overviewData?.financials.gmv_growth_mom ? (
-                    <span className="text-emerald-600 flex items-center gap-0.5"><ArrowUpRight className="w-3.5 h-3.5" /> {overviewData.financials.gmv_growth_mom}</span>
-                  ) : (
-                    <span className="text-slate-400 font-normal">Growth: Unavailable</span>
-                  )}
+                <div className="flex items-center gap-1 mt-1 text-xs font-bold">
+                  {renderGrowthBadge(overviewData?.financials.gmv_growth_pct, 'GMV PoP')}
                 </div>
               </div>
             </div>
@@ -311,8 +357,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   {(overviewData?.financials.net_revenue || 0).toLocaleString()}{' '}
                   <span className="text-xs font-normal text-slate-500">TND</span>
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-slate-500 text-xs font-bold">
-                  <span className="text-slate-400 font-normal">Captured platform income</span>
+                <div className="flex items-center gap-1 mt-1 text-xs font-bold">
+                  {renderGrowthBadge(overviewData?.financials.net_revenue_growth_pct, 'Rev PoP')}
                 </div>
               </div>
             </div>
@@ -345,8 +391,9 @@ export default function ComprehensivePlatformAnalyticsPage() {
                   {overviewData?.stores.active_stores || 0}{' '}
                   <span className="text-xs font-normal text-slate-400">/ {overviewData?.stores.total_stores || 0}</span>
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-blue-600 text-xs font-bold">
-                  <Activity className="w-3.5 h-3.5" /> Live active tenants
+                <div className="flex items-center gap-1 mt-1 text-xs">
+                  <span className="text-slate-500">New in period: <strong>{overviewData?.stores.new_stores_in_period || 0}</strong></span>
+                  {renderGrowthBadge(overviewData?.stores.new_stores_growth_pct, 'Stores')}
                 </div>
               </div>
             </div>
@@ -360,10 +407,9 @@ export default function ComprehensivePlatformAnalyticsPage() {
               </div>
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{overviewData?.users.total_users || 0}</p>
-                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 mt-1 gap-1 font-semibold">
-                  <span>Vendors: <strong className="text-slate-900 dark:text-white">{overviewData?.users.sellers || 0}</strong></span>
-                  <span>Buyers: <strong className="text-slate-900 dark:text-white">{overviewData?.users.buyers || 0}</strong></span>
-                  <span>Admins: <strong className="text-slate-900 dark:text-white">{overviewData?.users.admins || 0}</strong></span>
+                <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
+                  <span>New in period: <strong>{overviewData?.users.new_users_in_period || 0}</strong></span>
+                  {renderGrowthBadge(overviewData?.users.new_users_growth_pct, 'Users')}
                 </div>
               </div>
             </div>
@@ -374,7 +420,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Real-Time Monthly Revenue Trajectory
+                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Revenue Trajectory in Selected Period
                   </h3>
                   <p className="text-xs text-slate-400">Captured subscription & marketplace income from PostgreSQL tables</p>
                 </div>
@@ -383,7 +429,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
               <div className="h-64 w-full relative pt-4">
                 {monthlyRevenuePoints.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-xs font-bold text-slate-400">
-                    No monthly revenue transactions recorded yet.
+                    No monthly revenue transactions recorded in selected range.
                   </div>
                 ) : (
                   <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200">
@@ -611,7 +657,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
             {/* Funnel */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-500" /> Vendor Onboarding Funnel
+                <Zap className="w-5 h-5 text-amber-500" /> Vendor Onboarding Funnel (In Period)
               </h3>
               <div className="space-y-3">
                 {(vendorData?.activation_funnel || []).map((step, idx) => (
@@ -634,15 +680,18 @@ export default function ComprehensivePlatformAnalyticsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] text-purple-600 font-black uppercase">Ad Revenue Share</span>
+              <span className="text-[10px] text-purple-600 font-black uppercase">Ad Revenue Share in Period</span>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
                 {(adsData?.ads_financials.total_ad_revenue_tnd || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">TND</span>
               </p>
-              <span className="text-xs text-slate-500 font-semibold">{adsData?.ads_financials.active_campaigns || 0} active campaigns</span>
+              <div className="flex items-center gap-1 text-xs">
+                <span>{adsData?.ads_financials.active_campaigns || 0} active campaigns</span>
+                {renderGrowthBadge(adsData?.ads_financials.ad_revenue_growth_pct, 'Ad Rev')}
+              </div>
             </div>
 
             <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-              <span className="text-[10px] text-blue-600 font-black uppercase">Impressions & Clicks</span>
+              <span className="text-[10px] text-blue-600 font-black uppercase">Impressions & Clicks in Period</span>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
                 {(adsData?.performance_metrics.total_impressions || 0).toLocaleString()}
               </p>
@@ -674,10 +723,10 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
             <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">
               <div className="flex items-center gap-2 text-blue-400 text-xs font-bold">
-                <Server className="w-4 h-4" /> Database 24h Log Events
+                <Server className="w-4 h-4" /> Database Log Events
               </div>
-              <p className="text-3xl font-black">{systemData?.database_health.logs_24h || 0} events</p>
-              <p className="text-xs text-slate-400">DB Pool Connections: {systemData?.database_health.active_connections !== null ? systemData?.database_health.active_connections : 'Unavailable'}</p>
+              <p className="text-3xl font-black">{systemData?.database_health.logs_in_period || 0} events</p>
+              <p className="text-xs text-slate-400">24h Logs: {systemData?.database_health.logs_24h || 0} | DB Pool: {systemData?.database_health.active_connections !== null ? systemData?.database_health.active_connections : 'Unavailable'}</p>
             </div>
 
             <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-2 shadow-lg border border-slate-800">

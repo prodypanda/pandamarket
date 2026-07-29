@@ -4826,9 +4826,9 @@ router.get(
   '/analytics/system',
   requireAuth,
   requireAdmin,
-  asyncHandler(async (_req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const data = await analyticsService.getSystemHealthMetrics();
+    const data = await analyticsService.getSystemHealthMetrics(req.query);
     res.status(200).json({ success: true, data });
   }),
 );
@@ -4839,7 +4839,7 @@ router.post(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const csvContent = await analyticsService.generateExportCSV(req.body?.type || 'overview');
+    const csvContent = await analyticsService.generateExportCSV(req.body || {});
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=platform_analytics_report.csv');
     res.status(200).send(csvContent);
