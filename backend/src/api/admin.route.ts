@@ -4623,6 +4623,112 @@ router.get(
   }),
 );
 
+router.get(
+  '/platform-analytics',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { query } = await import('../db/pool');
+
+    const [
+      storesRes,
+      usersRes,
+      subRevenueRes,
+      adsSpendRes,
+      productsRes,
+      topCategoriesRes,
+      userGrowthRes,
+      monthlyRevenueRes,
+      activeSessionsRes
+    ] = await Promise.all([
+      query(`
+        SELECT 
+          COUNT(*)::int AS total_stores,
+          COUNT(*) FILTER (WHERE is_active = true AND (subscription_status = 'active' OR subscription_status IS NULL))::int AS active_stores,
+          COUNT(*) FILTER (WHERE subscription_status = 'paused')::int AS paused_stores,
+          COUNT(*) FILTER (WHERE subscription_status = 'suspended' OR is_active = false)::int AS suspended_stores
+        FROM pd_store
+      `).catch(() => ({ rows: [{ total_stores: 0, active_stores: 0, paused_stores: 0, suspended_stores: 0 }] })),
+      
+      query(`
+        SELECT 
+          role,
+          COUNT(*)::int AS count
+        FROM pd_user
+        GROUP BY role
+      `).catch(() => ({ rows: [] })),
+
+      query(`
+        SELECT 
+          COALESCE(SUM(amount), 0)::numeric AS total_subscription_revenue,
+          COUNT(*)::int AS total_subscription_orders
+        FROM pd_subscription_intent
+        WHERE status IN ('approved', 'captured', 'paid', 'completed')
+      `).catch(() => ({ rows: [{ total_subscription_revenue: 0, total_subscription_orders: 0 }] })),
+
+      query(`
+        SELECT 
+          COALESCE(SUM(spent_amount), 0)::numeric AS total_ads_spend,
+          COUNT(*)::int AS total_campaigns
+        FROM pd_ads_campaign
+      `).catch(() => ({ rows: [{ total_ads_spend: 0, total_campaigns: 0 }] })),
+
+      query(`
+        SELECT COUNT(*)::int AS total_products FROM pd_product
+      `).catch(() => ({ rows: [{ total_products: 0 }] })),
+
+      query(`
+        SELECT c.name, COUNT(p.id)::int AS product_count
+        FROM pd_category c
+        LEFT JOIN pd_product p ON p.category_id = c.id
+        GROUP BY c.id, c.name
+        ORDER BY product_count DESC
+        LIMIT 6
+      `).catch(() => ({ rows: [] })),
+
+      query(`
+        SELECT 
+          TO_CHAR(created_at, 'YYYY-MM') AS month,
+          COUNT(*)::int AS count
+        FROM pd_user
+        WHERE created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY month
+        ORDER BY month ASC
+      `).catch(() => ({ rows: [] })),
+
+      query(`
+        SELECT 
+          TO_CHAR(created_at, 'YYYY-MM') AS month,
+          COALESCE(SUM(amount), 0)::numeric AS revenue
+        FROM pd_subscription_intent
+        WHERE status IN ('approved', 'captured', 'paid', 'completed')
+          AND created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY month
+        ORDER BY month ASC
+      `).catch(() => ({ rows: [] })),
+
+      query(`
+        SELECT COUNT(*)::int AS active_sessions FROM pd_user_session WHERE revoked_at IS NULL AND expires_at > NOW()
+      `).catch(() => ({ rows: [{ active_sessions: 0 }] }))
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stores: storesRes.rows[0] || { total_stores: 0, active_stores: 0, paused_stores: 0, suspended_stores: 0 },
+        users_by_role: usersRes.rows,
+        subscriptions: subRevenueRes.rows[0] || { total_subscription_revenue: 0, total_subscription_orders: 0 },
+        ads: adsSpendRes.rows[0] || { total_ads_spend: 0, total_campaigns: 0 },
+        products_count: productsRes.rows[0]?.total_products || 0,
+        top_categories: topCategoriesRes.rows,
+        user_growth_trend: userGrowthRes.rows,
+        monthly_revenue_trend: monthlyRevenueRes.rows,
+        active_sessions: activeSessionsRes.rows[0]?.active_sessions || 0,
+      }
+    });
+  }),
+);
+
 router.post(
   '/subscription-orders/cron-job',
   requireAuth,

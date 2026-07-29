@@ -23,6 +23,7 @@ import {
   Megaphone,
   FolderOpen,
   StickyNote,
+  LineChart,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -120,6 +121,7 @@ export default function AdminLayout({
       title: t('admin.sidebar.overview') || 'OVERVIEW',
       items: [
         { href: '/dashboard', label: t('admin.sidebar.dashboard') || 'Dashboard', icon: LayoutDashboard },
+        { href: '/platform-analytics', label: t('admin.sidebar.platformAnalytics') || 'Platform Analytics', icon: LineChart },
         { href: '/admin-notes', label: t('admin.sidebar.notesReminders') || 'Notes & Reminders', icon: StickyNote },
       ],
     },
