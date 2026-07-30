@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, Download, RefreshCw, BookOpen, Layers } from 'lucide-react';
+import { TrendingUp, Download, RefreshCw, BookOpen, Layers, HelpCircle } from 'lucide-react';
 import { AnalyticsTimeRange, AnalyticsCurrency } from '@/types/analytics';
 import { SavedViewsDropdown } from './SavedViewsDropdown';
 
@@ -14,6 +14,7 @@ interface PlatformAnalyticsHeaderProps {
   onExport: () => void;
   onOpenDefinitions: () => void;
   onOpenDrilldown: () => void;
+  onOpenHelp?: () => void;
 }
 
 const TIME_RANGE_OPTIONS: AnalyticsTimeRange[] = ['7d', '30d', '90d', '12m', 'all'];
@@ -29,6 +30,7 @@ export function PlatformAnalyticsHeader({
   onExport,
   onOpenDefinitions,
   onOpenDrilldown,
+  onOpenHelp,
 }: PlatformAnalyticsHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -99,7 +101,18 @@ export function PlatformAnalyticsHeader({
           }}
         />
 
-        {/* Metric Definitions & Drilldown Buttons */}
+        {/* Metric Definitions & Help Buttons */}
+        {onOpenHelp && (
+          <button
+            onClick={onOpenHelp}
+            title="Open Onboarding Guide & Infrastructure Health"
+            className="px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-1.5 shadow-sm transition-all"
+          >
+            <HelpCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Guide</span>
+          </button>
+        )}
+
         <button
           onClick={onOpenDefinitions}
           title="View Metric Definitions & Formulas"

@@ -4,7 +4,7 @@
 
 export type AnalyticsTimeRange = '7d' | '30d' | '90d' | '12m' | 'all';
 export type AnalyticsCurrency = 'TND' | 'USD' | 'EUR';
-export type AnalyticsTabID = 'overview' | 'financials' | 'vendors' | 'ads' | 'system' | 'business' | 'intelligence';
+export type AnalyticsTabID = 'overview' | 'financials' | 'vendors' | 'ads' | 'system' | 'business' | 'intelligence' | 'governance';
 
 export interface AnalyticsFilterParams {
   timeRange?: AnalyticsTimeRange;
@@ -589,4 +589,100 @@ export interface ReportExecutionResultDTO {
   };
   csv_content?: string;
 }
+
+// ==========================================================
+// Part 8: Production Hardening DTOs
+// ==========================================================
+
+export interface AnalyticsCacheMetaDTO {
+  hit: boolean;
+  key: string;
+  ttl_seconds: number;
+  generated_at: string;
+  data_source?: 'rollup' | 'raw' | 'mixed';
+}
+
+export interface AnalyticsRetentionStatusDTO {
+  raw_event_retention_days: number;
+  rollup_retention_days: number;
+  snapshot_retention_days: number;
+  oldest_raw_event_at: string | null;
+  newest_raw_event_at: string | null;
+  raw_event_count: number;
+  estimated_events_expired: number;
+  last_cleanup_at: string | null;
+}
+
+export interface AnalyticsRetentionCleanupInput {
+  dryRun?: boolean;
+  batchSize?: number;
+}
+
+export interface AnalyticsRetentionCleanupResultDTO {
+  dry_run: boolean;
+  deleted_events: number;
+  retention_days: number;
+  cutoff: string;
+  execution_time_ms: number;
+}
+
+export interface RollupsRecomputeInput {
+  startDate: string;
+  endDate: string;
+  includeSearch?: boolean;
+  includeEvents?: boolean;
+}
+
+export interface RollupsRecomputeResultDTO {
+  start_date: string;
+  end_date: string;
+  days_processed: number;
+  event_rollups_inserted: number;
+  search_rollups_inserted: number;
+  execution_time_ms: number;
+}
+
+export type CacheInvalidationScope =
+  | 'all'
+  | 'overview'
+  | 'business'
+  | 'events'
+  | 'drilldowns'
+  | 'intelligence'
+  | 'saved_views';
+
+export interface CacheInvalidateInput {
+  scope?: CacheInvalidationScope;
+}
+
+export interface CacheInvalidateResultDTO {
+  scope: CacheInvalidationScope;
+  cleared_keys_count: number;
+  timestamp: string;
+}
+
+export interface AnalyticsHealthDTO {
+  status: 'healthy' | 'degraded';
+  raw_events: {
+    count_24h: number;
+    latest_event_at: string | null;
+  };
+  rollups: {
+    latest_event_rollup_date: string | null;
+    latest_search_rollup_date: string | null;
+  };
+  cache: {
+    available: boolean;
+    latency_ms: number | null;
+  };
+  scheduled_reports: {
+    active_count: number;
+    overdue_count: number;
+  };
+  retention: {
+    expired_events_estimate: number;
+  };
+  warnings: string[];
+}
+
 

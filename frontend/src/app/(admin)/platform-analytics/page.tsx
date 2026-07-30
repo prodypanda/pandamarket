@@ -35,8 +35,11 @@ import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/Vendo
 import { AdsAnalyticsTab } from '@/components/admin/platform-analytics/AdsAnalyticsTab';
 import { SystemAnalyticsTab } from '@/components/admin/platform-analytics/SystemAnalyticsTab';
 import { BusinessAnalyticsTab } from '@/components/admin/platform-analytics/BusinessAnalyticsTab';
+import { IntelligenceTab } from '@/components/admin/platform-analytics/IntelligenceTab';
+import { GovernanceTab } from '@/components/admin/platform-analytics/GovernanceTab';
 import { MetricDefinitionsModal } from '@/components/admin/platform-analytics/MetricDefinitionsModal';
 import { AnalyticsDrilldownModal } from '@/components/admin/platform-analytics/AnalyticsDrilldownModal';
+import { AnalyticsHelpPanel } from '@/components/admin/platform-analytics/AnalyticsHelpPanel';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
@@ -44,9 +47,51 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const [currency, setCurrency] = useState<AnalyticsCurrency>('TND');
   const [activeTab, setActiveTab] = useState<AnalyticsTabID>('overview');
 
+  // Preference Persistence (localStorage)
+  useEffect(() => {
+    try {
+      const savedTab = localStorage.getItem('pandamarket_analytics_active_tab');
+      if (savedTab && ['overview', 'business', 'financials', 'vendors', 'ads', 'system', 'intelligence', 'governance'].includes(savedTab)) {
+        setActiveTab(savedTab as AnalyticsTabID);
+      }
+      const savedRange = localStorage.getItem('pandamarket_analytics_time_range');
+      if (savedRange && ['7d', '30d', '90d', '12m', 'all'].includes(savedRange)) {
+        setTimeRange(savedRange as AnalyticsTimeRange);
+      }
+      const savedCurrency = localStorage.getItem('pandamarket_analytics_currency');
+      if (savedCurrency && ['TND', 'USD', 'EUR'].includes(savedCurrency)) {
+        setCurrency(savedCurrency as AnalyticsCurrency);
+      }
+    } catch {
+      // Ignore localStorage read errors in SSR/strict sandbox
+    }
+  }, []);
+
+  const handleTabChange = (tab: AnalyticsTabID) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('pandamarket_analytics_active_tab', tab);
+    } catch {}
+  };
+
+  const handleTimeRangeChange = (r: AnalyticsTimeRange) => {
+    setTimeRange(r);
+    try {
+      localStorage.setItem('pandamarket_analytics_time_range', r);
+    } catch {}
+  };
+
+  const handleCurrencyChange = (c: AnalyticsCurrency) => {
+    setCurrency(c);
+    try {
+      localStorage.setItem('pandamarket_analytics_currency', c);
+    } catch {}
+  };
+
   // Modal States
   const [isDefinitionsOpen, setIsDefinitionsOpen] = useState(false);
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [drilldownType, setDrilldownType] = useState<DrilldownType>('orders');
 
   // Typed tab data states
@@ -65,6 +110,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
     vendors: false,
     ads: false,
     system: false,
+    intelligence: false,
+    governance: false,
   });
   const [tabError, setTabError] = useState<Record<AnalyticsTabID, string>>({
     overview: '',
@@ -73,6 +120,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
     vendors: '',
     ads: '',
     system: '',
+    intelligence: '',
+    governance: '',
   });
 
   // Lazy Tab Data Fetcher
@@ -151,8 +200,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
         timeRange={timeRange}
         currency={currency}
         loading={currentTabLoading}
-        onTimeRangeChange={setTimeRange}
-        onCurrencyChange={setCurrency}
+        onTimeRangeChange={handleTimeRangeChange}
+        onCurrencyChange={handleCurrencyChange}
         onRefresh={() => fetchTabData(activeTab)}
         onExport={handleExportCSV}
         onOpenDefinitions={() => setIsDefinitionsOpen(true)}
@@ -160,6 +209,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
           setDrilldownType(activeTab === 'vendors' ? 'vendors' : activeTab === 'business' ? 'events' : 'orders');
           setIsDrilldownOpen(true);
         }}
+        onOpenHelp={() => setIsHelpOpen(true)}
       />
 
       {/* Normalized Time Range Metadata Bar */}
@@ -197,7 +247,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
       ))}
 
       {/* Navigation Sub-Tabs */}
-      <AnalyticsTabsNav activeTab={activeTab} tabLoading={tabLoading} onTabChange={setActiveTab} />
+      <AnalyticsTabsNav activeTab={activeTab} tabLoading={tabLoading} onTabChange={handleTabChange} />
 
       {/* Active Tab Panel */}
       <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
@@ -219,6 +269,8 @@ export default function ComprehensivePlatformAnalyticsPage() {
             {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
             {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}
             {activeTab === 'system' && <SystemAnalyticsTab data={systemData} />}
+            {activeTab === 'intelligence' && <IntelligenceTab />}
+            {activeTab === 'governance' && <GovernanceTab />}
           </>
         )}
       </div>
@@ -234,6 +286,12 @@ export default function ComprehensivePlatformAnalyticsPage() {
         onClose={() => setIsDrilldownOpen(false)}
         initialType={drilldownType}
         timeRange={timeRange}
+      />
+
+      {/* Part 9 Onboarding Help Panel */}
+      <AnalyticsHelpPanel
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </div>
   );

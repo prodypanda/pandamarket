@@ -183,3 +183,134 @@ export async function setDefaultSavedView(id: string): Promise<void> {
   }
 }
 
+export async function getRetentionStatus(): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/retention', {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(`Get retention status failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function runRetentionCleanup(retentionDays?: number): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/retention/cleanup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ retention_days: retentionDays }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(`Run retention cleanup failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function recomputeRollups(params: { period?: string; from_date?: string; to_date?: string }): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/rollups/recompute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(`Recompute rollups failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function invalidateCache(scope?: string): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/cache/invalidate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(`Invalidate cache failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getAnalyticsHealth(): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/health', {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(`Get analytics health failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// ==========================================================
+// Part 7: Intelligence Engine & Scheduled Reports Methods
+// ==========================================================
+
+export async function fetchAnomalies(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/anomalies${q}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Anomalies API error (${res.status})`);
+  return res.json();
+}
+
+export async function fetchVendorRisk(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/risk/vendors${q}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Vendor risk API error (${res.status})`);
+  return res.json();
+}
+
+export async function fetchChurnRisk(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/risk/churn${q}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Churn risk API error (${res.status})`);
+  return res.json();
+}
+
+export async function fetchCohortAnalysis(filters: AnalyticsFilterParams & { cohort_type?: string } = {}): Promise<any> {
+  const params = new URLSearchParams();
+  if (filters.timeRange) params.set('timeRange', filters.timeRange);
+  if (filters.cohort_type) params.set('cohort_type', filters.cohort_type);
+  const q = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/cohorts${q}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Cohorts API error (${res.status})`);
+  return res.json();
+}
+
+export async function fetchReportSchedules(): Promise<any[]> {
+  const res = await fetchWithCsrf('/api/pd/admin/analytics/schedules', { credentials: 'include' });
+  if (!res.ok) throw new Error(`Report schedules API error (${res.status})`);
+  const json = await res.json();
+  return json.schedules || [];
+}
+
+export async function createReportSchedule(scheduleData: any): Promise<any> {
+  const res = await fetchWithCsrf('/api/pd/admin/analytics/schedules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(scheduleData),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Create schedule failed (${res.status})`);
+  const json = await res.json();
+  return json.schedule;
+}
+
+export async function deleteReportSchedule(id: string): Promise<void> {
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/schedules/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Delete schedule failed (${res.status})`);
+}
+
+export async function triggerReportScheduleNow(id: string): Promise<any> {
+  const res = await fetchWithCsrf(`/api/pd/admin/analytics/schedules/${id}/run-now`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Trigger schedule failed (${res.status})`);
+  return res.json();
+}
+
+

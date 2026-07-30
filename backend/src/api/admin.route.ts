@@ -5269,4 +5269,68 @@ router.get(
   }),
 );
 
+router.get(
+  '/platform-analytics/retention',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const retention = await analyticsService.getRetentionStatus();
+    res.status(200).json(retention);
+  }),
+);
+
+router.post(
+  '/platform-analytics/retention/cleanup',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.runRetentionCleanup({
+      retention_days: req.body?.retention_days ? Number(req.body.retention_days) : undefined,
+    });
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/platform-analytics/rollups/recompute',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.recomputeRollups({
+      period: req.body?.period,
+      from_date: req.body?.from_date,
+      to_date: req.body?.to_date,
+    });
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/platform-analytics/cache/invalidate',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.invalidateCache({
+      scope: req.body?.scope,
+    });
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/platform-analytics/health',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const health = await analyticsService.getAnalyticsHealth();
+    res.status(200).json(health);
+  }),
+);
+
 export default router;
+
