@@ -467,3 +467,155 @@ export interface CreateSavedViewInput {
   is_default?: boolean;
 }
 
+// --- Part 7 Intelligence Types ---
+
+export type AnomalySeverity = 'info' | 'warning' | 'critical';
+
+export interface AnomalyInsightItem {
+  id: string;
+  metric_key: string;
+  label: string;
+  insight_type: 'anomaly';
+  direction: 'up' | 'down';
+  severity: AnomalySeverity;
+  current_value: number;
+  baseline_value: number;
+  delta_pct: number;
+  explanation: string;
+  recommended_action: string | null;
+  drilldown_type: string | null;
+  drilldown_filters: Record<string, unknown>;
+}
+
+export interface AnomalyResponseDTO {
+  range: NormalizedAnalyticsRange;
+  available: boolean;
+  insights: AnomalyInsightItem[];
+}
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface VendorRiskSignal {
+  key: string;
+  label: string;
+  value: number | string | null;
+  score_contribution: number;
+  explanation: string;
+}
+
+export interface VendorRiskItem {
+  store_id: string;
+  store_name: string;
+  vendor_user_id: string | null;
+  risk_score: number;
+  risk_level: RiskLevel;
+  signals: VendorRiskSignal[];
+  missing_signals: string[];
+  recommended_actions: string[];
+  drilldown_filters: Record<string, unknown>;
+}
+
+export interface VendorRiskResponseDTO {
+  range: NormalizedAnalyticsRange;
+  available: boolean;
+  vendors: VendorRiskItem[];
+  meta: {
+    total: number;
+    high_risk_count: number;
+    critical_risk_count: number;
+  };
+}
+
+export interface ChurnRiskSignal {
+  key: string;
+  label: string;
+  value: number | string | null;
+  score_contribution: number;
+  explanation: string;
+}
+
+export interface ChurnRiskItem {
+  store_id: string;
+  store_name: string;
+  churn_risk_score: number;
+  churn_risk_level: RiskLevel;
+  signals: ChurnRiskSignal[];
+  recommended_actions: string[];
+}
+
+export interface ChurnRiskResponseDTO {
+  range: NormalizedAnalyticsRange;
+  available: boolean;
+  vendors: ChurnRiskItem[];
+}
+
+export type CohortType = 'seller_signup' | 'buyer_signup' | 'first_order' | 'store_creation' | 'subscription_plan';
+
+export interface CohortPeriod {
+  period_index: number;
+  retained_count: number;
+  retention_pct: number | null;
+  revenue_tnd: number | null;
+  orders_count: number | null;
+}
+
+export interface CohortItem {
+  cohort_key: string;
+  cohort_label: string;
+  cohort_month: string;
+  cohort_size: number;
+  periods: CohortPeriod[];
+}
+
+export interface CohortResponseDTO {
+  range: NormalizedAnalyticsRange;
+  cohort_type: CohortType;
+  cohorts: CohortItem[];
+}
+
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface ReportScheduleDTO {
+  id: string;
+  admin_user_id: string;
+  name: string;
+  frequency: ReportFrequency;
+  timezone: string;
+  recipients: string[];
+  filters: Record<string, unknown>;
+  include_sections: string[];
+  format: 'csv' | 'html';
+  is_active: boolean;
+  last_sent_at: string | null;
+  next_run_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReportScheduleInput {
+  name: string;
+  frequency: ReportFrequency;
+  timezone?: string;
+  recipients: string[];
+  filters?: Record<string, unknown>;
+  include_sections?: string[];
+  format?: 'csv' | 'html';
+  is_active?: boolean;
+}
+
+export interface ReportExecutionResultDTO {
+  schedule_id: string;
+  executed_at: string;
+  email_sent: boolean;
+  delivery_note: string;
+  report_summary: {
+    executive_overview: string;
+    total_gmv_tnd: number;
+    total_orders: number;
+    active_anomalies_count: number;
+    high_risk_vendors_count: number;
+    sections_included: string[];
+  };
+  csv_content?: string;
+}
+

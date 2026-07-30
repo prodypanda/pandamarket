@@ -4987,6 +4987,138 @@ router.post(
 );
 
 // ==========================================================
+// Part 7: Analytics Intelligence, Risk, Cohorts & Schedules
+// ==========================================================
+
+router.get(
+  '/analytics/anomalies',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const params = extractAnalyticsQueryParams(req);
+    const result = await analyticsService.getAnomalyInsights(params);
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/analytics/intelligence/snapshot',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.computeDailyIntelligenceSnapshots();
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/risk/vendors',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const params = extractAnalyticsQueryParams(req);
+    const result = await analyticsService.getVendorRiskInsights(params);
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/analytics/risk/churn',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const params = extractAnalyticsQueryParams(req);
+    const result = await analyticsService.getChurnRiskInsights(params);
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/analytics/cohorts',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const params = extractAnalyticsQueryParams(req);
+    const cohortType = req.query.cohort_type as any;
+    const result = await analyticsService.getCohortInsights({ ...params, cohortType });
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/analytics/schedules',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const schedules = await analyticsService.getReportSchedules(adminUserId);
+    res.status(200).json({ success: true, schedules });
+  }),
+);
+
+router.post(
+  '/analytics/schedules',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const schedule = await analyticsService.createReportSchedule(adminUserId, req.body);
+    res.status(201).json({ success: true, schedule });
+  }),
+);
+
+router.put(
+  '/analytics/schedules/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const schedule = await analyticsService.updateReportSchedule(adminUserId, req.params.id, req.body);
+    if (!schedule) {
+      res.status(404).json({ error: { message: 'Report schedule not found' } });
+      return;
+    }
+    res.status(200).json({ success: true, schedule });
+  }),
+);
+
+router.delete(
+  '/analytics/schedules/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const deleted = await analyticsService.deleteReportSchedule(adminUserId, req.params.id);
+    if (!deleted) {
+      res.status(404).json({ error: { message: 'Report schedule not found' } });
+      return;
+    }
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/analytics/schedules/:id/run-now',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const result = await analyticsService.runReportScheduleNow(adminUserId, req.params.id);
+    res.status(200).json({ success: true, result });
+  }),
+);
+
+// ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================
 
