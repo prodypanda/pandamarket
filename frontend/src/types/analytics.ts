@@ -287,3 +287,154 @@ export type PlatformRevenueAnalytics = PlatformRevenueData;
 export type PlatformVendorAnalytics = PlatformVendorData;
 export type PlatformAdsAnalytics = PlatformAdsData;
 export type PlatformSystemAnalytics = PlatformSystemData;
+
+// ==========================================================
+// Part 6: Drill-Down & Saved View Types
+// ==========================================================
+
+export type DrilldownType = 'orders' | 'vendors' | 'buyers' | 'products' | 'search' | 'events';
+
+export interface AnalyticsDrilldownQueryParams {
+  timeRange?: AnalyticsTimeRange;
+  startDate?: string;
+  endDate?: string;
+  currency?: string;
+
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+
+  storeId?: string;
+  vendorId?: string;
+  buyerId?: string;
+  productId?: string;
+  categoryId?: string;
+  status?: string;
+  eventType?: string;
+  search?: string;
+}
+
+export interface DrilldownMeta {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  sort_by: string;
+  sort_dir: 'asc' | 'desc';
+}
+
+export interface PaginatedDrilldownResponse<T> {
+  range: NormalizedAnalyticsRange;
+  data: T[];
+  meta: DrilldownMeta;
+}
+
+export interface OrderDrilldownItem {
+  id: string;
+  created_at: string;
+  store_id: string | null;
+  store_name: string | null;
+  buyer_id: string | null;
+  buyer_name: string | null;
+  status: string;
+  payment_status: string;
+  total_amount_tnd: number;
+  payment_gateway: string | null;
+  action_url: string;
+}
+
+export interface VendorDrilldownItem {
+  store_id: string;
+  store_name: string;
+  vendor_id: string | null;
+  vendor_email: string | null;
+  status: string;
+  created_at: string;
+  product_count: number;
+  order_count: number;
+  total_gmv_tnd: number;
+  kyc_status: string | null;
+  action_url: string;
+}
+
+export interface BuyerDrilldownItem {
+  buyer_id: string;
+  buyer_email: string | null;
+  created_at: string;
+  order_count: number;
+  total_spend_tnd: number;
+  is_repeat_buyer: boolean;
+  last_order_at: string | null;
+  action_url: string;
+}
+
+export interface ProductDrilldownItem {
+  product_id: string;
+  title: string;
+  store_id: string | null;
+  store_name: string | null;
+  status: string;
+  price_tnd: number;
+  views_count: number;
+  clicks_count: number;
+  add_to_cart_count: number;
+  created_at: string;
+  action_url: string;
+}
+
+export interface SearchDrilldownItem {
+  query_hash: string;
+  query_display: string;
+  search_count: number;
+  zero_result_count: number;
+  zero_result_rate_pct: number;
+  click_count: number;
+  last_searched_at: string;
+}
+
+export interface EventDrilldownItem {
+  id: string;
+  event_type: string;
+  occurred_at: string;
+  store_id: string | null;
+  product_id: string | null;
+  order_id: string | null;
+  user_id: string | null;
+  source: string;
+  path: string | null;
+  locale: string | null;
+  metadata_summary: string;
+}
+
+export interface MetricDefinitionDTO {
+  key: string;
+  label: string;
+  description: string;
+  source_tables: string[];
+  calculation: string;
+  scope: 'selected_period' | 'current_state';
+  availability: 'available' | 'unavailable';
+  caveats: string[];
+}
+
+export interface SavedViewDTO {
+  id: string;
+  admin_user_id: string;
+  name: string;
+  description: string | null;
+  filters: Record<string, unknown>;
+  visible_tabs: string[];
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSavedViewInput {
+  name: string;
+  description?: string;
+  filters: Record<string, unknown>;
+  visible_tabs?: string[];
+  is_default?: boolean;
+}
+

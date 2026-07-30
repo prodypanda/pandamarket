@@ -13,6 +13,7 @@ import {
   PlatformAdsAnalytics,
   PlatformSystemAnalytics,
   PlatformBusinessAnalytics,
+  DrilldownType,
 } from '@/types/analytics';
 import {
   fetchOverviewAnalytics,
@@ -34,12 +35,19 @@ import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/Vendo
 import { AdsAnalyticsTab } from '@/components/admin/platform-analytics/AdsAnalyticsTab';
 import { SystemAnalyticsTab } from '@/components/admin/platform-analytics/SystemAnalyticsTab';
 import { BusinessAnalyticsTab } from '@/components/admin/platform-analytics/BusinessAnalyticsTab';
+import { MetricDefinitionsModal } from '@/components/admin/platform-analytics/MetricDefinitionsModal';
+import { AnalyticsDrilldownModal } from '@/components/admin/platform-analytics/AnalyticsDrilldownModal';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
   const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>('30d');
   const [currency, setCurrency] = useState<AnalyticsCurrency>('TND');
   const [activeTab, setActiveTab] = useState<AnalyticsTabID>('overview');
+
+  // Modal States
+  const [isDefinitionsOpen, setIsDefinitionsOpen] = useState(false);
+  const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
+  const [drilldownType, setDrilldownType] = useState<DrilldownType>('orders');
 
   // Typed tab data states
   const [overviewData, setOverviewData] = useState<PlatformOverviewAnalytics | null>(null);
@@ -147,6 +155,11 @@ export default function ComprehensivePlatformAnalyticsPage() {
         onCurrencyChange={setCurrency}
         onRefresh={() => fetchTabData(activeTab)}
         onExport={handleExportCSV}
+        onOpenDefinitions={() => setIsDefinitionsOpen(true)}
+        onOpenDrilldown={() => {
+          setDrilldownType(activeTab === 'vendors' ? 'vendors' : activeTab === 'business' ? 'events' : 'orders');
+          setIsDrilldownOpen(true);
+        }}
       />
 
       {/* Normalized Time Range Metadata Bar */}
@@ -209,6 +222,19 @@ export default function ComprehensivePlatformAnalyticsPage() {
           </>
         )}
       </div>
+
+      {/* Part 6 Modals */}
+      <MetricDefinitionsModal
+        isOpen={isDefinitionsOpen}
+        onClose={() => setIsDefinitionsOpen(false)}
+      />
+
+      <AnalyticsDrilldownModal
+        isOpen={isDrilldownOpen}
+        onClose={() => setIsDrilldownOpen(false)}
+        initialType={drilldownType}
+        timeRange={timeRange}
+      />
     </div>
   );
 }

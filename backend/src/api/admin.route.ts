@@ -4858,6 +4858,135 @@ router.post(
 );
 
 // ==========================================================
+// Part 6: Analytics Drilldowns, Metric Definitions & Saved Views
+// ==========================================================
+
+router.get(
+  '/analytics/drilldown/orders',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getOrdersDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/drilldown/vendors',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getVendorsDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/drilldown/buyers',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getBuyersDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/drilldown/products',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getProductsDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/drilldown/search',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getSearchDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/drilldown/events',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const result = await analyticsService.getEventsDrilldown(req.query as any);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
+router.get(
+  '/analytics/definitions',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const definitions = analyticsService.getMetricDefinitions();
+    res.status(200).json({ success: true, definitions });
+  }),
+);
+
+router.get(
+  '/analytics/saved-views',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const views = await analyticsService.listSavedViews(adminUserId);
+    res.status(200).json({ success: true, views });
+  }),
+);
+
+router.post(
+  '/analytics/saved-views',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    const view = await analyticsService.createSavedView(adminUserId, req.body);
+    res.status(201).json({ success: true, view });
+  }),
+);
+
+router.delete(
+  '/analytics/saved-views/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    await analyticsService.deleteSavedView(adminUserId, req.params.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/analytics/saved-views/:id/default',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const adminUserId = (req as any).user?.id;
+    await analyticsService.setDefaultSavedView(adminUserId, req.params.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+// ==========================================================
 // Subscription Lifecycle Operations (Proration, Pause/Resume, Cancellation, Extensions, Credits)
 // ==========================================================
 

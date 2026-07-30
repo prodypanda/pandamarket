@@ -1,7 +1,8 @@
 'use client';
 
-import { TrendingUp, Download, RefreshCw } from 'lucide-react';
+import { TrendingUp, Download, RefreshCw, BookOpen, Layers } from 'lucide-react';
 import { AnalyticsTimeRange, AnalyticsCurrency } from '@/types/analytics';
+import { SavedViewsDropdown } from './SavedViewsDropdown';
 
 interface PlatformAnalyticsHeaderProps {
   timeRange: AnalyticsTimeRange;
@@ -11,6 +12,8 @@ interface PlatformAnalyticsHeaderProps {
   onCurrencyChange: (c: AnalyticsCurrency) => void;
   onRefresh: () => void;
   onExport: () => void;
+  onOpenDefinitions: () => void;
+  onOpenDrilldown: () => void;
 }
 
 const TIME_RANGE_OPTIONS: AnalyticsTimeRange[] = ['7d', '30d', '90d', '12m', 'all'];
@@ -24,6 +27,8 @@ export function PlatformAnalyticsHeader({
   onCurrencyChange,
   onRefresh,
   onExport,
+  onOpenDefinitions,
+  onOpenDrilldown,
 }: PlatformAnalyticsHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -42,7 +47,7 @@ export function PlatformAnalyticsHeader({
       </div>
 
       {/* Filter & Action Controls */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
         {/* Time Range Selector */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
           {TIME_RANGE_OPTIONS.map((r) => {
@@ -85,13 +90,42 @@ export function PlatformAnalyticsHeader({
           })}
         </div>
 
+        {/* Saved Views Dropdown */}
+        <SavedViewsDropdown
+          currentFilters={{ timeRange, currency }}
+          onApplySavedView={(filters) => {
+            if (filters.timeRange) onTimeRangeChange(filters.timeRange);
+            if (filters.currency) onCurrencyChange(filters.currency);
+          }}
+        />
+
+        {/* Metric Definitions & Drilldown Buttons */}
+        <button
+          onClick={onOpenDefinitions}
+          title="View Metric Definitions & Formulas"
+          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-all"
+        >
+          <BookOpen className="w-4 h-4 text-purple-500" />
+          <span>Definitions</span>
+        </button>
+
+        <button
+          onClick={onOpenDrilldown}
+          title="Open Audit Drilldown Modal"
+          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 flex items-center gap-1.5 shadow-sm transition-all"
+        >
+          <Layers className="w-4 h-4 text-indigo-400" />
+          <span>Audit Records</span>
+        </button>
+
         {/* Export & Refresh Buttons */}
         <button
           onClick={onExport}
-          className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-all"
+          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-all"
         >
-          <Download className="w-4 h-4 text-slate-500" aria-hidden="true" /> Export Report
+          <Download className="w-4 h-4 text-slate-500" aria-hidden="true" /> Export
         </button>
+
         <button
           onClick={onRefresh}
           disabled={loading}
@@ -103,3 +137,4 @@ export function PlatformAnalyticsHeader({
     </div>
   );
 }
+

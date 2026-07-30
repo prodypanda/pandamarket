@@ -7,7 +7,8 @@
 import { query } from '../db/pool';
 import { getRedis } from '../db/redis';
 import { logger } from '../utils/logger';
-import { PdValidationError } from '../errors';
+import { PdValidationError, PdNotFoundError } from '../errors';
+import { pdId } from '../utils/crypto';
 import {
   AnalyticsQueryParams,
   AnalyticsTimeRange,
@@ -19,6 +20,20 @@ import {
   AdsMetricsDTO,
   SystemMetricsDTO,
   PlatformBusinessAnalyticsDTO,
+  AnalyticsDrilldownQueryParams,
+  PaginatedDrilldownResponse,
+  OrderDrilldownItem,
+  VendorDrilldownItem,
+  BuyerDrilldownItem,
+  ProductDrilldownItem,
+  SearchDrilldownItem,
+  EventDrilldownItem,
+  PayoutDrilldownItem,
+  RiskDrilldownItem,
+  OperationsDrilldownItem,
+  MetricDefinitionDTO,
+  SavedViewDTO,
+  CreateSavedViewInput,
 } from '../types/analytics-types';
 
 export class AnalyticsService {
@@ -1140,6 +1155,657 @@ export class AnalyticsService {
 
     const csvLines = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))];
     return csvLines.join('\n');
+  }
+
+  // ==========================================================
+  // Part 6: Drill-Down Queries
+  // ==========================================================
+
+  private validateSortColumn(column: string | undefined, allowed: string[], defaultCol: string): string {
+    if (!column) return defaultCol;
+    const col = column.toLowerCase().trim();
+    return allowed.includes(col) ? col : defaultCol;
+  }
+
+  public async getOrdersDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<OrderDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const allowedSort = ['created_at', 'total_amount', 'status'];
+    const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
+    const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    const conditions: string[] = ['1=1'];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (range.startDate) {
+      conditions.push(`o.created_at >= $${pIdx++}::timestamp`);
+      sqlParams.push(range.startDate);
+    }
+    conditions.push(`o.created_at <= $${pIdx++}::timestamp`);
+    sqlParams.push(range.endDate);
+
+    if (params.status) {
+      conditions.push(`o.status = $${pIdx++}`);
+      sqlParams.push(params.status);
+    }
+
+    if (params.storeId) {
+      conditions.push(`oi.store_id = $${pIdx++}`);
+      sqlParams.push(params.storeId);
+    }
+
+    if (params.search) {
+      conditions.push(`(o.id ILIKE $${pIdx} OR s.name ILIKE $${pIdx} OR u.email ILIKE $${pIdx})`);
+      sqlParams.push(`%${params.search}%`);
+      pIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(DISTINCT o.id)::int AS total
+      FROM pd_order o
+      LEFT JOIN pd_order_item oi ON oi.order_id = o.id
+      LEFT JOIN pd_store s ON oi.store_id = s.id
+      LEFT JOIN pd_user u ON o.customer_id = u.id
+      WHERE ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT DISTINCT ON (o.id)
+        o.id,
+        o.created_at,
+        s.id AS store_id,
+        s.name AS store_name,
+        o.customer_id AS buyer_id,
+        COALESCE(u.email, 'Guest') AS buyer_name,
+        o.status,
+        o.payment_status,
+        COALESCE(o.total, 0)::numeric AS total_amount_tnd,
+        o.payment_gateway
+      FROM pd_order o
+      LEFT JOIN pd_order_item oi ON oi.order_id = o.id
+      LEFT JOIN pd_store s ON oi.store_id = s.id
+      LEFT JOIN pd_user u ON o.customer_id = u.id
+      WHERE ${whereClause}
+      ORDER BY o.id, o.${sortBy} ${sortDir}
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: OrderDrilldownItem[] = dataRes.rows.map((r: any) => ({
+      id: r.id,
+      created_at: r.created_at,
+      store_id: r.store_id || null,
+      store_name: r.store_name || null,
+      buyer_id: r.buyer_id || null,
+      buyer_name: r.buyer_name || null,
+      status: r.status,
+      payment_status: r.payment_status || 'unpaid',
+      total_amount_tnd: Number(r.total_amount_tnd || 0),
+      payment_gateway: r.payment_gateway || null,
+      action_url: `/orders/${r.id}`,
+    }));
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: sortBy,
+        sort_dir: sortDir.toLowerCase() as 'asc' | 'desc',
+      },
+    };
+  }
+
+  public async getVendorsDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<VendorDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const allowedSort = ['created_at', 'name', 'status'];
+    const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
+    const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    const conditions: string[] = ['1=1'];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (params.status) {
+      conditions.push(`s.status = $${pIdx++}`);
+      sqlParams.push(params.status);
+    }
+
+    if (params.search) {
+      conditions.push(`(s.name ILIKE $${pIdx} OR s.slug ILIKE $${pIdx} OR u.email ILIKE $${pIdx})`);
+      sqlParams.push(`%${params.search}%`);
+      pIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(*)::int AS total
+      FROM pd_store s
+      LEFT JOIN pd_user u ON s.owner_id = u.id
+      WHERE ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT 
+        s.id AS store_id,
+        s.name AS store_name,
+        s.owner_id AS vendor_id,
+        u.email AS vendor_email,
+        s.status,
+        s.created_at,
+        COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id), 0) AS product_count,
+        COALESCE((SELECT COUNT(DISTINCT oi.order_id)::int FROM pd_order_item oi WHERE oi.store_id = s.id), 0) AS order_count,
+        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o JOIN pd_order_item oi ON oi.order_id = o.id WHERE oi.store_id = s.id AND o.payment_status IN ('paid', 'captured')), 0) AS total_gmv_tnd,
+        (SELECT k.status FROM pd_verification_documents k WHERE k.store_id = s.id ORDER BY k.created_at DESC LIMIT 1) AS kyc_status
+      FROM pd_store s
+      LEFT JOIN pd_user u ON s.owner_id = u.id
+      WHERE ${whereClause}
+      ORDER BY s.${sortBy} ${sortDir}
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: VendorDrilldownItem[] = dataRes.rows.map((r: any) => ({
+      store_id: r.store_id,
+      store_name: r.store_name,
+      vendor_id: r.vendor_id || null,
+      vendor_email: r.vendor_email || null,
+      status: r.status,
+      created_at: r.created_at,
+      product_count: Number(r.product_count || 0),
+      order_count: Number(r.order_count || 0),
+      total_gmv_tnd: Number(r.total_gmv_tnd || 0),
+      kyc_status: r.kyc_status || null,
+      action_url: `/stores`,
+    }));
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: sortBy,
+        sort_dir: sortDir.toLowerCase() as 'asc' | 'desc',
+      },
+    };
+  }
+
+  public async getBuyersDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<BuyerDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const allowedSort = ['created_at', 'email'];
+    const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
+    const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    const conditions: string[] = ["u.role = 'customer'"];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (params.search) {
+      conditions.push(`(u.email ILIKE $${pIdx} OR u.full_name ILIKE $${pIdx})`);
+      sqlParams.push(`%${params.search}%`);
+      pIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(*)::int AS total
+      FROM pd_user u
+      WHERE ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT 
+        u.id AS buyer_id,
+        u.email AS buyer_email,
+        u.created_at,
+        COALESCE((SELECT COUNT(*)::int FROM pd_order o WHERE o.customer_id = u.id), 0) AS order_count,
+        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o WHERE o.customer_id = u.id AND o.payment_status IN ('paid', 'captured')), 0) AS total_spend_tnd,
+        (SELECT MAX(o.created_at) FROM pd_order o WHERE o.customer_id = u.id) AS last_order_at
+      FROM pd_user u
+      WHERE ${whereClause}
+      ORDER BY u.${sortBy} ${sortDir}
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: BuyerDrilldownItem[] = dataRes.rows.map((r: any) => ({
+      buyer_id: r.buyer_id,
+      buyer_email: r.buyer_email || null,
+      created_at: r.created_at,
+      order_count: Number(r.order_count || 0),
+      total_spend_tnd: Number(r.total_spend_tnd || 0),
+      is_repeat_buyer: Number(r.order_count || 0) > 1,
+      last_order_at: r.last_order_at || null,
+      action_url: `/users`,
+    }));
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: sortBy,
+        sort_dir: sortDir.toLowerCase() as 'asc' | 'desc',
+      },
+    };
+  }
+
+  public async getProductsDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<ProductDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const allowedSort = ['created_at', 'title', 'price'];
+    const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
+    const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    const conditions: string[] = ['1=1'];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (params.status) {
+      conditions.push(`p.status = $${pIdx++}`);
+      sqlParams.push(params.status);
+    }
+
+    if (params.storeId) {
+      conditions.push(`p.store_id = $${pIdx++}`);
+      sqlParams.push(params.storeId);
+    }
+
+    if (params.search) {
+      conditions.push(`(p.title ILIKE $${pIdx} OR s.name ILIKE $${pIdx})`);
+      sqlParams.push(`%${params.search}%`);
+      pIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(*)::int AS total
+      FROM pd_product p
+      LEFT JOIN pd_store s ON p.store_id = s.id
+      WHERE ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT 
+        p.id AS product_id,
+        p.title,
+        p.store_id,
+        s.name AS store_name,
+        p.status,
+        COALESCE(p.price, 0)::numeric AS price_tnd,
+        p.created_at,
+        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 0) AS views_count,
+        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_click'), 0) AS clicks_count,
+        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'add_to_cart'), 0) AS add_to_cart_count
+      FROM pd_product p
+      LEFT JOIN pd_store s ON p.store_id = s.id
+      WHERE ${whereClause}
+      ORDER BY p.${sortBy} ${sortDir}
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: ProductDrilldownItem[] = dataRes.rows.map((r: any) => ({
+      product_id: r.product_id,
+      title: r.title,
+      store_id: r.store_id || null,
+      store_name: r.store_name || null,
+      status: r.status,
+      price_tnd: Number(r.price_tnd || 0),
+      views_count: Number(r.views_count || 0),
+      clicks_count: Number(r.clicks_count || 0),
+      add_to_cart_count: Number(r.add_to_cart_count || 0),
+      created_at: r.created_at,
+      action_url: `/hub/products/${r.product_id}`,
+    }));
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: sortBy,
+        sort_dir: sortDir.toLowerCase() as 'asc' | 'desc',
+      },
+    };
+  }
+
+  public async getSearchDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<SearchDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = ["event_type = 'search_performed'"];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (range.startDate) {
+      conditions.push(`occurred_at >= $${pIdx++}::timestamp`);
+      sqlParams.push(range.startDate);
+    }
+    conditions.push(`occurred_at <= $${pIdx++}::timestamp`);
+    sqlParams.push(range.endDate);
+
+    if (params.search) {
+      conditions.push(`search_query_normalized ILIKE $${pIdx++}`);
+      sqlParams.push(`%${params.search}%`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(DISTINCT search_query_hash)::int AS total
+      FROM pd_marketplace_analytics_event
+      WHERE search_query_hash IS NOT NULL AND ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT 
+        search_query_hash AS query_hash,
+        COALESCE(MAX(search_query_normalized), 'h_' || substring(search_query_hash, 1, 8)) AS query_display,
+        COUNT(*)::int AS search_count,
+        COUNT(CASE WHEN search_results_count = 0 THEN 1 END)::int AS zero_result_count,
+        MAX(occurred_at) AS last_searched_at
+      FROM pd_marketplace_analytics_event
+      WHERE search_query_hash IS NOT NULL AND ${whereClause}
+      GROUP BY search_query_hash
+      ORDER BY search_count DESC
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: SearchDrilldownItem[] = dataRes.rows.map((r: any) => {
+      const searchCount = Number(r.search_count || 0);
+      const zeroCount = Number(r.zero_result_count || 0);
+      return {
+        query_hash: r.query_hash,
+        query_display: r.query_display,
+        search_count: searchCount,
+        zero_result_count: zeroCount,
+        zero_result_rate_pct: searchCount > 0 ? Number(((zeroCount / searchCount) * 100).toFixed(1)) : 0,
+        click_count: 0,
+        last_searched_at: r.last_searched_at,
+      };
+    });
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: 'search_count',
+        sort_dir: 'desc',
+      },
+    };
+  }
+
+  public async getEventsDrilldown(params: AnalyticsDrilldownQueryParams): Promise<PaginatedDrilldownResponse<EventDrilldownItem>> {
+    const range = this.parseDateWindow({ timeRange: params.timeRange || '30d', startDate: params.startDate, endDate: params.endDate });
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = ['1=1'];
+    const sqlParams: unknown[] = [];
+    let pIdx = 1;
+
+    if (range.startDate) {
+      conditions.push(`occurred_at >= $${pIdx++}::timestamp`);
+      sqlParams.push(range.startDate);
+    }
+    conditions.push(`occurred_at <= $${pIdx++}::timestamp`);
+    sqlParams.push(range.endDate);
+
+    if (params.eventType) {
+      conditions.push(`event_type = $${pIdx++}`);
+      sqlParams.push(params.eventType);
+    }
+
+    if (params.storeId) {
+      conditions.push(`store_id = $${pIdx++}`);
+      sqlParams.push(params.storeId);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query(`
+      SELECT COUNT(*)::int AS total
+      FROM pd_marketplace_analytics_event
+      WHERE ${whereClause}
+    `, sqlParams);
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    const dataRes = await query(`
+      SELECT 
+        id,
+        event_type,
+        occurred_at,
+        store_id,
+        product_id,
+        order_id,
+        user_id,
+        source,
+        path,
+        locale,
+        metadata
+      FROM pd_marketplace_analytics_event
+      WHERE ${whereClause}
+      ORDER BY occurred_at DESC
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `, [...sqlParams, limit, offset]);
+
+    const data: EventDrilldownItem[] = dataRes.rows.map((r: any) => ({
+      id: r.id,
+      event_type: r.event_type,
+      occurred_at: r.occurred_at,
+      store_id: r.store_id || null,
+      product_id: r.product_id || null,
+      order_id: r.order_id || null,
+      user_id: r.user_id || null,
+      source: r.source,
+      path: r.path || null,
+      locale: r.locale || null,
+      metadata_summary: r.metadata ? JSON.stringify(r.metadata).slice(0, 100) : '{}',
+    }));
+
+    return {
+      range,
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        sort_by: 'occurred_at',
+        sort_dir: 'desc',
+      },
+    };
+  }
+
+  // ==========================================================
+  // Part 6: Metric Definitions
+  // ==========================================================
+
+  public getMetricDefinitions(): MetricDefinitionDTO[] {
+    return [
+      {
+        key: 'total_gmv',
+        label: 'Total Platform GMV',
+        description: 'Combined gross value of captured orders and subscription payments.',
+        source_tables: ['pd_order', 'pd_subscription_intent'],
+        calculation: 'SUM(pd_order.total_amount WHERE payment_status = captured) + SUM(pd_subscription_intent.amount WHERE status = completed)',
+        scope: 'selected_period',
+        availability: 'available',
+        caveats: ['Includes captured orders only; uncaptured/pending orders excluded.'],
+      },
+      {
+        key: 'net_revenue',
+        label: 'Net Platform Revenue',
+        description: 'Estimated net platform revenue from order commissions and subscriptions.',
+        source_tables: ['pd_order', 'pd_subscription_intent'],
+        calculation: 'Estimated platform fee + subscription revenue.',
+        scope: 'selected_period',
+        availability: 'available',
+        caveats: ['Payment provider gateway processing fees are estimated.'],
+      },
+      {
+        key: 'checkout_completion_rate_pct',
+        label: 'Checkout Completion Rate',
+        description: 'Percentage of initiated checkouts that resulted in successful orders.',
+        source_tables: ['pd_marketplace_analytics_event'],
+        calculation: '(checkout_payment_completed / checkout_started) * 100',
+        scope: 'selected_period',
+        availability: 'available',
+        caveats: ['Measured from first-party marketplace event tracking stream.'],
+      },
+      {
+        key: 'mrr',
+        label: 'Monthly Recurring Revenue (MRR)',
+        description: 'Normalized monthly recurring revenue from active SaaS subscription plans.',
+        source_tables: ['pd_store_subscription', 'pd_subscription_plan'],
+        calculation: 'SUM(plan.price_monthly) for active subscriptions.',
+        scope: 'current_state',
+        availability: 'available',
+        caveats: ['Custom enterprise contracts without automated billing are tracked separately.'],
+      },
+      {
+        key: 'active_stores',
+        label: 'Active Published Stores',
+        description: 'Total marketplace vendor stores currently active and accessible to buyers.',
+        source_tables: ['pd_store'],
+        calculation: "COUNT(id) WHERE status = 'active'",
+        scope: 'current_state',
+        availability: 'available',
+        caveats: ['Stores in draft, paused, or suspended status excluded.'],
+      },
+      {
+        key: 'kyc_approval_rate_pct',
+        label: 'KYC Approval Rate',
+        description: 'Percentage of submitted vendor identity verifications approved by compliance.',
+        source_tables: ['pd_verification_documents'],
+        calculation: "(approved_count / (approved_count + rejected_count)) * 100",
+        scope: 'selected_period',
+        availability: 'available',
+        caveats: ['Pending KYC reviews in pipeline excluded from calculation.'],
+      },
+    ];
+  }
+
+  // ==========================================================
+  // Part 6: Saved Views CRUD
+  // ==========================================================
+
+  public async listSavedViews(adminUserId: string): Promise<SavedViewDTO[]> {
+    const { rows } = await query(`
+      SELECT id, admin_user_id, name, description, filters, visible_tabs, is_default, created_at, updated_at
+      FROM pd_admin_analytics_saved_view
+      WHERE admin_user_id = $1
+      ORDER BY is_default DESC, created_at DESC
+    `, [adminUserId]);
+
+    return rows.map((r: any) => ({
+      id: r.id,
+      admin_user_id: r.admin_user_id,
+      name: r.name,
+      description: r.description || null,
+      filters: r.filters || {},
+      visible_tabs: r.visible_tabs || [],
+      is_default: Boolean(r.is_default),
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }));
+  }
+
+  public async createSavedView(adminUserId: string, input: CreateSavedViewInput): Promise<SavedViewDTO> {
+    if (!input.name || input.name.trim().length === 0) {
+      throw new PdValidationError('Saved view name is required');
+    }
+
+    const newId = pdId('asv');
+    const isDefault = Boolean(input.is_default);
+
+    if (isDefault) {
+      await query(`UPDATE pd_admin_analytics_saved_view SET is_default = FALSE WHERE admin_user_id = $1`, [adminUserId]);
+    }
+
+    const { rows } = await query(`
+      INSERT INTO pd_admin_analytics_saved_view (
+        id, admin_user_id, name, description, filters, visible_tabs, is_default
+      ) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)
+      RETURNING id, admin_user_id, name, description, filters, visible_tabs, is_default, created_at, updated_at
+    `, [
+      newId,
+      adminUserId,
+      input.name.trim().slice(0, 100),
+      input.description?.trim().slice(0, 255) || null,
+      JSON.stringify(input.filters || {}),
+      JSON.stringify(input.visible_tabs || []),
+      isDefault,
+    ]);
+
+    const r = rows[0];
+    return {
+      id: r.id,
+      admin_user_id: r.admin_user_id,
+      name: r.name,
+      description: r.description || null,
+      filters: r.filters || {},
+      visible_tabs: r.visible_tabs || [],
+      is_default: Boolean(r.is_default),
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    };
+  }
+
+  public async deleteSavedView(adminUserId: string, viewId: string): Promise<void> {
+    const res = await query(`DELETE FROM pd_admin_analytics_saved_view WHERE id = $1 AND admin_user_id = $2`, [viewId, adminUserId]);
+    if (res.rowCount === 0) {
+      throw new PdNotFoundError('Saved view not found or unauthorized');
+    }
+  }
+
+  public async setDefaultSavedView(adminUserId: string, viewId: string): Promise<void> {
+    await query(`UPDATE pd_admin_analytics_saved_view SET is_default = FALSE WHERE admin_user_id = $1`, [adminUserId]);
+    const res = await query(`UPDATE pd_admin_analytics_saved_view SET is_default = TRUE, updated_at = NOW() WHERE id = $1 AND admin_user_id = $2`, [viewId, adminUserId]);
+    if (res.rowCount === 0) {
+      throw new PdNotFoundError('Saved view not found or unauthorized');
+    }
   }
 }
 
