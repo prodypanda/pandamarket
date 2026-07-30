@@ -36,7 +36,7 @@ interface SubscriptionOrder {
   gateway: string;
   gateway_reference?: string | null;
   checkout_url?: string | null;
-  status: 'pending' | 'pending_proof' | 'pending_review' | 'captured' | 'failed' | 'cancelled' | 'rejected';
+  status: 'pending' | 'pending_proof' | 'pending_review' | 'captured' | 'paid' | 'failed' | 'cancelled' | 'rejected';
   proof_url?: string | null;
   rejection_reason?: string | null;
   created_at: string;
