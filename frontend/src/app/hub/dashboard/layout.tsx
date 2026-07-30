@@ -246,6 +246,7 @@ export default function DashboardLayout({
     { name: t('dashboard.sidebar.pageBuilder'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
     { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
     { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
+    { name: 'Platform Orders', href: '/hub/dashboard/subscription-orders', icon: ReceiptText },
     { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
     { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
     { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
@@ -253,7 +254,7 @@ export default function DashboardLayout({
 
   const accountMenuItems = [
     { name: 'My account', href: '/hub/profile', icon: UserRound },
-    { name: 'Subscription & Platform Orders', href: '/hub/dashboard/subscription', icon: Crown },
+    { name: 'Platform Orders & Invoices', href: '/hub/dashboard/subscription-orders', icon: ReceiptText },
     { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
     { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
@@ -407,11 +408,11 @@ export default function DashboardLayout({
               </Link>
             )}
             <Link
-              href="/hub/dashboard/subscription"
-              title="Platform Subscription & Orders"
-              aria-label="Platform Subscription & Orders"
+              href="/hub/dashboard/subscription-orders"
+              title="Platform Orders & Invoices"
+              aria-label="Platform Orders & Invoices"
               className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                pathname.startsWith('/hub/dashboard/subscription')
+                pathname.startsWith('/hub/dashboard/subscription-orders')
                   ? 'border-amber-400 bg-amber-50 text-amber-600'
                   : 'border-slate-200 text-slate-500 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-600'
               }`}

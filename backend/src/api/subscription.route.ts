@@ -71,6 +71,85 @@ router.get(
   }),
 );
 
+// Vendor: List all platform subscription & billing orders
+router.get(
+  '/orders',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+    const status = (req.query.status as string) || '';
+    const search = (req.query.search as string) || '';
+
+    const conditions: string[] = ['store_id = $1'];
+    const sqlParams: unknown[] = [storeId];
+    let pIdx = 2;
+
+    if (status && status !== 'all') {
+      conditions.push(`status = $${pIdx++}`);
+      sqlParams.push(status);
+    }
+
+    if (search.trim()) {
+      conditions.push(`(id ILIKE $${pIdx} OR target_plan ILIKE $${pIdx} OR gateway ILIKE $${pIdx})`);
+      sqlParams.push(`%${search.trim()}%`);
+      pIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    // Total matching records count
+    const countRes = await query<{ total: string }>(
+      `SELECT COUNT(*)::int AS total FROM pd_subscription_intent WHERE ${whereClause}`,
+      sqlParams,
+    );
+    const total = Number(countRes.rows[0]?.total || 0);
+
+    // Paginated dataset
+    const dataRes = await query(
+      `SELECT * FROM pd_subscription_intent
+       WHERE ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${pIdx++} OFFSET $${pIdx++}`,
+      [...sqlParams, limit, offset],
+    );
+
+    // Summary statistics for vendor billing overview
+    const statsRes = await query<{
+      total_spent_tnd: string;
+      paid_count: string;
+      pending_count: string;
+    }>(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN status IN ('captured', 'paid') THEN amount ELSE 0 END), 0) AS total_spent_tnd,
+         COUNT(CASE WHEN status IN ('captured', 'paid') THEN 1 END)::int AS paid_count,
+         COUNT(CASE WHEN status IN ('pending', 'pending_proof', 'pending_review') THEN 1 END)::int AS pending_count
+       FROM pd_subscription_intent
+       WHERE store_id = $1`,
+      [storeId],
+    );
+
+    const stats = statsRes.rows[0] || { total_spent_tnd: '0', paid_count: '0', pending_count: '0' };
+
+    res.status(200).json({
+      orders: dataRes.rows,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+      },
+      summary: {
+        total_spent_tnd: Number(stats.total_spent_tnd || 0),
+        paid_count: Number(stats.paid_count || 0),
+        pending_count: Number(stats.pending_count || 0),
+      },
+    });
+  }),
+);
+
 // Vendor: Initiate plan purchase or upgrade with payment
 router.post(
   '/initiate',

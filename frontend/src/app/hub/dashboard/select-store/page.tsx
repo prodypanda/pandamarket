@@ -85,7 +85,7 @@ export default function SelectStorePage() {
             Store selector
           </div>
           <Link
-            href="/hub/dashboard/subscription"
+            href="/hub/dashboard/subscription-orders"
             className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-300/30 px-4 py-2 text-xs font-black text-amber-200 transition self-start sm:self-auto"
           >
             <Crown className="h-4 w-4 text-amber-400" />
