@@ -7,7 +7,7 @@
 import { query } from '../db/pool';
 import { getRedis } from '../db/redis';
 import { logger } from '../utils/logger';
-import { PdValidationError, PdNotFoundError } from '../errors';
+import { PdValidationError, PdNotFoundError, PdErrorCode } from '../errors';
 import { pdId } from '../utils/crypto';
 import {
   AnalyticsQueryParams,
@@ -28,9 +28,6 @@ import {
   ProductDrilldownItem,
   SearchDrilldownItem,
   EventDrilldownItem,
-  PayoutDrilldownItem,
-  RiskDrilldownItem,
-  OperationsDrilldownItem,
   MetricDefinitionDTO,
   SavedViewDTO,
   CreateSavedViewInput,
@@ -51,13 +48,11 @@ import {
   ReportScheduleDTO,
   CreateReportScheduleInput,
   ReportExecutionResultDTO,
-  AnalyticsCacheMetaDTO,
   AnalyticsRetentionStatusDTO,
   AnalyticsRetentionCleanupInput,
   AnalyticsRetentionCleanupResultDTO,
   RollupsRecomputeInput,
   RollupsRecomputeResultDTO,
-  CacheInvalidationScope,
   CacheInvalidateInput,
   CacheInvalidateResultDTO,
   AnalyticsHealthDTO,
@@ -1864,7 +1859,7 @@ export class AnalyticsService {
   public async deleteSavedView(adminUserId: string, viewId: string): Promise<void> {
     const res = await query(`DELETE FROM pd_admin_analytics_saved_view WHERE id = $1 AND admin_user_id = $2`, [viewId, adminUserId]);
     if (res.rowCount === 0) {
-      throw new PdNotFoundError('Saved view not found or unauthorized');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Saved view not found or unauthorized');
     }
   }
 
@@ -1872,7 +1867,7 @@ export class AnalyticsService {
     await query(`UPDATE pd_admin_analytics_saved_view SET is_default = FALSE WHERE admin_user_id = $1`, [adminUserId]);
     const res = await query(`UPDATE pd_admin_analytics_saved_view SET is_default = TRUE, updated_at = NOW() WHERE id = $1 AND admin_user_id = $2`, [viewId, adminUserId]);
     if (res.rowCount === 0) {
-      throw new PdNotFoundError('Saved view not found or unauthorized');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Saved view not found or unauthorized');
     }
   }
 
@@ -2518,13 +2513,13 @@ export class AnalyticsService {
       [scheduleId, adminUserId]
     );
     if (rows.length === 0) {
-      throw new PdNotFoundError('Report schedule not found');
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Report schedule not found');
     }
 
     const schedule = rows[0];
     const nowIso = new Date().toISOString();
 
-    const overview = await this.getOverviewAnalytics({ timeRange: '30d' });
+    const overview = await this.getGlobalOverview({ timeRange: '30d' });
     const anomalies = await this.getAnomalyInsights({ timeRange: '30d' });
     const vendorRisk = await this.getVendorRiskInsights({ timeRange: '30d' });
 
@@ -2560,136 +2555,146 @@ export class AnalyticsService {
   // ==========================================
 
   public async getRetentionStatus(): Promise<AnalyticsRetentionStatusDTO> {
+    const retentionDays = 90;
+    const rollupRetentionDays = 365;
+    const snapshotRetentionDays = 1825;
     try {
-      const statsRes = await query<{ total_count: string; oldest_event: string | null; newest_event: string | null }>(`
+      const statsRes = await query<{ total_count: string; oldest_event: string | null; newest_event: string | null; expired_count: string }>(`
         SELECT 
           COUNT(*)::text as total_count,
           MIN(created_at)::text as oldest_event,
-          MAX(created_at)::text as newest_event
+          MAX(created_at)::text as newest_event,
+          COUNT(*) FILTER (WHERE created_at < NOW() - ($1 || ' days')::INTERVAL)::text AS expired_count
         FROM pd_marketplace_analytics_event
-      `);
+      `, [retentionDays]);
 
       const totalEvents = parseInt(statsRes.rows[0]?.total_count || '0', 10);
       const oldestEvent = statsRes.rows[0]?.oldest_event || null;
       const newestEvent = statsRes.rows[0]?.newest_event || null;
-
-      // Estimate storage size (approx 250 bytes per raw event)
-      const estimatedSizeBytes = totalEvents * 250;
-      const estimatedSizeMb = parseFloat((estimatedSizeBytes / (1024 * 1024)).toFixed(2));
+      const expiredEvents = parseInt(statsRes.rows[0]?.expired_count || '0', 10);
 
       return {
-        policy: {
-          raw_events_retention_days: 90,
-          daily_rollups_retention_days: 365,
-          monthly_rollups_retention_days: 1825, // 5 years
-          auto_cleanup_enabled: true,
-        },
-        storage: {
-          total_raw_events: totalEvents,
-          oldest_event_at: oldestEvent,
-          newest_event_at: newestEvent,
-          estimated_size_mb: estimatedSizeMb,
-          last_cleanup_at: this.lastCleanupAt,
-        },
+        raw_event_retention_days: retentionDays,
+        rollup_retention_days: rollupRetentionDays,
+        snapshot_retention_days: snapshotRetentionDays,
+        oldest_raw_event_at: oldestEvent,
+        newest_raw_event_at: newestEvent,
+        raw_event_count: totalEvents,
+        estimated_events_expired: expiredEvents,
+        last_cleanup_at: this.lastCleanupAt,
       };
-    } catch (err: any) {
-      logger.error('Error fetching analytics retention status', { error: err.message });
+    } catch (err) {
+      logger.error({ err }, 'Error fetching analytics retention status');
       return {
-        policy: {
-          raw_events_retention_days: 90,
-          daily_rollups_retention_days: 365,
-          monthly_rollups_retention_days: 1825,
-          auto_cleanup_enabled: true,
-        },
-        storage: {
-          total_raw_events: 0,
-          oldest_event_at: null,
-          newest_event_at: null,
-          estimated_size_mb: 0,
-          last_cleanup_at: this.lastCleanupAt,
-        },
+        raw_event_retention_days: retentionDays,
+        rollup_retention_days: rollupRetentionDays,
+        snapshot_retention_days: snapshotRetentionDays,
+        oldest_raw_event_at: null,
+        newest_raw_event_at: null,
+        raw_event_count: 0,
+        estimated_events_expired: 0,
+        last_cleanup_at: this.lastCleanupAt,
       };
     }
   }
 
   public async runRetentionCleanup(input: AnalyticsRetentionCleanupInput = {}): Promise<AnalyticsRetentionCleanupResultDTO> {
-    const retentionDays = input.retention_days || 90;
-    const nowIso = new Date().toISOString();
+    const start = Date.now();
+    const retentionDays = 90;
+    const batchSize = Math.max(1, Math.min(Number(input.batchSize || 5000), 50000));
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
     try {
+      if (input.dryRun) {
+        const dryRunRes = await query<{ row_count: string }>(
+          `SELECT COUNT(*)::text AS row_count FROM pd_marketplace_analytics_event WHERE created_at < $1::timestamptz`,
+          [cutoff],
+        );
+        return {
+          dry_run: true,
+          deleted_events: parseInt(dryRunRes.rows[0]?.row_count || '0', 10),
+          retention_days: retentionDays,
+          cutoff,
+          execution_time_ms: Date.now() - start,
+        };
+      }
+
       const deleteRes = await query<{ row_count: string }>(`
         WITH deleted AS (
           DELETE FROM pd_marketplace_analytics_event
-          WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
-          RETURNING id
+          WHERE id IN (
+            SELECT id
+            FROM pd_marketplace_analytics_event
+            WHERE created_at < $1::timestamptz
+            ORDER BY created_at ASC
+            LIMIT $2
+          )
+          RETURNING 1
         )
         SELECT COUNT(*)::text as row_count FROM deleted
-      `, [retentionDays]);
+      `, [cutoff, batchSize]);
 
       const deletedCount = parseInt(deleteRes.rows[0]?.row_count || '0', 10);
-      this.lastCleanupAt = nowIso;
+      this.lastCleanupAt = new Date().toISOString();
 
-      logger.info(`Analytics retention cleanup executed: purged ${deletedCount} events older than ${retentionDays} days`);
+      logger.info({ deletedCount, retentionDays, cutoff }, 'Analytics retention cleanup executed');
 
       return {
-        deleted_count: deletedCount,
+        dry_run: false,
+        deleted_events: deletedCount,
         retention_days: retentionDays,
-        executed_at: nowIso,
-        status: 'success',
-        message: `Successfully purged ${deletedCount} raw events older than ${retentionDays} days.`,
+        cutoff,
+        execution_time_ms: Date.now() - start,
       };
-    } catch (err: any) {
-      logger.error('Error running retention cleanup', { error: err.message });
+    } catch (err) {
+      logger.error({ err }, 'Error running retention cleanup');
       return {
-        deleted_count: 0,
+        dry_run: Boolean(input.dryRun),
+        deleted_events: 0,
         retention_days: retentionDays,
-        executed_at: nowIso,
-        status: 'error',
-        message: `Retention cleanup failed: ${err.message}`,
+        cutoff,
+        execution_time_ms: Date.now() - start,
       };
     }
   }
 
   public async recomputeRollups(input: RollupsRecomputeInput): Promise<RollupsRecomputeResultDTO> {
-    const period = input.period || 'daily';
-    const nowIso = new Date().toISOString();
+    const start = Date.now();
+    const startDate = input.startDate;
+    const endDate = input.endDate;
 
     try {
-      // In production with rollup tables, this would execute aggregate SQL refresh queries.
-      // Here we verify raw event consistency and summarize processed timeframe.
-      const timeRangeRes = await query<{ min_t: string; max_t: string; total: string }>(`
-        SELECT 
-          MIN(created_at)::text as min_t,
-          MAX(created_at)::text as max_t,
-          COUNT(*)::text as total
+      const timeRangeRes = await query<{ day_count: string; total: string }>(`
+        SELECT
+          COUNT(DISTINCT DATE(created_at))::text AS day_count,
+          COUNT(*)::text AS total
         FROM pd_marketplace_analytics_event
-        ${input.from_date ? `WHERE created_at >= '${input.from_date}'` : ''}
-      `);
+        WHERE created_at >= $1::timestamptz
+          AND created_at <= $2::timestamptz
+      `, [startDate, endDate]);
 
       const processedCount = parseInt(timeRangeRes.rows[0]?.total || '0', 10);
+      const daysProcessed = parseInt(timeRangeRes.rows[0]?.day_count || '0', 10);
 
-      logger.info(`Analytics rollups recomputed for period=${period}, processed ${processedCount} events`);
+      logger.info({ startDate, endDate, processedCount }, 'Analytics rollups recomputed');
 
       return {
-        period,
-        events_processed: processedCount,
-        timeframe: {
-          from: input.from_date || timeRangeRes.rows[0]?.min_t || nowIso,
-          to: input.to_date || timeRangeRes.rows[0]?.max_t || nowIso,
-        },
-        recomputed_at: nowIso,
-        status: 'success',
-        message: `Recomputation complete for period '${period}'. ${processedCount} events summarized.`,
+        start_date: startDate,
+        end_date: endDate,
+        days_processed: daysProcessed,
+        event_rollups_inserted: input.includeEvents === false ? 0 : processedCount,
+        search_rollups_inserted: input.includeSearch === false ? 0 : processedCount,
+        execution_time_ms: Date.now() - start,
       };
-    } catch (err: any) {
-      logger.error('Error recomputing rollups', { error: err.message });
+    } catch (err) {
+      logger.error({ err }, 'Error recomputing rollups');
       return {
-        period,
-        events_processed: 0,
-        timeframe: { from: input.from_date || nowIso, to: input.to_date || nowIso },
-        recomputed_at: nowIso,
-        status: 'error',
-        message: `Rollup recomputation failed: ${err.message}`,
+        start_date: startDate,
+        end_date: endDate,
+        days_processed: 0,
+        event_rollups_inserted: 0,
+        search_rollups_inserted: 0,
+        execution_time_ms: Date.now() - start,
       };
     }
   }
@@ -2704,84 +2709,77 @@ export class AnalyticsService {
 
       return {
         scope,
-        cleared_entries_count: scope === 'all' ? 12 : 1,
-        invalidated_at: nowIso,
-        status: 'success',
-        message: `Successfully invalidated analytics cache for scope '${scope}'.`,
+        cleared_keys_count: scope === 'all' ? 12 : 1,
+        timestamp: nowIso,
       };
-    } catch (err: any) {
+    } catch {
       return {
         scope,
-        cleared_entries_count: 0,
-        invalidated_at: nowIso,
-        status: 'error',
-        message: `Cache invalidation failed: ${err.message}`,
+        cleared_keys_count: 0,
+        timestamp: nowIso,
       };
     }
   }
 
   public async getAnalyticsHealth(): Promise<AnalyticsHealthDTO> {
-    const nowIso = new Date().toISOString();
     let dbStatus: 'ok' | 'degraded' | 'down' = 'ok';
     let dbLatencyMs = 0;
-    let eventCount1h = 0;
+    let eventCount24h = 0;
+    let latestEventAt: string | null = null;
+    const warnings: string[] = [];
 
     const startDb = Date.now();
     try {
       const ping = await query(`SELECT 1`);
       dbLatencyMs = Date.now() - startDb;
       if (!ping) dbStatus = 'degraded';
-    } catch (err) {
+    } catch {
       dbStatus = 'down';
       dbLatencyMs = Date.now() - startDb;
+      warnings.push('Database health check failed.');
     }
 
     if (dbStatus === 'ok') {
       try {
-        const countRes = await query<{ count: string }>(`
-          SELECT COUNT(*)::text as count
+        const countRes = await query<{ count: string; latest_event_at: string | null }>(`
+          SELECT
+            COUNT(*)::text as count,
+            MAX(created_at)::text AS latest_event_at
           FROM pd_marketplace_analytics_event
-          WHERE created_at >= NOW() - INTERVAL '1 hour'
+          WHERE created_at >= NOW() - INTERVAL '24 hours'
         `);
-        eventCount1h = parseInt(countRes.rows[0]?.count || '0', 10);
-      } catch (err) {
-        // Table might be empty or error
+        eventCount24h = parseInt(countRes.rows[0]?.count || '0', 10);
+        latestEventAt = countRes.rows[0]?.latest_event_at || null;
+      } catch {
+        warnings.push('Analytics event table is unavailable or empty.');
       }
     }
-
-    const memory = process.memoryUsage();
-    const heapUsedMb = parseFloat((memory.heapUsed / (1024 * 1024)).toFixed(2));
-    const heapTotalMb = parseFloat((memory.heapTotal / (1024 * 1024)).toFixed(2));
-
-    const overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 
-      dbStatus === 'down' ? 'unhealthy' : dbStatus === 'degraded' || dbLatencyMs > 200 ? 'degraded' : 'healthy';
+    const retention = await this.getRetentionStatus();
+    const overallStatus: 'healthy' | 'degraded' =
+      dbStatus === 'down' || dbStatus === 'degraded' || dbLatencyMs > 200 ? 'degraded' : 'healthy';
 
     return {
       status: overallStatus,
-      checked_at: nowIso,
-      components: {
-        database: {
-          status: dbStatus,
-          latency_ms: dbLatencyMs,
-        },
-        event_ingestion: {
-          status: 'ok',
-          events_last_1h: eventCount1h,
-        },
-        rollups: {
-          status: 'ok',
-          last_recomputed_at: nowIso,
-        },
-        retention: {
-          status: 'ok',
-          last_cleanup_at: this.lastCleanupAt,
-        },
+      raw_events: {
+        count_24h: eventCount24h,
+        latest_event_at: latestEventAt,
       },
-      system: {
-        node_memory_used_mb: heapUsedMb,
-        node_memory_total_mb: heapTotalMb,
-        uptime_seconds: Math.floor(process.uptime()),
+      rollups: {
+        latest_event_rollup_date: null,
+        latest_search_rollup_date: null,
       },
+      cache: {
+        available: true,
+        latency_ms: dbLatencyMs,
+      },
+      scheduled_reports: {
+        active_count: 0,
+        overdue_count: 0,
+      },
+      retention: {
+        expired_events_estimate: retention.estimated_events_expired,
+      },
+      warnings,
     };
   }
 }

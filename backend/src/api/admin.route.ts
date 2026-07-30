@@ -61,6 +61,16 @@ const router = Router();
 // All admin routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
 
+function extractAnalyticsQueryParams(req: Request) {
+  return {
+    timeRange: req.query.timeRange as any,
+    startDate: req.query.startDate as string | undefined,
+    endDate: req.query.endDate as string | undefined,
+    currency: req.query.currency as string | undefined,
+    tenantId: req.query.tenantId as string | undefined,
+  };
+}
+
 const adsReviewSchema = z
   .object({
     decision: z.enum(['approved', 'rejected', 'changes_requested']),
@@ -4931,7 +4941,7 @@ router.get(
   '/analytics/definitions',
   requireAuth,
   requireAdmin,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
     const definitions = analyticsService.getMetricDefinitions();
     res.status(200).json({ success: true, definitions });
@@ -5287,7 +5297,8 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
     const result = await analyticsService.runRetentionCleanup({
-      retention_days: req.body?.retention_days ? Number(req.body.retention_days) : undefined,
+      dryRun: Boolean(req.body?.dryRun),
+      batchSize: req.body?.batchSize ? Number(req.body.batchSize) : undefined,
     });
     res.status(200).json(result);
   }),
@@ -5299,10 +5310,13 @@ router.post(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
+    const end = req.body?.endDate || req.body?.to_date || new Date().toISOString();
+    const start = req.body?.startDate || req.body?.from_date || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const result = await analyticsService.recomputeRollups({
-      period: req.body?.period,
-      from_date: req.body?.from_date,
-      to_date: req.body?.to_date,
+      startDate: start,
+      endDate: end,
+      includeSearch: req.body?.includeSearch,
+      includeEvents: req.body?.includeEvents,
     });
     res.status(200).json(result);
   }),
@@ -5333,4 +5347,3 @@ router.get(
 );
 
 export default router;
-
