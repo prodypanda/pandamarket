@@ -352,46 +352,75 @@ router.put(
   }),
 );
 
-// S3 Download Route (Restores from database pd_file_blobs if missing on disk)
+// S3 Download Route (Restores from database pd_file_blobs if missing on disk, with S3 presign fallback)
 router.get(
   '/download-s3-mock/:bucket/*',
   asyncHandler(async (req: Request, res: Response) => {
-    const bucket = req.params.bucket;
-    const key = req.params[0];
-    if (!bucket || !key) {
+    const bucket = req.params.bucket || 'pd-private';
+    const key = req.params[0] || '';
+    if (!key) {
       res.status(400).send('Bad Request');
       return;
     }
-    let filePath: string;
+    const cleanKey = key.replace(/^\/+/, '');
+    const filename = path.basename(cleanKey);
+
+    let filePath: string | null = null;
     try {
-      filePath = resolveDataPath(bucket, key);
+      filePath = resolveDataPath(bucket, cleanKey);
     } catch {
-      res.status(400).send('Bad Request');
+      filePath = null;
+    }
+
+    // 1. Check local disk
+    if (filePath && fs.existsSync(filePath)) {
+      res.sendFile(filePath);
       return;
     }
 
-    if (!fs.existsSync(filePath)) {
-      const blobKey = `${bucket}/${key.replace(/^\/+/, '')}`;
-      try {
-        const { rows } = await query<{ content_type: string; data: Buffer }>(
-          'SELECT content_type, data FROM pd_file_blobs WHERE key = $1',
-          [blobKey],
-        );
-        if (rows.length > 0) {
-          await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-          await fs.promises.writeFile(filePath, rows[0].data);
-          res.setHeader('Content-Type', rows[0].content_type);
-          res.send(rows[0].data);
-          return;
+    // 2. Check PostgreSQL pd_file_blobs (exact bucket/key, key alone, or matching filename)
+    const key1 = `${bucket}/${cleanKey}`;
+    const key2 = cleanKey;
+    const keyPattern = `%${filename}%`;
+
+    try {
+      const { rows } = await query<{ content_type: string; data: Buffer }>(
+        `SELECT content_type, data FROM pd_file_blobs 
+         WHERE key = $1 OR key = $2 OR key LIKE $3
+         ORDER BY created_at DESC LIMIT 1`,
+        [key1, key2, keyPattern],
+      );
+      if (rows.length > 0) {
+        if (filePath) {
+          try {
+            await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+            await fs.promises.writeFile(filePath, rows[0].data);
+          } catch {}
         }
-      } catch (err) {
-        logger.error({ err, blobKey }, 'Failed to restore file from pd_file_blobs');
+        res.setHeader('Content-Type', rows[0].content_type || 'image/jpeg');
+        res.send(rows[0].data);
+        return;
       }
-
-      res.status(404).send('Not Found');
-      return;
+    } catch (err) {
+      logger.error({ err, key: cleanKey }, 'Failed to restore file from pd_file_blobs');
     }
-    res.sendFile(filePath);
+
+    // 3. Fallback: Generate S3 presigned download URL if S3 is active
+    try {
+      const downloadUrl = await presignDownload({
+        bucket,
+        key: cleanKey,
+        expiresInSeconds: 3600,
+      });
+      if (downloadUrl) {
+        res.redirect(downloadUrl);
+        return;
+      }
+    } catch (s3Err) {
+      logger.warn({ err: s3Err, bucket, key: cleanKey }, 'S3 presignDownload fallback failed');
+    }
+
+    res.status(404).send('Not Found');
   }),
 );
 
