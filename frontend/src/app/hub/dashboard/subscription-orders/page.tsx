@@ -25,6 +25,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+interface UserStore {
+  id: string;
+  name: string;
+  subdomain?: string | null;
+}
+
 interface SubscriptionOrder {
   id: string;
   store_id: string;
@@ -41,6 +47,8 @@ interface SubscriptionOrder {
   rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
+  store_name?: string | null;
+  store_subdomain?: string | null;
 }
 
 interface SummaryStats {
@@ -51,6 +59,7 @@ interface SummaryStats {
 
 interface OrdersResponse {
   orders: SubscriptionOrder[];
+  user_stores?: UserStore[];
   meta: {
     page: number;
     limit: number;
@@ -81,6 +90,7 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; i
 
 export default function SubscriptionOrdersPage() {
   const [orders, setOrders] = useState<SubscriptionOrder[]>([]);
+  const [userStores, setUserStores] = useState<UserStore[]>([]);
   const [summary, setSummary] = useState<SummaryStats>({ total_spent_tnd: 0, paid_count: 0, pending_count: 0 });
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
@@ -88,10 +98,12 @@ export default function SubscriptionOrdersPage() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   const [statusFilter, setStatusFilter] = useState('all');
+  const [storeFilter, setStoreFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectingStoreId, setSelectingStoreId] = useState<string | null>(null);
 
   // Modals state
   const [selectedInvoice, setSelectedInvoice] = useState<SubscriptionOrder | null>(null);
@@ -108,6 +120,7 @@ export default function SubscriptionOrdersPage() {
         page: String(page),
         limit: String(limit),
         status: statusFilter,
+        store_id: storeFilter,
         search: searchQuery.trim(),
       });
       const res = await fetchWithCsrf(`/api/pd/subscriptions/orders?${params.toString()}`, {
@@ -116,6 +129,7 @@ export default function SubscriptionOrdersPage() {
       if (!res.ok) throw new Error('Échec du chargement des commandes d\'abonnement');
       const data: OrdersResponse = await res.json();
       setOrders(data.orders || []);
+      if (data.user_stores) setUserStores(data.user_stores);
       setTotalPages(data.meta?.total_pages || 1);
       setTotalRecords(data.meta?.total || 0);
       if (data.summary) setSummary(data.summary);
@@ -124,7 +138,24 @@ export default function SubscriptionOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, searchQuery]);
+  }, [page, limit, statusFilter, storeFilter, searchQuery]);
+
+  const handleSelectStore = async (storeId: string) => {
+    setSelectingStoreId(storeId);
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_id: storeId }),
+      });
+      if (res.ok) {
+        window.location.href = '/hub/dashboard';
+      }
+    } catch {
+      setSelectingStoreId(null);
+    }
+  };
 
   useEffect(() => {
     loadOrders();
@@ -306,13 +337,34 @@ export default function SubscriptionOrdersPage() {
               {tab.label}
             </button>
           ))}
+          {/* Store Filter Selector */}
+          {userStores.length > 0 && (
+            <div className="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
+              <Building className="w-4 h-4 text-slate-400" />
+              <select
+                value={storeFilter}
+                onChange={(e) => {
+                  setStoreFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
+              >
+                <option value="all">Toutes mes boutiques ({userStores.length})</option>
+                {userStores.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.name} {st.subdomain ? `(${st.subdomain})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="relative min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Rechercher par N° commande ou plan..."
+            placeholder="Rechercher par N° commande, boutique, plan..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -351,6 +403,7 @@ export default function SubscriptionOrdersPage() {
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-4">N° Commande</th>
+                  <th className="px-6 py-4">Boutique</th>
                   <th className="px-6 py-4">Formule</th>
                   <th className="px-6 py-4">Montant</th>
                   <th className="px-6 py-4">Mode de Paiement</th>
@@ -369,6 +422,26 @@ export default function SubscriptionOrdersPage() {
                     <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-slate-900">
                         #{ord.id.slice(-10)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectStore(ord.store_id)}
+                            disabled={selectingStoreId === ord.store_id}
+                            className="font-bold text-slate-900 flex items-center gap-1.5 hover:text-[#B91C1C] text-left transition group"
+                            title="Cliquer pour basculer sur cette boutique"
+                          >
+                            <Building className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#B91C1C]" />
+                            <span>{ord.store_name || 'Boutique'}</span>
+                            {selectingStoreId === ord.store_id && <Loader2 className="w-3 h-3 animate-spin text-[#B91C1C]" />}
+                          </button>
+                          {ord.store_subdomain && (
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              {ord.store_subdomain}.pandamarket.tn
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-extrabold text-slate-900 uppercase">

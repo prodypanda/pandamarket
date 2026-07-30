@@ -107,7 +107,8 @@ export default function DashboardLayout({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isStoreSelectorPage = pathname === '/hub/dashboard/select-store';
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
-  const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage;
+  const isSubscriptionOrdersPage = pathname === '/hub/dashboard/subscription-orders';
+  const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage || isSubscriptionOrdersPage;
 
   useEffect(() => {
     let cancelled = false;

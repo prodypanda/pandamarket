@@ -1159,13 +1159,18 @@ export class SubscriptionPaymentService {
     }
   }
 
-  async uploadProof(intentId: string, storeId: string, proofUrl: string) {
+  async uploadProof(intentId: string, storeId: string, proofUrl: string, userId?: string) {
     if (!proofUrl?.trim()) {
       throw new PdValidationError('Proof URL or file link is required');
     }
     const { rows } = await query(
-      'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',
-      [intentId, storeId],
+      `SELECT * FROM pd_subscription_intent 
+       WHERE id = $1 AND (
+         store_id = $2 
+         OR user_id = $3 
+         OR store_id IN (SELECT id FROM pd_store WHERE owner_id = $3)
+       )`,
+      [intentId, storeId || '', userId || storeId || ''],
     );
     const intent = rows[0];
     if (!intent) {
@@ -1183,10 +1188,15 @@ export class SubscriptionPaymentService {
     return updated.rows[0];
   }
 
-  async cancelByVendor(intentId: string, storeId: string) {
+  async cancelByVendor(intentId: string, storeId: string, userId?: string) {
     const { rows } = await query(
-      'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',
-      [intentId, storeId],
+      `SELECT * FROM pd_subscription_intent 
+       WHERE id = $1 AND (
+         store_id = $2 
+         OR user_id = $3 
+         OR store_id IN (SELECT id FROM pd_store WHERE owner_id = $3)
+       )`,
+      [intentId, storeId || '', userId || storeId || ''],
     );
     const intent = rows[0];
     if (!intent) {
@@ -1348,10 +1358,15 @@ export class SubscriptionPaymentService {
     return { processed, total: intentIds.length, errors };
   }
 
-  async settle(storeId: string, intentId: string) {
+  async settle(storeId: string, intentId: string, userId?: string) {
     const { rows } = await query(
-      'SELECT * FROM pd_subscription_intent WHERE id = $1 AND store_id = $2',
-      [intentId, storeId],
+      `SELECT * FROM pd_subscription_intent 
+       WHERE id = $1 AND (
+         store_id = $2 
+         OR user_id = $3 
+         OR store_id IN (SELECT id FROM pd_store WHERE owner_id = $3)
+       )`,
+      [intentId, storeId || '', userId || storeId || ''],
     );
     const intent = rows[0];
     if (!intent) {

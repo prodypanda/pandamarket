@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { subscriptionService } from '../services/subscription.service';
 import { subscriptionPaymentService } from '../services/subscription-payment.service';
-import { asyncHandler, validate, requireStore } from '../middlewares';
+import { asyncHandler, validate, requireStore, requireAuth } from '../middlewares';
 import { query } from '../db/pool';
 import { normalizePlanId } from '../utils/plan-id';
 import { PaymentGateway } from '@pandamarket/types';
@@ -71,29 +71,45 @@ router.get(
   }),
 );
 
-// Vendor: List all platform subscription & billing orders
+// Vendor: List all platform subscription & billing orders across all owned stores
 router.get(
   '/orders',
-  requireStore,
+  requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const storeId = req.user!.store_id!;
+    const userId = req.user!.id;
+    const storeIdFilter = (req.query.store_id as string) || 'all';
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
     const status = (req.query.status as string) || '';
     const search = (req.query.search as string) || '';
 
-    const conditions: string[] = ['store_id = $1'];
-    const sqlParams: unknown[] = [storeId];
+    // Fetch seller's owned stores for frontend filter dropdown
+    const userStoresRes = await query<{ id: string; name: string; subdomain: string | null }>(
+      'SELECT id, name, subdomain FROM pd_store WHERE owner_id = $1 ORDER BY name ASC',
+      [userId],
+    );
+
+    const conditions: string[] = [
+      '(i.user_id = $1 OR i.store_id IN (SELECT id FROM pd_store WHERE owner_id = $1))',
+    ];
+    const sqlParams: unknown[] = [userId];
     let pIdx = 2;
 
+    if (storeIdFilter && storeIdFilter !== 'all') {
+      conditions.push(`i.store_id = $${pIdx++}`);
+      sqlParams.push(storeIdFilter);
+    }
+
     if (status && status !== 'all') {
-      conditions.push(`status = $${pIdx++}`);
+      conditions.push(`i.status = $${pIdx++}`);
       sqlParams.push(status);
     }
 
     if (search.trim()) {
-      conditions.push(`(id ILIKE $${pIdx} OR target_plan ILIKE $${pIdx} OR gateway ILIKE $${pIdx})`);
+      conditions.push(
+        `(i.id ILIKE $${pIdx} OR i.target_plan ILIKE $${pIdx} OR i.gateway ILIKE $${pIdx} OR s.name ILIKE $${pIdx} OR s.subdomain ILIKE $${pIdx})`,
+      );
       sqlParams.push(`%${search.trim()}%`);
       pIdx++;
     }
@@ -102,39 +118,55 @@ router.get(
 
     // Total matching records count
     const countRes = await query<{ total: string }>(
-      `SELECT COUNT(*)::int AS total FROM pd_subscription_intent WHERE ${whereClause}`,
+      `SELECT COUNT(*)::int AS total 
+       FROM pd_subscription_intent i
+       LEFT JOIN pd_store s ON s.id = i.store_id
+       WHERE ${whereClause}`,
       sqlParams,
     );
     const total = Number(countRes.rows[0]?.total || 0);
 
-    // Paginated dataset
+    // Paginated dataset with store name & subdomain
     const dataRes = await query(
-      `SELECT * FROM pd_subscription_intent
+      `SELECT i.*, s.name AS store_name, s.subdomain AS store_subdomain
+       FROM pd_subscription_intent i
+       LEFT JOIN pd_store s ON s.id = i.store_id
        WHERE ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY i.created_at DESC
        LIMIT $${pIdx++} OFFSET $${pIdx++}`,
       [...sqlParams, limit, offset],
     );
 
-    // Summary statistics for vendor billing overview
+    // Summary statistics for vendor billing overview (respecting store filter if selected)
+    const statsConditions = [
+      '(i.user_id = $1 OR i.store_id IN (SELECT id FROM pd_store WHERE owner_id = $1))',
+    ];
+    const statsParams: unknown[] = [userId];
+    if (storeIdFilter && storeIdFilter !== 'all') {
+      statsConditions.push('i.store_id = $2');
+      statsParams.push(storeIdFilter);
+    }
+    const statsWhere = statsConditions.join(' AND ');
+
     const statsRes = await query<{
       total_spent_tnd: string;
       paid_count: string;
       pending_count: string;
     }>(
       `SELECT 
-         COALESCE(SUM(CASE WHEN status IN ('captured', 'paid') THEN amount ELSE 0 END), 0) AS total_spent_tnd,
-         COUNT(CASE WHEN status IN ('captured', 'paid') THEN 1 END)::int AS paid_count,
-         COUNT(CASE WHEN status IN ('pending', 'pending_proof', 'pending_review') THEN 1 END)::int AS pending_count
-       FROM pd_subscription_intent
-       WHERE store_id = $1`,
-      [storeId],
+         COALESCE(SUM(CASE WHEN i.status IN ('captured', 'paid') THEN i.amount ELSE 0 END), 0) AS total_spent_tnd,
+         COUNT(CASE WHEN i.status IN ('captured', 'paid') THEN 1 END)::int AS paid_count,
+         COUNT(CASE WHEN i.status IN ('pending', 'pending_proof', 'pending_review') THEN 1 END)::int AS pending_count
+       FROM pd_subscription_intent i
+       WHERE ${statsWhere}`,
+      statsParams,
     );
 
     const stats = statsRes.rows[0] || { total_spent_tnd: '0', paid_count: '0', pending_count: '0' };
 
     res.status(200).json({
       orders: dataRes.rows,
+      user_stores: userStoresRes.rows,
       meta: {
         page,
         limit,
@@ -178,13 +210,14 @@ router.post(
 // Vendor: Upload/Attach mandat payment proof for a pending order
 router.post(
   '/upload-proof',
-  requireStore,
+  requireAuth,
   validate(uploadProofSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await subscriptionPaymentService.uploadProof(
       req.body.intent_id,
-      req.user!.store_id!,
+      req.user!.store_id || '',
       req.body.proof_url,
+      req.user!.id,
     );
     res.status(200).json({ success: true, intent: result });
   }),
@@ -193,12 +226,13 @@ router.post(
 // Vendor: Cancel unpaid subscription order
 router.post(
   '/cancel',
-  requireStore,
+  requireAuth,
   validate(settleSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await subscriptionPaymentService.cancelByVendor(
       req.body.intent_id,
-      req.user!.store_id!,
+      req.user!.store_id || '',
+      req.user!.id,
     );
     res.status(200).json({ success: true, intent: result });
   }),
@@ -207,12 +241,13 @@ router.post(
 // Vendor: Settle subscription payment & activate plan after checkout return
 router.post(
   '/settle',
-  requireStore,
+  requireAuth,
   validate(settleSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await subscriptionPaymentService.settle(
-      req.user!.store_id!,
+      req.user!.store_id || '',
       req.body.intent_id,
+      req.user!.id,
     );
     res.status(200).json(result);
   }),
