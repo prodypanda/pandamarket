@@ -31,6 +31,7 @@ import { walletService } from './wallet.service';
 import { creditsService } from './credits.service';
 import { subscriptionService } from './subscription.service';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
+import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
 
 export interface StoreRow {
   id: string;
@@ -336,6 +337,12 @@ export class StoreService {
       await creditsService.create(store.id, plan, client);
 
       logger.info({ store_id: store.id, owner_id: opts.user_id, plan, seller_type: sellerType }, 'Store created');
+      marketplaceAnalyticsEventService.insertMarketplaceEvent({
+        event_type: 'store_created',
+        user_id: opts.user_id,
+        store_id: store.id,
+        source: 'backend',
+      });
       return store;
     });
   }

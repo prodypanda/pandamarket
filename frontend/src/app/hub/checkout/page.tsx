@@ -10,6 +10,7 @@ import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 import { getCartLineTotal, getShippableStoreCount, getShippingTotalForItems } from '../../../lib/cart-utils';
+import { trackCheckoutStarted, trackCheckoutPaymentStarted, trackCheckoutPaymentCompleted, trackCheckoutFailed, trackCheckoutAddressSubmitted } from '../../../lib/marketplace-analytics';
 
 const SHIPPING_PER_VENDOR = 7;
 
@@ -70,6 +71,7 @@ export default function CheckoutPage() {
     }
 
     setIsProcessing(true);
+    trackCheckoutStarted();
     const normalizedAddress = hasShippableItems
       ? (() => {
         const [firstName = '', ...lastNameParts] = address.full_name.trim().split(/\s+/).filter(Boolean);
@@ -115,15 +117,18 @@ export default function CheckoutPage() {
       const orderData = await orderRes.json();
       const orderId = orderData.order?.id || orderData.order_id;
       if (adsAttribution) localStorage.removeItem('pd_ads_attribution');
+      trackCheckoutPaymentStarted(orderId, selectedGateway);
 
       // Step 2: Handle payment based on gateway
       if (selectedGateway === 'manual_mandat') {
+        trackCheckoutPaymentCompleted(orderId);
         clearCart();
         router.push(`/hub/checkout/mandat-upload?order_id=${orderId}`);
         return;
       }
 
       if (selectedGateway === 'cod') {
+        trackCheckoutPaymentCompleted(orderId);
         clearCart();
         router.push(`/hub/checkout/success?order_id=${orderId}`);
         return;
@@ -143,6 +148,7 @@ export default function CheckoutPage() {
       if (!paymentRes.ok) {
         const data = await paymentRes.json();
         setError(data.error?.message || 'Erreur lors de l\'initialisation du paiement');
+        trackCheckoutFailed(orderId, 'payment_init_failed');
         setIsProcessing(false);
         return;
       }
@@ -159,6 +165,7 @@ export default function CheckoutPage() {
       }
     } catch {
       setError(t('errors.networkError'));
+      trackCheckoutFailed(undefined, 'network_error');
       setIsProcessing(false);
     }
   };

@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { query } from '../db/pool';
 import { asyncHandler, validate, requireStore } from '../middlewares';
+import { marketplaceAnalyticsEventService, type MarketplaceEventType } from '../services/marketplace-analytics-event.service';
 
 const router = Router();
 
@@ -283,6 +284,62 @@ router.get(
           : curRev > 0 ? 100 : 0,
       },
     });
+  }),
+);
+
+// ==========================================================
+// POST /event — Marketplace analytics event ingestion
+// ==========================================================
+
+const marketplaceEventSchema = z.object({
+  event_type: z.string().min(1).max(64),
+  store_id: z.string().max(64).optional(),
+  product_id: z.string().max(64).optional(),
+  category_id: z.string().max(64).optional(),
+  order_id: z.string().max(64).optional(),
+  path: z.string().max(2048).optional(),
+  locale: z.string().max(10).optional(),
+  session_id: z.string().max(128).optional(),
+  visitor_id: z.string().max(128).optional(),
+  search_query: z.string().max(500).optional(),
+  search_results_count: z.number().int().min(0).max(100000).optional(),
+  funnel_step: z.string().max(64).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+router.post(
+  '/event',
+  validate(marketplaceEventSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const payload = req.body as z.infer<typeof marketplaceEventSchema>;
+
+    if (!marketplaceAnalyticsEventService.isValidEventType(payload.event_type)) {
+      res.status(202).json({ success: true });
+      return;
+    }
+
+    // Fire-and-forget: do not await, respond immediately
+    marketplaceAnalyticsEventService.insertMarketplaceEvent({
+      event_type: payload.event_type as MarketplaceEventType,
+      user_id: (req as any).user?.id || null,
+      store_id: payload.store_id,
+      product_id: payload.product_id,
+      category_id: payload.category_id,
+      order_id: payload.order_id,
+      visitor_id: payload.visitor_id,
+      session_id: payload.session_id,
+      referrer: req.get('referer') || null,
+      locale: payload.locale,
+      user_agent: req.get('user-agent') || null,
+      source: 'web',
+      path: payload.path,
+      search_query: payload.search_query,
+      search_results_count: payload.search_results_count,
+      funnel_step: payload.funnel_step,
+      metadata: payload.metadata,
+    });
+
+    res.status(202).json({ success: true });
   }),
 );
 

@@ -73,18 +73,62 @@ export function BusinessAnalyticsTab({ data }: BusinessAnalyticsTabProps) {
         </div>
       </div>
 
-      {/* 2. Checkout Funnel (Explicit Unavailable Banner) */}
-      <div className="p-5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-2 shadow-sm">
-        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-sm">
-          <Filter className="w-4 h-4 text-slate-400" aria-hidden="true" />
-          <span>Checkout Conversion Funnel</span>
-          <span className="px-2 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] uppercase font-black">
-            Not Tracked Yet
-          </span>
-        </div>
-        <p className="text-xs text-slate-500">
-          {checkout.unavailable_reason || 'Checkout funnel events (checkout_started, payment_started, payment_completed) are not tracked yet in the database.'}
-        </p>
+      {/* 2. Checkout Funnel */}
+      <div className="space-y-3">
+        <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <Filter className="w-5 h-5 text-indigo-600" aria-hidden="true" /> Checkout Conversion Funnel
+        </h3>
+        {checkout.available ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Checkout Started"
+              value={checkout.checkout_started}
+              icon={<Filter className="w-4 h-4" />}
+              subtext={<span className="text-slate-500 text-[11px]">Initiated checkout</span>}
+            />
+            <MetricCard
+              title="Payment Started"
+              value={checkout.payment_started}
+              icon={<Filter className="w-4 h-4" />}
+              subtext={<span className="text-slate-500 text-[11px]">Selected gateway / submitted</span>}
+            />
+            <MetricCard
+              title="Payment Completed"
+              value={checkout.payment_completed}
+              icon={<CheckCircle2 className="w-4 h-4" />}
+              subtext={<span className="text-emerald-600 font-bold text-[11px]">Successful orders</span>}
+              gradientClass="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-emerald-950/40"
+              borderClass="border-emerald-200/60 dark:border-emerald-800/60"
+              titleColorClass="text-emerald-600 dark:text-emerald-400"
+              iconBgClass="bg-emerald-500/10"
+              iconColorClass="text-emerald-600"
+            />
+            <MetricCard
+              title="Checkout Completion Rate"
+              value={formatPercent(checkout.checkout_completion_rate_pct, '0%')}
+              icon={<Filter className="w-4 h-4" />}
+              subtext={<span className="text-indigo-600 font-bold text-[11px]">Completed / Started</span>}
+              gradientClass="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-indigo-950/40"
+              borderClass="border-indigo-200/60 dark:border-indigo-800/60"
+              titleColorClass="text-indigo-600 dark:text-indigo-400"
+              iconBgClass="bg-indigo-500/10"
+              iconColorClass="text-indigo-600"
+            />
+          </div>
+        ) : (
+          <div className="p-5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-2 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-sm">
+              <Filter className="w-4 h-4 text-slate-400" aria-hidden="true" />
+              <span>Checkout Conversion Funnel</span>
+              <span className="px-2 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] uppercase font-black">
+                Not Tracked Yet
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              {checkout.unavailable_reason || 'Checkout funnel events (checkout_started, payment_started, payment_completed) are not tracked yet in the database.'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 3. Buyer & Customer Analytics */}

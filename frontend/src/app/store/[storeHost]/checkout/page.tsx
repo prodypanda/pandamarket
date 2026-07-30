@@ -10,6 +10,7 @@ import { isMarketplaceHost } from '../../../../lib/store-hosts';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
 import { getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
 import { MarketplaceBrand } from '../../../../components/MarketplaceBrand';
+import { trackCheckoutStarted, trackCheckoutPaymentStarted, trackCheckoutPaymentCompleted, trackCheckoutFailed } from '../../../../lib/marketplace-analytics';
 
 function formatPrice(price: number): string {
   return `${price.toFixed(3)} TND`;
@@ -160,6 +161,7 @@ export default function StoreCheckoutPage() {
     }
 
     setIsProcessing(true);
+    trackCheckoutStarted();
     if (!store) {
       setError('Boutique introuvable ou indisponible.');
       setIsProcessing(false);
@@ -214,8 +216,10 @@ export default function StoreCheckoutPage() {
 
       const orderData = await orderRes.json();
       const orderId = orderData.order?.id || orderData.order_id;
+      trackCheckoutPaymentStarted(orderId, selectedGateway);
 
       if (selectedGateway === 'manual_mandat' || selectedGateway === 'cod') {
+        trackCheckoutPaymentCompleted(orderId);
         removeStoreItems(store.id);
         setOrderSuccess(orderId);
         return;
@@ -235,6 +239,7 @@ export default function StoreCheckoutPage() {
       if (!paymentRes.ok) {
         const data = await paymentRes.json();
         setError(data.error?.message || "Erreur lors de l'initialisation du paiement");
+        trackCheckoutFailed(orderId, 'payment_init_failed');
         setIsProcessing(false);
         return;
       }
@@ -250,6 +255,7 @@ export default function StoreCheckoutPage() {
       }
     } catch {
       setError('Erreur réseau. Veuillez réessayer.');
+      trackCheckoutFailed(undefined, 'network_error');
       setIsProcessing(false);
     }
   };

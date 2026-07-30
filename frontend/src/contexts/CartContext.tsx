@@ -11,6 +11,7 @@ import {
   getItemCount as _getItemCount,
   getItemsByStore as _getItemsByStore,
 } from '../lib/cart-utils';
+import { trackAddToCart } from '../lib/marketplace-analytics';
 
 export type { CartItem } from '../lib/cart-utils';
 
@@ -54,6 +55,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback((item: Omit<CartItem, 'id'>) => {
     setItems((prev) => addItem(prev, item));
+    trackAddToCart(item.product_id, item.store_id);
   }, []);
 
   const removeFromCart = useCallback((id: string) => {

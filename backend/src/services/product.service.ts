@@ -23,6 +23,7 @@ import {
 import { subscriptionService } from './subscription.service';
 import { categoryService } from './category.service';
 import { logger } from '../utils/logger';
+import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
 import { sanitizeProductDescription } from '../utils/sanitize-html';
 import type { PoolClient } from 'pg';
 
@@ -339,6 +340,22 @@ export class ProductService {
     });
 
     logger.info({ product_id: id, store_id: input.store_id, status }, 'Product created');
+    marketplaceAnalyticsEventService.insertMarketplaceEvent({
+      event_type: 'product_created',
+      store_id: input.store_id,
+      product_id: id,
+      category_id: input.marketplace_category_id || undefined,
+      source: 'backend',
+    });
+    if (status === ProductStatus.Published) {
+      marketplaceAnalyticsEventService.insertMarketplaceEvent({
+        event_type: 'product_published',
+        store_id: input.store_id,
+        product_id: id,
+        category_id: input.marketplace_category_id || undefined,
+        source: 'backend',
+      });
+    }
     return this.getById(productId);
   }
 

@@ -12,6 +12,7 @@ import { getHubProductHref } from '../../../lib/product-links';
 import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-type';
 import { isAliExpressTheme } from '../../../lib/marketplace-theme';
 import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
+import { trackSearchPerformed } from '../../../lib/marketplace-analytics';
 
 interface SearchProduct {
   id: string;
@@ -161,6 +162,7 @@ function SearchContent() {
         const data: SearchResult = await res.json();
         setResults(data.hits || data.data || []);
         setTotalHits(data.estimatedTotalHits || data.total || 0);
+        trackSearchPerformed(query, data.estimatedTotalHits || data.total || 0);
       } else {
         setResults([]);
         setTotalHits(0);

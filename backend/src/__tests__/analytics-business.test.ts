@@ -135,8 +135,8 @@ describe('AnalyticsService getBusinessAnalytics', () => {
     expect(result.orders.average_order_value_tnd).toBe(300);
     expect(result.orders.order_growth_pct).toBe(33.33);
 
-    expect(result.checkout.available).toBe(false);
-    expect(result.checkout.unavailable_reason).toBe('Checkout funnel events are not tracked yet.');
+    expect(result.checkout.available).toBe(true);
+    expect(result.checkout.checkout_started).toBeDefined();
 
     expect(result.buyers.total_buyers_current).toBe(200);
     expect(result.buyers.new_buyers).toBe(25);
@@ -166,7 +166,7 @@ describe('AnalyticsService getBusinessAnalytics', () => {
     expect(csv).toContain('"Marketplace Orders"');
     expect(csv).toContain('"Total Orders in Period"');
     expect(csv).toContain('"Checkout Funnel"');
-    expect(csv).toContain('"No (Events not tracked yet)"');
+    expect(csv).toContain('"Yes"');
     expect(csv).toContain('"Buyers"');
     expect(csv).toContain('"Sellers"');
     expect(csv).toContain('"Payouts"');

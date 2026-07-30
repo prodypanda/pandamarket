@@ -9,8 +9,11 @@ import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 import { getCartItemUnitPrice, getCartLineTotal, getShippableStoreCount, getShippingTotalForItems, getStoreShippingTotal } from '../../../lib/cart-utils';
+import { trackCartView } from '../../../lib/marketplace-analytics';
+import { useEffect } from 'react';
 
 const SHIPPING_PER_VENDOR = 7;
+
 
 function getCartProductHref(item: CartItem): string {
   return getHubProductHref({
@@ -28,6 +31,8 @@ export default function CartPage() {
     useCart();
   const { t } = useLocale();
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
+
+  useEffect(() => { trackCartView(); }, []);
 
   function formatPrice(price: number): string {
     return `${price.toFixed(3)} ${t('common.currency')}`;

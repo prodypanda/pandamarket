@@ -212,14 +212,22 @@ export interface PlatformBusinessAnalytics {
     gmv_growth_pct: number | null;
   };
 
-  checkout: {
-    available: false;
-    checkout_started: null;
-    payment_started: null;
-    payment_completed: null;
-    checkout_completion_rate_pct: null;
-    unavailable_reason: 'Checkout funnel events are not tracked yet.';
-  };
+  checkout:
+    | {
+        available: true;
+        checkout_started: number;
+        payment_started: number;
+        payment_completed: number;
+        checkout_completion_rate_pct: number | null;
+      }
+    | {
+        available: false;
+        checkout_started: null;
+        payment_started: null;
+        payment_completed: null;
+        checkout_completion_rate_pct: null;
+        unavailable_reason: string;
+      };
 
   buyers: {
     available: true;

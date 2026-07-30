@@ -826,7 +826,7 @@ export class AnalyticsService {
         FROM pd_reports
         WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
           AND created_at <= $2::timestamp
-      `).catch(() => ({ rows: [{ total_reports: 0, open_reports: 0 }] }));
+      `, [range.startDate, range.endDate]).catch(() => ({ rows: [{ total_reports: 0, open_reports: 0 }] }));
 
       const { rows: disputeRows } = await query(`
         SELECT COUNT(*)::int AS open_disputes FROM pd_subscription_dispute WHERE status IN ('open', 'under_review')
@@ -839,7 +839,7 @@ export class AnalyticsService {
         FROM pd_store_order_refund
         WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
           AND created_at <= $2::timestamp
-      `).catch(() => ({ rows: [{ refunds_count: 0, refunds_amount: 0 }] }));
+      `, [range.startDate, range.endDate]).catch(() => ({ rows: [{ refunds_count: 0, refunds_amount: 0 }] }));
 
       const { rows: riskVendorRows } = await query(`
         SELECT COUNT(DISTINCT store_id)::int AS high_risk_vendors
@@ -881,6 +881,26 @@ export class AnalyticsService {
       const openSupportTickets = Number(supportRows[0]?.open_tickets || 0);
       const urgentSupportTickets = Number(supportRows[0]?.urgent_tickets || 0);
 
+      // 7. Checkout Funnel Analytics from pd_marketplace_analytics_event
+      const { rows: checkoutFunnelRows } = await query(`
+        SELECT 
+          COUNT(CASE WHEN event_type = 'checkout_started' THEN 1 END)::int AS checkout_started,
+          COUNT(CASE WHEN event_type = 'checkout_payment_started' THEN 1 END)::int AS payment_started,
+          COUNT(CASE WHEN event_type = 'checkout_payment_completed' THEN 1 END)::int AS payment_completed
+        FROM pd_marketplace_analytics_event
+        WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
+          AND created_at <= $2::timestamp
+      `, [range.startDate, range.endDate]).catch(() => ({
+        rows: [{ checkout_started: 0, payment_started: 0, payment_completed: 0 }],
+      }));
+
+      const checkoutStartedCount = Number(checkoutFunnelRows[0]?.checkout_started || 0);
+      const paymentStartedCount = Number(checkoutFunnelRows[0]?.payment_started || 0);
+      const paymentCompletedCount = Number(checkoutFunnelRows[0]?.payment_completed || 0);
+      const checkoutCompletionRatePct = checkoutStartedCount > 0
+        ? Number(((paymentCompletedCount / checkoutStartedCount) * 100).toFixed(1))
+        : 0;
+
       return {
         range,
         metric_scope: {
@@ -898,7 +918,7 @@ export class AnalyticsService {
           stores_created: 'selected_period',
           payout_transactions_in_period: 'selected_period',
           reports_count: 'selected_period',
-          checkout: 'unavailable',
+          checkout: 'selected_period',
         },
         orders: {
           available: true,
@@ -912,12 +932,11 @@ export class AnalyticsService {
           gmv_growth_pct: gmvGrowthPct,
         },
         checkout: {
-          available: false,
-          checkout_started: null,
-          payment_started: null,
-          payment_completed: null,
-          checkout_completion_rate_pct: null,
-          unavailable_reason: 'Checkout funnel events are not tracked yet.',
+          available: true,
+          checkout_started: checkoutStartedCount,
+          payment_started: paymentStartedCount,
+          payment_completed: paymentCompletedCount,
+          checkout_completion_rate_pct: checkoutCompletionRatePct,
         },
         buyers: {
           available: true,
