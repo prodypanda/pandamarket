@@ -113,6 +113,18 @@ interface WebhookLog {
   created_at: string;
 }
 
+function resolveProofUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/api/pd/')) {
+    return url;
+  }
+  const cleanKey = url.replace(/^\/+/, '');
+  if (cleanKey.startsWith('pd-private/')) {
+    return `/api/pd/files/download-s3-mock/${cleanKey}`;
+  }
+  return `/api/pd/files/download-s3-mock/pd-private/${cleanKey}`;
+};
+
 interface StatsData {
   gateway_breakdown: Array<{ gateway: string; count: number; total_amount: number }>;
   plan_breakdown: Array<{ target_plan: string; count: number }>;
@@ -1690,7 +1702,7 @@ export default function SubscriptionOrdersPage() {
                         <td className="px-4 py-4 space-x-1">
                           {order.proof_url ? (
                             <a
-                              href={order.proof_url}
+                              href={resolveProofUrl(order.proof_url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold hover:underline"
@@ -2736,7 +2748,7 @@ export default function SubscriptionOrdersPage() {
               {drawerOrder.proof_url ? (
                 <div className="space-y-2">
                   <a
-                    href={drawerOrder.proof_url}
+                    href={resolveProofUrl(drawerOrder.proof_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 font-bold text-xs hover:bg-blue-100 transition-all border border-blue-200 dark:border-blue-800"
@@ -2746,7 +2758,7 @@ export default function SubscriptionOrdersPage() {
                   {/\.(jpg|jpeg|png|webp)/i.test(drawerOrder.proof_url) && (
                     <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-56">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={drawerOrder.proof_url} alt="Proof" className="w-full object-contain max-h-56 bg-slate-950/5" />
+                      <img src={resolveProofUrl(drawerOrder.proof_url)} alt="Proof" className="w-full object-contain max-h-56 bg-slate-950/5" />
                     </div>
                   )}
                 </div>
