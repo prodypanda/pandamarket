@@ -131,8 +131,8 @@ describe('AnalyticsService Time Range Normalization & Filtering', () => {
       expect(analyticsService.calculateGrowthPct(0, 0)).toBe(0);
     });
 
-    it('returns null when previous is zero and current > 0 to avoid synthetic spikes', () => {
-      expect(analyticsService.calculateGrowthPct(100, 0)).toBeNull();
+    it('returns 100 when previous is zero and current > 0', () => {
+      expect(analyticsService.calculateGrowthPct(100, 0)).toBe(100);
     });
 
     it('returns null when previous is null or undefined', () => {

@@ -418,7 +418,8 @@
       "settings": "Settings",
       "aiCosts": "AI Costs",
       "smtpConfig": "Email Config",
-      "notesReminders": "Notes & Reminders"
+      "notesReminders": "Notes & Reminders",
+      "platformAnalytics": "Platform Analytics"
     },
     "urgentActions": "Urgent Actions",
     "kycPending": "{count} KYC pending",

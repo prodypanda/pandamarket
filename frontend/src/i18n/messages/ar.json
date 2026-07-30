@@ -418,7 +418,8 @@
       "settings": "الإعدادات",
       "aiCosts": "تكاليف الذكاء الاصطناعي",
       "smtpConfig": "إعدادات البريد",
-      "notesReminders": "ملاحظات وتذكيرات"
+      "notesReminders": "ملاحظات وتذكيرات",
+      "platformAnalytics": "تحليلات المنصة"
     },
     "urgentActions": "إجراءات عاجلة",
     "kycPending": "{count} تحقق قيد الانتظار",

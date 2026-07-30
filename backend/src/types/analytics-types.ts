@@ -174,21 +174,21 @@ export interface SystemMetricsDTO {
     p95_latency_ms: number | null;
     p99_latency_ms: number | null;
     error_rate_pct: number | null;
-    telemetry_available: false;
+    telemetry_available: boolean;
   };
   print_production_queue: {
     pending_jobs: number | null;
     processing_jobs: number | null;
     completed_today: number | null;
     delayed_jobs: number | null;
-    print_queue_metrics_available: false;
+    print_queue_metrics_available: boolean;
   };
   database_health: {
     active_connections: number | null;
     logs_24h: number;
     logs_in_period: number;
     index_hit_ratio_pct: number | null;
-    database_pool_metrics_available: false;
+    database_pool_metrics_available: boolean;
   };
   live_audit_feed: Array<{
     action: string;

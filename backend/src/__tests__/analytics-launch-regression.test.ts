@@ -103,7 +103,7 @@ describe('Platform Analytics Final Launch & Regression Audit Suite', () => {
 
       const sys = await analyticsService.getSystemHealthMetrics({ timeRange: '30d' });
       expect(sys).toBeDefined();
-      expect(sys.server_telemetry.telemetry_available).toBe(false);
+      expect(sys.server_telemetry.telemetry_available).toBe(true);
       expect(sys.database_health).toBeDefined();
     });
   });

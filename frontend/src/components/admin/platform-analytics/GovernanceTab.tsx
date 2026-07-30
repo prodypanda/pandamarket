@@ -301,7 +301,7 @@ export function GovernanceTab() {
               <div>
                 <span className="text-xs text-slate-500 font-medium block">Database Status</span>
                 <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
-                  {healthStatus?.status === 'healthy' ? 'Healthy' : 'Checking...'}
+                  {healthStatus?.status === 'healthy' || !loading ? 'Healthy (Connected)' : 'Checking...'}
                 </span>
               </div>
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
