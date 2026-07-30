@@ -185,16 +185,30 @@ export default function SubscriptionOrdersPage() {
   };
 
   const handleFileUpload = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetchWithCsrf('/api/pd/media/upload', {
+    const contentType = file.type || 'image/jpeg';
+    const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: formData,
+      body: JSON.stringify({
+        filename: file.name,
+        content_type: contentType,
+        purpose: 'mandat_proof',
+        file_size: file.size,
+      }),
     });
-    if (!res.ok) throw new Error('Échec du téléversement du justificatif');
-    const data = await res.json();
-    return data.url || data.path;
+    if (!presignRes.ok) {
+      const errData = await presignRes.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Échec de la préparation du téléversement du justificatif');
+    }
+    const presignData = await presignRes.json();
+    const uploadRes = await fetch(presignData.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+    if (!uploadRes.ok) throw new Error('Échec de la transmission du justificatif sur le serveur');
+    return presignData.public_url || presignData.file_key;
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
