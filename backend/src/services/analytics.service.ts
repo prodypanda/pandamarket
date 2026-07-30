@@ -1291,7 +1291,7 @@ export class AnalyticsService {
       payment_status: r.payment_status || 'unpaid',
       total_amount_tnd: Number(r.total_amount_tnd || 0),
       payment_gateway: r.payment_gateway || null,
-      action_url: `/orders/${r.id}`,
+      action_url: `/hub/dashboard/orders`,
     }));
 
     return {

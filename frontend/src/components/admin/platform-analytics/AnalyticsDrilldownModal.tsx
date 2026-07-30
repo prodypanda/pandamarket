@@ -72,6 +72,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataResponse, setDataResponse] = useState<PaginatedDrilldownResponse<AnyDrilldownItem> | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDrilldownItem | null>(null);
 
   useEffect(() => {
     if (initialType) setActiveType(initialType);
@@ -327,15 +328,14 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                         </td>
                         <td className="px-4 py-3 font-bold text-slate-900">{item.total_amount_tnd.toFixed(2)}</td>
                         <td className="px-4 py-3 text-right">
-                          <a
-                            href={item.action_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:underline"
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrder(item)}
+                            className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer"
                           >
                             <span>View</span>
                             <ExternalLink className="h-3 w-3" />
-                          </a>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -435,6 +435,83 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
           </div>
         )}
       </div>
+
+      {/* Inline Order Detail Inspection Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Order Details</span>
+                <h4 className="text-lg font-black text-slate-900 font-mono mt-0.5">{selectedOrder.id}</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-slate-500 font-medium block">Order Date</span>
+                  <span className="font-bold text-slate-900 block mt-0.5">
+                    {new Date(selectedOrder.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium block">Total Amount</span>
+                  <span className="font-black text-[#B91C1C] text-sm block mt-0.5">
+                    {selectedOrder.total_amount_tnd.toFixed(2)} TND
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 p-4 bg-white rounded-2xl border border-slate-200">
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Store Name:</span>
+                  <span className="font-bold text-slate-900">{selectedOrder.store_name || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Customer:</span>
+                  <span className="font-bold text-slate-900">{selectedOrder.buyer_name || 'Anonymous'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Order Status:</span>
+                  <span className="font-bold capitalize text-slate-900">{selectedOrder.status}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Payment Status:</span>
+                  <span className="font-bold capitalize text-emerald-600">{selectedOrder.payment_status}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-500">Payment Gateway:</span>
+                  <span className="font-bold uppercase text-slate-900">{selectedOrder.payment_gateway || 'Flouci'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Close Preview
+              </button>
+              <a
+                href="/hub/dashboard/orders"
+                className="flex-1 text-center rounded-2xl bg-slate-900 py-3 text-xs font-bold text-white hover:bg-slate-800"
+              >
+                Open Orders Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

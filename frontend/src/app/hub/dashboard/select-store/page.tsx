@@ -3,7 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Loader2, Plus, Store, ExternalLink } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, Plus, Store, ExternalLink, Crown } from 'lucide-react';
 
 interface SellerStore {
   id: string;
@@ -79,9 +79,18 @@ export default function SelectStorePage() {
   return (
     <div className="space-y-8">
       <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 p-8 text-white shadow-2xl shadow-slate-900/15">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10">
-          <Store className="h-4 w-4" />
-          Store selector
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10 self-start">
+            <Store className="h-4 w-4" />
+            Store selector
+          </div>
+          <Link
+            href="/hub/dashboard/subscription"
+            className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-300/30 px-4 py-2 text-xs font-black text-amber-200 transition self-start sm:self-auto"
+          >
+            <Crown className="h-4 w-4 text-amber-400" />
+            Platform Subscription & Orders
+          </Link>
         </div>
         <h1 className="mt-5 text-3xl font-black sm:text-4xl">Which store do you want to manage?</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">

@@ -253,6 +253,7 @@ export default function DashboardLayout({
 
   const accountMenuItems = [
     { name: 'My account', href: '/hub/profile', icon: UserRound },
+    { name: 'Subscription & Platform Orders', href: '/hub/dashboard/subscription', icon: Crown },
     { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
     { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
@@ -405,6 +406,18 @@ export default function DashboardLayout({
                 Create free store
               </Link>
             )}
+            <Link
+              href="/hub/dashboard/subscription"
+              title="Platform Subscription & Orders"
+              aria-label="Platform Subscription & Orders"
+              className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                pathname.startsWith('/hub/dashboard/subscription')
+                  ? 'border-amber-400 bg-amber-50 text-amber-600'
+                  : 'border-slate-200 text-slate-500 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-600'
+              }`}
+            >
+              <Crown className="h-5 w-5" />
+            </Link>
             <Link
               href="/hub/dashboard/notifications"
               aria-label={t('dashboard.sidebar.notifications')}
