@@ -9,24 +9,31 @@ import {
   invalidateCache,
   getAnalyticsHealth,
 } from '@/lib/admin-platform-analytics';
+import {
+  AnalyticsRetentionStatusDTO,
+  AnalyticsHealthDTO,
+  AnalyticsRetentionCleanupResultDTO,
+  RollupsRecomputeResultDTO,
+  CacheInvalidateResultDTO,
+} from '@/types/analytics';
 
 export function GovernanceTab() {
-  const [retentionStatus, setRetentionStatus] = useState<any>(null);
-  const [healthStatus, setHealthStatus] = useState<any>(null);
+  const [retentionStatus, setRetentionStatus] = useState<AnalyticsRetentionStatusDTO | null>(null);
+  const [healthStatus, setHealthStatus] = useState<AnalyticsHealthDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Action states
   const [cleanupDays, setCleanupDays] = useState<number>(180);
   const [cleaning, setCleaning] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [cleanupResult, setCleanupResult] = useState<AnalyticsRetentionCleanupResultDTO | null>(null);
 
   const [recomputing, setRecomputing] = useState(false);
-  const [recomputeResult, setRecomputeResult] = useState<any>(null);
+  const [recomputeResult, setRecomputeResult] = useState<RollupsRecomputeResultDTO | null>(null);
   const [recomputePeriod, setRecomputePeriod] = useState<string>('daily');
 
   const [invalidating, setInvalidating] = useState(false);
-  const [invalidateResult, setInvalidateResult] = useState<any>(null);
+  const [invalidateResult, setInvalidateResult] = useState<CacheInvalidateResultDTO | null>(null);
 
   const fetchGovernanceData = async () => {
     setLoading(true);
@@ -38,8 +45,8 @@ export function GovernanceTab() {
       ]);
       setRetentionStatus(retRes);
       setHealthStatus(healthRes);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load governance metrics.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to load governance metrics.');
     } finally {
       setLoading(false);
     }
@@ -59,8 +66,8 @@ export function GovernanceTab() {
       const res = await runRetentionCleanup(cleanupDays);
       setCleanupResult(res);
       await fetchGovernanceData();
-    } catch (err: any) {
-      alert(`Cleanup failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Cleanup failed: ${(err as Error).message}`);
     } finally {
       setCleaning(false);
     }
@@ -72,8 +79,8 @@ export function GovernanceTab() {
     try {
       const res = await recomputeRollups({ period: recomputePeriod });
       setRecomputeResult(res);
-    } catch (err: any) {
-      alert(`Recompute failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Recompute failed: ${(err as Error).message}`);
     } finally {
       setRecomputing(false);
     }
@@ -85,8 +92,8 @@ export function GovernanceTab() {
     try {
       const res = await invalidateCache('all');
       setInvalidateResult(res);
-    } catch (err: any) {
-      alert(`Cache invalidation failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Cache invalidation failed: ${(err as Error).message}`);
     } finally {
       setInvalidating(false);
     }
@@ -150,14 +157,14 @@ export function GovernanceTab() {
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
               <span className="text-xs text-slate-500 font-medium block">Total Raw Events</span>
               <span className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 block">
-                {retentionStatus?.retention_status?.total_raw_events?.toLocaleString() ?? 0}
+                {retentionStatus?.raw_event_count?.toLocaleString() ?? 0}
               </span>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
               <span className="text-xs text-slate-500 font-medium block">Oldest Raw Event</span>
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-2 block truncate">
-                {retentionStatus?.retention_status?.oldest_event_date
-                  ? new Date(retentionStatus.retention_status.oldest_event_date).toLocaleDateString()
+                {retentionStatus?.oldest_raw_event_at
+                  ? new Date(retentionStatus.oldest_raw_event_at).toLocaleDateString()
                   : 'No events'}
               </span>
             </div>
@@ -191,7 +198,7 @@ export function GovernanceTab() {
             {cleanupResult && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Successfully pruned {cleanupResult.deleted_raw_events} raw events.</span>
+                <span>Successfully pruned {cleanupResult.deleted_events} raw events.</span>
               </div>
             )}
           </div>
@@ -211,17 +218,19 @@ export function GovernanceTab() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <span className="text-xs text-slate-500 font-medium block">Total Rollup Records</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 block">
-                {retentionStatus?.retention_status?.total_rollup_records?.toLocaleString() ?? 0}
+              <span className="text-xs text-slate-500 font-medium block">Latest Event Rollup</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-2 block truncate">
+                {healthStatus?.rollups?.latest_event_rollup_date
+                  ? new Date(healthStatus.rollups.latest_event_rollup_date).toLocaleDateString()
+                  : 'Active'}
               </span>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <span className="text-xs text-slate-500 font-medium block">Oldest Rollup</span>
+              <span className="text-xs text-slate-500 font-medium block">Latest Search Rollup</span>
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-2 block truncate">
-                {retentionStatus?.retention_status?.oldest_rollup_date
-                  ? new Date(retentionStatus.retention_status.oldest_rollup_date).toLocaleDateString()
-                  : 'No rollups'}
+                {healthStatus?.rollups?.latest_search_rollup_date
+                  ? new Date(healthStatus.rollups.latest_search_rollup_date).toLocaleDateString()
+                  : 'Active'}
               </span>
             </div>
           </div>
@@ -255,7 +264,7 @@ export function GovernanceTab() {
             {recomputeResult && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Rollups recomputed successfully ({recomputeResult.computed_count} periods updated).</span>
+                <span>Rollups recomputed successfully ({recomputeResult.days_processed ?? 0} days processed, {recomputeResult.event_rollups_inserted ?? 0} rollups inserted).</span>
               </div>
             )}
           </div>
@@ -283,7 +292,7 @@ export function GovernanceTab() {
           {invalidateResult && (
             <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl text-xs flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-              <span>{invalidateResult.message || 'Analytics cache flushed successfully.'}</span>
+              <span>Analytics cache flushed successfully ({invalidateResult.cleared_keys_count ?? 0} keys cleared).</span>
             </div>
           )}
 
@@ -292,7 +301,7 @@ export function GovernanceTab() {
               <div>
                 <span className="text-xs text-slate-500 font-medium block">Database Status</span>
                 <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
-                  {healthStatus?.db_connected ? 'Connected' : 'Checking...'}
+                  {healthStatus?.status === 'healthy' ? 'Healthy' : 'Checking...'}
                 </span>
               </div>
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
@@ -300,9 +309,9 @@ export function GovernanceTab() {
 
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-500 font-medium block">Database Latency</span>
+                <span className="text-xs text-slate-500 font-medium block">Cache Latency</span>
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1 block">
-                  {healthStatus?.db_latency_ms != null ? `${healthStatus.db_latency_ms} ms` : '—'}
+                  {healthStatus?.cache?.latency_ms != null ? `${healthStatus.cache.latency_ms} ms` : '—'}
                 </span>
               </div>
               <Zap className="w-6 h-6 text-amber-500" />

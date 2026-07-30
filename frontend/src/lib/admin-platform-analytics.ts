@@ -13,6 +13,18 @@ import {
   MetricDefinitionDTO,
   SavedViewDTO,
   CreateSavedViewInput,
+  AnalyticsRetentionStatusDTO,
+  AnalyticsRetentionCleanupResultDTO,
+  RollupsRecomputeResultDTO,
+  CacheInvalidateResultDTO,
+  AnalyticsHealthDTO,
+  AnomalyResponseDTO,
+  VendorRiskResponseDTO,
+  ChurnRiskResponseDTO,
+  CohortResponseDTO,
+  ReportScheduleDTO,
+  CreateReportScheduleInput,
+  ReportExecutionResultDTO,
 } from '@/types/analytics';
 
 function buildQueryString(filters: AnalyticsFilterParams): string {
@@ -183,7 +195,7 @@ export async function setDefaultSavedView(id: string): Promise<void> {
   }
 }
 
-export async function getRetentionStatus(): Promise<any> {
+export async function getRetentionStatus(): Promise<AnalyticsRetentionStatusDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/retention', {
     credentials: 'include',
   });
@@ -193,7 +205,7 @@ export async function getRetentionStatus(): Promise<any> {
   return res.json();
 }
 
-export async function runRetentionCleanup(retentionDays?: number): Promise<any> {
+export async function runRetentionCleanup(retentionDays?: number): Promise<AnalyticsRetentionCleanupResultDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/retention/cleanup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -206,7 +218,7 @@ export async function runRetentionCleanup(retentionDays?: number): Promise<any> 
   return res.json();
 }
 
-export async function recomputeRollups(params: { period?: string; from_date?: string; to_date?: string }): Promise<any> {
+export async function recomputeRollups(params: { period?: string; from_date?: string; to_date?: string }): Promise<RollupsRecomputeResultDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/rollups/recompute', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -219,7 +231,7 @@ export async function recomputeRollups(params: { period?: string; from_date?: st
   return res.json();
 }
 
-export async function invalidateCache(scope?: string): Promise<any> {
+export async function invalidateCache(scope?: string): Promise<CacheInvalidateResultDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/cache/invalidate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -232,7 +244,7 @@ export async function invalidateCache(scope?: string): Promise<any> {
   return res.json();
 }
 
-export async function getAnalyticsHealth(): Promise<any> {
+export async function getAnalyticsHealth(): Promise<AnalyticsHealthDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/platform-analytics/health', {
     credentials: 'include',
   });
@@ -246,28 +258,28 @@ export async function getAnalyticsHealth(): Promise<any> {
 // Part 7: Intelligence Engine & Scheduled Reports Methods
 // ==========================================================
 
-export async function fetchAnomalies(filters: AnalyticsFilterParams = {}): Promise<any> {
+export async function fetchAnomalies(filters: AnalyticsFilterParams = {}): Promise<AnomalyResponseDTO> {
   const q = buildQueryString(filters);
   const res = await fetchWithCsrf(`/api/pd/admin/analytics/anomalies${q}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`Anomalies API error (${res.status})`);
   return res.json();
 }
 
-export async function fetchVendorRisk(filters: AnalyticsFilterParams = {}): Promise<any> {
+export async function fetchVendorRisk(filters: AnalyticsFilterParams = {}): Promise<VendorRiskResponseDTO> {
   const q = buildQueryString(filters);
   const res = await fetchWithCsrf(`/api/pd/admin/analytics/risk/vendors${q}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`Vendor risk API error (${res.status})`);
   return res.json();
 }
 
-export async function fetchChurnRisk(filters: AnalyticsFilterParams = {}): Promise<any> {
+export async function fetchChurnRisk(filters: AnalyticsFilterParams = {}): Promise<ChurnRiskResponseDTO> {
   const q = buildQueryString(filters);
   const res = await fetchWithCsrf(`/api/pd/admin/analytics/risk/churn${q}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`Churn risk API error (${res.status})`);
   return res.json();
 }
 
-export async function fetchCohortAnalysis(filters: AnalyticsFilterParams & { cohort_type?: string } = {}): Promise<any> {
+export async function fetchCohortAnalysis(filters: AnalyticsFilterParams & { cohort_type?: string } = {}): Promise<CohortResponseDTO> {
   const params = new URLSearchParams();
   if (filters.timeRange) params.set('timeRange', filters.timeRange);
   if (filters.cohort_type) params.set('cohort_type', filters.cohort_type);
@@ -277,14 +289,14 @@ export async function fetchCohortAnalysis(filters: AnalyticsFilterParams & { coh
   return res.json();
 }
 
-export async function fetchReportSchedules(): Promise<any[]> {
+export async function fetchReportSchedules(): Promise<ReportScheduleDTO[]> {
   const res = await fetchWithCsrf('/api/pd/admin/analytics/schedules', { credentials: 'include' });
   if (!res.ok) throw new Error(`Report schedules API error (${res.status})`);
   const json = await res.json();
   return json.schedules || [];
 }
 
-export async function createReportSchedule(scheduleData: any): Promise<any> {
+export async function createReportSchedule(scheduleData: CreateReportScheduleInput): Promise<ReportScheduleDTO> {
   const res = await fetchWithCsrf('/api/pd/admin/analytics/schedules', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -304,7 +316,7 @@ export async function deleteReportSchedule(id: string): Promise<void> {
   if (!res.ok) throw new Error(`Delete schedule failed (${res.status})`);
 }
 
-export async function triggerReportScheduleNow(id: string): Promise<any> {
+export async function triggerReportScheduleNow(id: string): Promise<ReportExecutionResultDTO> {
   const res = await fetchWithCsrf(`/api/pd/admin/analytics/schedules/${id}/run-now`, {
     method: 'POST',
     credentials: 'include',

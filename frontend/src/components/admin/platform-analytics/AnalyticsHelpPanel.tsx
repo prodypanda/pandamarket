@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { HelpCircle, CheckCircle2, AlertCircle, RefreshCw, Database, Shield, Zap, FileText, Layers, Eye } from 'lucide-react';
 import { getAnalyticsHealth } from '@/lib/admin-platform-analytics';
+import { AnalyticsHealthDTO } from '@/types/analytics';
 
 interface AnalyticsHelpPanelProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface AnalyticsHelpPanelProps {
 }
 
 export function AnalyticsHelpPanel({ isOpen, onClose }: AnalyticsHelpPanelProps) {
-  const [healthData, setHealthData] = useState<any>(null);
+  const [healthData, setHealthData] = useState<AnalyticsHealthDTO | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export function AnalyticsHelpPanel({ isOpen, onClose }: AnalyticsHelpPanelProps)
                   PostgreSQL Telemetry DB:
                 </span>
                 <span className={`font-bold ${healthData?.status === 'healthy' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {healthData?.components?.database?.status === 'ok' ? `Active (${healthData.components.database.latency_ms}ms)` : 'Operational'}
+                  {healthData?.status === 'healthy' ? `Active (${healthData.raw_events?.count_24h ?? 0} events 24h)` : 'Operational'}
                 </span>
               </div>
 

@@ -31,6 +31,14 @@ import {
 } from '@/types/analytics';
 import { fetchDrilldownData } from '@/lib/admin-platform-analytics';
 
+type AnyDrilldownItem =
+  | OrderDrilldownItem
+  | VendorDrilldownItem
+  | BuyerDrilldownItem
+  | ProductDrilldownItem
+  | SearchDrilldownItem
+  | EventDrilldownItem;
+
 interface AnalyticsDrilldownModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,7 +52,7 @@ const DRILLDOWN_TABS: Array<{ type: DrilldownType; label: string; icon: React.Re
   { type: 'buyers', label: 'Buyers', icon: <Users className="h-4 w-4" /> },
   { type: 'products', label: 'Products', icon: <Package className="h-4 w-4" /> },
   { type: 'search', label: 'Search Queries', icon: <SearchIcon className="h-4 w-4" /> },
-  { type: 'events', label: 'Analytics Events', icon: <Activity className="h-4 w-4" /> },
+  { type: 'events', label: 'Raw Events', icon: <Activity className="h-4 w-4" /> },
 ];
 
 export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = ({
@@ -63,7 +71,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dataResponse, setDataResponse] = useState<PaginatedDrilldownResponse<any> | null>(null);
+  const [dataResponse, setDataResponse] = useState<PaginatedDrilldownResponse<AnyDrilldownItem> | null>(null);
 
   useEffect(() => {
     if (initialType) setActiveType(initialType);
@@ -92,7 +100,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
       status: statusFilter || undefined,
     };
 
-    fetchDrilldownData(activeType, queryParams)
+    fetchDrilldownData<AnyDrilldownItem>(activeType, queryParams)
       .then((res) => {
         if (isMounted) {
           setDataResponse(res);

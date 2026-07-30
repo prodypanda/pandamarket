@@ -321,7 +321,7 @@ router.post(
     // Fire-and-forget: do not await, respond immediately
     marketplaceAnalyticsEventService.insertMarketplaceEvent({
       event_type: payload.event_type as MarketplaceEventType,
-      user_id: (req as any).user?.id || null,
+      user_id: (req as Request & { user?: { id?: string } }).user?.id || null,
       store_id: payload.store_id,
       product_id: payload.product_id,
       category_id: payload.category_id,

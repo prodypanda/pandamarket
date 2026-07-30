@@ -12,44 +12,52 @@ import {
   deleteReportSchedule,
   triggerReportScheduleNow,
 } from '@/lib/admin-platform-analytics';
+import {
+  AnomalyInsightItem,
+  VendorRiskItem,
+  ChurnRiskItem,
+  CohortItem,
+  ReportScheduleDTO,
+  ReportFrequency,
+} from '@/types/analytics';
 
 export function IntelligenceTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Intelligence State
-  const [anomalies, setAnomalies] = useState<any[]>([]);
-  const [vendorRisk, setVendorRisk] = useState<any[]>([]);
-  const [churnRisk, setChurnRisk] = useState<any[]>([]);
-  const [cohorts, setCohorts] = useState<any[]>([]);
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const [anomalies, setAnomalies] = useState<AnomalyInsightItem[]>([]);
+  const [vendorRisk, setVendorRisk] = useState<VendorRiskItem[]>([]);
+  const [churnRisk, setChurnRisk] = useState<ChurnRiskItem[]>([]);
+  const [cohorts, setCohorts] = useState<CohortItem[]>([]);
+  const [schedules, setSchedules] = useState<ReportScheduleDTO[]>([]);
 
   // Schedule Modal State
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
   const [recipients, setRecipients] = useState('');
-  const [frequency, setFrequency] = useState('weekly');
-  const [format, setFormat] = useState('csv');
+  const [frequency, setFrequency] = useState<ReportFrequency>('weekly');
+  const [format, setFormat] = useState<'csv' | 'html'>('csv');
 
   const loadIntelligenceData = async () => {
     setLoading(true);
     setError(null);
     try {
       const [anomRes, vRiskRes, cRiskRes, cohortRes, schedRes] = await Promise.all([
-        fetchAnomalies().catch(() => ({ anomalies: [] })),
-        fetchVendorRisk().catch(() => ({ vendor_risk: [] })),
-        fetchChurnRisk().catch(() => ({ churn_risk: [] })),
+        fetchAnomalies().catch(() => ({ insights: [] })),
+        fetchVendorRisk().catch(() => ({ vendors: [] })),
+        fetchChurnRisk().catch(() => ({ vendors: [] })),
         fetchCohortAnalysis().catch(() => ({ cohorts: [] })),
         fetchReportSchedules().catch(() => []),
       ]);
 
-      setAnomalies(anomRes?.anomalies || []);
-      setVendorRisk(vRiskRes?.vendor_risk || []);
-      setChurnRisk(cRiskRes?.churn_risk || []);
+      setAnomalies(anomRes?.insights || []);
+      setVendorRisk(vRiskRes?.vendors || []);
+      setChurnRisk(cRiskRes?.vendors || []);
       setCohorts(cohortRes?.cohorts || []);
       setSchedules(schedRes || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load intelligence metrics.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to load intelligence metrics.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +72,7 @@ export function IntelligenceTab() {
     if (!scheduleName || !recipients) return;
     try {
       await createReportSchedule({
-        title: scheduleName,
+        name: scheduleName,
         recipients: recipients.split(',').map((r) => r.trim()),
         frequency,
         format,
@@ -73,8 +81,8 @@ export function IntelligenceTab() {
       setScheduleName('');
       setRecipients('');
       await loadIntelligenceData();
-    } catch (err: any) {
-      alert(`Failed to create schedule: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to create schedule: ${(err as Error).message}`);
     }
   };
 
@@ -83,8 +91,8 @@ export function IntelligenceTab() {
     try {
       await deleteReportSchedule(id);
       await loadIntelligenceData();
-    } catch (err: any) {
-      alert(`Failed to delete schedule: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to delete schedule: ${(err as Error).message}`);
     }
   };
 
@@ -92,8 +100,8 @@ export function IntelligenceTab() {
     try {
       await triggerReportScheduleNow(id);
       alert('Report generated and sent to recipients.');
-    } catch (err: any) {
-      alert(`Failed to trigger report: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to trigger report: ${(err as Error).message}`);
     }
   };
 
@@ -159,12 +167,12 @@ export function IntelligenceTab() {
             </div>
           ) : (
             <div className="space-y-3">
-              {anomalies.map((item: any, idx: number) => (
+              {anomalies.map((item, idx) => (
                 <div key={idx} className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-2xl flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-amber-900 dark:text-amber-300 block">{item.metric_name || 'Metric Variance'}</span>
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-300 block">{item.label || 'Metric Variance'}</span>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      Current: {item.current_value} vs Mean: {item.baseline_mean} (Z: {item.z_score})
+                      Current: {item.current_value} vs Baseline: {item.baseline_value} (Delta: {item.delta_pct}%)
                     </span>
                   </div>
                   <span className="px-2 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold text-[10px] uppercase rounded-lg">
@@ -196,12 +204,12 @@ export function IntelligenceTab() {
             </div>
           ) : (
             <div className="space-y-3">
-              {vendorRisk.map((item: any, idx: number) => (
+              {vendorRisk.map((item, idx) => (
                 <div key={idx} className="p-4 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 rounded-2xl flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-rose-900 dark:text-rose-300 block">{item.store_name || item.vendor_id}</span>
+                    <span className="text-xs font-bold text-rose-900 dark:text-rose-300 block">{item.store_name}</span>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      Risk Score: {item.risk_score} / 100 — {item.reason || 'High dispute volume'}
+                      Risk Score: {item.risk_score} / 100 — {item.risk_level} risk level
                     </span>
                   </div>
                   <span className="px-2 py-0.5 bg-rose-200 dark:bg-rose-800 text-rose-900 dark:text-rose-100 font-bold text-[10px] uppercase rounded-lg">
@@ -233,16 +241,16 @@ export function IntelligenceTab() {
             </div>
           ) : (
             <div className="space-y-3">
-              {churnRisk.map((item: any, idx: number) => (
+              {churnRisk.map((item, idx) => (
                 <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 rounded-2xl flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">{item.store_name || item.vendor_id}</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">{item.store_name}</span>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      Days Inactive: {item.days_inactive} — {item.recommendation || 'Send activation prompt'}
+                      Score: {item.churn_risk_score} — {item.recommended_actions[0] || 'Send activation prompt'}
                     </span>
                   </div>
                   <span className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[10px] uppercase rounded-lg">
-                    {item.churn_probability ? `${Math.round(item.churn_probability * 100)}% Risk` : 'Dormant'}
+                    {item.churn_risk_level} Risk
                   </span>
                 </div>
               ))}
@@ -281,13 +289,13 @@ export function IntelligenceTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {cohorts.map((row: any, idx: number) => (
+                  {cohorts.map((row, idx) => (
                     <tr key={idx}>
-                      <td className="py-2 px-3 text-slate-900 dark:text-slate-100 font-bold">{row.cohort_month}</td>
-                      <td className="py-2 px-3 text-slate-600 dark:text-slate-400">{row.size}</td>
-                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.m1_retention ? `${row.m1_retention}%` : '—'}</td>
-                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.m3_retention ? `${row.m3_retention}%` : '—'}</td>
-                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.m6_retention ? `${row.m6_retention}%` : '—'}</td>
+                      <td className="py-2 px-3 text-slate-900 dark:text-slate-100 font-bold">{row.cohort_label || row.cohort_month}</td>
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-400">{row.cohort_size}</td>
+                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.periods[0]?.retention_pct !== undefined && row.periods[0]?.retention_pct !== null ? `${row.periods[0].retention_pct}%` : '—'}</td>
+                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.periods[2]?.retention_pct !== undefined && row.periods[2]?.retention_pct !== null ? `${row.periods[2].retention_pct}%` : '—'}</td>
+                      <td className="py-2 px-3 text-emerald-600 font-bold">{row.periods[5]?.retention_pct !== undefined && row.periods[5]?.retention_pct !== null ? `${row.periods[5].retention_pct}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -342,7 +350,7 @@ export function IntelligenceTab() {
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Frequency</label>
                   <select
                     value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
+                    onChange={(e) => setFrequency(e.target.value as ReportFrequency)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="daily">Daily Digest</option>
@@ -354,11 +362,11 @@ export function IntelligenceTab() {
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Export Format</label>
                   <select
                     value={format}
-                    onChange={(e) => setFormat(e.target.value)}
+                    onChange={(e) => setFormat(e.target.value as 'csv' | 'html')}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="csv">CSV Dataset Export</option>
-                    <option value="json">JSON Metadata Digest</option>
+                    <option value="html">HTML Executive Digest</option>
                   </select>
                 </div>
               </div>
@@ -399,9 +407,9 @@ export function IntelligenceTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {schedules.map((sched: any) => (
+                  {schedules.map((sched) => (
                     <tr key={sched.id}>
-                      <td className="py-3 px-3 text-slate-900 dark:text-slate-100 font-bold">{sched.title || sched.name}</td>
+                      <td className="py-3 px-3 text-slate-900 dark:text-slate-100 font-bold">{sched.name}</td>
                       <td className="py-3 px-3 capitalize text-slate-600 dark:text-slate-400">{sched.frequency}</td>
                       <td className="py-3 px-3 uppercase font-bold text-indigo-600">{sched.format}</td>
                       <td className="py-3 px-3 text-slate-500 truncate max-w-xs">{Array.isArray(sched.recipients) ? sched.recipients.join(', ') : sched.recipients}</td>

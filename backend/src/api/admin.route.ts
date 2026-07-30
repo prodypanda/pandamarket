@@ -4877,7 +4877,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getOrdersDrilldown(req.query as any);
+    const result = await analyticsService.getOrdersDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4888,7 +4888,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getVendorsDrilldown(req.query as any);
+    const result = await analyticsService.getVendorsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4899,7 +4899,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getBuyersDrilldown(req.query as any);
+    const result = await analyticsService.getBuyersDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4910,7 +4910,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getProductsDrilldown(req.query as any);
+    const result = await analyticsService.getProductsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4921,7 +4921,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getSearchDrilldown(req.query as any);
+    const result = await analyticsService.getSearchDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4932,7 +4932,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getEventsDrilldown(req.query as any);
+    const result = await analyticsService.getEventsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
     res.status(200).json({ success: true, ...result });
   }),
 );

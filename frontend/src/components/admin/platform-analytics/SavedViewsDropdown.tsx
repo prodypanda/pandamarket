@@ -158,7 +158,7 @@ export const SavedViewsDropdown: React.FC<SavedViewsDropdownProps> = ({
                 <div
                   key={view.id}
                   onClick={() => {
-                    onApplySavedView(view.filters as any);
+                    onApplySavedView(view.filters as { timeRange?: AnalyticsTimeRange; currency?: AnalyticsCurrency });
                     setIsOpen(false);
                   }}
                   className="flex items-center justify-between rounded-xl p-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer group transition-colors"
