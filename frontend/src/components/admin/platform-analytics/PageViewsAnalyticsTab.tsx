@@ -725,53 +725,56 @@ function CountryVisitBubbleMap({
           const code = c.country_code.toLowerCase();
           const pos = bubblePositions[code];
           if (!pos) return null;
-          const size = Math.max(10, Math.min(28, Math.sqrt(c.share_pct || 1) * 5 + 8));
+
+          const coreSize = Math.max(22, Math.min(42, Math.sqrt(c.share_pct || 1) * 8 + 14));
+          const rippleSize = coreSize * 2.2;
+          const glowSize = coreSize * 1.4;
 
           return (
             <div
               key={c.country_code}
-              className="absolute z-10 group cursor-pointer"
+              className="absolute z-10 pointer-events-none"
               style={{
                 left: `${pos.xPct}%`,
                 top: `${pos.yPct}%`,
+                width: `${coreSize}px`,
+                height: `${coreSize}px`,
                 transform: 'translate(-50%, -50%)',
               }}
-              onMouseEnter={() => setHoveredCountry(c)}
-              onMouseLeave={() => setHoveredCountry(null)}
             >
-              {/* Pulsing ripple */}
+              {/* Pulsing ripple - centered without transform translate so scale(2) expands symmetrically */}
               <div
-                className="absolute rounded-full bg-indigo-400/20 animate-ping"
+                className="absolute rounded-full bg-indigo-400/25 animate-ping pointer-events-none"
                 style={{
-                  width: size * 3,
-                  height: size * 3,
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  width: `${rippleSize}px`,
+                  height: `${rippleSize}px`,
+                  top: `${(coreSize - rippleSize) / 2}px`,
+                  left: `${(coreSize - rippleSize) / 2}px`,
                 }}
               />
-              {/* Outer glow */}
+
+              {/* Outer glow ring - pointer-events-none */}
               <div
-                className="absolute rounded-full bg-indigo-500/15 border border-indigo-400/30"
+                className="absolute rounded-full bg-indigo-500/20 border border-indigo-400/40 pointer-events-none"
                 style={{
-                  width: size * 2.2,
-                  height: size * 2.2,
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  width: `${glowSize}px`,
+                  height: `${glowSize}px`,
+                  top: `${(coreSize - glowSize) / 2}px`,
+                  left: `${(coreSize - glowSize) / 2}px`,
                 }}
               />
-              {/* Core bubble */}
+
+              {/* Core bubble - ONLY this element captures pointer events and triggers hover */}
               <div
-                className="relative rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/40 transition-transform duration-200 group-hover:scale-125 border-2 border-white/80"
+                className="relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/50 transition-transform duration-200 hover:scale-125 border-2 border-white cursor-pointer pointer-events-auto select-none"
                 style={{
-                  width: size * 1.6,
-                  height: size * 1.6,
                   background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                  fontSize: Math.max(7, size * 0.55),
+                  fontSize: `${Math.max(9, coreSize * 0.42)}px`,
                 }}
+                onMouseEnter={() => setHoveredCountry(c)}
+                onMouseLeave={() => setHoveredCountry(null)}
               >
-                {c.flag_emoji}
+                {c.country_code.toUpperCase()}
               </div>
             </div>
           );
