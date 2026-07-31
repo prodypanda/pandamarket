@@ -109,6 +109,15 @@ export async function fetchPageViewsLiveData(): Promise<{
     views_count: number;
     unique_visitors: number;
     share_pct: number;
+    ip_addresses?: Array<{
+      ip: string;
+      city?: string;
+      isp?: string;
+      views_count: number;
+      device_type?: string;
+      last_active?: string;
+      is_active_now?: boolean;
+    }>;
     lat?: number;
     lng?: number;
     map_x?: number;

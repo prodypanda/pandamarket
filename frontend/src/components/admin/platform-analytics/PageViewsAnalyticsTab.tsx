@@ -1,6 +1,6 @@
 'use client';
 
-import { PlatformPageViewsAnalytics } from '@/types/analytics';
+import { DrilldownType, PlatformPageViewsAnalytics } from '@/types/analytics';
 import {
   Eye,
   Users,
@@ -18,7 +18,6 @@ import {
   Crown,
   CheckCircle2,
   XCircle,
-  Shield,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -26,6 +25,11 @@ import {
   Wifi,
   Maximize2,
   Minimize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  MousePointer2,
+  Gauge,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
@@ -54,6 +58,15 @@ interface LiveData {
     views_count: number;
     unique_visitors: number;
     share_pct: number;
+    ip_addresses?: Array<{
+      ip: string;
+      city?: string;
+      isp?: string;
+      views_count: number;
+      device_type?: string;
+      last_active?: string;
+      is_active_now?: boolean;
+    }>;
     lat?: number;
     lng?: number;
     map_x?: number;
@@ -64,7 +77,7 @@ interface LiveData {
 interface PageViewsAnalyticsTabProps {
   data: PlatformPageViewsAnalytics | null;
   liveData?: LiveData | null;
-  onOpenDrilldown?: (type: any) => void;
+  onOpenDrilldown?: (type: DrilldownType) => void;
 }
 
 // Store hover tooltip component
@@ -215,12 +228,13 @@ function RealtimeVisitorsAreaGraph({
   const { t } = useLocale();
   const [metricMode, setMetricMode] = useState<'both' | 'visitors' | 'views'>('both');
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [fallbackBaseTime] = useState(() => Date.now());
 
   // Fallback / Normalized series data
   const pointsData = (series && series.length >= 3)
     ? series
     : Array.from({ length: 12 }, (_, i) => {
-        const d = new Date(Date.now() - (11 - i) * 5 * 60 * 1000);
+        const d = new Date(fallbackBaseTime - (11 - i) * 5 * 60 * 1000);
         const time_label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const active_visitors = Math.max(1, Math.floor(liveVisitorsNow * (0.6 + Math.sin(i * 0.8) * 0.4)));
         const page_views = Math.floor(active_visitors * (2.5 + Math.cos(i * 0.5) * 1.2));
@@ -520,8 +534,13 @@ function CountryVisitBubbleMap({
 }) {
   const { t } = useLocale();
   const [hoveredCountry, setHoveredCountry] = useState<typeof topCountries[0] | null>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [mousePos, setMousePos] = useState<{ x: number; y: number; containerWidth: number }>({ x: 0, y: 0, containerWidth: 400 });
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapViewportRef = useRef<HTMLDivElement>(null);
+  const [mapZoom, setMapZoom] = useState(1);
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const [svgLoaded, setSvgLoaded] = useState(false);
   const [bubblePositions, setBubblePositions] = useState<Record<string, { xPct: number; yPct: number }>>({});
 
@@ -594,6 +613,9 @@ function CountryVisitBubbleMap({
   const totalViews = countries.reduce((sum, c) => sum + c.views_count, 0);
   const totalVisitors = countries.reduce((sum, c) => sum + c.unique_visitors, 0);
   const totalIpsCount = countries.reduce((sum, c) => sum + (c.ip_addresses?.length || 0), 0);
+  const activeNowCount = countries.reduce((sum, c) => sum + (c.ip_addresses?.filter(ip => ip.is_active_now).length || 0), 0);
+  const topTrafficShare = countries[0]?.share_pct ?? 0;
+  const marketConcentrationLabel = topTrafficShare >= 70 ? 'High concentration' : topTrafficShare >= 40 ? 'Healthy lead market' : 'Diversified traffic';
 
   // Toggle single country expansion
   const toggleExpand = (countryCode: string) => {
@@ -633,12 +655,64 @@ function CountryVisitBubbleMap({
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = mapContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top, containerWidth: rect.width });
+
+    if (isPanning && panStartRef.current) {
+      setMapPan({
+        x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+        y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+      });
+    }
   };
+
+  const clampZoom = (value: number) => Math.min(3, Math.max(1, Number(value.toFixed(2))));
+
+  const updateZoom = (nextZoom: number) => {
+    const clamped = clampZoom(nextZoom);
+    setMapZoom(clamped);
+    if (clamped === 1) setMapPan({ x: 0, y: 0 });
+  };
+
+  const resetMapView = () => {
+    setMapZoom(1);
+    setMapPan({ x: 0, y: 0 });
+    setIsPanning(false);
+    panStartRef.current = null;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (mapZoom <= 1) return;
+    setIsPanning(true);
+    panStartRef.current = { x: e.clientX, y: e.clientY, panX: mapPan.x, panY: mapPan.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsPanning(false);
+    panStartRef.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const listener = (event: WheelEvent) => {
+      event.preventDefault();
+      setMapZoom(current => {
+        const clamped = Math.min(3, Math.max(1, Number((current + (event.deltaY < 0 ? 0.15 : -0.15)).toFixed(2))));
+        if (clamped === 1) setMapPan({ x: 0, y: 0 });
+        return clamped;
+      });
+    };
+
+    container.addEventListener('wheel', listener, { passive: false });
+    return () => container.removeEventListener('wheel', listener);
+  }, []);
 
   // Load SVG World Map and compute bubble positions
   useEffect(() => {
-    const container = mapContainerRef.current;
+    const container = mapViewportRef.current;
     if (!container) return;
 
     let cancelled = false;
@@ -789,6 +863,15 @@ function CountryVisitBubbleMap({
           <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalIpsCount}</span>
           <span className="text-[10px] text-slate-500">tracked IPs</span>
         </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40">
+          <Activity className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">{activeNowCount}</span>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">active now</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-900/40">
+          <Gauge className="w-3.5 h-3.5 text-purple-500" />
+          <span className="text-xs font-bold text-purple-900 dark:text-purple-200">{marketConcentrationLabel}</span>
+        </div>
         {countries[0] && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/40">
             <Crown className="w-3.5 h-3.5 text-amber-500" />
@@ -801,13 +884,21 @@ function CountryVisitBubbleMap({
       {/* Map Container */}
       <div
         ref={mapContainerRef}
-        className="relative w-full overflow-hidden"
+        className={`relative w-full overflow-hidden select-none ${mapZoom > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
         style={{
           aspectRatio: '2754 / 1398',
           background: 'linear-gradient(180deg, #020617 0%, #0c1a3a 40%, #0f172a 100%)',
         }}
         onMouseMove={handleMouseMove}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
+        <div
+          ref={mapViewportRef}
+          className="absolute inset-0 transition-transform duration-200 ease-out"
+          style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})`, transformOrigin: '50% 50%' }}
+        />
         {!svgLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="flex flex-col items-center gap-2">
@@ -818,6 +909,10 @@ function CountryVisitBubbleMap({
         )}
 
         {/* Bubble Pins */}
+        <div
+          className="absolute inset-0 transition-transform duration-200 ease-out"
+          style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})`, transformOrigin: '50% 50%' }}
+        >
         {svgLoaded && countries.map((c) => {
           const code = c.country_code.toLowerCase();
           const pos = bubblePositions[code];
@@ -840,7 +935,8 @@ function CountryVisitBubbleMap({
                 top: `${pos.yPct}%`,
                 width: `${coreSize}px`,
                 height: `${coreSize}px`,
-                transform: 'translate(-50%, -50%)',
+                transform: `translate(-50%, -50%) scale(${1 / mapZoom})`,
+                transformOrigin: 'center',
               }}
             >
               <div
@@ -883,13 +979,47 @@ function CountryVisitBubbleMap({
             </div>
           );
         })}
+        </div>
+
+        {/* Zoom & navigation controls */}
+        <div className="absolute right-4 top-4 z-30 flex flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 text-white shadow-2xl backdrop-blur-md">
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); updateZoom(mapZoom + 0.25); }} className="p-2.5 hover:bg-white/10" title="Zoom in">
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); updateZoom(mapZoom - 0.25); }} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Zoom out">
+            <ZoomOut className="h-4 w-4" />
+          </button>
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); resetMapView(); }} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Reset map">
+            <RotateCcw className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="absolute right-4 top-36 z-30 hidden w-36 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-white shadow-2xl backdrop-blur-md sm:block">
+          <div className="mb-1 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-slate-300">
+            <span>Zoom</span>
+            <span>{Math.round(mapZoom * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.1"
+            value={mapZoom}
+            onPointerDown={e => e.stopPropagation()}
+            onChange={e => updateZoom(Number(e.target.value))}
+            className="w-full accent-indigo-400"
+          />
+        </div>
+        <div className="absolute left-4 bottom-4 z-30 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-[10px] font-bold text-slate-200 shadow-2xl backdrop-blur-md">
+          <MousePointer2 className="h-3.5 w-3.5 text-indigo-300" />
+          Scroll to zoom • Drag to pan • {Math.round(mapZoom * 100)}%
+        </div>
 
         {/* Mouse Hover Tooltip */}
         {hoveredCountry && (
           <div
             className="absolute z-30 pointer-events-none"
             style={{
-              left: Math.min(mousePos.x + 16, (mapContainerRef.current?.clientWidth || 400) - 230),
+              left: Math.min(mousePos.x + 16, mousePos.containerWidth - 230),
               top: Math.max(mousePos.y - 10, 8),
             }}
           >

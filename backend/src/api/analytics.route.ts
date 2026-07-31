@@ -46,6 +46,27 @@ function requestVisitorHash(req: Request, visitorId: string | null | undefined):
   return hashVisitor(raw);
 }
 
+function clientIp(req: Request): string | null {
+  const forwardedFor = req.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const raw = forwardedFor || req.get('cf-connecting-ip') || req.get('x-real-ip') || req.ip || null;
+  return textOrNull(raw);
+}
+
+function maskIpForAnalytics(ip: string | null): string | null {
+  if (!ip) return null;
+
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+    const parts = ip.split('.');
+    return `${parts[0]}.${parts[1]}.${parts[2]}.xxx`;
+  }
+
+  if (ip.includes(':')) {
+    return `${ip.split(':').slice(0, 3).join(':')}::xxxx`;
+  }
+
+  return ip.length > 8 ? `${ip.slice(0, 6)}…` : ip;
+}
+
 // ==========================================================
 // GET /store — Vendor store analytics
 // ==========================================================
@@ -396,6 +417,7 @@ router.post(
         ...(payload.metadata || {}),
         country_code: countryInfo.country_code,
         country_name: countryInfo.country_name,
+        ip_address_masked: maskIpForAnalytics(clientIp(req)),
       },
     });
 
