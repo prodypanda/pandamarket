@@ -1281,7 +1281,7 @@ export class AnalyticsService {
         p.id AS product_id,
         p.title,
         COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-        COALESCE(s.slug, s.id, 'store') AS store_host,
+        COALESCE(s.subdomain, s.id, 'store') AS store_host,
         COALESCE(p.price, 0)::numeric AS price_tnd,
         COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 0) AS views_count,
         COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id), 0) AS unique_visitors,
@@ -1316,14 +1316,14 @@ export class AnalyticsService {
         p.id AS product_id,
         p.title,
         COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-        COALESCE(s.slug, s.id, 'store') AS store_host,
+        COALESCE(s.subdomain, s.id, 'store') AS store_host,
         SUM(oi.quantity)::int AS units_sold,
         SUM(oi.price_tnd * oi.quantity)::numeric AS total_revenue_tnd,
         COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 20) AS views_count
       FROM pd_order_item oi
       JOIN pd_product p ON oi.product_id = p.id
       LEFT JOIN pd_store s ON p.store_id = s.id
-      GROUP BY p.id, p.title, s.name, s.slug, s.id
+      GROUP BY p.id, p.title, s.name, s.subdomain, s.id
       ORDER BY total_revenue_tnd DESC
       LIMIT 8
     `);
@@ -1348,7 +1348,7 @@ export class AnalyticsService {
       SELECT 
         s.id AS store_id,
         s.name AS store_name,
-        COALESCE(s.slug, s.id) AS store_host,
+        COALESCE(s.subdomain, s.id) AS store_host,
         COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS views_count,
         COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS unique_visitors,
         COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'active'), 0) AS active_listings_count
@@ -1374,14 +1374,14 @@ export class AnalyticsService {
       SELECT 
         s.id AS store_id,
         s.name AS store_name,
-        COALESCE(s.slug, s.id) AS store_host,
+        COALESCE(s.subdomain, s.id) AS store_host,
         COUNT(DISTINCT o.id)::int AS total_orders_count,
         COALESCE(SUM(o.total_amount_tnd), 0)::numeric AS total_sales_gmv_tnd,
         COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 25) AS page_views_count
       FROM pd_store s
       JOIN pd_order o ON o.store_id = s.id
       WHERE o.status = 'completed'
-      GROUP BY s.id, s.name, s.slug
+      GROUP BY s.id, s.name, s.subdomain
       ORDER BY total_sales_gmv_tnd DESC
       LIMIT 8
     `);
@@ -1437,13 +1437,13 @@ export class AnalyticsService {
       SELECT 
         e.search_query_normalized AS query,
         s.name AS store_name,
-        COALESCE(s.slug, s.id) AS store_host,
+        COALESCE(s.subdomain, s.id) AS store_host,
         COUNT(*)::int AS search_count,
         COALESCE(AVG(e.search_results_count), 0)::int AS avg_results_count
       FROM pd_marketplace_analytics_event e
       JOIN pd_store s ON e.store_id = s.id
       WHERE e.event_type = 'search_query' AND e.search_query_normalized IS NOT NULL
-      GROUP BY e.search_query_normalized, s.name, s.slug, s.id
+      GROUP BY e.search_query_normalized, s.name, s.subdomain, s.id
       ORDER BY search_count DESC
       LIMIT 8
     `);
@@ -1701,7 +1701,7 @@ export class AnalyticsService {
     }
 
     if (params.search) {
-      conditions.push(`(s.name ILIKE $${pIdx} OR s.slug ILIKE $${pIdx} OR u.email ILIKE $${pIdx})`);
+      conditions.push(`(s.name ILIKE $${pIdx} OR s.subdomain ILIKE $${pIdx} OR u.email ILIKE $${pIdx})`);
       sqlParams.push(`%${params.search}%`);
       pIdx++;
     }
