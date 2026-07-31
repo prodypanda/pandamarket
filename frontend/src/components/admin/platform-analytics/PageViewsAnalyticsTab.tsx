@@ -31,6 +31,8 @@ import {
   MousePointer2,
   Sparkles,
   Gauge,
+  Target,
+  Crosshair,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
@@ -666,12 +668,31 @@ function CountryVisitBubbleMap({
     }
   };
 
-  const clampZoom = (value: number) => Math.min(3, Math.max(1, Number(value.toFixed(2))));
+  const clampZoom = (value: number) => Math.min(6, Math.max(1, Number(value.toFixed(2))));
 
   const updateZoom = (nextZoom: number) => {
     const clamped = clampZoom(nextZoom);
     setMapZoom(clamped);
     if (clamped === 1) setMapPan({ x: 0, y: 0 });
+  };
+
+  const focusCountryOnMap = (countryCode: string) => {
+    const code = countryCode.toLowerCase();
+    const pos = bubblePositions[code];
+    const container = mapContainerRef.current;
+    if (!pos || !container) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const targetZoom = 3.5;
+    setMapZoom(targetZoom);
+
+    // Pan offset calculation to center target country in viewport
+    const offsetX = (50 - pos.xPct) * (width / 100) * targetZoom;
+    const offsetY = (50 - pos.yPct) * (height / 100) * targetZoom;
+
+    setMapPan({ x: offsetX, y: offsetY });
   };
 
   const resetMapView = () => {
@@ -701,7 +722,7 @@ function CountryVisitBubbleMap({
     const listener = (event: WheelEvent) => {
       event.preventDefault();
       setMapZoom(current => {
-        const clamped = Math.min(3, Math.max(1, Number((current + (event.deltaY < 0 ? 0.15 : -0.15)).toFixed(2))));
+        const clamped = Math.min(6, Math.max(1, Number((current + (event.deltaY < 0 ? 0.2 : -0.2)).toFixed(2))));
         if (clamped === 1) setMapPan({ x: 0, y: 0 });
         return clamped;
       });
@@ -1002,7 +1023,7 @@ function CountryVisitBubbleMap({
           <input
             type="range"
             min="1"
-            max="3"
+            max="6"
             step="0.1"
             value={mapZoom}
             onPointerDown={e => e.stopPropagation()}
@@ -1181,6 +1202,19 @@ function CountryVisitBubbleMap({
                         />
                       </div>
                     </div>
+
+                    {/* Focus on Map Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusCountryOnMap(c.country_code);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
+                      title={`Zoom & focus ${c.country_name} on map`}
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                    </button>
 
                     {/* Expand/Collapse Button */}
                     <button
