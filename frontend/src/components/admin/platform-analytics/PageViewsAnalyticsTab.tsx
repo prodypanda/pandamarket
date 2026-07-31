@@ -23,7 +23,6 @@ import {
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
-import { COUNTRY_CENTERS } from './world-map-svg-paths';
 
 interface LiveData {
   live_active_visitors_now: number;
@@ -505,8 +504,10 @@ function CountryVisitBubbleMap({
 }) {
   const { t } = useLocale();
   const [hoveredCountry, setHoveredCountry] = useState<typeof topCountries[0] | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [svgLoaded, setSvgLoaded] = useState(false);
+  const [bubblePositions, setBubblePositions] = useState<Record<string, { xPct: number; yPct: number }>>({});
 
   // Fallback defaults
   const countries = (topCountries && topCountries.length > 0)
@@ -520,7 +521,18 @@ function CountryVisitBubbleMap({
 
   const activeCodesSet = new Set(countries.map(c => c.country_code.toLowerCase()));
 
-  // Load the official SVG world map from public/ and inject it
+  // Compute total views for progress bars
+  const totalViews = countries.reduce((sum, c) => sum + c.views_count, 0);
+  const totalVisitors = countries.reduce((sum, c) => sum + c.unique_visitors, 0);
+
+  // Track mouse position relative to the map container
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = mapContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  // Load the official SVG world map and compute bubble centers from real path bounding boxes
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
@@ -532,64 +544,106 @@ function CountryVisitBubbleMap({
       .then(svgText => {
         if (cancelled || !container) return;
 
-        // Parse the SVG text
         const parser = new DOMParser();
         const doc = parser.parseFromString(svgText, 'image/svg+xml');
         const svgEl = doc.querySelector('svg');
         if (!svgEl) return;
 
-        // Clean up: set viewBox properly, remove fixed width/height for responsive scaling
+        // Set viewBox, remove fixed dimensions for responsive scaling
         svgEl.setAttribute('viewBox', '0 0 2754 1398');
         svgEl.removeAttribute('width');
         svgEl.removeAttribute('height');
-        svgEl.setAttribute('class', 'w-full h-full');
+        svgEl.style.width = '100%';
+        svgEl.style.height = '100%';
         svgEl.style.display = 'block';
 
-        // Style all land paths: dark fill by default
+        // Style all land paths with dark fill
         const allPaths = svgEl.querySelectorAll('path');
         allPaths.forEach(path => {
-          path.setAttribute('fill', '#1e293b');       // slate-800
-          path.setAttribute('stroke', '#0f172a');      // slate-900
+          path.setAttribute('fill', '#1e293b');
+          path.setAttribute('stroke', '#0f172a');
           path.setAttribute('stroke-width', '0.5');
-          path.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
+          path.style.transition = 'fill 0.3s ease';
         });
 
         // Highlight active countries
         activeCodesSet.forEach(code => {
-          // Try direct id match first (e.g. <path id="tn">)
-          const directPath = svgEl.querySelector(`#${code}`);
-          if (directPath) {
-            // Could be a <g> group or a <path>
-            const paths = directPath.tagName === 'g'
-              ? directPath.querySelectorAll('path')
-              : [directPath];
+          const applyHighlight = (el: Element) => {
+            const paths = el.tagName === 'g' ? el.querySelectorAll('path') : [el];
             paths.forEach(p => {
-              (p as SVGPathElement).setAttribute('fill', '#6366f1');         // indigo-500
-              (p as SVGPathElement).setAttribute('stroke', '#818cf8');       // indigo-400
-              (p as SVGPathElement).setAttribute('stroke-width', '1.2');
-              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.5))';
-            });
-          }
-
-          // Also try class-based selection (e.g. class="landxx tn")
-          const classPaths = svgEl.querySelectorAll(`.${code}`);
-          classPaths.forEach(p => {
-            if (p.tagName === 'path') {
+              if (p.tagName !== 'path') return;
               (p as SVGPathElement).setAttribute('fill', '#6366f1');
               (p as SVGPathElement).setAttribute('stroke', '#818cf8');
-              (p as SVGPathElement).setAttribute('stroke-width', '1.2');
-              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.5))';
-            }
+              (p as SVGPathElement).setAttribute('stroke-width', '1.5');
+              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.6))';
+            });
+          };
+          // By id
+          const byId = svgEl.querySelector(`#${code}`);
+          if (byId) applyHighlight(byId);
+          // By class
+          svgEl.querySelectorAll(`.${code}`).forEach(el => {
+            if (el.tagName === 'path') applyHighlight(el);
           });
         });
 
-        // Remove any existing SVG and inject the new one
-        const existingSvg = container.querySelector('svg.world-map-base');
-        if (existingSvg) existingSvg.remove();
+        // Remove any existing SVG first
+        const existing = container.querySelector('svg.world-map-base');
+        if (existing) existing.remove();
 
         svgEl.classList.add('world-map-base');
         container.prepend(svgEl);
-        setSvgLoaded(true);
+
+        // Now compute bubble centers from the actual rendered bounding boxes
+        // We need to wait a frame for the SVG to render in the DOM
+        requestAnimationFrame(() => {
+          const viewBoxW = 2754;
+          const viewBoxH = 1398;
+          const positions: Record<string, { xPct: number; yPct: number }> = {};
+
+          activeCodesSet.forEach(code => {
+            // Find the country element by id
+            const el = svgEl.querySelector(`#${code}`);
+            if (!el) return;
+
+            // Collect all paths belonging to this country
+            const paths: SVGGraphicsElement[] = [];
+            if (el.tagName === 'g') {
+              el.querySelectorAll('path').forEach(p => paths.push(p as SVGGraphicsElement));
+            } else if (el.tagName === 'path') {
+              paths.push(el as SVGGraphicsElement);
+            }
+
+            if (paths.length === 0) return;
+
+            // Find the largest path fragment (by bounding box area) for the main landmass
+            let bestPath = paths[0];
+            let bestArea = 0;
+            paths.forEach(p => {
+              try {
+                const bb = p.getBBox();
+                const area = bb.width * bb.height;
+                if (area > bestArea) {
+                  bestArea = area;
+                  bestPath = p;
+                }
+              } catch { /* ignore */ }
+            });
+
+            try {
+              const bb = bestPath.getBBox();
+              const centerX = bb.x + bb.width / 2;
+              const centerY = bb.y + bb.height / 2;
+              positions[code] = {
+                xPct: (centerX / viewBoxW) * 100,
+                yPct: (centerY / viewBoxH) * 100,
+              };
+            } catch { /* ignore */ }
+          });
+
+          setBubblePositions(positions);
+          setSvgLoaded(true);
+        });
       })
       .catch(() => { /* silently fail */ });
 
@@ -598,145 +652,222 @@ function CountryVisitBubbleMap({
   }, [topCountries]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4 relative overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+      <div className="flex items-center justify-between px-6 pt-5 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25">
             <Globe className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              {t('analytics.pageViews.countryBubbleMap') || 'Live Marketplace Visits by Country (Bubble Map)'}
+            <h3 className="text-base font-black text-slate-900 dark:text-white">
+              {t('analytics.pageViews.countryBubbleMap') || 'Live Marketplace Visits by Country'}
             </h3>
-            <p className="text-[11px] font-semibold text-slate-500">
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
               {t('analytics.pageViews.geoLocation') || 'Real-time geographic distribution'}
             </p>
           </div>
         </div>
-        <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
-          {countries.length} Active Regions
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            LIVE
+          </div>
+          <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+            {countries.length} regions
+          </span>
+        </div>
       </div>
 
-      {/* Official SVG World Map Container */}
+      {/* Summary KPI pills */}
+      <div className="flex items-center gap-3 px-6 pb-3 flex-wrap">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+          <Eye className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalViews.toLocaleString()}</span>
+          <span className="text-[10px] text-slate-500">views</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+          <Users className="w-3.5 h-3.5 text-purple-500" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalVisitors.toLocaleString()}</span>
+          <span className="text-[10px] text-slate-500">visitors</span>
+        </div>
+        {countries[0] && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{countries[0].flag_emoji} {countries[0].country_name}</span>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{countries[0].share_pct}%</span>
+          </div>
+        )}
+      </div>
+
+      {/* Map Container */}
       <div
         ref={mapContainerRef}
-        className="relative w-full bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner"
-        style={{ aspectRatio: '2754 / 1398' }}
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: '2754 / 1398',
+          background: 'linear-gradient(180deg, #020617 0%, #0c1a3a 40%, #0f172a 100%)',
+        }}
+        onMouseMove={handleMouseMove}
       >
-        {/* Loading state before SVG is fetched */}
+        {/* Loading spinner */}
         {!svgLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center text-slate-500">
-            <Globe className="w-8 h-8 animate-pulse" />
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="flex flex-col items-center gap-2">
+              <Globe className="w-8 h-8 text-indigo-400 animate-spin" />
+              <span className="text-[10px] text-slate-500 font-semibold">Loading world map…</span>
+            </div>
           </div>
         )}
 
-        {/* Bubble Overlay SVG — same viewBox as the world map */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          viewBox="0 0 2754 1398"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ zIndex: 10 }}
-        >
-          <defs>
-            <radialGradient id="bubbleGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#a855f7" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.6" />
-            </radialGradient>
-          </defs>
+        {/* Bubble Pins — HTML-based for reliable positioning */}
+        {svgLoaded && countries.map((c) => {
+          const code = c.country_code.toLowerCase();
+          const pos = bubblePositions[code];
+          if (!pos) return null;
+          const size = Math.max(10, Math.min(28, Math.sqrt(c.share_pct || 1) * 5 + 8));
 
-          {countries.map((c) => {
-            const codeLower = c.country_code.toLowerCase();
-            const center = COUNTRY_CENTERS[codeLower];
-            if (!center) return null;
-            const { cx, cy } = center;
-            const size = Math.max(12, Math.min(32, Math.sqrt(c.share_pct || 1) * 6 + 10));
-
-            return (
-              <g
-                key={c.country_code}
-                className="pointer-events-auto cursor-pointer"
-                onMouseEnter={() => setHoveredCountry(c)}
-                onMouseLeave={() => setHoveredCountry(null)}
+          return (
+            <div
+              key={c.country_code}
+              className="absolute z-10 group cursor-pointer"
+              style={{
+                left: `${pos.xPct}%`,
+                top: `${pos.yPct}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+              onMouseEnter={() => setHoveredCountry(c)}
+              onMouseLeave={() => setHoveredCountry(null)}
+            >
+              {/* Pulsing ripple */}
+              <div
+                className="absolute rounded-full bg-indigo-400/20 animate-ping"
+                style={{
+                  width: size * 3,
+                  height: size * 3,
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+              {/* Outer glow */}
+              <div
+                className="absolute rounded-full bg-indigo-500/15 border border-indigo-400/30"
+                style={{
+                  width: size * 2.2,
+                  height: size * 2.2,
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+              {/* Core bubble */}
+              <div
+                className="relative rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/40 transition-transform duration-200 group-hover:scale-125 border-2 border-white/80"
+                style={{
+                  width: size * 1.6,
+                  height: size * 1.6,
+                  background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                  fontSize: Math.max(7, size * 0.55),
+                }}
               >
-                {/* Pulsing Ripple */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={size * 2}
-                  fill="rgba(99, 102, 241, 0.15)"
-                  className="animate-ping"
-                  style={{ transformOrigin: `${cx}px ${cy}px` }}
-                />
-                {/* Outer glow ring */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={size * 1.4}
-                  fill="rgba(99, 102, 241, 0.2)"
-                  stroke="rgba(129, 140, 248, 0.4)"
-                  strokeWidth="1"
-                />
-                {/* Core Bubble */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={size}
-                  fill="url(#bubbleGrad)"
-                  stroke="white"
-                  strokeWidth="2"
-                  className="transition-transform duration-200 hover:scale-125"
-                  style={{ transformOrigin: `${cx}px ${cy}px` }}
-                />
-                {/* Country code label */}
-                <text
-                  x={cx}
-                  y={cy + 4}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="10"
-                  fontWeight="bold"
-                  className="select-none pointer-events-none"
-                >
-                  {c.country_code}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                {c.flag_emoji}
+              </div>
+            </div>
+          );
+        })}
 
-        {/* Hover Card Overlay */}
+        {/* Hover Tooltip — follows mouse cursor */}
         {hoveredCountry && (
-          <div className="absolute top-4 right-4 z-20 pointer-events-none p-3 rounded-xl border border-slate-700 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md w-52 space-y-1.5 animate-in fade-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between">
-              <span className="text-lg">{hoveredCountry.flag_emoji}</span>
-              <span className="text-[10px] font-mono text-indigo-400 font-bold">({hoveredCountry.country_code})</span>
-            </div>
-            <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
-            <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-800 text-[10px] font-semibold text-slate-300">
-              <span>👁 {hoveredCountry.views_count.toLocaleString()} views</span>
-              <span>👤 {hoveredCountry.unique_visitors.toLocaleString()} visitors</span>
-            </div>
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-emerald-400 font-bold">{hoveredCountry.share_pct}% traffic share</span>
+          <div
+            className="absolute z-30 pointer-events-none"
+            style={{
+              left: Math.min(mousePos.x + 16, (mapContainerRef.current?.clientWidth || 400) - 230),
+              top: Math.max(mousePos.y - 10, 8),
+            }}
+          >
+            <div className="p-3 rounded-xl border border-indigo-500/40 bg-slate-900/95 text-white shadow-2xl shadow-indigo-500/20 backdrop-blur-lg w-56 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{hoveredCountry.flag_emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
+                  <span className="text-[10px] font-mono text-indigo-400">{hoveredCountry.country_code}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-700/80">
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Page Views</p>
+                  <p className="text-sm font-black text-white">{hoveredCountry.views_count.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Visitors</p>
+                  <p className="text-sm font-black text-white">{hoveredCountry.unique_visitors.toLocaleString()}</p>
+                </div>
+              </div>
+              {/* Traffic share progress bar */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between text-[10px] mb-1">
+                  <span className="text-slate-400">Traffic Share</span>
+                  <span className="text-emerald-400 font-black">{hoveredCountry.share_pct}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
+                    style={{ width: `${Math.min(hoveredCountry.share_pct, 100)}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Active Region Legend Chips */}
-      <div className="flex items-center flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-        {countries.map((c) => (
-          <div
-            key={c.country_code}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold"
-          >
-            <span>{c.flag_emoji}</span>
-            <span>{c.country_name}</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-black">{c.share_pct}%</span>
-          </div>
-        ))}
+      {/* Country Ranking Table */}
+      <div className="px-6 py-4 space-y-2">
+        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          Traffic by Region
+        </p>
+        {countries.map((c, i) => {
+          const barWidth = totalViews > 0 ? (c.views_count / totalViews) * 100 : 0;
+          return (
+            <div key={c.country_code} className="flex items-center gap-3 group">
+              {/* Rank */}
+              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${
+                i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' :
+                i === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
+                i === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
+                'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {i + 1}
+              </span>
+              {/* Flag */}
+              <span className="text-base">{c.flag_emoji}</span>
+              {/* Name + bar */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{c.country_name}</span>
+                  <span className="text-[10px] font-mono text-slate-500 ml-2">{c.country_code}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${barWidth}%`,
+                      background: i === 0 ? 'linear-gradient(90deg, #6366f1, #a855f7)' :
+                                  i === 1 ? 'linear-gradient(90deg, #818cf8, #c084fc)' :
+                                  'linear-gradient(90deg, #94a3b8, #cbd5e1)',
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Stats */}
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs font-black text-slate-800 dark:text-slate-200">{c.views_count.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500">{c.share_pct}%</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
