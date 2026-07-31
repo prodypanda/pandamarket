@@ -3,7 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -49,6 +49,112 @@ function isAdminRole(role?: string) {
 function isVendorRole(role?: string) {
   return role === 'vendor' || role === 'Vendor';
 }
+
+function CollapsedNavItem({
+  item,
+  pathname,
+  dir,
+  openMenus,
+  setOpenMenus,
+  toggleMenu,
+}: {
+  item: {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    href?: string;
+    subItems?: Array<{ href: string; label: string }>;
+  };
+  pathname: string;
+  dir: string;
+  openMenus: Record<string, boolean>;
+  setOpenMenus: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  toggleMenu: (label: string) => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const isOpen = openMenus[item.label] ?? false;
+  const isActiveChild = item.subItems?.some((sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/'));
+  const isActiveParent = item.href && (pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/')));
+
+  const handleClick = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const top = Math.min(rect.top, window.innerHeight - 260);
+      const left = dir === 'rtl' ? window.innerWidth - rect.left + 12 : rect.right + 12;
+      setCoords({ top, left });
+    }
+    toggleMenu(item.label);
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (isOpen && btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        const flyout = document.getElementById(`flyout-${item.label.replace(/\s+/g, '-')}`);
+        if (flyout && !flyout.contains(e.target as Node)) {
+          setOpenMenus((prev) => ({ ...prev, [item.label]: false }));
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isOpen, item.label, setOpenMenus]);
+
+  return (
+    <div className="relative my-0.5">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleClick}
+        title={item.label}
+        className={`flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition-all ${
+          isActiveParent || isActiveChild
+            ? 'bg-amber-100 text-[#B91C1C] font-bold shadow-sm'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        }`}
+      >
+        <item.icon className={`w-5 h-5 ${isActiveParent || isActiveChild ? 'text-[#B91C1C]' : 'text-slate-500'}`} />
+      </button>
+
+      {isOpen && coords && (
+        <div
+          id={`flyout-${item.label.replace(/\s+/g, '-')}`}
+          style={{
+            position: 'fixed',
+            top: `${coords.top}px`,
+            [dir === 'rtl' ? 'right' : 'left']: `${coords.left}px`,
+            zIndex: 9999,
+          }}
+          className="w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/20 animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase text-slate-800 flex items-center justify-between">
+            <span>{item.label}</span>
+          </div>
+          <div className="flex flex-col gap-1 pt-1.5">
+            {item.subItems?.map((sub) => {
+              const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
+              return (
+                <Link
+                  key={sub.href}
+                  href={sub.href}
+                  onClick={() => setOpenMenus({})}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+                    isSubActive
+                      ? 'bg-red-50 text-[#B91C1C] font-bold border-l-2 border-[#B91C1C]'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#B91C1C]" />
+                  <span className="truncate">{sub.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function AdminLayout({
   children,
@@ -330,51 +436,15 @@ export default function AdminLayout({
 
                   if (collapsed) {
                     return (
-                      <div key={item.label} className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => toggleMenu(item.label)}
-                          title={item.label}
-                          className={`flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition-all ${
-                            isActiveParent || isActiveChild
-                              ? 'bg-amber-100 text-[#B91C1C] font-bold shadow-sm'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                          }`}
-                        >
-                          <item.icon className={`w-5 h-5 ${isActiveParent || isActiveChild ? 'text-[#B91C1C]' : 'text-slate-500'}`} />
-                        </button>
-                        {isOpen && (
-                          <div
-                            className={`absolute z-50 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15 transition-all animate-in fade-in slide-in-from-left-2 ${
-                              dir === 'rtl' ? 'right-14 top-0' : 'left-14 top-0'
-                            }`}
-                          >
-                            <div className="border-b border-slate-100 px-3 py-1.5 text-xs font-black uppercase text-slate-800 flex items-center justify-between">
-                              <span>{item.label}</span>
-                            </div>
-                            <div className="flex flex-col gap-1 pt-1">
-                              {item.subItems.map((sub) => {
-                                const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
-                                return (
-                                  <Link
-                                    key={sub.href}
-                                    href={sub.href}
-                                    onClick={() => setOpenMenus({})}
-                                    className={`rounded-xl px-3 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
-                                      isSubActive
-                                        ? 'bg-red-50 text-[#B91C1C] font-bold border-l-2 border-[#B91C1C]'
-                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                                    }`}
-                                  >
-                                    <span className="h-1.5 w-1.5 rounded-full bg-[#B91C1C]" />
-                                    <span>{sub.label}</span>
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      <CollapsedNavItem
+                        key={item.label}
+                        item={item}
+                        pathname={pathname}
+                        dir={dir}
+                        openMenus={openMenus}
+                        setOpenMenus={setOpenMenus}
+                        toggleMenu={toggleMenu}
+                      />
                     );
                   }
 
@@ -501,14 +571,6 @@ export default function AdminLayout({
       } min-h-screen overflow-auto`}>
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-8 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-xs"
-            >
-              {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-            </button>
             {collapsed && (
               <MarketplaceBrand
                 href="/dashboard"
