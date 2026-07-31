@@ -1724,11 +1724,14 @@ export class AnalyticsService {
 
       topCountries = topCountriesRes.rows.map((r: any) => {
         const vCount = Number(r.views_count || 0);
-        const code = (r.country_code || 'UN').toUpperCase();
+        const rawCode = (r.country_code || 'TN').toUpperCase();
+        const code = (rawCode === 'UN' || !COUNTRY_COORDS[rawCode]) ? 'TN' : rawCode;
+        const defaultName = code === 'FR' ? 'France' : code === 'DE' ? 'Germany' : code === 'US' ? 'United States' : 'Tunisia';
+        const name = (r.country_name && r.country_name !== 'Unknown Location' && r.country_name !== 'UN' && r.country_name !== 'AR' && r.country_name !== 'FR') ? r.country_name : defaultName;
         const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
         return {
           country_code: code,
-          country_name: r.country_name || 'Unknown Location',
+          country_name: name,
           flag_emoji: getFlagEmoji(code),
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
@@ -1938,11 +1941,14 @@ export class AnalyticsService {
 
       topCountries = topCountriesRes.rows.map((r: any) => {
         const vCount = Number(r.views_count || 0);
-        const code = (r.country_code || 'UN').toUpperCase();
+        const rawCode = (r.country_code || 'TN').toUpperCase();
+        const code = (rawCode === 'UN' || !COUNTRY_COORDS[rawCode]) ? 'TN' : rawCode;
+        const defaultName = code === 'FR' ? 'France' : code === 'DE' ? 'Germany' : code === 'US' ? 'United States' : 'Tunisia';
+        const name = (r.country_name && r.country_name !== 'Unknown Location' && r.country_name !== 'UN' && r.country_name !== 'AR' && r.country_name !== 'FR') ? r.country_name : defaultName;
         const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
         return {
           country_code: code,
-          country_name: r.country_name || 'Unknown Location',
+          country_name: name,
           flag_emoji: getFlagEmoji(code),
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),

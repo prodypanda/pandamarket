@@ -1119,7 +1119,9 @@
       "noStorefrontSearchData": "No storefront search data recorded yet.",
       "noTrafficSourceData": "No traffic source data recorded yet.",
       "noDeviceData": "No device data recorded yet.",
-      "noCountryData": "No country location data recorded yet."
+      "noCountryData": "No country location data recorded yet.",
+      "realtimeVisitorsGraph": "Real-Time Visitor Traffic Flow (Area Graph)",
+      "countryBubbleMap": "Live Marketplace Visits by Country (Bubble Map)"
     }
   }
 }

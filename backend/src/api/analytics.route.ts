@@ -307,6 +307,60 @@ const marketplaceEventSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+const COUNTRY_NAME_MAP: Record<string, string> = {
+  TN: 'Tunisia',
+  FR: 'France',
+  DE: 'Germany',
+  IT: 'Italy',
+  ES: 'Spain',
+  US: 'United States',
+  CA: 'Canada',
+  GB: 'United Kingdom',
+  DZ: 'Algeria',
+  MA: 'Morocco',
+  SA: 'Saudi Arabia',
+  AE: 'United Arab Emirates',
+  EG: 'Egypt',
+  TR: 'Turkey',
+};
+
+function resolveCountry(req: Request, metadata?: Record<string, unknown>, locale?: string): { country_code: string; country_name: string } {
+  const cfCountry = req.headers['cf-ipcountry'] as string || req.headers['x-country-code'] as string;
+  if (cfCountry && cfCountry.length === 2 && cfCountry !== 'XX' && cfCountry !== 'T1') {
+    const code = cfCountry.toUpperCase();
+    return { country_code: code, country_name: COUNTRY_NAME_MAP[code] || code };
+  }
+
+  const tz = typeof metadata?.timezone === 'string' ? metadata.timezone : '';
+  if (tz.includes('Tunis')) return { country_code: 'TN', country_name: 'Tunisia' };
+  if (tz.includes('Paris')) return { country_code: 'FR', country_name: 'France' };
+  if (tz.includes('Berlin')) return { country_code: 'DE', country_name: 'Germany' };
+  if (tz.includes('Rome')) return { country_code: 'IT', country_name: 'Italy' };
+  if (tz.includes('Madrid')) return { country_code: 'ES', country_name: 'Spain' };
+  if (tz.includes('London')) return { country_code: 'GB', country_name: 'United Kingdom' };
+  if (tz.includes('Algiers')) return { country_code: 'DZ', country_name: 'Algeria' };
+  if (tz.includes('Casablanca')) return { country_code: 'MA', country_name: 'Morocco' };
+  if (tz.includes('Riyadh')) return { country_code: 'SA', country_name: 'Saudi Arabia' };
+  if (tz.includes('Dubai')) return { country_code: 'AE', country_name: 'United Arab Emirates' };
+  if (tz.includes('New_York') || tz.includes('Chicago') || tz.includes('Los_Angeles')) return { country_code: 'US', country_name: 'United States' };
+  if (tz.includes('Toronto') || tz.includes('Vancouver')) return { country_code: 'CA', country_name: 'Canada' };
+
+  if (locale) {
+    const l = locale.toLowerCase();
+    if (l.includes('-fr') || l === 'fr') return { country_code: 'FR', country_name: 'France' };
+    if (l.includes('-de') || l === 'de') return { country_code: 'DE', country_name: 'Germany' };
+    if (l.includes('-it') || l === 'it') return { country_code: 'IT', country_name: 'Italy' };
+    if (l.includes('-es') || l === 'es') return { country_code: 'ES', country_name: 'Spain' };
+    if (l.includes('-us')) return { country_code: 'US', country_name: 'United States' };
+    if (l.includes('-gb') || l.includes('-uk')) return { country_code: 'GB', country_name: 'United Kingdom' };
+    if (l.includes('-dz')) return { country_code: 'DZ', country_name: 'Algeria' };
+    if (l.includes('-ma')) return { country_code: 'MA', country_name: 'Morocco' };
+  }
+
+  // Primary origin for PandaMarket
+  return { country_code: 'TN', country_name: 'Tunisia' };
+}
+
 router.post(
   '/event',
   validate(marketplaceEventSchema),
@@ -317,6 +371,8 @@ router.post(
       res.status(202).json({ success: true });
       return;
     }
+
+    const countryInfo = resolveCountry(req, payload.metadata, payload.locale);
 
     // Fire-and-forget: do not await, respond immediately
     marketplaceAnalyticsEventService.insertMarketplaceEvent({
@@ -336,7 +392,11 @@ router.post(
       search_query: payload.search_query,
       search_results_count: payload.search_results_count,
       funnel_step: payload.funnel_step,
-      metadata: payload.metadata,
+      metadata: {
+        ...(payload.metadata || {}),
+        country_code: countryInfo.country_code,
+        country_name: countryInfo.country_name,
+      },
     });
 
     res.status(202).json({ success: true });

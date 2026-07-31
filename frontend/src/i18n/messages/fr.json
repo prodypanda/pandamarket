@@ -1111,7 +1111,9 @@
       "noStorefrontSearchData": "Aucune recherche boutique enregistrée.",
       "noTrafficSourceData": "Aucun trafic référent enregistré.",
       "noDeviceData": "Aucune donnée d'appareil enregistrée.",
-      "noCountryData": "Aucune donnée de géolocalisation enregistrée."
+      "noCountryData": "Aucune donnée de géolocalisation enregistrée.",
+      "realtimeVisitorsGraph": "Flux de Trafic Visiteurs en Temps Réel (Graphique de Surface)",
+      "countryBubbleMap": "Carte à Bulles des Visites Marketplace par Pays"
     }
   }
 }

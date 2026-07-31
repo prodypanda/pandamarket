@@ -405,31 +405,47 @@ function CountryVisitBubbleMap({
       </div>
 
       {/* World Map SVG Container */}
-      <div className="relative w-full h-44 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center">
+      <div className="relative w-full h-52 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center">
         {/* Map Grid Background pattern */}
         <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <pattern id="mapGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="1" fill="#818cf8" />
+            <pattern id="mapGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+              <circle cx="3" cy="3" r="1" fill="#818cf8" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#mapGrid)" />
         </svg>
 
-        {/* Stylized Continent Silhouettes */}
-        <svg className="absolute inset-0 w-full h-full opacity-15 text-slate-400 fill-current" viewBox="0 0 100 50">
-          {/* North America */}
-          <path d="M 12 10 Q 25 8 30 22 Q 20 32 10 25 Z" />
+        {/* Realistic World Map Continent Vector Paths */}
+        <svg className="absolute inset-0 w-full h-full text-indigo-400/25 fill-current stroke-indigo-500/30 stroke-1" viewBox="0 0 1000 500">
+          {/* Latitude / Longitude Equator & Prime Meridian Grid Lines */}
+          <line x1="0" y1="125" x2="1000" y2="125" stroke="#6366f1" strokeDasharray="4 4" strokeWidth="0.5" opacity="0.3" />
+          <line x1="0" y1="250" x2="1000" y2="250" stroke="#818cf8" strokeDasharray="6 6" strokeWidth="0.8" opacity="0.4" />
+          <line x1="0" y1="375" x2="1000" y2="375" stroke="#6366f1" strokeDasharray="4 4" strokeWidth="0.5" opacity="0.3" />
+          <line x1="500" y1="0" x2="500" y2="500" stroke="#818cf8" strokeDasharray="6 6" strokeWidth="0.8" opacity="0.4" />
+
+          {/* North America & Greenland */}
+          <path d="M 120,60 L 150,50 L 220,40 L 290,45 L 340,65 L 310,120 L 270,160 L 230,190 L 180,180 L 150,210 L 170,260 L 150,280 L 120,240 L 100,180 L 70,120 L 80,80 Z" />
+          <path d="M 300,40 L 350,25 L 380,35 L 340,65 Z" />
+
           {/* South America */}
-          <path d="M 28 28 Q 38 30 32 46 Q 24 44 28 28 Z" />
-          {/* Europe */}
-          <path d="M 45 12 Q 58 10 55 24 Q 44 22 45 12 Z" />
-          {/* Africa */}
-          <path d="M 44 26 Q 60 25 56 46 Q 42 42 44 26 Z" />
-          {/* Asia */}
-          <path d="M 58 10 Q 88 8 82 28 Q 62 30 58 10 Z" />
-          {/* Australia */}
-          <path d="M 75 34 Q 88 33 84 45 Q 74 44 75 34 Z" />
+          <path d="M 270,270 L 320,285 L 380,310 L 350,380 L 320,450 L 290,470 L 280,410 L 260,340 Z" />
+
+          {/* Europe & British Isles */}
+          <path d="M 440,70 L 480,60 L 530,50 L 580,75 L 560,110 L 540,140 L 490,160 L 450,150 L 440,110 Z" />
+          <path d="M 450,45 L 480,35 L 490,55 L 460,60 Z" />
+
+          {/* Africa & Madagascar */}
+          <path d="M 440,160 L 500,155 L 590,190 L 610,240 L 570,330 L 510,380 L 480,340 L 450,240 L 420,200 Z" />
+          <path d="M 600,280 L 620,290 L 610,340 L 595,320 Z" />
+
+          {/* Asia & Japan Archipelago */}
+          <path d="M 580,75 L 680,50 L 820,45 L 910,65 L 890,140 L 850,190 L 780,210 L 750,260 L 700,240 L 670,190 L 610,190 Z" />
+          <path d="M 865,130 L 890,145 L 880,185 L 860,165 Z" />
+
+          {/* Australia & New Zealand */}
+          <path d="M 770,320 L 870,310 L 890,360 L 840,410 L 760,390 L 750,350 Z" />
+          <path d="M 905,400 L 920,390 L 930,430 L 915,440 Z" />
         </svg>
 
         {/* Bubble Markers per Country */}
