@@ -1340,16 +1340,19 @@ export class AnalyticsService {
       topPages = [];
     }
 
-    // 3. Top Products Viewed — from analytics events joined with products
+    // 3. Top Products Viewed — from analytics events joined with products & stores
     let topProductsViewed: any[] = [];
     try {
       const topProductsViewedRes = await query(`
         SELECT 
           p.id AS product_id,
           p.title,
-          COALESCE(s.name, '') AS store_name,
+          COALESCE(NULLIF(s.name, ''), 'PandaMarket Marketplace') AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
           COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(s.settings->>'store_description', '') AS store_description,
+          COALESCE(s.status, 'verified') AS store_status,
+          COALESCE(s.subscription_plan, 'starter') AS subscription_plan,
           COALESCE(p.thumbnail, (SELECT pi.url FROM pd_product_image pi WHERE pi.product_id = p.id ORDER BY pi.position ASC LIMIT 1), '') AS thumbnail_url,
           COALESCE(p.price, 0)::numeric AS price_tnd,
           COUNT(e.id)::int AS views_count,
@@ -1358,10 +1361,10 @@ export class AnalyticsService {
           COALESCE((SELECT COUNT(DISTINCT oi.order_id)::int FROM pd_order_item oi WHERE oi.product_id = p.id), 0) AS orders_count
         FROM pd_marketplace_analytics_event e
         JOIN pd_product p ON e.product_id = p.id
-        LEFT JOIN pd_store s ON p.store_id = s.id
+        LEFT JOIN pd_store s ON (p.store_id = s.id OR e.store_id = s.id)
         WHERE e.event_type = 'product_view'
         ${dateFilterAnd}
-        GROUP BY p.id, p.title, s.name, s.subdomain, p.price, s.settings, p.thumbnail
+        GROUP BY p.id, p.title, s.id, s.name, s.subdomain, p.price, s.settings, s.status, s.subscription_plan, p.thumbnail
         ORDER BY views_count DESC
         LIMIT 8
       `);
@@ -1373,9 +1376,12 @@ export class AnalyticsService {
           product_id: r.product_id,
           title: r.title,
           thumbnail_url: r.thumbnail_url,
-          store_name: r.store_name || '',
-          store_host: r.store_host || '',
-          store_logo_url: r.store_logo_url || '',
+          store_name: r.store_name,
+          store_host: r.store_host,
+          store_logo_url: r.store_logo_url,
+          store_description: r.store_description,
+          store_status: r.store_status,
+          subscription_plan: r.subscription_plan,
           price_tnd: Number(r.price_tnd || 0),
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
@@ -1395,17 +1401,20 @@ export class AnalyticsService {
         SELECT 
           p.id AS product_id,
           p.title,
-          COALESCE(s.name, '') AS store_name,
+          COALESCE(NULLIF(s.name, ''), 'PandaMarket Marketplace') AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
           COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(s.settings->>'store_description', '') AS store_description,
+          COALESCE(s.status, 'verified') AS store_status,
+          COALESCE(s.subscription_plan, 'starter') AS subscription_plan,
           COALESCE(p.thumbnail, (SELECT pi.url FROM pd_product_image pi WHERE pi.product_id = p.id ORDER BY pi.position ASC LIMIT 1), '') AS thumbnail_url,
           SUM(oi.quantity)::int AS units_sold,
           SUM(oi.subtotal)::numeric AS total_revenue_tnd,
           COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view' ${dateFilterAnd}), 0) AS views_count
         FROM pd_order_item oi
         JOIN pd_product p ON oi.product_id = p.id
-        LEFT JOIN pd_store s ON p.store_id = s.id
-        GROUP BY p.id, p.title, s.name, s.subdomain, s.settings, p.thumbnail, s.id
+        LEFT JOIN pd_store s ON (p.store_id = s.id OR oi.store_id = s.id)
+        GROUP BY p.id, p.title, s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan, p.thumbnail
         ORDER BY total_revenue_tnd DESC
         LIMIT 8
       `);
@@ -1417,9 +1426,12 @@ export class AnalyticsService {
           product_id: r.product_id,
           title: r.title,
           thumbnail_url: r.thumbnail_url,
-          store_name: r.store_name || '',
-          store_host: r.store_host || '',
-          store_logo_url: r.store_logo_url || '',
+          store_name: r.store_name,
+          store_host: r.store_host,
+          store_logo_url: r.store_logo_url,
+          store_description: r.store_description,
+          store_status: r.store_status,
+          subscription_plan: r.subscription_plan,
           units_sold: uSold,
           total_revenue_tnd: Number(r.total_revenue_tnd || 0),
           views_count: vCount,

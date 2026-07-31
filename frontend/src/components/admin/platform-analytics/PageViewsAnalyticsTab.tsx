@@ -1640,7 +1640,16 @@ export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageV
                     </td>
                     <td className="py-3 text-slate-500 font-medium truncate max-w-[90px]">
                       {prod.store_name ? (
-                        <StoreHoverCard store={{ store_name: prod.store_name, store_host: prod.store_host, store_logo_url: prod.store_logo_url }}>
+                        <StoreHoverCard
+                          store={{
+                            store_name: prod.store_name,
+                            store_host: prod.store_host,
+                            store_logo_url: prod.store_logo_url,
+                            store_description: prod.store_description,
+                            store_status: prod.store_status,
+                            subscription_plan: prod.subscription_plan,
+                          }}
+                        >
                           {prod.store_name}
                         </StoreHoverCard>
                       ) : '—'}
@@ -1704,7 +1713,16 @@ export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageV
                     </td>
                     <td className="py-3 text-slate-500 font-medium truncate max-w-[90px]">
                       {prod.store_name ? (
-                        <StoreHoverCard store={{ store_name: prod.store_name, store_host: prod.store_host, store_logo_url: prod.store_logo_url }}>
+                        <StoreHoverCard
+                          store={{
+                            store_name: prod.store_name,
+                            store_host: prod.store_host,
+                            store_logo_url: prod.store_logo_url,
+                            store_description: prod.store_description,
+                            store_status: prod.store_status,
+                            subscription_plan: prod.subscription_plan,
+                          }}
+                        >
                           {prod.store_name}
                         </StoreHoverCard>
                       ) : '—'}

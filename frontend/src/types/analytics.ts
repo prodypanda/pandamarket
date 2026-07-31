@@ -712,6 +712,9 @@ export interface PlatformPageViewsAnalytics {
     store_name: string;
     store_host: string;
     store_logo_url?: string;
+    store_description?: string;
+    store_status?: string;
+    subscription_plan?: string;
     price_tnd: number;
     views_count: number;
     unique_visitors: number;
@@ -726,6 +729,9 @@ export interface PlatformPageViewsAnalytics {
     store_name: string;
     store_host: string;
     store_logo_url?: string;
+    store_description?: string;
+    store_status?: string;
+    subscription_plan?: string;
     units_sold: number;
     total_revenue_tnd: number;
     views_count: number;
