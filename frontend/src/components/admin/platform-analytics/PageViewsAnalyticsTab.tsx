@@ -26,10 +26,6 @@ import {
   Wifi,
   Maximize2,
   Minimize2,
-  Plus,
-  Minus,
-  RotateCcw,
-  Move,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
@@ -534,59 +530,6 @@ function CountryVisitBubbleMap({
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedIp, setCopiedIp] = useState<string | null>(null);
 
-  // Zoom & Pan state
-  const [zoomScale, setZoomScale] = useState<number>(1);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const handleZoomIn = () => {
-    setZoomScale(prev => Math.min(5, Math.round((prev + 0.3) * 10) / 10));
-  };
-
-  const handleZoomOut = () => {
-    setZoomScale(prev => {
-      const next = Math.max(1, Math.round((prev - 0.3) * 10) / 10);
-      if (next === 1) setPanOffset({ x: 0, y: 0 });
-      return next;
-    });
-  };
-
-  const handleResetZoom = () => {
-    setZoomScale(1);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const delta = e.deltaY < 0 ? 0.2 : -0.2;
-    setZoomScale(prev => {
-      const next = Math.min(5, Math.max(1, Math.round((prev + delta) * 10) / 10));
-      if (next === 1) setPanOffset({ x: 0, y: 0 });
-      return next;
-    });
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (zoomScale > 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMoveMap = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleMouseMove(e);
-    if (isDragging && zoomScale > 1) {
-      setPanOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-    }
-  };
-
   // Fallback defaults with sample IP addresses
   const countries = (topCountries && topCountries.length > 0)
     ? topCountries
@@ -858,59 +801,13 @@ function CountryVisitBubbleMap({
       {/* Map Container */}
       <div
         ref={mapContainerRef}
-        className="relative w-full overflow-hidden select-none"
+        className="relative w-full overflow-hidden"
         style={{
           aspectRatio: '2754 / 1398',
           background: 'linear-gradient(180deg, #020617 0%, #0c1a3a 40%, #0f172a 100%)',
         }}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={() => setIsDragging(false)}
-        onMouseMove={handleMouseMoveMap}
+        onMouseMove={handleMouseMove}
       >
-        {/* Floating Zoom & Pan Controls Overlay */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-700/80 text-white shadow-xl backdrop-blur-md">
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
-            title="Zoom In (+)"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-          <span className="text-[11px] font-mono font-bold px-2 text-indigo-400 select-none">
-            {Math.round(zoomScale * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            disabled={zoomScale <= 1}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-            title="Zoom Out (-)"
-          >
-            <Minus className="w-4 h-4" />
-          </button>
-
-          {zoomScale > 1 && (
-            <button
-              type="button"
-              onClick={handleResetZoom}
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors ml-1 border-l border-slate-800 pl-2"
-              title="Reset View (100%)"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {zoomScale > 1 && (
-          <div className="absolute bottom-3 left-4 z-20 pointer-events-none px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-[10px] font-bold text-slate-400 backdrop-blur-sm flex items-center gap-1.5">
-            <Move className="w-3 h-3 text-indigo-400 animate-pulse" />
-            <span>Drag to pan map</span>
-          </div>
-        )}
-
         {!svgLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="flex flex-col items-center gap-2">
@@ -920,82 +817,72 @@ function CountryVisitBubbleMap({
           </div>
         )}
 
-        {/* Zoomable & Pannable Viewport */}
-        <div
-          className={`w-full h-full relative transition-transform duration-75 ease-out origin-center ${
-            isDragging ? 'cursor-grabbing' : zoomScale > 1 ? 'cursor-grab' : ''
-          }`}
-          style={{
-            transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
-          }}
-        >
-          {/* Bubble Pins */}
-          {svgLoaded && countries.map((c) => {
-            const code = c.country_code.toLowerCase();
-            const pos = bubblePositions[code];
-            if (!pos) return null;
+        {/* Bubble Pins */}
+        {svgLoaded && countries.map((c) => {
+          const code = c.country_code.toLowerCase();
+          const pos = bubblePositions[code];
+          if (!pos) return null;
 
-            const isExpanded = expandedCountries[c.country_code];
-            const isHovered = hoveredCountry?.country_code === c.country_code;
+          const isExpanded = expandedCountries[c.country_code];
+          const isHovered = hoveredCountry?.country_code === c.country_code;
 
-            // Compact bubble size
-            const coreSize = Math.max(12, Math.min(22, Math.sqrt(c.share_pct || 1) * 3.5 + 8));
-            const rippleSize = coreSize * 2.2;
-            const glowSize = coreSize * 1.4;
+          // Compact bubble size
+          const coreSize = Math.max(12, Math.min(22, Math.sqrt(c.share_pct || 1) * 3.5 + 8));
+          const rippleSize = coreSize * 2.2;
+          const glowSize = coreSize * 1.4;
 
-            return (
+          return (
+            <div
+              key={c.country_code}
+              className="absolute z-10 pointer-events-none"
+              style={{
+                left: `${pos.xPct}%`,
+                top: `${pos.yPct}%`,
+                width: `${coreSize}px`,
+                height: `${coreSize}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
               <div
-                key={c.country_code}
-                className="absolute z-10 pointer-events-none"
+                className="absolute rounded-full bg-indigo-400/25 animate-ping pointer-events-none"
                 style={{
-                  left: `${pos.xPct}%`,
-                  top: `${pos.yPct}%`,
-                  width: `${coreSize}px`,
-                  height: `${coreSize}px`,
-                  transform: 'translate(-50%, -50%)',
+                  width: `${rippleSize}px`,
+                  height: `${rippleSize}px`,
+                  top: `${(coreSize - rippleSize) / 2}px`,
+                  left: `${(coreSize - rippleSize) / 2}px`,
                 }}
+              />
+
+              <div
+                className={`absolute rounded-full pointer-events-none transition-all duration-200 ${
+                  isExpanded || isHovered ? 'bg-indigo-500/40 border border-indigo-300' : 'bg-indigo-500/20 border border-indigo-400/40'
+                }`}
+                style={{
+                  width: `${glowSize}px`,
+                  height: `${glowSize}px`,
+                  top: `${(coreSize - glowSize) / 2}px`,
+                  left: `${(coreSize - glowSize) / 2}px`,
+                }}
+              />
+
+              <div
+                className={`relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md transition-transform duration-200 cursor-pointer pointer-events-auto select-none border ${
+                  isExpanded || isHovered ? 'scale-150 border-amber-300 shadow-amber-500/50' : 'hover:scale-150 border-white shadow-indigo-500/50'
+                }`}
+                style={{
+                  background: isExpanded ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
+                  fontSize: `${Math.max(6, coreSize * 0.45)}px`,
+                  lineHeight: 1,
+                }}
+                onMouseEnter={() => setHoveredCountry(c)}
+                onMouseLeave={() => setHoveredCountry(null)}
+                onClick={() => toggleExpand(c.country_code)}
               >
-                <div
-                  className="absolute rounded-full bg-indigo-400/25 animate-ping pointer-events-none"
-                  style={{
-                    width: `${rippleSize}px`,
-                    height: `${rippleSize}px`,
-                    top: `${(coreSize - rippleSize) / 2}px`,
-                    left: `${(coreSize - rippleSize) / 2}px`,
-                  }}
-                />
-
-                <div
-                  className={`absolute rounded-full pointer-events-none transition-all duration-200 ${
-                    isExpanded || isHovered ? 'bg-indigo-500/40 border border-indigo-300' : 'bg-indigo-500/20 border border-indigo-400/40'
-                  }`}
-                  style={{
-                    width: `${glowSize}px`,
-                    height: `${glowSize}px`,
-                    top: `${(coreSize - glowSize) / 2}px`,
-                    left: `${(coreSize - glowSize) / 2}px`,
-                  }}
-                />
-
-                <div
-                  className={`relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md transition-transform duration-200 cursor-pointer pointer-events-auto select-none border ${
-                    isExpanded || isHovered ? 'scale-150 border-amber-300 shadow-amber-500/50' : 'hover:scale-150 border-white shadow-indigo-500/50'
-                  }`}
-                  style={{
-                    background: isExpanded ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
-                    fontSize: `${Math.max(6, coreSize * 0.45)}px`,
-                    lineHeight: 1,
-                  }}
-                  onMouseEnter={() => setHoveredCountry(c)}
-                  onMouseLeave={() => setHoveredCountry(null)}
-                  onClick={() => toggleExpand(c.country_code)}
-                >
-                  {coreSize >= 12 ? c.country_code.toUpperCase() : ''}
-                </div>
+                {coreSize >= 12 ? c.country_code.toUpperCase() : ''}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
 
         {/* Mouse Hover Tooltip */}
         {hoveredCountry && (
