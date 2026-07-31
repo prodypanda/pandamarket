@@ -1430,7 +1430,7 @@ export class AnalyticsService {
       topProductsOrdered = [];
     }
 
-    // 5. Top Storefront Websites by Views — from analytics events
+    // 5. Top Storefront Websites by Views — from analytics events & URL paths
     let topStorefrontsByViews: any[] = [];
     try {
       const topStoresViewsRes = await query(`
@@ -1446,8 +1446,8 @@ export class AnalyticsService {
           COUNT(DISTINCT e.visitor_hash)::int AS unique_visitors,
           COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'published'), 0) AS active_listings_count
         FROM pd_marketplace_analytics_event e
-        JOIN pd_store s ON e.store_id = s.id
-        WHERE e.store_id IS NOT NULL
+        JOIN pd_store s ON (e.store_id = s.id OR (e.path IS NOT NULL AND (e.path LIKE '/store/' || s.subdomain || '%' OR e.path LIKE '/store/' || s.id || '%')))
+        WHERE (e.store_id = s.id OR e.path LIKE '/store/%')
         ${dateFilterAnd.replace(/occurred_at/g, 'e.occurred_at')}
         GROUP BY s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan
         ORDER BY views_count DESC
@@ -1515,7 +1515,7 @@ export class AnalyticsService {
       topStorefrontsBySales = [];
     }
 
-    // 7. Top Marketplace Searches — from actual search_query events
+    // 7. Top Marketplace Searches — from actual search_performed & zero_result_search events
     let topMarketplaceSearches: any[] = [];
     try {
       const searchesRes = await query(`
@@ -1525,7 +1525,7 @@ export class AnalyticsService {
           COALESCE(AVG(search_results_count), 0)::int AS avg_results_count,
           COALESCE((COUNT(*) FILTER (WHERE search_results_count = 0)::float / NULLIF(COUNT(*), 0)) * 100, 0)::numeric AS zero_results_pct
         FROM pd_marketplace_analytics_event
-        WHERE event_type = 'search_performed' AND search_query_normalized IS NOT NULL AND store_id IS NULL
+        WHERE event_type IN ('search_performed', 'zero_result_search') AND search_query_normalized IS NOT NULL AND store_id IS NULL
         ${dateFilterAnd}
         GROUP BY search_query_normalized
         ORDER BY search_count DESC
@@ -1542,7 +1542,7 @@ export class AnalyticsService {
       topMarketplaceSearches = [];
     }
 
-    // 8. Top Storefront Searches — from actual search_query events with store
+    // 8. Top Storefront Searches — from actual search events with store
     let topStorefrontSearches: any[] = [];
     try {
       const sfSearchesRes = await query(`
@@ -1554,7 +1554,7 @@ export class AnalyticsService {
           COALESCE(AVG(e.search_results_count), 0)::int AS avg_results_count
         FROM pd_marketplace_analytics_event e
         JOIN pd_store s ON e.store_id = s.id
-        WHERE e.event_type = 'search_performed' AND e.search_query_normalized IS NOT NULL
+        WHERE e.event_type IN ('search_performed', 'zero_result_search') AND e.search_query_normalized IS NOT NULL
         ${dateFilterAnd}
         GROUP BY e.search_query_normalized, s.name, s.subdomain, s.id
         ORDER BY search_count DESC
@@ -1649,6 +1649,78 @@ export class AnalyticsService {
       liveActivityFeed = [];
     }
 
+    // 12. Top Visitor Countries — from events locale & metadata
+    let topCountries: any[] = [];
+    try {
+      const topCountriesRes = await query(`
+        SELECT 
+          COALESCE(
+            NULLIF(metadata->>'country_name', ''),
+            NULLIF(metadata->>'country', ''),
+            CASE 
+              WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'Tunisia'
+              WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'France'
+              WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'United States'
+              WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'Canada'
+              WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'Germany'
+              WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'United Kingdom'
+              WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'Italy'
+              WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'Spain'
+              WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'Algeria'
+              WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'Morocco'
+              WHEN locale IS NOT NULL AND locale != '' THEN UPPER(locale)
+              ELSE 'Unknown Location'
+            END
+          ) AS country_name,
+          COALESCE(
+            NULLIF(metadata->>'country_code', ''),
+            CASE 
+              WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'TN'
+              WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'FR'
+              WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'US'
+              WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'CA'
+              WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'DE'
+              WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'GB'
+              WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'IT'
+              WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'ES'
+              WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'DZ'
+              WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'MA'
+              ELSE 'UN'
+            END
+          ) AS country_code,
+          COUNT(id)::int AS views_count,
+          COUNT(DISTINCT visitor_hash)::int AS unique_visitors
+        FROM pd_marketplace_analytics_event
+        ${dateFilter}
+        GROUP BY country_name, country_code
+        ORDER BY views_count DESC
+        LIMIT 6
+      `);
+
+      const totalCountryViews = topCountriesRes.rows.reduce((sum: number, r: any) => sum + Number(r.views_count || 0), 0) || 1;
+
+      const getFlagEmoji = (code: string) => {
+        if (!code || code === 'UN' || code.length !== 2) return '🌐';
+        const codePoints = code.toUpperCase().split('').map(char => 127397 + char.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+      };
+
+      topCountries = topCountriesRes.rows.map((r: any) => {
+        const vCount = Number(r.views_count || 0);
+        const code = (r.country_code || 'UN').toUpperCase();
+        return {
+          country_code: code,
+          country_name: r.country_name || 'Unknown Location',
+          flag_emoji: getFlagEmoji(code),
+          views_count: vCount,
+          unique_visitors: Number(r.unique_visitors || 0),
+          share_pct: Math.round((vCount / totalCountryViews) * 1000) / 10,
+        };
+      });
+    } catch {
+      topCountries = [];
+    }
+
     return {
       range,
       metric_scope: AnalyticsService.METRIC_SCOPE,
@@ -1673,9 +1745,11 @@ export class AnalyticsService {
       top_storefront_searches: topStorefrontSearches,
       visit_sources: visitSources,
       device_breakdown: deviceBreakdown,
+      top_countries: topCountries,
       live_activity_feed: liveActivityFeed,
     };
   }
+
 
   public async getPageViewsLiveData(): Promise<any> {
     let liveActiveNow = 0;

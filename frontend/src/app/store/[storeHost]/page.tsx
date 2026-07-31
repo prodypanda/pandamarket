@@ -39,6 +39,7 @@ import { StorefrontSocialLinks } from '../../../components/themes/StorefrontSoci
 import { getStoreThemeLogoSurface, type StoreSocialLinks } from '../../../components/themes/shared';
 import { StorefrontMaintenancePage } from '../../../components/store/StorefrontMaintenancePage';
 import { selectLogoForSurface } from '../../../lib/public-assets';
+import { StorefrontAnalyticsTracker } from '../../../components/store/StorefrontAnalyticsTracker';
 
 interface StoreBranding {
   store_id?: string;
@@ -569,7 +570,12 @@ export default async function StorePage({
   };
 
   const ThemeComponent = themeComponents[activeTheme.id] || ClassicTheme;
-  return <ThemeComponent {...themeProps} />;
+  return (
+    <>
+      <StorefrontAnalyticsTracker storeId={store.id} />
+      <ThemeComponent {...themeProps} />
+    </>
+  );
 }
 
 

@@ -57,7 +57,7 @@ function StoreHoverCard({ store, children }: {
   children: React.ReactNode;
 }) {
   const [show, setShow] = useState(false);
-  const [pos, setPos] = useState<'bottom' | 'top'>('bottom');
+  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,10 +66,12 @@ function StoreHoverCard({ store, children }: {
     timerRef.current = setTimeout(() => {
       if (ref.current) {
         const rect = ref.current.getBoundingClientRect();
-        setPos(rect.bottom + 200 > window.innerHeight ? 'top' : 'bottom');
+        const top = rect.bottom + 220 > window.innerHeight ? Math.max(10, rect.top - 210) : rect.bottom + 6;
+        const left = Math.max(10, Math.min(rect.left, window.innerWidth - 300));
+        setCoords({ top, left });
       }
       setShow(true);
-    }, 300);
+    }, 200);
   };
 
   const handleLeave = () => {
@@ -104,12 +106,12 @@ function StoreHoverCard({ store, children }: {
       </Link>
       {show && (
         <div
-          className={`absolute z-50 w-72 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-black/30 animate-in fade-in zoom-in-95 duration-150 ${
-            pos === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
-          } left-0`}
+          style={{ position: 'fixed', top: `${coords.top}px`, left: `${coords.left}px`, zIndex: 9999 }}
+          className="w-72 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-400/30 dark:shadow-black/60 animate-in fade-in zoom-in-95 duration-150"
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
         >
+
           <div className="flex items-start gap-3">
             {store.store_logo_url ? (
               <img src={store.store_logo_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0" />
@@ -180,7 +182,7 @@ function ProductThumb({ url, title }: { url?: string; title: string }) {
 export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageViewsAnalyticsTabProps) {
   if (!data) return null;
 
-  const { summary, top_pages_viewed, top_products_viewed, top_products_ordered, top_storefronts_by_views, top_storefronts_by_sales, top_marketplace_searches, top_storefront_searches, visit_sources, device_breakdown, live_activity_feed: staticFeed } = data;
+  const { summary, top_pages_viewed, top_products_viewed, top_products_ordered, top_storefronts_by_views, top_storefronts_by_sales, top_marketplace_searches, top_storefront_searches, visit_sources, device_breakdown, top_countries = [], live_activity_feed: staticFeed } = data;
 
   // Use live data if available, fall back to static data
   const liveVisitorsNow = liveData?.live_active_visitors_now ?? summary.live_active_visitors_now;
@@ -677,8 +679,8 @@ export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageV
         </div>
       </div>
 
-      {/* 6. Traffic Sources & Device Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 6. Traffic Sources, Device Distribution & Top Visitor Countries */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Visit Traffic Sources */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
@@ -734,7 +736,44 @@ export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageV
             ))}
           </div>
         </div>
+
+        {/* Top Visitor Countries */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌐</span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Top Visitor Countries</h3>
+            </div>
+            <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+              Geo Location
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {(!top_countries || top_countries.length === 0) ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No country location data recorded yet.</div>
+            ) : top_countries.map((c, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <span className="text-base">{c.flag_emoji}</span>
+                    <span>{c.country_name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">({c.country_code})</span>
+                  </span>
+                  <span className="text-slate-900 dark:text-white font-black">{c.views_count.toLocaleString()} ({c.share_pct}%)</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full"
+                    style={{ width: `${Math.min(100, c.share_pct)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

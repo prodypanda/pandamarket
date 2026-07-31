@@ -780,6 +780,14 @@ export interface PlatformPageViewsAnalytics {
     views_count: number;
     share_pct: number;
   }>;
+  top_countries: Array<{
+    country_code: string;
+    country_name: string;
+    flag_emoji: string;
+    views_count: number;
+    unique_visitors: number;
+    share_pct: number;
+  }>;
   live_activity_feed: Array<{
     id: string;
     event_type: string;
