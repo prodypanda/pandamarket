@@ -35,7 +35,7 @@ import {
   Crosshair,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 
 interface LiveData {
@@ -580,7 +580,7 @@ function CountryVisitBubbleMap({
   }>;
 }) {
   const { t } = useLocale();
-  const [hoveredCountry, setHoveredCountry] = useState<typeof topCountries[0] | null>(null);
+  const [hoveredCountry, setHoveredCountry] = useState<any | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number; containerWidth: number }>({ x: 0, y: 0, containerWidth: 400 });
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapViewportRef = useRef<HTMLDivElement>(null);
@@ -591,13 +591,23 @@ function CountryVisitBubbleMap({
   const [svgLoaded, setSvgLoaded] = useState(false);
   const [bubblePositions, setBubblePositions] = useState<Record<string, { xPct: number; yPct: number }>>({});
 
+  // Telemetry mode: 'live_heartbeat' (with 30s grace timeout) vs 'all_24h'
+  const [telemetryFilter, setTelemetryFilter] = useState<'live_heartbeat' | 'all_24h'>('live_heartbeat');
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  // Heartbeat ticker re-evaluates timestamps every 2 seconds
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 2000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Expandable/Collapsible state
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedIp, setCopiedIp] = useState<string | null>(null);
 
   // Fallback defaults with sample IP addresses
-  const countries = (topCountries && topCountries.length > 0)
+  const rawCountries = (topCountries && topCountries.length > 0)
     ? topCountries
     : [
         {
@@ -608,11 +618,10 @@ function CountryVisitBubbleMap({
           unique_visitors: 850,
           share_pct: 68.5,
           ip_addresses: [
-            { ip: '197.26.18.42', city: 'Tunis', isp: 'Tunisie Télécom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 540 },
-            { ip: '102.164.92.105', city: 'Sousse', isp: 'Ooredoo Tunisia', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 320 },
-            { ip: '41.226.11.84', city: 'Sfax', isp: 'Topnet Fibre', device_type: 'Mobile (iOS)', is_active_now: false, views_count: 280 },
-            { ip: '197.28.140.12', city: 'Monastir', isp: 'Orange Tunisie', device_type: 'Desktop (Firefox)', is_active_now: false, views_count: 160 },
-            { ip: '102.159.204.5', city: 'Bizerte', isp: 'GlobalNet ADSL', device_type: 'Mobile (Android)', is_active_now: true, views_count: 120 },
+            { ip: '197.26.18.42', city: 'Tunis', isp: 'Tunisie Télécom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 540, last_active: new Date().toISOString() },
+            { ip: '102.164.92.105', city: 'Sousse', isp: 'Ooredoo Tunisia', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 320, last_active: new Date().toISOString() },
+            { ip: '41.226.11.84', city: 'Sfax', isp: 'Topnet Fibre', device_type: 'Mobile (iOS)', is_active_now: false, views_count: 280, last_active: new Date(Date.now() - 25 * 1000).toISOString() },
+            { ip: '197.28.140.12', city: 'Monastir', isp: 'Orange Tunisie', device_type: 'Desktop (Firefox)', is_active_now: false, views_count: 160, last_active: new Date(Date.now() - 50 * 1000).toISOString() },
           ],
         },
         {
@@ -623,9 +632,8 @@ function CountryVisitBubbleMap({
           unique_visitors: 240,
           share_pct: 18.2,
           ip_addresses: [
-            { ip: '51.15.22.80', city: 'Paris', isp: 'Orange SA', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 180 },
-            { ip: '176.31.252.18', city: 'Lyon', isp: 'OVH SAS', device_type: 'Desktop (Safari)', is_active_now: false, views_count: 110 },
-            { ip: '90.85.12.190', city: 'Marseille', isp: 'SFR Fiber', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 90 },
+            { ip: '51.15.22.80', city: 'Paris', isp: 'Orange SA', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 180, last_active: new Date().toISOString() },
+            { ip: '90.85.12.190', city: 'Marseille', isp: 'SFR Fiber', device_type: 'Mobile (iOS)', is_active_now: false, views_count: 90, last_active: new Date(Date.now() - 20 * 1000).toISOString() },
           ],
         },
         {
@@ -636,8 +644,7 @@ function CountryVisitBubbleMap({
           unique_visitors: 90,
           share_pct: 5.8,
           ip_addresses: [
-            { ip: '88.198.45.12', city: 'Frankfurt', isp: 'Hetzner Online', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 70 },
-            { ip: '188.40.120.99', city: 'Munich', isp: 'Deutsche Telekom', device_type: 'Desktop (Edge)', is_active_now: false, views_count: 50 },
+            { ip: '88.198.45.12', city: 'Frankfurt', isp: 'Hetzner Online', device_type: 'Desktop (Chrome)', is_active_now: false, views_count: 70, last_active: new Date(Date.now() - 28 * 1000).toISOString() },
           ],
         },
         {
@@ -648,20 +655,69 @@ function CountryVisitBubbleMap({
           unique_visitors: 65,
           share_pct: 4.1,
           ip_addresses: [
-            { ip: '54.239.28.85', city: 'Ashburn, VA', isp: 'Amazon AWS', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 55 },
-            { ip: '104.16.124.96', city: 'San Francisco', isp: 'Cloudflare', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 40 },
+            { ip: '54.239.28.85', city: 'Ashburn, VA', isp: 'Amazon AWS', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 55, last_active: new Date().toISOString() },
           ],
         },
       ];
 
-  const activeCodesSet = new Set(countries.map(c => c.country_code.toLowerCase()));
+  // Helper to compute live telemetry heartbeat & 30s grace timeout per country
+  const getCountryTelemetryStatus = useCallback((c: typeof rawCountries[0]) => {
+    const ips = c.ip_addresses || [];
+    if (ips.length === 0) {
+      return { status: 'LIVE_ACTIVE' as const, liveCount: 1, coolingCount: 0, graceTimeRemainingSec: 0 };
+    }
+
+    let liveCount = 0;
+    let coolingCount = 0;
+    let minGraceRemainingSec = 30;
+
+    ips.forEach(ip => {
+      const lastActiveMs = ip.last_active ? new Date(ip.last_active).getTime() : 0;
+      const ageSec = lastActiveMs > 0 ? Math.max(0, (currentTime - lastActiveMs) / 1000) : 999;
+
+      if (ip.is_active_now || ageSec <= 15) {
+        liveCount++;
+      } else if (ageSec > 15 && ageSec <= 45) {
+        coolingCount++;
+        const remaining = Math.max(1, Math.ceil(45 - ageSec));
+        if (remaining < minGraceRemainingSec) minGraceRemainingSec = remaining;
+      }
+    });
+
+    if (liveCount > 0) {
+      return { status: 'LIVE_ACTIVE' as const, liveCount, coolingCount: 0, graceTimeRemainingSec: 0 };
+    }
+    if (coolingCount > 0) {
+      return { status: 'PALE_GRACE' as const, liveCount: 0, coolingCount, graceTimeRemainingSec: minGraceRemainingSec };
+    }
+    return { status: 'EXPIRED' as const, liveCount: 0, coolingCount: 0, graceTimeRemainingSec: 0 };
+  }, [currentTime]);
+
+  // Evaluated countries with telemetry statuses
+  const countriesWithTelemetry = useMemo(() => {
+    return rawCountries.map(c => {
+      const telemetry = getCountryTelemetryStatus(c);
+      return { ...c, telemetry };
+    });
+  }, [rawCountries, getCountryTelemetryStatus]);
+
+  // Displayed countries based on selected filter mode (live mode excludes expired items after 30s grace)
+  const displayedCountries = useMemo(() => {
+    return countriesWithTelemetry.filter(c => {
+      if (telemetryFilter === 'all_24h') return true;
+      return c.telemetry.status === 'LIVE_ACTIVE' || c.telemetry.status === 'PALE_GRACE';
+    });
+  }, [countriesWithTelemetry, telemetryFilter]);
+
+  const activeCodesSet = new Set(displayedCountries.map(c => c.country_code.toLowerCase()));
 
   // Compute totals
-  const totalViews = countries.reduce((sum, c) => sum + c.views_count, 0);
-  const totalVisitors = countries.reduce((sum, c) => sum + c.unique_visitors, 0);
-  const totalIpsCount = countries.reduce((sum, c) => sum + (c.ip_addresses?.length || 0), 0);
-  const activeNowCount = countries.reduce((sum, c) => sum + (c.ip_addresses?.filter(ip => ip.is_active_now).length || 0), 0);
-  const topTrafficShare = countries[0]?.share_pct ?? 0;
+  const totalViews = displayedCountries.reduce((sum, c) => sum + c.views_count, 0);
+  const totalVisitors = displayedCountries.reduce((sum, c) => sum + c.unique_visitors, 0);
+  const totalIpsCount = displayedCountries.reduce((sum, c) => sum + (c.ip_addresses?.length || 0), 0);
+  const activeNowCount = displayedCountries.reduce((sum, c) => sum + (c.telemetry.status === 'LIVE_ACTIVE' ? (c.ip_addresses?.filter(ip => ip.is_active_now).length || 1) : 0), 0);
+  const paleGraceCount = displayedCountries.filter(c => c.telemetry.status === 'PALE_GRACE').length;
+  const topTrafficShare = displayedCountries[0]?.share_pct ?? 0;
   const marketConcentrationLabel = topTrafficShare >= 70 ? 'High concentration' : topTrafficShare >= 40 ? 'Healthy lead market' : 'Diversified traffic';
 
   // Toggle single country expansion
@@ -673,10 +729,10 @@ function CountryVisitBubbleMap({
   };
 
   // Toggle all countries expansion
-  const allExpanded = countries.every(c => expandedCountries[c.country_code]);
+  const allExpanded = displayedCountries.every(c => expandedCountries[c.country_code]);
   const toggleExpandAll = () => {
     const nextState: Record<string, boolean> = {};
-    countries.forEach(c => {
+    displayedCountries.forEach(c => {
       nextState[c.country_code] = !allExpanded;
     });
     setExpandedCountries(nextState);
@@ -690,7 +746,7 @@ function CountryVisitBubbleMap({
   };
 
   // Filter countries by search term
-  const filteredCountries = countries.filter(c => {
+  const filteredCountries = displayedCountries.filter(c => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase().trim();
     const matchCountry = c.country_name.toLowerCase().includes(term) || c.country_code.toLowerCase().includes(term);
@@ -853,15 +909,32 @@ function CountryVisitBubbleMap({
           path.style.transition = 'fill 0.3s ease';
         });
 
-        activeCodesSet.forEach(code => {
+        // Apply dynamic highlights based on telemetry status (bright for live, pale for grace)
+        countriesWithTelemetry.forEach(c => {
+          const code = c.country_code.toLowerCase();
+          const isLive = c.telemetry.status === 'LIVE_ACTIVE';
+          const isGrace = c.telemetry.status === 'PALE_GRACE';
+
           const applyHighlight = (el: Element) => {
             const paths = el.tagName === 'g' ? el.querySelectorAll('path') : [el];
             paths.forEach(p => {
               if (p.tagName !== 'path') return;
-              (p as SVGPathElement).setAttribute('fill', '#6366f1');
-              (p as SVGPathElement).setAttribute('stroke', '#818cf8');
-              (p as SVGPathElement).setAttribute('stroke-width', '1.5');
-              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.6))';
+              if (isLive) {
+                (p as SVGPathElement).setAttribute('fill', '#6366f1');
+                (p as SVGPathElement).setAttribute('stroke', '#818cf8');
+                (p as SVGPathElement).setAttribute('stroke-width', '1.5');
+                (p as SVGPathElement).style.filter = 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.6))';
+              } else if (isGrace) {
+                (p as SVGPathElement).setAttribute('fill', '#334155');
+                (p as SVGPathElement).setAttribute('stroke', '#64748b');
+                (p as SVGPathElement).setAttribute('stroke-width', '1.0');
+                (p as SVGPathElement).style.filter = 'none';
+              } else {
+                (p as SVGPathElement).setAttribute('fill', '#1e293b');
+                (p as SVGPathElement).setAttribute('stroke', '#0f172a');
+                (p as SVGPathElement).setAttribute('stroke-width', '0.5');
+                (p as SVGPathElement).style.filter = 'none';
+              }
             });
           };
           const byId = svgEl.querySelector(`#${code}`);
@@ -882,7 +955,8 @@ function CountryVisitBubbleMap({
           const viewBoxH = 1398;
           const positions: Record<string, { xPct: number; yPct: number }> = {};
 
-          activeCodesSet.forEach(code => {
+          countriesWithTelemetry.forEach(c => {
+            const code = c.country_code.toLowerCase();
             const el = svgEl.querySelector(`#${code}`);
             if (!el) return;
 
@@ -927,33 +1001,51 @@ function CountryVisitBubbleMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topCountries]);
+  }, [topCountries, countriesWithTelemetry]);
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden space-y-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-3">
+      <div className="flex flex-wrap items-center justify-between px-6 pt-5 pb-3 gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25">
             <Globe className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white">
+            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               {t('analytics.pageViews.countryBubbleMap') || 'Live Marketplace Visits by Country'}
             </h3>
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-              {t('analytics.pageViews.geoLocation') || 'Real-time geographic distribution & IP telemetry'}
+              {t('analytics.pageViews.geoLocation') || 'Real-time telemetry heartbeat & 30s grace timeout'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            LIVE TRACKING
-          </div>
-          <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-            {countries.length} Regions
-          </span>
+
+        {/* Telemetry Filter Toggle Mode */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold">
+          <button
+            type="button"
+            onClick={() => setTelemetryFilter('live_heartbeat')}
+            className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+              telemetryFilter === 'live_heartbeat'
+                ? 'bg-emerald-500 text-white shadow-md font-black'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            Live Heartbeat & 30s Grace
+          </button>
+          <button
+            type="button"
+            onClick={() => setTelemetryFilter('all_24h')}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              telemetryFilter === 'all_24h'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            All 24h Traffic
+          </button>
         </div>
       </div>
 
@@ -977,17 +1069,24 @@ function CountryVisitBubbleMap({
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40">
           <Activity className="w-3.5 h-3.5 text-emerald-500" />
           <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">{activeNowCount}</span>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">active now</span>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">ACTIVE NOW</span>
         </div>
+        {paleGraceCount > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{paleGraceCount}</span>
+            <span className="text-[10px] text-slate-500 font-semibold">PALE GRACE (30s timeout)</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-900/40">
           <Gauge className="w-3.5 h-3.5 text-purple-500" />
           <span className="text-xs font-bold text-purple-900 dark:text-purple-200">{marketConcentrationLabel}</span>
         </div>
-        {countries[0] && (
+        {displayedCountries[0] && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/40">
             <Crown className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-xs font-bold text-amber-900 dark:text-amber-200">{countries[0].flag_emoji} {countries[0].country_name}</span>
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{countries[0].share_pct}%</span>
+            <span className="text-xs font-bold text-amber-900 dark:text-amber-200">{displayedCountries[0].flag_emoji} {displayedCountries[0].country_name}</span>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{displayedCountries[0].share_pct}%</span>
           </div>
         )}
       </div>
@@ -1024,13 +1123,15 @@ function CountryVisitBubbleMap({
           className="absolute inset-0 transition-transform duration-200 ease-out"
           style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})`, transformOrigin: '50% 50%' }}
         >
-        {svgLoaded && countries.map((c) => {
+        {svgLoaded && displayedCountries.map((c) => {
           const code = c.country_code.toLowerCase();
           const pos = bubblePositions[code];
           if (!pos) return null;
 
           const isExpanded = expandedCountries[c.country_code];
           const isHovered = hoveredCountry?.country_code === c.country_code;
+          const isLive = c.telemetry.status === 'LIVE_ACTIVE';
+          const isGrace = c.telemetry.status === 'PALE_GRACE';
 
           // Compact bubble size
           const coreSize = Math.max(12, Math.min(22, Math.sqrt(c.share_pct || 1) * 3.5 + 8));
@@ -1040,7 +1141,9 @@ function CountryVisitBubbleMap({
           return (
             <div
               key={c.country_code}
-              className="absolute z-10 pointer-events-none"
+              className={`absolute z-10 pointer-events-none transition-all duration-300 ${
+                isGrace ? 'opacity-55' : 'opacity-100'
+              }`}
               style={{
                 left: `${pos.xPct}%`,
                 top: `${pos.yPct}%`,
@@ -1050,19 +1153,25 @@ function CountryVisitBubbleMap({
                 transformOrigin: 'center',
               }}
             >
-              <div
-                className="absolute rounded-full bg-indigo-400/25 animate-ping pointer-events-none"
-                style={{
-                  width: `${rippleSize}px`,
-                  height: `${rippleSize}px`,
-                  top: `${(coreSize - rippleSize) / 2}px`,
-                  left: `${(coreSize - rippleSize) / 2}px`,
-                }}
-              />
+              {/* Active Ping Ripple: ONLY for live active visits, NOT for pale grace period */}
+              {isLive && (
+                <div
+                  className="absolute rounded-full bg-indigo-400/30 animate-ping pointer-events-none"
+                  style={{
+                    width: `${rippleSize}px`,
+                    height: `${rippleSize}px`,
+                    top: `${(coreSize - rippleSize) / 2}px`,
+                    left: `${(coreSize - rippleSize) / 2}px`,
+                  }}
+                />
+              )}
 
+              {/* Backdrop Glow: vibrant for live, pale/none for grace */}
               <div
                 className={`absolute rounded-full pointer-events-none transition-all duration-200 ${
-                  isExpanded || isHovered ? 'bg-indigo-500/40 border border-indigo-300' : 'bg-indigo-500/20 border border-indigo-400/40'
+                  isLive
+                    ? (isExpanded || isHovered ? 'bg-indigo-500/40 border border-indigo-300' : 'bg-indigo-500/20 border border-indigo-400/40')
+                    : (isExpanded || isHovered ? 'bg-slate-500/40 border border-slate-300' : 'bg-slate-500/15 border border-slate-400/20')
                 }`}
                 style={{
                   width: `${glowSize}px`,
@@ -1072,12 +1181,17 @@ function CountryVisitBubbleMap({
                 }}
               />
 
+              {/* Core Bubble Button */}
               <div
-                className={`relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md transition-transform duration-200 cursor-pointer pointer-events-auto select-none border ${
-                  isExpanded || isHovered ? 'scale-150 border-amber-300 shadow-amber-500/50' : 'hover:scale-150 border-white shadow-indigo-500/50'
+                className={`relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md transition-all duration-200 cursor-pointer pointer-events-auto select-none border ${
+                  isLive
+                    ? (isExpanded || isHovered ? 'scale-150 border-amber-300 shadow-amber-500/50' : 'hover:scale-150 border-white shadow-indigo-500/50')
+                    : (isExpanded || isHovered ? 'scale-150 border-slate-300 shadow-slate-500/50' : 'hover:scale-150 border-slate-400/60 shadow-slate-900/50')
                 }`}
                 style={{
-                  background: isExpanded ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
+                  background: isLive
+                    ? (isExpanded ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'linear-gradient(135deg, #a855f7, #6366f1)')
+                    : 'linear-gradient(135deg, #64748b, #475569)',
                   fontSize: `${Math.max(6, coreSize * 0.45)}px`,
                   lineHeight: 1,
                 }}
@@ -1138,7 +1252,19 @@ function CountryVisitBubbleMap({
               <div className="flex items-center gap-2">
                 <span className="text-xl">{hoveredCountry.flag_emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
+                    {hoveredCountry.telemetry?.status === 'LIVE_ACTIVE' && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500 text-slate-950 uppercase">
+                        LIVE
+                      </span>
+                    )}
+                    {hoveredCountry.telemetry?.status === 'PALE_GRACE' && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-slate-700 text-slate-300 uppercase">
+                        PALE ({hoveredCountry.telemetry.graceTimeRemainingSec}s)
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-mono text-indigo-400">{hoveredCountry.country_code} &bull; {hoveredCountry.ip_addresses?.length || 0} IPs</span>
                 </div>
               </div>
@@ -1176,11 +1302,11 @@ function CountryVisitBubbleMap({
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
               <span>Traffic & Visitor IP Breakdown by Region</span>
               <span className="text-[10px] font-normal text-slate-500 font-mono">
-                ({filteredCountries.length} countries matching)
+                ({filteredCountries.length} countries displayed)
               </span>
             </h4>
             <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-              Click any country to expand visitor IP addresses, ISP origins, and active sessions.
+              Click any country to expand visitor IP addresses, ISP origins, and active session decay timers.
             </p>
           </div>
 
@@ -1221,13 +1347,15 @@ function CountryVisitBubbleMap({
         <div className="space-y-3 pt-1">
           {filteredCountries.length === 0 ? (
             <div className="py-6 text-center text-slate-400 text-xs font-semibold">
-              No regions or IP addresses matching &quot;{searchTerm}&quot;
+              No live active or cooling regions matching &quot;{searchTerm}&quot;
             </div>
           ) : (
             filteredCountries.map((c, i) => {
               const isExpanded = expandedCountries[c.country_code];
               const barWidth = totalViews > 0 ? (c.views_count / totalViews) * 100 : 0;
               const ipsList = c.ip_addresses || [];
+              const isLive = c.telemetry.status === 'LIVE_ACTIVE';
+              const isGrace = c.telemetry.status === 'PALE_GRACE';
 
               return (
                 <div
@@ -1235,6 +1363,8 @@ function CountryVisitBubbleMap({
                   className={`rounded-xl border transition-all duration-200 overflow-hidden ${
                     isExpanded
                       ? 'border-indigo-300 dark:border-indigo-700/80 bg-white dark:bg-slate-800/90 shadow-md'
+                      : isGrace
+                      ? 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 opacity-75'
                       : 'border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70'
                   }`}
                   onMouseEnter={() => setHoveredCountry(c)}
@@ -1258,7 +1388,7 @@ function CountryVisitBubbleMap({
                     {/* Flag */}
                     <span className="text-lg flex-shrink-0">{c.flag_emoji}</span>
 
-                    {/* Name + progress bar */}
+                    {/* Name + status badge + progress bar */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
@@ -1268,6 +1398,18 @@ function CountryVisitBubbleMap({
                           <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded">
                             {c.country_code}
                           </span>
+                          {isLive && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1 uppercase">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                              LIVE ACTIVE
+                            </span>
+                          )}
+                          {isGrace && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 flex items-center gap-1 uppercase">
+                              <Clock className="w-2.5 h-2.5 text-slate-400" />
+                              PALE GRACE ({c.telemetry.graceTimeRemainingSec}s)
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-xs">
                           <span className="font-bold text-slate-700 dark:text-slate-300">
@@ -1284,9 +1426,9 @@ function CountryVisitBubbleMap({
                           className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${barWidth}%`,
-                            background: i === 0 ? 'linear-gradient(90deg, #6366f1, #a855f7)' :
-                                        i === 1 ? 'linear-gradient(90deg, #818cf8, #c084fc)' :
-                                        'linear-gradient(90deg, #94a3b8, #cbd5e1)',
+                            background: isLive
+                              ? (i === 0 ? 'linear-gradient(90deg, #6366f1, #a855f7)' : 'linear-gradient(90deg, #818cf8, #c084fc)')
+                              : 'linear-gradient(90deg, #94a3b8, #64748b)',
                           }}
                         />
                       </div>
@@ -1356,10 +1498,15 @@ function CountryVisitBubbleMap({
                                   </button>
 
                                   {/* Active Status Badge */}
-                                  {ipItem.is_active_now && (
+                                  {ipItem.is_active_now ? (
                                     <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
                                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                                       ACTIVE NOW
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                      <Clock className="w-2.5 h-2.5 text-slate-400" />
+                                      GRACE / RECENT
                                     </span>
                                   )}
                                 </div>
