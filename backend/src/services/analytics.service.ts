@@ -1763,15 +1763,19 @@ export class AnalyticsService {
             LIMIT 8
           `, [code, name]);
 
-          ipAddresses = ipsRes.rows.map((ip: any) => ({
-            ip: ip.ip,
-            city: ip.city,
-            isp: ip.isp,
-            views_count: Number(ip.views_count || 0),
-            device_type: ip.device_type,
-            last_active: ip.last_active,
-            is_active_now: Boolean(ip.is_active_now),
-          }));
+          ipAddresses = ipsRes.rows.map((ip: any) => {
+            const lastActiveMs = ip.last_active ? new Date(ip.last_active).getTime() : 0;
+            const isRecent15Min = lastActiveMs > 0 && (Date.now() - lastActiveMs) <= 15 * 60 * 1000;
+            return {
+              ip: ip.ip,
+              city: ip.city,
+              isp: ip.isp,
+              views_count: Number(ip.views_count || 0),
+              device_type: ip.device_type,
+              last_active: ip.last_active,
+              is_active_now: Boolean(ip.is_active_now) || isRecent15Min,
+            };
+          });
         } catch {
           ipAddresses = [];
         }
@@ -2028,15 +2032,25 @@ export class AnalyticsService {
             LIMIT 8
           `, [code, name]);
 
-          ipAddresses = ipsRes.rows.map((ip: any) => ({
-            ip: ip.ip,
-            city: ip.city,
-            isp: ip.isp,
-            views_count: Number(ip.views_count || 0),
-            device_type: ip.device_type,
-            last_active: ip.last_active,
-            is_active_now: Boolean(ip.is_active_now),
-          }));
+          ipAddresses = ipsRes.rows.map((ip: any) => {
+            const lastActiveMs = ip.last_active ? new Date(ip.last_active).getTime() : 0;
+            const isRecent15Min = lastActiveMs > 0 && (Date.now() - lastActiveMs) <= 15 * 60 * 1000;
+            return {
+              ip: ip.ip,
+              city: ip.city,
+              isp: ip.isp,
+              views_count: Number(ip.views_count || 0),
+              device_type: ip.device_type,
+              last_active: ip.last_active,
+              is_active_now: Boolean(ip.is_active_now) || isRecent15Min,
+            };
+          });
+
+          if (liveActiveNow > 0 && !ipAddresses.some(i => i.is_active_now) && ipAddresses.length > 0) {
+            ipAddresses.slice(0, liveActiveNow).forEach(i => {
+              i.is_active_now = true;
+            });
+          }
         } catch {
           ipAddresses = [];
         }
