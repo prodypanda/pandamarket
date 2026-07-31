@@ -46,6 +46,11 @@ interface AnalyticsDrilldownModalProps {
   timeRange?: AnalyticsTimeRange;
 }
 
+function formatCurrency(val?: number | string | null): string {
+  const num = Number(val || 0);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+}
+
 const DRILLDOWN_TABS: Array<{ type: DrilldownType; label: string; icon: React.ReactNode }> = [
   { type: 'orders', label: 'Orders', icon: <ShoppingCart className="h-4 w-4" /> },
   { type: 'vendors', label: 'Vendors', icon: <Store className="h-4 w-4" /> },
@@ -326,7 +331,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                             {item.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-bold text-slate-900">{item.total_amount_tnd.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{formatCurrency(item.total_amount_tnd)}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             type="button"
@@ -352,7 +357,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                         </td>
                         <td className="px-4 py-3 text-slate-600 capitalize">{item.kyc_status || 'not_submitted'}</td>
                         <td className="px-4 py-3 font-semibold text-slate-800">{item.product_count}</td>
-                        <td className="px-4 py-3 font-bold text-slate-900">{item.total_gmv_tnd.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{formatCurrency(item.total_gmv_tnd)}</td>
                         <td className="px-4 py-3 text-slate-500">{new Date(item.created_at).toLocaleDateString()}</td>
                       </tr>
                     ))}
@@ -363,7 +368,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                         <td className="px-4 py-3 font-bold text-slate-900">{item.buyer_email || 'Anonymous'}</td>
                         <td className="px-4 py-3 text-slate-500">{new Date(item.created_at).toLocaleDateString()}</td>
                         <td className="px-4 py-3 font-semibold text-slate-800">{item.order_count}</td>
-                        <td className="px-4 py-3 font-bold text-slate-900">{item.total_spend_tnd.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{formatCurrency(item.total_spend_tnd)}</td>
                         <td className="px-4 py-3 font-bold text-slate-700">{item.is_repeat_buyer ? 'Yes' : 'No'}</td>
                       </tr>
                     ))}
@@ -373,7 +378,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                       <tr key={item.product_id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3 font-bold text-slate-900">{item.title}</td>
                         <td className="px-4 py-3 text-slate-600">{item.store_name || '-'}</td>
-                        <td className="px-4 py-3 font-bold text-slate-900">{item.price_tnd.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{formatCurrency(item.price_tnd)}</td>
                         <td className="px-4 py-3 text-slate-600 capitalize">{item.status}</td>
                         <td className="px-4 py-3 text-slate-800 font-semibold">{item.views_count}</td>
                         <td className="px-4 py-3 text-slate-800 font-semibold">{item.add_to_cart_count}</td>
@@ -465,7 +470,7 @@ export const AnalyticsDrilldownModal: React.FC<AnalyticsDrilldownModalProps> = (
                 <div>
                   <span className="text-slate-500 font-medium block">Total Amount</span>
                   <span className="font-black text-[#B91C1C] text-sm block mt-0.5">
-                    {selectedOrder.total_amount_tnd.toFixed(2)} TND
+                    {formatCurrency(selectedOrder.total_amount_tnd)} TND
                   </span>
                 </div>
               </div>

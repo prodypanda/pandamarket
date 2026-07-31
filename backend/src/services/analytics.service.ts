@@ -2133,9 +2133,10 @@ export class AnalyticsService {
     const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
     const offset = (page - 1) * limit;
 
-    const allowedSort = ['created_at', 'total_amount', 'status'];
+    const allowedSort = ['created_at', 'total_amount', 'total', 'status'];
     const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
     const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const sortColumn = (sortBy === 'total_amount' || sortBy === 'total') ? 'o.total' : sortBy === 'status' ? 'o.status' : 'o.created_at';
 
     const conditions: string[] = ['1=1'];
     const sqlParams: unknown[] = [];
@@ -2177,7 +2178,7 @@ export class AnalyticsService {
     const total = Number(countRes.rows[0]?.total || 0);
 
     const dataRes = await query(`
-      SELECT DISTINCT ON (o.id)
+      SELECT 
         o.id,
         o.created_at,
         s.id AS store_id,
@@ -2185,7 +2186,7 @@ export class AnalyticsService {
         o.customer_id AS buyer_id,
         COALESCE(u.email, 'Guest') AS buyer_name,
         o.status,
-        o.payment_status,
+        COALESCE(o.payment_status, 'unpaid') AS payment_status,
         COALESCE(o.total, 0)::numeric AS total_amount_tnd,
         o.payment_gateway
       FROM pd_order o
@@ -2193,7 +2194,8 @@ export class AnalyticsService {
       LEFT JOIN pd_store s ON oi.store_id = s.id
       LEFT JOIN pd_user u ON o.customer_id = u.id
       WHERE ${whereClause}
-      ORDER BY o.id, o.${sortBy} ${sortDir}
+      GROUP BY o.id, o.created_at, s.id, s.name, u.email, o.status, o.payment_status, o.total, o.payment_gateway
+      ORDER BY ${sortColumn} ${sortDir}
       LIMIT $${pIdx++} OFFSET $${pIdx++}
     `, [...sqlParams, limit, offset]);
 
@@ -2231,9 +2233,10 @@ export class AnalyticsService {
     const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
     const offset = (page - 1) * limit;
 
-    const allowedSort = ['created_at', 'name', 'status'];
+    const allowedSort = ['created_at', 'name', 'status', 'total_gmv_tnd'];
     const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
     const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const sortColumn = sortBy === 'name' ? 's.name' : sortBy === 'status' ? 's.status' : sortBy === 'total_gmv_tnd' ? 'total_gmv_tnd' : 's.created_at';
 
     const conditions: string[] = ['1=1'];
     const sqlParams: unknown[] = [];
@@ -2275,7 +2278,7 @@ export class AnalyticsService {
       FROM pd_store s
       LEFT JOIN pd_user u ON s.owner_id = u.id
       WHERE ${whereClause}
-      ORDER BY s.${sortBy} ${sortDir}
+      ORDER BY ${sortColumn} ${sortDir}
       LIMIT $${pIdx++} OFFSET $${pIdx++}
     `, [...sqlParams, limit, offset]);
 
@@ -2317,12 +2320,12 @@ export class AnalyticsService {
     const sortBy = this.validateSortColumn(params.sortBy, allowedSort, 'created_at');
     const sortDir = params.sortDir?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    const conditions: string[] = ["u.role = 'customer'"];
+    const conditions: string[] = ["u.role IN ('customer', 'buyer', 'user')"];
     const sqlParams: unknown[] = [];
     let pIdx = 1;
 
     if (params.search) {
-      conditions.push(`(u.email ILIKE $${pIdx} OR u.full_name ILIKE $${pIdx})`);
+      conditions.push(`(u.email ILIKE $${pIdx} OR u.first_name ILIKE $${pIdx} OR u.last_name ILIKE $${pIdx})`);
       sqlParams.push(`%${params.search}%`);
       pIdx++;
     }
