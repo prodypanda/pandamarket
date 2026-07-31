@@ -24,6 +24,8 @@ import {
   FolderOpen,
   StickyNote,
   LineChart,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -59,6 +61,26 @@ export default function AdminLayout({
   const [loggingOut, setLoggingOut] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pd_admin_sidebar_collapsed');
+      if (saved !== null) {
+        setCollapsed(saved === 'true');
+      }
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('pd_admin_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -220,54 +242,127 @@ export default function AdminLayout({
   return (
     <div className="admin-shell min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(180,83,9,0.10),transparent_28%),linear-gradient(180deg,#fafaf9_0%,#eef2f7_100%)] text-gray-900" dir={dir}>
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 z-40 flex w-60 flex-col overflow-hidden bg-white text-slate-800 shadow-xl shadow-slate-900/10 ${
+      <aside className={`fixed inset-y-0 z-40 flex flex-col overflow-hidden bg-white text-slate-800 shadow-xl shadow-slate-900/10 transition-all duration-300 ease-in-out ${
+        collapsed ? 'w-16' : 'w-60'
+      } ${
         dir === 'rtl' ? 'right-0 border-l border-slate-200/90' : 'left-0 border-r border-slate-200/90'
       }`}>
-        {/* Pure White Brand Header */}
-        <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 py-4 text-slate-950">
-          <MarketplaceBrand
-            href="/dashboard"
-            marketplaceName={marketplaceSettings.marketplace_name}
-            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-            logoSurface="light"
-            imageClassName="h-8 max-w-[150px] object-contain"
-            textClassName="text-base font-black text-slate-900"
-            fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
-          />
-          <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Superadmin</span>
-            </div>
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10px] font-bold text-slate-600">
-              {(['fr', 'en', 'ar'] as const).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLocale(l)}
-                  className={`rounded-md px-1.5 py-0.5 uppercase transition-all ${
-                    locale === l ? 'bg-[#B91C1C] text-white font-black shadow-xs' : 'hover:bg-slate-200/60'
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
+        {/* Brand Header */}
+        <div className={`shrink-0 border-b border-slate-200/80 bg-white text-slate-950 transition-all duration-300 ${
+          collapsed ? 'p-3 text-center' : 'px-4 py-4'
+        }`}>
+          <div className="flex items-center justify-between gap-2">
+            {!collapsed && (
+              <MarketplaceBrand
+                href="/dashboard"
+                marketplaceName={marketplaceSettings.marketplace_name}
+                marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+                marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+                marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+                logoSurface="light"
+                imageClassName="h-8 max-w-[150px] object-contain"
+                textClassName="text-base font-black text-slate-900"
+                fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
+              />
+            )}
+            {collapsed && (
+              <Link href="/dashboard" className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-[#B91C1C] font-black text-white shadow-md">
+                P
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            >
+              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
           </div>
+
+          {!collapsed && (
+            <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Superadmin</span>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10px] font-bold text-slate-600">
+                {(['fr', 'en', 'ar'] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLocale(l)}
+                    className={`rounded-md px-1.5 py-0.5 uppercase transition-all ${
+                      locale === l ? 'bg-[#B91C1C] text-white font-black shadow-xs' : 'hover:bg-slate-200/60'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation Section */}
-        <nav className="no-scrollbar flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        <nav className={`no-scrollbar flex-1 overflow-y-auto space-y-3 transition-all duration-300 ${
+          collapsed ? 'px-2 py-3' : 'px-3 py-3'
+        }`}>
           {navSections.map((section) => (
             <div key={section.title} className="space-y-1">
+              {!collapsed ? (
+                <h3 className="px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  {section.title}
+                </h3>
+              ) : (
+                <div className="my-1.5 h-px bg-slate-200/80" />
+              )}
 
               {section.items.map((item) => {
                 if ('subItems' in item && item.subItems) {
                   const isOpen = openMenus[item.label] ?? false;
                   const isActiveChild = item.subItems.some((sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/'));
                   const isActiveParent = item.href && (pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/')));
+
+                  if (collapsed) {
+                    return (
+                      <div key={item.label} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => toggleMenu(item.label)}
+                          title={item.label}
+                          className={`flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition-all ${
+                            isActiveParent || isActiveChild
+                              ? 'bg-amber-100 text-[#B91C1C] font-bold'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          <item.icon className={`w-5 h-5 ${isActiveParent || isActiveChild ? 'text-[#B91C1C]' : 'text-slate-500'}`} />
+                        </button>
+                        {isOpen && (
+                          <div className="mt-1 flex flex-col gap-1 items-center">
+                            {item.subItems.map((sub) => {
+                              const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
+                              return (
+                                <Link
+                                  key={sub.href}
+                                  href={sub.href}
+                                  title={sub.label}
+                                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all ${
+                                    isSubActive
+                                      ? 'bg-red-600 text-white font-bold shadow-sm'
+                                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                                  }`}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={item.label} className="space-y-0.5">
@@ -314,6 +409,24 @@ export default function AdminLayout({
                 }
 
                 const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/'));
+
+                if (collapsed) {
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href!}
+                      title={item.label}
+                      className={`flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-gradient-to-r from-[#B91C1C] to-red-700 text-white shadow-md shadow-red-900/20'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                    </Link>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.href}
@@ -334,36 +447,58 @@ export default function AdminLayout({
         </nav>
 
         {/* Footer Area */}
-        <div className="mt-auto shrink-0 border-t border-slate-200/80 bg-slate-50/80 p-3 space-y-1">
+        <div className={`mt-auto shrink-0 border-t border-slate-200/80 bg-slate-50/80 transition-all duration-300 ${
+          collapsed ? 'p-2 space-y-2 text-center' : 'p-3 space-y-1'
+        }`}>
           <Link
             href="/settings"
-            className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
+            title={t('admin.sidebar.settings') || 'Settings'}
+            className={`flex items-center rounded-xl text-xs font-bold transition-colors ${
+              collapsed ? 'h-10 w-10 mx-auto justify-center' : 'gap-2.5 px-3 py-2'
+            } ${
               pathname === '/settings' || pathname?.startsWith('/settings/')
                 ? 'bg-gradient-to-r from-[#B91C1C] to-red-700 text-white shadow-md'
                 : 'text-slate-700 hover:bg-white hover:text-slate-900'
             }`}
           >
-            <Settings className="w-4 h-4 text-amber-600" />
-            <span>{t('admin.sidebar.settings') || 'Settings'}</span>
+            <Settings className={`w-4 h-4 ${collapsed ? 'w-5 h-5 text-amber-600' : 'text-amber-600'}`} />
+            {!collapsed && <span>{t('admin.sidebar.settings') || 'Settings'}</span>}
           </Link>
           <button
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+            title={t('nav.logout') || 'Logout'}
+            className={`flex rounded-xl text-xs font-bold text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-60 ${
+              collapsed ? 'h-10 w-10 mx-auto items-center justify-center' : 'w-full items-center gap-2.5 px-3 py-2'
+            }`}
           >
-            <LogOut className="w-4 h-4" />
-            <span>{loggingOut ? (t('admin.loggingOut') || 'Logging out...') : (t('nav.logout') || 'Logout')}</span>
+            <LogOut className={`w-4 h-4 ${collapsed ? 'w-5 h-5' : ''}`} />
+            {!collapsed && <span>{loggingOut ? (t('admin.loggingOut') || 'Logging out...') : (t('nav.logout') || 'Logout')}</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className={`${dir === 'rtl' ? 'mr-60 ml-0' : 'ml-60 mr-0'} min-h-screen overflow-auto`}>
+      <main className={`transition-all duration-300 ease-in-out ${
+        dir === 'rtl'
+          ? (collapsed ? 'mr-16 ml-0' : 'mr-60 ml-0')
+          : (collapsed ? 'ml-16 mr-0' : 'ml-60 mr-0')
+      } min-h-screen overflow-auto`}>
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-8 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-black text-gray-900">{t('admin.title') || 'Admin Dashboard'}</h2>
-            <p className="text-xs font-medium text-gray-500">{t('admin.top.subtitle') || 'Welcome back to your control panel'}</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-xs"
+            >
+              {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
+            <div>
+              <h2 className="text-lg font-black text-gray-900">{t('admin.title') || 'Admin Dashboard'}</h2>
+              <p className="text-xs font-medium text-gray-500">{t('admin.top.subtitle') || 'Welcome back to your control panel'}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <LocaleSwitcher />
