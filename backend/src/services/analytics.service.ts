@@ -1276,129 +1276,150 @@ export class AnalyticsService {
     }
 
     // 3. Top Products Viewed
-    const topProductsViewedRes = await query(`
-      SELECT 
-        p.id AS product_id,
-        p.title,
-        COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-        COALESCE(s.subdomain, s.id, 'store') AS store_host,
-        COALESCE(p.price, 0)::numeric AS price_tnd,
-        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 0) AS views_count,
-        COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id), 0) AS unique_visitors,
-        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'add_to_cart'), 0) AS add_to_cart_count,
-        COALESCE((SELECT COUNT(DISTINCT order_id)::int FROM pd_order_item oi WHERE oi.product_id = p.id), 0) AS orders_count
-      FROM pd_product p
-      LEFT JOIN pd_store s ON p.store_id = s.id
-      ORDER BY views_count DESC, p.created_at DESC
-      LIMIT 8
-    `);
+    let topProductsViewed: any[] = [];
+    try {
+      const topProductsViewedRes = await query(`
+        SELECT 
+          p.id AS product_id,
+          p.title,
+          COALESCE(s.name, 'Marketplace Vendor') AS store_name,
+          COALESCE(s.subdomain, s.id, 'store') AS store_host,
+          COALESCE(p.price, 0)::numeric AS price_tnd,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 0) AS views_count,
+          COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id), 0) AS unique_visitors,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'add_to_cart'), 0) AS add_to_cart_count,
+          COALESCE((SELECT COUNT(DISTINCT order_id)::int FROM pd_order_item oi WHERE oi.product_id = p.id), 0) AS orders_count
+        FROM pd_product p
+        LEFT JOIN pd_store s ON p.store_id = s.id
+        ORDER BY views_count DESC, p.created_at DESC
+        LIMIT 8
+      `);
 
-    const topProductsViewed = topProductsViewedRes.rows.map((r: any) => {
-      const vCount = Math.max(1, Number(r.views_count || 14));
-      const oCount = Number(r.orders_count || 0);
-      return {
-        product_id: r.product_id,
-        title: r.title,
-        store_name: r.store_name || 'Marketplace Store',
-        store_host: r.store_host || 'store',
-        price_tnd: Number(r.price_tnd || 0),
-        views_count: vCount,
-        unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
-        add_to_cart_count: Number(r.add_to_cart_count || Math.round(vCount * 0.15)),
-        orders_count: oCount,
-        conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
-      };
-    });
+      topProductsViewed = topProductsViewedRes.rows.map((r: any) => {
+        const vCount = Math.max(1, Number(r.views_count || 14));
+        const oCount = Number(r.orders_count || 0);
+        return {
+          product_id: r.product_id,
+          title: r.title,
+          store_name: r.store_name || 'Marketplace Store',
+          store_host: r.store_host || 'store',
+          price_tnd: Number(r.price_tnd || 0),
+          views_count: vCount,
+          unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
+          add_to_cart_count: Number(r.add_to_cart_count || Math.round(vCount * 0.15)),
+          orders_count: oCount,
+          conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
+        };
+      });
+    } catch {
+      topProductsViewed = [];
+    }
 
     // 4. Top Products Ordered
-    const topProductsOrderedRes = await query(`
-      SELECT 
-        p.id AS product_id,
-        p.title,
-        COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-        COALESCE(s.subdomain, s.id, 'store') AS store_host,
-        SUM(oi.quantity)::int AS units_sold,
-        SUM(oi.price_tnd * oi.quantity)::numeric AS total_revenue_tnd,
-        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 20) AS views_count
-      FROM pd_order_item oi
-      JOIN pd_product p ON oi.product_id = p.id
-      LEFT JOIN pd_store s ON p.store_id = s.id
-      GROUP BY p.id, p.title, s.name, s.subdomain, s.id
-      ORDER BY total_revenue_tnd DESC
-      LIMIT 8
-    `);
+    let topProductsOrdered: any[] = [];
+    try {
+      const topProductsOrderedRes = await query(`
+        SELECT 
+          p.id AS product_id,
+          p.title,
+          COALESCE(s.name, 'Marketplace Vendor') AS store_name,
+          COALESCE(s.subdomain, s.id, 'store') AS store_host,
+          SUM(oi.quantity)::int AS units_sold,
+          SUM(oi.subtotal)::numeric AS total_revenue_tnd,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 20) AS views_count
+        FROM pd_order_item oi
+        JOIN pd_product p ON oi.product_id = p.id
+        LEFT JOIN pd_store s ON p.store_id = s.id
+        GROUP BY p.id, p.title, s.name, s.subdomain, s.id
+        ORDER BY total_revenue_tnd DESC
+        LIMIT 8
+      `);
 
-    const topProductsOrdered = topProductsOrderedRes.rows.map((r: any) => {
-      const uSold = Number(r.units_sold || 0);
-      const vCount = Math.max(uSold, Number(r.views_count || uSold * 6));
-      return {
-        product_id: r.product_id,
-        title: r.title,
-        store_name: r.store_name || 'Marketplace Vendor',
-        store_host: r.store_host || 'store',
-        units_sold: uSold,
-        total_revenue_tnd: Number(r.total_revenue_tnd || 0),
-        views_count: vCount,
-        conversion_rate_pct: Number(((uSold / vCount) * 100).toFixed(1)),
-      };
-    });
+      topProductsOrdered = topProductsOrderedRes.rows.map((r: any) => {
+        const uSold = Number(r.units_sold || 0);
+        const vCount = Math.max(uSold, Number(r.views_count || uSold * 6));
+        return {
+          product_id: r.product_id,
+          title: r.title,
+          store_name: r.store_name || 'Marketplace Vendor',
+          store_host: r.store_host || 'store',
+          units_sold: uSold,
+          total_revenue_tnd: Number(r.total_revenue_tnd || 0),
+          views_count: vCount,
+          conversion_rate_pct: Number(((uSold / vCount) * 100).toFixed(1)),
+        };
+      });
+    } catch {
+      topProductsOrdered = [];
+    }
 
     // 5. Top Storefront Websites by Views
-    const topStoresViewsRes = await query(`
-      SELECT 
-        s.id AS store_id,
-        s.name AS store_name,
-        COALESCE(s.subdomain, s.id) AS store_host,
-        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS views_count,
-        COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS unique_visitors,
-        COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'active'), 0) AS active_listings_count
-      FROM pd_store s
-      ORDER BY views_count DESC, s.created_at DESC
-      LIMIT 8
-    `);
+    let topStorefrontsByViews: any[] = [];
+    try {
+      const topStoresViewsRes = await query(`
+        SELECT 
+          s.id AS store_id,
+          s.name AS store_name,
+          COALESCE(s.subdomain, s.id) AS store_host,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS views_count,
+          COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS unique_visitors,
+          COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'published'), 0) AS active_listings_count
+        FROM pd_store s
+        ORDER BY views_count DESC, s.created_at DESC
+        LIMIT 8
+      `);
 
-    const topStorefrontsByViews = topStoresViewsRes.rows.map((r: any) => {
-      const vCount = Math.max(5, Number(r.views_count || 18));
-      return {
-        store_id: r.store_id,
-        store_name: r.store_name,
-        store_host: r.store_host,
-        views_count: vCount,
-        unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
-        active_listings_count: Number(r.active_listings_count || 0),
-      };
-    });
+      topStorefrontsByViews = topStoresViewsRes.rows.map((r: any) => {
+        const vCount = Math.max(5, Number(r.views_count || 18));
+        return {
+          store_id: r.store_id,
+          store_name: r.store_name,
+          store_host: r.store_host,
+          views_count: vCount,
+          unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
+          active_listings_count: Number(r.active_listings_count || 0),
+        };
+      });
+    } catch {
+      topStorefrontsByViews = [];
+    }
 
     // 6. Top Storefront Websites by Sales
-    const topStoresSalesRes = await query(`
-      SELECT 
-        s.id AS store_id,
-        s.name AS store_name,
-        COALESCE(s.subdomain, s.id) AS store_host,
-        COUNT(DISTINCT o.id)::int AS total_orders_count,
-        COALESCE(SUM(o.total_amount_tnd), 0)::numeric AS total_sales_gmv_tnd,
-        COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 25) AS page_views_count
-      FROM pd_store s
-      JOIN pd_order o ON o.store_id = s.id
-      WHERE o.status = 'completed'
-      GROUP BY s.id, s.name, s.subdomain
-      ORDER BY total_sales_gmv_tnd DESC
-      LIMIT 8
-    `);
+    let topStorefrontsBySales: any[] = [];
+    try {
+      const topStoresSalesRes = await query(`
+        SELECT 
+          s.id AS store_id,
+          s.name AS store_name,
+          COALESCE(s.subdomain, s.id) AS store_host,
+          COUNT(DISTINCT oi.order_id)::int AS total_orders_count,
+          COALESCE(SUM(oi.subtotal), 0)::numeric AS total_sales_gmv_tnd,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 25) AS page_views_count
+        FROM pd_store s
+        JOIN pd_order_item oi ON oi.store_id = s.id
+        JOIN pd_order o ON oi.order_id = o.id
+        WHERE o.status IN ('completed', 'fulfilled', 'delivered', 'processing', 'pending')
+        GROUP BY s.id, s.name, s.subdomain
+        ORDER BY total_sales_gmv_tnd DESC
+        LIMIT 8
+      `);
 
-    const topStorefrontsBySales = topStoresSalesRes.rows.map((r: any) => {
-      const oCount = Number(r.total_orders_count || 0);
-      const vCount = Math.max(oCount, Number(r.page_views_count || oCount * 8));
-      return {
-        store_id: r.store_id,
-        store_name: r.store_name,
-        store_host: r.store_host,
-        total_orders_count: oCount,
-        total_sales_gmv_tnd: Number(r.total_sales_gmv_tnd || 0),
-        page_views_count: vCount,
-        conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
-      };
-    });
+      topStorefrontsBySales = topStoresSalesRes.rows.map((r: any) => {
+        const oCount = Number(r.total_orders_count || 0);
+        const vCount = Math.max(oCount, Number(r.page_views_count || oCount * 8));
+        return {
+          store_id: r.store_id,
+          store_name: r.store_name,
+          store_host: r.store_host,
+          total_orders_count: oCount,
+          total_sales_gmv_tnd: Number(r.total_sales_gmv_tnd || 0),
+          page_views_count: vCount,
+          conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
+        };
+      });
+    } catch {
+      topStorefrontsBySales = [];
+    }
 
     // 7. Top Marketplace Searches
     const searchesRes = await query(`
