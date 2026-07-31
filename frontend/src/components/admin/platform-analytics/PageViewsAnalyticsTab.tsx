@@ -726,7 +726,8 @@ function CountryVisitBubbleMap({
           const pos = bubblePositions[code];
           if (!pos) return null;
 
-          const coreSize = Math.max(22, Math.min(42, Math.sqrt(c.share_pct || 1) * 8 + 14));
+          // Reduced bubble size (~20% of previous size: min 10px, max 20px)
+          const coreSize = Math.max(10, Math.min(20, Math.sqrt(c.share_pct || 1) * 3.2 + 7.5));
           const rippleSize = coreSize * 2.2;
           const glowSize = coreSize * 1.4;
 
@@ -766,15 +767,16 @@ function CountryVisitBubbleMap({
 
               {/* Core bubble - ONLY this element captures pointer events and triggers hover */}
               <div
-                className="relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/50 transition-transform duration-200 hover:scale-125 border-2 border-white cursor-pointer pointer-events-auto select-none"
+                className="relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md shadow-indigo-500/50 transition-transform duration-200 hover:scale-150 border border-white cursor-pointer pointer-events-auto select-none"
                 style={{
                   background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                  fontSize: `${Math.max(9, coreSize * 0.42)}px`,
+                  fontSize: `${Math.max(6, coreSize * 0.45)}px`,
+                  lineHeight: 1,
                 }}
                 onMouseEnter={() => setHoveredCountry(c)}
                 onMouseLeave={() => setHoveredCountry(null)}
               >
-                {c.country_code.toUpperCase()}
+                {coreSize >= 12 ? c.country_code.toUpperCase() : ''}
               </div>
             </div>
           );
