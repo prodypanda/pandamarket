@@ -278,35 +278,38 @@ export default function ComprehensivePlatformAnalyticsPage() {
         </div>
       ))}
 
-      {/* Navigation Sub-Tabs */}
-      <AnalyticsTabsNav activeTab={activeTab} tabLoading={tabLoading} onTabChange={handleTabChange} />
+      {/* Main Container with Left Vertical Sidebar Navigation */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Vertical Sidebar Navigation */}
+        <AnalyticsTabsNav activeTab={activeTab} tabLoading={tabLoading} onTabChange={handleTabChange} />
 
-      {/* Active Tab Panel */}
-      <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-        {currentTabError ? (
-          <AnalyticsErrorState message={currentTabError} onRetry={() => fetchTabData(activeTab)} />
-        ) : currentTabLoading &&
-          ((activeTab === 'overview' && !overviewData) ||
-            (activeTab === 'page_views' && !pageViewsData) ||
-            (activeTab === 'business' && !businessData) ||
-            (activeTab === 'financials' && !revenueData) ||
-            (activeTab === 'vendors' && !vendorData) ||
-            (activeTab === 'ads' && !adsData) ||
-            (activeTab === 'system' && !systemData)) ? (
-          <AnalyticsLoadingState message={`Fetching live ${activeTab} telemetry...`} />
-        ) : (
-          <>
-            {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
-            {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} liveData={pageViewsLiveData} onOpenDrilldown={handleOpenDrilldown} />}
-            {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
-            {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
-            {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
-            {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}
-            {activeTab === 'system' && <SystemAnalyticsTab data={systemData} />}
-            {activeTab === 'intelligence' && <IntelligenceTab />}
-            {activeTab === 'governance' && <GovernanceTab />}
-          </>
-        )}
+        {/* Active Tab Panel */}
+        <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} className="flex-1 min-w-0 w-full">
+          {currentTabError ? (
+            <AnalyticsErrorState message={currentTabError} onRetry={() => fetchTabData(activeTab)} />
+          ) : currentTabLoading &&
+            ((activeTab === 'overview' && !overviewData) ||
+              (activeTab === 'page_views' && !pageViewsData) ||
+              (activeTab === 'business' && !businessData) ||
+              (activeTab === 'financials' && !revenueData) ||
+              (activeTab === 'vendors' && !vendorData) ||
+              (activeTab === 'ads' && !adsData) ||
+              (activeTab === 'system' && !systemData)) ? (
+            <AnalyticsLoadingState message={`Fetching live ${activeTab} telemetry...`} />
+          ) : (
+            <>
+              {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
+              {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} liveData={pageViewsLiveData} onOpenDrilldown={handleOpenDrilldown} />}
+              {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
+              {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
+              {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
+              {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}
+              {activeTab === 'system' && <SystemAnalyticsTab data={systemData} />}
+              {activeTab === 'intelligence' && <IntelligenceTab />}
+              {activeTab === 'governance' && <GovernanceTab />}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Part 6 Modals */}
