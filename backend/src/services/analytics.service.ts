@@ -1722,48 +1722,60 @@ export class AnalyticsService {
         TR: { lat: 38.9, lng: 35.2, map_x: 59, map_y: 33 },
       };
 
-      const COUNTRY_SAMPLE_IPS: Record<string, Array<{ ip: string; city: string; isp: string; device_type: string; is_active_now: boolean; views_count: number }>> = {
-        TN: [
-          { ip: '197.26.18.42', city: 'Tunis', isp: 'Tunisie Télécom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 540 },
-          { ip: '102.164.92.105', city: 'Sousse', isp: 'Ooredoo Tunisia', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 320 },
-          { ip: '41.226.11.84', city: 'Sfax', isp: 'Topnet Fibre', device_type: 'Mobile (iOS)', is_active_now: false, views_count: 280 },
-          { ip: '197.28.140.12', city: 'Monastir', isp: 'Orange Tunisie', device_type: 'Desktop (Firefox)', is_active_now: false, views_count: 160 },
-          { ip: '102.159.204.5', city: 'Bizerte', isp: 'GlobalNet ADSL', device_type: 'Mobile (Android)', is_active_now: true, views_count: 120 },
-        ],
-        FR: [
-          { ip: '51.15.22.80', city: 'Paris', isp: 'Orange SA', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 180 },
-          { ip: '176.31.252.18', city: 'Lyon', isp: 'OVH SAS', device_type: 'Desktop (Safari)', is_active_now: false, views_count: 110 },
-          { ip: '90.85.12.190', city: 'Marseille', isp: 'SFR Fiber', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 90 },
-        ],
-        DE: [
-          { ip: '88.198.45.12', city: 'Frankfurt', isp: 'Hetzner Online', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 70 },
-          { ip: '188.40.120.99', city: 'Munich', isp: 'Deutsche Telekom', device_type: 'Desktop (Edge)', is_active_now: false, views_count: 50 },
-        ],
-        US: [
-          { ip: '54.239.28.85', city: 'Ashburn, VA', isp: 'Amazon AWS', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 55 },
-          { ip: '104.16.124.96', city: 'San Francisco', isp: 'Cloudflare', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 40 },
-        ],
-        DZ: [
-          { ip: '41.107.12.44', city: 'Algiers', isp: 'Algérie Télécom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 65 },
-          { ip: '105.101.40.12', city: 'Oran', isp: 'Ooredoo Algeria', device_type: 'Desktop (Chrome)', is_active_now: false, views_count: 35 },
-        ],
-        MA: [
-          { ip: '196.200.140.22', city: 'Casablanca', isp: 'Maroc Telecom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 50 },
-          { ip: '105.158.12.8', city: 'Rabat', isp: 'INWI Broadband', device_type: 'Desktop (Firefox)', is_active_now: true, views_count: 30 },
-        ],
-      };
-
-      topCountries = topCountriesRes.rows.map((r: any) => {
+      topCountries = await Promise.all(topCountriesRes.rows.map(async (r: any) => {
         const vCount = Number(r.views_count || 0);
         const rawCode = (r.country_code || 'TN').toUpperCase();
         const code = (rawCode === 'UN' || !COUNTRY_COORDS[rawCode]) ? 'TN' : rawCode;
         const defaultName = code === 'FR' ? 'France' : code === 'DE' ? 'Germany' : code === 'US' ? 'United States' : 'Tunisia';
         const name = (r.country_name && r.country_name !== 'Unknown Location' && r.country_name !== 'UN' && r.country_name !== 'AR' && r.country_name !== 'FR') ? r.country_name : defaultName;
         const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
-        const ips = COUNTRY_SAMPLE_IPS[code] || [
-          { ip: `197.${Math.floor(Math.random() * 100 + 10)}.18.42`, city: name, isp: 'Telecom ISP', device_type: 'Web (Browser)', is_active_now: true, views_count: Math.round(vCount * 0.6) },
-          { ip: `102.${Math.floor(Math.random() * 100 + 100)}.40.12`, city: `${name} Capital`, isp: 'Mobile Broadband', device_type: 'Mobile (App)', is_active_now: false, views_count: Math.round(vCount * 0.4) },
-        ];
+
+        let ipAddresses: any[] = [];
+        try {
+          const ipsRes = await query(`
+            SELECT
+              COALESCE(NULLIF(metadata->>'ip_address_masked', ''), CONCAT('visitor:', LEFT(COALESCE(visitor_hash, id), 10))) AS ip,
+              COALESCE(NULLIF(metadata->>'city', ''), NULLIF(metadata->>'region', ''), $2) AS city,
+              COALESCE(NULLIF(metadata->>'isp', ''), NULLIF(referrer_domain, ''), 'Direct / first-party') AS isp,
+              COALESCE(device_type, 'web') AS device_type,
+              COUNT(id)::int AS views_count,
+              MAX(occurred_at) AS last_active,
+              BOOL_OR(occurred_at >= NOW() - INTERVAL '15 minutes') AS is_active_now
+            FROM pd_marketplace_analytics_event
+            WHERE COALESCE(NULLIF(metadata->>'country_code', ''),
+              CASE
+                WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'TN'
+                WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'FR'
+                WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'US'
+                WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'CA'
+                WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'DE'
+                WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'GB'
+                WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'IT'
+                WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'ES'
+                WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'DZ'
+                WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'MA'
+                ELSE 'UN'
+              END
+            ) = $1
+            ${dateFilterAnd}
+            GROUP BY 1, 2, 3, 4
+            ORDER BY views_count DESC, last_active DESC
+            LIMIT 8
+          `, [code, name]);
+
+          ipAddresses = ipsRes.rows.map((ip: any) => ({
+            ip: ip.ip,
+            city: ip.city,
+            isp: ip.isp,
+            views_count: Number(ip.views_count || 0),
+            device_type: ip.device_type,
+            last_active: ip.last_active,
+            is_active_now: Boolean(ip.is_active_now),
+          }));
+        } catch {
+          ipAddresses = [];
+        }
+
         return {
           country_code: code,
           country_name: name,
@@ -1771,13 +1783,13 @@ export class AnalyticsService {
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
           share_pct: Math.round((vCount / totalCountryViews) * 1000) / 10,
-          ip_addresses: ips,
+          ip_addresses: ipAddresses,
           lat: coords.lat,
           lng: coords.lng,
           map_x: coords.map_x,
           map_y: coords.map_y,
         };
-      });
+      }));
     } catch {
       topCountries = [];
     }
@@ -1975,13 +1987,60 @@ export class AnalyticsService {
         TR: { lat: 38.9, lng: 35.2, map_x: 59, map_y: 33 },
       };
 
-      topCountries = topCountriesRes.rows.map((r: any) => {
+      topCountries = await Promise.all(topCountriesRes.rows.map(async (r: any) => {
         const vCount = Number(r.views_count || 0);
         const rawCode = (r.country_code || 'TN').toUpperCase();
         const code = (rawCode === 'UN' || !COUNTRY_COORDS[rawCode]) ? 'TN' : rawCode;
         const defaultName = code === 'FR' ? 'France' : code === 'DE' ? 'Germany' : code === 'US' ? 'United States' : 'Tunisia';
         const name = (r.country_name && r.country_name !== 'Unknown Location' && r.country_name !== 'UN' && r.country_name !== 'AR' && r.country_name !== 'FR') ? r.country_name : defaultName;
         const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
+
+        let ipAddresses: any[] = [];
+        try {
+          const ipsRes = await query(`
+            SELECT
+              COALESCE(NULLIF(metadata->>'ip_address_masked', ''), CONCAT('visitor:', LEFT(COALESCE(visitor_hash, id), 10))) AS ip,
+              COALESCE(NULLIF(metadata->>'city', ''), NULLIF(metadata->>'region', ''), $2) AS city,
+              COALESCE(NULLIF(metadata->>'isp', ''), NULLIF(referrer_domain, ''), 'Direct / first-party') AS isp,
+              COALESCE(device_type, 'web') AS device_type,
+              COUNT(id)::int AS views_count,
+              MAX(occurred_at) AS last_active,
+              BOOL_OR(occurred_at >= NOW() - INTERVAL '15 minutes') AS is_active_now
+            FROM pd_marketplace_analytics_event
+            WHERE occurred_at >= NOW() - INTERVAL '24 hours'
+              AND COALESCE(NULLIF(metadata->>'country_code', ''),
+                CASE
+                  WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'TN'
+                  WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'FR'
+                  WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'US'
+                  WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'CA'
+                  WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'DE'
+                  WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'GB'
+                  WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'IT'
+                  WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'ES'
+                  WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'DZ'
+                  WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'MA'
+                  ELSE 'UN'
+                END
+              ) = $1
+            GROUP BY 1, 2, 3, 4
+            ORDER BY views_count DESC, last_active DESC
+            LIMIT 8
+          `, [code, name]);
+
+          ipAddresses = ipsRes.rows.map((ip: any) => ({
+            ip: ip.ip,
+            city: ip.city,
+            isp: ip.isp,
+            views_count: Number(ip.views_count || 0),
+            device_type: ip.device_type,
+            last_active: ip.last_active,
+            is_active_now: Boolean(ip.is_active_now),
+          }));
+        } catch {
+          ipAddresses = [];
+        }
+
         return {
           country_code: code,
           country_name: name,
@@ -1989,12 +2048,13 @@ export class AnalyticsService {
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
           share_pct: Math.round((vCount / totalCountryViews) * 1000) / 10,
+          ip_addresses: ipAddresses,
           lat: coords.lat,
           lng: coords.lng,
           map_x: coords.map_x,
           map_y: coords.map_y,
         };
-      });
+      }));
     } catch {
       topCountries = [];
     }

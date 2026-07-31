@@ -59,6 +59,15 @@ interface LiveData {
     views_count: number;
     unique_visitors: number;
     share_pct: number;
+    ip_addresses?: Array<{
+      ip: string;
+      city?: string;
+      isp?: string;
+      views_count: number;
+      device_type?: string;
+      last_active?: string;
+      is_active_now?: boolean;
+    }>;
     lat?: number;
     lng?: number;
     map_x?: number;
@@ -672,11 +681,6 @@ function CountryVisitBubbleMap({
     panStartRef.current = null;
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    updateZoom(mapZoom + (e.deltaY < 0 ? 0.15 : -0.15));
-  };
-
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (mapZoom <= 1) return;
     setIsPanning(true);
@@ -689,6 +693,23 @@ function CountryVisitBubbleMap({
     panStartRef.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   };
+
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const listener = (event: WheelEvent) => {
+      event.preventDefault();
+      setMapZoom(current => {
+        const clamped = Math.min(3, Math.max(1, Number((current + (event.deltaY < 0 ? 0.15 : -0.15)).toFixed(2))));
+        if (clamped === 1) setMapPan({ x: 0, y: 0 });
+        return clamped;
+      });
+    };
+
+    container.addEventListener('wheel', listener, { passive: false });
+    return () => container.removeEventListener('wheel', listener);
+  }, []);
 
   // Load SVG World Map and compute bubble positions
   useEffect(() => {
@@ -870,7 +891,6 @@ function CountryVisitBubbleMap({
           background: 'linear-gradient(180deg, #020617 0%, #0c1a3a 40%, #0f172a 100%)',
         }}
         onMouseMove={handleMouseMove}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
@@ -916,7 +936,8 @@ function CountryVisitBubbleMap({
                 top: `${pos.yPct}%`,
                 width: `${coreSize}px`,
                 height: `${coreSize}px`,
-                transform: 'translate(-50%, -50%)',
+                transform: `translate(-50%, -50%) scale(${1 / mapZoom})`,
+                transformOrigin: 'center',
               }}
             >
               <div
@@ -963,15 +984,31 @@ function CountryVisitBubbleMap({
 
         {/* Zoom & navigation controls */}
         <div className="absolute right-4 top-4 z-30 flex flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 text-white shadow-2xl backdrop-blur-md">
-          <button type="button" onClick={() => updateZoom(mapZoom + 0.25)} className="p-2.5 hover:bg-white/10" title="Zoom in">
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); updateZoom(mapZoom + 0.25); }} className="p-2.5 hover:bg-white/10" title="Zoom in">
             <ZoomIn className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => updateZoom(mapZoom - 0.25)} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Zoom out">
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); updateZoom(mapZoom - 0.25); }} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Zoom out">
             <ZoomOut className="h-4 w-4" />
           </button>
-          <button type="button" onClick={resetMapView} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Reset map">
+          <button type="button" onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); resetMapView(); }} className="p-2.5 hover:bg-white/10 border-t border-white/10" title="Reset map">
             <RotateCcw className="h-4 w-4" />
           </button>
+        </div>
+        <div className="absolute right-4 top-36 z-30 hidden w-36 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-white shadow-2xl backdrop-blur-md sm:block">
+          <div className="mb-1 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-slate-300">
+            <span>Zoom</span>
+            <span>{Math.round(mapZoom * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.1"
+            value={mapZoom}
+            onPointerDown={e => e.stopPropagation()}
+            onChange={e => updateZoom(Number(e.target.value))}
+            className="w-full accent-indigo-400"
+          />
         </div>
         <div className="absolute left-4 bottom-4 z-30 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-[10px] font-bold text-slate-200 shadow-2xl backdrop-blur-md">
           <MousePointer2 className="h-3.5 w-3.5 text-indigo-300" />
