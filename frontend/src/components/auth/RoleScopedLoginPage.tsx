@@ -42,7 +42,9 @@ function getSafeNext(allowedPrefixes: string[]): string | null {
   if (typeof window === 'undefined') return null;
   const next = new URLSearchParams(window.location.search).get('next');
   if (!next?.startsWith('/') || next.startsWith('//')) return null;
-  return allowedPrefixes.some((prefix) => next === prefix || next.startsWith(`${prefix}/`)) ? next : null;
+  return allowedPrefixes.some((prefix) => next === prefix || next.startsWith(`${prefix}/`))
+    ? next
+    : null;
 }
 
 export function RoleScopedLoginPage({
@@ -66,7 +68,9 @@ export function RoleScopedLoginPage({
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const isAdmin = variant === 'admin';
   const accent = isAdmin ? '#7C3AED' : '#F97316';
-  const accentSoft = isAdmin ? 'bg-violet-50 text-violet-700 ring-violet-100' : 'bg-orange-50 text-orange-700 ring-orange-100';
+  const accentSoft = isAdmin
+    ? 'bg-violet-50 text-violet-700 ring-violet-100'
+    : 'bg-orange-50 text-orange-700 ring-orange-100';
   const pageBg = isAdmin
     ? 'bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.22),transparent_34%),linear-gradient(135deg,#020617,#111827_52%,#312e81)]'
     : 'bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.24),transparent_35%),linear-gradient(135deg,#111827,#431407_55%,#7c2d12)]';
@@ -76,15 +80,15 @@ export function RoleScopedLoginPage({
     : 'Retrouvez vos commandes, revenus, produits et outils de croissance dans un tableau de bord pensé pour vendre plus vite.';
   const heroItems = isAdmin
     ? [
-      { label: 'Accès sécurisé', icon: ShieldCheck },
-      { label: 'Pilotage global', icon: BarChart3 },
-      { label: 'Audit marketplace', icon: LockKeyhole },
-    ]
+        { label: 'Accès sécurisé', icon: ShieldCheck },
+        { label: 'Pilotage global', icon: BarChart3 },
+        { label: 'Audit marketplace', icon: LockKeyhole },
+      ]
     : [
-      { label: 'Boutique en ligne', icon: Store },
-      { label: 'Revenus & wallet', icon: BarChart3 },
-      { label: 'Outils vendeurs', icon: Sparkles },
-    ];
+        { label: 'Boutique en ligne', icon: Store },
+        { label: 'Revenus & wallet', icon: BarChart3 },
+        { label: 'Outils vendeurs', icon: Sparkles },
+      ];
   useEffect(() => {
     let cancelled = false;
     async function fetchMarketplaceSettings() {
@@ -166,7 +170,10 @@ export function RoleScopedLoginPage({
         <div className="admin-vault-dots absolute inset-0 [background-image:radial-gradient(circle_at_center,rgba(34,211,238,0.24)_1px,transparent_1px)] [background-size:24px_24px]" />
         <div className="admin-vault-orb absolute -left-28 top-1/3 h-80 w-80 rounded-full bg-cyan-400/12 blur-3xl" />
         <div className="admin-vault-orb-delayed absolute -right-28 bottom-8 h-96 w-96 rounded-full bg-fuchsia-500/12 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[42rem] w-[42rem] -translate-x-1/2 -translate-y-1/2 lg:block">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[42rem] w-[42rem] -translate-x-1/2 -translate-y-1/2 lg:block"
+        >
           <div className="admin-vault-ring absolute inset-0 rounded-full border border-cyan-200/10 [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
           <div className="admin-vault-ring-reverse absolute inset-16 rounded-full border border-violet-300/15 [mask-image:linear-gradient(to_top,black,transparent_72%)]" />
           <div className="admin-vault-breathe absolute inset-36 rounded-full border border-fuchsia-300/20 bg-white/[0.02]" />
@@ -200,13 +207,21 @@ export function RoleScopedLoginPage({
                 Superadmin zero-trust portal
               </span>
               <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Enter the world&apos;s most secure marketplace <span className="bg-gradient-to-r from-cyan-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">vault.</span>
+                Enter the world&apos;s most secure marketplace{' '}
+                <span className="bg-gradient-to-r from-cyan-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">
+                  vault.
+                </span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300">
-                This is the critical control plane for PandaMarket. Every credential is challenged, every route is restricted, and every privileged session enters through a hardened administrative gateway.
+                This is the critical control plane for PandaMarket. Every credential is challenged,
+                every route is restricted, and every privileged session enters through a hardened
+                administrative gateway.
               </p>
 
-              <div aria-hidden="true" className="relative mt-12 hidden h-48 max-w-xl overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-cyan-950/20 backdrop-blur-xl lg:block">
+              <div
+                aria-hidden="true"
+                className="relative mt-12 hidden h-48 max-w-xl overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-cyan-950/20 backdrop-blur-xl lg:block"
+              >
                 <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(34,211,238,0.10),transparent)]" />
                 <div className="admin-vault-ring absolute left-10 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full border border-cyan-200/15" />
                 <div className="admin-vault-ring-reverse absolute left-20 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full border border-fuchsia-200/15" />
@@ -226,7 +241,9 @@ export function RoleScopedLoginPage({
                       <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.26em] text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
                         Clearance required
                       </span>
-                      <h2 className="mt-5 text-3xl font-black tracking-tight text-white">{title}</h2>
+                      <h2 className="mt-5 text-3xl font-black tracking-tight text-white">
+                        {title}
+                      </h2>
                       <p className="mt-3 text-sm leading-6 text-slate-400">{subtitle}</p>
                     </div>
                     <div className="admin-vault-breathe flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-400/10">
@@ -240,10 +257,15 @@ export function RoleScopedLoginPage({
                     </div>
                   )}
 
-                  <form onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit} className="space-y-5">
+                  <form
+                    onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit}
+                    className="space-y-5"
+                  >
                     {twoFactorChallengeId ? (
                       <div className="group">
-                        <label className="mb-2 block text-sm font-black text-slate-200">Authenticator code</label>
+                        <label className="mb-2 block text-sm font-black text-slate-200">
+                          Authenticator code
+                        </label>
                         <div className="relative">
                           <ShieldCheck className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
                           <input
@@ -259,7 +281,9 @@ export function RoleScopedLoginPage({
                     ) : (
                       <>
                         <div className="group">
-                          <label className="mb-2 block text-sm font-black text-slate-200">Authorized email</label>
+                          <label className="mb-2 block text-sm font-black text-slate-200">
+                            Authorized email
+                          </label>
                           <div className="relative">
                             <Fingerprint className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
                             <input
@@ -274,7 +298,9 @@ export function RoleScopedLoginPage({
                         </div>
 
                         <div className="group">
-                          <label className="mb-2 block text-sm font-black text-slate-200">Master passphrase</label>
+                          <label className="mb-2 block text-sm font-black text-slate-200">
+                            Master passphrase
+                          </label>
                           <div className="relative">
                             <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
                             <input
@@ -289,18 +315,32 @@ export function RoleScopedLoginPage({
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-200"
-                              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                              aria-label={
+                                showPassword
+                                  ? 'Masquer le mot de passe'
+                                  : 'Afficher le mot de passe'
+                              }
                             >
-                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
                             </button>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between text-sm">
-                          <Link href="/forgot-password" className="font-bold text-cyan-200 transition hover:text-cyan-100 hover:underline">
+                          <Link
+                            href="/forgot-password"
+                            className="font-bold text-cyan-200 transition hover:text-cyan-100 hover:underline"
+                          >
                             Recover credentials
                           </Link>
-                          <Link href="/hub" className="font-semibold text-slate-500 transition hover:text-slate-300">
+                          <Link
+                            href="/hub"
+                            className="font-semibold text-slate-500 transition hover:text-slate-300"
+                          >
                             Exit perimeter
                           </Link>
                         </div>
@@ -318,7 +358,9 @@ export function RoleScopedLoginPage({
                       ) : (
                         <>
                           <LogIn className="relative h-4 w-4" />
-                          <span className="relative">{twoFactorChallengeId ? 'Verify second factor' : 'Unlock secure portal'}</span>
+                          <span className="relative">
+                            {twoFactorChallengeId ? 'Verify second factor' : 'Unlock secure portal'}
+                          </span>
                         </>
                       )}
                     </button>
@@ -350,7 +392,9 @@ export function RoleScopedLoginPage({
             showTextWithLogo
           />
           <div className="mt-10 max-w-xl">
-            <span className={`inline-flex rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ring-1 ${accentSoft}`}>
+            <span
+              className={`inline-flex rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ring-1 ${accentSoft}`}
+            >
               {isAdmin ? 'Superadmin' : 'Vendeur'}
             </span>
             <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight">{heroTitle}</h1>
@@ -360,7 +404,10 @@ export function RoleScopedLoginPage({
             {heroItems.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <div
+                  key={item.label}
+                  className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur"
+                >
                   <Icon className="h-6 w-6" style={{ color: accent }} />
                   <p className="mt-4 text-sm font-bold text-white/86">{item.label}</p>
                 </div>
@@ -388,108 +435,130 @@ export function RoleScopedLoginPage({
 
           <div className="rounded-[2rem] border border-white/70 bg-white p-7 text-gray-950 shadow-2xl shadow-black/25 sm:p-8">
             <div className="mb-7">
-              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ring-1 ${accentSoft}`}>
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ring-1 ${accentSoft}`}
+              >
                 {isAdmin ? 'Accès protégé' : 'Dashboard vendeur'}
               </span>
               <h1 className="mt-4 text-3xl font-black text-gray-950">{title}</h1>
               <p className="mt-2 text-sm leading-6 text-gray-500">{subtitle}</p>
             </div>
 
-          {error && (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit} className="space-y-5">
-            {twoFactorChallengeId ? (
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">Code 2FA</label>
-                <input
-                  type="text"
-                  value={twoFactorCode}
-                  onChange={(e) => setTwoFactorCode(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
-                  style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                  placeholder="123456 ou code de secours"
-                  required
-                />
+            {error && (
+              <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {error}
               </div>
-            ) : (
-              <>
+            )}
+
+            <form
+              onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit}
+              className="space-y-5"
+            >
+              {twoFactorChallengeId ? (
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">Email</label>
+                  <label className="mb-2 block text-sm font-bold text-gray-700">Code 2FA</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value)}
                     className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
                     style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                    placeholder="votre@email.tn"
+                    placeholder="123456 ou code de secours"
                     required
                   />
                 </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">Mot de passe</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
-                      style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <Link href="/forgot-password" className="font-bold hover:underline" style={{ color: accent }}>
-                    Mot de passe oublié ?
-                  </Link>
-                  <Link href="/hub" className="text-gray-500 hover:text-gray-700">
-                    Retour au hub
-                  </Link>
-                </div>
-              </>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 font-black text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: accent, boxShadow: `0 18px 40px ${accent}33` }}
-            >
-              {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
                 <>
-                  <LogIn className="h-4 w-4" />
-                  {twoFactorChallengeId ? 'Vérifier le code' : 'Se connecter'}
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
+                      style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
+                      placeholder="votre@email.tn"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-gray-700">
+                      Mot de passe
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
+                        style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        aria-label={
+                          showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <Link
+                      href="/forgot-password"
+                      className="font-bold hover:underline"
+                      style={{ color: accent }}
+                    >
+                      Mot de passe oublié ?
+                    </Link>
+                    <Link href="/hub" className="text-gray-500 hover:text-gray-700">
+                      Retour au hub
+                    </Link>
+                  </div>
                 </>
               )}
-            </button>
-          </form>
 
-          {registerHref && registerLabel && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Pas encore de compte ?{' '}
-                <Link href={registerHref} className="font-bold hover:underline" style={{ color: accent }}>
-                  {registerLabel} →
-                </Link>
-              </p>
-            </div>
-          )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 font-black text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: accent, boxShadow: `0 18px 40px ${accent}33` }}
+              >
+                {loading ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    {twoFactorChallengeId ? 'Vérifier le code' : 'Se connecter'}
+                  </>
+                )}
+              </button>
+            </form>
+
+            {registerHref && registerLabel && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Pas encore de compte ?{' '}
+                  <Link
+                    href={registerHref}
+                    className="font-bold hover:underline"
+                    style={{ color: accent }}
+                  >
+                    {registerLabel} →
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
