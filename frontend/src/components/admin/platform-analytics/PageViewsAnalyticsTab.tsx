@@ -23,7 +23,7 @@ import {
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
-import { WORLD_COUNTRY_PATHS } from './world-map-svg-paths';
+import { COUNTRY_CENTERS } from './world-map-svg-paths';
 
 interface LiveData {
   live_active_visitors_now: number;
@@ -488,7 +488,7 @@ function RealtimeVisitorsAreaGraph({
   );
 }
 
-// 2. Live Country Visits World Bubble Map Component (Official Simple World Map Vector SVG)
+// 2. Live Country Visits World Bubble Map Component (Official SVG World Map)
 function CountryVisitBubbleMap({
   topCountries,
 }: {
@@ -505,6 +505,8 @@ function CountryVisitBubbleMap({
 }) {
   const { t } = useLocale();
   const [hoveredCountry, setHoveredCountry] = useState<typeof topCountries[0] | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [svgLoaded, setSvgLoaded] = useState(false);
 
   // Fallback defaults
   const countries = (topCountries && topCountries.length > 0)
@@ -517,6 +519,83 @@ function CountryVisitBubbleMap({
       ];
 
   const activeCodesSet = new Set(countries.map(c => c.country_code.toLowerCase()));
+
+  // Load the official SVG world map from public/ and inject it
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    let cancelled = false;
+
+    fetch('/world-map.svg')
+      .then(res => res.text())
+      .then(svgText => {
+        if (cancelled || !container) return;
+
+        // Parse the SVG text
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+        if (!svgEl) return;
+
+        // Clean up: set viewBox properly, remove fixed width/height for responsive scaling
+        svgEl.setAttribute('viewBox', '0 0 2754 1398');
+        svgEl.removeAttribute('width');
+        svgEl.removeAttribute('height');
+        svgEl.setAttribute('class', 'w-full h-full');
+        svgEl.style.display = 'block';
+
+        // Style all land paths: dark fill by default
+        const allPaths = svgEl.querySelectorAll('path');
+        allPaths.forEach(path => {
+          path.setAttribute('fill', '#1e293b');       // slate-800
+          path.setAttribute('stroke', '#0f172a');      // slate-900
+          path.setAttribute('stroke-width', '0.5');
+          path.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
+        });
+
+        // Highlight active countries
+        activeCodesSet.forEach(code => {
+          // Try direct id match first (e.g. <path id="tn">)
+          const directPath = svgEl.querySelector(`#${code}`);
+          if (directPath) {
+            // Could be a <g> group or a <path>
+            const paths = directPath.tagName === 'g'
+              ? directPath.querySelectorAll('path')
+              : [directPath];
+            paths.forEach(p => {
+              (p as SVGPathElement).setAttribute('fill', '#6366f1');         // indigo-500
+              (p as SVGPathElement).setAttribute('stroke', '#818cf8');       // indigo-400
+              (p as SVGPathElement).setAttribute('stroke-width', '1.2');
+              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.5))';
+            });
+          }
+
+          // Also try class-based selection (e.g. class="landxx tn")
+          const classPaths = svgEl.querySelectorAll(`.${code}`);
+          classPaths.forEach(p => {
+            if (p.tagName === 'path') {
+              (p as SVGPathElement).setAttribute('fill', '#6366f1');
+              (p as SVGPathElement).setAttribute('stroke', '#818cf8');
+              (p as SVGPathElement).setAttribute('stroke-width', '1.2');
+              (p as SVGPathElement).style.filter = 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.5))';
+            }
+          });
+        });
+
+        // Remove any existing SVG and inject the new one
+        const existingSvg = container.querySelector('svg.world-map-base');
+        if (existingSvg) existingSvg.remove();
+
+        svgEl.classList.add('world-map-base');
+        container.prepend(svgEl);
+        setSvgLoaded(true);
+      })
+      .catch(() => { /* silently fail */ });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topCountries]);
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4 relative overflow-hidden">
@@ -540,74 +619,87 @@ function CountryVisitBubbleMap({
         </span>
       </div>
 
-      {/* Official Simple World Map Vector SVG Container */}
-      <div className="relative w-full h-56 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center p-2">
+      {/* Official SVG World Map Container */}
+      <div
+        ref={mapContainerRef}
+        className="relative w-full bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner"
+        style={{ aspectRatio: '2754 / 1398' }}
+      >
+        {/* Loading state before SVG is fetched */}
+        {!svgLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center text-slate-500">
+            <Globe className="w-8 h-8 animate-pulse" />
+          </div>
+        )}
+
+        {/* Bubble Overlay SVG — same viewBox as the world map */}
         <svg
-          className="w-full h-full text-slate-700 fill-current"
-          viewBox="30.767 241.591 784.077 458.627"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox="0 0 2754 1398"
           xmlns="http://www.w3.org/2000/svg"
+          style={{ zIndex: 10 }}
         >
           <defs>
-            <linearGradient id="activeCountryGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#a855f7" />
-            </linearGradient>
+            <radialGradient id="bubbleGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#a855f7" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.6" />
+            </radialGradient>
           </defs>
 
-          {/* Render All Country Vector Paths */}
-          {Object.entries(WORLD_COUNTRY_PATHS).map(([code, countryData]) => {
-            const isActive = activeCodesSet.has(code);
-            return (
-              <path
-                key={code}
-                id={code}
-                d={countryData.d}
-                className={`transition-colors duration-200 cursor-pointer ${
-                  isActive
-                    ? 'fill-indigo-500/80 stroke-indigo-400 stroke-[1.5px] hover:fill-purple-500'
-                    : 'fill-slate-800/60 stroke-slate-900 stroke-[0.8px] hover:fill-slate-700'
-                }`}
-              />
-            );
-          })}
-
-          {/* Pin Bubbles over Active Visitor Countries */}
           {countries.map((c) => {
             const codeLower = c.country_code.toLowerCase();
-            const countryMeta = WORLD_COUNTRY_PATHS[codeLower] || { cx: 433, cy: 445 };
-            const { cx, cy } = countryMeta;
-            const size = Math.max(10, Math.min(26, Math.sqrt(c.share_pct || 1) * 5 + 8));
+            const center = COUNTRY_CENTERS[codeLower];
+            if (!center) return null;
+            const { cx, cy } = center;
+            const size = Math.max(12, Math.min(32, Math.sqrt(c.share_pct || 1) * 6 + 10));
 
             return (
               <g
                 key={c.country_code}
-                transform={`translate(${cx}, ${cy})`}
-                className="cursor-pointer group"
+                className="pointer-events-auto cursor-pointer"
                 onMouseEnter={() => setHoveredCountry(c)}
                 onMouseLeave={() => setHoveredCountry(null)}
               >
-                {/* Pulsing Ripple Circle */}
+                {/* Pulsing Ripple */}
                 <circle
-                  cx="0"
-                  cy="0"
-                  r={size * 1.6}
-                  className="fill-indigo-400/30 animate-ping opacity-75"
+                  cx={cx}
+                  cy={cy}
+                  r={size * 2}
+                  fill="rgba(99, 102, 241, 0.15)"
+                  className="animate-ping"
+                  style={{ transformOrigin: `${cx}px ${cy}px` }}
                 />
-                {/* Core Glowing Bubble */}
+                {/* Outer glow ring */}
                 <circle
-                  cx="0"
-                  cy="0"
+                  cx={cx}
+                  cy={cy}
+                  r={size * 1.4}
+                  fill="rgba(99, 102, 241, 0.2)"
+                  stroke="rgba(129, 140, 248, 0.4)"
+                  strokeWidth="1"
+                />
+                {/* Core Bubble */}
+                <circle
+                  cx={cx}
+                  cy={cy}
                   r={size}
-                  className="fill-indigo-600 stroke-white stroke-2 shadow-lg group-hover:scale-125 transition-transform"
+                  fill="url(#bubbleGrad)"
+                  stroke="white"
+                  strokeWidth="2"
+                  className="transition-transform duration-200 hover:scale-125"
+                  style={{ transformOrigin: `${cx}px ${cy}px` }}
                 />
-                {/* Flag text */}
+                {/* Country code label */}
                 <text
-                  x="0"
-                  y="3"
+                  x={cx}
+                  y={cy + 4}
                   textAnchor="middle"
-                  className="text-[10px] select-none pointer-events-none"
+                  fill="white"
+                  fontSize="10"
+                  fontWeight="bold"
+                  className="select-none pointer-events-none"
                 >
-                  {c.flag_emoji}
+                  {c.country_code}
                 </text>
               </g>
             );
@@ -616,15 +708,18 @@ function CountryVisitBubbleMap({
 
         {/* Hover Card Overlay */}
         {hoveredCountry && (
-          <div className="absolute top-4 right-4 z-20 pointer-events-none p-3 rounded-xl border border-slate-700 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md w-48 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute top-4 right-4 z-20 pointer-events-none p-3 rounded-xl border border-slate-700 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md w-52 space-y-1.5 animate-in fade-in zoom-in-95 duration-100">
             <div className="flex items-center justify-between">
-              <span className="text-base">{hoveredCountry.flag_emoji}</span>
+              <span className="text-lg">{hoveredCountry.flag_emoji}</span>
               <span className="text-[10px] font-mono text-indigo-400 font-bold">({hoveredCountry.country_code})</span>
             </div>
-            <p className="font-black text-xs text-white truncate">{hoveredCountry.country_name}</p>
-            <div className="pt-1 border-t border-slate-800 flex items-center justify-between text-[10px] font-semibold text-slate-300">
-              <span>{hoveredCountry.views_count.toLocaleString()} views</span>
-              <span className="text-emerald-400 font-bold">{hoveredCountry.share_pct}% share</span>
+            <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
+            <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-800 text-[10px] font-semibold text-slate-300">
+              <span>👁 {hoveredCountry.views_count.toLocaleString()} views</span>
+              <span>👤 {hoveredCountry.unique_visitors.toLocaleString()} visitors</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-emerald-400 font-bold">{hoveredCountry.share_pct}% traffic share</span>
             </div>
           </div>
         )}
