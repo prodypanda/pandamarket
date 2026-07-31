@@ -249,58 +249,62 @@ export default function AdminLayout({
       }`}>
         {/* Brand Header */}
         <div className={`shrink-0 border-b border-slate-200/80 bg-white text-slate-950 transition-all duration-300 ${
-          collapsed ? 'p-3 text-center' : 'px-4 py-4'
+          collapsed ? 'p-3 text-center flex items-center justify-center' : 'px-4 py-4'
         }`}>
-          <div className="flex items-center justify-between gap-2">
-            {!collapsed && (
-              <MarketplaceBrand
-                href="/dashboard"
-                marketplaceName={marketplaceSettings.marketplace_name}
-                marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-                marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-                marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-                logoSurface="light"
-                imageClassName="h-8 max-w-[150px] object-contain"
-                textClassName="text-base font-black text-slate-900"
-                fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
-              />
-            )}
-            {collapsed && (
-              <Link href="/dashboard" className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-[#B91C1C] font-black text-white shadow-md">
-                P
-              </Link>
-            )}
+          {!collapsed ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <MarketplaceBrand
+                  href="/dashboard"
+                  marketplaceName={marketplaceSettings.marketplace_name}
+                  marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+                  marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+                  marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+                  logoSurface="light"
+                  imageClassName="h-8 max-w-[150px] object-contain"
+                  textClassName="text-base font-black text-slate-900"
+                  fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
+                />
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  title="Collapse sidebar"
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Superadmin</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10px] font-bold text-slate-600">
+                  {(['fr', 'en', 'ar'] as const).map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => setLocale(l)}
+                      className={`rounded-md px-1.5 py-0.5 uppercase transition-all ${
+                        locale === l ? 'bg-[#B91C1C] text-white font-black shadow-xs' : 'hover:bg-slate-200/60'
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
             <button
               type="button"
               onClick={toggleSidebar}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              title="Expand sidebar"
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
             >
-              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              <PanelLeftOpen className="w-5 h-5" />
             </button>
-          </div>
-
-          {!collapsed && (
-            <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Superadmin</span>
-              </div>
-              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10px] font-bold text-slate-600">
-                {(['fr', 'en', 'ar'] as const).map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setLocale(l)}
-                    className={`rounded-md px-1.5 py-0.5 uppercase transition-all ${
-                      locale === l ? 'bg-[#B91C1C] text-white font-black shadow-xs' : 'hover:bg-slate-200/60'
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
         </div>
 
@@ -333,31 +337,41 @@ export default function AdminLayout({
                           title={item.label}
                           className={`flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition-all ${
                             isActiveParent || isActiveChild
-                              ? 'bg-amber-100 text-[#B91C1C] font-bold'
+                              ? 'bg-amber-100 text-[#B91C1C] font-bold shadow-sm'
                               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                           }`}
                         >
                           <item.icon className={`w-5 h-5 ${isActiveParent || isActiveChild ? 'text-[#B91C1C]' : 'text-slate-500'}`} />
                         </button>
                         {isOpen && (
-                          <div className="mt-1 flex flex-col gap-1 items-center">
-                            {item.subItems.map((sub) => {
-                              const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
-                              return (
-                                <Link
-                                  key={sub.href}
-                                  href={sub.href}
-                                  title={sub.label}
-                                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all ${
-                                    isSubActive
-                                      ? 'bg-red-600 text-white font-bold shadow-sm'
-                                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                  }`}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                </Link>
-                              );
-                            })}
+                          <div
+                            className={`absolute z-50 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15 transition-all animate-in fade-in slide-in-from-left-2 ${
+                              dir === 'rtl' ? 'right-14 top-0' : 'left-14 top-0'
+                            }`}
+                          >
+                            <div className="border-b border-slate-100 px-3 py-1.5 text-xs font-black uppercase text-slate-800 flex items-center justify-between">
+                              <span>{item.label}</span>
+                            </div>
+                            <div className="flex flex-col gap-1 pt-1">
+                              {item.subItems.map((sub) => {
+                                const isSubActive = pathname === sub.href || pathname?.startsWith(sub.href + '/');
+                                return (
+                                  <Link
+                                    key={sub.href}
+                                    href={sub.href}
+                                    onClick={() => setOpenMenus({})}
+                                    className={`rounded-xl px-3 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+                                      isSubActive
+                                        ? 'bg-red-50 text-[#B91C1C] font-bold border-l-2 border-[#B91C1C]'
+                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#B91C1C]" />
+                                    <span>{sub.label}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -486,7 +500,7 @@ export default function AdminLayout({
           : (collapsed ? 'ml-16 mr-0' : 'ml-60 mr-0')
       } min-h-screen overflow-auto`}>
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-8 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={toggleSidebar}
@@ -495,6 +509,19 @@ export default function AdminLayout({
             >
               {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
             </button>
+            {collapsed && (
+              <MarketplaceBrand
+                href="/dashboard"
+                marketplaceName={marketplaceSettings.marketplace_name}
+                marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+                marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+                marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+                logoSurface="light"
+                imageClassName="h-8 max-w-[150px] object-contain"
+                textClassName="text-base font-black text-slate-900"
+                fallbackMarkClassName="text-2xl font-black text-[#B91C1C]"
+              />
+            )}
             <div>
               <h2 className="text-lg font-black text-gray-900">{t('admin.title') || 'Admin Dashboard'}</h2>
               <p className="text-xs font-medium text-gray-500">{t('admin.top.subtitle') || 'Welcome back to your control panel'}</p>
