@@ -26,6 +26,7 @@ import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../lib/store-routing';
 import { type MarketplaceCategory, type MarketplaceStoreProduct, MarketplaceSellerPage } from '../../../../components/store/MarketplaceStorefront';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
+import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 
 interface StoreData {
   id: string;
@@ -60,7 +61,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: STORE_DATA_REVALIDATE_SECONDS, tags: [storeHostTag(host)] },
     });
     if (!res.ok) return null;
     const data = await res.json();

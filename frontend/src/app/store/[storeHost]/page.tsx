@@ -40,6 +40,7 @@ import { getStoreThemeLogoSurface, type StoreSocialLinks } from '../../../compon
 import { StorefrontMaintenancePage } from '../../../components/store/StorefrontMaintenancePage';
 import { selectLogoForSurface } from '../../../lib/public-assets';
 import { StorefrontAnalyticsTracker } from '../../../components/store/StorefrontAnalyticsTracker';
+import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 
 interface StoreBranding {
   store_id?: string;
@@ -113,7 +114,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: STORE_DATA_REVALIDATE_SECONDS, tags: [storeHostTag(host)] },
     });
     if (!res.ok) return null;
     const data = await res.json();

@@ -12,6 +12,7 @@ import { LocaleSwitcher } from '../../../../components/LocaleSwitcher';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../../lib/onboarding';
+import { revalidateStoreCache } from '@/lib/store-cache';
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
 
@@ -475,6 +476,8 @@ export default function SettingsPage() {
         }).catch(() => null);
         if (nextOnboardingState) setOnboardingState(nextOnboardingState);
         showFeedback('Thème mis à jour · étape Theme complétée');
+        // Invalidate storefront ISR cache so the new theme is visible immediately
+        revalidateStoreCache({ subdomain, custom_domain: customDomain || null });
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
@@ -528,6 +531,8 @@ export default function SettingsPage() {
           setOnboardingState(nextStoreBasicsState);
         }
         showFeedback(nextStoreBasicsComplete ? 'Personnalisation sauvegardée · étapes Store basics et Theme mises à jour' : 'Personnalisation sauvegardée · étape Theme mise à jour');
+        // Invalidate storefront ISR cache so customization changes are visible immediately
+        revalidateStoreCache({ subdomain, custom_domain: customDomain || null });
       } else {
         showFeedback(await getErrorMessage(res), true);
       }

@@ -31,6 +31,7 @@ import {
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '@/lib/onboarding';
 import { themes, type ThemeId } from '@/lib/themes';
 import { useLocale } from '@/contexts/LocaleContext';
+import { revalidateStoreCache } from '@/lib/store-cache';
 
 interface ThemeCustomizationState {
   layoutVariation?: string | null;
@@ -317,6 +318,8 @@ export default function SellerOnboardingPage() {
         metadata: { theme_id: selectedTheme },
       });
       setOnboardingState(nextOnboarding);
+      // Invalidate storefront ISR cache so the new theme is visible immediately
+      revalidateStoreCache({ subdomain: store?.subdomain, custom_domain: store?.custom_domain });
       setCurrentStep(3); // Go to Step 4 (KYC)
     } catch (err) {
       setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');

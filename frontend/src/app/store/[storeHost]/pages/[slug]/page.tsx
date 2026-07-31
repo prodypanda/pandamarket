@@ -15,6 +15,7 @@ import { StorefrontSocialLinks } from '../../../../../components/themes/Storefro
 import { getStoreThemeLogoSurface, type StoreBranding, type StoreSocialLinks } from '../../../../../components/themes/shared';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
+import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 
 /**
  * Storefront Custom Page Renderer
@@ -97,7 +98,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: STORE_DATA_REVALIDATE_SECONDS, tags: [storeHostTag(host)] },
     });
     if (!res.ok) return null;
     const data = await res.json();

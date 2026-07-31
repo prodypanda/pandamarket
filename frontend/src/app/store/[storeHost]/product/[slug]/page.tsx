@@ -22,6 +22,7 @@ import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
 import { cookies, headers } from 'next/headers';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
+import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 
 interface Product {
   id: string;
@@ -85,7 +86,7 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(host)}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: STORE_DATA_REVALIDATE_SECONDS, tags: [storeHostTag(host)] },
     });
     if (!res.ok) return null;
     const data = await res.json();
