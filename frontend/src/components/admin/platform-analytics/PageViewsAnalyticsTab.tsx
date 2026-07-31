@@ -670,10 +670,35 @@ function CountryVisitBubbleMap({
 
   const clampZoom = (value: number) => Math.min(6, Math.max(1, Number(value.toFixed(2))));
 
-  const updateZoom = (nextZoom: number) => {
+  const updateZoom = (nextZoom: number, mouseX?: number, mouseY?: number) => {
     const clamped = clampZoom(nextZoom);
+    if (clamped === mapZoom) return;
+
+    if (clamped === 1) {
+      setMapZoom(1);
+      setMapPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const container = mapContainerRef.current;
+    if (!container) {
+      setMapZoom(clamped);
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const mX = mouseX !== undefined ? mouseX : mousePos.x || rect.width / 2;
+    const mY = mouseY !== undefined ? mouseY : mousePos.y || rect.height / 2;
+
+    const cx = mX - rect.width / 2;
+    const cy = mY - rect.height / 2;
+    const zoomRatio = clamped / mapZoom;
+
+    setMapPan(prevPan => ({
+      x: prevPan.x - cx * (zoomRatio - 1),
+      y: prevPan.y - cy * (zoomRatio - 1),
+    }));
     setMapZoom(clamped);
-    if (clamped === 1) setMapPan({ x: 0, y: 0 });
   };
 
   const focusCountryOnMap = (countryCode: string) => {
@@ -721,10 +746,30 @@ function CountryVisitBubbleMap({
 
     const listener = (event: WheelEvent) => {
       event.preventDefault();
-      setMapZoom(current => {
-        const clamped = Math.min(6, Math.max(1, Number((current + (event.deltaY < 0 ? 0.2 : -0.2)).toFixed(2))));
-        if (clamped === 1) setMapPan({ x: 0, y: 0 });
-        return clamped;
+      const rect = container.getBoundingClientRect();
+      const mX = event.clientX - rect.left;
+      const mY = event.clientY - rect.top;
+
+      setMapZoom(currentZoom => {
+        const delta = event.deltaY < 0 ? 0.25 : -0.25;
+        const targetZoom = Math.min(6, Math.max(1, Number((currentZoom + delta).toFixed(2))));
+        if (targetZoom === currentZoom) return currentZoom;
+
+        if (targetZoom === 1) {
+          setMapPan({ x: 0, y: 0 });
+          return 1;
+        }
+
+        const cx = mX - rect.width / 2;
+        const cy = mY - rect.height / 2;
+        const zoomRatio = targetZoom / currentZoom;
+
+        setMapPan(prevPan => ({
+          x: prevPan.x - cx * (zoomRatio - 1),
+          y: prevPan.y - cy * (zoomRatio - 1),
+        }));
+
+        return targetZoom;
       });
     };
 
