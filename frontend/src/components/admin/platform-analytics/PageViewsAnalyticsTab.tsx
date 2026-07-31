@@ -19,6 +19,13 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Wifi,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
@@ -498,6 +505,15 @@ function CountryVisitBubbleMap({
     views_count: number;
     unique_visitors: number;
     share_pct: number;
+    ip_addresses?: Array<{
+      ip: string;
+      city?: string;
+      isp?: string;
+      views_count: number;
+      device_type?: string;
+      last_active?: string;
+      is_active_now?: boolean;
+    }>;
     map_x?: number;
     map_y?: number;
   }>;
@@ -509,30 +525,118 @@ function CountryVisitBubbleMap({
   const [svgLoaded, setSvgLoaded] = useState(false);
   const [bubblePositions, setBubblePositions] = useState<Record<string, { xPct: number; yPct: number }>>({});
 
-  // Fallback defaults
+  // Expandable/Collapsible state
+  const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [copiedIp, setCopiedIp] = useState<string | null>(null);
+
+  // Fallback defaults with sample IP addresses
   const countries = (topCountries && topCountries.length > 0)
     ? topCountries
     : [
-        { country_code: 'TN', country_name: 'Tunisia', flag_emoji: '🇹🇳', views_count: 1420, unique_visitors: 850, share_pct: 68.5 },
-        { country_code: 'FR', country_name: 'France', flag_emoji: '🇫🇷', views_count: 380, unique_visitors: 240, share_pct: 18.2 },
-        { country_code: 'DE', country_name: 'Germany', flag_emoji: '🇩🇪', views_count: 120, unique_visitors: 90, share_pct: 5.8 },
-        { country_code: 'US', country_name: 'United States', flag_emoji: '🇺🇸', views_count: 95, unique_visitors: 65, share_pct: 4.1 },
+        {
+          country_code: 'TN',
+          country_name: 'Tunisia',
+          flag_emoji: '🇹🇳',
+          views_count: 1420,
+          unique_visitors: 850,
+          share_pct: 68.5,
+          ip_addresses: [
+            { ip: '197.26.18.42', city: 'Tunis', isp: 'Tunisie Télécom', device_type: 'Mobile (Android)', is_active_now: true, views_count: 540 },
+            { ip: '102.164.92.105', city: 'Sousse', isp: 'Ooredoo Tunisia', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 320 },
+            { ip: '41.226.11.84', city: 'Sfax', isp: 'Topnet Fibre', device_type: 'Mobile (iOS)', is_active_now: false, views_count: 280 },
+            { ip: '197.28.140.12', city: 'Monastir', isp: 'Orange Tunisie', device_type: 'Desktop (Firefox)', is_active_now: false, views_count: 160 },
+            { ip: '102.159.204.5', city: 'Bizerte', isp: 'GlobalNet ADSL', device_type: 'Mobile (Android)', is_active_now: true, views_count: 120 },
+          ],
+        },
+        {
+          country_code: 'FR',
+          country_name: 'France',
+          flag_emoji: '🇫🇷',
+          views_count: 380,
+          unique_visitors: 240,
+          share_pct: 18.2,
+          ip_addresses: [
+            { ip: '51.15.22.80', city: 'Paris', isp: 'Orange SA', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 180 },
+            { ip: '176.31.252.18', city: 'Lyon', isp: 'OVH SAS', device_type: 'Desktop (Safari)', is_active_now: false, views_count: 110 },
+            { ip: '90.85.12.190', city: 'Marseille', isp: 'SFR Fiber', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 90 },
+          ],
+        },
+        {
+          country_code: 'DE',
+          country_name: 'Germany',
+          flag_emoji: '🇩🇪',
+          views_count: 120,
+          unique_visitors: 90,
+          share_pct: 5.8,
+          ip_addresses: [
+            { ip: '88.198.45.12', city: 'Frankfurt', isp: 'Hetzner Online', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 70 },
+            { ip: '188.40.120.99', city: 'Munich', isp: 'Deutsche Telekom', device_type: 'Desktop (Edge)', is_active_now: false, views_count: 50 },
+          ],
+        },
+        {
+          country_code: 'US',
+          country_name: 'United States',
+          flag_emoji: '🇺🇸',
+          views_count: 95,
+          unique_visitors: 65,
+          share_pct: 4.1,
+          ip_addresses: [
+            { ip: '54.239.28.85', city: 'Ashburn, VA', isp: 'Amazon AWS', device_type: 'Desktop (Chrome)', is_active_now: true, views_count: 55 },
+            { ip: '104.16.124.96', city: 'San Francisco', isp: 'Cloudflare', device_type: 'Mobile (iOS)', is_active_now: true, views_count: 40 },
+          ],
+        },
       ];
 
   const activeCodesSet = new Set(countries.map(c => c.country_code.toLowerCase()));
 
-  // Compute total views for progress bars
+  // Compute totals
   const totalViews = countries.reduce((sum, c) => sum + c.views_count, 0);
   const totalVisitors = countries.reduce((sum, c) => sum + c.unique_visitors, 0);
+  const totalIpsCount = countries.reduce((sum, c) => sum + (c.ip_addresses?.length || 0), 0);
 
-  // Track mouse position relative to the map container
+  // Toggle single country expansion
+  const toggleExpand = (countryCode: string) => {
+    setExpandedCountries(prev => ({
+      ...prev,
+      [countryCode]: !prev[countryCode],
+    }));
+  };
+
+  // Toggle all countries expansion
+  const allExpanded = countries.every(c => expandedCountries[c.country_code]);
+  const toggleExpandAll = () => {
+    const nextState: Record<string, boolean> = {};
+    countries.forEach(c => {
+      nextState[c.country_code] = !allExpanded;
+    });
+    setExpandedCountries(nextState);
+  };
+
+  // Copy IP handler
+  const handleCopyIp = (ip: string) => {
+    navigator.clipboard.writeText(ip);
+    setCopiedIp(ip);
+    setTimeout(() => setCopiedIp(null), 2000);
+  };
+
+  // Filter countries by search term
+  const filteredCountries = countries.filter(c => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().trim();
+    const matchCountry = c.country_name.toLowerCase().includes(term) || c.country_code.toLowerCase().includes(term);
+    const matchIp = c.ip_addresses?.some(ipObj => ipObj.ip.toLowerCase().includes(term) || (ipObj.city && ipObj.city.toLowerCase().includes(term)) || (ipObj.isp && ipObj.isp.toLowerCase().includes(term)));
+    return matchCountry || matchIp;
+  });
+
+  // Mouse move handler for map container
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = mapContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
     setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
-  // Load the official SVG world map and compute bubble centers from real path bounding boxes
+  // Load SVG World Map and compute bubble positions
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
@@ -549,7 +653,6 @@ function CountryVisitBubbleMap({
         const svgEl = doc.querySelector('svg');
         if (!svgEl) return;
 
-        // Set viewBox, remove fixed dimensions for responsive scaling
         svgEl.setAttribute('viewBox', '0 0 2754 1398');
         svgEl.removeAttribute('width');
         svgEl.removeAttribute('height');
@@ -557,7 +660,6 @@ function CountryVisitBubbleMap({
         svgEl.style.height = '100%';
         svgEl.style.display = 'block';
 
-        // Style all land paths with dark fill
         const allPaths = svgEl.querySelectorAll('path');
         allPaths.forEach(path => {
           path.setAttribute('fill', '#1e293b');
@@ -566,7 +668,6 @@ function CountryVisitBubbleMap({
           path.style.transition = 'fill 0.3s ease';
         });
 
-        // Highlight active countries
         activeCodesSet.forEach(code => {
           const applyHighlight = (el: Element) => {
             const paths = el.tagName === 'g' ? el.querySelectorAll('path') : [el];
@@ -578,35 +679,28 @@ function CountryVisitBubbleMap({
               (p as SVGPathElement).style.filter = 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.6))';
             });
           };
-          // By id
           const byId = svgEl.querySelector(`#${code}`);
           if (byId) applyHighlight(byId);
-          // By class
           svgEl.querySelectorAll(`.${code}`).forEach(el => {
             if (el.tagName === 'path') applyHighlight(el);
           });
         });
 
-        // Remove any existing SVG first
         const existing = container.querySelector('svg.world-map-base');
         if (existing) existing.remove();
 
         svgEl.classList.add('world-map-base');
         container.prepend(svgEl);
 
-        // Now compute bubble centers from the actual rendered bounding boxes
-        // We need to wait a frame for the SVG to render in the DOM
         requestAnimationFrame(() => {
           const viewBoxW = 2754;
           const viewBoxH = 1398;
           const positions: Record<string, { xPct: number; yPct: number }> = {};
 
           activeCodesSet.forEach(code => {
-            // Find the country element by id
             const el = svgEl.querySelector(`#${code}`);
             if (!el) return;
 
-            // Collect all paths belonging to this country
             const paths: SVGGraphicsElement[] = [];
             if (el.tagName === 'g') {
               el.querySelectorAll('path').forEach(p => paths.push(p as SVGGraphicsElement));
@@ -616,7 +710,6 @@ function CountryVisitBubbleMap({
 
             if (paths.length === 0) return;
 
-            // Find the largest path fragment (by bounding box area) for the main landmass
             let bestPath = paths[0];
             let bestArea = 0;
             paths.forEach(p => {
@@ -652,7 +745,7 @@ function CountryVisitBubbleMap({
   }, [topCountries]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden space-y-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
         <div className="flex items-center gap-3">
@@ -664,23 +757,23 @@ function CountryVisitBubbleMap({
               {t('analytics.pageViews.countryBubbleMap') || 'Live Marketplace Visits by Country'}
             </h3>
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-              {t('analytics.pageViews.geoLocation') || 'Real-time geographic distribution'}
+              {t('analytics.pageViews.geoLocation') || 'Real-time geographic distribution & IP telemetry'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            LIVE
+            LIVE TRACKING
           </div>
           <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-            {countries.length} regions
+            {countries.length} Regions
           </span>
         </div>
       </div>
 
       {/* Summary KPI pills */}
-      <div className="flex items-center gap-3 px-6 pb-3 flex-wrap">
+      <div className="flex items-center gap-3 px-6 pb-3 flex-wrap border-b border-slate-100 dark:border-slate-800/80">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
           <Eye className="w-3.5 h-3.5 text-indigo-500" />
           <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalViews.toLocaleString()}</span>
@@ -691,10 +784,15 @@ function CountryVisitBubbleMap({
           <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalVisitors.toLocaleString()}</span>
           <span className="text-[10px] text-slate-500">visitors</span>
         </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+          <Wifi className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{totalIpsCount}</span>
+          <span className="text-[10px] text-slate-500">tracked IPs</span>
+        </div>
         {countries[0] && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/40">
             <Crown className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{countries[0].flag_emoji} {countries[0].country_name}</span>
+            <span className="text-xs font-bold text-amber-900 dark:text-amber-200">{countries[0].flag_emoji} {countries[0].country_name}</span>
             <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{countries[0].share_pct}%</span>
           </div>
         )}
@@ -710,24 +808,26 @@ function CountryVisitBubbleMap({
         }}
         onMouseMove={handleMouseMove}
       >
-        {/* Loading spinner */}
         {!svgLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="flex flex-col items-center gap-2">
               <Globe className="w-8 h-8 text-indigo-400 animate-spin" />
-              <span className="text-[10px] text-slate-500 font-semibold">Loading world map…</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Loading world map telemetry…</span>
             </div>
           </div>
         )}
 
-        {/* Bubble Pins — HTML-based for reliable positioning */}
+        {/* Bubble Pins */}
         {svgLoaded && countries.map((c) => {
           const code = c.country_code.toLowerCase();
           const pos = bubblePositions[code];
           if (!pos) return null;
 
-          // Reduced bubble size (~20% of previous size: min 10px, max 20px)
-          const coreSize = Math.max(10, Math.min(20, Math.sqrt(c.share_pct || 1) * 3.2 + 7.5));
+          const isExpanded = expandedCountries[c.country_code];
+          const isHovered = hoveredCountry?.country_code === c.country_code;
+
+          // Compact bubble size
+          const coreSize = Math.max(12, Math.min(22, Math.sqrt(c.share_pct || 1) * 3.5 + 8));
           const rippleSize = coreSize * 2.2;
           const glowSize = coreSize * 1.4;
 
@@ -743,7 +843,6 @@ function CountryVisitBubbleMap({
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              {/* Pulsing ripple - centered without transform translate so scale(2) expands symmetrically */}
               <div
                 className="absolute rounded-full bg-indigo-400/25 animate-ping pointer-events-none"
                 style={{
@@ -754,9 +853,10 @@ function CountryVisitBubbleMap({
                 }}
               />
 
-              {/* Outer glow ring - pointer-events-none */}
               <div
-                className="absolute rounded-full bg-indigo-500/20 border border-indigo-400/40 pointer-events-none"
+                className={`absolute rounded-full pointer-events-none transition-all duration-200 ${
+                  isExpanded || isHovered ? 'bg-indigo-500/40 border border-indigo-300' : 'bg-indigo-500/20 border border-indigo-400/40'
+                }`}
                 style={{
                   width: `${glowSize}px`,
                   height: `${glowSize}px`,
@@ -765,16 +865,18 @@ function CountryVisitBubbleMap({
                 }}
               />
 
-              {/* Core bubble - ONLY this element captures pointer events and triggers hover */}
               <div
-                className="relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md shadow-indigo-500/50 transition-transform duration-200 hover:scale-150 border border-white cursor-pointer pointer-events-auto select-none"
+                className={`relative w-full h-full rounded-full flex items-center justify-center text-white font-black shadow-md transition-transform duration-200 cursor-pointer pointer-events-auto select-none border ${
+                  isExpanded || isHovered ? 'scale-150 border-amber-300 shadow-amber-500/50' : 'hover:scale-150 border-white shadow-indigo-500/50'
+                }`}
                 style={{
-                  background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                  background: isExpanded ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
                   fontSize: `${Math.max(6, coreSize * 0.45)}px`,
                   lineHeight: 1,
                 }}
                 onMouseEnter={() => setHoveredCountry(c)}
                 onMouseLeave={() => setHoveredCountry(null)}
+                onClick={() => toggleExpand(c.country_code)}
               >
                 {coreSize >= 12 ? c.country_code.toUpperCase() : ''}
               </div>
@@ -782,7 +884,7 @@ function CountryVisitBubbleMap({
           );
         })}
 
-        {/* Hover Tooltip — follows mouse cursor */}
+        {/* Mouse Hover Tooltip */}
         {hoveredCountry && (
           <div
             className="absolute z-30 pointer-events-none"
@@ -796,7 +898,7 @@ function CountryVisitBubbleMap({
                 <span className="text-xl">{hoveredCountry.flag_emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-black text-sm text-white truncate">{hoveredCountry.country_name}</p>
-                  <span className="text-[10px] font-mono text-indigo-400">{hoveredCountry.country_code}</span>
+                  <span className="text-[10px] font-mono text-indigo-400">{hoveredCountry.country_code} &bull; {hoveredCountry.ip_addresses?.length || 0} IPs</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-700/80">
@@ -809,7 +911,6 @@ function CountryVisitBubbleMap({
                   <p className="text-sm font-black text-white">{hoveredCountry.unique_visitors.toLocaleString()}</p>
                 </div>
               </div>
-              {/* Traffic share progress bar */}
               <div className="pt-1">
                 <div className="flex items-center justify-between text-[10px] mb-1">
                   <span className="text-slate-400">Traffic Share</span>
@@ -827,52 +928,219 @@ function CountryVisitBubbleMap({
         )}
       </div>
 
-      {/* Country Ranking Table */}
-      <div className="px-6 py-4 space-y-2">
-        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-          Traffic by Region
-        </p>
-        {countries.map((c, i) => {
-          const barWidth = totalViews > 0 ? (c.views_count / totalViews) * 100 : 0;
-          return (
-            <div key={c.country_code} className="flex items-center gap-3 group">
-              {/* Rank */}
-              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${
-                i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' :
-                i === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
-                i === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
-                'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-              }`}>
-                {i + 1}
+      {/* Traffic & IP Telemetry Controls Header */}
+      <div className="p-6 space-y-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+              <span>Traffic & Visitor IP Breakdown by Region</span>
+              <span className="text-[10px] font-normal text-slate-500 font-mono">
+                ({filteredCountries.length} countries matching)
               </span>
-              {/* Flag */}
-              <span className="text-base">{c.flag_emoji}</span>
-              {/* Name + bar */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{c.country_name}</span>
-                  <span className="text-[10px] font-mono text-slate-500 ml-2">{c.country_code}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${barWidth}%`,
-                      background: i === 0 ? 'linear-gradient(90deg, #6366f1, #a855f7)' :
-                                  i === 1 ? 'linear-gradient(90deg, #818cf8, #c084fc)' :
-                                  'linear-gradient(90deg, #94a3b8, #cbd5e1)',
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Stats */}
-              <div className="text-right flex-shrink-0">
-                <p className="text-xs font-black text-slate-800 dark:text-slate-200">{c.views_count.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-500">{c.share_pct}%</p>
-              </div>
+            </h4>
+            <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+              Click any country to expand visitor IP addresses, ISP origins, and active sessions.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Search Filter */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search IP or Country..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 w-44"
+              />
             </div>
-          );
-        })}
+
+            {/* Global Expand/Collapse All */}
+            <button
+              onClick={toggleExpandAll}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+            >
+              {allExpanded ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  Collapse All
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  Expand All IPs
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Country Rows */}
+        <div className="space-y-3 pt-1">
+          {filteredCountries.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-xs font-semibold">
+              No regions or IP addresses matching &quot;{searchTerm}&quot;
+            </div>
+          ) : (
+            filteredCountries.map((c, i) => {
+              const isExpanded = expandedCountries[c.country_code];
+              const barWidth = totalViews > 0 ? (c.views_count / totalViews) * 100 : 0;
+              const ipsList = c.ip_addresses || [];
+
+              return (
+                <div
+                  key={c.country_code}
+                  className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                    isExpanded
+                      ? 'border-indigo-300 dark:border-indigo-700/80 bg-white dark:bg-slate-800/90 shadow-md'
+                      : 'border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70'
+                  }`}
+                  onMouseEnter={() => setHoveredCountry(c)}
+                  onMouseLeave={() => setHoveredCountry(null)}
+                >
+                  {/* Row Header Bar (Clickable to toggle expansion) */}
+                  <div
+                    onClick={() => toggleExpand(c.country_code)}
+                    className="p-3.5 flex items-center gap-3 cursor-pointer select-none"
+                  >
+                    {/* Rank */}
+                    <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black flex-shrink-0 ${
+                      i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' :
+                      i === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
+                      i === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
+                      'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {i + 1}
+                    </span>
+
+                    {/* Flag */}
+                    <span className="text-lg flex-shrink-0">{c.flag_emoji}</span>
+
+                    {/* Name + progress bar */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                            {c.country_name}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded">
+                            {c.country_code}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {c.views_count.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">views</span>
+                          </span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                            {c.share_pct}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${barWidth}%`,
+                            background: i === 0 ? 'linear-gradient(90deg, #6366f1, #a855f7)' :
+                                        i === 1 ? 'linear-gradient(90deg, #818cf8, #c084fc)' :
+                                        'linear-gradient(90deg, #94a3b8, #cbd5e1)',
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Expand/Collapse Button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors flex-shrink-0 ${
+                        isExpanded
+                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      <Wifi className="w-3 h-3 text-indigo-500" />
+                      <span>{ipsList.length} IPs</span>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {/* Expanded IP Address List Drawer */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-900/60 space-y-2 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 px-1 pt-1">
+                        <span className="uppercase tracking-wider">Active Visitor IP Addresses ({ipsList.length})</span>
+                        <span>Click IP to copy</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {ipsList.map((ipItem, ipIdx) => {
+                          const isCopied = copiedIp === ipItem.ip;
+                          return (
+                            <div
+                              key={ipIdx}
+                              className="p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 flex items-center justify-between gap-2 shadow-sm hover:border-indigo-300 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  {/* IP Address */}
+                                  <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                                    {ipItem.ip}
+                                  </span>
+
+                                  {/* Copy Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyIp(ipItem.ip);
+                                    }}
+                                    className="p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                    title="Copy IP Address"
+                                  >
+                                    {isCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+
+                                  {/* Active Status Badge */}
+                                  {ipItem.is_active_now && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                      ACTIVE NOW
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Location & ISP */}
+                                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate">
+                                  {ipItem.city ? `${ipItem.city} • ` : ''}{ipItem.isp || 'Internet Service Provider'}
+                                </p>
+
+                                {/* Device Type */}
+                                {ipItem.device_type && (
+                                  <p className="text-[10px] text-slate-400 font-medium truncate">
+                                    {ipItem.device_type}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* IP Views Count */}
+                              <div className="text-right flex-shrink-0">
+                                <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                                  {ipItem.views_count.toLocaleString()}
+                                </span>
+                                <p className="text-[9px] text-slate-400 font-semibold">views</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
