@@ -7,6 +7,7 @@ import {
   PlatformAdsAnalytics,
   PlatformSystemAnalytics,
   PlatformBusinessAnalytics,
+  PlatformPageViewsAnalytics,
   AnalyticsDrilldownQueryParams,
   PaginatedDrilldownResponse,
   DrilldownType,
@@ -78,6 +79,11 @@ export async function fetchSystemAnalytics(filters: AnalyticsFilterParams = {}):
 export async function fetchBusinessAnalytics(filters: AnalyticsFilterParams = {}): Promise<PlatformBusinessAnalytics> {
   const q = buildQueryString(filters);
   return requestAnalyticsEndpoint<PlatformBusinessAnalytics>(`/api/pd/admin/analytics/business${q}`);
+}
+
+export async function fetchPageViewsAnalytics(filters: AnalyticsFilterParams = {}): Promise<PlatformPageViewsAnalytics> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint<PlatformPageViewsAnalytics>(`/api/pd/admin/analytics/page-views${q}`);
 }
 
 export async function exportPlatformAnalytics(

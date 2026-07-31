@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers, CreditCard, Store, Megaphone, Server, ShoppingBag, RefreshCw, ShieldCheck, Brain } from 'lucide-react';
+import { Layers, CreditCard, Store, Megaphone, Server, ShoppingBag, RefreshCw, ShieldCheck, Brain, Eye } from 'lucide-react';
 import { AnalyticsTabID } from '@/types/analytics';
 
 interface AnalyticsTabsNavProps {
@@ -11,6 +11,7 @@ interface AnalyticsTabsNavProps {
 
 const TABS: Array<{ id: AnalyticsTabID; label: string; icon: typeof Layers }> = [
   { id: 'overview', label: 'Executive Overview', icon: Layers },
+  { id: 'page_views', label: 'Page Views & Interactions', icon: Eye },
   { id: 'business', label: 'Marketplace Business', icon: ShoppingBag },
   { id: 'financials', label: 'Financials & SaaS Engine', icon: CreditCard },
   { id: 'vendors', label: 'Vendor & Marketplace Health', icon: Store },

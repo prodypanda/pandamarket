@@ -282,6 +282,101 @@ export interface PlatformBusinessAnalyticsDTO {
   };
 }
 
+export interface PageViewsInteractionAnalyticsDTO {
+  range: NormalizedAnalyticsRange;
+  metric_scope: MetricScopeMetadata;
+  summary: {
+    total_page_views: number;
+    unique_visitors: number;
+    registered_user_views: number;
+    anonymous_visitor_views: number;
+    marketplace_views: number;
+    storefront_views: number;
+    live_active_visitors_now: number;
+    avg_session_duration_seconds: number;
+    bounce_rate_pct: number;
+    views_growth_pct: number | null;
+  };
+  top_pages_viewed: Array<{
+    path: string;
+    type: 'marketplace' | 'storefront' | 'admin' | 'other';
+    views_count: number;
+    unique_visitors: number;
+    avg_time_seconds: number;
+  }>;
+  top_products_viewed: Array<{
+    product_id: string;
+    title: string;
+    store_name: string;
+    store_host: string;
+    price_tnd: number;
+    views_count: number;
+    unique_visitors: number;
+    add_to_cart_count: number;
+    orders_count: number;
+    conversion_rate_pct: number;
+  }>;
+  top_products_ordered: Array<{
+    product_id: string;
+    title: string;
+    store_name: string;
+    store_host: string;
+    units_sold: number;
+    total_revenue_tnd: number;
+    views_count: number;
+    conversion_rate_pct: number;
+  }>;
+  top_storefronts_by_views: Array<{
+    store_id: string;
+    store_name: string;
+    store_host: string;
+    views_count: number;
+    unique_visitors: number;
+    active_listings_count: number;
+  }>;
+  top_storefronts_by_sales: Array<{
+    store_id: string;
+    store_name: string;
+    store_host: string;
+    total_orders_count: number;
+    total_sales_gmv_tnd: number;
+    page_views_count: number;
+    conversion_rate_pct: number;
+  }>;
+  top_marketplace_searches: Array<{
+    query: string;
+    search_count: number;
+    avg_results_count: number;
+    zero_results_pct: number;
+  }>;
+  top_storefront_searches: Array<{
+    query: string;
+    store_name: string;
+    store_host: string;
+    search_count: number;
+    avg_results_count: number;
+  }>;
+  visit_sources: Array<{
+    referrer_domain: string;
+    views_count: number;
+    share_pct: number;
+  }>;
+  device_breakdown: Array<{
+    device_type: string;
+    views_count: number;
+    share_pct: number;
+  }>;
+  live_activity_feed: Array<{
+    id: string;
+    event_type: string;
+    path: string;
+    user_role: string | null;
+    store_name: string | null;
+    device_type: string;
+    occurred_at: string;
+  }>;
+}
+
 // ==========================================================
 // Part 6: Drill-down & Saved View DTOs
 // ==========================================================

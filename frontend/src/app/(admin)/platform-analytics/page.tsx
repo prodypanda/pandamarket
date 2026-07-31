@@ -13,6 +13,7 @@ import {
   PlatformAdsAnalytics,
   PlatformSystemAnalytics,
   PlatformBusinessAnalytics,
+  PlatformPageViewsAnalytics,
   DrilldownType,
 } from '@/types/analytics';
 import {
@@ -22,6 +23,7 @@ import {
   fetchAdsAnalytics,
   fetchSystemAnalytics,
   fetchBusinessAnalytics,
+  fetchPageViewsAnalytics,
   exportPlatformAnalytics,
 } from '@/lib/admin-platform-analytics';
 import { PlatformAnalyticsHeader } from '@/components/admin/platform-analytics/PlatformAnalyticsHeader';
@@ -35,6 +37,7 @@ import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/Vendo
 import { AdsAnalyticsTab } from '@/components/admin/platform-analytics/AdsAnalyticsTab';
 import { SystemAnalyticsTab } from '@/components/admin/platform-analytics/SystemAnalyticsTab';
 import { BusinessAnalyticsTab } from '@/components/admin/platform-analytics/BusinessAnalyticsTab';
+import { PageViewsAnalyticsTab } from '@/components/admin/platform-analytics/PageViewsAnalyticsTab';
 import { IntelligenceTab } from '@/components/admin/platform-analytics/IntelligenceTab';
 import { GovernanceTab } from '@/components/admin/platform-analytics/GovernanceTab';
 import { MetricDefinitionsModal } from '@/components/admin/platform-analytics/MetricDefinitionsModal';
@@ -51,7 +54,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   useEffect(() => {
     try {
       const savedTab = localStorage.getItem('pandamarket_analytics_active_tab');
-      if (savedTab && ['overview', 'business', 'financials', 'vendors', 'ads', 'system', 'intelligence', 'governance'].includes(savedTab)) {
+      if (savedTab && ['overview', 'page_views', 'business', 'financials', 'vendors', 'ads', 'system', 'intelligence', 'governance'].includes(savedTab)) {
         setActiveTab(savedTab as AnalyticsTabID);
       }
       const savedRange = localStorage.getItem('pandamarket_analytics_time_range');
@@ -101,10 +104,12 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const [adsData, setAdsData] = useState<PlatformAdsAnalytics | null>(null);
   const [systemData, setSystemData] = useState<PlatformSystemAnalytics | null>(null);
   const [businessData, setBusinessData] = useState<PlatformBusinessAnalytics | null>(null);
+  const [pageViewsData, setPageViewsData] = useState<PlatformPageViewsAnalytics | null>(null);
 
   // Tab Loading and Error states
   const [tabLoading, setTabLoading] = useState<Record<AnalyticsTabID, boolean>>({
     overview: false,
+    page_views: false,
     business: false,
     financials: false,
     vendors: false,
@@ -115,6 +120,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   });
   const [tabError, setTabError] = useState<Record<AnalyticsTabID, string>>({
     overview: '',
+    page_views: '',
     business: '',
     financials: '',
     vendors: '',
@@ -136,6 +142,9 @@ export default function ComprehensivePlatformAnalyticsPage() {
         if (tab === 'overview') {
           const data = await fetchOverviewAnalytics(filters);
           setOverviewData(data);
+        } else if (tab === 'page_views') {
+          const data = await fetchPageViewsAnalytics(filters);
+          setPageViewsData(data);
         } else if (tab === 'business') {
           const data = await fetchBusinessAnalytics(filters);
           setBusinessData(data);
@@ -182,13 +191,19 @@ export default function ComprehensivePlatformAnalyticsPage() {
     }
   };
 
+  const handleOpenDrilldown = (type: DrilldownType) => {
+    setDrilldownType(type);
+    setIsDrilldownOpen(true);
+  };
+
   const activeRange =
     overviewData?.range ||
     businessData?.range ||
     revenueData?.range ||
     vendorData?.range ||
     adsData?.range ||
-    systemData?.range;
+    systemData?.range ||
+    pageViewsData?.range;
 
   const currentTabLoading = tabLoading[activeTab];
   const currentTabError = tabError[activeTab];
@@ -255,6 +270,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
           <AnalyticsErrorState message={currentTabError} onRetry={() => fetchTabData(activeTab)} />
         ) : currentTabLoading &&
           ((activeTab === 'overview' && !overviewData) ||
+            (activeTab === 'page_views' && !pageViewsData) ||
             (activeTab === 'business' && !businessData) ||
             (activeTab === 'financials' && !revenueData) ||
             (activeTab === 'vendors' && !vendorData) ||
@@ -264,6 +280,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
         ) : (
           <>
             {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
+            {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} onOpenDrilldown={handleOpenDrilldown} />}
             {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
             {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
             {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
