@@ -226,7 +226,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const currentTabError = tabError[activeTab];
 
   return (
-    <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
+    <div dir={dir} className="p-4 sm:p-6 lg:p-8 w-full max-w-[1920px] mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-all duration-300">
       {/* Top Header & Filter Bar */}
       <PlatformAnalyticsHeader
         timeRange={timeRange}
