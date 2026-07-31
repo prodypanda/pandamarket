@@ -1802,14 +1802,26 @@ export class AnalyticsService {
     let realtimeSeries: any[] = [];
     try {
       const seriesRes = await query(`
+        WITH buckets AS (
+          SELECT 
+            b AS bucket_time,
+            to_char(b, 'HH24:MI') AS time_label
+          FROM generate_series(
+            date_trunc('minute', NOW() - INTERVAL '55 minutes') - (EXTRACT(minute FROM NOW())::int % 5) * INTERVAL '1 minute',
+            date_trunc('minute', NOW()) - (EXTRACT(minute FROM NOW())::int % 5) * INTERVAL '1 minute',
+            INTERVAL '5 minutes'
+          ) b
+        )
         SELECT 
-          to_char(date_trunc('minute', occurred_at) - (EXTRACT(minute FROM occurred_at)::int % 5) * INTERVAL '1 minute', 'HH24:MI') AS time_label,
-          COUNT(DISTINCT visitor_hash)::int AS active_visitors,
-          COUNT(id)::int AS page_views
-        FROM pd_marketplace_analytics_event
-        WHERE occurred_at >= NOW() - INTERVAL '60 minutes'
-        GROUP BY 1
-        ORDER BY 1 ASC
+          b.time_label,
+          COALESCE(COUNT(DISTINCT e.visitor_hash), 0)::int AS active_visitors,
+          COALESCE(COUNT(e.id), 0)::int AS page_views
+        FROM buckets b
+        LEFT JOIN pd_marketplace_analytics_event e 
+          ON e.occurred_at >= b.bucket_time 
+         AND e.occurred_at < b.bucket_time + INTERVAL '5 minutes'
+        GROUP BY b.bucket_time, b.time_label
+        ORDER BY b.bucket_time ASC
       `);
 
       realtimeSeries = seriesRes.rows.map((r: any) => ({
@@ -1901,14 +1913,26 @@ export class AnalyticsService {
 
     try {
       const seriesRes = await query(`
+        WITH buckets AS (
+          SELECT 
+            b AS bucket_time,
+            to_char(b, 'HH24:MI') AS time_label
+          FROM generate_series(
+            date_trunc('minute', NOW() - INTERVAL '55 minutes') - (EXTRACT(minute FROM NOW())::int % 5) * INTERVAL '1 minute',
+            date_trunc('minute', NOW()) - (EXTRACT(minute FROM NOW())::int % 5) * INTERVAL '1 minute',
+            INTERVAL '5 minutes'
+          ) b
+        )
         SELECT 
-          to_char(date_trunc('minute', occurred_at) - (EXTRACT(minute FROM occurred_at)::int % 5) * INTERVAL '1 minute', 'HH24:MI') AS time_label,
-          COUNT(DISTINCT visitor_hash)::int AS active_visitors,
-          COUNT(id)::int AS page_views
-        FROM pd_marketplace_analytics_event
-        WHERE occurred_at >= NOW() - INTERVAL '60 minutes'
-        GROUP BY 1
-        ORDER BY 1 ASC
+          b.time_label,
+          COALESCE(COUNT(DISTINCT e.visitor_hash), 0)::int AS active_visitors,
+          COALESCE(COUNT(e.id), 0)::int AS page_views
+        FROM buckets b
+        LEFT JOIN pd_marketplace_analytics_event e 
+          ON e.occurred_at >= b.bucket_time 
+         AND e.occurred_at < b.bucket_time + INTERVAL '5 minutes'
+        GROUP BY b.bucket_time, b.time_label
+        ORDER BY b.bucket_time ASC
       `);
 
       realtimeSeries = seriesRes.rows.map((r: any) => ({

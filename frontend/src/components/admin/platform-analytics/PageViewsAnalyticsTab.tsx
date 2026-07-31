@@ -233,46 +233,63 @@ function RealtimeVisitorsAreaGraph({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [fallbackBaseTime] = useState(() => Date.now());
 
-  // Fallback / Normalized series data
-  const pointsData = (series && series.length >= 3)
-    ? series
-    : Array.from({ length: 12 }, (_, i) => {
-        const d = new Date(fallbackBaseTime - (11 - i) * 5 * 60 * 1000);
-        const time_label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const active_visitors = Math.max(1, Math.floor(liveVisitorsNow * (0.6 + Math.sin(i * 0.8) * 0.4)));
-        const page_views = Math.floor(active_visitors * (2.5 + Math.cos(i * 0.5) * 1.2));
-        return { time_label, active_visitors, page_views };
-      });
+  // Normalize series data & synchronize latest interval with live online count
+  const rawPoints = series && series.length > 0 ? series : [];
+  const pointsData =
+    rawPoints.length > 0
+      ? rawPoints.map((p, idx) => {
+          if (idx === rawPoints.length - 1 && liveVisitorsNow > p.active_visitors) {
+            return { ...p, active_visitors: liveVisitorsNow };
+          }
+          return p;
+        })
+      : Array.from({ length: 12 }, (_, i) => {
+          const d = new Date(fallbackBaseTime - (11 - i) * 5 * 60 * 1000);
+          const time_label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const active_visitors = i === 11 ? Math.max(liveVisitorsNow, 0) : 0;
+          const page_views = active_visitors * 2;
+          return { time_label, active_visitors, page_views };
+        });
 
   // Calculate high-level summary KPIs for header pills
-  const maxVisitors = Math.max(...pointsData.map(p => p.active_visitors || 0), 1);
-  const maxViews = Math.max(...pointsData.map(p => p.page_views || 0), 1);
+  const maxVisitors = Math.max(...pointsData.map((p) => p.active_visitors || 0), 1);
+  const maxViews = Math.max(...pointsData.map((p) => p.page_views || 0), 1);
   const totalViews = pointsData.reduce((acc, p) => acc + (p.page_views || 0), 0);
-  const avgVisitors = Math.round(pointsData.reduce((acc, p) => acc + (p.active_visitors || 0), 0) / pointsData.length);
+  const avgVisitors = Math.round(
+    pointsData.reduce((acc, p) => acc + (p.active_visitors || 0), 0) / pointsData.length
+  );
 
   const chartHeight = 180;
   const chartWidth = 560;
   const paddingX = 35;
   const paddingY = 25;
 
-  const maxVal = metricMode === 'views' ? maxViews : metricMode === 'visitors' ? maxVisitors : Math.max(maxVisitors, maxViews);
+  const maxVal =
+    metricMode === 'views'
+      ? maxViews
+      : metricMode === 'visitors'
+      ? maxVisitors
+      : Math.max(maxVisitors, maxViews);
 
   // Visitor Coords
   const visitorCoords = pointsData.map((p, idx) => {
     const x = paddingX + (idx / Math.max(1, pointsData.length - 1)) * (chartWidth - paddingX * 2);
-    const y = chartHeight - paddingY - ((p.active_visitors || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
+    const y =
+      chartHeight - paddingY - ((p.active_visitors || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
     return { x, y, p };
   });
 
   // Views Coords
   const viewsCoords = pointsData.map((p, idx) => {
     const x = paddingX + (idx / Math.max(1, pointsData.length - 1)) * (chartWidth - paddingX * 2);
-    const y = chartHeight - paddingY - ((p.page_views || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
+    const y =
+      chartHeight - paddingY - ((p.page_views || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
     return { x, y, p };
   });
 
   // Helper smooth path builder
   const buildSmoothPath = (pts: Array<{ x: number; y: number }>) => {
+    if (!pts || pts.length === 0) return '';
     let d = `M ${pts[0].x} ${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
       const current = pts[i];
@@ -284,8 +301,11 @@ function RealtimeVisitorsAreaGraph({
   };
 
   const buildAreaPath = (pts: Array<{ x: number; y: number }>) => {
+    if (!pts || pts.length === 0) return '';
     const line = buildSmoothPath(pts);
-    return `${line} L ${pts[pts.length - 1].x} ${chartHeight - paddingY} L ${pts[0].x} ${chartHeight - paddingY} Z`;
+    return `${line} L ${pts[pts.length - 1].x} ${chartHeight - paddingY} L ${pts[0].x} ${
+      chartHeight - paddingY
+    } Z`;
   };
 
   const visitorLine = buildSmoothPath(visitorCoords);
@@ -322,19 +342,31 @@ function RealtimeVisitorsAreaGraph({
         <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-[11px] font-bold">
           <button
             onClick={() => setMetricMode('both')}
-            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'both' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg transition-all ${
+              metricMode === 'both'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
             Both
           </button>
           <button
             onClick={() => setMetricMode('visitors')}
-            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'visitors' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg transition-all ${
+              metricMode === 'visitors'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
             Visitors
           </button>
           <button
             onClick={() => setMetricMode('views')}
-            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'views' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg transition-all ${
+              metricMode === 'views'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-black'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
             Page Views
           </button>
@@ -471,11 +503,23 @@ function RealtimeVisitorsAreaGraph({
           })}
         </svg>
 
-        {/* Hover Tooltip Card Popover */}
+        {/* Hover Tooltip Card Popover with Edge Boundary Protection */}
         {currentItem && visitorCoords[activeIdx] && (
           <div
-            className="absolute top-2 pointer-events-none transform -translate-x-1/2 transition-all duration-150 z-20"
-            style={{ left: `${(visitorCoords[activeIdx].x / chartWidth) * 100}%` }}
+            className={`absolute top-2 pointer-events-none transition-all duration-150 z-20 ${
+              activeIdx <= 1
+                ? 'left-2 translate-x-0'
+                : activeIdx >= pointsData.length - 2
+                ? 'right-2 translate-x-0'
+                : '-translate-x-1/2'
+            }`}
+            style={
+              activeIdx <= 1
+                ? { left: '8px' }
+                : activeIdx >= pointsData.length - 2
+                ? { right: '8px' }
+                : { left: `${(visitorCoords[activeIdx].x / chartWidth) * 100}%` }
+            }
           >
             <div className="bg-slate-900/95 text-white text-xs font-extrabold p-3 rounded-xl shadow-2xl backdrop-blur-md border border-slate-700 space-y-1.5 min-w-[140px]">
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
