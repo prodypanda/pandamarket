@@ -27,6 +27,7 @@ import { getStoreRouteContext } from '../../../../lib/store-routing';
 import { type MarketplaceCategory, type MarketplaceStoreProduct, MarketplaceSellerPage } from '../../../../components/store/MarketplaceStorefront';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
+import { renderStorefrontTheme } from '../../../../components/themes/ThemeWrapper';
 
 interface StoreData {
   id: string;
@@ -203,29 +204,6 @@ export default async function StoreProductsPage({
   };
   const visibleProducts = filterProductsByCategory(products, category);
   const themeProps: ThemeProps = { theme: activeTheme, storeName: store.name, products: toThemeProducts(visibleProducts), branding };
-  const themeComponents: Record<string, React.FC<ThemeProps>> = {
-    minimal: MinimalTheme,
-    classic: ClassicTheme,
-    modern: ModernTheme,
-    boutique: BoutiqueTheme,
-    artisan: ArtisanTheme,
-    techhub: TechHubTheme,
-    flavor: FlavorTheme,
-    elegance: EleganceTheme,
-    neon: NeonTheme,
-    sahara: SaharaTheme,
-    medina: MedinaTheme,
-    coastal: CoastalTheme,
-    urban: UrbanTheme,
-    garden: GardenTheme,
-    studio: StudioTheme,
-    luxe: LuxeTheme,
-    fresh: FreshTheme,
-    craft: CraftTheme,
-    digital: DigitalTheme,
-    kids: KidsTheme,
-  };
-  const ThemeComponent = themeComponents[activeTheme.id] || ClassicTheme;
 
-  return <ThemeComponent {...themeProps} />;
+  return renderStorefrontTheme(themeProps);
 }

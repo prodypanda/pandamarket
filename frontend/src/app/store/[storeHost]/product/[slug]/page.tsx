@@ -23,6 +23,7 @@ import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18
 import { cookies, headers } from 'next/headers';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
+import { renderStorefrontTheme } from '../../../../../components/themes/ThemeWrapper';
 
 interface Product {
   id: string;
@@ -99,7 +100,6 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
 async function getProduct(productSlug: string, storeId: string): Promise<Product | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    // Try by slug first, then by ID
     const res = await fetch(
       `${backendUrl}/api/pd/products/by-store/${encodeURIComponent(storeId)}/${encodeURIComponent(productSlug)}`,
       { next: { revalidate: 60 } },
@@ -107,7 +107,6 @@ async function getProduct(productSlug: string, storeId: string): Promise<Product
     if (!res.ok) return null;
     const data = await res.json();
     const product = data.product || data;
-    // Verify product belongs to this store
     if (product.store_id !== storeId) return null;
     return product;
   } catch {
@@ -153,9 +152,6 @@ async function getProductRating(productId: string): Promise<{ average_rating: nu
   }
 }
 
-/**
- * Dynamic SEO metadata for store product pages.
- */
 export async function generateMetadata({
   params,
 }: {
@@ -249,7 +245,7 @@ export default async function StoreProductPage({
   const activeTheme = themes[store.theme_id] || themes.classic;
   const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
   const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
-  const primaryColor = store.settings?.colors?.primary || resolvedColors.primary;
+  const primaryColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
   const secondaryColor = store.settings?.colors?.secondary || resolvedColors.secondary;
   const borderColor = `${primaryColor}20`;
   const mainImage = product.thumbnail || product.images?.[0]?.url;
@@ -262,12 +258,27 @@ export default async function StoreProductPage({
   const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
     ? getWholesalePricingFromMetadata(product.metadata)
     : null;
-  const logoUrl = selectLogoForSurface({
-    logo_url: store.settings?.logo_url,
-    logo_light_url: store.settings?.logo_light_url,
-    logo_dark_url: store.settings?.logo_dark_url,
-  }, getStoreThemeLogoSurface(activeTheme.id));
-  const footerBranding: StoreBranding = {
+
+  const productImages = (product.images || []).map((img) => ({
+    id: img.id,
+    url: img.url,
+    alt_text: product.title,
+  }));
+  if (productImages.length === 0 && product.thumbnail) {
+    productImages.push({ id: 'thumb', url: product.thumbnail, alt_text: product.title });
+  }
+
+  const storeBranding: StoreBranding = {
+    store_id: store.id,
+    store_host: storeHost,
+    primary_color: primaryColor,
+    secondary_color: secondaryColor,
+    logo_url: store.settings?.logo_url as string | undefined,
+    logo_light_url: store.settings?.logo_light_url as string | undefined,
+    logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+    favicon_url: store.settings?.favicon_url as string | undefined,
+    themeCustomization,
+    store_path_base: storePathBase,
     marketplace_name: marketplaceSettings.marketplace_name,
     marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
     marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
@@ -281,54 +292,13 @@ export default async function StoreProductPage({
     social: store.settings?.social,
   };
 
-  return (
-    <div
-      className={`min-h-screen ${activeTheme.typography.fontFamily}`}
-      style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}
-    >
-      {/* Store Header */}
-      <header
-        className="sticky top-0 z-50 border-b"
-        style={{ backgroundColor: resolvedColors.headerBg, borderBottomColor: `${primaryColor}20` }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              {logoUrl ? (
-                <Link href={storePathBase || '/'}>
-                  <span
-                    aria-label={store.name}
-                    role="img"
-                    className="block h-8 w-28 bg-contain bg-left bg-no-repeat"
-                    style={{ backgroundImage: `url(${logoUrl})` }}
-                  />
-                </Link>
-              ) : (
-                <Link
-                  href={storePathBase || '/'}
-                  className="text-xl font-bold"
-                  style={{ color: primaryColor }}
-                >
-                  {store.name}
-                </Link>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href={storePathBase || '/'}
-                className="flex items-center gap-2 text-sm transition-colors hover:opacity-80"
-                style={{ color: resolvedColors.text }}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Retour à la boutique
-              </Link>
-              <StoreCartIcon storeHost={storeHost} storeId={store.id} primaryColor={primaryColor} storePathBase={storePathBase} />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  return renderStorefrontTheme({
+    theme: activeTheme,
+    storeName: store.name,
+    products: relatedProducts,
+    branding: storeBranding,
+    children: (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
           <Link href={storePathBase || '/'} className="hover:opacity-80 transition-opacity" style={{ color: primaryColor }}>
@@ -346,13 +316,10 @@ export default async function StoreProductPage({
 
         {/* Product Main Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
-          {/* Images */}
+          {/* Gallery */}
           <ProductGallery
+            images={productImages}
             title={product.title}
-            thumbnail={product.thumbnail}
-            images={product.images}
-            emptyLabel="Pas d'image"
-            accentColor={primaryColor}
           />
 
           {/* Product Info */}
@@ -375,29 +342,6 @@ export default async function StoreProductPage({
             <p className="text-3xl font-extrabold mb-6" style={{ color: primaryColor }}>
               {formatPrice(product.price)}
             </p>
-            {wholesalePricing && (
-              <div className="mb-6 rounded-2xl border p-5" style={{ backgroundColor: secondaryColor, borderColor }}>
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{tx('productWholesale.publicTitle')}</p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: resolvedColors.text }}>
-                  {tx('productWholesale.publicSubtitle')}
-                </p>
-                <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black" style={{ color: primaryColor }}>
-                  {tx('productWholesale.minimumQuantity')}: {wholesalePricing.min_quantity}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {wholesalePricing.price_tiers?.map((tier) => (
-                    <div key={tier.min_quantity} className="rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-sm" style={{ color: resolvedColors.text }}>
-                      <span className="block text-xs font-black uppercase text-gray-400">
-                        {tx('productWholesale.tierLine', { quantity: tier.min_quantity })}
-                      </span>
-                      <span style={{ color: primaryColor }}>
-                        {tx('productWholesale.unitPriceLine', { price: Number(tier.unit_price).toFixed(3) })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Vendor badge */}
             <div className="mb-6">
@@ -405,52 +349,14 @@ export default async function StoreProductPage({
                 name={store.name}
                 href={storePathBase || '/'}
                 websiteHref={sellerWebsiteHref}
-                isVerified={product.store_is_verified ?? store.is_verified}
-                sellerType={product.store_seller_type ?? store.seller_type}
-                status={product.store_status ?? store.status}
-                createdAt={product.store_created_at ?? store.created_at}
-                productCount={product.store_product_count}
-                settings={product.store_settings || store.settings}
+                isVerified={store.is_verified}
+                sellerType={store.seller_type}
+                status={store.status}
+                createdAt={store.created_at}
+                settings={store.settings}
                 accentColor={primaryColor}
               />
             </div>
-
-            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-gray-100 p-4" style={{ backgroundColor: secondaryColor }}>
-                <span className="block text-xs font-bold uppercase tracking-wide text-gray-400">Type</span>
-                <span className="mt-1 block font-bold" style={{ color: resolvedColors.text }}>{formatProductType(product.type)}</span>
-              </div>
-              {product.product_reference && (
-                <div className="rounded-2xl border border-gray-100 p-4" style={{ backgroundColor: secondaryColor }}>
-                  <span className="block text-xs font-bold uppercase tracking-wide text-gray-400">Reference</span>
-                  <span className="mt-1 block font-bold" style={{ color: resolvedColors.text }}>{product.product_reference}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Stock */}
-            {isPhysicalProduct && product.inventory_quantity !== undefined && (
-              <p className="text-sm text-gray-500 mb-6">
-                {product.inventory_quantity > 0
-                  ? `${product.inventory_quantity} en stock`
-                  : 'Rupture de stock'}
-              </p>
-            )}
-
-            {/* Tags */}
-            {product.tags && product.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {product.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 text-xs font-medium rounded-full"
-                    style={{ backgroundColor: secondaryColor, color: resolvedColors.text }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {/* Add to Cart */}
             <div className="flex items-center gap-3 mb-6">
@@ -473,51 +379,38 @@ export default async function StoreProductPage({
                 }}
                 primaryColor={primaryColor}
               />
-              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors" aria-label="Favoris">
                 <Heart className="w-5 h-5 text-gray-600" />
               </button>
             </div>
+
+            {/* Product Description */}
+            {product.description && (
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h2 className="font-semibold text-lg mb-3">Description</h2>
+                <ProductDescriptionRenderer value={product.description} />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Description */}
-        <div className="border-t pt-10 mb-16" style={{ borderColor }}>
-          <h2 className="text-xl font-bold mb-4" style={{ color: resolvedColors.text }}>Description</h2>
-          <ProductDescriptionRenderer value={product.description} />
-        </div>
-
-        {product.attributes && product.attributes.length > 0 && (
-          <div className="border-t pt-10 mb-16" style={{ borderColor }}>
-            <h2 className="text-xl font-bold mb-4" style={{ color: resolvedColors.text }}>Détails du produit</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {product.attributes.map((attribute) => (
-                <div key={`${attribute.name}-${attribute.value}`} className="rounded-2xl border p-4" style={{ backgroundColor: secondaryColor, borderColor }}>
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{attribute.name}</p>
-                  <p className="mt-1 font-semibold" style={{ color: resolvedColors.text }}>{attribute.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="border-t pt-10 mb-16" style={{ borderColor }}>
-          <h2 className="text-xl font-bold mb-6" style={{ color: resolvedColors.text }}>Avis clients ({reviewCount})</h2>
+        {/* Customer Reviews Section */}
+        <section className="border-t border-gray-200 pt-12 mb-16">
           <ReviewSection productId={product.id} />
-        </div>
+        </section>
 
-        {/* Related Products from same store */}
+        {/* Related Products */}
         {relatedProducts.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-bold mb-6" style={{ color: resolvedColors.text }}>Autres produits</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <section className="border-t border-gray-200 pt-12">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Produits similaires</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedProducts.map((p) => (
                 <Link
                   key={p.id}
                   href={getStorefrontProductPath(p, storePathBase)}
-                  className="rounded-xl border overflow-hidden group hover:shadow-lg transition-all duration-300"
-                  style={{ backgroundColor: secondaryColor, borderColor }}
+                  className="group rounded-xl border border-gray-200 p-3 transition-shadow hover:shadow-md"
                 >
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                  <div className="aspect-square bg-gray-100 relative overflow-hidden rounded-lg mb-3">
                     {p.images?.[0]?.url || p.thumbnail ? (
                       <div
                         aria-label={p.title}
@@ -531,11 +424,11 @@ export default async function StoreProductPage({
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
+                  <div className="p-1">
                     <h3 className="font-semibold text-sm mb-1 line-clamp-2" style={{ color: resolvedColors.text }}>
                       {p.title}
                     </h3>
-                    <p className="font-bold" style={{ color: primaryColor }}>
+                    <p className="font-bold text-sm" style={{ color: primaryColor }}>
                       {formatPrice(p.price)}
                     </p>
                   </div>
@@ -544,40 +437,7 @@ export default async function StoreProductPage({
             </div>
           </section>
         )}
-      </main>
-
-      {/* Footer */}
-      <footer
-        className="border-t py-8 mt-16"
-        style={{ backgroundColor: resolvedColors.footerBg, borderTopColor: `${primaryColor}20` }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-white/75">
-          <StorefrontSocialLinks
-            branding={footerBranding}
-            showContact
-            className="mb-3 flex flex-wrap items-center justify-center gap-3"
-            linkClassName="font-semibold hover:text-white hover:underline"
-          />
-          <p>
-            {store.name} — Propulsé par{' '}
-            <MarketplaceBrand
-              href="/hub"
-              marketplaceName={marketplaceSettings.marketplace_name}
-              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-              logoSurface="dark"
-              className="inline-flex align-middle"
-              imageClassName="inline h-5 max-w-[120px] object-contain"
-              textClassName="font-medium"
-              fallbackMarkClassName="hidden"
-            />
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
+      </div>
+    ),
+  });
 }
-
-
-

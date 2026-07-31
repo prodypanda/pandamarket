@@ -16,6 +16,7 @@ import { getStoreThemeLogoSurface, type StoreBranding, type StoreSocialLinks } f
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
+import { renderStorefrontTheme } from '../../../../../components/themes/ThemeWrapper';
 
 /**
  * Storefront Custom Page Renderer
@@ -285,51 +286,42 @@ export default async function CustomStorePage({
   const navigationPages = pageLinks.filter((link) => link.show_in_navigation && link.slug !== page.slug);
   const footerPages = pageLinks.filter((link) => link.show_in_footer && link.slug !== page.slug);
 
-  return (
-    <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
-      {/* Minimal Store Header */}
-      <header
-        className="h-16 border-b flex items-center justify-between px-6"
-        style={{ backgroundColor: resolvedColors.headerBg, borderBottomColor: `${primaryColor}20` }}
-      >
-        <Link href={storePathBase || '/'} className="flex items-center gap-2">
-          {logoUrl ? (
-            <img src={logoUrl} alt={store.name} className="h-8 object-contain" />
-          ) : (
-            <span className="text-lg font-bold" style={{ color: primaryColor }}>
-              {store.name}
-            </span>
-          )}
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link
-            href={storePathBase || '/'}
-            className="transition-colors hover:opacity-80"
-            style={{ color: resolvedColors.text }}
-          >
-            Accueil
-          </Link>
-          {navigationPages.map((link) => (
-            <Link
-              key={link.id}
-              href={`${storePathBase || ''}/pages/${link.slug}`}
-              className="transition-colors hover:opacity-80"
-              style={{ color: resolvedColors.text }}
-            >
-              {link.title}
-            </Link>
-          ))}
-          <StoreCartIcon storeId={store.id} storeHost={storeHost} primaryColor={primaryColor} storePathBase={storePathBase} iconColor={resolvedColors.text} className="inline-flex items-center gap-2 transition-colors hover:opacity-80" label="Panier" />
-        </nav>
-      </header>
+  const storeBranding: StoreBranding = {
+    store_id: store.id,
+    store_host: storeHost,
+    primary_color: primaryColor,
+    secondary_color: store.settings?.colors?.secondary as string | undefined,
+    logo_url: store.settings?.logo_url as string | undefined,
+    logo_light_url: store.settings?.logo_light_url as string | undefined,
+    logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+    favicon_url: store.settings?.favicon_url as string | undefined,
+    themeCustomization,
+    store_path_base: storePathBase,
+    marketplace_name: marketplaceSettings.marketplace_name,
+    marketplace_logo_url: marketplaceSettings.marketplace_logo_url,
+    marketplace_logo_light_url: marketplaceSettings.marketplace_logo_light_url,
+    marketplace_logo_dark_url: marketplaceSettings.marketplace_logo_dark_url,
+    contact_email: store.settings?.contact_email,
+    contact_phone: store.settings?.contact_phone,
+    address: store.settings?.address,
+    city: store.settings?.city,
+    country: store.settings?.country,
+    map_embed_url: store.settings?.map_embed_url,
+    social: store.settings?.social,
+  };
 
-      {/* Page Content — Rendered from GrapesJS compiled HTML/CSS (sanitized) */}
-      {isPreview && (
-        <div className="border-b border-amber-300 bg-amber-100 px-6 py-2 text-center text-sm font-semibold text-amber-900">
-          Aperçu brouillon — cette version n’est pas publiée.
-        </div>
-      )}
-      <main>
+  return renderStorefrontTheme({
+    theme: activeTheme,
+    storeName: store.name,
+    products,
+    branding: storeBranding,
+    children: (
+      <div>
+        {isPreview && (
+          <div className="border-b border-amber-300 bg-amber-100 px-6 py-2 text-center text-sm font-semibold text-amber-900">
+            Aperçu brouillon — cette version n’est pas publiée.
+          </div>
+        )}
         <SafePageRenderer
           html={page.html}
           css={page.css}
@@ -352,41 +344,7 @@ export default async function CustomStorePage({
             products,
           }}
         />
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-xs border-t" style={{ backgroundColor: resolvedColors.footerBg, borderColor: `${primaryColor}20`, color: `${resolvedColors.text}99` }}>
-        {footerPages.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
-            {footerPages.map((link) => (
-              <Link key={link.id} href={`${storePathBase || ''}/pages/${link.slug}`} className="font-semibold hover:underline">
-                {link.title}
-              </Link>
-            ))}
-          </div>
-        )}
-        <StorefrontSocialLinks
-          branding={footerBranding}
-          showContact
-          className="mb-3 flex flex-wrap items-center justify-center gap-3"
-          linkClassName="font-semibold hover:underline"
-        />
-        <span className="inline-flex items-center justify-center gap-1">
-          Propulsé par{' '}
-          <MarketplaceBrand
-            href="/hub"
-            marketplaceName={marketplaceSettings.marketplace_name}
-            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-            logoSurface="dark"
-            className="inline-flex align-middle"
-            imageClassName="h-5 max-w-[120px] object-contain"
-            textClassName="font-semibold hover:underline"
-            fallbackMarkClassName="hidden"
-          />
-        </span>
-      </footer>
-    </div>
-  );
+      </div>
+    ),
+  });
 }

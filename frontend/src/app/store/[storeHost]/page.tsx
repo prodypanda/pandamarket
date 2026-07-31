@@ -41,6 +41,7 @@ import { StorefrontMaintenancePage } from '../../../components/store/StorefrontM
 import { selectLogoForSurface } from '../../../lib/public-assets';
 import { StorefrontAnalyticsTracker } from '../../../components/store/StorefrontAnalyticsTracker';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
+import { renderStorefrontTheme } from '../../../components/themes/ThemeWrapper';
 
 interface StoreBranding {
   store_id?: string;
@@ -547,34 +548,10 @@ export default async function StorePage({
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding };
 
-  const themeComponents: Record<string, React.FC<typeof themeProps>> = {
-    minimal: MinimalTheme,
-    classic: ClassicTheme,
-    modern: ModernTheme,
-    boutique: BoutiqueTheme,
-    artisan: ArtisanTheme,
-    techhub: TechHubTheme,
-    flavor: FlavorTheme,
-    elegance: EleganceTheme,
-    neon: NeonTheme,
-    sahara: SaharaTheme,
-    medina: MedinaTheme,
-    coastal: CoastalTheme,
-    urban: UrbanTheme,
-    garden: GardenTheme,
-    studio: StudioTheme,
-    luxe: LuxeTheme,
-    fresh: FreshTheme,
-    craft: CraftTheme,
-    digital: DigitalTheme,
-    kids: KidsTheme,
-  };
-
-  const ThemeComponent = themeComponents[activeTheme.id] || ClassicTheme;
   return (
     <>
       <StorefrontAnalyticsTracker storeId={store.id} />
-      <ThemeComponent {...themeProps} />
+      {renderStorefrontTheme(themeProps)}
     </>
   );
 }

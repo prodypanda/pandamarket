@@ -21,11 +21,11 @@ import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets'
 export interface StoreProduct {
   id: string;
   title: string;
-  slug?: string;
+  slug?: string | null;
   price: number | string;
-  images?: { url: string }[];
+  images?: (string | { url: string })[];
   thumbnail?: string | null;
-  category?: string;
+  category?: string | null;
   marketplace_category_slug?: string | null;
   storefront_category_slug?: string | null;
   storefront_parent_category_slug?: string | null;
@@ -41,7 +41,10 @@ export function formatStorePrice(productOrPrice: StoreProduct | StoreProduct['pr
 }
 
 export function getStoreProductImage(product: StoreProduct): string {
-  return product.images?.[0]?.url || product.thumbnail || '';
+  const first = product.images?.[0];
+  if (typeof first === 'string') return first;
+  if (first && typeof first === 'object' && typeof first.url === 'string') return first.url;
+  return product.thumbnail || '';
 }
 
 
@@ -101,6 +104,8 @@ export interface ThemeProps {
   storeName: string;
   products?: StoreProduct[];
   branding?: StoreBranding;
+  /** When provided, the theme renders its Header + children + Footer instead of Hero + Product Grid. */
+  children?: React.ReactNode;
 }
 
 export function getStoreBrandLogo(branding?: StoreBranding, surface: LogoSurface = 'light'): string {
