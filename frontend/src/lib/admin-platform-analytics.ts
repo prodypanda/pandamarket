@@ -97,6 +97,23 @@ export async function fetchPageViewsLiveData(): Promise<{
     device_type: string;
     occurred_at: string;
   }>;
+  realtime_visitors_series?: Array<{
+    time_label: string;
+    active_visitors: number;
+    page_views: number;
+  }>;
+  top_countries?: Array<{
+    country_code: string;
+    country_name: string;
+    flag_emoji: string;
+    views_count: number;
+    unique_visitors: number;
+    share_pct: number;
+    lat?: number;
+    lng?: number;
+    map_x?: number;
+    map_y?: number;
+  }>;
 }> {
   return requestAnalyticsEndpoint(`/api/pd/admin/analytics/page-views-live`);
 }

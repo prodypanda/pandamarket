@@ -2,6 +2,7 @@
 
 import { Layers, CreditCard, Store, Megaphone, Server, ShoppingBag, RefreshCw, ShieldCheck, Brain, Eye } from 'lucide-react';
 import { AnalyticsTabID } from '@/types/analytics';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface AnalyticsTabsNavProps {
   activeTab: AnalyticsTabID;
@@ -22,6 +23,8 @@ const TABS: Array<{ id: AnalyticsTabID; label: string; icon: typeof Layers }> = 
 ];
 
 export function AnalyticsTabsNav({ activeTab, tabLoading, onTabChange }: AnalyticsTabsNavProps) {
+  const { t } = useLocale();
+
   return (
     <div
       role="tablist"
@@ -48,7 +51,7 @@ export function AnalyticsTabsNav({ activeTab, tabLoading, onTabChange }: Analyti
             }`}
           >
             <Icon className="w-4 h-4" aria-hidden="true" />
-            <span>{tab.label}</span>
+            <span>{t(`analytics.tabs.${tab.id}`) || tab.label}</span>
             {isLoading && <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" aria-hidden="true" />}
           </button>
         );

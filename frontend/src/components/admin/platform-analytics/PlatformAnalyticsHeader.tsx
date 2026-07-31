@@ -2,6 +2,7 @@
 
 import { TrendingUp, Download, RefreshCw, BookOpen, Layers, HelpCircle } from 'lucide-react';
 import { AnalyticsTimeRange, AnalyticsCurrency } from '@/types/analytics';
+import { useLocale } from '@/contexts/LocaleContext';
 import { SavedViewsDropdown } from './SavedViewsDropdown';
 
 interface PlatformAnalyticsHeaderProps {
@@ -32,6 +33,8 @@ export function PlatformAnalyticsHeader({
   onOpenDrilldown,
   onOpenHelp,
 }: PlatformAnalyticsHeaderProps) {
+  const { t } = useLocale();
+
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center gap-3">
@@ -40,13 +43,14 @@ export function PlatformAnalyticsHeader({
         </div>
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            Superadmin Platform Analytics Engine
+            {t('analytics.title') || 'Superadmin Platform Analytics Engine'}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Live database metrics, SaaS recurring revenue, marketplace health, ad telemetry & infrastructure
+            {t('analytics.subtitle') || 'Live database metrics, SaaS recurring revenue, marketplace health, ad telemetry & infrastructure'}
           </p>
         </div>
       </div>
+
 
       {/* Filter & Action Controls */}
       <div className="flex flex-wrap items-center gap-2.5">
@@ -65,7 +69,7 @@ export function PlatformAnalyticsHeader({
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
-                {r.toUpperCase()}
+                {t(`analytics.timeRange.${r}`) || r.toUpperCase()}
               </button>
             );
           })}
@@ -105,21 +109,21 @@ export function PlatformAnalyticsHeader({
         {onOpenHelp && (
           <button
             onClick={onOpenHelp}
-            title="Open Onboarding Guide & Infrastructure Health"
+            title={t('analytics.help') || 'Open Onboarding Guide'}
             className="px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-1.5 shadow-sm transition-all"
           >
             <HelpCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Guide</span>
+            <span>{t('analytics.help') || 'Guide'}</span>
           </button>
         )}
 
         <button
           onClick={onOpenDefinitions}
-          title="View Metric Definitions & Formulas"
+          title={t('analytics.dictionary') || 'View Metric Definitions'}
           className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-all"
         >
           <BookOpen className="w-4 h-4 text-purple-500" />
-          <span>Definitions</span>
+          <span>{t('analytics.dictionary') || 'Definitions'}</span>
         </button>
 
         <button
@@ -136,7 +140,7 @@ export function PlatformAnalyticsHeader({
           onClick={onExport}
           className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-all"
         >
-          <Download className="w-4 h-4 text-slate-500" aria-hidden="true" /> Export
+          <Download className="w-4 h-4 text-slate-500" aria-hidden="true" /> {t('analytics.exportCsv') || 'Export'}
         </button>
 
         <button

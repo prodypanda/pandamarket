@@ -1705,9 +1705,27 @@ export class AnalyticsService {
         return String.fromCodePoint(...codePoints);
       };
 
+      const COUNTRY_COORDS: Record<string, { lat: number; lng: number; map_x: number; map_y: number }> = {
+        TN: { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 },
+        FR: { lat: 46.2, lng: 2.2, map_x: 48, map_y: 26 },
+        DE: { lat: 51.1, lng: 10.4, map_x: 51, map_y: 22 },
+        IT: { lat: 41.9, lng: 12.5, map_x: 52, map_y: 30 },
+        ES: { lat: 40.4, lng: -3.7, map_x: 46, map_y: 32 },
+        US: { lat: 37.0, lng: -95.7, map_x: 22, map_y: 33 },
+        CA: { lat: 56.1, lng: -106.3, map_x: 19, map_y: 20 },
+        GB: { lat: 55.3, lng: -3.4, map_x: 46, map_y: 20 },
+        DZ: { lat: 28.0, lng: 1.6, map_x: 48, map_y: 44 },
+        MA: { lat: 31.7, lng: -7.0, map_x: 44, map_y: 40 },
+        SA: { lat: 23.8, lng: 45.0, map_x: 62, map_y: 46 },
+        AE: { lat: 23.4, lng: 53.8, map_x: 65, map_y: 46 },
+        EG: { lat: 26.8, lng: 30.8, map_x: 57, map_y: 44 },
+        TR: { lat: 38.9, lng: 35.2, map_x: 59, map_y: 33 },
+      };
+
       topCountries = topCountriesRes.rows.map((r: any) => {
         const vCount = Number(r.views_count || 0);
         const code = (r.country_code || 'UN').toUpperCase();
+        const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
         return {
           country_code: code,
           country_name: r.country_name || 'Unknown Location',
@@ -1715,10 +1733,37 @@ export class AnalyticsService {
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
           share_pct: Math.round((vCount / totalCountryViews) * 1000) / 10,
+          lat: coords.lat,
+          lng: coords.lng,
+          map_x: coords.map_x,
+          map_y: coords.map_y,
         };
       });
     } catch {
       topCountries = [];
+    }
+
+    // 13. Real-Time Visitor Series for Area Graph
+    let realtimeSeries: any[] = [];
+    try {
+      const seriesRes = await query(`
+        SELECT 
+          to_char(date_trunc('minute', occurred_at) - (EXTRACT(minute FROM occurred_at)::int % 5) * INTERVAL '1 minute', 'HH24:MI') AS time_label,
+          COUNT(DISTINCT visitor_hash)::int AS active_visitors,
+          COUNT(id)::int AS page_views
+        FROM pd_marketplace_analytics_event
+        WHERE occurred_at >= NOW() - INTERVAL '60 minutes'
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `);
+
+      realtimeSeries = seriesRes.rows.map((r: any) => ({
+        time_label: r.time_label,
+        active_visitors: Number(r.active_visitors || 0),
+        page_views: Number(r.page_views || 0),
+      }));
+    } catch {
+      realtimeSeries = [];
     }
 
     return {
@@ -1747,6 +1792,7 @@ export class AnalyticsService {
       device_breakdown: deviceBreakdown,
       top_countries: topCountries,
       live_activity_feed: liveActivityFeed,
+      realtime_visitors_series: realtimeSeries,
     };
   }
 
@@ -1754,6 +1800,8 @@ export class AnalyticsService {
   public async getPageViewsLiveData(): Promise<any> {
     let liveActiveNow = 0;
     let liveActivityFeed: any[] = [];
+    let realtimeSeries: any[] = [];
+    let topCountries: any[] = [];
 
     try {
       const liveRes = await query(`
@@ -1796,9 +1844,124 @@ export class AnalyticsService {
       liveActivityFeed = [];
     }
 
+    try {
+      const seriesRes = await query(`
+        SELECT 
+          to_char(date_trunc('minute', occurred_at) - (EXTRACT(minute FROM occurred_at)::int % 5) * INTERVAL '1 minute', 'HH24:MI') AS time_label,
+          COUNT(DISTINCT visitor_hash)::int AS active_visitors,
+          COUNT(id)::int AS page_views
+        FROM pd_marketplace_analytics_event
+        WHERE occurred_at >= NOW() - INTERVAL '60 minutes'
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `);
+
+      realtimeSeries = seriesRes.rows.map((r: any) => ({
+        time_label: r.time_label,
+        active_visitors: Number(r.active_visitors || 0),
+        page_views: Number(r.page_views || 0),
+      }));
+    } catch {
+      realtimeSeries = [];
+    }
+
+    try {
+      const topCountriesRes = await query(`
+        SELECT 
+          COALESCE(
+            NULLIF(metadata->>'country_name', ''),
+            NULLIF(metadata->>'country', ''),
+            CASE 
+              WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'Tunisia'
+              WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'France'
+              WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'United States'
+              WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'Canada'
+              WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'Germany'
+              WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'United Kingdom'
+              WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'Italy'
+              WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'Spain'
+              WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'Algeria'
+              WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'Morocco'
+              WHEN locale IS NOT NULL AND locale != '' THEN UPPER(locale)
+              ELSE 'Unknown Location'
+            END
+          ) AS country_name,
+          COALESCE(
+            NULLIF(metadata->>'country_code', ''),
+            CASE 
+              WHEN locale ILIKE '%-TN' OR locale ILIKE '%_TN' OR locale ILIKE 'tn%' THEN 'TN'
+              WHEN locale ILIKE '%-FR' OR locale ILIKE '%_FR' OR locale ILIKE 'fr%' THEN 'FR'
+              WHEN locale ILIKE '%-US' OR locale ILIKE '%_US' THEN 'US'
+              WHEN locale ILIKE '%-CA' OR locale ILIKE '%_CA' THEN 'CA'
+              WHEN locale ILIKE '%-DE' OR locale ILIKE '%_DE' OR locale ILIKE 'de%' THEN 'DE'
+              WHEN locale ILIKE '%-GB' OR locale ILIKE '%_GB' OR locale ILIKE '%-UK' THEN 'GB'
+              WHEN locale ILIKE '%-IT' OR locale ILIKE '%_IT' OR locale ILIKE 'it%' THEN 'IT'
+              WHEN locale ILIKE '%-ES' OR locale ILIKE '%_ES' OR locale ILIKE 'es%' THEN 'ES'
+              WHEN locale ILIKE '%-DZ' OR locale ILIKE '%_DZ' THEN 'DZ'
+              WHEN locale ILIKE '%-MA' OR locale ILIKE '%_MA' THEN 'MA'
+              ELSE 'UN'
+            END
+          ) AS country_code,
+          COUNT(id)::int AS views_count,
+          COUNT(DISTINCT visitor_hash)::int AS unique_visitors
+        FROM pd_marketplace_analytics_event
+        WHERE occurred_at >= NOW() - INTERVAL '24 hours'
+        GROUP BY country_name, country_code
+        ORDER BY views_count DESC
+        LIMIT 6
+      `);
+
+      const totalCountryViews = topCountriesRes.rows.reduce((sum: number, r: any) => sum + Number(r.views_count || 0), 0) || 1;
+
+      const getFlagEmoji = (code: string) => {
+        if (!code || code === 'UN' || code.length !== 2) return '🌐';
+        const codePoints = code.toUpperCase().split('').map(char => 127397 + char.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+      };
+
+      const COUNTRY_COORDS: Record<string, { lat: number; lng: number; map_x: number; map_y: number }> = {
+        TN: { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 },
+        FR: { lat: 46.2, lng: 2.2, map_x: 48, map_y: 26 },
+        DE: { lat: 51.1, lng: 10.4, map_x: 51, map_y: 22 },
+        IT: { lat: 41.9, lng: 12.5, map_x: 52, map_y: 30 },
+        ES: { lat: 40.4, lng: -3.7, map_x: 46, map_y: 32 },
+        US: { lat: 37.0, lng: -95.7, map_x: 22, map_y: 33 },
+        CA: { lat: 56.1, lng: -106.3, map_x: 19, map_y: 20 },
+        GB: { lat: 55.3, lng: -3.4, map_x: 46, map_y: 20 },
+        DZ: { lat: 28.0, lng: 1.6, map_x: 48, map_y: 44 },
+        MA: { lat: 31.7, lng: -7.0, map_x: 44, map_y: 40 },
+        SA: { lat: 23.8, lng: 45.0, map_x: 62, map_y: 46 },
+        AE: { lat: 23.4, lng: 53.8, map_x: 65, map_y: 46 },
+        EG: { lat: 26.8, lng: 30.8, map_x: 57, map_y: 44 },
+        TR: { lat: 38.9, lng: 35.2, map_x: 59, map_y: 33 },
+      };
+
+      topCountries = topCountriesRes.rows.map((r: any) => {
+        const vCount = Number(r.views_count || 0);
+        const code = (r.country_code || 'UN').toUpperCase();
+        const coords = COUNTRY_COORDS[code] || { lat: 34.0, lng: 9.0, map_x: 52, map_y: 38 };
+        return {
+          country_code: code,
+          country_name: r.country_name || 'Unknown Location',
+          flag_emoji: getFlagEmoji(code),
+          views_count: vCount,
+          unique_visitors: Number(r.unique_visitors || 0),
+          share_pct: Math.round((vCount / totalCountryViews) * 1000) / 10,
+          lat: coords.lat,
+          lng: coords.lng,
+          map_x: coords.map_x,
+          map_y: coords.map_y,
+        };
+      });
+    } catch {
+      topCountries = [];
+    }
+
     return {
       live_active_visitors_now: liveActiveNow,
       live_activity_feed: liveActivityFeed,
+      realtime_visitors_series: realtimeSeries,
+      top_countries: topCountries,
     };
   }
 

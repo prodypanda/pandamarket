@@ -787,6 +787,15 @@ export interface PlatformPageViewsAnalytics {
     views_count: number;
     unique_visitors: number;
     share_pct: number;
+    lat?: number;
+    lng?: number;
+    map_x?: number;
+    map_y?: number;
+  }>;
+  realtime_visitors_series?: Array<{
+    time_label: string;
+    active_visitors: number;
+    page_views: number;
   }>;
   live_activity_feed: Array<{
     id: string;
