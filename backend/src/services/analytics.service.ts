@@ -1349,6 +1349,8 @@ export class AnalyticsService {
           p.title,
           COALESCE(s.name, '') AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
+          COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(p.thumbnail, (SELECT pi.url FROM pd_product_image pi WHERE pi.product_id = p.id ORDER BY pi.position ASC LIMIT 1), '') AS thumbnail_url,
           COALESCE(p.price, 0)::numeric AS price_tnd,
           COUNT(e.id)::int AS views_count,
           COUNT(DISTINCT e.visitor_hash)::int AS unique_visitors,
@@ -1359,7 +1361,7 @@ export class AnalyticsService {
         LEFT JOIN pd_store s ON p.store_id = s.id
         WHERE e.event_type = 'product_view'
         ${dateFilterAnd}
-        GROUP BY p.id, p.title, s.name, s.subdomain, p.price
+        GROUP BY p.id, p.title, s.name, s.subdomain, p.price, s.settings, p.thumbnail
         ORDER BY views_count DESC
         LIMIT 8
       `);
@@ -1370,8 +1372,10 @@ export class AnalyticsService {
         return {
           product_id: r.product_id,
           title: r.title,
+          thumbnail_url: r.thumbnail_url,
           store_name: r.store_name || '',
           store_host: r.store_host || '',
+          store_logo_url: r.store_logo_url || '',
           price_tnd: Number(r.price_tnd || 0),
           views_count: vCount,
           unique_visitors: Number(r.unique_visitors || 0),
@@ -1393,13 +1397,15 @@ export class AnalyticsService {
           p.title,
           COALESCE(s.name, '') AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
+          COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(p.thumbnail, (SELECT pi.url FROM pd_product_image pi WHERE pi.product_id = p.id ORDER BY pi.position ASC LIMIT 1), '') AS thumbnail_url,
           SUM(oi.quantity)::int AS units_sold,
           SUM(oi.subtotal)::numeric AS total_revenue_tnd,
           COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view' ${dateFilterAnd}), 0) AS views_count
         FROM pd_order_item oi
         JOIN pd_product p ON oi.product_id = p.id
         LEFT JOIN pd_store s ON p.store_id = s.id
-        GROUP BY p.id, p.title, s.name, s.subdomain, s.id
+        GROUP BY p.id, p.title, s.name, s.subdomain, s.settings, p.thumbnail, s.id
         ORDER BY total_revenue_tnd DESC
         LIMIT 8
       `);
@@ -1410,8 +1416,10 @@ export class AnalyticsService {
         return {
           product_id: r.product_id,
           title: r.title,
+          thumbnail_url: r.thumbnail_url,
           store_name: r.store_name || '',
           store_host: r.store_host || '',
+          store_logo_url: r.store_logo_url || '',
           units_sold: uSold,
           total_revenue_tnd: Number(r.total_revenue_tnd || 0),
           views_count: vCount,
@@ -1430,13 +1438,18 @@ export class AnalyticsService {
           s.id AS store_id,
           s.name AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
+          COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(s.settings->>'store_description', '') AS store_description,
+          COALESCE(s.status, 'unverified') AS store_status,
+          COALESCE(s.subscription_plan, 'free') AS subscription_plan,
           COUNT(e.id)::int AS views_count,
           COUNT(DISTINCT e.visitor_hash)::int AS unique_visitors,
           COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'published'), 0) AS active_listings_count
         FROM pd_marketplace_analytics_event e
         JOIN pd_store s ON e.store_id = s.id
-        ${dateFilter ? dateFilter.replace('WHERE', 'WHERE e.') : ''}
-        GROUP BY s.id, s.name, s.subdomain
+        WHERE e.store_id IS NOT NULL
+        ${dateFilterAnd.replace(/occurred_at/g, 'e.occurred_at')}
+        GROUP BY s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan
         ORDER BY views_count DESC
         LIMIT 8
       `);
@@ -1445,6 +1458,10 @@ export class AnalyticsService {
         store_id: r.store_id,
         store_name: r.store_name,
         store_host: r.store_host,
+        store_logo_url: r.store_logo_url,
+        store_description: r.store_description,
+        store_status: r.store_status,
+        subscription_plan: r.subscription_plan,
         views_count: Number(r.views_count || 0),
         unique_visitors: Number(r.unique_visitors || 0),
         active_listings_count: Number(r.active_listings_count || 0),
@@ -1461,6 +1478,10 @@ export class AnalyticsService {
           s.id AS store_id,
           s.name AS store_name,
           COALESCE(s.subdomain, '') AS store_host,
+          COALESCE(s.settings->>'logo_url', '') AS store_logo_url,
+          COALESCE(s.settings->>'store_description', '') AS store_description,
+          COALESCE(s.status, 'unverified') AS store_status,
+          COALESCE(s.subscription_plan, 'free') AS subscription_plan,
           COUNT(DISTINCT oi.order_id)::int AS total_orders_count,
           COALESCE(SUM(oi.subtotal), 0)::numeric AS total_sales_gmv_tnd,
           COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id ${dateFilterAnd}), 0) AS page_views_count
@@ -1468,7 +1489,7 @@ export class AnalyticsService {
         JOIN pd_order_item oi ON oi.store_id = s.id
         JOIN pd_order o ON oi.order_id = o.id
         WHERE o.status IN ('completed', 'fulfilled', 'delivered', 'processing', 'pending')
-        GROUP BY s.id, s.name, s.subdomain
+        GROUP BY s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan
         ORDER BY total_sales_gmv_tnd DESC
         LIMIT 8
       `);
@@ -1480,6 +1501,10 @@ export class AnalyticsService {
           store_id: r.store_id,
           store_name: r.store_name,
           store_host: r.store_host,
+          store_logo_url: r.store_logo_url,
+          store_description: r.store_description,
+          store_status: r.store_status,
+          subscription_plan: r.subscription_plan,
           total_orders_count: oCount,
           total_sales_gmv_tnd: Number(r.total_sales_gmv_tnd || 0),
           page_views_count: vCount,
@@ -1500,7 +1525,7 @@ export class AnalyticsService {
           COALESCE(AVG(search_results_count), 0)::int AS avg_results_count,
           COALESCE((COUNT(*) FILTER (WHERE search_results_count = 0)::float / NULLIF(COUNT(*), 0)) * 100, 0)::numeric AS zero_results_pct
         FROM pd_marketplace_analytics_event
-        WHERE event_type = 'search_query' AND search_query_normalized IS NOT NULL AND store_id IS NULL
+        WHERE event_type = 'search_performed' AND search_query_normalized IS NOT NULL AND store_id IS NULL
         ${dateFilterAnd}
         GROUP BY search_query_normalized
         ORDER BY search_count DESC
@@ -1529,7 +1554,7 @@ export class AnalyticsService {
           COALESCE(AVG(e.search_results_count), 0)::int AS avg_results_count
         FROM pd_marketplace_analytics_event e
         JOIN pd_store s ON e.store_id = s.id
-        WHERE e.event_type = 'search_query' AND e.search_query_normalized IS NOT NULL
+        WHERE e.event_type = 'search_performed' AND e.search_query_normalized IS NOT NULL
         ${dateFilterAnd}
         GROUP BY e.search_query_normalized, s.name, s.subdomain, s.id
         ORDER BY search_count DESC
@@ -1648,6 +1673,57 @@ export class AnalyticsService {
       top_storefront_searches: topStorefrontSearches,
       visit_sources: visitSources,
       device_breakdown: deviceBreakdown,
+      live_activity_feed: liveActivityFeed,
+    };
+  }
+
+  public async getPageViewsLiveData(): Promise<any> {
+    let liveActiveNow = 0;
+    let liveActivityFeed: any[] = [];
+
+    try {
+      const liveRes = await query(`
+        SELECT COUNT(DISTINCT visitor_hash)::int AS live_active_visitors_now
+        FROM pd_marketplace_analytics_event
+        WHERE occurred_at >= NOW() - INTERVAL '15 minutes'
+      `);
+      liveActiveNow = Number(liveRes.rows[0]?.live_active_visitors_now || 0);
+    } catch {
+      liveActiveNow = 0;
+    }
+
+    try {
+      const feedRes = await query(`
+        SELECT 
+          e.id,
+          e.event_type,
+          COALESCE(e.path, '/') AS path,
+          u.role AS user_role,
+          s.name AS store_name,
+          COALESCE(e.device_type, 'web') AS device_type,
+          e.occurred_at
+        FROM pd_marketplace_analytics_event e
+        LEFT JOIN pd_user u ON e.user_id = u.id
+        LEFT JOIN pd_store s ON e.store_id = s.id
+        ORDER BY e.occurred_at DESC
+        LIMIT 15
+      `);
+
+      liveActivityFeed = feedRes.rows.map((r: any) => ({
+        id: r.id,
+        event_type: r.event_type,
+        path: r.path,
+        user_role: r.user_role || 'guest',
+        store_name: r.store_name || null,
+        device_type: r.device_type,
+        occurred_at: r.occurred_at,
+      }));
+    } catch {
+      liveActivityFeed = [];
+    }
+
+    return {
+      live_active_visitors_now: liveActiveNow,
       live_activity_feed: liveActivityFeed,
     };
   }

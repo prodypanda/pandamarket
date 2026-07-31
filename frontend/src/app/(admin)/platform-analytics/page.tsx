@@ -24,6 +24,7 @@ import {
   fetchSystemAnalytics,
   fetchBusinessAnalytics,
   fetchPageViewsAnalytics,
+  fetchPageViewsLiveData,
   exportPlatformAnalytics,
 } from '@/lib/admin-platform-analytics';
 import { PlatformAnalyticsHeader } from '@/components/admin/platform-analytics/PlatformAnalyticsHeader';
@@ -105,6 +106,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const [systemData, setSystemData] = useState<PlatformSystemAnalytics | null>(null);
   const [businessData, setBusinessData] = useState<PlatformBusinessAnalytics | null>(null);
   const [pageViewsData, setPageViewsData] = useState<PlatformPageViewsAnalytics | null>(null);
+  const [pageViewsLiveData, setPageViewsLiveData] = useState<{ live_active_visitors_now: number; live_activity_feed: any[] } | null>(null);
 
   // Tab Loading and Error states
   const [tabLoading, setTabLoading] = useState<Record<AnalyticsTabID, boolean>>({
@@ -175,6 +177,21 @@ export default function ComprehensivePlatformAnalyticsPage() {
   useEffect(() => {
     fetchTabData(activeTab);
   }, [activeTab, timeRange, currency, fetchTabData]);
+
+  // Live polling for Page Views tab — refreshes every 10 seconds
+  useEffect(() => {
+    if (activeTab !== 'page_views') return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const data = await fetchPageViewsLiveData();
+        if (!cancelled) setPageViewsLiveData(data);
+      } catch {}
+    };
+    poll(); // initial fetch
+    const interval = setInterval(poll, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeTab]);
 
   const handleExportCSV = async () => {
     try {
@@ -280,7 +297,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
         ) : (
           <>
             {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
-            {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} onOpenDrilldown={handleOpenDrilldown} />}
+            {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} liveData={pageViewsLiveData} onOpenDrilldown={handleOpenDrilldown} />}
             {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
             {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
             {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}

@@ -4865,6 +4865,17 @@ router.get(
   }),
 );
 
+router.get(
+  '/analytics/page-views-live',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getPageViewsLiveData();
+    res.status(200).json({ success: true, data });
+  }),
+);
+
 router.post(
   '/analytics/export',
   requireAuth,

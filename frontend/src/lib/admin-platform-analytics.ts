@@ -86,6 +86,21 @@ export async function fetchPageViewsAnalytics(filters: AnalyticsFilterParams = {
   return requestAnalyticsEndpoint<PlatformPageViewsAnalytics>(`/api/pd/admin/analytics/page-views${q}`);
 }
 
+export async function fetchPageViewsLiveData(): Promise<{
+  live_active_visitors_now: number;
+  live_activity_feed: Array<{
+    id: string;
+    event_type: string;
+    path: string;
+    user_role: string | null;
+    store_name: string | null;
+    device_type: string;
+    occurred_at: string;
+  }>;
+}> {
+  return requestAnalyticsEndpoint(`/api/pd/admin/analytics/page-views-live`);
+}
+
 export async function exportPlatformAnalytics(
   filters: AnalyticsFilterParams & { type?: string; drilldownType?: string }
 ): Promise<Blob> {

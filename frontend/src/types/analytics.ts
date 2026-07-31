@@ -711,27 +711,35 @@ export interface PlatformPageViewsAnalytics {
     title: string;
     store_name: string;
     store_host: string;
+    store_logo_url?: string;
     price_tnd: number;
     views_count: number;
     unique_visitors: number;
     add_to_cart_count: number;
     orders_count: number;
     conversion_rate_pct: number;
+    thumbnail_url?: string;
   }>;
   top_products_ordered: Array<{
     product_id: string;
     title: string;
     store_name: string;
     store_host: string;
+    store_logo_url?: string;
     units_sold: number;
     total_revenue_tnd: number;
     views_count: number;
     conversion_rate_pct: number;
+    thumbnail_url?: string;
   }>;
   top_storefronts_by_views: Array<{
     store_id: string;
     store_name: string;
     store_host: string;
+    store_logo_url?: string;
+    store_description?: string;
+    store_status?: string;
+    subscription_plan?: string;
     views_count: number;
     unique_visitors: number;
     active_listings_count: number;
@@ -740,6 +748,10 @@ export interface PlatformPageViewsAnalytics {
     store_id: string;
     store_name: string;
     store_host: string;
+    store_logo_url?: string;
+    store_description?: string;
+    store_status?: string;
+    subscription_plan?: string;
     total_orders_count: number;
     total_sales_gmv_tnd: number;
     page_views_count: number;
