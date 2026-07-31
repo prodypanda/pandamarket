@@ -593,6 +593,7 @@ function CountryVisitBubbleMap({
 
   // Telemetry mode: 'live_heartbeat' (with 30s grace timeout) vs 'all_24h'
   const [telemetryFilter, setTelemetryFilter] = useState<'live_heartbeat' | 'all_24h'>('live_heartbeat');
+  const [mapTheme, setMapTheme] = useState<'dark' | 'light'>('dark');
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   // Heartbeat ticker re-evaluates timestamps every 2 seconds
@@ -901,15 +902,18 @@ function CountryVisitBubbleMap({
         svgEl.style.height = '100%';
         svgEl.style.display = 'block';
 
+        const baseFill = mapTheme === 'dark' ? '#2a3b5c' : '#cbd5e1';
+        const baseStroke = mapTheme === 'dark' ? '#486581' : '#94a3b8';
+
         const allPaths = svgEl.querySelectorAll('path');
         allPaths.forEach(path => {
-          path.setAttribute('fill', '#1e293b');
-          path.setAttribute('stroke', '#0f172a');
-          path.setAttribute('stroke-width', '0.5');
-          path.style.transition = 'fill 0.3s ease';
+          path.setAttribute('fill', baseFill);
+          path.setAttribute('stroke', baseStroke);
+          path.setAttribute('stroke-width', '0.75');
+          path.style.transition = 'fill 0.3s ease, stroke 0.3s ease';
         });
 
-        // Apply dynamic highlights based on telemetry status (bright for live, pale for grace)
+        // Apply dynamic highlights based on telemetry status (bright electric indigo for live, pale for grace)
         countriesWithTelemetry.forEach(c => {
           const code = c.country_code.toLowerCase();
           const isLive = c.telemetry.status === 'LIVE_ACTIVE';
@@ -920,19 +924,21 @@ function CountryVisitBubbleMap({
             paths.forEach(p => {
               if (p.tagName !== 'path') return;
               if (isLive) {
-                (p as SVGPathElement).setAttribute('fill', '#6366f1');
-                (p as SVGPathElement).setAttribute('stroke', '#818cf8');
-                (p as SVGPathElement).setAttribute('stroke-width', '1.5');
-                (p as SVGPathElement).style.filter = 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.6))';
+                (p as SVGPathElement).setAttribute('fill', mapTheme === 'dark' ? '#6366f1' : '#4f46e5');
+                (p as SVGPathElement).setAttribute('stroke', mapTheme === 'dark' ? '#c7d2fe' : '#312e81');
+                (p as SVGPathElement).setAttribute('stroke-width', '2.0');
+                (p as SVGPathElement).style.filter = mapTheme === 'dark'
+                  ? 'drop-shadow(0 0 14px rgba(99, 102, 241, 0.95))'
+                  : 'drop-shadow(0 0 10px rgba(79, 70, 229, 0.6))';
               } else if (isGrace) {
-                (p as SVGPathElement).setAttribute('fill', '#334155');
-                (p as SVGPathElement).setAttribute('stroke', '#64748b');
-                (p as SVGPathElement).setAttribute('stroke-width', '1.0');
+                (p as SVGPathElement).setAttribute('fill', mapTheme === 'dark' ? '#475569' : '#94a3b8');
+                (p as SVGPathElement).setAttribute('stroke', mapTheme === 'dark' ? '#94a3b8' : '#64748b');
+                (p as SVGPathElement).setAttribute('stroke-width', '1.2');
                 (p as SVGPathElement).style.filter = 'none';
               } else {
-                (p as SVGPathElement).setAttribute('fill', '#1e293b');
-                (p as SVGPathElement).setAttribute('stroke', '#0f172a');
-                (p as SVGPathElement).setAttribute('stroke-width', '0.5');
+                (p as SVGPathElement).setAttribute('fill', baseFill);
+                (p as SVGPathElement).setAttribute('stroke', baseStroke);
+                (p as SVGPathElement).setAttribute('stroke-width', '0.75');
                 (p as SVGPathElement).style.filter = 'none';
               }
             });
@@ -1001,7 +1007,7 @@ function CountryVisitBubbleMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topCountries, countriesWithTelemetry]);
+  }, [topCountries, countriesWithTelemetry, mapTheme]);
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden space-y-0">
@@ -1021,31 +1027,54 @@ function CountryVisitBubbleMap({
           </div>
         </div>
 
-        {/* Telemetry Filter Toggle Mode */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold">
-          <button
-            type="button"
-            onClick={() => setTelemetryFilter('live_heartbeat')}
-            className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-              telemetryFilter === 'live_heartbeat'
-                ? 'bg-emerald-500 text-white shadow-md font-black'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            Live Heartbeat & 30s Grace
-          </button>
-          <button
-            type="button"
-            onClick={() => setTelemetryFilter('all_24h')}
-            className={`px-3 py-1 rounded-lg transition-all ${
-              telemetryFilter === 'all_24h'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            All 24h Traffic
-          </button>
+        {/* Telemetry Filter Toggle Mode & Map Style Selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => setMapTheme('dark')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapTheme === 'dark' ? 'bg-slate-900 text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              🌙 Dark Ocean
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapTheme('light')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapTheme === 'light' ? 'bg-white text-indigo-700 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              ☀️ Light Crystal
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => setTelemetryFilter('live_heartbeat')}
+              className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                telemetryFilter === 'live_heartbeat'
+                  ? 'bg-emerald-500 text-white shadow-md font-black'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              Live Heartbeat & 30s Grace
+            </button>
+            <button
+              type="button"
+              onClick={() => setTelemetryFilter('all_24h')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                telemetryFilter === 'all_24h'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              All 24h Traffic
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1094,10 +1123,12 @@ function CountryVisitBubbleMap({
       {/* Map Container */}
       <div
         ref={mapContainerRef}
-        className={`relative w-full overflow-hidden select-none ${mapZoom > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+        className={`relative w-full overflow-hidden select-none transition-colors duration-300 ${mapZoom > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
         style={{
           aspectRatio: '2754 / 1398',
-          background: 'linear-gradient(180deg, #020617 0%, #0c1a3a 40%, #0f172a 100%)',
+          background: mapTheme === 'dark'
+            ? 'radial-gradient(ellipse at center, #1c2541 0%, #0b132b 70%, #070a14 100%)'
+            : 'radial-gradient(ellipse at center, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%)',
         }}
         onMouseMove={handleMouseMove}
         onPointerDown={handlePointerDown}
