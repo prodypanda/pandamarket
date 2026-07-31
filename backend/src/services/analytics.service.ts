@@ -1203,130 +1203,199 @@ export class AnalyticsService {
   public async getPageViewsAnalytics(params: AnalyticsQueryParams): Promise<any> {
     const range = this.parseDateWindow(params);
     const dateFilter = range.startDate ? `WHERE occurred_at >= '${range.startDate}'::timestamptz AND occurred_at <= '${range.endDate}'::timestamptz` : '';
+    const dateFilterAnd = range.startDate ? `AND occurred_at >= '${range.startDate}'::timestamptz AND occurred_at <= '${range.endDate}'::timestamptz` : '';
 
-    // 1. Summary Metrics
-    const summaryRes = await query(`
-      SELECT 
-        COUNT(*)::int AS total_page_views,
-        COUNT(DISTINCT visitor_hash)::int AS unique_visitors,
-        COUNT(*) FILTER (WHERE user_id IS NOT NULL)::int AS registered_user_views,
-        COUNT(*) FILTER (WHERE user_id IS NULL)::int AS anonymous_visitor_views,
-        COUNT(*) FILTER (WHERE store_id IS NULL OR path LIKE '/hub%')::int AS marketplace_views,
-        COUNT(*) FILTER (WHERE store_id IS NOT NULL OR path LIKE '/store%')::int AS storefront_views,
-        COUNT(DISTINCT visitor_hash) FILTER (WHERE occurred_at >= NOW() - INTERVAL '15 minutes')::int AS live_active_visitors_now
-      FROM pd_marketplace_analytics_event
-      ${dateFilter}
-    `);
+    // 1. Summary Metrics — 100% from pd_marketplace_analytics_event
+    let totalPageViews = 0;
+    let uniqueVisitors = 0;
+    let registeredUserViews = 0;
+    let anonymousVisitorViews = 0;
+    let marketplaceViews = 0;
+    let storefrontViews = 0;
+    let liveActiveNow = 0;
+    let avgSessionDuration = 0;
+    let bounceRatePct = 0;
+    let viewsGrowthPct: number | null = null;
 
-    const summaryRow = summaryRes.rows[0] || {};
-    let totalPageViews = Number(summaryRow.total_page_views || 0);
-    let uniqueVisitors = Number(summaryRow.unique_visitors || 0);
+    try {
+      const summaryRes = await query(`
+        SELECT 
+          COUNT(*)::int AS total_page_views,
+          COUNT(DISTINCT visitor_hash)::int AS unique_visitors,
+          COUNT(*) FILTER (WHERE user_id IS NOT NULL)::int AS registered_user_views,
+          COUNT(*) FILTER (WHERE user_id IS NULL)::int AS anonymous_visitor_views,
+          COUNT(*) FILTER (WHERE store_id IS NULL)::int AS marketplace_views,
+          COUNT(*) FILTER (WHERE store_id IS NOT NULL)::int AS storefront_views,
+          COUNT(DISTINCT visitor_hash) FILTER (WHERE occurred_at >= NOW() - INTERVAL '15 minutes')::int AS live_active_visitors_now
+        FROM pd_marketplace_analytics_event
+        ${dateFilter}
+      `);
 
-    // Fallback counts if telemetry event table is newly initialized
-    if (totalPageViews === 0) {
-      const fallbackViews = await query(`SELECT COUNT(*)::int AS cnt FROM pd_product`);
-      const fallbackUsers = await query(`SELECT COUNT(*)::int AS cnt FROM pd_user`);
-      const fallbackOrders = await query(`SELECT COUNT(*)::int AS cnt FROM pd_order`);
-      totalPageViews = (Number(fallbackViews.rows[0]?.cnt || 0) * 14) + (Number(fallbackOrders.rows[0]?.cnt || 0) * 8) + 180;
-      uniqueVisitors = Number(fallbackUsers.rows[0]?.cnt || 0) + Math.round(totalPageViews * 0.35);
+      const summaryRow = summaryRes.rows[0] || {};
+      totalPageViews = Number(summaryRow.total_page_views || 0);
+      uniqueVisitors = Number(summaryRow.unique_visitors || 0);
+      registeredUserViews = Number(summaryRow.registered_user_views || 0);
+      anonymousVisitorViews = Number(summaryRow.anonymous_visitor_views || 0);
+      marketplaceViews = Number(summaryRow.marketplace_views || 0);
+      storefrontViews = Number(summaryRow.storefront_views || 0);
+      liveActiveNow = Number(summaryRow.live_active_visitors_now || 0);
+    } catch {
+      // leave all at 0
     }
 
-    const registeredUserViews = Number(summaryRow.registered_user_views || Math.round(totalPageViews * 0.42));
-    const anonymousVisitorViews = Number(summaryRow.anonymous_visitor_views || (totalPageViews - registeredUserViews));
-    const marketplaceViews = Number(summaryRow.marketplace_views || Math.round(totalPageViews * 0.58));
-    const storefrontViews = Number(summaryRow.storefront_views || (totalPageViews - marketplaceViews));
-    const liveActiveNow = Number(summaryRow.live_active_visitors_now || Math.max(3, Math.round(uniqueVisitors * 0.05)));
-
-    // 2. Top Pages Viewed
-    const pagesRes = await query(`
-      SELECT 
-        COALESCE(path, '/') AS path,
-        CASE 
-          WHEN path LIKE '/store%' OR store_id IS NOT NULL THEN 'storefront'
-          WHEN path LIKE '/hub%' OR path = '/' THEN 'marketplace'
-          WHEN path LIKE '/admin%' OR path LIKE '/dashboard%' THEN 'admin'
-          ELSE 'other'
-        END AS type,
-        COUNT(*)::int AS views_count,
-        COUNT(DISTINCT visitor_hash)::int AS unique_visitors
-      FROM pd_marketplace_analytics_event
-      ${dateFilter}
-      GROUP BY path, store_id
-      ORDER BY views_count DESC
-      LIMIT 10
-    `);
-
-    let topPages = pagesRes.rows.map((r: any) => ({
-      path: r.path,
-      type: r.type as 'marketplace' | 'storefront' | 'admin' | 'other',
-      views_count: Number(r.views_count || 0),
-      unique_visitors: Number(r.unique_visitors || 0),
-      avg_time_seconds: Math.round(45 + Math.random() * 90),
-    }));
-
-    if (topPages.length === 0) {
-      topPages = [
-        { path: '/hub', type: 'marketplace', views_count: Math.round(totalPageViews * 0.32), unique_visitors: Math.round(uniqueVisitors * 0.45), avg_time_seconds: 110 },
-        { path: '/hub/search', type: 'marketplace', views_count: Math.round(totalPageViews * 0.18), unique_visitors: Math.round(uniqueVisitors * 0.25), avg_time_seconds: 75 },
-        { path: '/store/ateliermedina', type: 'storefront', views_count: Math.round(totalPageViews * 0.14), unique_visitors: Math.round(uniqueVisitors * 0.18), avg_time_seconds: 140 },
-        { path: '/hub/category/artisanat', type: 'marketplace', views_count: Math.round(totalPageViews * 0.11), unique_visitors: Math.round(uniqueVisitors * 0.15), avg_time_seconds: 90 },
-        { path: '/store/ateliermedina/product/tapis-berbere-fait-main', type: 'storefront', views_count: Math.round(totalPageViews * 0.08), unique_visitors: Math.round(uniqueVisitors * 0.10), avg_time_seconds: 180 },
-        { path: '/hub/pricing', type: 'marketplace', views_count: Math.round(totalPageViews * 0.06), unique_visitors: Math.round(uniqueVisitors * 0.08), avg_time_seconds: 60 },
-      ];
+    // Calculate avg session duration from real session data
+    try {
+      const sessionRes = await query(`
+        SELECT 
+          COALESCE(
+            AVG(EXTRACT(EPOCH FROM (session_end - session_start))),
+            0
+          )::int AS avg_duration_seconds
+        FROM (
+          SELECT 
+            session_hash,
+            MIN(occurred_at) AS session_start,
+            MAX(occurred_at) AS session_end
+          FROM pd_marketplace_analytics_event
+          WHERE session_hash IS NOT NULL
+          ${dateFilterAnd}
+          GROUP BY session_hash
+          HAVING COUNT(*) > 1
+        ) sessions
+      `);
+      avgSessionDuration = Number(sessionRes.rows[0]?.avg_duration_seconds || 0);
+    } catch {
+      avgSessionDuration = 0;
     }
 
-    // 3. Top Products Viewed
+    // Calculate bounce rate (sessions with only 1 event / total sessions)
+    try {
+      const bounceRes = await query(`
+        SELECT
+          COUNT(*) FILTER (WHERE event_count = 1)::float / NULLIF(COUNT(*), 0) * 100 AS bounce_rate
+        FROM (
+          SELECT session_hash, COUNT(*)::int AS event_count
+          FROM pd_marketplace_analytics_event
+          WHERE session_hash IS NOT NULL
+          ${dateFilterAnd}
+          GROUP BY session_hash
+        ) sessions
+      `);
+      bounceRatePct = Number(Number(bounceRes.rows[0]?.bounce_rate || 0).toFixed(1));
+    } catch {
+      bounceRatePct = 0;
+    }
+
+    // Calculate views growth compared to previous period
+    try {
+      if (range.startDate && range.previousStartDate && range.previousEndDate) {
+        const prevRes = await query(`
+          SELECT COUNT(*)::int AS prev_views
+          FROM pd_marketplace_analytics_event
+          WHERE occurred_at >= '${range.previousStartDate}'::timestamptz 
+            AND occurred_at <= '${range.previousEndDate}'::timestamptz
+        `);
+        const prevViews = Number(prevRes.rows[0]?.prev_views || 0);
+        if (prevViews > 0) {
+          viewsGrowthPct = Number(((totalPageViews - prevViews) / prevViews * 100).toFixed(1));
+        }
+      }
+    } catch {
+      viewsGrowthPct = null;
+    }
+
+    // 2. Top Pages Viewed — purely from analytics events
+    let topPages: any[] = [];
+    try {
+      const pagesRes = await query(`
+        SELECT 
+          COALESCE(path, '/') AS path,
+          CASE 
+            WHEN store_id IS NOT NULL THEN 'storefront'
+            WHEN path LIKE '/hub%' OR path = '/' THEN 'marketplace'
+            WHEN path LIKE '/admin%' OR path LIKE '/dashboard%' THEN 'admin'
+            ELSE 'other'
+          END AS type,
+          COUNT(*)::int AS views_count,
+          COUNT(DISTINCT visitor_hash)::int AS unique_visitors
+        FROM pd_marketplace_analytics_event
+        ${dateFilter}
+        GROUP BY path, CASE 
+            WHEN store_id IS NOT NULL THEN 'storefront'
+            WHEN path LIKE '/hub%' OR path = '/' THEN 'marketplace'
+            WHEN path LIKE '/admin%' OR path LIKE '/dashboard%' THEN 'admin'
+            ELSE 'other'
+          END
+        ORDER BY views_count DESC
+        LIMIT 10
+      `);
+
+      topPages = pagesRes.rows.map((r: any) => ({
+        path: r.path,
+        type: r.type as 'marketplace' | 'storefront' | 'admin' | 'other',
+        views_count: Number(r.views_count || 0),
+        unique_visitors: Number(r.unique_visitors || 0),
+      }));
+    } catch {
+      topPages = [];
+    }
+
+    // 3. Top Products Viewed — from analytics events joined with products
     let topProductsViewed: any[] = [];
     try {
       const topProductsViewedRes = await query(`
         SELECT 
           p.id AS product_id,
           p.title,
-          COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-          COALESCE(s.subdomain, s.id, 'store') AS store_host,
+          COALESCE(s.name, '') AS store_name,
+          COALESCE(s.subdomain, '') AS store_host,
           COALESCE(p.price, 0)::numeric AS price_tnd,
-          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 0) AS views_count,
-          COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id), 0) AS unique_visitors,
-          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'add_to_cart'), 0) AS add_to_cart_count,
-          COALESCE((SELECT COUNT(DISTINCT order_id)::int FROM pd_order_item oi WHERE oi.product_id = p.id), 0) AS orders_count
-        FROM pd_product p
+          COUNT(e.id)::int AS views_count,
+          COUNT(DISTINCT e.visitor_hash)::int AS unique_visitors,
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e2 WHERE e2.product_id = p.id AND e2.event_type = 'add_to_cart' ${dateFilterAnd}), 0) AS add_to_cart_count,
+          COALESCE((SELECT COUNT(DISTINCT oi.order_id)::int FROM pd_order_item oi WHERE oi.product_id = p.id), 0) AS orders_count
+        FROM pd_marketplace_analytics_event e
+        JOIN pd_product p ON e.product_id = p.id
         LEFT JOIN pd_store s ON p.store_id = s.id
-        ORDER BY views_count DESC, p.created_at DESC
+        WHERE e.event_type = 'product_view'
+        ${dateFilterAnd}
+        GROUP BY p.id, p.title, s.name, s.subdomain, p.price
+        ORDER BY views_count DESC
         LIMIT 8
       `);
 
       topProductsViewed = topProductsViewedRes.rows.map((r: any) => {
-        const vCount = Math.max(1, Number(r.views_count || 14));
+        const vCount = Number(r.views_count || 0);
         const oCount = Number(r.orders_count || 0);
         return {
           product_id: r.product_id,
           title: r.title,
-          store_name: r.store_name || 'Marketplace Store',
-          store_host: r.store_host || 'store',
+          store_name: r.store_name || '',
+          store_host: r.store_host || '',
           price_tnd: Number(r.price_tnd || 0),
           views_count: vCount,
-          unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
-          add_to_cart_count: Number(r.add_to_cart_count || Math.round(vCount * 0.15)),
+          unique_visitors: Number(r.unique_visitors || 0),
+          add_to_cart_count: Number(r.add_to_cart_count || 0),
           orders_count: oCount,
-          conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
+          conversion_rate_pct: vCount > 0 ? Number(((oCount / vCount) * 100).toFixed(1)) : 0,
         };
       });
     } catch {
       topProductsViewed = [];
     }
 
-    // 4. Top Products Ordered
+    // 4. Top Products Ordered — from actual order items
     let topProductsOrdered: any[] = [];
     try {
       const topProductsOrderedRes = await query(`
         SELECT 
           p.id AS product_id,
           p.title,
-          COALESCE(s.name, 'Marketplace Vendor') AS store_name,
-          COALESCE(s.subdomain, s.id, 'store') AS store_host,
+          COALESCE(s.name, '') AS store_name,
+          COALESCE(s.subdomain, '') AS store_host,
           SUM(oi.quantity)::int AS units_sold,
           SUM(oi.subtotal)::numeric AS total_revenue_tnd,
-          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view'), 20) AS views_count
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.product_id = p.id AND e.event_type = 'product_view' ${dateFilterAnd}), 0) AS views_count
         FROM pd_order_item oi
         JOIN pd_product p ON oi.product_id = p.id
         LEFT JOIN pd_store s ON p.store_id = s.id
@@ -1337,64 +1406,64 @@ export class AnalyticsService {
 
       topProductsOrdered = topProductsOrderedRes.rows.map((r: any) => {
         const uSold = Number(r.units_sold || 0);
-        const vCount = Math.max(uSold, Number(r.views_count || uSold * 6));
+        const vCount = Number(r.views_count || 0);
         return {
           product_id: r.product_id,
           title: r.title,
-          store_name: r.store_name || 'Marketplace Vendor',
-          store_host: r.store_host || 'store',
+          store_name: r.store_name || '',
+          store_host: r.store_host || '',
           units_sold: uSold,
           total_revenue_tnd: Number(r.total_revenue_tnd || 0),
           views_count: vCount,
-          conversion_rate_pct: Number(((uSold / vCount) * 100).toFixed(1)),
+          conversion_rate_pct: vCount > 0 ? Number(((uSold / vCount) * 100).toFixed(1)) : 0,
         };
       });
     } catch {
       topProductsOrdered = [];
     }
 
-    // 5. Top Storefront Websites by Views
+    // 5. Top Storefront Websites by Views — from analytics events
     let topStorefrontsByViews: any[] = [];
     try {
       const topStoresViewsRes = await query(`
         SELECT 
           s.id AS store_id,
           s.name AS store_name,
-          COALESCE(s.subdomain, s.id) AS store_host,
-          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS views_count,
-          COALESCE((SELECT COUNT(DISTINCT visitor_hash)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 0) AS unique_visitors,
+          COALESCE(s.subdomain, '') AS store_host,
+          COUNT(e.id)::int AS views_count,
+          COUNT(DISTINCT e.visitor_hash)::int AS unique_visitors,
           COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id AND p.status = 'published'), 0) AS active_listings_count
-        FROM pd_store s
-        ORDER BY views_count DESC, s.created_at DESC
+        FROM pd_marketplace_analytics_event e
+        JOIN pd_store s ON e.store_id = s.id
+        ${dateFilter ? dateFilter.replace('WHERE', 'WHERE e.') : ''}
+        GROUP BY s.id, s.name, s.subdomain
+        ORDER BY views_count DESC
         LIMIT 8
       `);
 
-      topStorefrontsByViews = topStoresViewsRes.rows.map((r: any) => {
-        const vCount = Math.max(5, Number(r.views_count || 18));
-        return {
-          store_id: r.store_id,
-          store_name: r.store_name,
-          store_host: r.store_host,
-          views_count: vCount,
-          unique_visitors: Math.max(1, Number(r.unique_visitors || Math.round(vCount * 0.7))),
-          active_listings_count: Number(r.active_listings_count || 0),
-        };
-      });
+      topStorefrontsByViews = topStoresViewsRes.rows.map((r: any) => ({
+        store_id: r.store_id,
+        store_name: r.store_name,
+        store_host: r.store_host,
+        views_count: Number(r.views_count || 0),
+        unique_visitors: Number(r.unique_visitors || 0),
+        active_listings_count: Number(r.active_listings_count || 0),
+      }));
     } catch {
       topStorefrontsByViews = [];
     }
 
-    // 6. Top Storefront Websites by Sales
+    // 6. Top Storefront Websites by Sales — from actual order items
     let topStorefrontsBySales: any[] = [];
     try {
       const topStoresSalesRes = await query(`
         SELECT 
           s.id AS store_id,
           s.name AS store_name,
-          COALESCE(s.subdomain, s.id) AS store_host,
+          COALESCE(s.subdomain, '') AS store_host,
           COUNT(DISTINCT oi.order_id)::int AS total_orders_count,
           COALESCE(SUM(oi.subtotal), 0)::numeric AS total_sales_gmv_tnd,
-          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id), 25) AS page_views_count
+          COALESCE((SELECT COUNT(*)::int FROM pd_marketplace_analytics_event e WHERE e.store_id = s.id ${dateFilterAnd}), 0) AS page_views_count
         FROM pd_store s
         JOIN pd_order_item oi ON oi.store_id = s.id
         JOIN pd_order o ON oi.order_id = o.id
@@ -1406,7 +1475,7 @@ export class AnalyticsService {
 
       topStorefrontsBySales = topStoresSalesRes.rows.map((r: any) => {
         const oCount = Number(r.total_orders_count || 0);
-        const vCount = Math.max(oCount, Number(r.page_views_count || oCount * 8));
+        const vCount = Number(r.page_views_count || 0);
         return {
           store_id: r.store_id,
           store_name: r.store_name,
@@ -1414,157 +1483,146 @@ export class AnalyticsService {
           total_orders_count: oCount,
           total_sales_gmv_tnd: Number(r.total_sales_gmv_tnd || 0),
           page_views_count: vCount,
-          conversion_rate_pct: Number(((oCount / vCount) * 100).toFixed(1)),
+          conversion_rate_pct: vCount > 0 ? Number(((oCount / vCount) * 100).toFixed(1)) : 0,
         };
       });
     } catch {
       topStorefrontsBySales = [];
     }
 
-    // 7. Top Marketplace Searches
-    const searchesRes = await query(`
-      SELECT 
-        search_query_normalized AS query,
-        COUNT(*)::int AS search_count,
-        COALESCE(AVG(search_results_count), 0)::int AS avg_results_count,
-        COALESCE((COUNT(*) FILTER (WHERE search_results_count = 0)::float / NULLIF(COUNT(*), 0)) * 100, 0)::numeric AS zero_results_pct
-      FROM pd_marketplace_analytics_event
-      WHERE event_type = 'search_query' AND search_query_normalized IS NOT NULL
-      GROUP BY search_query_normalized
-      ORDER BY search_count DESC
-      LIMIT 8
-    `);
+    // 7. Top Marketplace Searches — from actual search_query events
+    let topMarketplaceSearches: any[] = [];
+    try {
+      const searchesRes = await query(`
+        SELECT 
+          search_query_normalized AS query,
+          COUNT(*)::int AS search_count,
+          COALESCE(AVG(search_results_count), 0)::int AS avg_results_count,
+          COALESCE((COUNT(*) FILTER (WHERE search_results_count = 0)::float / NULLIF(COUNT(*), 0)) * 100, 0)::numeric AS zero_results_pct
+        FROM pd_marketplace_analytics_event
+        WHERE event_type = 'search_query' AND search_query_normalized IS NOT NULL AND store_id IS NULL
+        ${dateFilterAnd}
+        GROUP BY search_query_normalized
+        ORDER BY search_count DESC
+        LIMIT 8
+      `);
 
-    let topMarketplaceSearches = searchesRes.rows.map((r: any) => ({
-      query: r.query,
-      search_count: Number(r.search_count || 0),
-      avg_results_count: Number(r.avg_results_count || 0),
-      zero_results_pct: Number(r.zero_results_pct || 0),
-    }));
-
-    if (topMarketplaceSearches.length === 0) {
-      topMarketplaceSearches = [
-        { query: 'tapis berbere', search_count: 142, avg_results_count: 18, zero_results_pct: 0 },
-        { query: 'huile d d olives bio', search_count: 98, avg_results_count: 24, zero_results_pct: 0 },
-        { query: 'ceramique naboul', search_count: 76, avg_results_count: 12, zero_results_pct: 0 },
-        { query: 'robe artisanale', search_count: 54, avg_results_count: 9, zero_results_pct: 5 },
-        { query: 'miel naturel', search_count: 42, avg_results_count: 15, zero_results_pct: 0 },
-        { query: 'couffin en osier', search_count: 31, avg_results_count: 7, zero_results_pct: 0 },
-      ];
+      topMarketplaceSearches = searchesRes.rows.map((r: any) => ({
+        query: r.query,
+        search_count: Number(r.search_count || 0),
+        avg_results_count: Number(r.avg_results_count || 0),
+        zero_results_pct: Number(Number(r.zero_results_pct || 0).toFixed(1)),
+      }));
+    } catch {
+      topMarketplaceSearches = [];
     }
 
-    // 8. Top Storefront Searches
-    const sfSearchesRes = await query(`
-      SELECT 
-        e.search_query_normalized AS query,
-        s.name AS store_name,
-        COALESCE(s.subdomain, s.id) AS store_host,
-        COUNT(*)::int AS search_count,
-        COALESCE(AVG(e.search_results_count), 0)::int AS avg_results_count
-      FROM pd_marketplace_analytics_event e
-      JOIN pd_store s ON e.store_id = s.id
-      WHERE e.event_type = 'search_query' AND e.search_query_normalized IS NOT NULL
-      GROUP BY e.search_query_normalized, s.name, s.subdomain, s.id
-      ORDER BY search_count DESC
-      LIMIT 8
-    `);
+    // 8. Top Storefront Searches — from actual search_query events with store
+    let topStorefrontSearches: any[] = [];
+    try {
+      const sfSearchesRes = await query(`
+        SELECT 
+          e.search_query_normalized AS query,
+          s.name AS store_name,
+          COALESCE(s.subdomain, '') AS store_host,
+          COUNT(*)::int AS search_count,
+          COALESCE(AVG(e.search_results_count), 0)::int AS avg_results_count
+        FROM pd_marketplace_analytics_event e
+        JOIN pd_store s ON e.store_id = s.id
+        WHERE e.event_type = 'search_query' AND e.search_query_normalized IS NOT NULL
+        ${dateFilterAnd}
+        GROUP BY e.search_query_normalized, s.name, s.subdomain, s.id
+        ORDER BY search_count DESC
+        LIMIT 8
+      `);
 
-    let topStorefrontSearches = sfSearchesRes.rows.map((r: any) => ({
-      query: r.query,
-      store_name: r.store_name,
-      store_host: r.store_host,
-      search_count: Number(r.search_count || 0),
-      avg_results_count: Number(r.avg_results_count || 0),
-    }));
-
-    if (topStorefrontSearches.length === 0) {
-      topStorefrontSearches = [
-        { query: 'margoum rouge', store_name: 'Atelier Médina', store_host: 'ateliermedina', search_count: 38, avg_results_count: 6 },
-        { query: 'huile essentielle jasmin', store_name: 'BioEssence TN', store_host: 'bioessence', search_count: 29, avg_results_count: 4 },
-        { query: 'assiette decoratif', store_name: 'Céramique Nabeul', store_host: 'nabeulpottery', search_count: 22, avg_results_count: 11 },
-        { query: 'sac cuir artisanal', store_name: 'Artisanat Cuir', store_host: 'cuirart', search_count: 19, avg_results_count: 8 },
-      ];
+      topStorefrontSearches = sfSearchesRes.rows.map((r: any) => ({
+        query: r.query,
+        store_name: r.store_name,
+        store_host: r.store_host,
+        search_count: Number(r.search_count || 0),
+        avg_results_count: Number(r.avg_results_count || 0),
+      }));
+    } catch {
+      topStorefrontSearches = [];
     }
 
-    // 9. Visit Sources & Referrers
-    const sourcesRes = await query(`
-      SELECT 
-        COALESCE(referrer_domain, 'Direct / Search') AS referrer_domain,
-        COUNT(*)::int AS views_count
-      FROM pd_marketplace_analytics_event
-      ${dateFilter}
-      GROUP BY referrer_domain
-      ORDER BY views_count DESC
-      LIMIT 6
-    `);
+    // 9. Visit Sources & Referrers — from actual referrer_domain data
+    let visitSources: any[] = [];
+    try {
+      const sourcesRes = await query(`
+        SELECT 
+          COALESCE(referrer_domain, 'Direct') AS referrer_domain,
+          COUNT(*)::int AS views_count
+        FROM pd_marketplace_analytics_event
+        ${dateFilter}
+        GROUP BY referrer_domain
+        ORDER BY views_count DESC
+        LIMIT 10
+      `);
 
-    let visitSources = sourcesRes.rows.map((r: any) => ({
-      referrer_domain: r.referrer_domain,
-      views_count: Number(r.views_count || 0),
-      share_pct: Number(((Number(r.views_count || 0) / Math.max(1, totalPageViews)) * 100).toFixed(1)),
-    }));
-
-    if (visitSources.length === 0) {
-      visitSources = [
-        { referrer_domain: 'Direct / Bookmark', views_count: Math.round(totalPageViews * 0.42), share_pct: 42.0 },
-        { referrer_domain: 'google.com (Organic Search)', views_count: Math.round(totalPageViews * 0.28), share_pct: 28.0 },
-        { referrer_domain: 'instagram.com (Social)', views_count: Math.round(totalPageViews * 0.16), share_pct: 16.0 },
-        { referrer_domain: 'facebook.com (Social)', views_count: Math.round(totalPageViews * 0.09), share_pct: 9.0 },
-        { referrer_domain: 't.co (Twitter/X)', views_count: Math.round(totalPageViews * 0.05), share_pct: 5.0 },
-      ];
+      visitSources = sourcesRes.rows.map((r: any) => ({
+        referrer_domain: r.referrer_domain,
+        views_count: Number(r.views_count || 0),
+        share_pct: totalPageViews > 0 ? Number(((Number(r.views_count || 0) / totalPageViews) * 100).toFixed(1)) : 0,
+      }));
+    } catch {
+      visitSources = [];
     }
 
-    // 10. Device Breakdown
-    const devicesRes = await query(`
-      SELECT 
-        COALESCE(device_type, 'mobile') AS device_type,
-        COUNT(*)::int AS views_count
-      FROM pd_marketplace_analytics_event
-      ${dateFilter}
-      GROUP BY device_type
-      ORDER BY views_count DESC
-    `);
+    // 10. Device Breakdown — from actual device_type data
+    let deviceBreakdown: any[] = [];
+    try {
+      const devicesRes = await query(`
+        SELECT 
+          COALESCE(device_type, 'unknown') AS device_type,
+          COUNT(*)::int AS views_count
+        FROM pd_marketplace_analytics_event
+        ${dateFilter}
+        GROUP BY device_type
+        ORDER BY views_count DESC
+      `);
 
-    let deviceBreakdown = devicesRes.rows.map((r: any) => ({
-      device_type: r.device_type,
-      views_count: Number(r.views_count || 0),
-      share_pct: Number(((Number(r.views_count || 0) / Math.max(1, totalPageViews)) * 100).toFixed(1)),
-    }));
-
-    if (deviceBreakdown.length === 0) {
-      deviceBreakdown = [
-        { device_type: 'Mobile Phone', views_count: Math.round(totalPageViews * 0.64), share_pct: 64.0 },
-        { device_type: 'Desktop Web', views_count: Math.round(totalPageViews * 0.31), share_pct: 31.0 },
-        { device_type: 'Tablet', views_count: Math.round(totalPageViews * 0.05), share_pct: 5.0 },
-      ];
+      deviceBreakdown = devicesRes.rows.map((r: any) => ({
+        device_type: r.device_type,
+        views_count: Number(r.views_count || 0),
+        share_pct: totalPageViews > 0 ? Number(((Number(r.views_count || 0) / totalPageViews) * 100).toFixed(1)) : 0,
+      }));
+    } catch {
+      deviceBreakdown = [];
     }
 
-    // 11. Live Activity Feed
-    const feedRes = await query(`
-      SELECT 
-        e.id,
-        e.event_type,
-        COALESCE(e.path, '/') AS path,
-        u.role AS user_role,
-        s.name AS store_name,
-        COALESCE(e.device_type, 'web') AS device_type,
-        e.occurred_at
-      FROM pd_marketplace_analytics_event e
-      LEFT JOIN pd_user u ON e.user_id = u.id
-      LEFT JOIN pd_store s ON e.store_id = s.id
-      ORDER BY e.occurred_at DESC
-      LIMIT 15
-    `);
+    // 11. Live Activity Feed — most recent real events
+    let liveActivityFeed: any[] = [];
+    try {
+      const feedRes = await query(`
+        SELECT 
+          e.id,
+          e.event_type,
+          COALESCE(e.path, '/') AS path,
+          u.role AS user_role,
+          s.name AS store_name,
+          COALESCE(e.device_type, 'web') AS device_type,
+          e.occurred_at
+        FROM pd_marketplace_analytics_event e
+        LEFT JOIN pd_user u ON e.user_id = u.id
+        LEFT JOIN pd_store s ON e.store_id = s.id
+        ORDER BY e.occurred_at DESC
+        LIMIT 15
+      `);
 
-    const liveActivityFeed = feedRes.rows.map((r: any) => ({
-      id: r.id,
-      event_type: r.event_type,
-      path: r.path,
-      user_role: r.user_role || 'Visitor (Guest)',
-      store_name: r.store_name || 'Marketplace Central',
-      device_type: r.device_type,
-      occurred_at: r.occurred_at,
-    }));
+      liveActivityFeed = feedRes.rows.map((r: any) => ({
+        id: r.id,
+        event_type: r.event_type,
+        path: r.path,
+        user_role: r.user_role || 'guest',
+        store_name: r.store_name || null,
+        device_type: r.device_type,
+        occurred_at: r.occurred_at,
+      }));
+    } catch {
+      liveActivityFeed = [];
+    }
 
     return {
       range,
@@ -1577,9 +1635,9 @@ export class AnalyticsService {
         marketplace_views: marketplaceViews,
         storefront_views: storefrontViews,
         live_active_visitors_now: liveActiveNow,
-        avg_session_duration_seconds: 145,
-        bounce_rate_pct: 34.2,
-        views_growth_pct: 12.8,
+        avg_session_duration_seconds: avgSessionDuration,
+        bounce_rate_pct: bounceRatePct,
+        views_growth_pct: viewsGrowthPct,
       },
       top_pages_viewed: topPages,
       top_products_viewed: topProductsViewed,

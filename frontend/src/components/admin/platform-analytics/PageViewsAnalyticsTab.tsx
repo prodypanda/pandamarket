@@ -47,9 +47,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
             <span className="text-3xl font-black text-slate-900 dark:text-white">
               {summary.total_page_views.toLocaleString()}
             </span>
-            {summary.views_growth_pct !== null && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
-                <TrendingUp className="w-3 h-3" /> +{summary.views_growth_pct}%
+            {summary.views_growth_pct !== null && summary.views_growth_pct !== undefined && (
+              <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md ${summary.views_growth_pct >= 0 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40' : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40'}`}>
+                <TrendingUp className="w-3 h-3" /> {summary.views_growth_pct >= 0 ? '+' : ''}{summary.views_growth_pct}%
               </span>
             )}
           </div>
@@ -135,11 +135,12 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                   <th className="pb-3 font-extrabold">Type</th>
                   <th className="pb-3 font-extrabold text-right">Views</th>
                   <th className="pb-3 font-extrabold text-right">Unique Visitors</th>
-                  <th className="pb-3 font-extrabold text-right">Avg Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {top_pages_viewed.map((page, idx) => (
+                {top_pages_viewed.length === 0 ? (
+                  <tr><td colSpan={4} className="py-8 text-center text-slate-400 text-xs font-semibold">No page view data recorded yet. Events will appear as users browse the platform.</td></tr>
+                ) : top_pages_viewed.map((page, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3 max-w-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                       {page.path}
@@ -160,9 +161,6 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                     </td>
                     <td className="py-3 text-right text-slate-600 dark:text-slate-400">
                       {page.unique_visitors.toLocaleString()}
-                    </td>
-                    <td className="py-3 text-right text-slate-500">
-                      {page.avg_time_seconds}s
                     </td>
                   </tr>
                 ))}
@@ -185,7 +183,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
           </div>
 
           <div className="space-y-3 max-h-[380px] overflow-y-auto no-scrollbar pr-1">
-            {live_activity_feed.map((act) => (
+            {live_activity_feed.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No recent activity recorded yet.</div>
+            ) : live_activity_feed.map((act) => (
               <div key={act.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 text-xs space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase text-[10px]">
@@ -197,8 +197,8 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                 </div>
                 <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{act.path}</p>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold pt-1">
-                  <span>{act.store_name}</span>
-                  <span className="capitalize">{act.user_role} ({act.device_type})</span>
+                  <span>{act.store_name || 'Marketplace'}</span>
+                  <span className="capitalize">{act.user_role || 'guest'} ({act.device_type})</span>
                 </div>
               </div>
             ))}
@@ -237,13 +237,15 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {top_products_viewed.map((prod) => (
+                {top_products_viewed.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-semibold">No product view data recorded yet.</td></tr>
+                ) : top_products_viewed.map((prod) => (
                   <tr key={prod.product_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3 max-w-[160px] font-bold text-slate-800 dark:text-slate-200 truncate">
                       {prod.title}
                     </td>
                     <td className="py-3 text-slate-500 font-medium truncate max-w-[100px]">
-                      {prod.store_name}
+                      {prod.store_name || '—'}
                     </td>
                     <td className="py-3 text-right font-black text-slate-900 dark:text-white">
                       {prod.views_count.toLocaleString()}
@@ -292,13 +294,15 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {top_products_ordered.map((prod) => (
+                {top_products_ordered.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-semibold">No order data recorded yet.</td></tr>
+                ) : top_products_ordered.map((prod) => (
                   <tr key={prod.product_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3 max-w-[160px] font-bold text-slate-800 dark:text-slate-200 truncate">
                       {prod.title}
                     </td>
                     <td className="py-3 text-slate-500 font-medium truncate max-w-[100px]">
-                      {prod.store_name}
+                      {prod.store_name || '—'}
                     </td>
                     <td className="py-3 text-right font-black text-slate-900 dark:text-white">
                       {prod.units_sold}
@@ -342,13 +346,15 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {top_storefronts_by_views.map((store) => (
+                {top_storefronts_by_views.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-semibold">No storefront view data recorded yet.</td></tr>
+                ) : top_storefronts_by_views.map((store) => (
                   <tr key={store.store_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3 font-bold text-slate-800 dark:text-slate-200">
                       {store.store_name}
                     </td>
                     <td className="py-3 font-mono text-[11px] text-blue-600 dark:text-blue-400">
-                      /store/{store.store_host}
+                      {store.store_host ? `/store/${store.store_host}` : '—'}
                     </td>
                     <td className="py-3 text-right font-black text-slate-900 dark:text-white">
                       {store.views_count.toLocaleString()}
@@ -397,7 +403,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {top_storefronts_by_sales.map((store) => (
+                {top_storefronts_by_sales.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-semibold">No storefront sales data recorded yet.</td></tr>
+                ) : top_storefronts_by_sales.map((store) => (
                   <tr key={store.store_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3 font-bold text-slate-800 dark:text-slate-200">
                       {store.store_name}
@@ -444,7 +452,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
           </div>
 
           <div className="space-y-3">
-            {top_marketplace_searches.map((item, idx) => (
+            {top_marketplace_searches.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No marketplace search data recorded yet.</div>
+            ) : top_marketplace_searches.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 text-xs">
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center text-[11px]">
@@ -478,7 +488,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
           </div>
 
           <div className="space-y-3">
-            {top_storefront_searches.map((item, idx) => (
+            {top_storefront_searches.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No storefront search data recorded yet.</div>
+            ) : top_storefront_searches.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 text-xs">
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-black flex items-center justify-center text-[11px]">
@@ -487,7 +499,7 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
                   <div>
                     <p className="font-bold text-slate-900 dark:text-white">&ldquo;{item.query}&rdquo;</p>
                     <p className="text-[10px] text-slate-400 font-semibold">
-                      Store: <span className="text-slate-700 dark:text-slate-300 font-bold">{item.store_name}</span> (/store/{item.store_host})
+                      Store: <span className="text-slate-700 dark:text-slate-300 font-bold">{item.store_name}</span> {item.store_host ? `(/store/${item.store_host})` : ''}
                     </p>
                   </div>
                 </div>
@@ -510,7 +522,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
           </div>
 
           <div className="space-y-3">
-            {visit_sources.map((src, idx) => (
+            {visit_sources.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No traffic source data recorded yet.</div>
+            ) : visit_sources.map((src, idx) => (
               <div key={idx} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-slate-800 dark:text-slate-200">{src.referrer_domain}</span>
@@ -535,7 +549,9 @@ export function PageViewsAnalyticsTab({ data, onOpenDrilldown }: PageViewsAnalyt
           </div>
 
           <div className="space-y-4 pt-2">
-            {device_breakdown.map((dev, idx) => (
+            {device_breakdown.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">No device data recorded yet.</div>
+            ) : device_breakdown.map((dev, idx) => (
               <div key={idx} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-slate-800 dark:text-slate-200 capitalize">{dev.device_type}</span>

@@ -705,7 +705,6 @@ export interface PlatformPageViewsAnalytics {
     type: 'marketplace' | 'storefront' | 'admin' | 'other';
     views_count: number;
     unique_visitors: number;
-    avg_time_seconds: number;
   }>;
   top_products_viewed: Array<{
     product_id: string;
