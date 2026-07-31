@@ -29,6 +29,7 @@ import {
   ZoomOut,
   RotateCcw,
   MousePointer2,
+  Sparkles,
   Gauge,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -1289,6 +1290,25 @@ export function PageViewsAnalyticsTab({ data, liveData, onOpenDrilldown }: PageV
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
+      <div className="relative overflow-hidden rounded-3xl border border-indigo-200/70 bg-gradient-to-br from-indigo-600 via-violet-600 to-slate-950 p-6 text-white shadow-2xl shadow-indigo-950/20 dark:border-indigo-400/20">
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute bottom-0 left-1/3 h-24 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-100">
+              <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Interaction intelligence
+            </div>
+            <h2 className="text-2xl font-black tracking-tight md:text-3xl">Page Views & Interactions Command Center</h2>
+            <p className="mt-2 max-w-2xl text-sm font-medium text-indigo-100">Monitor live demand, discover converting pages and stores, inspect real-time visitor geography, and quickly spot search or product opportunities.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-right">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur"><p className="text-[10px] font-bold uppercase text-indigo-100">View split</p><p className="text-lg font-black">{summary.marketplace_views >= summary.storefront_views ? 'Hub-led' : 'Store-led'}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur"><p className="text-[10px] font-bold uppercase text-indigo-100">Devices</p><p className="text-lg font-black">{device_breakdown.length}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur"><p className="text-[10px] font-bold uppercase text-indigo-100">Sources</p><p className="text-lg font-black">{visit_sources.length}</p></div>
+          </div>
+        </div>
+      </div>
+
       {/* 1. Header KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Total Page Views */}
