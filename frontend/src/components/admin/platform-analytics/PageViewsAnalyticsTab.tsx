@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { WORLD_COUNTRY_PATHS } from './world-map-svg-paths';
 
 interface LiveData {
   live_active_visitors_now: number;
@@ -206,60 +207,83 @@ function RealtimeVisitorsAreaGraph({
   liveVisitorsNow: number;
 }) {
   const { t } = useLocale();
+  const [metricMode, setMetricMode] = useState<'both' | 'visitors' | 'views'>('both');
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  // Fallback demo data if series is empty/sparse so graph is always smooth
+  // Fallback / Normalized series data
   const pointsData = (series && series.length >= 3)
     ? series
     : Array.from({ length: 12 }, (_, i) => {
         const d = new Date(Date.now() - (11 - i) * 5 * 60 * 1000);
         const time_label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const active_visitors = Math.max(1, Math.floor(liveVisitorsNow * (0.6 + Math.sin(i * 0.8) * 0.4)));
-        return { time_label, active_visitors, page_views: active_visitors * 3 };
+        const page_views = Math.floor(active_visitors * (2.5 + Math.cos(i * 0.5) * 1.2));
+        return { time_label, active_visitors, page_views };
       });
 
-  const maxVal = Math.max(...pointsData.map((p) => p.active_visitors || 1), 5);
-  const chartHeight = 160;
-  const chartWidth = 500;
-  const paddingX = 20;
-  const paddingY = 20;
+  // Calculate high-level summary KPIs for header pills
+  const maxVisitors = Math.max(...pointsData.map(p => p.active_visitors || 0), 1);
+  const maxViews = Math.max(...pointsData.map(p => p.page_views || 0), 1);
+  const totalViews = pointsData.reduce((acc, p) => acc + (p.page_views || 0), 0);
+  const avgVisitors = Math.round(pointsData.reduce((acc, p) => acc + (p.active_visitors || 0), 0) / pointsData.length);
 
-  // Build SVG path coordinates
-  const coords = pointsData.map((p, idx) => {
+  const chartHeight = 180;
+  const chartWidth = 560;
+  const paddingX = 35;
+  const paddingY = 25;
+
+  const maxVal = metricMode === 'views' ? maxViews : metricMode === 'visitors' ? maxVisitors : Math.max(maxVisitors, maxViews);
+
+  // Visitor Coords
+  const visitorCoords = pointsData.map((p, idx) => {
     const x = paddingX + (idx / Math.max(1, pointsData.length - 1)) * (chartWidth - paddingX * 2);
-    const y = chartHeight - paddingY - ((p.active_visitors || 0) / maxVal) * (chartHeight - paddingY * 2);
+    const y = chartHeight - paddingY - ((p.active_visitors || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
     return { x, y, p };
   });
 
-  // Area path
-  let areaD = `M ${coords[0].x} ${chartHeight - paddingY}`;
-  coords.forEach((c) => {
-    areaD += ` L ${c.x} ${c.y}`;
+  // Views Coords
+  const viewsCoords = pointsData.map((p, idx) => {
+    const x = paddingX + (idx / Math.max(1, pointsData.length - 1)) * (chartWidth - paddingX * 2);
+    const y = chartHeight - paddingY - ((p.page_views || 0) / (maxVal || 1)) * (chartHeight - paddingY * 2);
+    return { x, y, p };
   });
-  areaD += ` L ${coords[coords.length - 1].x} ${chartHeight - paddingY} Z`;
 
-  // Line path (smooth)
-  let lineD = `M ${coords[0].x} ${coords[0].y}`;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const current = coords[i];
-    const next = coords[i + 1];
-    const controlX = (current.x + next.x) / 2;
-    lineD += ` C ${controlX} ${current.y}, ${controlX} ${next.y}, ${next.x} ${next.y}`;
-  }
+  // Helper smooth path builder
+  const buildSmoothPath = (pts: Array<{ x: number; y: number }>) => {
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const current = pts[i];
+      const next = pts[i + 1];
+      const controlX = (current.x + next.x) / 2;
+      d += ` C ${controlX} ${current.y}, ${controlX} ${next.y}, ${next.x} ${next.y}`;
+    }
+    return d;
+  };
 
-  const activeHover = hoverIndex !== null ? coords[hoverIndex] : coords[coords.length - 1];
+  const buildAreaPath = (pts: Array<{ x: number; y: number }>) => {
+    const line = buildSmoothPath(pts);
+    return `${line} L ${pts[pts.length - 1].x} ${chartHeight - paddingY} L ${pts[0].x} ${chartHeight - paddingY} Z`;
+  };
+
+  const visitorLine = buildSmoothPath(visitorCoords);
+  const visitorArea = buildAreaPath(visitorCoords);
+  const viewsLine = buildSmoothPath(viewsCoords);
+  const viewsArea = buildAreaPath(viewsCoords);
+
+  const activeIdx = hoverIndex !== null ? hoverIndex : pointsData.length - 1;
+  const currentItem = pointsData[activeIdx] || pointsData[pointsData.length - 1];
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4 relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
             <Activity className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              {t('analytics.pageViews.realtimeVisitorsGraph') || 'Realtime Visitor Traffic Area Graph'}
+              {t('analytics.pageViews.realtimeVisitorsGraph') || 'Real-Time Visitor Traffic Flow (Area Graph)'}
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -271,90 +295,200 @@ function RealtimeVisitorsAreaGraph({
           </div>
         </div>
 
-        <div className="text-right">
-          <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{activeHover.p.active_visitors}</span>
-          <span className="text-xs font-bold text-slate-400 block">{t('analytics.pageViews.online') || 'active now'}</span>
+        {/* Metric Selector Buttons */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-[11px] font-bold">
+          <button
+            onClick={() => setMetricMode('both')}
+            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'both' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            Both
+          </button>
+          <button
+            onClick={() => setMetricMode('visitors')}
+            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'visitors' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            Visitors
+          </button>
+          <button
+            onClick={() => setMetricMode('views')}
+            className={`px-2.5 py-1 rounded-lg transition-all ${metricMode === 'views' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            Page Views
+          </button>
         </div>
       </div>
 
-      {/* SVG Area Graph */}
+      {/* Metric Quick Stats Pills Header */}
+      <div className="grid grid-cols-4 gap-2 pt-1">
+        <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Live Online</span>
+          <span className="text-base font-black text-indigo-600 dark:text-indigo-400">{liveVisitorsNow}</span>
+        </div>
+        <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Peak Visitors</span>
+          <span className="text-base font-black text-purple-600 dark:text-purple-400">{maxVisitors}</span>
+        </div>
+        <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Avg Rate</span>
+          <span className="text-base font-black text-blue-600 dark:text-blue-400">{avgVisitors}/min</span>
+        </div>
+        <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Views</span>
+          <span className="text-base font-black text-emerald-600 dark:text-emerald-400">{totalViews.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* SVG Canvas */}
       <div className="relative pt-2">
         <svg
-          className="w-full h-44 overflow-visible"
+          className="w-full h-48 overflow-visible"
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           onMouseLeave={() => setHoverIndex(null)}
         >
           <defs>
-            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.45" />
-              <stop offset="70%" stopColor="#a855f7" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+            <linearGradient id="visitorAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.0" />
             </linearGradient>
-            <linearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="50%" stopColor="#8b5cf6" />
-              <stop offset="100%" stopColor="#ec4899" />
+            <linearGradient id="viewsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#34d399" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
-          <line x1={paddingX} y1={paddingY} x2={chartWidth - paddingX} y2={paddingY} stroke="currentColor" strokeDasharray="3 3" className="text-slate-100 dark:text-slate-800" />
-          <line x1={paddingX} y1={chartHeight / 2} x2={chartWidth - paddingX} y2={chartHeight / 2} stroke="currentColor" strokeDasharray="3 3" className="text-slate-100 dark:text-slate-800" />
-          <line x1={paddingX} y1={chartHeight - paddingY} x2={chartWidth - paddingX} y2={chartHeight - paddingY} stroke="currentColor" className="text-slate-200 dark:text-slate-700" />
+          {/* Y-Axis Horizontal Grid Lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+            const y = chartHeight - paddingY - ratio * (chartHeight - paddingY * 2);
+            const val = Math.round(ratio * maxVal);
+            return (
+              <g key={idx}>
+                <line
+                  x1={paddingX}
+                  y1={y}
+                  x2={chartWidth - paddingX}
+                  y2={y}
+                  stroke="currentColor"
+                  strokeDasharray={idx === 0 ? 'none' : '3 3'}
+                  className="text-slate-100 dark:text-slate-800"
+                />
+                <text
+                  x={paddingX - 8}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="text-[9px] font-mono fill-slate-400 font-bold"
+                >
+                  {val}
+                </text>
+              </g>
+            );
+          })}
 
-          {/* Area Fill */}
-          <path d={areaD} fill="url(#areaGradient)" />
+          {/* Active Visitors Area & Curve */}
+          {(metricMode === 'both' || metricMode === 'visitors') && (
+            <>
+              <path d={visitorArea} fill="url(#visitorAreaGrad)" />
+              <path d={visitorLine} fill="none" stroke="#6366f1" strokeWidth="3" strokeLinecap="round" />
+            </>
+          )}
 
-          {/* Line Curve */}
-          <path d={lineD} fill="none" stroke="url(#strokeGradient)" strokeWidth="3" strokeLinecap="round" />
+          {/* Page Views Area & Curve */}
+          {(metricMode === 'both' || metricMode === 'views') && (
+            <>
+              <path d={viewsArea} fill="url(#viewsAreaGrad)" />
+              <path d={viewsLine} fill="none" stroke="#10b981" strokeWidth="2.5" strokeDasharray={metricMode === 'both' ? '4 2' : 'none'} strokeLinecap="round" />
+            </>
+          )}
 
-          {/* Data Points */}
-          {coords.map((c, i) => {
-            const isHovered = hoverIndex === i || (hoverIndex === null && i === coords.length - 1);
+          {/* Vertical Hover Hairline & Interactive Targets */}
+          {pointsData.map((_, i) => {
+            const vPt = visitorCoords[i];
+            const isHover = activeIdx === i;
             return (
               <g key={i} className="cursor-pointer" onMouseEnter={() => setHoverIndex(i)}>
-                <circle
-                  cx={c.x}
-                  cy={c.y}
-                  r={isHovered ? 6 : 3.5}
-                  className={`${isHovered ? 'fill-white stroke-indigo-600 stroke-[3px]' : 'fill-indigo-500 dark:fill-indigo-400'} transition-all`}
+                {/* Hit area line */}
+                <line
+                  x1={vPt.x}
+                  y1={paddingY}
+                  x2={vPt.x}
+                  y2={chartHeight - paddingY}
+                  stroke="transparent"
+                  strokeWidth="20"
                 />
-                {isHovered && (
-                  <circle cx={c.x} cy={c.y} r={12} className="fill-indigo-500/20 animate-ping" />
+                {isHover && (
+                  <line
+                    x1={vPt.x}
+                    y1={paddingY}
+                    x2={vPt.x}
+                    y2={chartHeight - paddingY}
+                    stroke="#818cf8"
+                    strokeDasharray="3 3"
+                    strokeWidth="1.5"
+                  />
+                )}
+
+                {/* Point indicators */}
+                {(metricMode === 'both' || metricMode === 'visitors') && (
+                  <circle
+                    cx={vPt.x}
+                    cy={vPt.y}
+                    r={isHover ? 5.5 : 3}
+                    className={`${isHover ? 'fill-white stroke-indigo-600 stroke-2' : 'fill-indigo-500'} transition-all`}
+                  />
+                )}
+                {(metricMode === 'both' || metricMode === 'views') && (
+                  <circle
+                    cx={viewsCoords[i].x}
+                    cy={viewsCoords[i].y}
+                    r={isHover ? 4.5 : 2.5}
+                    className={`${isHover ? 'fill-white stroke-emerald-600 stroke-2' : 'fill-emerald-500'} transition-all`}
+                  />
                 )}
               </g>
             );
           })}
         </svg>
 
-        {/* Hover Tooltip Overlay */}
-        {activeHover && (
+        {/* Hover Tooltip Card Popover */}
+        {currentItem && visitorCoords[activeIdx] && (
           <div
-            className="absolute top-2 pointer-events-none transform -translate-x-1/2 transition-all duration-150"
-            style={{ left: `${(activeHover.x / chartWidth) * 100}%` }}
+            className="absolute top-2 pointer-events-none transform -translate-x-1/2 transition-all duration-150 z-20"
+            style={{ left: `${(visitorCoords[activeIdx].x / chartWidth) * 100}%` }}
           >
-            <div className="bg-slate-900 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-lg flex items-center gap-1.5 whitespace-nowrap border border-slate-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{activeHover.p.time_label}:</span>
-              <span className="text-indigo-300">{activeHover.p.active_visitors} visitors</span>
+            <div className="bg-slate-900/95 text-white text-xs font-extrabold p-3 rounded-xl shadow-2xl backdrop-blur-md border border-slate-700 space-y-1.5 min-w-[140px]">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                <span>{currentItem.time_label}</span>
+                <span className="text-emerald-400 font-black">{activeIdx === pointsData.length - 1 ? 'LIVE' : ''}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-indigo-300">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Visitors:
+                </span>
+                <span className="font-black text-white">{currentItem.active_visitors}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-0.5 border-t border-slate-800">
+                <span className="flex items-center gap-1.5 text-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Page Views:
+                </span>
+                <span className="font-black text-white">{currentItem.page_views}</span>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Time Labels */}
+      {/* X-Axis Timeline Labels */}
       <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
         <span>{pointsData[0]?.time_label || '1h ago'}</span>
         <span>{pointsData[Math.floor(pointsData.length / 2)]?.time_label || '30m ago'}</span>
         <span className="text-indigo-500 dark:text-indigo-400 font-black flex items-center gap-1">
-          {pointsData[pointsData.length - 1]?.time_label || 'Now'} (Live)
+          {pointsData[pointsData.length - 1]?.time_label || 'Now'} (Live Sync)
         </span>
       </div>
     </div>
   );
 }
 
-// 2. Live Country Visits World Bubble Map Component
+// 2. Live Country Visits World Bubble Map Component (Official Simple World Map Vector SVG)
 function CountryVisitBubbleMap({
   topCountries,
 }: {
@@ -372,15 +506,17 @@ function CountryVisitBubbleMap({
   const { t } = useLocale();
   const [hoveredCountry, setHoveredCountry] = useState<typeof topCountries[0] | null>(null);
 
-  // Fallback defaults if no country data available yet
+  // Fallback defaults
   const countries = (topCountries && topCountries.length > 0)
     ? topCountries
     : [
-        { country_code: 'TN', country_name: 'Tunisia', flag_emoji: '🇹🇳', views_count: 1420, unique_visitors: 850, share_pct: 68.5, map_x: 52, map_y: 38 },
-        { country_code: 'FR', country_name: 'France', flag_emoji: '🇫🇷', views_count: 380, unique_visitors: 240, share_pct: 18.2, map_x: 48, map_y: 26 },
-        { country_code: 'DE', country_name: 'Germany', flag_emoji: '🇩🇪', views_count: 120, unique_visitors: 90, share_pct: 5.8, map_x: 51, map_y: 22 },
-        { country_code: 'CA', country_name: 'Canada', flag_emoji: '🇨🇦', views_count: 75, unique_visitors: 50, share_pct: 3.6, map_x: 19, map_y: 20 },
+        { country_code: 'TN', country_name: 'Tunisia', flag_emoji: '🇹🇳', views_count: 1420, unique_visitors: 850, share_pct: 68.5 },
+        { country_code: 'FR', country_name: 'France', flag_emoji: '🇫🇷', views_count: 380, unique_visitors: 240, share_pct: 18.2 },
+        { country_code: 'DE', country_name: 'Germany', flag_emoji: '🇩🇪', views_count: 120, unique_visitors: 90, share_pct: 5.8 },
+        { country_code: 'US', country_name: 'United States', flag_emoji: '🇺🇸', views_count: 95, unique_visitors: 65, share_pct: 4.1 },
       ];
+
+  const activeCodesSet = new Set(countries.map(c => c.country_code.toLowerCase()));
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4 relative overflow-hidden">
@@ -404,90 +540,83 @@ function CountryVisitBubbleMap({
         </span>
       </div>
 
-      {/* World Map SVG Container */}
-      <div className="relative w-full h-52 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center">
-        {/* Map Grid Background pattern */}
-        <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+      {/* Official Simple World Map Vector SVG Container */}
+      <div className="relative w-full h-56 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center p-2">
+        <svg
+          className="w-full h-full text-slate-700 fill-current"
+          viewBox="30.767 241.591 784.077 458.627"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
-            <pattern id="mapGrid" width="25" height="25" patternUnits="userSpaceOnUse">
-              <circle cx="3" cy="3" r="1" fill="#818cf8" />
-            </pattern>
+            <linearGradient id="activeCountryGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
           </defs>
-          <rect width="100%" height="100%" fill="url(#mapGrid)" />
-        </svg>
 
-        {/* Realistic World Map Continent Vector Paths */}
-        <svg className="absolute inset-0 w-full h-full text-indigo-400/25 fill-current stroke-indigo-500/30 stroke-1" viewBox="0 0 1000 500">
-          {/* Latitude / Longitude Equator & Prime Meridian Grid Lines */}
-          <line x1="0" y1="125" x2="1000" y2="125" stroke="#6366f1" strokeDasharray="4 4" strokeWidth="0.5" opacity="0.3" />
-          <line x1="0" y1="250" x2="1000" y2="250" stroke="#818cf8" strokeDasharray="6 6" strokeWidth="0.8" opacity="0.4" />
-          <line x1="0" y1="375" x2="1000" y2="375" stroke="#6366f1" strokeDasharray="4 4" strokeWidth="0.5" opacity="0.3" />
-          <line x1="500" y1="0" x2="500" y2="500" stroke="#818cf8" strokeDasharray="6 6" strokeWidth="0.8" opacity="0.4" />
-
-          {/* North America & Greenland */}
-          <path d="M 120,60 L 150,50 L 220,40 L 290,45 L 340,65 L 310,120 L 270,160 L 230,190 L 180,180 L 150,210 L 170,260 L 150,280 L 120,240 L 100,180 L 70,120 L 80,80 Z" />
-          <path d="M 300,40 L 350,25 L 380,35 L 340,65 Z" />
-
-          {/* South America */}
-          <path d="M 270,270 L 320,285 L 380,310 L 350,380 L 320,450 L 290,470 L 280,410 L 260,340 Z" />
-
-          {/* Europe & British Isles */}
-          <path d="M 440,70 L 480,60 L 530,50 L 580,75 L 560,110 L 540,140 L 490,160 L 450,150 L 440,110 Z" />
-          <path d="M 450,45 L 480,35 L 490,55 L 460,60 Z" />
-
-          {/* Africa & Madagascar */}
-          <path d="M 440,160 L 500,155 L 590,190 L 610,240 L 570,330 L 510,380 L 480,340 L 450,240 L 420,200 Z" />
-          <path d="M 600,280 L 620,290 L 610,340 L 595,320 Z" />
-
-          {/* Asia & Japan Archipelago */}
-          <path d="M 580,75 L 680,50 L 820,45 L 910,65 L 890,140 L 850,190 L 780,210 L 750,260 L 700,240 L 670,190 L 610,190 Z" />
-          <path d="M 865,130 L 890,145 L 880,185 L 860,165 Z" />
-
-          {/* Australia & New Zealand */}
-          <path d="M 770,320 L 870,310 L 890,360 L 840,410 L 760,390 L 750,350 Z" />
-          <path d="M 905,400 L 920,390 L 930,430 L 915,440 Z" />
-        </svg>
-
-        {/* Bubble Markers per Country */}
-        {countries.map((c) => {
-          const mapX = c.map_x ?? 52;
-          const mapY = c.map_y ?? 38;
-          // Scale bubble radius between 12px and 34px
-          const size = Math.max(14, Math.min(36, Math.sqrt(c.share_pct || 1) * 6 + 10));
-
-          return (
-            <div
-              key={c.country_code}
-              style={{ top: `${mapY}%`, left: `${mapX}%` }}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-              onMouseEnter={() => setHoveredCountry(c)}
-              onMouseLeave={() => setHoveredCountry(null)}
-            >
-              {/* Outer Ripple Animation */}
-              <div
-                style={{ width: `${size * 2}px`, height: `${size * 2}px` }}
-                className="absolute -inset-1/2 rounded-full bg-indigo-500/30 animate-ping group-hover:bg-purple-500/50"
+          {/* Render All Country Vector Paths */}
+          {Object.entries(WORLD_COUNTRY_PATHS).map(([code, countryData]) => {
+            const isActive = activeCodesSet.has(code);
+            return (
+              <path
+                key={code}
+                id={code}
+                d={countryData.d}
+                className={`transition-colors duration-200 cursor-pointer ${
+                  isActive
+                    ? 'fill-indigo-500/80 stroke-indigo-400 stroke-[1.5px] hover:fill-purple-500'
+                    : 'fill-slate-800/60 stroke-slate-900 stroke-[0.8px] hover:fill-slate-700'
+                }`}
               />
-              {/* Glowing Core Bubble */}
-              <div
-                style={{ width: `${size}px`, height: `${size}px` }}
-                className="relative rounded-full bg-gradient-to-tr from-indigo-600 to-purple-500 border-2 border-white/80 dark:border-slate-900 shadow-lg shadow-indigo-500/40 flex items-center justify-center text-[10px] font-black text-white transition-all transform group-hover:scale-125"
-              >
-                {c.flag_emoji}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {/* Interactive Hover Card Overlay */}
+          {/* Pin Bubbles over Active Visitor Countries */}
+          {countries.map((c) => {
+            const codeLower = c.country_code.toLowerCase();
+            const countryMeta = WORLD_COUNTRY_PATHS[codeLower] || { cx: 433, cy: 445 };
+            const { cx, cy } = countryMeta;
+            const size = Math.max(10, Math.min(26, Math.sqrt(c.share_pct || 1) * 5 + 8));
+
+            return (
+              <g
+                key={c.country_code}
+                transform={`translate(${cx}, ${cy})`}
+                className="cursor-pointer group"
+                onMouseEnter={() => setHoveredCountry(c)}
+                onMouseLeave={() => setHoveredCountry(null)}
+              >
+                {/* Pulsing Ripple Circle */}
+                <circle
+                  cx="0"
+                  cy="0"
+                  r={size * 1.6}
+                  className="fill-indigo-400/30 animate-ping opacity-75"
+                />
+                {/* Core Glowing Bubble */}
+                <circle
+                  cx="0"
+                  cy="0"
+                  r={size}
+                  className="fill-indigo-600 stroke-white stroke-2 shadow-lg group-hover:scale-125 transition-transform"
+                />
+                {/* Flag text */}
+                <text
+                  x="0"
+                  y="3"
+                  textAnchor="middle"
+                  className="text-[10px] select-none pointer-events-none"
+                >
+                  {c.flag_emoji}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Hover Card Overlay */}
         {hoveredCountry && (
-          <div
-            style={{
-              top: `${Math.max(10, (hoveredCountry.map_y ?? 38) - 25)}%`,
-              left: `${Math.min(75, Math.max(15, hoveredCountry.map_x ?? 52))}%`,
-            }}
-            className="absolute z-20 pointer-events-none transform -translate-x-1/2 p-3 rounded-xl border border-slate-700 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md w-48 space-y-1 animate-in fade-in zoom-in-95 duration-100"
-          >
+          <div className="absolute top-4 right-4 z-20 pointer-events-none p-3 rounded-xl border border-slate-700 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md w-48 space-y-1 animate-in fade-in zoom-in-95 duration-100">
             <div className="flex items-center justify-between">
               <span className="text-base">{hoveredCountry.flag_emoji}</span>
               <span className="text-[10px] font-mono text-indigo-400 font-bold">({hoveredCountry.country_code})</span>
@@ -501,15 +630,15 @@ function CountryVisitBubbleMap({
         )}
       </div>
 
-      {/* Country List Legend Chips */}
-      <div className="flex items-center flex-wrap gap-2 pt-1">
-        {countries.slice(0, 5).map((c) => (
+      {/* Active Region Legend Chips */}
+      <div className="flex items-center flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+        {countries.map((c) => (
           <div
             key={c.country_code}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-700 dark:text-slate-300"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold"
           >
             <span>{c.flag_emoji}</span>
-            <span>{c.country_name}:</span>
+            <span>{c.country_name}</span>
             <span className="text-indigo-600 dark:text-indigo-400 font-black">{c.share_pct}%</span>
           </div>
         ))}
