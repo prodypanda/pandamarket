@@ -267,37 +267,33 @@ router.post(
   '/ads/coupons',
   validate(adsCouponSchema),
   asyncHandler(async (req: Request, res: Response) =>
-    res
-      .status(201)
-      .json({
-        coupon: await adsService.createCoupon(
-          {
-            code: req.body.code,
-            amount: req.body.amount,
-            maxRedemptions: req.body.max_redemptions,
-            expiresAt: req.body.expires_at,
-            enabled: req.body.enabled,
-          },
-          req.user!.id,
-        ),
-      }),
+    res.status(201).json({
+      coupon: await adsService.createCoupon(
+        {
+          code: req.body.code,
+          amount: req.body.amount,
+          maxRedemptions: req.body.max_redemptions,
+          expiresAt: req.body.expires_at,
+          enabled: req.body.enabled,
+        },
+        req.user!.id,
+      ),
+    }),
   ),
 );
 router.post(
   '/ads/credits',
   validate(adsCreditSchema),
   asyncHandler(async (req: Request, res: Response) =>
-    res
-      .status(201)
-      .json({
-        transaction: await adsService.grantPromotionalCredit(
-          req.body.store_id,
-          req.body.amount,
-          req.user!.id,
-          req.body.reason,
-          req.body.idempotency_key,
-        ),
-      }),
+    res.status(201).json({
+      transaction: await adsService.grantPromotionalCredit(
+        req.body.store_id,
+        req.body.amount,
+        req.user!.id,
+        req.body.reason,
+        req.body.idempotency_key,
+      ),
+    }),
   ),
 );
 router.post(
@@ -2889,13 +2885,15 @@ router.delete(
     const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
     const roleFilter =
       log_type === 'buyer'
-        ? "'customer'"
+        ? ['customer']
         : log_type === 'seller'
-          ? "'vendor'"
-          : "'admin', 'super_admin'";
+          ? ['vendor']
+          : ['admin', 'super_admin'];
 
+    // SECURITY: Parameterized query to prevent SQL injection and properly handle intervals
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`,
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - ($1::int * INTERVAL '1 day') AND actor_role = ANY($2)`,
+      [older_than_days, roleFilter],
     );
 
     res.status(200).json({ deleted: rowCount });
@@ -4198,7 +4196,8 @@ router.get(
     const minAmount = req.query.min_amount ? Number(req.query.min_amount) : undefined;
     const maxAmount = req.query.max_amount ? Number(req.query.max_amount) : undefined;
     const sortBy = (req.query.sort_by as string) || 'created_at';
-    const sortOrder = ((req.query.sort_order as string) || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const sortOrder =
+      ((req.query.sort_order as string) || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
@@ -4326,7 +4325,10 @@ router.delete(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.deleteByAdmin(req.params.intentId, req.user!.id);
+    const result = await subscriptionPaymentService.deleteByAdmin(
+      req.params.intentId,
+      req.user!.id,
+    );
     res.status(200).json({ success: true, intent: result });
   }),
 );
@@ -4343,7 +4345,12 @@ router.post(
     if (action === 'approve') {
       result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'approved');
     } else if (action === 'reject') {
-      result = await subscriptionPaymentService.bulkReview(intent_ids, req.user!.id, 'rejected', reason);
+      result = await subscriptionPaymentService.bulkReview(
+        intent_ids,
+        req.user!.id,
+        'rejected',
+        reason,
+      );
     } else if (action === 'cancel') {
       result = await subscriptionPaymentService.bulkCancel(intent_ids, req.user!.id, reason);
     } else if (action === 'delete') {
@@ -4353,7 +4360,11 @@ router.post(
     } else if (action === 'resume') {
       result = await subscriptionPaymentService.bulkResume(store_ids || intent_ids, req.user!.id);
     } else if (action === 'migrate') {
-      result = await subscriptionPaymentService.bulkPlanMigration(store_ids || intent_ids, target_plan || 'pro', req.user!.id);
+      result = await subscriptionPaymentService.bulkPlanMigration(
+        store_ids || intent_ids,
+        target_plan || 'pro',
+        req.user!.id,
+      );
     } else if (action === 'retry') {
       result = await subscriptionPaymentService.bulkPaymentRetry(intent_ids);
     }
@@ -4385,7 +4396,9 @@ router.post(
       return;
     }
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    await subscriptionPaymentService.logActivity(intentId, 'admin_note', req.user!.id, 'admin', { note: note.trim() });
+    await subscriptionPaymentService.logActivity(intentId, 'admin_note', req.user!.id, 'admin', {
+      note: note.trim(),
+    });
     res.status(200).json({ success: true, message: 'Admin note added successfully' });
   }),
 );
@@ -4397,7 +4410,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { intent_id, decline_code } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.handleSmartDecline(intent_id, decline_code || 'insufficient_funds');
+    const result = await subscriptionPaymentService.handleSmartDecline(
+      intent_id,
+      decline_code || 'insufficient_funds',
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4409,7 +4425,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { store_ids, target_plan } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const simulation = await subscriptionPaymentService.simulateBulkRevenueImpact(store_ids || [], target_plan || 'pro');
+    const simulation = await subscriptionPaymentService.simulateBulkRevenueImpact(
+      store_ids || [],
+      target_plan || 'pro',
+    );
     res.status(200).json({ success: true, simulation });
   }),
 );
@@ -4444,7 +4463,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { intent_id } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.generateMagicBillingLink(intent_id, req.user!.id);
+    const result = await subscriptionPaymentService.generateMagicBillingLink(
+      intent_id,
+      req.user!.id,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4456,7 +4478,11 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { store_id, offer_type } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.applyRetentionOffer(store_id, offer_type, req.user!.id);
+    const result = await subscriptionPaymentService.applyRetentionOffer(
+      store_id,
+      offer_type,
+      req.user!.id,
+    );
     res.status(200).json(result);
   }),
 );
@@ -4480,7 +4506,12 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { store_id, addon_key, addon_name, amount } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const addon = await subscriptionPaymentService.createStoreAddon(store_id, addon_key, addon_name, Number(amount));
+    const addon = await subscriptionPaymentService.createStoreAddon(
+      store_id,
+      addon_key,
+      addon_name,
+      Number(amount),
+    );
     res.status(201).json({ success: true, addon });
   }),
 );
@@ -4528,7 +4559,12 @@ router.patch(
     const { intentId } = req.params;
     const { vat_tax_id, billing_address } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const updated = await subscriptionPaymentService.updateRetroactiveInvoiceTaxInfo(intentId, vat_tax_id || '', billing_address || '', req.user!.id);
+    const updated = await subscriptionPaymentService.updateRetroactiveInvoiceTaxInfo(
+      intentId,
+      vat_tax_id || '',
+      billing_address || '',
+      req.user!.id,
+    );
     res.status(200).json({ success: true, intent: updated });
   }),
 );
@@ -4540,7 +4576,9 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { intentId } = req.params;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const { rows } = await (await import('../db/pool')).query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
+    const { rows } = await (
+      await import('../db/pool')
+    ).query('SELECT * FROM pd_subscription_intent WHERE id = $1', [intentId]);
     const order = rows[0];
     if (!order) {
       res.status(404).json({ error: { message: 'Order not found' } });
@@ -4559,7 +4597,12 @@ router.post(
     const { intentId } = req.params;
     const { reason, dispute_reference } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const dispute = await subscriptionPaymentService.createDispute(intentId, reason || 'Chargeback opened', dispute_reference, req.user!.id);
+    const dispute = await subscriptionPaymentService.createDispute(
+      intentId,
+      reason || 'Chargeback opened',
+      dispute_reference,
+      req.user!.id,
+    );
     res.status(201).json({ success: true, dispute });
   }),
 );
@@ -4583,7 +4626,12 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { gateway, intent_id, event_type, payload } = req.body;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.resolveOutOfOrderWebhook(gateway || 'manual', intent_id, event_type || 'charge.captured', payload || {});
+    const result = await subscriptionPaymentService.resolveOutOfOrderWebhook(
+      gateway || 'manual',
+      intent_id,
+      event_type || 'charge.captured',
+      payload || {},
+    );
     res.status(200).json({ success: true, result });
   }),
 );
@@ -4615,7 +4663,11 @@ router.get(
     const fromDate = req.query.from_date as string;
     const toDate = req.query.to_date as string;
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const { filename, csvContent } = await subscriptionPaymentService.exportGeneralLedger(format, fromDate, toDate);
+    const { filename, csvContent } = await subscriptionPaymentService.exportGeneralLedger(
+      format,
+      fromDate,
+      toDate,
+    );
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).send(csvContent);
@@ -4649,7 +4701,7 @@ router.get(
       topCategoriesRes,
       userGrowthRes,
       monthlyRevenueRes,
-      activeSessionsRes
+      activeSessionsRes,
     ] = await Promise.all([
       query(`
         SELECT 
@@ -4658,8 +4710,10 @@ router.get(
           COUNT(*) FILTER (WHERE subscription_status = 'paused')::int AS paused_stores,
           COUNT(*) FILTER (WHERE subscription_status = 'suspended' OR is_active = false)::int AS suspended_stores
         FROM pd_store
-      `).catch(() => ({ rows: [{ total_stores: 0, active_stores: 0, paused_stores: 0, suspended_stores: 0 }] })),
-      
+      `).catch(() => ({
+        rows: [{ total_stores: 0, active_stores: 0, paused_stores: 0, suspended_stores: 0 }],
+      })),
+
       query(`
         SELECT 
           role,
@@ -4719,19 +4773,23 @@ router.get(
 
       query(`
         SELECT COUNT(*)::int AS active_sessions FROM pd_user_session WHERE revoked_at IS NULL AND expires_at > NOW()
-      `).catch(() => ({ rows: [{ active_sessions: 0 }] }))
+      `).catch(() => ({ rows: [{ active_sessions: 0 }] })),
     ]);
 
     // 1. Radar Metrics (Dynamic)
     // Security: % of users with 2FA enabled
-    const twoFactorRes = await query(`SELECT COUNT(*) as count FROM pd_user WHERE two_factor_enabled = true`);
+    const twoFactorRes = await query(
+      `SELECT COUNT(*) as count FROM pd_user WHERE two_factor_enabled = true`,
+    );
     const totalUsers = usersRes.rows.reduce((acc: number, r: any) => acc + Number(r.count), 0);
-    const securityScore = totalUsers > 0 ? Math.round((Number(twoFactorRes.rows[0].count) / totalUsers) * 100) : 0;
-    
+    const securityScore =
+      totalUsers > 0 ? Math.round((Number(twoFactorRes.rows[0].count) / totalUsers) * 100) : 0;
+
     // Conversion: paid subscription vs total stores
     const totalStoresCount = Number(storesRes.rows[0]?.total_stores || 0);
     const activeStoresCount = Number(storesRes.rows[0]?.active_stores || 0);
-    const conversionScore = totalStoresCount > 0 ? Math.round((activeStoresCount / totalStoresCount) * 100) : 0;
+    const conversionScore =
+      totalStoresCount > 0 ? Math.round((activeStoresCount / totalStoresCount) * 100) : 0;
 
     // 2. Cohort Data
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
@@ -4750,7 +4808,8 @@ router.get(
     ];
     const cohortRows = cohortAnalytics.cohorts.map((c: any) => {
       const ts = Number(c.total_signups);
-      const getPct = (retained: string) => ts > 0 ? ((Number(retained) / ts) * 100).toFixed(1) + '%' : '-';
+      const getPct = (retained: string) =>
+        ts > 0 ? ((Number(retained) / ts) * 100).toFixed(1) + '%' : '-';
       return {
         cohort: c.cohort_month,
         size: ts,
@@ -4759,16 +4818,24 @@ router.get(
         m3: getPct(c.m3_retained),
         m4: getPct(c.m4_retained),
         m5: getPct(c.m5_retained),
-        m6: getPct(c.m6_retained)
+        m6: getPct(c.m6_retained),
       };
     });
 
     res.status(200).json({
       success: true,
       data: {
-        stores: storesRes.rows[0] || { total_stores: 0, active_stores: 0, paused_stores: 0, suspended_stores: 0 },
+        stores: storesRes.rows[0] || {
+          total_stores: 0,
+          active_stores: 0,
+          paused_stores: 0,
+          suspended_stores: 0,
+        },
         users_by_role: usersRes.rows,
-        subscriptions: subRevenueRes.rows[0] || { total_subscription_revenue: 0, total_subscription_orders: 0 },
+        subscriptions: subRevenueRes.rows[0] || {
+          total_subscription_revenue: 0,
+          total_subscription_orders: 0,
+        },
         ads: adsSpendRes.rows[0] || { total_ads_spend: 0, total_campaigns: 0 },
         products_count: productsRes.rows[0]?.total_products || 0,
         top_categories: topCategoriesRes.rows,
@@ -4778,8 +4845,8 @@ router.get(
         radar_metrics: radarMetrics,
         regional_data: [],
         regional_data_available: false,
-        cohort_rows: cohortRows
-      }
+        cohort_rows: cohortRows,
+      },
     });
   }),
 );
@@ -4899,7 +4966,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getOrdersDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getOrdersDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4910,7 +4979,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getVendorsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getVendorsDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4921,7 +4992,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getBuyersDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getBuyersDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4932,7 +5005,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getProductsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getProductsDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4943,7 +5018,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getSearchDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getSearchDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -4954,7 +5031,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
-    const result = await analyticsService.getEventsDrilldown(req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams);
+    const result = await analyticsService.getEventsDrilldown(
+      req.query as unknown as import('../types/analytics-types').AnalyticsDrilldownQueryParams,
+    );
     res.status(200).json({ success: true, ...result });
   }),
 );
@@ -5113,7 +5192,11 @@ router.put(
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
     const adminUserId = (req as any).user?.id;
-    const schedule = await analyticsService.updateReportSchedule(adminUserId, req.params.id, req.body);
+    const schedule = await analyticsService.updateReportSchedule(
+      adminUserId,
+      req.params.id,
+      req.body,
+    );
     if (!schedule) {
       res.status(404).json({ error: { message: 'Report schedule not found' } });
       return;
@@ -5203,7 +5286,11 @@ router.post(
       return;
     }
     const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.pauseSubscription(store_id, resume_at, req.user!.id);
+    const result = await subscriptionPaymentService.pauseSubscription(
+      store_id,
+      resume_at,
+      req.user!.id,
+    );
     res.status(200).json({ success: true, store: result });
   }),
 );
@@ -5333,7 +5420,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { analyticsService } = await import('../services/analytics.service');
     const end = req.body?.endDate || req.body?.to_date || new Date().toISOString();
-    const start = req.body?.startDate || req.body?.from_date || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const start =
+      req.body?.startDate ||
+      req.body?.from_date ||
+      new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const result = await analyticsService.recomputeRollups({
       startDate: start,
       endDate: end,
