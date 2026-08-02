@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
+import { ReferenceSelector } from '@/components/dashboard/ReferenceSelector';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -440,13 +441,13 @@ export default function NavigationManagerPage() {
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
                         {item.type !== 'custom_url' && (
-                          <input
-                            type="text"
-                            value={item.reference_id || ''}
-                            onChange={(e) => handleUpdateItem(loc.key, item.id, 'reference_id', e.target.value)}
-                            placeholder="ID de référence (ex: ID du produit/page)"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/3"
-                          />
+                          <div className="w-full sm:w-1/3">
+                            <ReferenceSelector
+                              type={item.type as 'page' | 'product' | 'category' | 'collection'}
+                              value={item.reference_id || ''}
+                              onChange={(id) => handleUpdateItem(loc.key, item.id, 'reference_id', id)}
+                            />
+                          </div>
                         )}
                       </div>
                       <button
