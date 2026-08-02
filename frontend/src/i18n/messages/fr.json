@@ -262,10 +262,26 @@
     "welcome": "Bonjour, {name} 👋",
     "sidebar": {
       "overview": "Aperçu",
+      "setupGuide": "Guide de configuration",
+      "analytics": "Analyses",
+      "ads": "PandaMarket Ads",
       "products": "Produits",
       "categories": "Catégories",
       "orders": "Commandes",
+      "media": "Médias",
+      "messages": "Messages",
       "wallet": "Wallet",
+      "financialReport": "Bilan financier",
+      "onlineStore": "Boutique en ligne",
+      "onlineStoreOverview": "Vue d'ensemble",
+      "themes": "Thèmes",
+      "customize": "Personnaliser",
+      "menusNavigation": "Menus & Navigation",
+      "pages": "Pages",
+      "domains": "Domaines",
+      "seoMeta": "SEO & Méta",
+      "integrationsPixels": "Intégrations & Pixels",
+      "customers": "Clients",
       "aiTools": "Outils IA",
       "myStore": "Ma Boutique",
       "apiKeys": "Clés API",
@@ -276,7 +292,13 @@
       "webhooks": "Webhooks",
       "reports": "Signalements",
       "paymentConfig": "Paiement Direct",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "myAccount": "Mon compte",
+      "platformOrdersInvoices": "Commandes & Factures",
+      "groupCatalogSales": "Catalogue & Ventes",
+      "groupOnlineStore": "Boutique en ligne",
+      "groupConfiguration": "Configuration",
+      "createFreeStore": "Créer un magasin gratuit"
     },
     "stats": {
       "sales": "Ventes",
@@ -289,6 +311,71 @@
     "loggingOut": "Déconnexion...",
     "top": {
       "welcome": "Bienvenue, {name}"
+    }
+  },
+
+  "storefrontNav": {
+    "title": "Menus & Navigation",
+    "subtitle": "Gérez les menus de votre vitrine et votre pied de page",
+    "saveDraft": "Sauvegarder brouillon",
+    "publishOnline": "Publier en ligne",
+    "saving": "Sauvegarde...",
+    "publishing": "Publication...",
+    "saved": "Brouillons (menus + footer) sauvegardés.",
+    "published": "Navigation & Footer publiés en ligne !",
+    "errorSave": "Erreur lors de la sauvegarde du brouillon",
+    "errorPublish": "Erreur lors de la publication",
+    "errorNetwork": "Erreur réseau",
+    "reset": "Réinitialiser",
+    "unsavedChanges": "Vous avez des modifications non sauvegardées",
+    "locations": {
+      "header": "Menu Principal (Header)",
+      "headerDesc": "Liens affichés en haut de votre vitrine",
+      "footer": "Menu Pied de Page",
+      "footerDesc": "Liens affichés en bas de page",
+      "mobile": "Menu Mobile",
+      "mobileDesc": "Liens affichés dans le menu hamburger mobile",
+      "utility": "Barre utilitaire",
+      "utilityDesc": "Petite barre au-dessus du header"
+    },
+    "addItem": "Ajouter un lien",
+    "addChild": "Ajouter un sous-lien (mega menu)",
+    "addBlock": "Ajouter un bloc",
+    "emptyMenu": "Aucun lien dans ce menu. Cliquez sur \"Ajouter un lien\" pour commencer.",
+    "itemType": {
+      "customUrl": "URL libre",
+      "page": "Page",
+      "product": "Produit",
+      "category": "Catégorie",
+      "collection": "Collection"
+    },
+    "labelPlaceholder": "Intitulé du lien",
+    "urlPlaceholder": "URL (ex: /pages/contact ou https://...)",
+    "selectPlaceholder": "Sélectionner…",
+    "searchPage": "Rechercher une page…",
+    "searchProduct": "Rechercher un produit…",
+    "searchCategory": "Rechercher une catégorie…",
+    "searchCollection": "Rechercher une collection…",
+    "noPageFound": "Aucune page trouvée",
+    "noProductFound": "Aucun produit trouvé",
+    "noCategoryFound": "Aucune catégorie trouvée",
+    "noCollectionFound": "Aucune collection trouvée (utilisez les catégories)",
+    "loading": "Chargement…",
+    "subLinks": "Sous-liens (Mega Menu)",
+    "add": "+ Ajouter",
+    "footerBlocks": {
+      "title": "Pied de Page (Footer)",
+      "subtitle": "Blocs de contenu affichés en bas de page",
+      "blockTypes": {
+        "text": "Texte libre",
+        "menu": "Menu de liens",
+        "contact": "Contact",
+        "social": "Réseaux sociaux",
+        "newsletter": "Newsletter",
+        "paymentBadges": "Badges de paiement",
+        "legal": "Mentions légales",
+        "map": "Carte Google Maps"
+      }
     }
   },
 

@@ -294,39 +294,39 @@ export default function DashboardLayout({
       groupName: undefined,
       items: [
         { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
-        { name: 'Setup guide', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
-        { name: 'Analytics', href: '/hub/dashboard/analytics', icon: BarChart3 },
-        { name: 'PandaMarket Ads', href: '/hub/dashboard/ads', icon: Megaphone },
+        { name: t('dashboard.sidebar.setupGuide'), href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
+        { name: t('dashboard.sidebar.analytics'), href: '/hub/dashboard/analytics', icon: BarChart3 },
+        { name: t('dashboard.sidebar.ads'), href: '/hub/dashboard/ads', icon: Megaphone },
       ],
     },
     {
-      groupName: 'Catalogue & Ventes',
+      groupName: t('dashboard.sidebar.groupCatalogSales'),
       items: [
         { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
         { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
-        { name: 'Médias', href: '/hub/dashboard/media', icon: ImageIcon },
+        { name: t('dashboard.sidebar.media'), href: '/hub/dashboard/media', icon: ImageIcon },
         { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
-        { name: 'Messages', href: '/hub/dashboard/messages', icon: MessageSquare },
+        { name: t('dashboard.sidebar.messages'), href: '/hub/dashboard/messages', icon: MessageSquare },
         { name: t('dashboard.sidebar.wallet'), href: '/hub/dashboard/wallet', icon: Wallet },
-        { name: 'Bilan financier', href: '/hub/dashboard/financial', icon: ReceiptText },
+        { name: t('dashboard.sidebar.financialReport'), href: '/hub/dashboard/financial', icon: ReceiptText },
       ],
     },
     {
-      groupName: 'Boutique en ligne',
+      groupName: t('dashboard.sidebar.groupOnlineStore'),
       items: [
-        { name: 'Vue d\'ensemble', href: '/hub/dashboard/online-store', icon: Globe },
-        { name: 'Thèmes', href: '/hub/dashboard/online-store/themes', icon: Palette },
-        { name: 'Personnaliser', href: '/hub/dashboard/online-store/customize', icon: Sparkles },
-        { name: 'Menus & Navigation', href: '/hub/dashboard/online-store/navigation', icon: NavIcon },
-        { name: 'Pages', href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
-        { name: 'Domaines', href: '/hub/dashboard/online-store/domains', icon: Globe },
-        { name: 'SEO & Méta', href: '/hub/dashboard/online-store/seo', icon: Search },
-        { name: 'Intégrations & Pixels', href: '/hub/dashboard/online-store/integrations', icon: Code2 },
-        { name: 'Clients', href: '/hub/dashboard/online-store/customers', icon: Users },
+        { name: t('dashboard.sidebar.onlineStoreOverview'), href: '/hub/dashboard/online-store', icon: Globe },
+        { name: t('dashboard.sidebar.themes'), href: '/hub/dashboard/online-store/themes', icon: Palette },
+        { name: t('dashboard.sidebar.customize'), href: '/hub/dashboard/online-store/customize', icon: Sparkles },
+        { name: t('dashboard.sidebar.menusNavigation'), href: '/hub/dashboard/online-store/navigation', icon: NavIcon },
+        { name: t('dashboard.sidebar.pages'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
+        { name: t('dashboard.sidebar.domains'), href: '/hub/dashboard/online-store/domains', icon: Globe },
+        { name: t('dashboard.sidebar.seoMeta'), href: '/hub/dashboard/online-store/seo', icon: Search },
+        { name: t('dashboard.sidebar.integrationsPixels'), href: '/hub/dashboard/online-store/integrations', icon: Code2 },
+        { name: t('dashboard.sidebar.customers'), href: '/hub/dashboard/online-store/customers', icon: Users },
       ],
     },
     {
-      groupName: 'Configuration',
+      groupName: t('dashboard.sidebar.groupConfiguration'),
       items: [
         { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
         { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
@@ -338,8 +338,8 @@ export default function DashboardLayout({
   ];
 
   const accountMenuItems = [
-    { name: 'My account', href: '/hub/profile', icon: UserRound },
-    { name: 'Platform Orders & Invoices', href: '/hub/dashboard/my-subscription-orders', icon: ReceiptText },
+    { name: t('dashboard.sidebar.myAccount'), href: '/hub/profile', icon: UserRound },
+    { name: t('dashboard.sidebar.platformOrdersInvoices'), href: '/hub/dashboard/my-subscription-orders', icon: ReceiptText },
     { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
     { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
     { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
@@ -573,7 +573,7 @@ export default function DashboardLayout({
               className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
             >
               <Store className="h-4 w-4 text-[#B91C1C]" />
-              Mes boutiques
+              {t('dashboard.sidebar.myStore')}
             </Link>
             {storeCount === 1 && canCreateFreeStore && (
               <Link
@@ -581,13 +581,13 @@ export default function DashboardLayout({
                 className="hidden sm:inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white transition hover:bg-[#991B1B]"
               >
                 <Plus className="h-4 w-4" />
-                Create free store
+                {t('dashboard.sidebar.createFreeStore')}
               </Link>
             )}
             <Link
               href="/hub/dashboard/my-subscription-orders"
-              title="Platform Orders & Invoices"
-              aria-label="Platform Orders & Invoices"
+              title={t('dashboard.sidebar.platformOrdersInvoices')}
+              aria-label={t('dashboard.sidebar.platformOrdersInvoices')}
               className={`relative inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition ${
                 pathname.startsWith('/hub/dashboard/my-subscription-orders')
                   ? 'border-amber-400 bg-amber-50 text-amber-600'

@@ -262,10 +262,26 @@
     "welcome": "مرحباً، {name} 👋",
     "sidebar": {
       "overview": "نظرة عامة",
+      "setupGuide": "دليل الإعداد",
+      "analytics": "التحليلات",
+      "ads": "إعلانات PandaMarket",
       "products": "المنتجات",
       "categories": "الفئات",
       "orders": "الطلبات",
+      "media": "الوسائط",
+      "messages": "الرسائل",
       "wallet": "المحفظة",
+      "financialReport": "التقرير المالي",
+      "onlineStore": "المتجر الإلكتروني",
+      "onlineStoreOverview": "نظرة عامة",
+      "themes": "القوالب",
+      "customize": "تخصيص",
+      "menusNavigation": "القوائم والتنقل",
+      "pages": "الصفحات",
+      "domains": "النطاقات",
+      "seoMeta": "تحسين محركات البحث",
+      "integrationsPixels": "التكاملات والبيكسلات",
+      "customers": "العملاء",
       "aiTools": "أدوات الذكاء الاصطناعي",
       "myStore": "متجري",
       "apiKeys": "مفاتيح API",
@@ -276,7 +292,13 @@
       "webhooks": "ويب هوك",
       "reports": "البلاغات",
       "paymentConfig": "الدفع المباشر",
-      "notifications": "الإشعارات"
+      "notifications": "الإشعارات",
+      "myAccount": "حسابي",
+      "platformOrdersInvoices": "طلبات وفواتير المنصة",
+      "groupCatalogSales": "الكتالوج والمبيعات",
+      "groupOnlineStore": "المتجر الإلكتروني",
+      "groupConfiguration": "الإعدادات",
+      "createFreeStore": "إنشاء متجر مجاني"
     },
     "stats": {
       "sales": "المبيعات",
@@ -289,6 +311,71 @@
     "loggingOut": "جاري تسجيل الخروج...",
     "top": {
       "welcome": "مرحباً، {name}"
+    }
+  },
+
+  "storefrontNav": {
+    "title": "القوائم والتنقل",
+    "subtitle": "إدارة قوائم المتجر والتذييل",
+    "saveDraft": "حفظ المسودة",
+    "publishOnline": "نشر عبر الإنترنت",
+    "saving": "جاري الحفظ...",
+    "publishing": "جاري النشر...",
+    "saved": "تم حفظ المسودات (القوائم + التذييل).",
+    "published": "تم نشر القوائم والتذييل عبر الإنترنت!",
+    "errorSave": "خطأ أثناء حفظ المسودة",
+    "errorPublish": "خطأ أثناء النشر",
+    "errorNetwork": "خطأ في الشبكة",
+    "reset": "إعادة تعيين",
+    "unsavedChanges": "لديك تغييرات غير محفوظة",
+    "locations": {
+      "header": "القائمة الرئيسية (الترويسة)",
+      "headerDesc": "الروابط المعروضة في أعلى المتجر",
+      "footer": "قائمة التذييل",
+      "footerDesc": "الروابط المعروضة في أسفل الصفحة",
+      "mobile": "قائمة الهاتف",
+      "mobileDesc": "الروابط المعروضة في قائمة الهاتف المنسدلة",
+      "utility": "شريط الأدوات",
+      "utilityDesc": "شريط صغير فوق الترويسة"
+    },
+    "addItem": "إضافة رابط",
+    "addChild": "إضافة رابط فرعي (قائمة كبيرة)",
+    "addBlock": "إضافة كتلة",
+    "emptyMenu": "لا توجد روابط في هذه القائمة. انقر على \"إضافة رابط\" للبدء.",
+    "itemType": {
+      "customUrl": "رابط مخصص",
+      "page": "صفحة",
+      "product": "منتج",
+      "category": "فئة",
+      "collection": "مجموعة"
+    },
+    "labelPlaceholder": "نص الرابط",
+    "urlPlaceholder": "الرابط (مثال: /pages/contact أو https://...)",
+    "selectPlaceholder": "اختيار…",
+    "searchPage": "البحث عن صفحة…",
+    "searchProduct": "البحث عن منتج…",
+    "searchCategory": "البحث عن فئة…",
+    "searchCollection": "البحث عن مجموعة…",
+    "noPageFound": "لا توجد صفحات",
+    "noProductFound": "لا توجد منتجات",
+    "noCategoryFound": "لا توجد فئات",
+    "noCollectionFound": "لا توجد مجموعات (استخدم الفئات)",
+    "loading": "جاري التحميل…",
+    "subLinks": "الروابط الفرعية (القائمة الكبيرة)",
+    "add": "+ إضافة",
+    "footerBlocks": {
+      "title": "التذييل",
+      "subtitle": "كتل المحتوى المعروضة في أسفل الصفحة",
+      "blockTypes": {
+        "text": "نص حر",
+        "menu": "قائمة روابط",
+        "contact": "اتصل بنا",
+        "social": "وسائل التواصل الاجتماعي",
+        "newsletter": "النشرة الإخبارية",
+        "paymentBadges": "شارات الدفع",
+        "legal": "الإشعارات القانونية",
+        "map": "خريطة جوجل"
+      }
     }
   },
 

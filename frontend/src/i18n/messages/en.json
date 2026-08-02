@@ -262,10 +262,26 @@
     "welcome": "Hello, {name} 👋",
     "sidebar": {
       "overview": "Overview",
+      "setupGuide": "Setup guide",
+      "analytics": "Analytics",
+      "ads": "PandaMarket Ads",
       "products": "Products",
       "categories": "Categories",
       "orders": "Orders",
+      "media": "Media",
+      "messages": "Messages",
       "wallet": "Wallet",
+      "financialReport": "Financial Report",
+      "onlineStore": "Online Store",
+      "onlineStoreOverview": "Overview",
+      "themes": "Themes",
+      "customize": "Customize",
+      "menusNavigation": "Menus & Navigation",
+      "pages": "Pages",
+      "domains": "Domains",
+      "seoMeta": "SEO & Meta",
+      "integrationsPixels": "Integrations & Pixels",
+      "customers": "Customers",
       "aiTools": "AI Tools",
       "myStore": "My Store",
       "apiKeys": "API Keys",
@@ -276,7 +292,13 @@
       "webhooks": "Webhooks",
       "reports": "Reports",
       "paymentConfig": "Direct Payment",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "myAccount": "My account",
+      "platformOrdersInvoices": "Platform Orders & Invoices",
+      "groupCatalogSales": "Catalog & Sales",
+      "groupOnlineStore": "Online Store",
+      "groupConfiguration": "Configuration",
+      "createFreeStore": "Create free store"
     },
     "stats": {
       "sales": "Sales",
@@ -289,6 +311,71 @@
     "loggingOut": "Logging out...",
     "top": {
       "welcome": "Welcome, {name}"
+    }
+  },
+
+  "storefrontNav": {
+    "title": "Menus & Navigation",
+    "subtitle": "Manage your storefront menus and footer",
+    "saveDraft": "Save draft",
+    "publishOnline": "Publish online",
+    "saving": "Saving...",
+    "publishing": "Publishing...",
+    "saved": "Drafts (menus + footer) saved.",
+    "published": "Navigation & Footer published online!",
+    "errorSave": "Error saving draft",
+    "errorPublish": "Error publishing",
+    "errorNetwork": "Network error",
+    "reset": "Reset",
+    "unsavedChanges": "You have unsaved changes",
+    "locations": {
+      "header": "Main Menu (Header)",
+      "headerDesc": "Links shown at the top of your storefront",
+      "footer": "Footer Menu",
+      "footerDesc": "Links shown at the bottom of the page",
+      "mobile": "Mobile Menu",
+      "mobileDesc": "Links shown in the mobile hamburger menu",
+      "utility": "Utility Bar",
+      "utilityDesc": "Small bar above the header"
+    },
+    "addItem": "Add link",
+    "addChild": "Add sub-link (mega menu)",
+    "addBlock": "Add block",
+    "emptyMenu": "No links in this menu. Click \"Add link\" to get started.",
+    "itemType": {
+      "customUrl": "Custom URL",
+      "page": "Page",
+      "product": "Product",
+      "category": "Category",
+      "collection": "Collection"
+    },
+    "labelPlaceholder": "Link label",
+    "urlPlaceholder": "URL (e.g. /pages/contact or https://...)",
+    "selectPlaceholder": "Select…",
+    "searchPage": "Search a page…",
+    "searchProduct": "Search a product…",
+    "searchCategory": "Search a category…",
+    "searchCollection": "Search a collection…",
+    "noPageFound": "No page found",
+    "noProductFound": "No product found",
+    "noCategoryFound": "No category found",
+    "noCollectionFound": "No collection found (use categories)",
+    "loading": "Loading…",
+    "subLinks": "Sub-links (Mega Menu)",
+    "add": "+ Add",
+    "footerBlocks": {
+      "title": "Footer",
+      "subtitle": "Content blocks shown at the bottom of the page",
+      "blockTypes": {
+        "text": "Free text",
+        "menu": "Link menu",
+        "contact": "Contact",
+        "social": "Social media",
+        "newsletter": "Newsletter",
+        "paymentBadges": "Payment badges",
+        "legal": "Legal notices",
+        "map": "Google Maps embed"
+      }
     }
   },
 

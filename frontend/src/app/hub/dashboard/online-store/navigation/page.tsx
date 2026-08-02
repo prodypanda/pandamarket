@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { ReferenceSelector } from '@/components/dashboard/ReferenceSelector';
+import { useLocale } from '@/contexts/LocaleContext';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ function addChildToTree(items: MenuItem[], parentId: string, child: MenuItem): M
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function NavigationManagerPage() {
+  const { t } = useLocale();
   const [menus, setMenus] = useState<Menu[]>([]);
   const [initialMenus, setInitialMenus] = useState<Menu[]>([]);
   const [footerBlocks, setFooterBlocks] = useState<FooterBlock[]>([]);
@@ -336,13 +338,13 @@ export default function NavigationManagerPage() {
         setInitialMenus(menus);
         setInitialFooterBlocks(footerBlocks);
         setIsDirty(false);
-        setFeedback({ message: 'Brouillons (menus + footer) sauvegardés.' });
+        setFeedback({ message: t('storefrontNav.saved') });
       } else {
         const errData = await navRes.json().catch(() => ({}));
-        setFeedback({ message: errData.error?.message || 'Erreur lors de la sauvegarde du brouillon', isError: true });
+        setFeedback({ message: errData.error?.message || t('storefrontNav.errorSave'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('storefrontNav.errorNetwork'), isError: true });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -360,12 +362,12 @@ export default function NavigationManagerPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        setFeedback({ message: 'Navigation & Footer publiés en ligne !' });
+        setFeedback({ message: t('storefrontNav.published') });
       } else {
-        setFeedback({ message: 'Erreur lors de la publication', isError: true });
+        setFeedback({ message: t('storefrontNav.errorPublish'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('storefrontNav.errorNetwork'), isError: true });
     } finally {
       setPublishing(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -389,10 +391,10 @@ export default function NavigationManagerPage() {
   }
 
   const locations: { key: Menu['location']; label: string; desc: string }[] = [
-    { key: 'header', label: 'Menu principal (En-tête)', desc: 'Affiché dans la barre de navigation supérieure' },
-    { key: 'mobile', label: 'Menu Drawer Mobile', desc: 'Affiché dans le tiroir de navigation mobile' },
-    { key: 'footer', label: 'Menu Pied de page (liens)', desc: 'Liens affichés dans le menu du pied de page' },
-    { key: 'utility', label: 'Menu utilitaire', desc: 'Barre utilitaire au-dessus de l\'en-tête (contact, réseaux)' },
+    { key: 'header', label: t('storefrontNav.locations.header'), desc: t('storefrontNav.locations.headerDesc') },
+    { key: 'mobile', label: t('storefrontNav.locations.mobile'), desc: t('storefrontNav.locations.mobileDesc') },
+    { key: 'footer', label: t('storefrontNav.locations.footer'), desc: t('storefrontNav.locations.footerDesc') },
+    { key: 'utility', label: t('storefrontNav.locations.utility'), desc: t('storefrontNav.locations.utilityDesc') },
   ];
 
   return (
@@ -406,9 +408,9 @@ export default function NavigationManagerPage() {
                 <Navigation className="h-5 w-5" />
               </span>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Menus & Navigation</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{t('storefrontNav.title')}</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Configurez les menus de l&apos;en-tête, du pied de page, du mobile et les blocs du footer.
+                  {t('storefrontNav.subtitle')}
                 </p>
               </div>
             </div>
@@ -422,7 +424,7 @@ export default function NavigationManagerPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
-              {saving ? 'Sauvegarde...' : 'Sauvegarder brouillon'}
+              {saving ? t('storefrontNav.saving') : t('storefrontNav.saveDraft')}
             </button>
             <button
               type="button"
@@ -431,7 +433,7 @@ export default function NavigationManagerPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
-              {publishing ? 'Publication...' : 'Publier en ligne'}
+              {publishing ? t('storefrontNav.publishing') : t('storefrontNav.publishOnline')}
             </button>
           </div>
         </div>
@@ -467,7 +469,7 @@ export default function NavigationManagerPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C] transition"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Ajouter un lien
+                  {t('storefrontNav.addItem')}
                 </button>
               </div>
 
@@ -484,24 +486,24 @@ export default function NavigationManagerPage() {
                           onChange={(e) => handleUpdateItem(loc.key, item.id, 'type', e.target.value)}
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-32"
                         >
-                          <option value="custom_url">URL libre</option>
-                          <option value="page">Page</option>
-                          <option value="product">Produit</option>
-                          <option value="category">Catégorie</option>
-                          <option value="collection">Collection</option>
+                          <option value="custom_url">{t('storefrontNav.itemType.customUrl')}</option>
+                          <option value="page">{t('storefrontNav.itemType.page')}</option>
+                          <option value="product">{t('storefrontNav.itemType.product')}</option>
+                          <option value="category">{t('storefrontNav.itemType.category')}</option>
+                          <option value="collection">{t('storefrontNav.itemType.collection')}</option>
                         </select>
                         <input
                           type="text"
                           value={item.localized_label}
                           onChange={(e) => handleUpdateItem(loc.key, item.id, 'localized_label', e.target.value)}
-                          placeholder="Intitulé du lien"
+                          placeholder={t('storefrontNav.labelPlaceholder')}
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
                         <input
                           type="text"
                           value={item.url}
                           onChange={(e) => handleUpdateItem(loc.key, item.id, 'url', e.target.value)}
-                          placeholder="URL (ex: /pages/contact ou https://...)"
+                          placeholder={t('storefrontNav.urlPlaceholder')}
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
                         {item.type !== 'custom_url' && (
@@ -539,14 +541,14 @@ export default function NavigationManagerPage() {
                         <div className="w-full space-y-2 rounded-xl border border-dashed border-slate-300 bg-white p-3">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              Sous-liens (Mega Menu)
+                              {t('storefrontNav.subLinks')}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleAddChildItem(loc.key, item.id)}
                               className="text-[10px] font-bold text-[#B91C1C] hover:underline"
                             >
-                              + Ajouter
+                              {t('storefrontNav.add')}
                             </button>
                           </div>
                           {item.children.map((child) => (
@@ -581,7 +583,7 @@ export default function NavigationManagerPage() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">
-                  Aucun lien dans ce menu. Cliquez sur &quot;Ajouter un lien&quot; pour commencer.
+                  {t('storefrontNav.emptyMenu')}
                 </div>
               )}
             </div>
