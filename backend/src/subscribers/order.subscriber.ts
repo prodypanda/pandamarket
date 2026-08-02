@@ -14,9 +14,24 @@ import { emailQueue } from '../queues/email-queue';
 import { socketGateway } from '../realtime/socket-gateway';
 import { calculateCommission, calculateVendorNet } from '../utils/money';
 import { subscriptionService } from '../services/subscription.service';
+import { platformConfigService } from '../services/platform-config.service';
 import { ProductType } from '@pandamarket/types';
 import { incrementBusinessMetric } from '../utils/metrics';
 import { marketplaceAnalyticsEventService } from '../services/marketplace-analytics-event.service';
+
+/**
+ * Map a payment gateway identifier to the matching platform-config retention key.
+ * Returns undefined for unknown gateways (falls back to wallet default).
+ */
+function gatewayToRetentionKey(gateway?: string): 'retention_days_flouci' | 'retention_days_konnect' | 'retention_days_mandat' | 'retention_days_cod' | undefined {
+  if (!gateway) return undefined;
+  const g = gateway.toLowerCase();
+  if (g.includes('flouci')) return 'retention_days_flouci';
+  if (g.includes('konnect')) return 'retention_days_konnect';
+  if (g.includes('mandat')) return 'retention_days_mandat';
+  if (g === 'cod' || g === 'cash_on_delivery' || g.includes('cod')) return 'retention_days_cod';
+  return undefined;
+}
 
 export function registerOrderSubscribers(): void {
   eventBus.on(PdEvent.ORDER_PLACED, async (payload: { order_id: string }) => {
@@ -31,7 +46,7 @@ export function registerOrderSubscribers(): void {
   eventBus.on(PdEvent.PAYMENT_CAPTURED, async (payload: { order_id: string; gateway: string }) => {
     try {
       incrementBusinessMetric('payments_captured', { gateway: payload.gateway });
-      await onPaymentCaptured(payload.order_id);
+      await onPaymentCaptured(payload.order_id, payload.gateway);
     } catch (err) {
       logger.error({ err, payload }, 'payment.captured subscriber failed');
     }
@@ -130,8 +145,17 @@ async function onOrderPlaced(orderId: string): Promise<void> {
   }
 }
 
-async function onPaymentCaptured(orderId: string): Promise<void> {
+async function onPaymentCaptured(orderId: string, gateway?: string): Promise<void> {
   await assignSerialLicenseKeys(orderId);
+
+  // Resolve per-payment-method retention days from platform config
+  let retentionDays: number | undefined;
+  const retentionKey = gatewayToRetentionKey(gateway);
+  if (retentionKey) {
+    const settings = await platformConfigService.getSettings();
+    const raw = settings[retentionKey];
+    if (typeof raw === 'number' && raw > 0) retentionDays = raw;
+  }
 
   // Per-store totals (excluding shipping for commission calc — keep it simple here)
   const { rows: storeRows } = await query<{
@@ -163,6 +187,7 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
         store_id: row.store_id,
         amount: net,
         order_id: orderId,
+        retention_days: retentionDays,
         description:
           commission > 0
             ? `Sale (${total} TND) − commission (${commission} TND)`

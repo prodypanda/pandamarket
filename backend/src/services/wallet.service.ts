@@ -77,12 +77,17 @@ export class WalletService {
   /**
    * Credit funds to the wallet's pending_balance.
    * After `retention_days` they will be moved to `balance` by a background job.
+   *
+   * `retention_days` (optional) overrides the wallet's default retention period.
+   * Callers should pass the per-payment-method retention from platform config
+   * so the correct release date is applied per transaction.
    */
   async creditPending(opts: {
     store_id: string;
     amount: number;
     order_id?: string;
     description?: string;
+    retention_days?: number;
     client?: PoolClient;
   }): Promise<void> {
     const amount = roundTnd(opts.amount);
@@ -98,14 +103,19 @@ export class WalletService {
       const wallet = rows[0];
       if (!wallet) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Wallet not found');
 
-      const availableAt = new Date(Date.now() + wallet.retention_days * 24 * 60 * 60 * 1000);
+      const retentionDays =
+        opts.retention_days && opts.retention_days > 0
+          ? opts.retention_days
+          : wallet.retention_days;
+      const availableAt = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000);
 
       await c.query(
         `UPDATE pd_vendor_wallet
          SET pending_balance = pending_balance + $2,
-             total_earned    = total_earned    + $2
+             total_earned    = total_earned    + $2,
+             retention_days  = $3
          WHERE id = $1`,
-        [wallet.id, amount],
+        [wallet.id, amount, retentionDays],
       );
       await c.query(
         `INSERT INTO pd_wallet_transaction
@@ -117,7 +127,7 @@ export class WalletService {
           WalletTransactionType.Sale,
           amount,
           opts.order_id ?? null,
-          opts.description ?? `Sale credited (pending ${wallet.retention_days}d)`,
+          opts.description ?? `Sale credited (pending ${retentionDays}d)`,
           availableAt,
         ],
       );

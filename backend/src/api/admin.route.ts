@@ -42,6 +42,7 @@ import {
 } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { smtpConfigService } from '../services/smtp-config.service';
+import { walletService } from '../services/wallet.service';
 import { creditsService } from '../services/credits.service';
 import { aiConfigService } from '../services/ai-config.service';
 import type { AiProvider } from '../services/ai-config.service';
@@ -1800,6 +1801,45 @@ router.get(
       })),
       meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
     });
+  }),
+);
+
+/**
+ * POST /api/pd/admin/wallets/release-due
+ * Manually trigger release of pending funds whose retention period has elapsed.
+ * Useful when the recurring BullMQ job was not scheduled (e.g. before the fix
+ * that calls scheduleRecurringPayoutJobs() on boot).
+ */
+router.post(
+  '/wallets/release-due',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const released = await walletService.releaseDueFunds();
+    res.status(200).json({ released_count: released });
+  }),
+);
+
+/**
+ * POST /api/pd/admin/wallets/sync-retention
+ * Bulk-update every vendor wallet's retention_days from the current platform
+ * config (per payment method). Uses the mandat retention as the wallet default
+ * (most conservative) — per-transaction retention is applied at credit time.
+ */
+router.post(
+  '/wallets/sync-retention',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const settings = await platformConfigService.getSettings();
+    const candidates = [
+      settings.retention_days_flouci,
+      settings.retention_days_konnect,
+      settings.retention_days_mandat,
+      settings.retention_days_cod,
+    ].map((v) => (typeof v === 'number' ? v : Number(v))).filter((v) => Number.isFinite(v) && v > 0);
+    const retentionDays = candidates.length ? Math.min(...candidates) : 2;
+    const { rowCount } = await query(
+      `UPDATE pd_vendor_wallet SET retention_days = $1 WHERE retention_days <> $1`,
+      [retentionDays],
+    );
+    res.status(200).json({ synced_wallets: rowCount ?? 0, retention_days: retentionDays });
   }),
 );
 

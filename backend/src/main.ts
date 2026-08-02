@@ -60,6 +60,8 @@ import { startPayoutWorker } from './workers/payout.worker';
 import { startSearchWorker } from './workers/search.worker';
 import { startSubscriptionWorker } from './workers/subscription.worker';
 import { startWebhookWorker } from './workers/webhook.worker';
+import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
+import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { adsService } from './services/ads.service';
 import { adminNotesService } from './services/admin-notes.service';
 import { notificationService } from './services/notification.service';
@@ -450,6 +452,15 @@ async function bootstrap() {
         await shutdownWorkers();
       });
       logger.info('🤖 All 6 background workers successfully started in-process.');
+
+      // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot)
+      try {
+        await scheduleRecurringPayoutJobs();
+        await scheduleRecurringSubscriptionJobs();
+        logger.info('⏰ Recurring BullMQ jobs scheduled (payout release every 15min, subscription daily).');
+      } catch (err) {
+        logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.');
+      }
     } catch (err) {
       logger.error({ err }, 'Failed to start background workers in-process.');
     }
