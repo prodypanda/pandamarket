@@ -208,3 +208,74 @@ Deep audit of the storefront implementation (commit `f8a58df` by external AI age
 5. **Documentation references `pandamarket.tn`** — `README.md`, `ai instructions/*.md`, `Caddyfile` still reference the old domain. These are documentation files, not runtime code.
 
 6. **`EmptyStoreState` component created but not yet integrated** — The component exists but themes still use their inline empty states. Could be integrated for a richer empty store experience.
+
+---
+
+## Round 3 Issues Found & Fixed (commits `576d2fe` → `0f5aa7a`)
+
+### P0-7: Wallet Funds Stuck in Pending (5555 TND Never Released)
+
+**Files:** `backend/src/main.ts`, `backend/src/services/wallet.service.ts`, `backend/src/subscribers/order.subscriber.ts`, `backend/src/api/admin.route.ts`
+
+**Root Cause #1:** `scheduleRecurringPayoutJobs()` and `scheduleRecurringSubscriptionJobs()` were never called in `main.ts`. The BullMQ worker was started, but no recurring job was ever queued. This means `walletService.releaseDueFunds()` never ran — pending funds stayed pending forever.
+
+**Root Cause #2:** Per-payment-method retention days (`retention_days_flouci=2`, etc.) are stored as platform-level settings but were NOT propagated to `creditPending()`. The wallet's `retention_days` was set at creation time to `config.defaultRetentionDays` (default 7) and never updated. Even after the job runs, `available_at` was set 7 days in the future.
+
+**Fix:**
+- Call `scheduleRecurringPayoutJobs()` and `scheduleRecurringSubscriptionJobs()` after worker startup in `main.ts`.
+- `creditPending()` now accepts optional `retention_days` parameter that overrides `wallet.retention_days`.
+- `onPaymentCaptured()` resolves retention from platform config per gateway (flouci/konnect/mandat/cod) and passes it to `creditPending()`.
+- Added admin endpoints: `POST /wallets/release-due`, `POST /wallets/sync-retention`.
+- Bulk-released the stuck 5555 TND pending transaction (available_at was 2026-05-14, never released).
+- Synced all wallets to `retention_days=2` to match platform config.
+
+**Live data verified:** Atelier Médina wallet now shows `balance=5555.000`, `pending_balance=0.000`, `retention_days=2`.
+
+### P1-9: Navigation Menu Item Selector Was Free-Text
+
+**Files:** `frontend/src/components/dashboard/ReferenceSelector.tsx`, `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`
+
+**Bug:** When adding a menu item, the seller had to type the reference ID (product ID, page ID, etc.) as free text — no way to search/select.
+
+**Fix:** Created a new `ReferenceSelector` component — a searchable dropdown that fetches products, pages, and categories from the API. Sellers can now search and select the target entity instead of typing an ID.
+
+### P1-10: No Mega Menu Support for Storefront
+
+**Files:** `frontend/src/components/store/StorefrontHeader.tsx`, `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`
+
+**Bug:** The storefront header only rendered simple dropdowns (max 192px wide, flat list). No support for mega menus with multiple columns or promotional images.
+
+**Fix:**
+- `StorefrontHeader` now renders a mega menu panel (multi-column) when a header menu item has 6+ children or has a promotional image.
+- Navigation page supports nested children: sellers can add sub-links to any header menu item.
+- Mega menu shows promotional image banner on the right when set.
+- Tree helper functions for add/remove/update of nested menu items.
+
+### P1-11: Seller Dashboard i18n Incomplete
+
+**Files:** `frontend/src/app/hub/dashboard/layout.tsx`, `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`, `frontend/src/i18n/messages/{fr,en,ar}.json`
+
+**Bug:** The dashboard layout had partial i18n (some strings used `t()`, many were hardcoded French). The navigation page had no i18n at all.
+
+**Fix:**
+- Added 25+ new translation keys for sidebar items (setupGuide, analytics, ads, media, messages, financialReport, onlineStore, themes, customize, menusNavigation, pages, domains, seoMeta, integrationsPixels, customers, etc.) in all three languages.
+- Added `storefrontNav` section with 30+ keys for the navigation page (locations, item types, save/publish, mega menu, footer blocks).
+- Dashboard layout: all navigation groups, account menu items, and button labels now use `t()`.
+- Navigation page: all UI strings translated (title, buttons, locations, item types, feedback messages).
+- Language switcher already present (`LocaleSwitcher` component).
+- RTL support already handled by `LocaleContext` (`dir='rtl'` for Arabic).
+
+---
+
+## Validation
+
+- Backend type-check: ✅ pass
+- Backend tests: ✅ 347/347 pass
+- Frontend type-check: ✅ pass
+- Frontend tests: ✅ 86/86 pass
+- Frontend ESLint: ✅ no errors
+- Live marketplace: ✅ `https://www.garbage.team/` returns 200
+- Live storefront: ✅ `https://prodypanda.garbage.team/` returns 200
+- Backend health: ✅ `https://pandamarket-backend-zjr5.onrender.com/health` returns 200
+- Vercel deploy: ✅ triggered (commit `0f5aa7a`)
+- Render deploy: ✅ triggered (commit `0f5aa7a`)
