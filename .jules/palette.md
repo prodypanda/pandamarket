@@ -1,3 +1,3 @@
-## 2024-05-27 - Icon-only Quantity Buttons in Cart Component
-**Learning:** Found an accessibility issue where quantity adjustment buttons (+ and -) lacked `aria-label`s. Screen reader users would just hear "button" without context of what it does, making quantity adjustment confusing.
-**Action:** Always add `aria-label="Decrease quantity"` and `aria-label="Increase quantity"` (or appropriate descriptive text) to icon-only buttons in interactive controls like quantity selectors or cart UI.
+## 2026-06-24 - Accessibility Labels and Localization
+**Learning:** Hardcoded text values (even localized strings) break accessible screen readers or UX expectations when they conflict with a component's or application's built-in translation system (`t()`), especially when modifying `aria-label` attributes.
+**Action:** Always prefer the `t('namespace.key') || 'Fallback'` pattern when assigning new labels to elements if an internationalization system is present in the codebase.

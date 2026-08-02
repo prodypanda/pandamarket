@@ -452,13 +452,13 @@ export default function SellerAdsPage() {
                       {c.status.replaceAll('_', ' ')}
                     </span>
 
-                    <button type="button" onClick={() => setPreviewCampaign(c)} className="rounded-lg border bg-white p-2 text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Preview Creative">
+                    <button type="button" aria-label={t('ads.preview') || 'Preview Creative'} onClick={() => setPreviewCampaign(c)} className="rounded-lg border bg-white p-2 text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Preview Creative">
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button type="button" onClick={() => openEditModal(c)} className="rounded-lg border bg-white p-2 text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Edit Campaign">
+                    <button type="button" aria-label={t('ads.edit') || 'Edit Campaign'} onClick={() => openEditModal(c)} className="rounded-lg border bg-white p-2 text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Edit Campaign">
                       <Edit3 className="h-4 w-4" />
                     </button>
-                    <button type="button" onClick={() => hideCampaign(c.id)} className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition cursor-pointer" title="Hide/Archive Campaign">
+                    <button type="button" aria-label={t('ads.archive') || 'Archive Campaign'} onClick={() => hideCampaign(c.id)} className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition cursor-pointer" title="Hide/Archive Campaign">
                       <Trash2 className="h-4 w-4" />
                     </button>
 
@@ -614,7 +614,7 @@ export default function SellerAdsPage() {
                 <h2 className="text-xl font-black text-slate-900">Edit Campaign: {editingCampaign.name}</h2>
                 <p className="text-xs text-slate-500">Editing an approved ad will resubmit it for admin moderation.</p>
               </div>
-              <button type="button" onClick={() => setEditingCampaign(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 cursor-pointer">
+              <button type="button" aria-label={t('ads.close') || 'Close'} onClick={() => setEditingCampaign(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -684,7 +684,7 @@ export default function SellerAdsPage() {
           <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="font-black text-slate-900">Ad Creative Preview</h2>
-              <button type="button" onClick={() => setPreviewCampaign(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
+              <button type="button" aria-label={t('ads.close') || 'Close'} onClick={() => setPreviewCampaign(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -718,7 +718,7 @@ export default function SellerAdsPage() {
                 <h2 className="text-2xl font-black text-slate-900">{t('ads.refillModalTitle') || 'Refill Ads Balance'}</h2>
                 <p className="text-xs text-slate-500">{t('ads.refillModalDesc') || 'Prepay funds into your Ads account.'}</p>
               </div>
-              <button type="button" onClick={() => setRefilling(false)} className="rounded-full p-1 hover:bg-slate-100 cursor-pointer"><X className="h-5 w-5" /></button>
+              <button type="button" aria-label={t('ads.close') || 'Close'} onClick={() => setRefilling(false)} className="rounded-full p-1 hover:bg-slate-100 cursor-pointer"><X className="h-5 w-5" /></button>
             </div>
 
             <div>
