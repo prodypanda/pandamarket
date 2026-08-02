@@ -26,6 +26,9 @@ interface MenuItem {
   url: string;
   reference_id?: string | null;
   target?: '_self' | '_blank';
+  image?: string | null;
+  sort_order?: number;
+  children?: MenuItem[];
 }
 
 interface Menu {
@@ -65,6 +68,68 @@ const FOOTER_BLOCK_TYPES: { value: FooterBlockType; label: string; desc: string 
   { value: 'map', label: 'Carte Google Maps', desc: 'Embed Google Maps de votre boutique' },
 ];
 
+// ─── Helpers ───────────────────────────────────────────────────────
+
+function extractLabel(raw: unknown): string {
+  if (typeof raw === 'object' && raw !== null) {
+    const obj = raw as Record<string, string>;
+    return obj.fr || obj.en || '';
+  }
+  return typeof raw === 'string' ? raw : '';
+}
+
+function mapItems(raw: Array<Record<string, unknown>>): MenuItem[] {
+  return raw.map((item) => ({
+    id: (item.id as string) || `item_${crypto.randomUUID()}`,
+    type: (item.type as MenuItem['type']) || 'custom_url',
+    localized_label: extractLabel(item.localized_label ?? item.label),
+    url: (item.url as string) || '',
+    reference_id: (item.reference_id as string | null) || null,
+    target: (item.target as MenuItem['target']) || '_self',
+    image: (item.image as string | null) || null,
+    children: Array.isArray(item.children) ? mapItems(item.children as Array<Record<string, unknown>>) : [],
+  }));
+}
+
+function updateItemInTree(
+  items: MenuItem[],
+  itemId: string,
+  field: keyof MenuItem,
+  value: string,
+): MenuItem[] {
+  return items.map((item) => {
+    if (item.id === itemId) {
+      return { ...item, [field]: value };
+    }
+    if (item.children && item.children.length > 0) {
+      return { ...item, children: updateItemInTree(item.children, itemId, field, value) };
+    }
+    return item;
+  });
+}
+
+function removeItemFromTree(items: MenuItem[], itemId: string): MenuItem[] {
+  return items
+    .filter((item) => item.id !== itemId)
+    .map((item) =>
+      item.children && item.children.length > 0
+        ? { ...item, children: removeItemFromTree(item.children, itemId) }
+        : item,
+    );
+}
+
+function addChildToTree(items: MenuItem[], parentId: string, child: MenuItem): MenuItem[] {
+  return items.map((item) => {
+    if (item.id === parentId) {
+      return { ...item, children: [...(item.children ?? []), child] };
+    }
+    if (item.children && item.children.length > 0) {
+      return { ...item, children: addChildToTree(item.children, parentId, child) };
+    }
+    return item;
+  });
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function NavigationManagerPage() {
@@ -94,28 +159,7 @@ export default function NavigationManagerPage() {
         loadedMenus = rawMenus.map((m) => ({
           id: m.id || `menu_${m.location}`,
           location: m.location,
-          items: ((m.items || []) as Array<Record<string, unknown>>).map((item) => {
-            const rawLabel = item.localized_label;
-            const label: string =
-              typeof rawLabel === 'object' && rawLabel !== null
-                ? (rawLabel as Record<string, string>).fr ||
-                  (rawLabel as Record<string, string>).en ||
-                  ''
-                : typeof rawLabel === 'string'
-                  ? rawLabel
-                  : typeof item.label === 'string'
-                    ? item.label
-                    : '';
-            return {
-              ...(item as object),
-              id: (item.id as string) || `item_${Math.random()}`,
-              type: (item.type as MenuItem['type']) || 'custom_url',
-              localized_label: label,
-              url: (item.url as string) || '',
-              reference_id: (item.reference_id as string | null) || null,
-              target: (item.target as MenuItem['target']) || '_self',
-            } as MenuItem;
-          }),
+          items: mapItems((m.items || []) as Array<Record<string, unknown>>),
         }));
       }
       // Ensure all 4 locations exist
@@ -184,7 +228,7 @@ export default function NavigationManagerPage() {
         if (m.location !== location) return m;
         return {
           ...m,
-          items: m.items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)),
+          items: updateItemInTree(m.items, itemId, field, value),
         };
       }),
     );
@@ -194,8 +238,28 @@ export default function NavigationManagerPage() {
   const handleRemoveItem = (location: Menu['location'], itemId: string) => {
     setMenus((prev) =>
       prev.map((m) =>
-        m.location === location ? { ...m, items: m.items.filter((item) => item.id !== itemId) } : m,
+        m.location === location ? { ...m, items: removeItemFromTree(m.items, itemId) } : m,
       ),
+    );
+    setIsDirty(true);
+  };
+
+  const handleAddChildItem = (location: Menu['location'], parentId: string) => {
+    const newChild: MenuItem = {
+      id: `item_${crypto.randomUUID()}`,
+      type: 'custom_url',
+      localized_label: 'Sous-lien',
+      url: '/',
+      target: '_self',
+    };
+    setMenus((prev) =>
+      prev.map((m) => {
+        if (m.location !== location) return m;
+        return {
+          ...m,
+          items: addChildToTree(m.items, parentId, newChild),
+        };
+      }),
     );
     setIsDirty(true);
   };
@@ -450,13 +514,68 @@ export default function NavigationManagerPage() {
                           </div>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(loc.key, item.id)}
-                        className="self-end sm:self-auto rounded-xl p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {loc.key === 'header' && (
+                          <button
+                            type="button"
+                            onClick={() => handleAddChildItem(loc.key, item.id)}
+                            title="Ajouter un sous-lien (mega menu)"
+                            className="rounded-xl p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(loc.key, item.id)}
+                          className="rounded-xl p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Nested children (mega menu sub-items) */}
+                      {item.children && item.children.length > 0 && (
+                        <div className="w-full space-y-2 rounded-xl border border-dashed border-slate-300 bg-white p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Sous-liens (Mega Menu)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddChildItem(loc.key, item.id)}
+                              className="text-[10px] font-bold text-[#B91C1C] hover:underline"
+                            >
+                              + Ajouter
+                            </button>
+                          </div>
+                          {item.children.map((child) => (
+                            <div key={child.id} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={child.localized_label}
+                                onChange={(e) => handleUpdateItem(loc.key, child.id, 'localized_label', e.target.value)}
+                                placeholder="Intitulé"
+                                className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-[#B91C1C] focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={child.url}
+                                onChange={(e) => handleUpdateItem(loc.key, child.id, 'url', e.target.value)}
+                                placeholder="/chemin"
+                                className="w-32 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-[#B91C1C] focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(loc.key, child.id)}
+                                className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600 transition"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

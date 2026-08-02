@@ -448,6 +448,17 @@ export function StorefrontHeader({
 
                 if (hasChildren) {
                   const isOpen = openDropdownId === item.id;
+                  const childCount = item.children?.length ?? 0;
+                  // Mega menu: 6+ children OR item has a promotional image
+                  const isMegaMenu = childCount >= 6 || (!!item.image && childCount >= 3);
+                  const columns = isMegaMenu
+                    ? childCount <= 8
+                      ? 2
+                      : childCount <= 12
+                        ? 3
+                        : 4
+                    : 1;
+
                   return (
                     <div key={item.id} className="relative group">
                       <button
@@ -460,19 +471,82 @@ export function StorefrontHeader({
 
                       {isOpen && (
                         <div
-                          className="absolute top-full left-0 mt-2 w-48 rounded-xl shadow-xl border p-2 bg-white text-gray-900 z-50 space-y-1"
+                          className={`absolute top-full ${isMegaMenu ? 'left-1/2 -translate-x-1/2' : 'left-0'} mt-2 ${
+                            isMegaMenu ? 'max-w-[90vw]' : 'w-48'
+                          } rounded-xl shadow-xl border p-4 bg-white text-gray-900 z-50`}
+                          style={
+                            isMegaMenu
+                              ? { width: Math.min(columns * 200 + (item.image ? 240 : 0), 960) }
+                              : undefined
+                          }
                         >
-                          {item.children?.map((child) => (
-                            <Link
-                              key={child.id}
-                              href={resolveItemHref(child)}
-                              target={child.target}
-                              className="block px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-                              onClick={() => setOpenDropdownId(null)}
-                            >
-                              {renderMenuItemLabel(child)}
-                            </Link>
-                          ))}
+                          {isMegaMenu ? (
+                            <div className="flex gap-4">
+                              {/* Columns of links */}
+                              <div
+                                className={`grid gap-2 ${
+                                  item.image ? 'flex-1' : 'w-full'
+                                }`}
+                                style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+                              >
+                                {item.children?.map((child) => (
+                                  <Link
+                                    key={child.id}
+                                    href={resolveItemHref(child)}
+                                    target={child.target}
+                                    className="block px-2 py-1.5 text-xs font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+                                    onClick={() => setOpenDropdownId(null)}
+                                  >
+                                    {child.image && (
+                                      <Image
+                                        src={child.image}
+                                        alt=""
+                                        width={80}
+                                        height={80}
+                                        unoptimized
+                                        className="mb-1 h-10 w-full rounded object-cover"
+                                      />
+                                    )}
+                                    {renderMenuItemLabel(child)}
+                                  </Link>
+                                ))}
+                              </div>
+
+                              {/* Promotional image banner */}
+                              {item.image && (
+                                <div className="w-56 shrink-0">
+                                  <Link
+                                    href={href}
+                                    onClick={() => setOpenDropdownId(null)}
+                                    className="block"
+                                  >
+                                    <Image
+                                      src={item.image}
+                                      alt={label}
+                                      width={224}
+                                      height={224}
+                                      unoptimized
+                                      className="h-full w-full rounded-xl object-cover"
+                                    />
+                                  </Link>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              {item.children?.map((child) => (
+                                <Link
+                                  key={child.id}
+                                  href={resolveItemHref(child)}
+                                  target={child.target}
+                                  className="block px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+                                  onClick={() => setOpenDropdownId(null)}
+                                >
+                                  {renderMenuItemLabel(child)}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
