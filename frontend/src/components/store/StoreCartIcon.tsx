@@ -38,6 +38,7 @@ export function StoreCartIcon({
   return (
     <Link
       href={`${basePath}/cart`}
+      aria-label={label || `Panier (${storeItemCount} article${storeItemCount > 1 ? 's' : ''})`}
       className={className ? `relative ${className}` : 'relative inline-flex items-center gap-2 rounded-lg p-2 transition-colors hover:opacity-80'}
       style={linkStyle}
     >

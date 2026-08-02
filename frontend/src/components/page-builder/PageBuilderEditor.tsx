@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { normalizePublicAssetUrl } from '@/lib/public-assets';
+import 'grapesjs/dist/css/grapes.min.css';
 /**
  * PageBuilderEditor — GrapesJS integration for PandaMarket vendor dashboard.
  * ─────────────────────────────────────────────────────────────────────────

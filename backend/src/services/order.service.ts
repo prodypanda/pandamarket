@@ -8,6 +8,7 @@ import { pdId } from '../utils/crypto';
 import {
   PdConflictError,
   PdErrorCode,
+  PdForbiddenError,
   PdNotFoundError,
   PdValidationError,
 } from '../errors';
@@ -258,6 +259,7 @@ export class OrderService {
     customer_id?: string | null;
     storefront_customer_id?: string | null;
     store_id?: string | null;
+    idempotency_key?: string | null;
     items: CartLine[];
     shipping_address?: IAddress | null;
     payment_gateway: PaymentGateway;
@@ -266,9 +268,31 @@ export class OrderService {
     if (!opts.items || opts.items.length === 0) {
       throw new PdValidationError('Cart is empty', { code: PdErrorCode.ORDER_EMPTY_CART });
     }
+    if (opts.idempotency_key) {
+      const existing = await this.getByIdempotencyKey(opts.idempotency_key);
+      if (existing) return existing;
+    }
     const platformSettings = await platformConfigService.getSettings();
 
     return transaction(async (c) => {
+      // Lock affected products and variants in deterministic ascending ID order to prevent deadlocks
+      const uniqueProductIds = Array.from(new Set(opts.items.map((it) => it.product_id))).sort();
+      if (uniqueProductIds.length > 0) {
+        await c.query(
+          `SELECT id FROM pd_product WHERE id = ANY($1::text[]) ORDER BY id FOR UPDATE`,
+          [uniqueProductIds],
+        );
+      }
+      const uniqueVariantIds = Array.from(
+        new Set(opts.items.map((it) => it.variant_id).filter((v): v is string => Boolean(v))),
+      ).sort();
+      if (uniqueVariantIds.length > 0) {
+        await c.query(
+          `SELECT id FROM pd_product_variant WHERE id = ANY($1::text[]) ORDER BY id FOR UPDATE`,
+          [uniqueVariantIds],
+        );
+      }
+
       // ----- Resolve products + check stock -----
       const prepared: PreparedItem[] = [];
       for (const line of opts.items) {
@@ -313,7 +337,7 @@ export class OrderService {
           });
         }
         if (opts.store_id && product.store_id !== opts.store_id) {
-          throw new PdValidationError('Product does not belong to this storefront', {
+          throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Product does not belong to this storefront', {
             product_id: line.product_id,
             store_id: opts.store_id,
           });
@@ -412,25 +436,36 @@ export class OrderService {
         throw new PdValidationError('Customer is required');
       }
 
-      const { rows: orderRows } = await c.query<OrderRow>(
-        `INSERT INTO pd_order
-          (id, customer_id, storefront_customer_id, status, payment_gateway, subtotal,
-           shipping_total, total, currency, shipping_address)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING *`,
-        [
-          orderId,
-          customerId,
-          storefrontCustomerId,
-          initialStatus,
-          opts.payment_gateway,
-          subtotal,
-          shippingTotal,
-          total,
-          config.defaultCurrency,
-          opts.shipping_address ? JSON.stringify(opts.shipping_address) : null,
-        ],
-      );
+      let orderRows: OrderRow[];
+      try {
+        const res = await c.query<OrderRow>(
+          `INSERT INTO pd_order
+            (id, customer_id, storefront_customer_id, status, payment_gateway, subtotal,
+             shipping_total, total, currency, shipping_address, idempotency_key)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING *`,
+          [
+            orderId,
+            customerId,
+            storefrontCustomerId,
+            initialStatus,
+            opts.payment_gateway,
+            subtotal,
+            shippingTotal,
+            total,
+            config.defaultCurrency,
+            opts.shipping_address ? JSON.stringify(opts.shipping_address) : null,
+            opts.idempotency_key ?? null,
+          ],
+        );
+        orderRows = res.rows;
+      } catch (err) {
+        if ((err as { code?: string }).code === '23505' && opts.idempotency_key) {
+          const existing = await this.getByIdempotencyKey(opts.idempotency_key);
+          if (existing) return existing;
+        }
+        throw err;
+      }
 
       // ----- Create order items -----
       for (const item of prepared) {
@@ -450,21 +485,36 @@ export class OrderService {
             item.subtotal,
           ],
         );
-        // Decrement stock
+        // Guarded atomic stock decrement
         if (usesInventory(item.product_type)) {
-          await c.query(
+          const { rows: updatedProduct } = await c.query<{ inventory_quantity: number }>(
             `UPDATE pd_product
              SET inventory_quantity = inventory_quantity - $2
-             WHERE id = $1`,
+             WHERE id = $1 AND inventory_quantity >= $2
+             RETURNING inventory_quantity`,
             [item.product_id, item.quantity],
           );
+          if (!updatedProduct[0]) {
+            throw new PdValidationError('Insufficient stock', {
+              code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+              product_id: item.product_id,
+            });
+          }
           if (item.variant_id) {
-            await c.query(
+            const { rows: updatedVariant } = await c.query<{ inventory_quantity: number }>(
               `UPDATE pd_product_variant
                SET inventory_quantity = inventory_quantity - $2
-               WHERE id = $1`,
+               WHERE id = $1 AND inventory_quantity >= $2
+               RETURNING inventory_quantity`,
               [item.variant_id, item.quantity],
             );
+            if (!updatedVariant[0]) {
+              throw new PdValidationError('Insufficient stock for variant', {
+                code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+                product_id: item.product_id,
+                variant_id: item.variant_id,
+              });
+            }
           }
         } else if (item.product_type === ProductType.Serial) {
           const { rowCount } = await c.query(
@@ -515,6 +565,14 @@ export class OrderService {
       );
       return orderRows[0];
     });
+  }
+
+  async getByIdempotencyKey(key: string): Promise<OrderRow | null> {
+    const { rows } = await query<OrderRow>(
+      `SELECT * FROM pd_order WHERE idempotency_key = $1`,
+      [key],
+    );
+    return rows[0] ?? null;
   }
 
   async getById(id: string): Promise<OrderRow> {
@@ -926,7 +984,7 @@ export class OrderService {
          FROM pd_order_item i
          LEFT JOIN pd_store s ON s.id = i.store_id
          LEFT JOIN pd_product p ON p.id = i.product_id
-         WHERE i.order_id = o.id
+         WHERE i.order_id = o.id AND i.store_id = $2
        ) items ON true
        WHERE ${where}
        ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,

@@ -24,6 +24,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@pandamarket/types': path.resolve(__dirname, '../packages/types/src/index.ts'),
+      'react': path.resolve(__dirname, '../node_modules/react'),
+      'react-dom': path.resolve(__dirname, '../node_modules/react-dom'),
     },
   },
 });

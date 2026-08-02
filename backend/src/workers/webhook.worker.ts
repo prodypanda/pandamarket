@@ -12,6 +12,7 @@ import { logger } from '../utils/logger';
 import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { WebhookJobData } from '../queues/webhook-queue';
+import { validateWebhookUrl } from '../utils/ssrf';
 
 interface WebhookSubscriptionRow {
   id: string;
@@ -90,11 +91,15 @@ async function deliverWebhook(
   let error: string | null = null;
 
   try {
+    // SSRF Check at delivery time to prevent DNS rebinding
+    await validateWebhookUrl(sub.url);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
 
     const response = await fetch(sub.url, {
       method: 'POST',
+      redirect: 'manual', // Disable automatic unvalidated redirects
       headers: {
         'Content-Type': 'application/json',
         'X-PD-Signature': `sha256=${signature}`,
@@ -110,7 +115,9 @@ async function deliverWebhook(
     statusCode = response.status;
     responseBody = await response.text().catch(() => null);
 
-    if (!response.ok) {
+    if (response.status >= 300 && response.status < 400) {
+      error = `HTTP ${statusCode} (Redirects disabled for security)`;
+    } else if (!response.ok) {
       error = `HTTP ${statusCode}`;
     }
   } catch (err) {

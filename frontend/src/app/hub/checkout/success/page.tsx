@@ -12,7 +12,7 @@ type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes']
 
 function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('order_id');
+  const orderId = searchParams.get('order_id') || searchParams.get('order');
 
   return (
     <div className={`${classes.panel} max-w-2xl mx-auto mt-20 relative overflow-hidden p-10 text-center lg:p-16`}>

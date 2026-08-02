@@ -17,6 +17,7 @@ import {
 import { pdId } from '../utils/crypto';
 import { isValidSubdomain } from '../utils/subdomain';
 import { logger } from '../utils/logger';
+import { outboxService, OutboxEventType } from './outbox.service';
 import {
   IStorePaymentConfig,
   SellerType,
@@ -32,6 +33,8 @@ import { creditsService } from './credits.service';
 import { subscriptionService } from './subscription.service';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
+import { themeService } from './theme.service';
+import { signThemePreviewToken, verifyThemePreviewToken } from '../utils/jwt';
 
 export interface StoreRow {
   id: string;
@@ -201,6 +204,20 @@ function parseTimestamp(value: unknown): number | null {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
+export interface PublicStoreRow {
+  id: string;
+  name: string;
+  status: StoreStatus;
+  seller_type: SellerType;
+  is_verified: boolean;
+  subdomain: string;
+  custom_domain: string | null;
+  theme_id: string;
+  settings: Record<string, unknown>;
+  shipping_mode: ShippingMode;
+  created_at: Date;
+}
+
 export class StoreService {
   private normalizeHostnameInput(value: string): string {
     const firstHost = value
@@ -345,6 +362,20 @@ export class StoreService {
       });
       return store;
     });
+  }
+
+  async getPublicById(id: string): Promise<PublicStoreRow> {
+    const { rows } = await query<PublicStoreRow>(
+      `SELECT id, name, status, seller_type, is_verified, subdomain, custom_domain, theme_id, settings, shipping_mode, created_at
+       FROM pd_store
+       WHERE id = $1`,
+      [id],
+    );
+    const store = rows[0];
+    if (!store) {
+      throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found', { store_id: id });
+    }
+    return store;
   }
 
   async getById(id: string): Promise<StoreRow> {
@@ -725,12 +756,131 @@ export class StoreService {
     return rows[0];
   }
 
-  async updateTheme(storeId: string, themeId: string): Promise<StoreRow> {
+  async updateTheme(storeId: string, themeSlug: string): Promise<StoreRow> {
+    // 1. Validate theme exists and is active (throws PdNotFoundError if not)
+    const theme = await themeService.getBySlug(themeSlug);
+
+    // 2. If premium, verify the store has purchased it
+    if (!theme.is_free) {
+      const canUse = await themeService.canUseTheme(storeId, themeSlug);
+      if (!canUse) {
+        throw new PdForbiddenError(
+          PdErrorCode.PERM_FORBIDDEN,
+          'Theme purchase required — this premium theme has not been purchased for your store',
+          { theme_id: themeSlug },
+        );
+      }
+    }
+
+    // 3. Apply the theme
     const { rows } = await query<StoreRow>(
       'UPDATE pd_store SET theme_id = $2 WHERE id = $1 RETURNING *',
-      [storeId, themeId],
+      [storeId, themeSlug],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
+    return rows[0];
+  }
+
+  async updateThemeDraft(
+    storeId: string,
+    draftData: { draft_theme_id?: string; draftThemeCustomization?: Record<string, unknown> },
+  ): Promise<StoreRow> {
+    if (draftData.draft_theme_id) {
+      const theme = await themeService.getBySlug(draftData.draft_theme_id);
+      if (!theme.is_free) {
+        const canUse = await themeService.canUseTheme(storeId, draftData.draft_theme_id);
+        if (!canUse) {
+          throw new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            'Theme purchase required — this premium theme has not been purchased for your store',
+            { theme_id: draftData.draft_theme_id },
+          );
+        }
+      }
+    }
+    const requestPayload: Record<string, unknown> = {};
+    if (draftData.draft_theme_id !== undefined) {
+      requestPayload.draft_theme_id = draftData.draft_theme_id;
+    }
+    if (draftData.draftThemeCustomization !== undefined) {
+      requestPayload.draftThemeCustomization = draftData.draftThemeCustomization;
+    }
+    const { rows } = await query<StoreRow>(
+      `UPDATE pd_store
+       SET settings = COALESCE(settings, '{}'::jsonb) || $2::jsonb,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [storeId, JSON.stringify(requestPayload)],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
+    return rows[0];
+  }
+
+  async createThemePreviewToken(storeId: string, userId: string): Promise<{ token: string; expires_at: string }> {
+    const token = signThemePreviewToken({ sub: userId, store_id: storeId });
+    return {
+      token,
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    };
+  }
+
+  async getThemePreviewData(storeId: string, token: string): Promise<Record<string, unknown>> {
+    const payload = verifyThemePreviewToken(token);
+    if (payload.store_id !== storeId) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Invalid theme preview token for this store');
+    }
+    const store = await this.getById(storeId);
+    const draftThemeId = (store.settings?.draft_theme_id as string) || store.theme_id || 'classic';
+    const draftCustomization = (store.settings?.draftThemeCustomization as Record<string, unknown>) || store.settings?.themeCustomization || {};
+
+    return {
+      store: {
+        id: store.id,
+        name: store.name,
+        subdomain: store.subdomain,
+        custom_domain: store.custom_domain,
+        theme_id: draftThemeId,
+        live_theme_id: store.theme_id,
+        status: store.status,
+        is_verified: store.is_verified,
+        settings: {
+          ...store.settings,
+          themeCustomization: draftCustomization,
+          liveThemeCustomization: store.settings?.themeCustomization || {},
+        },
+      },
+      preview_mode: true,
+    };
+  }
+
+  async publishThemeDraft(storeId: string): Promise<StoreRow> {
+    const store = await this.getById(storeId);
+    const draftThemeId = (store.settings?.draft_theme_id as string) || store.theme_id;
+    const draftCustomization = (store.settings?.draftThemeCustomization as Record<string, unknown>) || store.settings?.themeCustomization || {};
+
+    const updatedSettings = {
+      ...(store.settings || {}),
+      themeCustomization: draftCustomization,
+    };
+
+    const { rows } = await query<StoreRow>(
+      `UPDATE pd_store
+       SET theme_id = $2,
+           settings = $3::jsonb,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [storeId, draftThemeId, JSON.stringify(updatedSettings)],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.STORE_NOT_FOUND, 'Store not found');
+
+    await outboxService.enqueueEvent({
+      eventType: OutboxEventType.STORE_PUBLISHED,
+      storeId,
+      payload: { theme_id: draftThemeId, settings: updatedSettings },
+    });
+
     return rows[0];
   }
 

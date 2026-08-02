@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingBag, MapPin, Star, Search, Menu, X, Play, Phone, Mail } from 'lucide-react';
+import { ShoppingBag, MapPin, Star, Play } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   type ThemeProps,
   useThemeCustomization,
@@ -10,26 +11,15 @@ import {
   formatStorePrice,
   getStoreProductImage,
   getStorefrontProductPath,
-  getStoreBrandLogo,
-  getLogoSurfaceForColor,
-  getStoreThemeLogoSurface,
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
-import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
-import { PoweredByMarketplace } from './PoweredByMarketplace';
-import { StorefrontSocialLinks } from './StorefrontSocialLinks';
+import { StorefrontHeader } from '../store/StorefrontHeader';
+import { StorefrontFooter } from '../store/StorefrontFooter';
 
-/**
- * Artisan Theme — Handmade goods, crafts, organic products.
- * Warm cream background, earthy brown tones, organic shapes,
- * hand-drawn feel with rounded cards and textured accents.
- */
-export function ArtisanTheme({ theme, storeName, products = [], branding, children }: ThemeProps) {
+export function ArtisanTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const earthBrown = tc.colors.primary;
-  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
@@ -57,9 +47,6 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, childr
     return true;
   });
 
-  const headerTextColor = getLogoSurfaceForColor(tc.colors.headerBg) === 'dark' ? '#FFFFFF' : tc.colors.text;
-  const footerTextColor = getLogoSurfaceForColor(tc.colors.footerBg) === 'dark' ? '#FFFFFF' : tc.colors.text;
-
   return (
     <div
       className={`${theme.typography.fontFamily} min-h-screen flex flex-col`}
@@ -67,182 +54,19 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, childr
     >
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
-      {/* Header */}
-      <header
-        className="border-b transition-colors"
-        style={{ backgroundColor: tc.colors.headerBg, color: headerTextColor, borderColor: `${earthBrown}20` }}
-      >
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              className="md:hidden p-1.5 rounded-lg hover:bg-black/5"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        variant="classic"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
-            <Link href={branding?.store_path_base || '/'} className="flex items-center gap-3">
-              {logoUrl ? (
-                <img src={logoUrl} alt={storeName} className="h-10 object-contain" />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
-                    style={{ backgroundColor: earthBrown }}
-                  >
-                    {storeName.charAt(0)}
-                  </div>
-                  <h1 className="text-xl font-semibold font-serif tracking-tight">{storeName}</h1>
-                </div>
-              )}
-            </Link>
-          </div>
-
-          {/* Header Search Bar */}
-          <div className="hidden sm:flex items-center relative flex-1 max-w-xs mx-4">
-            <input
-              type="text"
-              placeholder="Rechercher une création..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full py-1.5 pl-4 pr-9 rounded-full text-xs outline-none border transition-colors bg-white/50"
-              style={{ borderColor: `${earthBrown}30` }}
-            />
-            <Search className="w-3.5 h-3.5 absolute right-3 opacity-60 pointer-events-none" />
-          </div>
-
-          <div className="flex items-center gap-6">
-            <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-              <a href="#products" className="hover:opacity-70 transition-opacity">Boutique</a>
-              <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">Notre Histoire</Link>
-              <Link href="/hub/login" className="hover:opacity-70 transition-opacity">Connexion</Link>
-            </nav>
-
-            <StorefrontThemeCartLink
-              storeId={branding?.store_id}
-              storeHost={branding?.store_host}
-              storePathBase={branding?.store_path_base}
-              primaryColor={earthBrown}
-              iconColor={headerTextColor}
-              className="inline-flex items-center hover:opacity-70 transition-opacity"
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Navigation Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div
-            className="absolute inset-y-0 left-0 w-80 max-w-[85vw] shadow-2xl overflow-y-auto flex flex-col"
-            style={{ backgroundColor: tc.colors.background, color: tc.colors.text }}
-          >
-            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: `${earthBrown}20` }}>
-              <span className="font-serif font-semibold text-lg">{storeName}</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-md hover:bg-black/5" aria-label="Fermer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 flex-1 space-y-6">
-              {/* Mobile Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher une création..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full py-2 pl-3 pr-9 rounded-full border text-xs outline-none bg-white/60"
-                  style={{ borderColor: `${earthBrown}30` }}
-                />
-                <Search className="w-4 h-4 absolute right-3 top-2.5 opacity-50" />
-              </div>
-
-              {/* Navigation Links */}
-              <div className="space-y-1">
-                <h3 className="text-xs uppercase tracking-wider font-semibold opacity-50 px-2 mb-2">Navigation</h3>
-                <Link
-                  href={branding?.store_path_base || '/'}
-                  className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-black/5"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Accueil
-                </Link>
-                <a
-                  href="#products"
-                  className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-black/5"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Boutique
-                </a>
-                <Link
-                  href={`${branding?.store_path_base || ''}/pages/about`}
-                  className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-black/5"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Notre Histoire
-                </Link>
-                <Link
-                  href="/hub/login"
-                  className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-black/5"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Connexion
-                </Link>
-              </div>
-
-              {/* Category Links */}
-              {categories.length > 0 && (
-                <div className="space-y-1">
-                  <h3 className="text-xs uppercase tracking-wider font-semibold opacity-50 px-2 mb-2">Catégories</h3>
-                  <button
-                    onClick={() => { setActiveCategory(''); setMobileMenuOpen(false); }}
-                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${!activeCategory ? 'bg-black/10 font-bold' : 'hover:bg-black/5'}`}
-                  >
-                    Toutes les catégories
-                  </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => { setActiveCategory(cat); setMobileMenuOpen(false); }}
-                      className={`block w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeCategory === cat ? 'bg-black/10 font-bold' : 'hover:bg-black/5'}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Store Contact */}
-              {(branding?.contact_email || branding?.contact_phone || branding?.address) && (
-                <div className="pt-4 border-t space-y-2 text-xs opacity-75" style={{ borderColor: `${earthBrown}20` }}>
-                  <h3 className="text-xs uppercase tracking-wider font-semibold opacity-70 mb-2">Atelier & Contact</h3>
-                  {branding.contact_email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5" style={{ color: earthBrown }} />
-                      <span>{branding.contact_email}</span>
-                    </div>
-                  )}
-                  {branding.contact_phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5" style={{ color: earthBrown }} />
-                      <span>{branding.contact_phone}</span>
-                    </div>
-                  )}
-                  {branding.address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5" style={{ color: earthBrown }} />
-                      <span>{branding.address}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {children ? (
         <main className="py-8 max-w-6xl mx-auto px-6 flex-1 w-full">{children}</main>
@@ -400,9 +224,12 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, childr
                   >
                     <div className="aspect-square overflow-hidden bg-[#F5EDE3]">
                       {getStoreProductImage(p) ? (
-                        <img
+                        <Image
                           src={getStoreProductImage(p)}
                           alt={p.title}
+                          width={400}
+                          height={400}
+                          unoptimized
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
@@ -436,21 +263,13 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, childr
         </div>
       )}
 
-      {/* Footer */}
-      <footer
-        className="border-t border-[#5C4033]/10 py-10 text-center text-xs mt-auto"
-        style={{ backgroundColor: tc.colors.footerBg, color: footerTextColor }}
-      >
-        <StorefrontSocialLinks
-          branding={branding}
-          showContact
-          className="mb-4 flex flex-wrap items-center justify-center gap-4 text-xs opacity-80"
-          linkClassName="hover:underline font-medium"
-        />
-        <p className="opacity-70">
-          © {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" />
-        </p>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        categories={categories}
+      />
     </div>
   );
 }

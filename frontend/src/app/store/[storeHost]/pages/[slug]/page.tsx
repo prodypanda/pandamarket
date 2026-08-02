@@ -176,6 +176,20 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   }
 }
 
+async function getStoreNavigation(storeId: string) {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/stores/storefront/v1/navigation?store_id=${storeId}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return data.navigation || data.data || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Dynamic SEO metadata for custom pages.
  */
@@ -265,10 +279,11 @@ export default async function CustomStorePage({
     logo_light_url: store.settings?.logo_light_url as string | undefined,
     logo_dark_url: store.settings?.logo_dark_url as string | undefined,
   }, getStoreThemeLogoSurface(activeTheme.id));
-  const [marketplaceSettings, products, pageLinks] = await Promise.all([
+  const [marketplaceSettings, products, pageLinks, navigation] = await Promise.all([
     getMarketplaceSettings(),
     getStoreProducts(store.id),
     getPublishedPages(store.id),
+    getStoreNavigation(store.id),
   ]);
   const footerBranding: StoreBranding = {
     marketplace_name: marketplaceSettings.marketplace_name,
@@ -315,6 +330,7 @@ export default async function CustomStorePage({
     storeName: store.name,
     products,
     branding: storeBranding,
+    navigation,
     children: (
       <div>
         {isPreview && (

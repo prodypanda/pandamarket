@@ -1,16 +1,14 @@
+'use client';
+
 /**
  * ThemeLayout — Reusable layout wrapper for storefront themes.
  * ─────────────────────────────────────────────────────────────
  * Handles layout variations (default, sidebar, full-width, magazine)
- * and renders an optional category sidebar for the 'sidebar' variation.
- *
- * Usage in any theme component:
- *   <ThemeLayout variation={layoutVariation} layout={layout} categories={cats}>
- *     <ProductGrid ... />
- *   </ThemeLayout>
+ * and renders functional category, price, and sort sidebar controls.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { ResolvedColors } from '../../lib/themes';
 
 interface ThemeLayoutProps {
@@ -33,8 +31,44 @@ export function ThemeLayout({
   colors,
   categories = [],
   activeCategory,
+  onCategoryChange,
   children,
 }: ThemeLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const activeCategoryParam = searchParams.get('category') || activeCategory;
+  const activeSortParam = searchParams.get('sort') || 'newest';
+  const [priceMinInput, setPriceMinInput] = useState(searchParams.get('price_min') || '');
+  const [priceMaxInput, setPriceMaxInput] = useState(searchParams.get('price_max') || '');
+
+  const updateParam = (key: string, val: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (val === null || val === '') {
+      params.delete(key);
+    } else {
+      params.set(key, val);
+    }
+    params.delete('page');
+    const targetUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(targetUrl, { scroll: false });
+  };
+
+  const handlePriceSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams(searchParams.toString());
+    if (priceMinInput.trim()) params.set('price_min', priceMinInput.trim());
+    else params.delete('price_min');
+
+    if (priceMaxInput.trim()) params.set('price_max', priceMaxInput.trim());
+    else params.delete('price_max');
+
+    params.delete('page');
+    const targetUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(targetUrl, { scroll: false });
+  };
+
   if (!layout.hasSidebar) {
     return <div className={layout.container}>{children}</div>;
   }
@@ -45,7 +79,7 @@ export function ThemeLayout({
       {/* Sidebar */}
       <aside className={`${layout.sidebarWidth} hidden lg:block`}>
         <div
-          className="sticky top-24 rounded-xl p-5"
+          className="sticky top-24 rounded-xl p-5 shadow-xs border border-slate-100"
           style={{ backgroundColor: colors.secondary, color: colors.text }}
         >
           <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.accent }}>
@@ -54,28 +88,38 @@ export function ThemeLayout({
           <nav className="space-y-1">
             <SidebarLink
               label="Tous les produits"
-              active={!activeCategory}
+              active={!activeCategoryParam}
               colors={colors}
+              onClick={() => {
+                if (onCategoryChange) onCategoryChange('');
+                updateParam('category', null);
+              }}
             />
             {categories.map((cat) => (
               <SidebarLink
                 key={cat}
                 label={cat}
-                active={activeCategory === cat}
+                active={activeCategoryParam === cat}
                 colors={colors}
+                onClick={() => {
+                  if (onCategoryChange) onCategoryChange(cat);
+                  updateParam('category', cat);
+                }}
               />
             ))}
           </nav>
 
-          {/* Filter section placeholder */}
-          <div className="mt-8">
+          {/* Price Range Filter */}
+          <form onSubmit={handlePriceSubmit} className="mt-8">
             <h3 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: colors.accent }}>
-              Prix
+              Prix (DT)
             </h3>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs mb-2">
               <input
                 type="number"
                 placeholder="Min"
+                value={priceMinInput}
+                onChange={(e) => setPriceMinInput(e.target.value)}
                 className="w-full px-2 py-1.5 rounded-md border text-xs"
                 style={{ borderColor: `${colors.accent}30`, backgroundColor: colors.background, color: colors.text }}
               />
@@ -83,24 +127,42 @@ export function ThemeLayout({
               <input
                 type="number"
                 placeholder="Max"
+                value={priceMaxInput}
+                onChange={(e) => setPriceMaxInput(e.target.value)}
                 className="w-full px-2 py-1.5 rounded-md border text-xs"
                 style={{ borderColor: `${colors.accent}30`, backgroundColor: colors.background, color: colors.text }}
               />
             </div>
-          </div>
+            <button
+              type="submit"
+              className="w-full py-1.5 text-xs font-bold rounded-lg border transition hover:opacity-90"
+              style={{
+                borderColor: colors.primary,
+                backgroundColor: colors.primary,
+                color: '#ffffff',
+              }}
+            >
+              Filtrer par prix
+            </button>
+          </form>
 
+          {/* Sort Selector */}
           <div className="mt-8">
             <h3 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: colors.accent }}>
               Tri
             </h3>
             <select
+              value={activeSortParam}
+              onChange={(e) => updateParam('sort', e.target.value)}
               className="w-full px-2 py-1.5 rounded-md border text-xs"
               style={{ borderColor: `${colors.accent}30`, backgroundColor: colors.background, color: colors.text }}
             >
-              <option>Plus récents</option>
-              <option>Prix croissant</option>
-              <option>Prix décroissant</option>
-              <option>Populaires</option>
+              <option value="newest">Plus récents</option>
+              <option value="oldest">Plus anciens</option>
+              <option value="price_asc">Prix croissant</option>
+              <option value="price_desc">Prix décroissant</option>
+              <option value="title_asc">Nom A-Z</option>
+              <option value="popular">Populaires</option>
             </select>
           </div>
         </div>
@@ -116,14 +178,18 @@ function SidebarLink({
   label,
   active,
   colors,
+  onClick,
 }: {
   label: string;
   active: boolean;
   colors: ResolvedColors;
+  onClick: () => void;
 }) {
   return (
     <button
-      className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+      type="button"
+      onClick={onClick}
+      className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer"
       style={{
         backgroundColor: active ? `${colors.primary}15` : 'transparent',
         color: active ? colors.primary : colors.text,

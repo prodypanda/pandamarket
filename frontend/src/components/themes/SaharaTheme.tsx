@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingBag, Sun, Search, Menu, X, Play, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Sun, Play, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   type ThemeProps,
   useThemeCustomization,
@@ -10,27 +11,20 @@ import {
   formatStorePrice,
   getStoreProductImage,
   getStorefrontProductPath,
-  getStoreBrandLogo,
-  getLogoSurfaceForColor,
-  getStoreThemeLogoSurface,
 } from './shared';
-import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
-import { PoweredByMarketplace } from './PoweredByMarketplace';
-import { StorefrontSocialLinks } from './StorefrontSocialLinks';
+import { StorefrontFooter } from '../store/StorefrontFooter';
 
 /**
  * Sahara Theme — Warm desert tones, Tunisian-inspired patterns.
  * Sandy backgrounds, terracotta accents, geometric borders,
  * warm typography, Mediterranean feel.
  */
-export function SaharaTheme({ theme, storeName, products = [], branding, children }: ThemeProps) {
+export function SaharaTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const accent = tc.colors.primary;
-  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const allProducts = products.length > 0 ? products : [
     { id: '1', title: 'Handwoven Rug', price: 350, images: [], category: 'Decor' },
@@ -54,126 +48,11 @@ export function SaharaTheme({ theme, storeName, products = [], branding, childre
     return matchesSearch && matchesCategory;
   });
 
-  const headerTextColor = getLogoSurfaceForColor(tc.colors.headerBg) === 'dark' ? '#FFFFFF' : tc.colors.text;
-
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
-      {/* Header */}
-      <header className="border-b-2 sticky top-0 z-40 backdrop-blur-md" style={{ backgroundColor: tc.colors.headerBg, color: headerTextColor, borderColor: `${accent}30` }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 opacity-80 hover:opacity-100 focus:outline-none"
-              aria-label="Toggle menu"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
 
-            <Link href={branding?.store_path_base || '/'}>
-              {logoUrl ? (
-                <img src={logoUrl} alt={storeName} className="h-10 object-contain" />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Sun className="w-6 h-6" style={{ color: accent }} />
-                  <h1 className="text-2xl font-bold tracking-wide" style={{ color: headerTextColor }}>{storeName}</h1>
-                </div>
-              )}
-            </Link>
-          </div>
-
-          {/* Search bar */}
-          <div className="hidden sm:flex items-center flex-1 max-w-xs mx-4 relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher des trésors..."
-              className="w-full py-1.5 pl-9 pr-4 text-xs font-semibold rounded-lg border bg-black/5 focus:outline-none"
-              style={{ color: headerTextColor, borderColor: `${accent}30` }}
-            />
-            <Search className="w-4 h-4 absolute left-3 opacity-50" />
-          </div>
-
-          <nav className="hidden md:flex gap-8 text-sm font-medium opacity-80">
-            <a href="#products" className="hover:opacity-100 transition-opacity">Boutique</a>
-            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-100 transition-opacity">Notre Histoire</Link>
-            <Link href="/hub/login" className="hover:opacity-100 transition-opacity">Connexion</Link>
-          </nav>
-
-          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={accent} iconColor={headerTextColor} className="inline-flex items-center hover:opacity-80 transition-opacity" />
-        </div>
-      </header>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="relative w-4/5 max-w-sm h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto" style={{ backgroundColor: tc.colors.background, color: tc.colors.text }}>
-            <div>
-              <div className="flex items-center justify-between pb-4 border-b-2" style={{ borderColor: `${accent}30` }}>
-                <span className="font-bold text-lg">{storeName}</span>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-1 opacity-70 hover:opacity-100">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Mobile Search */}
-              <div className="my-4 relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher..."
-                  className="w-full py-2 pl-9 pr-4 text-xs font-semibold rounded-lg border bg-black/5"
-                  style={{ borderColor: `${accent}30`, color: tc.colors.text }}
-                />
-                <Search className="w-4 h-4 absolute left-3 top-2.5 opacity-50" />
-              </div>
-
-              {/* Nav links */}
-              <nav className="flex flex-col gap-3 py-3 text-sm font-medium border-b" style={{ borderColor: `${accent}20` }}>
-                <Link href={branding?.store_path_base || '/'} onClick={() => setMobileMenuOpen(false)} className="hover:opacity-80">Accueil</Link>
-                <a href="#products" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-80">Boutique</a>
-                <Link href={`${branding?.store_path_base || ''}/pages/about`} onClick={() => setMobileMenuOpen(false)} className="hover:opacity-80">Notre Histoire</Link>
-                <Link href="/hub/login" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-80">Connexion</Link>
-              </nav>
-
-              {/* Categories */}
-              {categories.length > 0 && (
-                <div className="py-4 border-b" style={{ borderColor: `${accent}20` }}>
-                  <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: accent }}>Catégories</p>
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      onClick={() => { setActiveCategory(''); setMobileMenuOpen(false); }}
-                      className={`text-left text-sm py-1.5 px-3 rounded-lg transition-colors ${!activeCategory ? 'font-bold bg-black/5' : 'opacity-70 hover:opacity-100'}`}
-                    >
-                      Tout
-                    </button>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => { setActiveCategory(cat); setMobileMenuOpen(false); }}
-                        className={`text-left text-sm py-1.5 px-3 rounded-lg transition-colors ${activeCategory.toLowerCase() === cat.toLowerCase() ? 'font-bold bg-black/5' : 'opacity-70 hover:opacity-100'}`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Footer Links */}
-            <div className="pt-4 border-t text-xs" style={{ borderColor: `${accent}20` }}>
-              <StorefrontSocialLinks branding={branding} showContact linkClassName="block py-1 opacity-70 hover:opacity-100 font-medium" />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Body */}
       {children ? (
@@ -258,7 +137,7 @@ export function SaharaTheme({ theme, storeName, products = [], branding, childre
                 <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-xl overflow-hidden border transition-all hover:shadow-lg" style={{ borderColor: `${accent}15`, backgroundColor: '#FFFBF5' }}>
                   <div className="aspect-square overflow-hidden bg-[#F5EDE3] relative">
                     {getStoreProductImage(p) ? (
-                      <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <Image src={getStoreProductImage(p)} alt={p.title} width={400} height={400} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10" style={{ color: `${accent}25` }} /></div>
                     )}
@@ -285,13 +164,13 @@ export function SaharaTheme({ theme, storeName, products = [], branding, childre
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t-2 py-10 text-center" style={{ backgroundColor: tc.colors.footerBg, borderColor: `${accent}20` }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <StorefrontSocialLinks branding={branding} showContact className="mb-4 flex flex-wrap justify-center gap-4 text-xs font-semibold" linkClassName="opacity-70 hover:opacity-100 transition-opacity" />
-          <p className="text-xs opacity-60">© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
-        </div>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        categories={categories}
+      />
     </div>
   );
 }

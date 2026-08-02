@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingBag, Waves, Anchor, Search, Menu, X, Play } from 'lucide-react';
+import { ShoppingBag, Waves, Play } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   type ThemeProps,
   useThemeCustomization,
@@ -10,23 +11,16 @@ import {
   formatStorePrice,
   getStoreProductImage,
   getStorefrontProductPath,
-  getStoreBrandLogo,
-  getLogoSurfaceForColor,
-  getStoreThemeLogoSurface,
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
-import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
-import { PoweredByMarketplace } from './PoweredByMarketplace';
-import { StorefrontSocialLinks } from './StorefrontSocialLinks';
+import { StorefrontFooter } from '../store/StorefrontFooter';
 
 /** Coastal Theme — Beach/resort, blues and sandy tones, relaxed vibe. */
-export function CoastalTheme({ theme, storeName, products = [], branding, children }: ThemeProps) {
+export function CoastalTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
-  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.headerBg, getStoreThemeLogoSurface(theme.id)));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const allProducts = products.length > 0 ? products : [
     { id: '1', title: 'Linen Beach Shirt', price: 95, images: [], category: 'Clothing' },
@@ -50,118 +44,11 @@ export function CoastalTheme({ theme, storeName, products = [], branding, childr
     return matchesSearch && matchesCategory;
   });
 
-  const headerTextColor = getLogoSurfaceForColor(tc.colors.headerBg) === 'dark' ? '#FFFFFF' : tc.colors.text;
-
   return (
     <div className="min-h-screen flex flex-col" style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
-      {/* Header */}
-      <header className="border-b sticky top-0 z-40 backdrop-blur-md" style={{ borderColor: `${tc.colors.primary}20`, backgroundColor: tc.colors.headerBg, color: headerTextColor }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-lg border hover:opacity-80 transition-opacity"
-              style={{ borderColor: `${tc.colors.primary}30`, color: headerTextColor }}
-              aria-label="Toggle menu"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <Link href={branding?.store_path_base || '/'}>
-              {logoUrl ? <img src={logoUrl} alt={storeName} className="h-10 object-contain" /> : (
-                <div className="flex items-center gap-2"><Anchor className="w-5 h-5" style={{ color: tc.colors.primary }} /><h1 className="text-2xl font-semibold tracking-wide">{storeName}</h1></div>
-              )}
-            </Link>
-          </div>
 
-          {/* Search Input */}
-          <div className="hidden sm:flex items-center flex-1 max-w-xs mx-4 relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher..."
-              className="w-full py-1.5 pl-9 pr-4 text-xs rounded-full border focus:outline-none"
-              style={{ borderColor: `${tc.colors.primary}30`, backgroundColor: tc.colors.background, color: tc.colors.text }}
-            />
-            <Search className="w-4 h-4 absolute left-3 opacity-50" />
-          </div>
-
-          <nav className="hidden md:flex gap-6 text-sm font-medium" style={{ color: `${tc.colors.primary}90` }}>
-            <a href="#products" className="hover:opacity-70 transition-opacity">Boutique</a>
-            <Link href={`${branding?.store_path_base || ''}/pages/about`} className="hover:opacity-70 transition-opacity">À propos</Link>
-            <Link href="/hub/login" className="hover:opacity-70 transition-opacity">Connexion</Link>
-          </nav>
-          <StorefrontThemeCartLink storeId={branding?.store_id} storeHost={branding?.store_host} storePathBase={branding?.store_path_base} primaryColor={tc.colors.primary} iconColor={tc.colors.primary} className="inline-flex items-center hover:opacity-70 transition-opacity" />
-        </div>
-      </header>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="relative w-4/5 max-w-sm h-full flex flex-col justify-between p-6 shadow-xl z-10 overflow-y-auto" style={{ backgroundColor: tc.colors.background, color: tc.colors.text }}>
-            <div>
-              <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: `${tc.colors.primary}20` }}>
-                <span className="font-semibold text-lg">{storeName}</span>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-1 opacity-70 hover:opacity-100" aria-label="Fermer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="my-4 relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher..."
-                  className="w-full py-2 pl-9 pr-4 text-xs rounded-full border"
-                  style={{ borderColor: `${tc.colors.primary}30`, backgroundColor: tc.colors.background, color: tc.colors.text }}
-                />
-                <Search className="w-4 h-4 absolute left-3 top-2.5 opacity-50" />
-              </div>
-
-              <nav className="flex flex-col gap-3 py-3 text-sm font-medium border-b" style={{ borderColor: `${tc.colors.primary}15` }}>
-                <Link href={branding?.store_path_base || '/'} onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70">Accueil</Link>
-                <a href="#products" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70">Boutique</a>
-                <Link href={`${branding?.store_path_base || ''}/pages/about`} onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70">À propos</Link>
-                <Link href="/hub/login" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70">Connexion</Link>
-              </nav>
-
-              {categories.length > 0 && (
-                <div className="py-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">Catégories</p>
-                  <div className="flex flex-col gap-1 text-sm">
-                    <button
-                      onClick={() => { setActiveCategory(''); setMobileMenuOpen(false); }}
-                      className={`text-left py-1.5 px-3 rounded-lg ${!activeCategory ? 'font-bold' : 'opacity-70'}`}
-                      style={{ backgroundColor: !activeCategory ? `${tc.colors.primary}15` : 'transparent', color: !activeCategory ? tc.colors.primary : tc.colors.text }}
-                    >
-                      Toutes les catégories
-                    </button>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => { setActiveCategory(cat); setMobileMenuOpen(false); }}
-                        className={`text-left py-1.5 px-3 rounded-lg ${activeCategory.toLowerCase() === cat.toLowerCase() ? 'font-bold' : 'opacity-70'}`}
-                        style={{ backgroundColor: activeCategory.toLowerCase() === cat.toLowerCase() ? `${tc.colors.primary}15` : 'transparent', color: activeCategory.toLowerCase() === cat.toLowerCase() ? tc.colors.primary : tc.colors.text }}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 border-t text-xs" style={{ borderColor: `${tc.colors.primary}20` }}>
-              <StorefrontSocialLinks branding={branding} showContact className="flex flex-col gap-2 opacity-80" />
-            </div>
-          </div>
-        </div>
-      )}
 
       {children ? (
         <main className="py-8 flex-1">{children}</main>
@@ -241,7 +128,7 @@ export function CoastalTheme({ theme, storeName, products = [], branding, childr
                 {displayProducts.map((p) => (
                   <Link key={p.id} href={getStorefrontProductPath(p, branding?.store_path_base)} className="group block rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: tc.colors.headerBg }}>
                     <div className="aspect-square overflow-hidden" style={{ backgroundColor: `${tc.colors.primary}10` }}>
-                      {getStoreProductImage(p) ? <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
+                      {getStoreProductImage(p) ? <Image src={getStoreProductImage(p)} alt={p.title} width={400} height={400} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : (
                         <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-10 h-10" style={{ color: `${tc.colors.primary}30` }} /></div>
                       )}
                     </div>
@@ -264,13 +151,13 @@ export function CoastalTheme({ theme, storeName, products = [], branding, childr
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t py-10 text-center" style={{ borderColor: `${tc.colors.primary}15`, backgroundColor: tc.colors.footerBg }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <StorefrontSocialLinks branding={branding} showContact className="mb-4 flex flex-wrap justify-center gap-4 text-xs" linkClassName="hover:underline opacity-80" />
-          <p className="text-xs" style={{ color: `${tc.colors.text}60` }}>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
-        </div>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        categories={categories}
+      />
     </div>
   );
 }

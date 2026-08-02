@@ -1,46 +1,52 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, Poppins, Montserrat, Lora, Space_Grotesk } from "next/font/google";
-import Script from "next/script";
-import "grapesjs/dist/css/grapes.min.css";
 import "./globals.css";
 import { Providers } from "../components/Providers";
 import { getMarketplacePublicUrl, getMarketplaceSettings } from "../lib/marketplace-settings";
 import { selectLogoForSurface } from "../lib/public-assets";
+import { ConsentBanner } from "../components/store/ConsentBanner";
+import { ConsentScriptGate } from "../components/store/ConsentScriptGate";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -144,50 +150,12 @@ export default async function RootLayout({
           </noscript>
         )}
         <Providers>{children}</Providers>
-        {ga4MeasurementId && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${ga4MeasurementId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="pd-ga4" strategy="afterInteractive">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${ga4MeasurementId}');`}
-            </Script>
-          </>
-        )}
-        {gtmContainerId && (
-          <Script id="pd-gtm" strategy="afterInteractive">
-            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${gtmContainerId}');`}
-          </Script>
-        )}
-        {metaPixelId && (
-          <>
-            <Script id="pd-meta-pixel" strategy="afterInteractive">
-              {`!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${metaPixelId}');
-fbq('track', 'PageView');`}
-            </Script>
-            <noscript
-              dangerouslySetInnerHTML={{
-                __html: `<img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1" />`,
-              }}
-            />
-          </>
-        )}
+        <ConsentScriptGate
+          ga4MeasurementId={ga4MeasurementId}
+          gtmContainerId={gtmContainerId}
+          metaPixelId={metaPixelId}
+        />
+        <ConsentBanner />
       </body>
     </html>
   );

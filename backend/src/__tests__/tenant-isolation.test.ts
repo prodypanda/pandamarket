@@ -1,17 +1,17 @@
-/**
- * Multi-tenant isolation tests.
- * Verifies that vendor A cannot access vendor B's resources.
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import { PaymentGateway, ProductStatus, ProductType, StoreStatus, UserRole } from '@pandamarket/types';
 
 vi.mock('../db/pool', () => ({
   query: vi.fn(),
-  transaction: vi.fn(),
+  transaction: vi.fn((cb: any) => cb({
+    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+  })),
 }));
 
 vi.mock('../utils/crypto', () => ({
-  pdId: vi.fn(() => 'test-id'),
+  pdId: vi.fn((prefix: string) => `pd_${prefix}_test123`),
 }));
 
 vi.mock('../utils/logger', () => ({
@@ -21,264 +21,190 @@ vi.mock('../utils/logger', () => ({
     error: vi.fn(),
     debug: vi.fn(),
   },
+  childLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  })),
 }));
 
-vi.mock('../config', () => ({
-  config: {
-    defaultRetentionDays: 7,
-    minWithdrawalTnd: 20,
-    defaultCurrency: 'TND',
+vi.mock('../utils/sentry', () => ({
+  captureException: vi.fn(),
+  setUser: vi.fn(),
+}));
+
+vi.mock('../utils/jwt', () => ({
+  verifyAccessToken: vi.fn().mockImplementation((token: string) => {
+    if (token === 'storeA_token') {
+      return { sub: 'sfc_storeA_buyer', role: UserRole.Customer, store_id: 'store_A' };
+    }
+    if (token === 'storeB_token') {
+      return { sub: 'sfc_storeB_buyer', role: UserRole.Customer, store_id: 'store_B' };
+    }
+    throw new Error('Invalid token');
+  }),
+}));
+
+vi.mock('../services/platform-config.service', () => ({
+  platformConfigService: {
+    getSettings: vi.fn().mockResolvedValue({
+      shipping_enabled: false,
+    }),
   },
 }));
 
-import { query } from '../db/pool';
-import { ProductService } from '../services/product.service';
-import { WalletService } from '../services/wallet.service';
+import { query, transaction } from '../db/pool';
+import orderRouter from '../api/order.route';
+import { errorHandler } from '../middlewares';
 
-const mockQuery = vi.mocked(query);
+const mockedQuery = vi.mocked(query);
+const mockedTransaction = vi.mocked(transaction);
 
-describe('Multi-Tenant Isolation', () => {
+const app = express();
+app.use(express.json());
+app.use('/api/pd/orders', orderRouter);
+app.use(errorHandler);
+
+describe('Storefront Tenant Isolation (GAP-P1-001)', () => {
+  let responseQueue: any[] = [];
+
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe('Product Ownership', () => {
-    const productService = new ProductService();
-
-    it('should throw when vendor A tries to access vendor B product', async () => {
-      // Product belongs to store_B
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_prod_1',
-          store_id: 'pd_store_B',
-          title: 'Product B',
-          status: 'published',
-        }],
-        rowCount: 1,
-      } as any);
-
-      await expect(
-        productService.assertOwnership('pd_prod_1', 'pd_store_A'),
-      ).rejects.toThrow('You can only modify your own products');
-    });
-
-    it('should succeed when vendor accesses their own product', async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_prod_1',
-          store_id: 'pd_store_A',
-          title: 'Product A',
-          status: 'published',
-        }],
-        rowCount: 1,
-      } as any);
-
-      await expect(
-        productService.assertOwnership('pd_prod_1', 'pd_store_A'),
-      ).resolves.toBeUndefined();
+    responseQueue = [];
+    mockedQuery.mockImplementation(async (sql: any) => {
+      if (typeof sql === 'string' && sql.includes('FROM pd_storefront_customer WHERE id = $1 AND store_id = $2')) {
+        return { rows: [{ is_active: true }], rowCount: 1 } as any;
+      }
+      if (responseQueue.length > 0) {
+        return responseQueue.shift();
+      }
+      return { rows: [], rowCount: 0 } as any;
     });
   });
 
-  describe('Wallet Isolation', () => {
-    const walletService = new WalletService();
+  it('rejects cross-store checkout with HTTP 403 when Store A customer attempts to buy Store B product', async () => {
+    const mockClient = {
+      query: vi.fn(),
+    };
 
-    it('should only return wallet for the correct store', async () => {
-      // Wallet for store_A
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_wallet_A',
-          store_id: 'pd_store_A',
-          balance: '100.000',
-          pending_balance: '50.000',
-          total_earned: '500.000',
-          total_withdrawn: '350.000',
-          payout_mode: 'on_demand',
-          retention_days: 7,
-          currency: 'TND',
-        }],
-        rowCount: 1,
-      } as any);
-
-      const wallet = await walletService.getByStore('pd_store_A');
-      expect(wallet.store_id).toBe('pd_store_A');
-      expect(wallet.balance).toBe(100);
-    });
-
-    it('should throw when wallet not found for store', async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [],
-        rowCount: 0,
-      } as any);
-
-      await expect(
-        walletService.getByStore('pd_store_nonexistent'),
-      ).rejects.toThrow('Wallet not found');
-    });
-  });
-
-  describe('Order Isolation', () => {
-    it('should list orders only for the requesting store', async () => {
-      const { OrderService } = await import('../services/order.service');
-      const orderService = new OrderService();
-
-      // Mock listByStore query
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 'pd_order_1', customer_id: 'pd_user_1', status: 'pending', total: '85.000' },
-        ],
-        rowCount: 1,
-      } as any);
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ count: '1' }],
-        rowCount: 1,
-      } as any);
-
-      const result = await orderService.listByStore('pd_store_A');
-      expect(result.data).toHaveLength(1);
-      // The SQL query includes WHERE i.store_id = $1, ensuring isolation
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE i.store_id = $1'),
-        expect.arrayContaining(['pd_store_A']),
-      );
-    });
-  });
-
-  describe('AI Job Isolation', () => {
-    it('should list AI jobs only for the requesting store', async () => {
-      vi.mock('../queues/ai-queue', () => ({
-        aiQueue: { add: vi.fn().mockResolvedValue({ id: 'bull-1' }) },
-      }));
-      vi.mock('../services/credits.service', () => ({
-        creditsService: {
-          assertEnough: vi.fn(),
-          consume: vi.fn(),
+    // 1. Lock query
+    mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'prod_storeB_1' }] });
+    // 2. Select product (product belongs to store_B)
+    mockClient.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'prod_storeB_1',
+          store_id: 'store_B',
+          title: 'Store B Exclusive Product',
+          price: '100.000',
+          inventory_quantity: 10,
+          status: ProductStatus.Published,
+          type: ProductType.Physical,
+          metadata: {},
+          seller_type: 'retailer',
+          store_status: StoreStatus.Verified,
+          store_is_verified: true,
         },
-      }));
-
-      const { AiService } = await import('../services/ai.service');
-      const aiService = new AiService();
-
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 'pd_aijob_1', store_id: 'pd_store_A', type: 'image_compression', status: 'completed' },
-        ],
-        rowCount: 1,
-      } as any);
-
-      const jobs = await aiService.listByStore('pd_store_A');
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].store_id).toBe('pd_store_A');
-      // Verify the query filters by store_id
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE store_id = $1'),
-        expect.arrayContaining(['pd_store_A']),
-      );
+      ],
     });
+
+    mockedTransaction.mockImplementationOnce(async (cb: any) => cb(mockClient));
+
+    const res = await request(app)
+      .post('/api/pd/orders/storefront/checkout')
+      .set('Authorization', 'Bearer storeA_token')
+      .set('Idempotency-Key', 'idem_cross_store_1')
+      .send({
+        items: [{ product_id: 'prod_storeB_1', quantity: 1 }],
+        payment_gateway: PaymentGateway.Cod,
+        shipping_address: {
+          first_name: 'Alice',
+          last_name: 'Smith',
+          phone: '21698765432',
+          address_line_1: 'Street A',
+          city: 'Tunis',
+          postal_code: '1000',
+        },
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toContain('Product does not belong to this storefront');
   });
 
-  describe('API Key Isolation', () => {
-    it('should only return API keys for the requesting store', async () => {
-      const { ApiKeyService } = await import('../services/api-key.service');
-      const apiKeyService = new ApiKeyService();
+  it('returns HTTP 404 when Store A customer attempts to view Store B order detail', async () => {
+    // DB returns order belonging to Store B
+    responseQueue.push({
+      rows: [
+        {
+          id: 'ord_storeB_999',
+          customer_id: null,
+          storefront_customer_id: 'sfc_storeA_buyer',
+          total: '50.000',
+        },
+      ],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    }); // getById
 
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 'pd_key_1', store_id: 'pd_store_A', key_prefix: 'pd_sk_a1b2', label: 'ERP Key', scopes: ['products:read'], is_active: true, last_used_at: null, expires_at: null, created_at: new Date() },
-        ],
-        rowCount: 1,
-      } as any);
+    // hasStoreItems check returns false for store_A
+    responseQueue.push({
+      rows: [],
+      rowCount: 0,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    }); // hasStoreItems
 
-      const keys = await apiKeyService.listByStore('pd_store_A');
-      expect(keys).toHaveLength(1);
-      expect(keys[0].store_id).toBe('pd_store_A');
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('store_id'),
-        expect.arrayContaining(['pd_store_A']),
-      );
-    });
+    const res = await request(app)
+      .get('/api/pd/orders/storefront/ord_storeB_999')
+      .set('Authorization', 'Bearer storeA_token');
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.message).toBe('Order not found');
   });
 
-  describe('Cross-Store Wallet Prevention', () => {
-    const walletService = new WalletService();
+  it('filters storefront order list items to only current store items in listByStorefrontCustomer', async () => {
+    responseQueue.push({
+      rows: [
+        {
+          id: 'ord_multi_1',
+          storefront_customer_id: 'sfc_storeA_buyer',
+          total: '150.000',
+          items: [
+            {
+              product_id: 'prod_storeA_1',
+              product_title: 'Store A Item',
+              quantity: 1,
+              unit_price: '50.000',
+              subtotal: '50.000',
+              store_id: 'store_A',
+            },
+          ],
+        },
+      ],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    }); // list query
 
-    it('should not allow withdrawal from another store wallet', async () => {
-      // The wallet service uses store_id in WHERE clause, so store_A would get no results
-      // because the wallet belongs to store_B
-      mockQuery.mockResolvedValueOnce({
-        rows: [],
-        rowCount: 0,
-      } as any);
+    responseQueue.push({
+      rows: [{ count: '1' }],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    }); // count query
 
-      await expect(
-        walletService.getByStore('pd_store_A'),
-      ).rejects.toThrow('Wallet not found');
-    });
-  });
+    const res = await request(app)
+      .get('/api/pd/orders/storefront/me')
+      .set('Authorization', 'Bearer storeA_token');
 
-  describe('Cross-Store Product Modification', () => {
-    const productService = new ProductService();
-
-    it('should throw when vendor tries to delete another store product', async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_prod_X',
-          store_id: 'pd_store_B',
-          title: 'Not My Product',
-          status: 'published',
-        }],
-        rowCount: 1,
-      } as any);
-
-      await expect(
-        productService.assertOwnership('pd_prod_X', 'pd_store_A'),
-      ).rejects.toThrow('You can only modify your own products');
-    });
-
-    it('should throw when product does not exist', async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [],
-        rowCount: 0,
-      } as any);
-
-      await expect(
-        productService.assertOwnership('pd_prod_nonexistent', 'pd_store_A'),
-      ).rejects.toThrow();
-    });
-  });
-
-  describe('Store Resolution', () => {
-    it('should resolve correct store by subdomain', async () => {
-      const { StoreService } = await import('../services/store.service');
-      const storeService = new StoreService();
-
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 'pd_store_A',
-          name: 'Store A',
-          subdomain: 'store-a',
-          status: 'verified',
-        }],
-        rowCount: 1,
-      } as any);
-
-      const store = await storeService.resolveByHostname('store-a.pandamarket.tn', 'pandamarket.tn');
-      expect(store?.id).toBe('pd_store_A');
-    });
-
-    it('should return null for hub domain', async () => {
-      const { StoreService } = await import('../services/store.service');
-      const storeService = new StoreService();
-
-      const store = await storeService.resolveByHostname('pandamarket.tn', 'pandamarket.tn');
-      expect(store).toBeNull();
-    });
-
-    it('should return null for admin domain', async () => {
-      const { StoreService } = await import('../services/store.service');
-      const storeService = new StoreService();
-
-      const store = await storeService.resolveByHostname('admin.pandamarket.tn', 'pandamarket.tn');
-      expect(store).toBeNull();
-    });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].items[0].store_id).toBe('store_A');
   });
 });

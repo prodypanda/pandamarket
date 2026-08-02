@@ -28,6 +28,23 @@ export interface PageBuilderPreviewTokenPayload extends JwtPayload {
   slug: string;
 }
 
+export interface ThemePreviewTokenPayload extends JwtPayload {
+  sub: string;
+  type: 'theme_preview';
+  store_id: string;
+}
+
+export interface MockFileTokenPayload extends JwtPayload {
+  type: 'mock_file_upload' | 'mock_file_download';
+  bucket: string;
+  key: string;
+  owner_id: string | null;
+  store_id: string | null;
+  purpose: string;
+  max_size: number;
+  content_type: string;
+}
+
 export function signAccessToken(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
   const options: SignOptions = { expiresIn: config.jwt.accessExpiresIn as jwt.SignOptions['expiresIn'] };
   return jwt.sign(payload, config.jwt.secret, options);
@@ -43,6 +60,14 @@ export function signPageBuilderPreviewToken(
 ): string {
   const options: SignOptions = { expiresIn: '15m' };
   return jwt.sign({ ...payload, type: 'page_builder_preview' }, config.jwt.secret, options);
+}
+
+export function signMockFileToken(
+  payload: Omit<MockFileTokenPayload, 'iat' | 'exp'>,
+  expiresInSeconds = 900,
+): string {
+  const options: SignOptions = { expiresIn: expiresInSeconds as jwt.SignOptions['expiresIn'] };
+  return jwt.sign(payload, config.jwt.secret, options);
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -97,6 +122,52 @@ export function verifyPageBuilderPreviewToken(token: string): PageBuilderPreview
     }
     if (err instanceof jwt.JsonWebTokenError) {
       throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid page preview token');
+    }
+    throw err;
+  }
+}
+
+export function verifyMockFileToken(token: string): MockFileTokenPayload {
+  try {
+    const payload = jwt.verify(token, config.jwt.secret) as MockFileTokenPayload;
+    if (
+      !payload ||
+      (payload.type !== 'mock_file_upload' && payload.type !== 'mock_file_download') ||
+      !payload.bucket ||
+      !payload.key ||
+      !payload.purpose
+    ) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid file token payload');
+    }
+    return payload;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_EXPIRED, 'File token expired');
+    }
+    throw err;
+  }
+}
+
+export function signThemePreviewToken(
+  payload: Omit<ThemePreviewTokenPayload, 'iat' | 'exp' | 'type'>,
+): string {
+  const options: SignOptions = { expiresIn: '15m' };
+  return jwt.sign({ ...payload, type: 'theme_preview' }, config.jwt.secret, options);
+}
+
+export function verifyThemePreviewToken(token: string): ThemePreviewTokenPayload {
+  try {
+    const payload = jwt.verify(token, config.jwt.secret) as ThemePreviewTokenPayload;
+    if (payload.type !== 'theme_preview' || !payload.sub || !payload.store_id) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid theme preview token');
+    }
+    return payload;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_EXPIRED, 'Theme preview token expired');
+    }
+    if (err instanceof jwt.JsonWebTokenError) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid theme preview token');
     }
     throw err;
   }

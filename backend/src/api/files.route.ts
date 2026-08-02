@@ -11,21 +11,23 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
-import { asyncHandler, requireAuth, validate } from '../middlewares';
+import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
 import { presignDownload, presignUpload, publicUrl } from '../utils/s3';
 import { config } from '../config';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
-import { PdValidationError, PdErrorCode, PdForbiddenError } from '../errors';
+import { PdValidationError, PdErrorCode, PdForbiddenError, PdAuthenticationError } from '../errors';
 import { fileAssetService } from '../services/file-asset.service';
 import { resolveDataPath } from '../utils/data-dir';
 import { reportService } from '../services/report.service';
 import { chatService } from '../services/chat.service';
 import { query } from '../db/pool';
 import { UserRole } from '@pandamarket/types';
+import { signMockFileToken, verifyMockFileToken } from '../utils/jwt';
 
 const router = Router();
+export const mockFilesRouter = Router();
 
 const fileAccessSchema = z.object({
   key: z.string().min(1).max(1024),
@@ -215,8 +217,19 @@ router.post(
     const host = req.get('host');
     const protocol = req.protocol;
 
+    const uploadToken = signMockFileToken({
+      type: 'mock_file_upload',
+      bucket,
+      key: fileKey,
+      owner_id: req.user!.id,
+      store_id: req.user!.store_id ?? null,
+      purpose,
+      max_size: maxSize,
+      content_type,
+    });
+
     const uploadUrl = isS3Local
-      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}`
+      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}?token=${uploadToken}`
       : await presignUpload({
           bucket,
           key: fileKey,
@@ -259,6 +272,84 @@ router.post(
   }),
 );
 
+router.post(
+  '/storefront/presign',
+  requireStorefrontCustomer,
+  uploadRateLimit,
+  validate(presignUploadSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { filename, content_type, purpose, file_size } = req.body;
+
+    if (purpose !== 'mandat_proof') {
+      throw new PdValidationError('Storefront customers can only upload mandat proof files', {
+        code: PdErrorCode.FILE_INVALID_TYPE,
+      });
+    }
+
+    const allowed = ALLOWED_TYPES['mandat_proof'];
+    if (!allowed.includes(content_type)) {
+      throw new PdValidationError('File type not allowed for mandat proof', {
+        code: PdErrorCode.FILE_INVALID_TYPE,
+        valid_types: allowed,
+        provided: content_type,
+      });
+    }
+
+    const maxSize = MAX_SIZES['mandat_proof'];
+    if (file_size !== undefined && file_size > maxSize) {
+      throw new PdValidationError('File is too large for mandat proof', {
+        code: PdErrorCode.FILE_TOO_LARGE,
+        max_size: maxSize,
+        provided_size: file_size,
+      });
+    }
+
+    const bucket = config.s3.bucketPrivate;
+    const keyPrefix = `mandats/${req.storefrontCustomer!.store_id}/${req.storefrontCustomer!.id}`;
+    const uniqueId = pdId('file');
+    const ext = filename.split('.').pop()?.toLowerCase() || 'bin';
+    const safeFilename = `${uniqueId}.${ext}`;
+    const fileKey = `${keyPrefix}/${safeFilename}`;
+
+    const isS3Local =
+      config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+    const host = req.get('host');
+    const protocol = req.protocol;
+
+    const uploadToken = signMockFileToken({
+      type: 'mock_file_upload',
+      bucket,
+      key: fileKey,
+      owner_id: req.storefrontCustomer!.id,
+      store_id: req.storefrontCustomer!.store_id,
+      purpose,
+      max_size: maxSize,
+      content_type,
+    });
+
+    const uploadUrl = isS3Local
+      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}?token=${uploadToken}`
+      : await presignUpload({
+          bucket,
+          key: fileKey,
+          contentType: content_type,
+          expiresInSeconds: 900,
+        });
+
+    logger.info(
+      { purpose, bucket, key: fileKey, storefront_customer_id: req.storefrontCustomer!.id },
+      'Storefront presigned upload URL generated',
+    );
+
+    res.status(200).json({
+      upload_url: uploadUrl,
+      file_key: fileKey,
+      max_size: maxSize,
+      expires_in: 900,
+    });
+  }),
+);
+
 router.get(
   '/access',
   requireAuth,
@@ -294,8 +385,19 @@ router.get(
     const host = req.get('host');
     const protocol = req.protocol;
 
+    const downloadToken = signMockFileToken({
+      type: 'mock_file_download',
+      bucket: config.s3.bucketPrivate,
+      key,
+      owner_id: req.user!.id,
+      store_id: req.user!.store_id ?? null,
+      purpose: 'file_access',
+      max_size: 0,
+      content_type: '*/*',
+    });
+
     const downloadUrl = isS3Local
-      ? `${protocol}://${host}/api/pd/files/download-s3-mock/${config.s3.bucketPrivate}/${key}`
+      ? `${protocol}://${host}/api/pd/files/download-s3-mock/${config.s3.bucketPrivate}/${key}?token=${downloadToken}`
       : await presignDownload({
           bucket: config.s3.bucketPrivate,
           key,
@@ -306,28 +408,62 @@ router.get(
   }),
 );
 
-// S3 Upload Route (Stores to disk & database pd_file_blobs for 100% persistent storage)
-router.put(
+// S3 Upload Mock Route (Requires signed token, enabled only in dev/test)
+mockFilesRouter.put(
   '/upload-s3-mock/:bucket/*',
   express.raw({ type: '*/*', limit: '110mb' }),
   asyncHandler(async (req: Request, res: Response) => {
+    const token = req.query.token as string | undefined;
+    if (!token) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Missing signed upload token');
+    }
+    const payload = verifyMockFileToken(token);
+    if (payload.type !== 'mock_file_upload') {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Token is not valid for file upload');
+    }
+
     const bucket = req.params.bucket;
-    const key = req.params[0];
-    if (!bucket || !key) {
+    const rawKey = req.params[0] || '';
+    if (!bucket || !rawKey) {
       res.status(400).send('Bad Request');
       return;
     }
+    const cleanKey = rawKey.replace(/^\/+/, '');
+
+    if (payload.bucket !== bucket || payload.key !== cleanKey) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Token claims mismatch target bucket or key');
+    }
+
+    const fileBuffer = req.body as Buffer;
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream');
+
+    const allowed = ALLOWED_TYPES[payload.purpose];
+    if (allowed && !allowed.includes(contentType) && payload.content_type !== contentType && payload.content_type !== '*/*') {
+      throw new PdValidationError('File type not allowed for this purpose', {
+        code: PdErrorCode.FILE_INVALID_TYPE,
+        valid_types: allowed,
+        provided: contentType,
+      });
+    }
+
+    const fileSize = fileBuffer ? fileBuffer.length : 0;
+    if (payload.max_size > 0 && fileSize > payload.max_size) {
+      throw new PdValidationError('File is too large for this purpose', {
+        code: PdErrorCode.FILE_TOO_LARGE,
+        max_size: payload.max_size,
+        provided_size: fileSize,
+      });
+    }
+
     let filePath: string;
     try {
-      filePath = resolveDataPath(bucket, key);
+      filePath = resolveDataPath(bucket, cleanKey);
     } catch {
       res.status(400).send('Bad Request');
       return;
     }
 
-    const fileBuffer = req.body as Buffer;
-    const contentType = String(req.headers['content-type'] || 'application/octet-stream');
-    const blobKey = `${bucket}/${key.replace(/^\/+/, '')}`;
+    const blobKey = `${bucket}/${cleanKey}`;
 
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
     await fs.promises.writeFile(filePath, fileBuffer);
@@ -347,23 +483,35 @@ router.put(
       logger.error({ err: dbErr, blobKey }, 'Failed to persist upload blob to database');
     }
 
-    logger.info({ bucket, key, path: filePath }, 'File uploaded and persisted to database');
+    logger.info({ bucket, key: cleanKey, path: filePath }, 'File uploaded and persisted to database');
     res.status(200).send('OK');
   }),
 );
 
-// S3 Download Route (Restores from database pd_file_blobs if missing on disk, with S3 presign fallback)
-router.get(
+// S3 Download Mock Route (Requires signed token, exact match only, enabled only in dev/test)
+mockFilesRouter.get(
   '/download-s3-mock/:bucket/*',
   asyncHandler(async (req: Request, res: Response) => {
+    const token = req.query.token as string | undefined;
+    if (!token) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Missing signed download token');
+    }
+    const payload = verifyMockFileToken(token);
+    if (payload.type !== 'mock_file_download') {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Token is not valid for file download');
+    }
+
     const bucket = req.params.bucket || 'pd-private';
-    const key = req.params[0] || '';
-    if (!key) {
+    const rawKey = req.params[0] || '';
+    if (!rawKey) {
       res.status(400).send('Bad Request');
       return;
     }
-    const cleanKey = key.replace(/^\/+/, '');
-    const filename = path.basename(cleanKey);
+    const cleanKey = rawKey.replace(/^\/+/, '');
+
+    if (payload.bucket !== bucket || payload.key !== cleanKey) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Token claims mismatch target bucket or key');
+    }
 
     let filePath: string | null = null;
     try {
@@ -378,17 +526,16 @@ router.get(
       return;
     }
 
-    // 2. Check PostgreSQL pd_file_blobs (exact bucket/key, key alone, or matching filename)
+    // 2. Check PostgreSQL pd_file_blobs (EXACT MATCH ONLY: key1 or key2)
     const key1 = `${bucket}/${cleanKey}`;
     const key2 = cleanKey;
-    const keyPattern = `%${filename}%`;
 
     try {
       const { rows } = await query<{ content_type: string; data: Buffer }>(
         `SELECT content_type, data FROM pd_file_blobs 
-         WHERE key = $1 OR key = $2 OR key LIKE $3
+         WHERE key = $1 OR key = $2
          ORDER BY created_at DESC LIMIT 1`,
-        [key1, key2, keyPattern],
+        [key1, key2],
       );
       if (rows.length > 0) {
         if (filePath) {

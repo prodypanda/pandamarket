@@ -99,11 +99,51 @@ export type StoreSocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'y
 
 export type StoreSocialLinks = Partial<Record<StoreSocialPlatform, string>>;
 
+export interface StoreMenuItem {
+  id: string;
+  type: 'page' | 'product' | 'category' | 'collection' | 'custom_url';
+  reference_id?: string | null;
+  url?: string | null;
+  localized_label: string | Record<string, string>;
+  target?: '_self' | '_blank';
+  rel?: string | null;
+  icon?: string | null;
+  image?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+  children?: StoreMenuItem[];
+}
+
+export interface StoreMenu {
+  id: string;
+  location: 'header' | 'footer' | 'mobile' | 'utility';
+  items: StoreMenuItem[];
+}
+
+export interface StoreFooterBlock {
+  id: string;
+  type: 'menu' | 'text' | 'contact' | 'social' | 'newsletter' | 'payment_badges' | 'legal' | 'map';
+  title?: string | null;
+  content: Record<string, unknown>;
+  sort_order?: number;
+}
+
+export interface StoreFooter {
+  id: string;
+  blocks: StoreFooterBlock[];
+}
+
+export interface StoreNavigationData {
+  menus: StoreMenu[];
+  footer?: StoreFooter | null;
+}
+
 export interface ThemeProps {
   theme: ThemeConfig;
   storeName: string;
   products?: StoreProduct[];
   branding?: StoreBranding;
+  navigation?: StoreNavigationData;
   /** When provided, the theme renders its Header + children + Footer instead of Hero + Product Grid. */
   children?: React.ReactNode;
 }

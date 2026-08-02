@@ -1,21 +1,18 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Star, Heart, ArrowLeft } from 'lucide-react';
-import { AddToCartButton } from '../../../../../components/store/AddToCartButton';
-import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
+import { ChevronRight, Star } from 'lucide-react';
 import { getStorefrontProductPath, getStoreThemeLogoSurface } from '../../../../../components/themes/shared';
 import { ReviewSection } from '../../../../../components/hub/ReviewSection';
 import { ProductDescriptionRenderer } from '../../../../../components/product/ProductDescription';
 import { ProductGallery } from '../../../../../components/product/ProductGallery';
 import { SellerHoverCard } from '../../../../../components/product/SellerHoverCard';
+import { ProductVariantSelector } from '../../../../../components/product/ProductVariantSelector';
 import { getMarketplaceSettings } from '../../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../../lib/store-routing';
 import { getStorefrontWebsiteHref } from '../../../../../lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { MarketplaceStoreProductDetail } from '../../../../../components/store/MarketplaceStoreProductDetail';
-import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
-import { StorefrontSocialLinks } from '../../../../../components/themes/StorefrontSocialLinks';
 import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
 import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
 import { t as translate } from '../../../../../i18n/utils';
@@ -43,6 +40,14 @@ interface Product {
   attributes?: { name: string; value: string }[];
   metadata?: Record<string, unknown> | null;
   inventory_quantity?: number;
+  variants?: Array<{
+    id: string;
+    title: string;
+    price: number;
+    sku?: string | null;
+    in_stock: boolean;
+    options?: Record<string, string>;
+  }>;
   store_id: string;
   store_name?: string;
   store_is_verified?: boolean | null;
@@ -338,11 +343,6 @@ export default async function StoreProductPage({
               <span className="text-sm text-gray-500">({reviewCount} avis)</span>
             </div>
 
-            {/* Price */}
-            <p className="text-3xl font-extrabold mb-6" style={{ color: primaryColor }}>
-              {formatPrice(product.price)}
-            </p>
-
             {/* Vendor badge */}
             <div className="mb-6">
               <SellerHoverCard
@@ -358,9 +358,9 @@ export default async function StoreProductPage({
               />
             </div>
 
-            {/* Add to Cart */}
-            <div className="flex items-center gap-3 mb-6">
-              <AddToCartButton
+            {/* Price & Variant Selector */}
+            <div className="mb-6">
+              <ProductVariantSelector
                 product={{
                   id: product.id,
                   title: product.title,
@@ -376,12 +376,10 @@ export default async function StoreProductPage({
                   product_type: product.type,
                   image_url: mainImage || null,
                   inventory_quantity: product.inventory_quantity,
+                  variants: product.variants,
                 }}
                 primaryColor={primaryColor}
               />
-              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors" aria-label="Favoris">
-                <Heart className="w-5 h-5 text-gray-600" />
-              </button>
             </div>
 
             {/* Product Description */}

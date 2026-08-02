@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { productService } from '../services/product.service';
+import { productService, formatPublicProductResponse } from '../services/product.service';
 import { storeService } from '../services/store.service';
 import { categoryService } from '../services/category.service';
 import { platformConfigService } from '../services/platform-config.service';
@@ -105,13 +105,37 @@ router.get(
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const category = req.query.category as string;
     const marketplaceCategoryId = req.query.marketplace_category_id as string;
+    const storefrontCategoryId = req.query.storefront_category_id as string;
     const storeId = req.query.store_id as string;
+    const priceMin = req.query.price_min ? parseFloat(req.query.price_min as string) : undefined;
+    const priceMax = req.query.price_max ? parseFloat(req.query.price_max as string) : undefined;
+    const productType = Object.values(ProductType).includes(req.query.type as ProductType)
+      ? (req.query.type as ProductType)
+      : undefined;
+    const inStockOnly = req.query.in_stock === 'true' || req.query.in_stock === '1';
+    const tag = req.query.tag as string;
+    const q = (req.query.q || req.query.search) as string;
     const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
       ? (req.query.seller_type as SellerType)
       : undefined;
     const settings = await platformConfigService.getSettings();
     const sortBy = (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
-    const result = await productService.listPublished({ page, limit, category, marketplaceCategoryId, storeId, sellerType, sortBy });
+    const result = await productService.listPublished({
+      page,
+      limit,
+      category,
+      marketplaceCategoryId,
+      storefrontCategoryId,
+      storeId,
+      sellerType,
+      sortBy,
+      priceMin,
+      priceMax,
+      productType,
+      inStockOnly,
+      tag,
+      q,
+    });
     res.status(200).json(result);
   }),
 );
@@ -120,7 +144,7 @@ router.get(
   '/by-store/:storeId/:slug',
   asyncHandler(async (req: Request, res: Response) => {
     const product = await productService.getPublishedByStoreSlug(req.params.storeId, req.params.slug);
-    res.status(200).json({ product });
+    res.status(200).json({ product: formatPublicProductResponse(product) });
   }),
 );
 // Vendor: list own products
@@ -233,12 +257,12 @@ router.post(
   }),
 );
 
-// Vendor/Public: get single product
+// Public: get single published product
 router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const product = await productService.getById(req.params.id);
-    res.status(200).json({ product });
+    const product = await productService.getPublicById(req.params.id);
+    res.status(200).json({ product: formatPublicProductResponse(product) });
   }),
 );
 

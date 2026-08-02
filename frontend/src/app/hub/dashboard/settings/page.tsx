@@ -3,7 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail, Lock, RefreshCw, Trash2, Plus, Star, Copy } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountSecurityActivityPanel } from '../../../../components/AccountSecurityActivityPanel';
@@ -53,6 +53,18 @@ interface SellerTypeChangeRequest {
   requested_at?: string;
   reviewed_at?: string | null;
   cancelled_at?: string | null;
+}
+
+interface ApiTheme {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  preview_url: string | null;
+  is_free: boolean;
+  is_premium: boolean;
+  price: number;
+  is_active: boolean;
 }
 
 async function getErrorMessage(res: Response, fallback = 'Erreur') {
@@ -117,9 +129,27 @@ export default function SettingsPage() {
   // Theme
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('classic');
   const [themeCustomization, setThemeCustomization] = useState<ThemeCustomization>({});
+  const [apiThemes, setApiThemes] = useState<ApiTheme[]>([]);
+  const [purchasedThemeIds, setPurchasedThemeIds] = useState<Set<string>>(new Set());
+  const [purchaseConfirmTheme, setPurchaseConfirmTheme] = useState<ApiTheme | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   // Domain
   const [customDomain, setCustomDomain] = useState('');
+  interface DomainItem {
+    id: string;
+    hostname: string;
+    is_primary: boolean;
+    verification_status: 'pending' | 'verified' | 'failed';
+    ssl_status: 'pending' | 'issuing' | 'active' | 'failed';
+    verification_token_hash?: string;
+    created_at: string;
+  }
+  const [domainList, setDomainList] = useState<DomainItem[]>([]);
+  const [loadingDomains, setLoadingDomains] = useState(false);
+  const [newDomainHostname, setNewDomainHostname] = useState('');
+  const [addingDomain, setAddingDomain] = useState(false);
+  const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
 
   // Shipping
   const [shippingMode, setShippingMode] = useState('self_managed');
@@ -194,6 +224,33 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchStoreSettings();
+  }, []);
+
+  // Fetch available themes and purchases from API
+  useEffect(() => {
+    let active = true;
+    async function loadThemes() {
+      try {
+        const [themesRes, purchasesRes] = await Promise.all([
+          fetchWithCsrf('/api/pd/themes', { credentials: 'include' }),
+          fetchWithCsrf('/api/pd/themes/purchases/mine', { credentials: 'include' }),
+        ]);
+        if (!active) return;
+        if (themesRes.ok) {
+          const data = await themesRes.json();
+          setApiThemes(data.data || []);
+        }
+        if (purchasesRes.ok) {
+          const data = await purchasesRes.json();
+          const ids = new Set<string>((data.data || []).map((p: { theme_id: string }) => p.theme_id));
+          setPurchasedThemeIds(ids);
+        }
+      } catch {
+        // Non-critical — fallback to empty list
+      }
+    }
+    loadThemes();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -458,6 +515,12 @@ export default function SettingsPage() {
   };
 
   const saveTheme = async () => {
+    // Block if premium theme is not purchased
+    const apiTheme = apiThemes.find((t) => t.slug === selectedTheme);
+    if (apiTheme && !apiTheme.is_free && !purchasedThemeIds.has(apiTheme.id)) {
+      showFeedback('Ce thème premium n\'a pas été acheté. Veuillez l\'acheter avant de l\'appliquer.', true);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/theme', {
@@ -467,11 +530,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ theme_id: selectedTheme }),
       });
       if (res.ok) {
+        const themeName = apiTheme?.name || themes[selectedTheme]?.name || selectedTheme;
         const nextOnboardingState = await updateOnboardingStep('theme', {
           completed: true,
           metadata: {
             theme_id: selectedTheme,
-            theme_name: themes[selectedTheme].name,
+            theme_name: themeName,
           },
         }).catch(() => null);
         if (nextOnboardingState) setOnboardingState(nextOnboardingState);
@@ -485,6 +549,29 @@ export default function SettingsPage() {
       showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const purchaseTheme = async (theme: ApiTheme) => {
+    setPurchasing(true);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/themes/${theme.id}/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        setPurchasedThemeIds((prev) => new Set([...prev, theme.id]));
+        setPurchaseConfirmTheme(null);
+        showFeedback(`Thème « ${theme.name} » acheté avec succès !`);
+      } else {
+        showFeedback(await getErrorMessage(res, 'Erreur lors de l\'achat'), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -513,11 +600,12 @@ export default function SettingsPage() {
             has_custom_colors: nextHasCustomColors,
           },
         }).catch(() => null);
+        const apiThemeName = apiThemes.find((t) => t.slug === selectedTheme)?.name || themes[selectedTheme]?.name || selectedTheme;
         const nextThemeState = await updateOnboardingStep('theme', {
           completed: true,
           metadata: {
             theme_id: selectedTheme,
-            theme_name: themes[selectedTheme].name,
+            theme_name: apiThemeName,
             color_preset_id: customization.colorPresetId || null,
             has_custom_colors: nextHasCustomColors,
             layout_variation: customization.layoutVariation || null,
@@ -541,24 +629,108 @@ export default function SettingsPage() {
     }
   };
 
-  const saveDomain = async () => {
-    setSaving(true);
+  const fetchDomains = useCallback(async () => {
+    setLoadingDomains(true);
     try {
-      const res = await fetchWithCsrf('/api/pd/stores/me/domain', {
-        method: 'PUT',
+      const res = await fetchWithCsrf('/api/pd/stores/me/domains', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDomainList(data.domains || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingDomains(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'domain') {
+      fetchDomains();
+    }
+  }, [activeTab, fetchDomains]);
+
+  const handleAddCustomDomain = async () => {
+    if (!newDomainHostname.trim()) return;
+    setAddingDomain(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/domains', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ custom_domain: customDomain }),
+        body: JSON.stringify({ hostname: newDomainHostname }),
       });
       if (res.ok) {
-        showFeedback('Domaine mis à jour');
+        showFeedback('Domaine ajouté ! Configuration DNS disponible ci-dessous.');
+        setNewDomainHostname('');
+        fetchDomains();
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
       showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     } finally {
-      setSaving(false);
+      setAddingDomain(false);
+    }
+  };
+
+  const handleVerifyDomain = async (id: string) => {
+    setVerifyingDomainId(id);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/domains/${id}/verify`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.domain?.verification_status === 'verified') {
+          showFeedback('Domaine vérifié avec succès ! SSL actif.');
+        } else {
+          showFeedback('Vérification DNS échouée. Assurez-vous que le CNAME ou TXT est bien propagé.', true);
+        }
+        fetchDomains();
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+    } finally {
+      setVerifyingDomainId(null);
+    }
+  };
+
+  const handleMakePrimaryDomain = async (id: string) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/domains/${id}/make-primary`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showFeedback('Domaine défini comme domaine principal !');
+        fetchDomains();
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+    }
+  };
+
+  const handleDeleteDomain = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce domaine ?')) return;
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/domains/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showFeedback('Domaine supprimé');
+        fetchDomains();
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
     }
   };
 
@@ -614,28 +786,22 @@ export default function SettingsPage() {
     ? sellerTypeOptions.find((option) => option.value === pendingSellerTypeRequest?.requested_type)?.label || pendingSellerTypeRequest?.requested_type
     : '';
 
-  const themeList: { id: ThemeId; name: string; desc: string; free: boolean }[] = [
-    { id: 'minimal', name: 'Minimal', desc: 'Simplicité et élégance', free: true },
-    { id: 'classic', name: 'Classic', desc: 'Style traditionnel', free: true },
-    { id: 'modern', name: 'Modern', desc: 'Design contemporain', free: true },
-    { id: 'boutique', name: 'Boutique', desc: 'Luxe et raffinement', free: true },
-    { id: 'artisan', name: 'Artisan', desc: 'Fait main et naturel', free: true },
-    { id: 'elegance', name: 'Elegance', desc: 'Minimaliste haut de gamme', free: true },
-    { id: 'coastal', name: 'Coastal', desc: 'Bord de mer', free: true },
-    { id: 'garden', name: 'Garden', desc: 'Nature et bio', free: true },
-    { id: 'fresh', name: 'Fresh', desc: 'Épicerie et santé', free: true },
-    { id: 'sahara', name: 'Sahara', desc: 'Tons chauds tunisiens', free: true },
-    { id: 'medina', name: 'Medina', desc: 'Marketplace traditionnelle', free: true },
-    { id: 'craft', name: 'Craft', desc: 'DIY et artisanat', free: true },
-    { id: 'techhub', name: 'TechHub', desc: 'Électronique et tech', free: false },
-    { id: 'flavor', name: 'Flavor', desc: 'Restaurant et food', free: false },
-    { id: 'neon', name: 'Neon', desc: 'Gaming et dark mode', free: false },
-    { id: 'urban', name: 'Urban', desc: 'Street fashion', free: false },
-    { id: 'studio', name: 'Studio', desc: 'Portfolio et art', free: false },
-    { id: 'luxe', name: 'Luxe', desc: 'Bijoux et montres', free: false },
-    { id: 'digital', name: 'Digital', desc: 'SaaS et logiciels', free: false },
-    { id: 'kids', name: 'Kids', desc: 'Enfants et jouets', free: false },
-  ];
+  // Build theme list from API data (falls back to themes config if API hasn't loaded yet)
+  const themeList: { id: ThemeId; name: string; desc: string; free: boolean; apiTheme?: ApiTheme }[] =
+    apiThemes.length > 0
+      ? apiThemes.map((t) => ({
+          id: t.slug as ThemeId,
+          name: t.name,
+          desc: t.description || '',
+          free: t.is_free,
+          apiTheme: t,
+        }))
+      : Object.entries(themes).map(([slug, cfg]) => ({
+          id: slug as ThemeId,
+          name: cfg.name,
+          desc: '',
+          free: true, // Fallback: treat all as free when API unavailable
+        }));
 
   if (loading) {
     return (
@@ -1161,11 +1327,13 @@ export default function SettingsPage() {
             {/* Theme Selector */}
             <div>
               <h2 className="font-semibold text-gray-900 mb-1">Choisir un thème</h2>
-              <p className="text-xs text-gray-500 mb-4">20 thèmes disponibles. Les thèmes premium nécessitent un achat.</p>
+              <p className="text-xs text-gray-500 mb-4">{themeList.length} thèmes disponibles. Les thèmes premium nécessitent un achat.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {themeList.map((t) => {
                   const cfg = themes[t.id];
                   const preset = cfg?.colorPresets[0];
+                  const isPurchased = t.apiTheme ? purchasedThemeIds.has(t.apiTheme.id) : true;
+                  const isLocked = !t.free && !isPurchased;
                   return (
                     <button
                       key={t.id}
@@ -1185,16 +1353,34 @@ export default function SettingsPage() {
                             <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: c }} />
                           ))}
                         </div>
+                        {isLocked && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg">
+                            <Lock className="w-5 h-5 text-white drop-shadow" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <h3 className="font-semibold text-gray-900 text-sm truncate">{t.name}</h3>
                         {!t.free && (
-                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full flex-shrink-0">
-                            PREMIUM
+                          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full flex-shrink-0 ${
+                            isPurchased
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {isPurchased ? 'ACHETÉ' : 'PREMIUM'}
                           </span>
                         )}
                       </div>
                       <p className="text-[11px] text-gray-500 mt-0.5 truncate">{t.desc}</p>
+                      {isLocked && t.apiTheme && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPurchaseConfirmTheme(t.apiTheme!); }}
+                          className="mt-1.5 w-full text-center px-2 py-1 text-[10px] font-bold bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors"
+                        >
+                          Acheter — {t.apiTheme.price} TND
+                        </button>
+                      )}
                     </button>
                   );
                 })}
@@ -1229,32 +1415,145 @@ export default function SettingsPage() {
 
         {/* Domain Tab */}
         {activeTab === 'domain' && (
-          <div className="space-y-4">
-            <h2 className="font-semibold text-gray-900 mb-4">Domaine personnalisé</h2>
-            <p className="text-sm text-gray-500">
-              Connectez votre propre domaine à votre boutique. Disponible à partir du plan Starter.
-            </p>
+          <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Domaine</label>
-              <input
-                type="text"
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                placeholder="www.maboutique.tn"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Ajoutez un enregistrement CNAME pointant vers le domaine fourni par {marketplaceName}.
+              <h2 className="font-bold text-lg text-gray-900 mb-1">Domaines personnalisés</h2>
+              <p className="text-sm text-gray-500">
+                Connectez vos propres noms de domaine à votre boutique PandaMarket (plan Starter et supérieur).
               </p>
             </div>
-            <button
-              onClick={saveDomain}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Sauvegarde...' : 'Sauvegarder le domaine'}
-            </button>
+
+            {/* Add New Domain Card */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600" /> Ajouter un nouveau domaine
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={newDomainHostname}
+                  onChange={(e) => setNewDomainHostname(e.target.value)}
+                  placeholder="ex: boutique.com ou www.maboutique.tn"
+                  className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomDomain}
+                  disabled={addingDomain || !newDomainHostname.trim()}
+                  className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {addingDomain ? 'Ajout en cours...' : 'Ajouter le domaine'}
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Domains List */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900">Vos domaines configurés</h3>
+              {loadingDomains ? (
+                <div className="py-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-gray-400" /> Chargement des domaines...
+                </div>
+              ) : domainList.length === 0 ? (
+                <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center space-y-2">
+                  <Globe className="w-8 h-8 text-gray-400 mx-auto" />
+                  <p className="text-xs font-semibold text-gray-600">Aucun domaine personnalisé configuré</p>
+                  <p className="text-xs text-gray-400">Ajoutez votre domaine ci-dessus pour remplacer votre sous-domaine par défaut.</p>
+                </div>
+              ) : (
+                domainList.map((d) => (
+                  <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-base text-gray-900">{d.hostname}</span>
+                        {d.is_primary && (
+                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" /> Domaine Principal
+                          </span>
+                        )}
+                        <span
+                          className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
+                            d.verification_status === 'verified'
+                              ? 'bg-green-100 text-green-800'
+                              : d.verification_status === 'failed'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
+                          {d.verification_status === 'verified'
+                            ? '✓ Vérifié'
+                            : d.verification_status === 'failed'
+                              ? '✕ Vérification échouée'
+                              : '⏳ En attente de vérification'}
+                        </span>
+                        <span
+                          className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
+                            d.ssl_status === 'active'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          SSL {d.ssl_status === 'active' ? 'Actif (HTTPS)' : 'En attente'}
+                        </span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDomain(d.id)}
+                          disabled={verifyingDomainId === d.id}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${verifyingDomainId === d.id ? 'animate-spin' : ''}`} />
+                          Vérifier DNS
+                        </button>
+
+                        {d.verification_status === 'verified' && !d.is_primary && (
+                          <button
+                            type="button"
+                            onClick={() => handleMakePrimaryDomain(d.id)}
+                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            Définir comme principal
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDomain(d.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* DNS Configuration Instructions */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-2">
+                      <p className="font-bold text-slate-800">Instructions de configuration DNS chez votre registrar :</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-white p-2.5 border rounded-md">
+                          <span className="text-[10px] font-bold uppercase text-gray-400 block">Enregistrement CNAME (Recommandé)</span>
+                          <p className="mt-1 font-mono text-[11px] text-slate-900">
+                            <strong>Nom/Hôte:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">@</code> ou <code className="bg-gray-100 px-1 py-0.5 rounded">www</code><br />
+                            <strong>Cible:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">cname.pandamarket.tn</code>
+                          </p>
+                        </div>
+                        <div className="bg-white p-2.5 border rounded-md">
+                          <span className="text-[10px] font-bold uppercase text-gray-400 block">Challenge TXT (Alternative)</span>
+                          <p className="mt-1 font-mono text-[11px] text-slate-900">
+                            <strong>Nom TXT:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">_pandamarket-challenge.{d.hostname}</code><br />
+                            <strong>Valeur TXT:</strong> Token unique généré
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
@@ -1440,6 +1739,51 @@ export default function SettingsPage() {
                   Aucune image disponible. Uploadez une image pour commencer.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {purchaseConfirmTheme && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <h2 className="text-lg font-bold text-gray-900">Acheter le thème premium</h2>
+              <button
+                type="button"
+                onClick={() => setPurchaseConfirmTheme(null)}
+                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="my-6 space-y-3 text-sm text-gray-600">
+              <p>
+                Vous êtes sur le point d&apos;acheter le thème <strong className="text-gray-900">{purchaseConfirmTheme.name}</strong>.
+              </p>
+              {purchaseConfirmTheme.description && (
+                <p className="text-xs text-gray-500">{purchaseConfirmTheme.description}</p>
+              )}
+              <div className="flex justify-between rounded-xl bg-amber-50 p-3 font-semibold text-amber-900">
+                <span>Prix :</span>
+                <span>{purchaseConfirmTheme.price} TND</span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPurchaseConfirmTheme(null)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => purchaseTheme(purchaseConfirmTheme)}
+                disabled={purchasing}
+                className="rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-semibold text-white hover:bg-[#991B1B] disabled:opacity-50"
+              >
+                {purchasing ? 'Achat en cours...' : 'Confirmer l\'achat'}
+              </button>
             </div>
           </div>
         </div>

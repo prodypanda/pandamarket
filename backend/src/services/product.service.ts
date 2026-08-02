@@ -115,6 +115,93 @@ export interface ProductRow {
   updated_at: Date;
 }
 
+export interface PublicProductVariantRow {
+  id: string;
+  title: string;
+  price: string;
+  sku: string | null;
+  in_stock: boolean;
+  options: Record<string, string>;
+}
+
+export interface PublicProductRow {
+  id: string;
+  store_id: string;
+  type: ProductType;
+  status: ProductStatus;
+  title: string;
+  slug: string;
+  description: string | null;
+  category: string | null;
+  marketplace_category_id: string | null;
+  storefront_category_id: string | null;
+  marketplace_category_name?: string | null;
+  marketplace_category_slug?: string | null;
+  storefront_category_name?: string | null;
+  storefront_category_slug?: string | null;
+  store_name?: string;
+  store_subdomain?: string;
+  store_custom_domain?: string | null;
+  price: string;
+  in_stock: boolean;
+  stock_status: 'in_stock' | 'out_of_stock';
+  weight_grams: number | null;
+  thumbnail: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  tags: string[];
+  attributes: ProductAttribute[];
+  images?: Array<{
+    id: string;
+    url: string;
+    alt_text: string | null;
+    position: number;
+    is_thumbnail: boolean;
+  }>;
+  variants?: PublicProductVariantRow[];
+  created_at: Date;
+  updated_at: Date;
+}
+
+export function formatPublicProductResponse(row: PublicProductRow) {
+  return {
+    id: row.id,
+    store_id: row.store_id,
+    type: row.type,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    category: row.category,
+    price: Number(row.price),
+    currency: 'TND',
+    thumbnail: row.thumbnail,
+    images: row.images ?? [],
+    variants: (row.variants ?? []).map((v) => ({
+      id: v.id,
+      title: v.title,
+      price: Number(v.price),
+      sku: v.sku ?? null,
+      in_stock: Boolean(v.in_stock),
+      options: v.options ?? {},
+    })),
+    availability: {
+      in_stock: Boolean(row.in_stock),
+      stock_status: row.stock_status ?? (row.in_stock ? 'in_stock' : 'out_of_stock'),
+    },
+    seo: {
+      title: row.seo_title ?? null,
+      description: row.seo_description ?? null,
+    },
+    tags: row.tags ?? [],
+    attributes: row.attributes ?? [],
+    weight_grams: row.weight_grams ?? null,
+    store_name: row.store_name,
+    store_subdomain: row.store_subdomain,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 export interface CreateProductInput {
   store_id: string;
   store_plan: string;
@@ -242,6 +329,8 @@ function publicProductOrderBy(sortBy?: string) {
   if (sortBy === 'price_asc') return 'p.price ASC, p.created_at DESC';
   if (sortBy === 'price_desc') return 'p.price DESC, p.created_at DESC';
   if (sortBy === 'title_asc') return 'LOWER(p.title) ASC, p.created_at DESC';
+  if (sortBy === 'title_desc') return 'LOWER(p.title) DESC, p.created_at DESC';
+  if (sortBy === 'popular') return 'p.inventory_quantity DESC, p.created_at DESC';
   return 'p.created_at DESC';
 }
 
@@ -531,32 +620,23 @@ export class ProductService {
     return this.getById(productId);
   }
 
-  async getPublishedByStoreSlug(storeId: string, slug: string): Promise<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }> {
-    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string; store_custom_domain: string | null }>(
-      `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
-              s.seller_type AS store_seller_type,
-              s.is_verified AS store_is_verified,
-              s.status AS store_status,
-              s.settings AS store_settings,
-              s.created_at AS store_created_at,
-              seller_stats.product_count AS store_product_count,
-              mc.name AS marketplace_category_name,
-              mc.slug AS marketplace_category_slug,
-              sc.name AS storefront_category_name,
-              sc.slug AS storefront_category_slug,
-              parent_sc.name AS storefront_parent_category_name,
-              parent_sc.slug AS storefront_parent_category_slug,
-              COALESCE(img.images, '[]'::json) AS images
+  async getPublicById(id: string): Promise<PublicProductRow> {
+    const { rows } = await query<PublicProductRow>(
+      `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
+              p.marketplace_category_id, p.storefront_category_id, p.price,
+              (p.inventory_quantity > 0) AS in_stock,
+              CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
+              p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
+              p.created_at, p.updated_at,
+              s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
+              sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
+              COALESCE(img.images, '[]'::json) AS images,
+              COALESCE(v.variants, '[]'::json) AS variants
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
-       LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
-       LEFT JOIN LATERAL (
-         SELECT COUNT(*)::text AS product_count
-         FROM pd_product sp
-         WHERE sp.store_id = s.id AND sp.status = $3
-       ) seller_stats ON true
        LEFT JOIN LATERAL (
          SELECT json_agg(
            json_build_object(
@@ -571,12 +651,81 @@ export class ProductService {
          FROM pd_product_image pi
          WHERE pi.product_id = p.id
        ) img ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pv.id,
+             'title', pv.title,
+             'price', pv.price,
+             'sku', pv.sku,
+             'in_stock', (pv.inventory_quantity > 0),
+             'options', pv.options
+           )
+           ORDER BY pv.created_at ASC
+         ) AS variants
+         FROM pd_product_variant pv
+         WHERE pv.product_id = p.id AND pv.is_active = true
+       ) v ON true
+       WHERE p.id = $1 AND p.status = $2 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
+       LIMIT 1`,
+      [id, ProductStatus.Published],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
+    return rows[0];
+  }
+
+  async getPublishedByStoreSlug(storeId: string, slug: string): Promise<PublicProductRow> {
+    const { rows } = await query<PublicProductRow>(
+      `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
+              p.marketplace_category_id, p.storefront_category_id, p.price,
+              (p.inventory_quantity > 0) AS in_stock,
+              CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
+              p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
+              p.created_at, p.updated_at,
+              s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
+              sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
+              COALESCE(img.images, '[]'::json) AS images,
+              COALESCE(v.variants, '[]'::json) AS variants
+       FROM pd_product p
+       JOIN pd_store s ON s.id = p.store_id
+       LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+       LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pi.id,
+             'url', pi.url,
+             'alt_text', pi.alt_text,
+             'position', pi.position,
+             'is_thumbnail', pi.is_thumbnail
+           )
+           ORDER BY pi.position ASC
+         ) AS images
+         FROM pd_product_image pi
+         WHERE pi.product_id = p.id
+       ) img ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pv.id,
+             'title', pv.title,
+             'price', pv.price,
+             'sku', pv.sku,
+             'in_stock', (pv.inventory_quantity > 0),
+             'options', pv.options
+           )
+           ORDER BY pv.created_at ASC
+         ) AS variants
+         FROM pd_product_variant pv
+         WHERE pv.product_id = p.id AND pv.is_active = true
+       ) v ON true
        WHERE p.store_id = $1 AND p.slug = $2 AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
        LIMIT 1`,
       [storeId, slug, ProductStatus.Published],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
-    return (await this.attachVariants(rows))[0];
+    return rows[0];
   }
   async archive(id: string): Promise<void> {
     await query(`UPDATE pd_product SET status = 'archived' WHERE id = $1`, [id]);
@@ -651,51 +800,140 @@ export class ProductService {
   /**
    * List published products across the platform (Hub homepage / category browsing).
    */
-  async listPublished(opts: { page?: number; limit?: number; category?: string; marketplaceCategoryId?: string; storeId?: string; sellerType?: SellerType; sortBy?: string } = {}) {
+  async listPublished(opts: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    marketplaceCategoryId?: string;
+    storefrontCategoryId?: string;
+    storeId?: string;
+    sellerType?: SellerType;
+    sortBy?: string;
+    priceMin?: number;
+    priceMax?: number;
+    productType?: ProductType;
+    inStockOnly?: boolean;
+    tag?: string;
+    q?: string;
+  } = {}) {
     const page = Math.max(1, opts.page ?? 1);
-    const limit = Math.min(100, opts.limit ?? 20);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
     const offset = (page - 1) * limit;
     const params: unknown[] = [ProductStatus.Published];
     let where = "p.status = $1 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true";
+
     if (opts.category) {
       const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);
       params.push(subtreeIds);
       params.push(opts.category);
-      where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length})`;
+      where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length} OR p.storefront_category_id = $${params.length})`;
     }
+
     if (opts.marketplaceCategoryId) {
       params.push(opts.marketplaceCategoryId);
       where += ` AND p.marketplace_category_id = $${params.length}`;
     }
+
+    if (opts.storefrontCategoryId) {
+      params.push(opts.storefrontCategoryId);
+      where += ` AND p.storefront_category_id = $${params.length}`;
+    }
+
     if (opts.storeId) {
       params.push(opts.storeId);
       where += ` AND p.store_id = $${params.length}`;
     }
+
     if (opts.sellerType) {
       params.push(opts.sellerType);
       where += ` AND s.seller_type = $${params.length}`;
     }
+
+    if (typeof opts.priceMin === 'number' && Number.isFinite(opts.priceMin)) {
+      params.push(opts.priceMin);
+      where += ` AND p.price >= $${params.length}`;
+    }
+
+    if (typeof opts.priceMax === 'number' && Number.isFinite(opts.priceMax)) {
+      params.push(opts.priceMax);
+      where += ` AND p.price <= $${params.length}`;
+    }
+
+    if (opts.productType) {
+      params.push(opts.productType);
+      where += ` AND p.type = $${params.length}`;
+    }
+
+    if (opts.inStockOnly) {
+      where += ' AND p.inventory_quantity > 0';
+    }
+
+    if (opts.tag) {
+      params.push(opts.tag);
+      where += ` AND $${params.length} = ANY(p.tags)`;
+    }
+
+    if (opts.q && opts.q.trim().length > 0) {
+      params.push(`%${opts.q.trim()}%`);
+      where += ` AND (p.title ILIKE $${params.length} OR p.description ILIKE $${params.length} OR p.tags::text ILIKE $${params.length})`;
+    }
+
     const orderBy = publicProductOrderBy(opts.sortBy);
     params.push(limit, offset);
-    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string }>(
-      `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain,
-              s.seller_type AS store_seller_type,
-              mc.name AS marketplace_category_name,
-              mc.slug AS marketplace_category_slug,
-              sc.name AS storefront_category_name,
-              sc.slug AS storefront_category_slug,
-              parent_sc.name AS storefront_parent_category_name,
-              parent_sc.slug AS storefront_parent_category_slug
+
+    const { rows } = await query<PublicProductRow>(
+      `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
+              p.marketplace_category_id, p.storefront_category_id, p.price,
+              (p.inventory_quantity > 0) AS in_stock,
+              CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
+              p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
+              p.created_at, p.updated_at,
+              s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
+              sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
+              parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
+              COALESCE(img.images, '[]'::json) AS images,
+              COALESCE(v.variants, '[]'::json) AS variants
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pi.id,
+             'url', pi.url,
+             'alt_text', pi.alt_text,
+             'position', pi.position,
+             'is_thumbnail', pi.is_thumbnail
+           )
+           ORDER BY pi.position ASC
+         ) AS images
+         FROM pd_product_image pi
+         WHERE pi.product_id = p.id
+       ) img ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pv.id,
+             'title', pv.title,
+             'price', pv.price,
+             'sku', pv.sku,
+             'in_stock', (pv.inventory_quantity > 0),
+             'options', pv.options
+           )
+           ORDER BY pv.created_at ASC
+         ) AS variants
+         FROM pd_product_variant pv
+         WHERE pv.product_id = p.id AND pv.is_active = true
+       ) v ON true
        WHERE ${where}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
+
     const { rows: countRows } = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
        FROM pd_product p
@@ -704,8 +942,22 @@ export class ProductService {
        WHERE ${where}`,
       params.slice(0, -2),
     );
+
     const total = parseInt(countRows[0].count, 10);
-    return { data: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    const total_pages = Math.ceil(total / limit) || 1;
+    const formattedData = rows.map(formatPublicProductResponse);
+
+    return {
+      data: formattedData,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages,
+        has_next: page < total_pages,
+        has_prev: page > 1,
+      },
+    };
   }
 
   async searchPublished(
@@ -767,20 +1019,53 @@ export class ProductService {
     const orderBy = publicProductOrderBy(opts.sortBy);
 
     params.push(limit, offset);
-    const { rows } = await query<ProductRow & { store_name: string; store_subdomain: string }>(
-      `SELECT p.*, s.name AS store_name, s.subdomain AS store_subdomain,
-              s.seller_type AS store_seller_type,
-              mc.name AS marketplace_category_name,
-              mc.slug AS marketplace_category_slug,
-              sc.name AS storefront_category_name,
-              sc.slug AS storefront_category_slug,
-              parent_sc.name AS storefront_parent_category_name,
-              parent_sc.slug AS storefront_parent_category_slug
+    const { rows } = await query<PublicProductRow>(
+      `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
+              p.marketplace_category_id, p.storefront_category_id, p.price,
+              (p.inventory_quantity > 0) AS in_stock,
+              CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
+              p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
+              p.created_at, p.updated_at,
+              s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
+              sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
+              parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
+              COALESCE(img.images, '[]'::json) AS images,
+              COALESCE(v.variants, '[]'::json) AS variants
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pi.id,
+             'url', pi.url,
+             'alt_text', pi.alt_text,
+             'position', pi.position,
+             'is_thumbnail', pi.is_thumbnail
+           )
+           ORDER BY pi.position ASC
+         ) AS images
+         FROM pd_product_image pi
+         WHERE pi.product_id = p.id
+       ) img ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pv.id,
+             'title', pv.title,
+             'price', pv.price,
+             'sku', pv.sku,
+             'in_stock', (pv.inventory_quantity > 0),
+             'options', pv.options
+           )
+           ORDER BY pv.created_at ASC
+         ) AS variants
+         FROM pd_product_variant pv
+         WHERE pv.product_id = p.id AND pv.is_active = true
+       ) v ON true
        WHERE ${where}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -795,9 +1080,10 @@ export class ProductService {
       params.slice(0, -2),
     );
     const total = parseInt(countRows[0].count, 10);
+    const formattedData = rows.map(formatPublicProductResponse);
     return {
-      hits: rows,
-      data: rows,
+      hits: formattedData,
+      data: formattedData,
       estimatedTotalHits: total,
       total,
       limit,

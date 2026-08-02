@@ -5,7 +5,7 @@ import { paymentService } from '../services/payment.service';
 import { mandatService } from '../services/mandat.service';
 import { orderService } from '../services/order.service';
 import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '../middlewares';
-import { PaymentGateway, MandatUploader } from '@pandamarket/types';
+import { PaymentGateway, MandatUploader, UserRole } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { query as dbQuery } from '../db/pool';
@@ -15,6 +15,7 @@ const router = Router();
 const initPaymentSchema = z.object({
   order_id: z.string(),
   store_id: z.string().min(1).optional(),
+  return_origin: z.string().url().optional(),
   gateway: z.enum([
     PaymentGateway.Flouci,
     PaymentGateway.Konnect,
@@ -93,7 +94,7 @@ router.post(
   requireAuth,
   validate(initPaymentSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { order_id, gateway } = req.body;
+    const { order_id, gateway, return_origin } = req.body;
     const order = await orderService.getById(order_id);
 
     // Verify order belongs to user
@@ -113,6 +114,7 @@ router.post(
       order,
       gateway as PaymentGateway,
       customerEmail,
+      return_origin,
     );
 
     res.status(200).json({
@@ -128,7 +130,7 @@ router.post(
   requireStorefrontCustomer,
   validate(initPaymentSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { order_id, gateway } = req.body;
+    const { order_id, gateway, return_origin } = req.body;
     const order = await orderService.getById(order_id);
 
     if (order.storefront_customer_id !== req.storefrontCustomer!.id) {
@@ -152,6 +154,7 @@ router.post(
       order,
       gateway as PaymentGateway,
       customerEmail,
+      return_origin,
     );
 
     res.status(200).json({
@@ -254,21 +257,27 @@ router.post(
   '/webhook/paypal',
   asyncHandler(async (req: Request, res: Response) => {
     const { resource } = req.body || {};
-    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
     const paypalOrderId = resource?.id || req.body.paypal_order_id;
+    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
 
-    if (!paypalOrderId || !orderId) {
-      res.status(400).json({ error: { message: 'Missing paypal_order_id or order_id' } });
+    if (!paypalOrderId) {
+      res.status(400).json({ error: { message: 'Missing paypal_order_id' } });
       return;
     }
 
     const { paypalProvider } = await import('../plugins/payment');
     const signatureValid = await paypalProvider.verifyWebhookSignature(req.headers as Record<string, string>, req.body);
 
+    if (!signatureValid) {
+      logger.warn({ ip: req.ip }, 'PayPal webhook signature verification failed');
+      res.status(401).json({ error: { message: 'Invalid signature' } });
+      return;
+    }
+
     await paymentService.processPaymentWebhook({
       gateway: PaymentGateway.PayPal,
       gatewayEventId: String(paypalOrderId),
-      orderId: String(orderId),
+      orderId: orderId ? String(orderId) : undefined,
       rawPayload: req.body,
       sourceIp: req.ip ?? undefined,
       signatureValid,
@@ -278,4 +287,232 @@ router.post(
   }),
 );
 
+// Storefront Mandat Receipt Upload
+const storefrontReceiptSchema = z.object({
+  order_id: z.string().min(1),
+  file_key: z.string().min(1),
+  file_name: z.string().min(1),
+  file_size: z.number().optional(),
+  mime_type: z.string().optional(),
+});
+
+const reviewReceiptSchema = z.object({
+  action: z.enum(['approve', 'reject']),
+  notes: z.string().optional(),
+});
+
+router.post(
+  '/storefront/receipt',
+  requireStorefrontCustomer,
+  validate(storefrontReceiptSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { order_id, file_key, file_name, file_size, mime_type } = req.body;
+    const storefrontCustomerId = req.storefrontCustomer!.id;
+    const storeId = req.storefrontCustomer!.store_id;
+
+    // 1. Verify order belongs to customer & store
+    const { rows: orderRows } = await dbQuery<{ id: string; payment_gateway: string; payment_status: string }>(
+      `SELECT o.id, o.payment_gateway, o.payment_status FROM pd_order o
+       JOIN pd_order_item oi ON oi.order_id = o.id
+       WHERE o.id = $1 AND o.storefront_customer_id = $2 AND oi.store_id = $3
+       LIMIT 1`,
+      [order_id, storefrontCustomerId, storeId],
+    );
+    const order = orderRows[0];
+    if (!order) {
+      res.status(403).json({ error: { message: 'Order not found or cross-store access forbidden' } });
+      return;
+    }
+
+    if (order.payment_gateway !== PaymentGateway.ManualMandat) {
+      res.status(400).json({ error: { message: 'Receipt upload is only supported for Mandat Minute orders' } });
+      return;
+    }
+
+    const { pdId } = await import('../utils/crypto');
+    const receiptId = pdId('rcpt');
+
+    // 2. Insert receipt
+    const { rows: receiptRows } = await dbQuery(
+      `INSERT INTO pd_payment_receipt
+        (id, order_id, store_id, storefront_customer_id, file_key, file_name, file_size, mime_type, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review')
+       RETURNING *`,
+      [receiptId, order_id, storeId, storefrontCustomerId, file_key, file_name, file_size ?? null, mime_type ?? null],
+    );
+
+    // 3. Ensure order payment_status remains unpaid (pending_review)
+    await dbQuery(
+      `UPDATE pd_order SET updated_at = NOW() WHERE id = $1`,
+      [order_id],
+    );
+
+    logger.info({ receipt_id: receiptId, order_id, storefront_customer_id: storefrontCustomerId }, 'Storefront Mandat receipt uploaded');
+
+    res.status(201).json({ receipt: receiptRows[0], data: receiptRows[0] });
+  }),
+);
+
+router.get(
+  '/storefront/receipt/:orderId',
+  requireStorefrontCustomer,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storefrontCustomerId = req.storefrontCustomer!.id;
+    const storeId = req.storefrontCustomer!.store_id;
+    const { orderId } = req.params;
+
+    const { rows: receiptRows } = await dbQuery<{
+      id: string;
+      order_id: string;
+      file_key: string;
+      file_name: string;
+      status: string;
+      review_notes: string | null;
+      created_at: Date;
+    }>(
+      `SELECT id, order_id, file_key, file_name, status, review_notes, created_at
+       FROM pd_payment_receipt
+       WHERE order_id = $1 AND storefront_customer_id = $2 AND store_id = $3
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [orderId, storefrontCustomerId, storeId],
+    );
+    const receipt = receiptRows[0];
+    if (!receipt) {
+      res.status(404).json({ error: { message: 'No receipt found for this order' } });
+      return;
+    }
+
+    const { presignDownload } = await import('../utils/s3');
+    let viewUrl: string | undefined;
+    try {
+      viewUrl = await presignDownload({
+        bucket: config.s3.bucketPrivate,
+        key: receipt.file_key,
+        expiresInSeconds: 3600,
+      });
+    } catch {
+      // Ignore URL generation failure
+    }
+
+    res.status(200).json({ receipt, view_url: viewUrl, data: receipt });
+  }),
+);
+
+// Seller/Admin: View receipt for order
+router.get(
+  '/receipts/order/:orderId',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { orderId } = req.params;
+    const { rows: receiptRows } = await dbQuery<{
+      id: string;
+      order_id: string;
+      store_id: string;
+      file_key: string;
+      file_name: string;
+      status: string;
+      review_notes: string | null;
+      created_at: Date;
+    }>(
+      `SELECT r.* FROM pd_payment_receipt r
+       JOIN pd_order_item oi ON oi.order_id = r.order_id
+       WHERE r.order_id = $1 AND (oi.store_id = $2 OR $3 = true)
+       ORDER BY r.created_at DESC
+       LIMIT 1`,
+      [orderId, req.user!.store_id ?? '', req.user!.role === UserRole.Admin || req.user!.role === UserRole.SuperAdmin],
+    );
+
+    const receipt = receiptRows[0];
+    if (!receipt) {
+      res.status(404).json({ error: { message: 'Receipt not found' } });
+      return;
+    }
+
+    const { presignDownload } = await import('../utils/s3');
+    let viewUrl: string | undefined;
+    try {
+      viewUrl = await presignDownload({
+        bucket: config.s3.bucketPrivate,
+        key: receipt.file_key,
+        expiresInSeconds: 3600,
+      });
+    } catch {
+      // Ignore
+    }
+
+    res.status(200).json({ receipt, view_url: viewUrl, data: receipt });
+  }),
+);
+
+// Seller/Admin: Review (Approve or Reject) Receipt
+router.post(
+  '/receipts/:receiptId/review',
+  requireAuth,
+  validate(reviewReceiptSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { receiptId } = req.params;
+    const { action, notes } = req.body;
+
+    const { rows: receiptRows } = await dbQuery<{
+      id: string;
+      order_id: string;
+      store_id: string;
+      status: string;
+    }>(
+      `SELECT r.id, r.order_id, r.store_id, r.status
+       FROM pd_payment_receipt r
+       WHERE r.id = $1`,
+      [receiptId],
+    );
+    const receipt = receiptRows[0];
+    if (!receipt) {
+      res.status(404).json({ error: { message: 'Receipt not found' } });
+      return;
+    }
+
+    const isAdmin = req.user!.role === UserRole.Admin || req.user!.role === UserRole.SuperAdmin;
+    if (!isAdmin && req.user!.store_id !== receipt.store_id) {
+      res.status(403).json({ error: { message: 'Forbidden — You do not manage this store' } });
+      return;
+    }
+
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+    await dbQuery(
+      `UPDATE pd_payment_receipt
+       SET status = $1, review_notes = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $4`,
+      [newStatus, notes ?? null, req.user!.id, receiptId],
+    );
+
+    if (action === 'approve') {
+      // Mark order as paid / captured
+      await dbQuery(
+        `UPDATE pd_order
+         SET payment_status = 'captured', status = 'processing', updated_at = NOW()
+         WHERE id = $1`,
+        [receipt.order_id],
+      );
+      logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt approved — payment captured');
+    } else {
+      await dbQuery(
+        `UPDATE pd_order
+         SET payment_status = 'failed', updated_at = NOW()
+         WHERE id = $1`,
+        [receipt.order_id],
+      );
+      logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt rejected');
+    }
+
+    const { rows: updatedRows } = await dbQuery(
+      'SELECT * FROM pd_payment_receipt WHERE id = $1',
+      [receiptId],
+    );
+
+    res.status(200).json({ receipt: updatedRows[0], data: updatedRows[0] });
+  }),
+);
+
 export default router;
+

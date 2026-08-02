@@ -78,4 +78,73 @@ router.get(
   }),
 );
 
+// Storefront: Search products (store-scoped)
+const handleStorefrontSearch = asyncHandler(async (req: Request, res: Response) => {
+  const storeId = (req.query.store_id as string) || (req.query.storeId as string) || '';
+  if (!storeId) {
+    return res.status(400).json({ error: 'store_id parameter is required' });
+  }
+
+  const q = (req.query.q as string) || (req.query.query as string) || '';
+  const category = req.query.category as string;
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const limit = parseInt(req.query.limit as string, 10) || 20;
+  const priceMin = req.query.price_min !== undefined ? Number(req.query.price_min) : undefined;
+  const priceMax = req.query.price_max !== undefined ? Number(req.query.price_max) : undefined;
+  const productType = Object.values(ProductType).includes(req.query.type as ProductType)
+    ? (req.query.type as ProductType)
+    : Object.values(ProductType).includes(req.query.product_type as ProductType)
+      ? (req.query.product_type as ProductType)
+      : undefined;
+  const sortBy = (req.query.sort as string) || 'newest';
+
+  const results = await productService.listPublished({
+    storeId,
+    q,
+    page,
+    limit,
+    category,
+    priceMin,
+    priceMax,
+    productType,
+    sortBy,
+  });
+
+  return res.status(200).json(results);
+});
+
+router.get('/storefront', handleStorefrontSearch);
+router.get('/storefront/search', handleStorefrontSearch);
+
+// Storefront: Search suggest (store-scoped autocomplete)
+const handleStorefrontSuggest = asyncHandler(async (req: Request, res: Response) => {
+  const storeId = (req.query.store_id as string) || (req.query.storeId as string) || '';
+  const q = (req.query.q as string) || (req.query.query as string) || '';
+
+  if (!storeId || q.trim().length < 2) {
+    return res.status(200).json({ suggestions: [] });
+  }
+
+  const results = await productService.listPublished({
+    storeId,
+    q: q.trim(),
+    page: 1,
+    limit: 8,
+  });
+
+  const suggestions = (results.data || (results as any).products || []).map((p: any) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    category: p.category,
+    price: p.price,
+    thumbnail: p.thumbnail,
+  }));
+
+  return res.status(200).json({ suggestions });
+});
+
+router.get('/storefront/suggest', handleStorefrontSuggest);
+router.get('/storefront/search/suggest', handleStorefrontSuggest);
+
 export default router;

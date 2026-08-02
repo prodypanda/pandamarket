@@ -1,26 +1,6 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { themes, type ThemeCustomization, type ThemeId, resolveThemeColors } from '../../../../lib/themes';
-import { MinimalTheme } from '../../../../components/themes/MinimalTheme';
-import { ClassicTheme } from '../../../../components/themes/ClassicTheme';
-import { ModernTheme } from '../../../../components/themes/ModernTheme';
-import { BoutiqueTheme } from '../../../../components/themes/BoutiqueTheme';
-import { ArtisanTheme } from '../../../../components/themes/ArtisanTheme';
-import { TechHubTheme } from '../../../../components/themes/TechHubTheme';
-import { FlavorTheme } from '../../../../components/themes/FlavorTheme';
-import { EleganceTheme } from '../../../../components/themes/EleganceTheme';
-import { NeonTheme } from '../../../../components/themes/NeonTheme';
-import { SaharaTheme } from '../../../../components/themes/SaharaTheme';
-import { MedinaTheme } from '../../../../components/themes/MedinaTheme';
-import { CoastalTheme } from '../../../../components/themes/CoastalTheme';
-import { UrbanTheme } from '../../../../components/themes/UrbanTheme';
-import { GardenTheme } from '../../../../components/themes/GardenTheme';
-import { StudioTheme } from '../../../../components/themes/StudioTheme';
-import { LuxeTheme } from '../../../../components/themes/LuxeTheme';
-import { FreshTheme } from '../../../../components/themes/FreshTheme';
-import { CraftTheme } from '../../../../components/themes/CraftTheme';
-import { DigitalTheme } from '../../../../components/themes/DigitalTheme';
-import { KidsTheme } from '../../../../components/themes/KidsTheme';
 import { getStoreThemeLogoSurface, type StoreProduct as ThemeStoreProduct, type ThemeProps, type StoreSocialLinks } from '../../../../components/themes/shared';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getStoreRouteContext } from '../../../../lib/store-routing';
@@ -28,6 +8,7 @@ import { type MarketplaceCategory, type MarketplaceStoreProduct, MarketplaceSell
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../components/themes/ThemeWrapper';
+import { CatalogControls, type CatalogPaginationMeta } from '../../../../components/store/CatalogControls';
 
 interface StoreData {
   id: string;
@@ -72,17 +53,37 @@ async function getStoreByHost(host: string): Promise<StoreData | null> {
   }
 }
 
-async function getStoreProducts(storeId: string): Promise<MarketplaceStoreProduct[]> {
+interface ProductsResult {
+  products: MarketplaceStoreProduct[];
+  meta?: CatalogPaginationMeta;
+}
+
+async function getStoreProducts(
+  storeId: string,
+  queryParams: Record<string, string | string[] | undefined> = {},
+): Promise<ProductsResult> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=100`, {
-      next: { revalidate: 120 },
+    const params = new URLSearchParams({ store_id: storeId, limit: '24' });
+
+    Object.entries(queryParams).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        const strVal = Array.isArray(val) ? val[0] : val;
+        params.set(key, strVal);
+      }
     });
-    if (!res.ok) return [];
+
+    const res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return { products: [] };
     const data = await res.json();
-    return data.data || [];
+    return {
+      products: data.data || [],
+      meta: data.meta,
+    };
   } catch {
-    return [];
+    return { products: [] };
   }
 }
 
@@ -117,34 +118,15 @@ function toThemeProducts(products: MarketplaceStoreProduct[]): ThemeStoreProduct
   }));
 }
 
-function slugSegment(value?: string | null): string {
-  return (value || 'non-categorized-products')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'non-categorized-products';
-}
-
-function filterProductsByCategory(products: MarketplaceStoreProduct[], category?: string): MarketplaceStoreProduct[] {
-  if (!category) return products;
-  const selected = slugSegment(category);
-  return products.filter((product) => [
-    product.category,
-    product.marketplace_category_slug,
-    product.storefront_category_slug,
-    product.storefront_parent_category_slug,
-  ].some((value) => slugSegment(value) === selected));
-}
-
 export default async function StoreProductsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ storeHost: string }>;
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { storeHost } = await params;
-  const { category } = await searchParams;
+  const resolvedSearchParams = await searchParams;
   const decodedHost = decodeURIComponent(storeHost);
   const store = await getStoreByHost(decodedHost);
 
@@ -154,7 +136,7 @@ export default async function StoreProductsPage({
   if (!isPublicStore) notFound();
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
-  const products = await getStoreProducts(store.id);
+  const { products, meta } = await getStoreProducts(store.id, resolvedSearchParams);
 
   if (isMarketplaceStoreRoute) {
     const cookieStore = await cookies();
@@ -164,6 +146,10 @@ export default async function StoreProductsPage({
       getMarketplaceSettings(),
     ]);
 
+    const categoryParam = Array.isArray(resolvedSearchParams.category)
+      ? resolvedSearchParams.category[0]
+      : resolvedSearchParams.category;
+
     return (
       <MarketplaceSellerPage
         storeHost={storeHost}
@@ -171,7 +157,7 @@ export default async function StoreProductsPage({
         products={products}
         categories={categories}
         marketplaceSettings={marketplaceSettings}
-        selectedCategorySlug={category}
+        selectedCategorySlug={categoryParam}
       />
     );
   }
@@ -179,6 +165,7 @@ export default async function StoreProductsPage({
   const activeTheme = themes[store.theme_id] || themes.classic;
   const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
   const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+
   const branding = {
     store_id: store.id,
     store_host: storeHost,
@@ -202,8 +189,28 @@ export default async function StoreProductsPage({
     map_embed_url: store.settings?.map_embed_url,
     social: store.settings?.social,
   };
-  const visibleProducts = filterProductsByCategory(products, category);
-  const themeProps: ThemeProps = { theme: activeTheme, storeName: store.name, products: toThemeProducts(visibleProducts), branding };
 
-  return renderStorefrontTheme(themeProps);
+  const themeProps: ThemeProps = {
+    theme: activeTheme,
+    storeName: store.name,
+    products: toThemeProducts(products),
+    branding,
+  };
+
+  const categoryOptions = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => Boolean(c))),
+  );
+
+  return (
+    <CatalogControls
+      meta={meta}
+      categories={categoryOptions}
+      accentColor={resolvedColors.primary}
+      secondaryColor={resolvedColors.secondary}
+      textColor={resolvedColors.text}
+      backgroundColor={resolvedColors.background}
+    >
+      {renderStorefrontTheme(themeProps)}
+    </CatalogControls>
+  );
 }

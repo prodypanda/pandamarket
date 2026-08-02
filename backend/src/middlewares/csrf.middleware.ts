@@ -55,8 +55,14 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     return next();
   }
 
-  // Skip for webhook routes (they use HMAC) and S3 mock uploads
-  if (req.path.includes('/webhook/') || req.path.includes('/callback') || req.path.includes('/upload-s3-mock/')) {
+  // Skip for webhook routes (they use HMAC) and dev-only S3 mock uploads.
+  // Dev-only reason for /upload-s3-mock/: Mimics S3 direct presigned PUT uploads which use URL signature tokens
+  // (?token=...) instead of application CSRF double-submit cookie headers.
+  if (
+    req.path.includes('/webhook/') ||
+    req.path.includes('/callback') ||
+    (config.env !== 'production' && req.path.includes('/upload-s3-mock/'))
+  ) {
     return next();
   }
 

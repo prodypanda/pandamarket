@@ -11,6 +11,9 @@ import { PdValidationError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
 import { pageBuilderService } from '../services/page-builder.service';
 import { platformConfigService } from '../services/platform-config.service';
+import { menuService, draftNavigationInputSchema, draftFooterInputSchema } from '../services/menu.service';
+import { domainVerificationService } from '../services/domain-verification.service';
+import { outboxService } from '../services/outbox.service';
 
 const router = Router();
 
@@ -47,8 +50,17 @@ const updateThemeSchema = z.object({
   theme_id: z.string().min(1),
 });
 
+const updateThemeDraftSchema = z.object({
+  draft_theme_id: z.string().min(1).optional(),
+  draftThemeCustomization: z.record(z.unknown()).optional(),
+});
+
 const updateDomainSchema = z.object({
   custom_domain: z.string().min(3).nullable(),
+});
+
+const addDomainSchema = z.object({
+  hostname: z.string().min(3).max(255),
 });
 
 const updateShippingSchema = z.object({
@@ -191,7 +203,7 @@ function publicStorefrontSettings(settings: StoreRow['settings'] | null | undefi
   };
 }
 
-function publicStorefrontStore(store: StoreRow, score?: { seller_score: string; review_count: string }) {
+function publicStorefrontStore(store: StoreRow | import('../services/store.service').PublicStoreRow, score?: { seller_score: string; review_count: string }) {
   return {
     id: store.id,
     name: store.name,
@@ -571,8 +583,9 @@ router.put(
 router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const store = await storeService.getById(req.params.id);
-    res.status(200).json({ store });
+    const store = await storeService.getPublicById(req.params.id);
+    const score = await storeService.getSellerScore(store.id);
+    res.status(200).json({ store: publicStorefrontStore(store, score) });
   }),
 );
 
@@ -587,12 +600,137 @@ router.put(
 );
 
 router.put(
+  '/me/theme/draft',
+  requireStore,
+  validate(updateThemeDraftSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.updateThemeDraft(req.user!.store_id!, {
+      draft_theme_id: req.body.draft_theme_id,
+      draftThemeCustomization: req.body.draftThemeCustomization,
+    });
+    res.status(200).json({ store });
+  }),
+);
+
+router.post(
+  '/me/theme/preview-token',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeService.createThemePreviewToken(req.user!.store_id!, req.user!.id);
+    res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/:id/theme-preview',
+  asyncHandler(async (req: Request, res: Response) => {
+    const token = req.query.token as string;
+    if (!token) {
+      res.status(400).json({ error: { message: 'Preview token required' } });
+      return;
+    }
+    const data = await storeService.getThemePreviewData(req.params.id, token);
+    res.status(200).json(data);
+  }),
+);
+
+router.get(
+  '/me/publish-status',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const events = await outboxService.getRecentEventsForStore(req.user!.store_id!);
+    const latestEvent = events[0] || null;
+    res.status(200).json({
+      latest_revision: latestEvent ? latestEvent.revision : 0,
+      status: latestEvent ? latestEvent.status : 'synced',
+      events,
+    });
+  }),
+);
+
+router.post(
+  '/me/theme/publish-draft',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.publishThemeDraft(req.user!.store_id!);
+    res.status(200).json({ store, message: 'Thème publié avec succès !' });
+  }),
+);
+
+router.put(
   '/me/domain',
+  requireAuth,
   requireStore,
   validate(updateDomainSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.updateCustomDomain(req.user!.store_id!, req.body.custom_domain);
     res.status(200).json({ store });
+  }),
+);
+
+router.get(
+  '/me/domains',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const domains = await domainVerificationService.listDomains(req.user!.store_id!);
+    res.status(200).json({ domains });
+  }),
+);
+
+router.post(
+  '/me/domains',
+  requireAuth,
+  requireStore,
+  validate(addDomainSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const store = await storeService.getById(req.user!.store_id!);
+    const domain = await domainVerificationService.addDomain(
+      req.user!.store_id!,
+      store.subscription_plan,
+      req.body.hostname,
+    );
+    res.status(201).json({ domain });
+  }),
+);
+
+router.post(
+  '/me/domains/:id/verify',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const domain = await domainVerificationService.verifyDomain(
+      req.user!.store_id!,
+      req.params.id,
+      req.body.mock_token,
+    );
+    res.status(200).json({ domain });
+  }),
+);
+
+router.post(
+  '/me/domains/:id/make-primary',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const domain = await domainVerificationService.makePrimary(
+      req.user!.store_id!,
+      req.params.id,
+    );
+    res.status(200).json({ domain });
+  }),
+);
+
+router.delete(
+  '/me/domains/:id',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await domainVerificationService.removeDomain(
+      req.user!.store_id!,
+      req.params.id,
+    );
+    res.status(200).json({ success: true, message: 'Domaine supprimé avec succès' });
   }),
 );
 
@@ -706,6 +844,91 @@ router.get(
     }
     const page = await pageBuilderService.getHomepageOverride(req.params.storeId);
     res.json({ page }); // null if no homepage override
+  }),
+);
+
+// =====================================================
+// Navigation & Footer Seller/Public Endpoints (GAP-P1-013)
+// =====================================================
+
+// Seller: Get draft navigation
+router.get(
+  '/me/navigation/draft',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await menuService.getDraftNavigation(req.user!.store_id!);
+    res.status(200).json(data);
+  }),
+);
+
+// Seller: Update draft navigation
+router.put(
+  '/me/navigation/draft',
+  requireAuth,
+  requireStore,
+  validate(draftNavigationInputSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await menuService.updateDraftNavigation(req.user!.store_id!, req.body);
+    res.status(200).json(data);
+  }),
+);
+
+// Seller: Get draft footer
+router.get(
+  '/me/footer/draft',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await menuService.getDraftFooter(req.user!.store_id!);
+    res.status(200).json(data);
+  }),
+);
+
+// Seller: Update draft footer
+router.put(
+  '/me/footer/draft',
+  requireAuth,
+  requireStore,
+  validate(draftFooterInputSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await menuService.updateDraftFooter(req.user!.store_id!, req.body);
+    res.status(200).json(data);
+  }),
+);
+
+// Seller: Publish draft navigation & footer
+router.post(
+  '/me/content/publish',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await menuService.publishContent(req.user!.store_id!);
+    res.status(200).json(result);
+  }),
+);
+
+// Public Storefront: Get published navigation & footer
+router.get(
+  '/storefront/v1/navigation',
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.query.store_id as string | undefined;
+    const host = (req.query.host as string) || req.headers.host;
+
+    let targetStoreId = storeId;
+    if (!targetStoreId && host) {
+      const store = await storeService.resolveByHostname(host, config.hubDomain);
+      targetStoreId = store?.id;
+    }
+
+    if (!targetStoreId) {
+      res.status(400).json({ error: { code: 'PD_VALIDATION_ERROR', message: 'store_id or valid host query is required' } });
+      return;
+    }
+
+    const data = await menuService.getPublicNavigation(targetStoreId);
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+    res.status(200).json({ data, navigation: data });
   }),
 );
 

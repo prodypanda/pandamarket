@@ -21,6 +21,7 @@ import { productService } from '../services/product.service';
 import { orderService } from '../services/order.service';
 import { query } from '../db/pool';
 import { pdId, randomHex } from '../utils/crypto';
+import { validateWebhookUrl } from '../utils/ssrf';
 import { PdEvent } from '../events/event-bus';
 import {
   asyncHandler,
@@ -237,6 +238,9 @@ router.post(
   requireStore,
   validate(webhookCreateSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    // SSRF Check: resolve DNS and block private/reserved IPs
+    await validateWebhookUrl(req.body.url);
+
     const id = pdId('webhook');
     const secret = randomHex(32);
     const { rows } = await query<WebhookSubscriptionRow>(
@@ -261,6 +265,11 @@ router.put(
   requireStore,
   validate(webhookUpdateSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    if (req.body.url) {
+      // SSRF Check: resolve DNS and block private/reserved IPs
+      await validateWebhookUrl(req.body.url);
+    }
+
     const updates: string[] = [];
     const params: unknown[] = [req.params.id, req.user!.store_id!];
 

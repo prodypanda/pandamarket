@@ -290,3 +290,90 @@ export interface SearchResultDto {
   store_verified: boolean;
   category: string | null;
 }
+
+// =====================================================
+// Public Storefront Projections
+// =====================================================
+
+export interface StorefrontStorePublic {
+  id: string;
+  name: string;
+  subdomain: string;
+  custom_domain: string | null;
+  theme_id: string;
+  seller_type: SellerType;
+  description?: string | null;
+  is_verified: boolean;
+  status: string;
+  shipping_mode?: ShippingMode;
+  created_at?: string | Date;
+  seller_score?: string;
+  seller_review_count?: string;
+  settings: {
+    colors?: { primary?: string; secondary?: string; accent?: string };
+    logo_url?: string;
+    logo_light_url?: string;
+    logo_dark_url?: string;
+    favicon_url?: string;
+    themeCustomization?: Record<string, unknown>;
+    store_description?: string;
+    description?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    map_embed_url?: string;
+    social?: { facebook?: string; instagram?: string; tiktok?: string };
+    maintenance_message?: string;
+    marketplace_header_image_url?: string;
+    shipping_policy?: string;
+    returns_policy?: string;
+    payment_policy?: string;
+  };
+}
+
+export interface StorefrontProductVariantPublic {
+  id: string;
+  title: string;
+  price: number;
+  sku?: string | null;
+  in_stock: boolean;
+  options?: Record<string, string>;
+}
+
+export interface StorefrontProductPublic {
+  id: string;
+  store_id: string;
+  type: ProductType;
+  title: string;
+  slug: string;
+  description: string | null;
+  category: string | null;
+  price: number;
+  currency: string;
+  thumbnail: string | null;
+  images: Array<{
+    id: string;
+    url: string;
+    alt_text: string | null;
+    position: number;
+    is_thumbnail: boolean;
+  }>;
+  variants: StorefrontProductVariantPublic[];
+  availability: {
+    in_stock: boolean;
+    stock_status: 'in_stock' | 'out_of_stock';
+  };
+  seo: {
+    title: string | null;
+    description: string | null;
+  };
+  tags?: string[];
+  attributes?: Array<{ name: string; value: string }>;
+  weight_grams?: number | null;
+  store_name?: string;
+  store_subdomain?: string;
+  created_at: string | Date;
+  updated_at?: string | Date;
+}

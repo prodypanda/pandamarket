@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middlewares';
 import { storeService } from '../services/store.service';
+import { domainVerificationService } from '../services/domain-verification.service';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 
@@ -37,16 +38,17 @@ router.get(
       return;
     }
 
-    // Check if this is a registered custom domain
-    const store = await storeService.getByCustomDomain(domain);
-    if (store) {
-      logger.info({ domain, store_id: store.id }, 'TLS allowed for custom domain');
-      res.status(200).json({ allowed: true, store_id: store.id });
+    // Check if this is a verified custom domain
+    const isAllowed = await domainVerificationService.isDomainTlsAllowed(domain);
+    if (isAllowed) {
+      const store = await storeService.getByCustomDomain(domain);
+      logger.info({ domain, store_id: store?.id }, 'TLS allowed for verified custom domain');
+      res.status(200).json({ allowed: true, store_id: store?.id });
       return;
     }
 
-    logger.warn({ domain }, 'TLS denied for unknown domain');
-    res.status(404).json({ allowed: false, reason: 'Domain not registered' });
+    logger.warn({ domain }, 'TLS denied for unverified or unknown domain');
+    res.status(404).json({ allowed: false, reason: 'Domain not verified or registered' });
   }),
 );
 

@@ -35,8 +35,9 @@ export interface WholesalePricing {
   price_tiers?: WholesalePriceTier[];
 }
 
-export function generateCartItemId(product_id: string, variant?: string): string {
-  return variant ? `${product_id}_${variant}` : product_id;
+export function generateCartItemId(product_id: string, variant?: string, variant_id?: string): string {
+  const suffix = variant_id || variant;
+  return suffix ? `${product_id}_${suffix}` : product_id;
 }
 
 export function getMinimumQuantityForSeller(sellerType?: string | null, wholesalePricing?: WholesalePricing | null): number {
@@ -79,7 +80,7 @@ export function getCartLineTotal(item: CartItem): number {
 }
 
 export function addItem(items: CartItem[], incoming: Omit<CartItem, 'id'>): CartItem[] {
-  const id = generateCartItemId(incoming.product_id, incoming.variant);
+  const id = generateCartItemId(incoming.product_id, incoming.variant, incoming.variant_id);
   const existing = items.find((i) => i.id === id);
   if (existing) {
     return items.map((i) =>

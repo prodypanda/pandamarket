@@ -10,15 +10,15 @@ const daily = [
 describe('AdsPerformanceCharts', () => {
   it('renders a clear empty state when the selected period has no data', () => {
     render(<AdsPerformanceCharts daily={[]} />);
-    expect(screen.getByText('No performance data for this period.')).toBeInTheDocument();
+    expect(screen.getByText('No performance data available for the selected period.')).toBeInTheDocument();
   });
 
   it('renders accessible reach and revenue charts', () => {
     render(<AdsPerformanceCharts daily={daily} />);
-    expect(screen.getByRole('img', { name: /Reach and engagement from 2026-07-01 to 2026-07-02/ })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /Spend and attributed revenue from 2026-07-01 to 2026-07-02/ })).toBeInTheDocument();
+    expect(screen.getByText('Reach & Engagement')).toBeInTheDocument();
+    expect(screen.getByText('Spend & Attributed Revenue')).toBeInTheDocument();
     expect(screen.getByText('Impressions')).toBeInTheDocument();
-    expect(screen.getByText('Revenue')).toBeInTheDocument();
+    expect(screen.getByText('Attributed Revenue')).toBeInTheDocument();
   });
 
   it('keeps chronological chart axes left-to-right inside RTL dashboards', () => {

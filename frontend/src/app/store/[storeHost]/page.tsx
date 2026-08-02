@@ -210,6 +210,20 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   }
 }
 
+async function getStoreNavigation(storeId: string) {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(`${backendUrl}/api/pd/stores/storefront/v1/navigation?store_id=${storeId}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return data.navigation || data.data || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function getMarketplaceCategories(locale: string = 'fr'): Promise<MarketplaceCategory[]> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
@@ -512,9 +526,10 @@ export default async function StorePage({
   }
 
   // Default: Render the selected theme
-  const [products, marketplaceSettings] = await Promise.all([
+  const [products, marketplaceSettings, navigation] = await Promise.all([
     getStoreProducts(store.id),
     getMarketplaceSettings(),
+    getStoreNavigation(store.id),
   ]);
 
   // Use resolved colors as primary_color override for backward compatibility
@@ -546,7 +561,7 @@ export default async function StorePage({
     social: store.settings?.social,
   };
 
-  const themeProps = { theme: activeTheme, storeName: store.name, products, branding };
+  const themeProps = { theme: activeTheme, storeName: store.name, products, branding, navigation };
 
   return (
     <>

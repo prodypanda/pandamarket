@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Store, ArrowLeft, Search } from 'lucide-react';
+import { getHubAbsoluteUrl } from '../../../lib/storefront-url';
 
 /**
  * Custom 404 page for non-existent store subdomains.
@@ -37,14 +38,14 @@ export default function StoreNotFound() {
         {/* CTAs */}
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Link
-            href="/hub"
+            href={getHubAbsoluteUrl('/hub')}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[#16C784] px-6 py-3 font-black text-white shadow-lg shadow-[#16C784]/20 transition hover:-translate-y-0.5 hover:bg-[#14b576]"
           >
             <ArrowLeft className="h-4 w-4" />
             Go to Hub
           </Link>
           <Link
-            href="/hub/search"
+            href={getHubAbsoluteUrl('/hub/search')}
             className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3 font-black text-gray-700 transition hover:-translate-y-0.5 hover:bg-gray-50"
           >
             <Search className="h-4 w-4" />

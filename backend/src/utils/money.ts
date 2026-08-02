@@ -50,3 +50,14 @@ export function calculateCommission(amount: number, rate: number): number {
 export function calculateVendorNet(amount: number, commissionRate: number): number {
   return roundTnd(amount - calculateCommission(amount, commissionRate));
 }
+
+/**
+ * Convert a monetary amount to integer minor units (bigint) based on currency.
+ * e.g. TND (3 decimals) -> Math.round(amount * 1000)
+ *      USD/EUR (2 decimals) -> Math.round(amount * 100)
+ */
+export function toMinorUnits(amount: number, currency: string): bigint {
+  const curr = (currency || 'TND').toUpperCase();
+  const scale = curr === 'TND' ? 1000 : 100;
+  return BigInt(Math.round(amount * scale));
+}

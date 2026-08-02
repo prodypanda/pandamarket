@@ -125,46 +125,66 @@ export function StorefrontAuthPage({ mode }: StorefrontAuthPageProps) {
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           {mode === 'register' && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <input
-                value={form.first_name}
-                onChange={(event) => setForm((current) => ({ ...current, first_name: event.target.value }))}
-                required
-                placeholder="Prénom"
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
-              />
-              <input
-                value={form.last_name}
-                onChange={(event) => setForm((current) => ({ ...current, last_name: event.target.value }))}
-                required
-                placeholder="Nom"
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
-              />
+              <div>
+                <label htmlFor="auth_first_name" className="block text-xs font-semibold text-slate-700 mb-1">Prénom</label>
+                <input
+                  id="auth_first_name"
+                  value={form.first_name}
+                  onChange={(event) => setForm((current) => ({ ...current, first_name: event.target.value }))}
+                  required
+                  placeholder="Prénom"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
+                />
+              </div>
+              <div>
+                <label htmlFor="auth_last_name" className="block text-xs font-semibold text-slate-700 mb-1">Nom</label>
+                <input
+                  id="auth_last_name"
+                  value={form.last_name}
+                  onChange={(event) => setForm((current) => ({ ...current, last_name: event.target.value }))}
+                  required
+                  placeholder="Nom"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
+                />
+              </div>
             </div>
           )}
-          <input
-            value={form.email}
-            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-            required
-            type="email"
-            placeholder="Email"
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
-          />
-          <input
-            value={form.password}
-            onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-            required
-            minLength={mode === 'register' ? 8 : 1}
-            type="password"
-            placeholder="Mot de passe"
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
-          />
-          {mode === 'register' && (
+          <div>
+            <label htmlFor="auth_email" className="block text-xs font-semibold text-slate-700 mb-1">Adresse Email</label>
             <input
-              value={form.phone}
-              onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-              placeholder="Téléphone"
+              id="auth_email"
+              value={form.email}
+              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              required
+              type="email"
+              placeholder="votre@email.com"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
             />
+          </div>
+          <div>
+            <label htmlFor="auth_password" className="block text-xs font-semibold text-slate-700 mb-1">Mot de passe</label>
+            <input
+              id="auth_password"
+              value={form.password}
+              onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+              required
+              minLength={mode === 'register' ? 8 : 1}
+              type="password"
+              placeholder="••••••••"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
+            />
+          </div>
+          {mode === 'register' && (
+            <div>
+              <label htmlFor="auth_phone" className="block text-xs font-semibold text-slate-700 mb-1">Numéro de Téléphone</label>
+              <input
+                id="auth_phone"
+                value={form.phone}
+                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                placeholder="+216 12 345 678"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
+              />
+            </div>
           )}
           <button
             type="submit"

@@ -1,18 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Menu, ShoppingBag, X } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath, getStoreBrandLogo, getLogoSurfaceForColor, getStoreThemeLogoSurface } from './shared';
+import Image from 'next/image';
+import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
-import { StorefrontThemeCartLink } from './StorefrontThemeCartLink';
-import { PoweredByMarketplace } from './PoweredByMarketplace';
-import { StorefrontSocialLinks } from './StorefrontSocialLinks';
+import { StorefrontHeader } from '../store/StorefrontHeader';
+import { StorefrontFooter } from '../store/StorefrontFooter';
 
-export function ClassicTheme({ theme, storeName, products = [], branding, children }: ThemeProps) {
+export function ClassicTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
-  const logoUrl = getStoreBrandLogo(branding, getLogoSurfaceForColor(tc.colors.primary, getStoreThemeLogoSurface(theme.id)));
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
@@ -32,98 +30,29 @@ export function ClassicTheme({ theme, storeName, products = [], branding, childr
     return true;
   });
 
-  const headerTextColor = getLogoSurfaceForColor(tc.colors.headerBg) === 'dark' ? '#FFFFFF' : tc.colors.text;
-
   return (
     <div
-      className={`${theme.typography.fontFamily} min-h-screen`}
+      className={`${theme.typography.fontFamily} min-h-screen flex flex-col`}
       style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}
     >
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
 
-      {/* Header */}
-      <header className="shadow-md" style={{ backgroundColor: tc.colors.headerBg, color: headerTextColor }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <button className="lg:hidden" onClick={() => setMobileMenuOpen(true)} aria-label="Menu">
-              <Menu className="w-6 h-6" />
-            </button>
-            <Link href={branding?.store_path_base || '/'}>
-              {logoUrl ? (
-                <img src={logoUrl} alt={storeName} className="h-8 object-contain" />
-              ) : (
-                <h1 className={`text-2xl ${theme.typography.headingStyle}`}>{storeName}</h1>
-              )}
-            </Link>
-          </div>
-          <div className="hidden lg:flex flex-1 max-w-lg mx-8 relative">
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full py-2 px-4 rounded-md focus:outline-none focus:ring-2"
-              style={{ color: tc.colors.text, backgroundColor: tc.colors.background }}
-            />
-            <Search className="w-5 h-5 absolute right-3 top-2.5" style={{ color: `${tc.colors.text}60` }} />
-          </div>
-          <div className="flex items-center space-x-6">
-            <Link href="/hub/login" className="text-sm font-medium hover:opacity-80 transition-opacity hidden sm:inline">Connexion</Link>
-            <StorefrontThemeCartLink
-              storeId={branding?.store_id}
-              storeHost={branding?.store_host}
-              storePathBase={branding?.store_path_base}
-              primaryColor={tc.colors.accent}
-              iconColor={headerTextColor}
-              className="inline-flex items-center transition-opacity hover:opacity-80"
-              icon="cart"
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] shadow-xl overflow-y-auto" style={{ backgroundColor: tc.colors.background, color: tc.colors.text }}>
-            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: `${tc.colors.text}15` }}>
-              <span className="font-bold text-lg">{storeName}</span>
-              <button onClick={() => setMobileMenuOpen(false)} aria-label="Fermer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-4">
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full py-2 px-3 rounded-md border text-sm mb-4"
-                style={{ borderColor: `${tc.colors.text}20`, backgroundColor: tc.colors.background, color: tc.colors.text }}
-              />
-              <nav className="space-y-1">
-                <Link href={branding?.store_path_base || '/'} className="block px-3 py-2 rounded-md text-sm font-medium hover:opacity-80" onClick={() => setMobileMenuOpen(false)}>Accueil</Link>
-                <a href="#products" className="block px-3 py-2 rounded-md text-sm font-medium hover:opacity-80" onClick={() => setMobileMenuOpen(false)}>Produits</a>
-                <Link href="/hub/login" className="block px-3 py-2 rounded-md text-sm font-medium hover:opacity-80" onClick={() => setMobileMenuOpen(false)}>Connexion</Link>
-              </nav>
-              {categories.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-xs uppercase tracking-wider font-bold mb-2" style={{ color: tc.colors.accent }}>Catégories</h3>
-                  <nav className="space-y-1">
-                    <button onClick={() => { setActiveCategory(''); setMobileMenuOpen(false); }} className={`block w-full text-left px-3 py-2 rounded-md text-sm ${!activeCategory ? 'font-bold' : ''}`} style={{ color: !activeCategory ? tc.colors.primary : tc.colors.text }}>Tous</button>
-                    {categories.map((cat) => (
-                      <button key={cat} onClick={() => { setActiveCategory(cat); setMobileMenuOpen(false); }} className={`block w-full text-left px-3 py-2 rounded-md text-sm ${activeCategory === cat ? 'font-bold' : ''}`} style={{ color: activeCategory === cat ? tc.colors.primary : tc.colors.text }}>{cat}</button>
-                    ))}
-                  </nav>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        variant="classic"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
       {children ? (
         /* Sub-route content (product detail, cart, custom page) */
-        <main className="py-8">{children}</main>
+        <main className="py-8 flex-1">{children}</main>
       ) : (
         <>
           {/* Hero */}
@@ -191,7 +120,7 @@ export function ClassicTheme({ theme, storeName, products = [], branding, childr
                   >
                     <div className="aspect-square w-full overflow-hidden" style={{ backgroundColor: tc.colors.secondary }}>
                       {getStoreProductImage(p) ? (
-                        <img src={getStoreProductImage(p)} alt={p.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                        <Image src={getStoreProductImage(p)} alt={p.title} width={400} height={400} unoptimized className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ color: `${tc.colors.text}30` }}>
                           <ShoppingBag className="w-8 h-8" />
@@ -221,11 +150,13 @@ export function ClassicTheme({ theme, storeName, products = [], branding, childr
         </>
       )}
 
-      {/* Footer */}
-      <footer className="py-8 text-center text-xs" style={{ backgroundColor: tc.colors.footerBg, color: `${tc.colors.background}80` }}>
-        <StorefrontSocialLinks branding={branding} showContact className="mb-3 flex flex-wrap items-center justify-center gap-3" linkClassName="font-semibold hover:underline" />
-        <p>© {new Date().getFullYear()} {storeName} — <PoweredByMarketplace branding={branding} linkClassName="text-[#16C784] hover:underline" /></p>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        categories={categories}
+      />
     </div>
   );
 }

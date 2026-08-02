@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets';
 import type { StoreBranding } from './shared';
 import { StorefrontSocialLinks } from './StorefrontSocialLinks';
+import { getHubAbsoluteUrl } from '../../lib/storefront-url';
 
 interface PoweredByMarketplaceProps {
   branding?: StoreBranding;
@@ -32,7 +33,7 @@ export function PoweredByMarketplace({
   return (
     <span className={className}>
       Propulsé par{' '}
-      <Link href="/hub" className={linkClassName} style={linkStyle}>
+      <Link href={getHubAbsoluteUrl('/hub')} className={linkClassName} style={linkStyle}>
         {logoUrl ? (
           <Image
             src={logoUrl}

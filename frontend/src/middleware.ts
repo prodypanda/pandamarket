@@ -98,51 +98,7 @@ function matchesRoutePrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function getHostNameOnly(hostname: string) {
-  const lower = hostname.toLowerCase();
-  if (lower.startsWith('[')) {
-    const closingBracketIndex = lower.indexOf(']');
-    return closingBracketIndex >= 0 ? lower.slice(1, closingBracketIndex) : lower;
-  }
-  return lower.split(':')[0];
-}
-
-function isPrivateLanHost(hostname: string) {
-  const host = getHostNameOnly(hostname);
-  const parts = host.split('.').map((part) => Number(part));
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  const [first, second] = parts;
-  return first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
-}
-
-function isHubHost(hostname: string) {
-  const hostWithPort = hostname.toLowerCase();
-  if (HUB_DOMAINS.has(hostWithPort) || isPrivateLanHost(hostname)) {
-    return true;
-  }
-  const host = getHostNameOnly(hostname).toLowerCase();
-  if (host.endsWith('.vercel.app') || host.endsWith('.onrender.com') || host.endsWith('.render.com')) {
-    return true;
-  }
-  return false;
-}
-
-function isAdminHost(hostname: string) {
-  const hostWithPort = hostname.toLowerCase();
-  if (ADMIN_DOMAINS.has(hostWithPort)) {
-    return true;
-  }
-  const host = getHostNameOnly(hostname).toLowerCase();
-  if (host.endsWith('.vercel.app') || host.endsWith('.onrender.com') || host.endsWith('.render.com')) {
-    const parts = host.split('.');
-    if (parts.length >= 2 && parts[0] === 'admin') {
-      return true;
-    }
-  }
-  return false;
-}
+import { classifyHost, isAdminHost, isMarketplaceHost, extractStoreSubdomain } from './lib/store-hosts';
 
 function hasAuthCookie(req: NextRequest) {
   return Boolean(req.cookies.get('pd_at')?.value);
@@ -239,8 +195,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const hostType = classifyHost(hostname);
+
   // 1. Hub central (pandamarket.tn)
-  if (isHubHost(hostname)) {
+  if (hostType === 'hub') {
     if (url.pathname === '/store' || url.pathname.startsWith('/store/')) {
       const maintenance = await getMaintenanceStatus(req);
       if (maintenance.maintenance_active_for_request && maintenance.maintenance_block_storefronts) {
@@ -301,39 +259,16 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2. Admin panel (admin.pandamarket.tn)
-  if (isAdminHost(hostname)) {
+  if (hostType === 'admin') {
     if (!matchesRoutePrefix(url.pathname, AUTH_ROUTE_PREFIXES) && !hasAuthCookie(req)) {
       return redirectToLogin(req, '/login/admin');
     }
 
-    // Admin routes are under /(admin)/ in the app directory
-    // The path already maps correctly since (admin) is a route group
     return NextResponse.rewrite(new URL(path, req.url));
   }
 
-  // 3. Check if this is a subdomain of the platform (e.g. boutique1.pandamarket.tn)
-  let storeHost: string | null = null;
-  for (const base of PLATFORM_BASES) {
-    if (hostname.endsWith(base)) {
-      storeHost = hostname.replace(base, '');
-      break;
-    }
-  }
-
-  // Check if this is a subdomain of a Vercel deployment (e.g. boutique1.myapp.vercel.app)
-  if (!storeHost && hostname.toLowerCase().endsWith('.vercel.app')) {
-    const host = getHostNameOnly(hostname).toLowerCase();
-    const parts = host.split('.');
-    if (parts.length === 4 && parts[0] !== 'admin') {
-      storeHost = parts[0];
-    }
-  }
-
-  // 4. If no platform subdomain matched, this is a custom domain (e.g. ma-boutique.com)
-  //    The storefront page will resolve the store via the API using the full hostname
-  if (!storeHost) {
-    storeHost = hostname;
-  }
+  // 3. Storefront (subdomains or custom domains)
+  const storeHost = extractStoreSubdomain(hostname) || hostname;
 
   // Maintenance check for storefronts
   const maintenance = await getMaintenanceStatus(req);

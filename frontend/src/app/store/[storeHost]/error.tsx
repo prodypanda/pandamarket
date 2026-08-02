@@ -3,6 +3,7 @@
 import { Home, RefreshCcw, Store } from 'lucide-react';
 import { useEffect } from 'react';
 import { ErrorStatePage } from '../../../components/ErrorStatePage';
+import { getHubAbsoluteUrl } from '../../../lib/storefront-url';
 
 export default function StoreErrorPage({
   error,
@@ -23,7 +24,7 @@ export default function StoreErrorPage({
       description="The storefront hit a temporary problem. You can retry the store page or return to the marketplace hub."
       icon={Store}
       actions={[
-        { href: '/hub', label: 'Marketplace hub', icon: Home, variant: 'secondary' },
+        { href: getHubAbsoluteUrl('/hub'), label: 'Marketplace hub', icon: Home, variant: 'secondary' },
       ]}
     >
       <button

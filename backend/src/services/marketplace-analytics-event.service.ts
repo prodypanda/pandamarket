@@ -119,6 +119,12 @@ function normalizeSearchQuery(raw: string | null | undefined): string | null {
 // Service
 // =====================================================
 
+export function isBotUserAgent(ua: string | null | undefined): boolean {
+  if (!ua) return false;
+  const lower = ua.toLowerCase();
+  return /bot|crawler|spider|slurp|bingbot|googlebot|lighthouse|axios|curl|python-requests|wget|go-http-client|headlesschrome/i.test(lower);
+}
+
 export class MarketplaceAnalyticsEventService {
   static isValidEventType(type: string): type is MarketplaceEventType {
     return VALID_EVENT_SET.has(type);
@@ -133,6 +139,11 @@ export class MarketplaceAnalyticsEventService {
    */
   async insertMarketplaceEvent(params: InsertEventParams): Promise<void> {
     try {
+      if (isBotUserAgent(params.user_agent)) {
+        logger.debug({ user_agent: params.user_agent }, 'Ignored bot analytics event');
+        return;
+      }
+
       if (!MarketplaceAnalyticsEventService.isValidEventType(params.event_type)) {
         logger.warn({ event_type: params.event_type }, 'Rejected unknown marketplace event type');
         return;

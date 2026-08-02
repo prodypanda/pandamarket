@@ -20,6 +20,7 @@ import { getRedis } from './db/redis';
 // Routers
 import authRouter from './api/auth.route';
 import storefrontAuthRouter from './api/storefront-auth.route';
+import storefrontAccountRouter from './api/storefront-account.route';
 import storeRouter from './api/store.route';
 import productRouter from './api/product.route';
 import orderRouter from './api/order.route';
@@ -31,7 +32,7 @@ import aiRouter from './api/ai.route';
 import reportRouter from './api/report.route';
 import searchRouter from './api/search.route';
 import internalRouter from './api/internal.route';
-import filesRouter from './api/files.route';
+import filesRouter, { mockFilesRouter } from './api/files.route';
 import adminRouter from './api/admin.route';
 import notificationRouter from './api/notification.route';
 import creditsRouter from './api/credits.route';
@@ -207,6 +208,7 @@ async function bootstrap() {
   const apiRouter = express.Router();
   apiRouter.use('/auth', authRouter);
   apiRouter.use('/storefront/auth', storefrontAuthRouter);
+  apiRouter.use('/storefront/account', storefrontAccountRouter);
   apiRouter.use('/stores', storeRouter);
   apiRouter.use('/products', productRouter);
   apiRouter.use('/orders', orderRouter);
@@ -219,6 +221,9 @@ async function bootstrap() {
   apiRouter.use('/search', searchRouter);
   apiRouter.use('/internal', internalRouter);
   apiRouter.use('/files', filesRouter);
+  if (config.env !== 'production' && process.env.NODE_ENV !== 'production') {
+    apiRouter.use('/files', mockFilesRouter);
+  }
   apiRouter.use('/admin', adminRouter);
   apiRouter.use('/notifications', notificationRouter);
   apiRouter.use('/credits', creditsRouter);

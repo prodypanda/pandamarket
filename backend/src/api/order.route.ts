@@ -34,7 +34,6 @@ const shippingAddressSchema = z.preprocess((value) => {
 }));
 
 const checkoutSchema = z.object({
-  store_id: z.string().min(1).optional(),
   items: z.array(
     z.object({
       product_id: z.string(),
@@ -103,8 +102,22 @@ router.post(
   requireAuth,
   validate(checkoutSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const idempotencyKey = (
+      (req.headers['idempotency-key'] as string | undefined) ||
+      (req.headers['x-idempotency-key'] as string | undefined)
+    )?.trim();
+
+    if (idempotencyKey) {
+      const existing = await orderService.getByIdempotencyKey(idempotencyKey);
+      if (existing) {
+        res.status(200).json({ order: existing });
+        return;
+      }
+    }
+
     const order = await orderService.checkout({
       customer_id: req.user!.id,
+      idempotency_key: idempotencyKey,
       ...req.body,
     });
     res.status(201).json({ order });
@@ -129,8 +142,31 @@ router.post(
   requireStorefrontCustomer,
   validate(checkoutSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const idempotencyKey = (
+      (req.headers['idempotency-key'] as string | undefined) ||
+      (req.headers['x-idempotency-key'] as string | undefined)
+    )?.trim();
+
+    if (!idempotencyKey) {
+      res.status(400).json({
+        error: {
+          code: 'PD_VALIDATION_ERROR',
+          message: 'Idempotency-Key header is required for storefront checkout',
+        },
+      });
+      return;
+    }
+
+    const existing = await orderService.getByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      res.status(200).json({ order: existing });
+      return;
+    }
+
     const order = await orderService.checkout({
       storefront_customer_id: req.storefrontCustomer!.id,
+      store_id: req.storefrontCustomer!.store_id,
+      idempotency_key: idempotencyKey,
       ...req.body,
     });
     res.status(201).json({ order });
@@ -338,16 +374,29 @@ router.put(
   validate(cancelSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const order = await orderService.getById(req.params.id);
-    // Only the customer who placed the order, the vendor, or an admin can cancel
     const isCustomer = order.customer_id === req.user!.id;
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
     const isVendor = req.user!.store_id
       ? await orderService.hasStoreItems(req.params.id, req.user!.store_id)
       : false;
-    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
-    if (!isCustomer && !isVendor && !isAdmin) {
+
+    if (!isCustomer && !isAdmin && !isVendor) {
       res.status(404).json({ error: { message: 'Order not found' } });
       return;
     }
+
+    // Multi-vendor isolation: vendor requests only cancel their specific store fulfillment
+    if (isVendor && !isCustomer && !isAdmin) {
+      await orderService.cancelStoreFulfillment({
+        order_id: req.params.id,
+        store_id: req.user!.store_id!,
+        reason: req.body.reason,
+      });
+      res.status(200).json({ success: true, message: 'Store fulfillment cancelled' });
+      return;
+    }
+
+    // Whole-order cancellation for buyer or platform admin
     await orderService.cancel(req.params.id, req.body.reason);
     res.status(200).json({ success: true, message: 'Order cancelled' });
   }),

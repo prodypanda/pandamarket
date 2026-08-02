@@ -1104,6 +1104,118 @@ function buildOrderTimeline(order: Order): TimelineStep[] {
   ];
 }
 
+function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; onReviewed: () => void }) {
+  const [receipt, setReceipt] = useState<any | null>(null);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  useEffect(() => {
+    async function loadReceipt() {
+      try {
+        const res = await fetchWithCsrf(`/api/pd/payments/receipts/order/${encodeURIComponent(orderId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setReceipt(data.receipt);
+          setViewUrl(data.view_url || null);
+        }
+      } catch {
+        // Ignore
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadReceipt();
+  }, [orderId]);
+
+  if (loading || !receipt) return null;
+
+  async function handleReview(action: 'approve' | 'reject') {
+    setSubmitting(true);
+    setFeedback('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/payments/receipts/${receipt.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, notes }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReceipt(data.receipt);
+        setFeedback(action === 'approve' ? 'Reçu approuvé. Le paiement est validé !' : 'Reçu rejeté.');
+        onReviewed();
+      }
+    } catch {
+      setFeedback('Erreur lors du traitement du reçu.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-black text-amber-900 flex items-center gap-2">
+          <ReceiptText className="h-4 w-4 text-amber-600" />
+          Reçu de paiement Mandat Minute
+        </h4>
+        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+          receipt.status === 'approved'
+            ? 'bg-emerald-100 text-emerald-800'
+            : receipt.status === 'rejected'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-amber-100 text-amber-800'
+        }`}>
+          {receipt.status === 'approved' ? 'Approuvé' : receipt.status === 'rejected' ? 'Rejeté' : 'En attente de revue'}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-gray-700">
+        <span>Fichier : <strong className="font-mono">{receipt.file_name}</strong></span>
+        {viewUrl && (
+          <a href={viewUrl} target="_blank" rel="noreferrer" className="font-bold text-amber-700 hover:underline flex items-center gap-1">
+            <ExternalLink className="h-3.5 w-3.5" /> Voir le reçu
+          </a>
+        )}
+      </div>
+
+      {feedback && (
+        <p className="text-xs font-bold text-emerald-700 bg-white p-2 rounded-xl border border-emerald-100">{feedback}</p>
+      )}
+
+      {receipt.status === 'pending_review' && (
+        <div className="space-y-2 pt-2 border-t border-amber-200">
+          <input
+            type="text"
+            placeholder="Note d'examen (optionnel)..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full text-xs rounded-xl border border-amber-200 p-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleReview('reject')}
+              disabled={submitting}
+              className="px-3 py-1.5 rounded-xl bg-red-100 text-red-800 font-bold text-xs hover:bg-red-200 transition-colors disabled:opacity-60"
+            >
+              Rejeter le reçu
+            </button>
+            <button
+              onClick={() => handleReview('approve')}
+              disabled={submitting}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-1"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Approuver & Valider le paiement
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2466,6 +2578,8 @@ export default function OrdersPage() {
                         <p className="mt-2 text-lg font-black text-gray-900">{formatMoney(selectedOrder.store_total ?? selectedOrder.total, selectedOrder.currency || 'TND')}</p>
                       </div>
                     </div>
+
+                    <MandatReceiptReviewWidget orderId={selectedOrder.id} onReviewed={() => openOrderDetail(selectedOrder)} />
 
                     <div className="rounded-2xl border border-gray-100 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">

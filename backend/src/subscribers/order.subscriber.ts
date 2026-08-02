@@ -16,6 +16,7 @@ import { calculateCommission, calculateVendorNet } from '../utils/money';
 import { subscriptionService } from '../services/subscription.service';
 import { ProductType } from '@pandamarket/types';
 import { incrementBusinessMetric } from '../utils/metrics';
+import { marketplaceAnalyticsEventService } from '../services/marketplace-analytics-event.service';
 
 export function registerOrderSubscribers(): void {
   eventBus.on(PdEvent.ORDER_PLACED, async (payload: { order_id: string }) => {
@@ -225,6 +226,17 @@ async function onPaymentCaptured(orderId: string): Promise<void> {
         store_id: c.storefront_store_id,
       });
     }
+
+    // Emit server-confirmed purchase analytics event
+    await marketplaceAnalyticsEventService.insertMarketplaceEvent({
+      event_type: 'checkout_payment_completed',
+      order_id: orderId,
+      store_id: c.storefront_store_id || null,
+      metadata: {
+        server_confirmed: true,
+        amount: c.total,
+      },
+    });
   }
 }
 

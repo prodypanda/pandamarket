@@ -5,8 +5,10 @@ import { useEffect, useState } from 'react';
 import { useCart } from '../../../../contexts/CartContext';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { isMarketplaceHost } from '../../../../lib/store-hosts';
+import { getHubAbsoluteUrl } from '../../../../lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
 import { getCartItemUnitPrice, getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
 
@@ -44,7 +46,7 @@ export default function StoreCartPage() {
 
   useEffect(() => {
     if (isMarketplaceHost(window.location.host)) {
-      router.replace('/hub/cart');
+      router.replace(getHubAbsoluteUrl('/hub/cart'));
     }
   }, [router]);
 
@@ -109,7 +111,7 @@ export default function StoreCartPage() {
             {storeError || 'Cette boutique est introuvable ou temporairement indisponible.'}
           </p>
           <Link
-            href="/hub"
+            href={getHubAbsoluteUrl('/hub')}
             className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl hover:opacity-90 transition-colors"
             style={{ backgroundColor: primaryColor }}
           >
@@ -197,9 +199,12 @@ export default function StoreCartPage() {
                     {/* Image */}
                     <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                       {item.image_url ? (
-                        <img
+                        <Image
                           src={item.image_url}
                           alt={item.title}
+                          width={80}
+                          height={80}
+                          unoptimized
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -229,6 +234,7 @@ export default function StoreCartPage() {
                     <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        aria-label={`Diminuer la quantité de ${item.title}`}
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-600" />
@@ -238,6 +244,7 @@ export default function StoreCartPage() {
                       </span>
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        aria-label={`Augmenter la quantité de ${item.title}`}
                         className="p-2 hover:bg-gray-50 transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5 text-gray-600" />
@@ -254,6 +261,7 @@ export default function StoreCartPage() {
                     {/* Remove */}
                     <button
                       onClick={() => removeFromCart(item.id)}
+                      aria-label={`Supprimer ${item.title} du panier`}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />

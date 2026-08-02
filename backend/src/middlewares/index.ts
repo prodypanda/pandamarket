@@ -76,12 +76,6 @@ function extractStorefrontAccessToken(req: Request): string | null {
   return cookieToken ?? null;
 }
 
-function getRequestedStoreId(req: Request): string | null {
-  const bodyStoreId = typeof req.body?.store_id === 'string' ? req.body.store_id : null;
-  const queryStoreId = typeof req.query.store_id === 'string' ? req.query.store_id : null;
-  return bodyStoreId ?? queryStoreId;
-}
-
 /**
  * Hard-required auth — throws 401 if no/invalid token.
  */
@@ -123,7 +117,7 @@ export const optionalAuth: RequestHandler = (req, _res, next) => {
   next();
 };
 
-export const requireStorefrontCustomer: RequestHandler = (req, _res, next) => {
+export const requireStorefrontCustomer: RequestHandler = async (req, _res, next) => {
   const token = extractStorefrontAccessToken(req);
   if (!token) {
     return next(
@@ -137,10 +131,20 @@ export const requireStorefrontCustomer: RequestHandler = (req, _res, next) => {
         new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid storefront session'),
       );
     }
-    const requestedStoreId = getRequestedStoreId(req);
-    if (requestedStoreId && requestedStoreId !== payload.store_id) {
+    // If x-store-id header is provided, ensure it matches session store_id
+    const headerStoreId = req.headers['x-store-id'] as string | undefined;
+    if (headerStoreId && headerStoreId !== payload.store_id) {
       return next(
         new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Storefront session does not match this store'),
+      );
+    }
+    const { rows } = await query<{ is_active: boolean }>(
+      'SELECT is_active FROM pd_storefront_customer WHERE id = $1 AND store_id = $2',
+      [payload.sub, payload.store_id],
+    );
+    if (!rows[0] || !rows[0].is_active) {
+      return next(
+        new PdAuthenticationError(PdErrorCode.AUTH_ACCOUNT_SUSPENDED, 'Account disabled or invalid session'),
       );
     }
     req.storefrontCustomer = {

@@ -7,6 +7,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '../../../../contexts/CartContext';
 import Link from 'next/link';
 import { isMarketplaceHost } from '../../../../lib/store-hosts';
+import { getHubAbsoluteUrl } from '../../../../lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
 import { getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
 import { MarketplaceBrand } from '../../../../components/MarketplaceBrand';
@@ -61,7 +62,7 @@ export default function StoreCheckoutPage() {
 
   useEffect(() => {
     if (isMarketplaceHost(window.location.host)) {
-      router.replace('/hub/checkout');
+      router.replace(getHubAbsoluteUrl('/hub/checkout'));
     }
   }, [router]);
 
@@ -221,7 +222,7 @@ export default function StoreCheckoutPage() {
       if (selectedGateway === 'manual_mandat' || selectedGateway === 'cod') {
         trackCheckoutPaymentCompleted(orderId);
         removeStoreItems(store.id);
-        setOrderSuccess(orderId);
+        router.push(`${storeBaseHref}/checkout/success?order=${encodeURIComponent(orderId)}`);
         return;
       }
 
@@ -233,6 +234,7 @@ export default function StoreCheckoutPage() {
           store_id: store.id,
           order_id: orderId,
           gateway: selectedGateway,
+          return_origin: window.location.origin,
         }),
       });
 
@@ -278,7 +280,7 @@ export default function StoreCheckoutPage() {
             {storeError || 'Cette boutique est introuvable ou temporairement indisponible.'}
           </p>
           <Link
-            href="/hub"
+            href={getHubAbsoluteUrl('/hub')}
             className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl hover:opacity-90 transition-colors"
             style={{ backgroundColor: primaryColor }}
           >
@@ -374,7 +376,7 @@ export default function StoreCheckoutPage() {
         <h1 className="text-3xl font-extrabold mb-8 text-center" style={{ color: textColor }}>Checkout</h1>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
+          <div role="alert" aria-live="polite" className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             {error}
           </div>
@@ -406,8 +408,9 @@ export default function StoreCheckoutPage() {
             <h2 className="text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Adresse de livraison</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Nom complet</label>
+                <label htmlFor="checkout_full_name" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Nom complet</label>
                 <input
+                  id="checkout_full_name"
                   type="text"
                   value={address.full_name}
                   onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
@@ -418,8 +421,9 @@ export default function StoreCheckoutPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Adresse</label>
+                <label htmlFor="checkout_address_line" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Adresse</label>
                 <input
+                  id="checkout_address_line"
                   type="text"
                   value={address.address_line}
                   onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
@@ -429,8 +433,9 @@ export default function StoreCheckoutPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Ville</label>
+                <label htmlFor="checkout_city" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Ville</label>
                 <input
+                  id="checkout_city"
                   type="text"
                   value={address.city}
                   onChange={(e) => setAddress({ ...address, city: e.target.value })}
@@ -440,8 +445,9 @@ export default function StoreCheckoutPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Code postal</label>
+                <label htmlFor="checkout_postal_code" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Code postal</label>
                 <input
+                  id="checkout_postal_code"
                   type="text"
                   value={address.postal_code}
                   onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
@@ -451,8 +457,9 @@ export default function StoreCheckoutPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Téléphone</label>
+                <label htmlFor="checkout_phone" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Téléphone</label>
                 <input
+                  id="checkout_phone"
                   type="tel"
                   value={address.phone}
                   onChange={(e) => setAddress({ ...address, phone: e.target.value })}
@@ -474,17 +481,26 @@ export default function StoreCheckoutPage() {
         <div className="rounded-2xl shadow-sm border p-8" style={{ backgroundColor: secondaryColor, borderColor }}>
           <h2 className="text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Mode de paiement</h2>
 
-          <div className="space-y-4">
+          <div className="space-y-4" role="radiogroup" aria-label="Mode de paiement">
             {availableGateways.map((g) => (
-              <div
+              <label
                 key={g.id}
-                onClick={() => setSelectedGateway(g.id)}
+                htmlFor={`payment_gateway_${g.id}`}
                 className="relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 hover:border-opacity-70"
                 style={{
                   borderColor: selectedGateway === g.id ? primaryColor : borderColor,
                   backgroundColor: selectedGateway === g.id ? `${primaryColor}0D` : pageBackground,
                 }}
               >
+                <input
+                  type="radio"
+                  id={`payment_gateway_${g.id}`}
+                  name="payment_gateway"
+                  value={g.id}
+                  checked={selectedGateway === g.id}
+                  onChange={() => setSelectedGateway(g.id)}
+                  className="sr-only"
+                />
                 <div className="flex items-center h-5">
                   <div
                     className="w-5 h-5 rounded-full border flex items-center justify-center"
@@ -505,7 +521,7 @@ export default function StoreCheckoutPage() {
                   </div>
                   <p className="mt-1 text-sm" style={{ color: mutedTextColor }}>{g.desc}</p>
                 </div>
-              </div>
+              </label>
             ))}
           </div>
 
@@ -526,7 +542,7 @@ export default function StoreCheckoutPage() {
           <p>
             {store?.name || storeHost} — Propulsé par{' '}
             <MarketplaceBrand
-              href="/hub"
+              href={getHubAbsoluteUrl('/hub')}
               marketplaceName={marketplaceSettings.marketplace_name}
               marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
               marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}

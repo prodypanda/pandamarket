@@ -123,6 +123,19 @@ export class SubscriptionService {
   }
 
   /**
+   * Check whether the plan allows custom domains.
+   */
+  async assertCanUseCustomDomain(plan: string): Promise<void> {
+    const limits = await this.getLimits(plan);
+    if (!limits.has_custom_domain) {
+      throw new PdQuotaExceededError(
+        `Custom domains are not available on the ${plan} plan. Please upgrade to Starter or higher.`,
+        { plan, feature: 'has_custom_domain' },
+      );
+    }
+  }
+
+  /**
    * Upgrade or downgrade. Downgrade is blocked if it would put the store
    * over the new plan's product limit.
    */
