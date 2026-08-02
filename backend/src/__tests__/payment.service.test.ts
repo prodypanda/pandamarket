@@ -51,7 +51,22 @@ vi.mock('../plugins/payment', () => ({
   decryptVendorConfig: vi.fn(),
 }));
 
-import { query } from '../db/pool';
+const mockPlatformSettings = vi.hoisted(() => ({
+  getSettings: vi.fn(),
+}));
+vi.mock('../services/platform-config.service', () => ({
+  platformConfigService: {
+    getSettings: mockPlatformSettings.getSettings,
+  },
+}));
+
+vi.mock('../services/ads.service', () => ({
+  adsService: {
+    recognizeOrderConversion: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+import { query, transaction } from '../db/pool';
 import { PaymentService } from '../services/payment.service';
 import { orderService } from '../services/order.service';
 import { storeService } from '../services/store.service';
@@ -59,6 +74,7 @@ import { getPaymentProvider, decryptVendorConfig } from '../plugins/payment';
 import { PaymentGateway } from '@pandamarket/types';
 
 const mockQuery = vi.mocked(query);
+const mockTransaction = vi.mocked(transaction);
 const mockGetProvider = vi.mocked(getPaymentProvider);
 const mockDecryptConfig = vi.mocked(decryptVendorConfig);
 const mockOrderService = vi.mocked(orderService);
@@ -69,6 +85,16 @@ describe('PaymentService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-establish persistent platform settings mock
+    mockPlatformSettings.getSettings.mockResolvedValue({
+      payment_flouci_enabled: true,
+      payment_konnect_enabled: true,
+      payment_paypal_enabled: true,
+      payment_mandat_enabled: true,
+      payment_cod_enabled: true,
+      payment_vendor_direct_enabled: false,
+      payment_platform_credentials_source: 'platform',
+    });
     paymentService = new PaymentService();
   });
 
@@ -137,6 +163,17 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
+      // Enable vendor direct payment for this test
+      mockPlatformSettings.getSettings.mockResolvedValueOnce({
+        payment_flouci_enabled: true,
+        payment_konnect_enabled: true,
+        payment_paypal_enabled: true,
+        payment_mandat_enabled: true,
+        payment_cod_enabled: true,
+        payment_vendor_direct_enabled: true,
+        payment_platform_credentials_source: 'platform',
+      });
+
       // Single-store order with payment config (direct mode)
       mockQuery.mockResolvedValueOnce({ rows: [{ store_id: 'pd_store_pro' }], rowCount: 1 } as any);
       mockStoreService.getById.mockResolvedValue({
@@ -168,8 +205,21 @@ describe('PaymentService', () => {
   });
 
   describe('processPaymentWebhook()', () => {
+    const attemptRow = {
+      id: 'pd_pa_1',
+      order_id: 'pd_order_123',
+      gateway: PaymentGateway.Flouci,
+      gateway_reference: 'flouci_payment_abc',
+      expected_amount_minor: '85000',
+      expected_currency: 'TND',
+      merchant_account_id: null,
+      status: 'initialized',
+    };
+
     it('should process a new webhook event and capture payment', async () => {
-      // INSERT into pd_payment_event succeeds (not a duplicate)
+      // 1. Resolve payment attempt by (gateway, gateway_reference)
+      mockQuery.mockResolvedValueOnce({ rows: [attemptRow], rowCount: 1 } as any);
+      // 2. INSERT into pd_payment_event succeeds (not a duplicate)
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
 
       // getStoreIdsForOrder
@@ -177,6 +227,7 @@ describe('PaymentService', () => {
         id: 'pd_order_123',
         total: '85.000',
       } as any);
+      // 3. getStoreIdsForOrder query
       mockQuery.mockResolvedValueOnce({ rows: [{ store_id: 'pd_store_1' }], rowCount: 1 } as any);
       mockStoreService.getById.mockResolvedValue({
         id: 'pd_store_1',
@@ -190,10 +241,14 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
+      // 4. Transactional CAS on pd_payment_attempt (initialized -> captured)
+      const clientQuery = vi.fn().mockResolvedValue({ rowCount: 1 });
+      mockTransaction.mockImplementation(async (cb: any) => cb({ query: clientQuery }));
+
       // markPaid succeeds
       mockOrderService.markPaid.mockResolvedValue({ id: 'pd_order_123' } as any);
 
-      // UPDATE pd_payment_event status
+      // 5. UPDATE pd_payment_event status to processed
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
 
       const result = await paymentService.processPaymentWebhook({
@@ -213,12 +268,14 @@ describe('PaymentService', () => {
     });
 
     it('should detect and skip duplicate webhook events', async () => {
-      // INSERT into pd_payment_event fails with unique_violation
+      // 1. Resolve payment attempt by (gateway, gateway_reference)
+      mockQuery.mockResolvedValueOnce({ rows: [attemptRow], rowCount: 1 } as any);
+      // 2. INSERT into pd_payment_event fails with unique_violation
       const uniqueError = new Error('duplicate key') as Error & { code: string };
       uniqueError.code = '23505';
       mockQuery.mockRejectedValueOnce(uniqueError);
 
-      // Best-effort UPDATE to mark as duplicate
+      // 3. Best-effort UPDATE to mark as duplicate
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
 
       const result = await paymentService.processPaymentWebhook({
@@ -233,11 +290,17 @@ describe('PaymentService', () => {
     });
 
     it('should handle already-captured orders gracefully', async () => {
-      // INSERT succeeds
+      // 1. Resolve payment attempt by (gateway, gateway_reference)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ ...attemptRow, gateway: PaymentGateway.Konnect, gateway_reference: 'konnect_ref_xyz' }],
+        rowCount: 1,
+      } as any);
+      // 2. INSERT succeeds
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
 
       // Provider verify returns captured
       mockOrderService.getById.mockResolvedValue({ id: 'pd_order_123' } as any);
+      // 3. getStoreIdsForOrder query
       mockQuery.mockResolvedValueOnce({ rows: [{ store_id: 'pd_store_1' }], rowCount: 1 } as any);
       mockStoreService.getById.mockResolvedValue({ id: 'pd_store_1', payment_config: null } as any);
 
@@ -247,13 +310,17 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
+      // 4. Transactional CAS on pd_payment_attempt (initialized -> captured)
+      const clientQuery = vi.fn().mockResolvedValue({ rowCount: 1 });
+      mockTransaction.mockImplementation(async (cb: any) => cb({ query: clientQuery }));
+
       // markPaid throws PAY_ALREADY_CAPTURED
       const { PdConflictError, PdErrorCode } = await import('../errors');
       mockOrderService.markPaid.mockRejectedValue(
         new PdConflictError(PdErrorCode.PAY_ALREADY_CAPTURED, 'Already paid'),
       );
 
-      // UPDATE event as duplicate
+      // 5. UPDATE event as duplicate
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
 
       const result = await paymentService.processPaymentWebhook({

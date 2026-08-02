@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Garden Theme — Organic/natural products, greens and earth tones. */
 export function GardenTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -22,14 +23,7 @@ export function GardenTheme({ theme, storeName, products = [], branding, navigat
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Organic Face Cream', price: 65, images: [], category: 'Skincare' },
-    { id: '2', title: 'Herbal Tea Collection', price: 35, images: [], category: 'Wellness' },
-    { id: '3', title: 'Bamboo Toothbrush Set', price: 18, images: [], category: 'Eco' },
-    { id: '4', title: 'Natural Soap Bar', price: 12, images: [], category: 'Bath' },
-    { id: '5', title: 'Essential Oil Kit', price: 85, images: [], category: 'Aromatherapy' },
-    { id: '6', title: 'Reusable Produce Bags', price: 25, images: [], category: 'Eco' },
-  ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -47,6 +41,17 @@ export function GardenTheme({ theme, storeName, products = [], branding, navigat
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

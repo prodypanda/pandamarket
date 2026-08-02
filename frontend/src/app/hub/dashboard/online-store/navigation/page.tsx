@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
-import { Navigation, Plus, Trash2, Save, Send, RefreshCw, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Navigation, Plus, Trash2, Save, Send, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 
 interface MenuItem {
   id: string;
   type: 'page' | 'product' | 'category' | 'collection' | 'custom_url';
-  label: string;
+  localized_label: string;
   url: string;
+  reference_id?: string | null;
   target?: '_self' | '_blank';
 }
 
@@ -33,19 +34,39 @@ export default function NavigationManagerPage() {
       const res = await fetchWithCsrf('/api/pd/stores/me/navigation/draft', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        const loadedMenus: Menu[] = data.navigation?.menus || [
+        const rawMenus: Array<{ id?: string; location: Menu['location']; items?: Array<Record<string, unknown>> }> = data.navigation?.menus || [
           { id: 'menu_header', location: 'header', items: [] },
           { id: 'menu_footer', location: 'footer', items: [] },
           { id: 'menu_mobile', location: 'mobile', items: [] },
         ];
+        // Normalize localized_label: backend may return { fr: "...", en: "..." } object
+        const loadedMenus: Menu[] = rawMenus.map((m) => ({
+          id: m.id || `menu_${m.location}`,
+          location: m.location,
+          items: ((m.items || []) as Array<Record<string, unknown>>).map((item) => {
+            const rawLabel = item.localized_label;
+            const label: string = typeof rawLabel === 'object' && rawLabel !== null
+              ? (((rawLabel as Record<string, string>).fr) || ((rawLabel as Record<string, string>).en) || '')
+              : (typeof rawLabel === 'string' ? rawLabel : (typeof item.label === 'string' ? item.label : ''));
+            return {
+              ...(item as object),
+              id: (item.id as string) || `item_${Math.random()}`,
+              type: (item.type as MenuItem['type']) || 'custom_url',
+              localized_label: label,
+              url: (item.url as string) || '',
+              reference_id: (item.reference_id as string | null) || null,
+              target: (item.target as MenuItem['target']) || '_self',
+            } as MenuItem;
+          }),
+        }));
         setMenus(loadedMenus);
         setInitialMenus(loadedMenus);
       }
     } catch {
       // Fallback defaults
       const defaults: Menu[] = [
-        { id: 'menu_header', location: 'header', items: [{ id: '1', type: 'custom_url', label: 'Accueil', url: '/' }] },
-        { id: 'menu_footer', location: 'footer', items: [{ id: '2', type: 'custom_url', label: 'Contact', url: '/pages/contact' }] },
+        { id: 'menu_header', location: 'header', items: [{ id: '1', type: 'custom_url', localized_label: 'Accueil', url: '/' }] },
+        { id: 'menu_footer', location: 'footer', items: [{ id: '2', type: 'custom_url', localized_label: 'Contact', url: '/pages/contact' }] },
       ];
       setMenus(defaults);
       setInitialMenus(defaults);
@@ -60,9 +81,9 @@ export default function NavigationManagerPage() {
 
   const handleAddItem = (location: Menu['location']) => {
     const newItem: MenuItem = {
-      id: `item_${Date.now()}`,
+      id: `item_${crypto.randomUUID()}`,
       type: 'custom_url',
-      label: 'Nouveau lien',
+      localized_label: 'Nouveau lien',
       url: '/',
       target: '_self',
     };
@@ -256,11 +277,24 @@ export default function NavigationManagerPage() {
                       className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center"
                     >
                       <div className="flex-1 space-y-2 sm:space-y-0 sm:flex sm:gap-3">
+                        <select
+                          value={item.type}
+                          onChange={(e) =>
+                            handleUpdateItem(loc.key, item.id, 'type', e.target.value)
+                          }
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-32"
+                        >
+                          <option value="custom_url">URL libre</option>
+                          <option value="page">Page</option>
+                          <option value="product">Produit</option>
+                          <option value="category">Catégorie</option>
+                          <option value="collection">Collection</option>
+                        </select>
                         <input
                           type="text"
-                          value={item.label}
+                          value={item.localized_label}
                           onChange={(e) =>
-                            handleUpdateItem(loc.key, item.id, 'label', e.target.value)
+                            handleUpdateItem(loc.key, item.id, 'localized_label', e.target.value)
                           }
                           placeholder="Intitulé du lien"
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
@@ -274,6 +308,17 @@ export default function NavigationManagerPage() {
                           placeholder="URL (ex: /pages/contact ou https://...)"
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
+                        {item.type !== 'custom_url' && (
+                          <input
+                            type="text"
+                            value={item.reference_id || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(loc.key, item.id, 'reference_id', e.target.value)
+                            }
+                            placeholder="ID de référence (ex: ID du produit/page)"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/3"
+                          />
+                        )}
                       </div>
                       <button
                         type="button"

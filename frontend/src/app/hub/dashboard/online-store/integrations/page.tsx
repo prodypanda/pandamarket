@@ -172,6 +172,17 @@ export default function IntegrationsPage() {
           />
         </div>
 
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-700">Script JavaScript personnalisé (&lt;body&gt; - fin de page)</label>
+          <textarea
+            rows={4}
+            value={integrations.custom_body_js || ''}
+            onChange={(e) => handleChange('custom_body_js', e.target.value)}
+            placeholder="// Code JS injecté en fin de body sur toutes les pages storefront"
+            className="w-full font-mono text-xs rounded-xl border border-slate-200 bg-slate-900 text-slate-100 p-3 placeholder-slate-500 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+          />
+        </div>
+
         <button
           type="button"
           onClick={handleSave}

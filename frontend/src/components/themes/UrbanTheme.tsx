@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Urban Theme — Street fashion, bold typography, high contrast. */
 export function UrbanTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -22,14 +23,7 @@ export function UrbanTheme({ theme, storeName, products = [], branding, navigati
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Oversized Hoodie', price: 120, images: [], category: 'Streetwear' },
-    { id: '2', title: 'Cargo Pants', price: 95, images: [], category: 'Bottoms' },
-    { id: '3', title: 'Chunky Sneakers', price: 280, images: [], category: 'Shoes' },
-    { id: '4', title: 'Bucket Hat', price: 45, images: [], category: 'Accessories' },
-    { id: '5', title: 'Crossbody Bag', price: 85, images: [], category: 'Bags' },
-    { id: '6', title: 'Graphic Tee', price: 55, images: [], category: 'Tops' },
-  ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -47,6 +41,17 @@ export function UrbanTheme({ theme, storeName, products = [], branding, navigati
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

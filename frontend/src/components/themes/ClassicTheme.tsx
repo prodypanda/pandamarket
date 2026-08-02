@@ -14,14 +14,7 @@ export function ClassicTheme({ theme, storeName, products = [], branding, naviga
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Wireless Headphones', price: 149, images: [] },
-        { id: '2', title: 'Smart Watch', price: 299, images: [] },
-        { id: '3', title: 'Bluetooth Speaker', price: 89, images: [] },
-        { id: '4', title: 'Power Bank', price: 45, images: [] },
-      ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
   const displayProducts = allProducts.filter((p) => {

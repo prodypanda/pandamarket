@@ -1538,7 +1538,7 @@ export default function SettingsPage() {
                           <span className="text-[10px] font-bold uppercase text-gray-400 block">Enregistrement CNAME (Recommandé)</span>
                           <p className="mt-1 font-mono text-[11px] text-slate-900">
                             <strong>Nom/Hôte:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">@</code> ou <code className="bg-gray-100 px-1 py-0.5 rounded">www</code><br />
-                            <strong>Cible:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">cname.pandamarket.tn</code>
+                            <strong>Cible:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">cname.garbage.team</code>
                           </p>
                         </div>
                         <div className="bg-white p-2.5 border rounded-md">

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Fresh Theme — Grocery/health food, bright greens and whites. */
 export function FreshTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -16,16 +17,7 @@ export function FreshTheme({ theme, storeName, products = [], branding, navigati
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Organic Honey 500g', price: 28, images: [], category: 'Pantry' },
-    { id: '2', title: 'Cold-Pressed Juice Pack', price: 35, images: [], category: 'Drinks' },
-    { id: '3', title: 'Granola Mix 1kg', price: 22, images: [], category: 'Breakfast' },
-    { id: '4', title: 'Dried Fruit Assortment', price: 18, images: [], category: 'Snacks' },
-    { id: '5', title: 'Protein Bar Box (12)', price: 45, images: [], category: 'Fitness' },
-    { id: '6', title: 'Herbal Supplement Pack', price: 55, images: [], category: 'Wellness' },
-    { id: '7', title: 'Almond Butter Jar', price: 32, images: [], category: 'Pantry' },
-    { id: '8', title: 'Matcha Powder 100g', price: 40, images: [], category: 'Drinks' },
-  ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
 
@@ -42,6 +34,17 @@ export function FreshTheme({ theme, storeName, products = [], branding, navigati
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen relative flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
       {children ? (

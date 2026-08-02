@@ -11,14 +11,17 @@ vi.mock('../db/pool', () => ({
   transaction: vi.fn(),
 }));
 
-const mockRedis = {
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn(),
-  incr: vi.fn(),
-  expire: vi.fn(),
-  ttl: vi.fn(),
-};
+const { mockRedis } = vi.hoisted(() => ({
+  mockRedis: {
+    status: 'ready',
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    incr: vi.fn(),
+    expire: vi.fn(),
+    ttl: vi.fn(),
+  },
+}));
 vi.mock('../db/redis', () => ({
   getRedis: vi.fn(() => mockRedis),
 }));
@@ -45,6 +48,7 @@ vi.mock('../utils/logger', () => ({
 vi.mock('../config', () => ({
   config: {
     bcryptRounds: 4, // Low for test speed
+    hubDomain: 'pandamarket.tn',
   },
 }));
 
@@ -52,6 +56,12 @@ vi.mock('bcryptjs', () => ({
   default: {
     hash: vi.fn(async () => 'hashed_password'),
     compare: vi.fn(async (plain: string, hash: string) => plain === 'correct_password'),
+  },
+}));
+
+vi.mock('../services/platform-config.service', () => ({
+  platformConfigService: {
+    getSettings: vi.fn().mockResolvedValue({}),
   },
 }));
 

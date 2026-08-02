@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler, requireAdmin, requireStore, validate } from '../middlewares';
 import { supportTicketService } from '../services/support-ticket.service';
+import type { SupportTicketStatus, SupportTicketPriority, SupportTicketCategory } from '../services/support-ticket.service';
 
 const router = Router();
 
@@ -56,7 +57,11 @@ router.get(
   requireStore,
   validate(listSchema, 'query'),
   asyncHandler(async (req, res) => {
-    const { status, page, limit } = listSchema.parse(req.query);
+    const { status, page, limit } = req.query as unknown as {
+      status?: SupportTicketStatus;
+      page: number;
+      limit: number;
+    };
     const data = await supportTicketService.listForSeller({
       store_id: req.user!.store_id!,
       user_id: req.user!.id,
@@ -139,7 +144,13 @@ router.post(
 
 
 router.get('/admin', requireAdmin, validate(adminListSchema, 'query'), asyncHandler(async (req, res) => {
-  const { status, priority, category, page, limit } = adminListSchema.parse(req.query);
+  const { status, priority, category, page, limit } = req.query as unknown as {
+    status?: SupportTicketStatus;
+    priority?: SupportTicketPriority;
+    category?: SupportTicketCategory;
+    page: number;
+    limit: number;
+  };
   const data = await supportTicketService.listForAdmin({ status, priority, category, page, limit });
   res.status(200).json(data);
 }));

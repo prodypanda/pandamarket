@@ -5,7 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { ThemeCustomizer } from '@/components/dashboard/ThemeCustomizer';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { type ThemeCustomization, type ThemeId } from '@/lib/themes';
-import { Sparkles, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
 
 export default function ThemeCustomizePage() {
@@ -119,7 +119,7 @@ export default function ThemeCustomizePage() {
                 });
                 if (tokenRes.ok) {
                   const { token } = await tokenRes.json();
-                  const host = customDomain || `${subdomain}.pandamarket.tn`;
+                  const host = customDomain || `${subdomain}.garbage.team`;
                   window.open(`/store/${encodeURIComponent(host)}/preview?token=${token}`, '_blank');
                 }
               } catch {

@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * Medina Theme — Traditional marketplace feel, ornate borders, warm colors.
@@ -26,16 +27,7 @@ export function MedinaTheme({ theme, storeName, products = [], branding, navigat
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Zellige Tiles Set', price: 180, images: [], category: 'Decor' },
-        { id: '2', title: 'Copper Tea Set', price: 220, images: [], category: 'Kitchen' },
-        { id: '3', title: 'Silk Kaftan', price: 450, images: [], category: 'Fashion' },
-        { id: '4', title: 'Argan Oil Premium', price: 65, images: [], category: 'Beauty' },
-        { id: '5', title: 'Mosaic Mirror', price: 340, images: [], category: 'Decor' },
-        { id: '6', title: 'Woven Basket', price: 55, images: [], category: 'Home' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -53,6 +45,17 @@ export function MedinaTheme({ theme, storeName, products = [], branding, navigat
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

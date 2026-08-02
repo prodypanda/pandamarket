@@ -16,9 +16,7 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   ArrowRight,
-  ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
@@ -64,27 +62,32 @@ export default function OnlineStoreOverviewPage() {
   const handleTogglePublish = async () => {
     if (!store) return;
     setPublishing(true);
-    const newStatus = store.status === 'verified' ? 'unverified' : 'verified';
+    // Backend PUT /api/pd/stores/me/maintenance expects { enabled: boolean }.
+    // enabled=true  -> store enters maintenance mode (offline)
+    // enabled=false -> store goes live (status becomes 'verified')
+    const isCurrentlyOnline = store.status === 'verified';
+    const goingOffline = isCurrentlyOnline;
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/maintenance', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          status: newStatus,
+          enabled: goingOffline,
         }),
       });
       if (res.ok) {
-        setStore((prev) => (prev ? { ...prev, status: newStatus } : null));
+        const data = await res.json();
+        setStore((prev) => (prev ? { ...prev, status: data.store?.status || (goingOffline ? 'maintenance' : 'verified') } : null));
         setFeedback({
-          message:
-            newStatus === 'verified'
-              ? 'Boutique publiée et accessible en ligne !'
-              : 'Boutique mise en mode hors-ligne / maintenance.',
+          message: goingOffline
+            ? 'Boutique mise hors-ligne (mode maintenance).'
+            : 'Boutique publiée et accessible en ligne !',
         });
         revalidateStoreCache({ subdomain: store.subdomain, custom_domain: store.custom_domain });
       } else {
-        setFeedback({ message: 'Erreur lors de la mise à jour du statut', isError: true });
+        const errData = await res.json().catch(() => ({}));
+        setFeedback({ message: errData.error?.message || 'Erreur lors de la mise à jour du statut', isError: true });
       }
     } catch {
       setFeedback({ message: 'Erreur réseau', isError: true });
@@ -141,7 +144,7 @@ export default function OnlineStoreOverviewPage() {
       desc: 'Sous-domaine gratuit et domaine personnalisé (.tn, .com)',
       href: '/hub/dashboard/online-store/domains',
       icon: Globe,
-      badge: store?.custom_domain || `${store?.subdomain}.pandamarket.tn`,
+      badge: store?.custom_domain || `${store?.subdomain}.garbage.team`,
     },
     {
       title: 'SEO & Référencement',

@@ -294,7 +294,7 @@ export default function RegisterPage() {
                       pattern="^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])?$"
                     />
                     <span className="rounded-r-2xl border border-l-0 border-gray-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700">
-                      .pandamarket.tn
+                      .garbage.team
                     </span>
                   </div>
                 </div>

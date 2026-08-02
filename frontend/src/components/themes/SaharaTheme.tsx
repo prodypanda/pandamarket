@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * Sahara Theme — Warm desert tones, Tunisian-inspired patterns.
@@ -26,14 +27,7 @@ export function SaharaTheme({ theme, storeName, products = [], branding, navigat
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Handwoven Rug', price: 350, images: [], category: 'Decor' },
-    { id: '2', title: 'Ceramic Tagine', price: 85, images: [], category: 'Kitchen' },
-    { id: '3', title: 'Olive Oil Set', price: 45, images: [], category: 'Food' },
-    { id: '4', title: 'Leather Pouf', price: 280, images: [], category: 'Furniture' },
-    { id: '5', title: 'Brass Lantern', price: 120, images: [], category: 'Lighting' },
-    { id: '6', title: 'Embroidered Cushion', price: 65, images: [], category: 'Textiles' },
-  ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -51,6 +45,17 @@ export function SaharaTheme({ theme, storeName, products = [], branding, navigat
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

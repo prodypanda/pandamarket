@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
-import { Globe, CheckCircle2, AlertCircle, Save, ExternalLink, RefreshCw } from 'lucide-react';
+import { Globe, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
 
@@ -111,7 +111,7 @@ export default function DomainsPage() {
         <h2 className="text-base font-bold text-slate-900">Sous-domaine gratuit PandaMarket</h2>
         <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 border border-slate-200">
           <div>
-            <p className="text-sm font-bold text-slate-900">{subdomain}.pandamarket.tn</p>
+            <p className="text-sm font-bold text-slate-900">{subdomain}.garbage.team</p>
             <p className="text-xs text-slate-500">Domaine par défaut toujours actif et sécurisé SSL.</p>
           </div>
           <a

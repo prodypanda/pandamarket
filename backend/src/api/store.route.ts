@@ -566,6 +566,29 @@ router.delete(
   }),
 );
 
+// Seller: List storefront customers (buyers who registered on this store)
+router.get(
+  '/me/customers',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { query } = await import('../db/pool');
+    const storeId = req.user!.store_id!;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 100);
+    const offset = (page - 1) * limit;
+    const { rows } = await query<{ id: string; email: string; first_name: string | null; last_name: string | null; phone: string | null; created_at: string; order_count: string }>(
+      `SELECT c.id, c.email, c.first_name, c.last_name, c.phone, c.created_at,
+              (SELECT COUNT(*)::text FROM pd_order o WHERE o.storefront_customer_id = c.id) AS order_count
+       FROM pd_storefront_customer c
+       WHERE c.store_id = $1
+       ORDER BY c.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [storeId, limit, offset],
+    );
+    res.status(200).json({ data: rows, page, limit });
+  }),
+);
+
 router.put(
   '/me/seller-type',
   requireStore,

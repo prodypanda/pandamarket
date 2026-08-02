@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Digital Theme — Software/SaaS products, gradient backgrounds, modern. */
 export function DigitalTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -16,14 +17,7 @@ export function DigitalTheme({ theme, storeName, products = [], branding, naviga
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'UI Kit Pro', price: 89, images: [], category: 'Design' },
-    { id: '2', title: 'Icon Pack 2000+', price: 35, images: [], category: 'Icons' },
-    { id: '3', title: 'WordPress Theme', price: 59, images: [], category: 'Themes' },
-    { id: '4', title: 'React Component Library', price: 149, images: [], category: 'Code' },
-    { id: '5', title: 'Stock Photo Bundle', price: 45, images: [], category: 'Photos' },
-    { id: '6', title: 'Font Family Pack', price: 29, images: [], category: 'Fonts' },
-  ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
 
@@ -40,6 +34,17 @@ export function DigitalTheme({ theme, storeName, products = [], branding, naviga
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen relative flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

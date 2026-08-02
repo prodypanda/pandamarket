@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Kids Theme — Playful, colorful, rounded shapes, fun typography. */
 export function KidsTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -16,16 +17,7 @@ export function KidsTheme({ theme, storeName, products = [], branding, navigatio
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Plush Panda Bear', price: 35, images: [], category: 'Toys' },
-    { id: '2', title: 'Wooden Block Set', price: 45, images: [], category: 'Educational' },
-    { id: '3', title: 'Rainbow Dress', price: 55, images: [], category: 'Clothing' },
-    { id: '4', title: 'Story Book Bundle', price: 28, images: [], category: 'Books' },
-    { id: '5', title: 'Art Supply Kit', price: 40, images: [], category: 'Creative' },
-    { id: '6', title: 'Musical Instrument Set', price: 65, images: [], category: 'Music' },
-    { id: '7', title: 'Puzzle Collection', price: 22, images: [], category: 'Games' },
-    { id: '8', title: 'Backpack — Dino', price: 38, images: [], category: 'Accessories' },
-  ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
 
@@ -42,6 +34,17 @@ export function KidsTheme({ theme, storeName, products = [], branding, navigatio
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen relative flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
       {children ? (

@@ -14,6 +14,7 @@ import {
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Coastal Theme — Beach/resort, blues and sandy tones, relaxed vibe. */
 export function CoastalTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -22,14 +23,7 @@ export function CoastalTheme({ theme, storeName, products = [], branding, naviga
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Linen Beach Shirt', price: 95, images: [], category: 'Clothing' },
-    { id: '2', title: 'Straw Sun Hat', price: 45, images: [], category: 'Accessories' },
-    { id: '3', title: 'Coral Necklace', price: 120, images: [], category: 'Jewelry' },
-    { id: '4', title: 'Canvas Espadrilles', price: 75, images: [], category: 'Shoes' },
-    { id: '5', title: 'Sea Salt Candle', price: 35, images: [], category: 'Home' },
-    { id: '6', title: 'Driftwood Frame', price: 55, images: [], category: 'Decor' },
-  ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -47,6 +41,17 @@ export function CoastalTheme({ theme, storeName, products = [], branding, naviga
   return (
     <div className="min-h-screen flex flex-col" style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

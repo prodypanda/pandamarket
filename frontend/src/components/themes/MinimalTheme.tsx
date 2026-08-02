@@ -14,20 +14,14 @@ import {
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 export function MinimalTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Linen Shirt', price: 89, images: [], category: 'Vêtements' },
-        { id: '2', title: 'Canvas Tote', price: 45, images: [], category: 'Accessoires' },
-        { id: '3', title: 'Ceramic Mug', price: 25, images: [], category: 'Maison' },
-        { id: '4', title: 'Leather Wallet', price: 120, images: [], category: 'Accessoires' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -48,6 +42,17 @@ export function MinimalTheme({ theme, storeName, products = [], branding, naviga
       style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}
     >
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
       {children ? (

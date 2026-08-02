@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * Flavor Theme — Food, restaurants, bakeries, gourmet products.
@@ -26,14 +27,7 @@ export function FlavorTheme({ theme, storeName, products = [], branding, navigat
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Coffret Pâtisseries Fines', price: 45, images: [], category: 'Pâtisserie' },
-    { id: '2', title: 'Huile d\'Olive Extra Vierge', price: 32, images: [], category: 'Épicerie' },
-    { id: '3', title: 'Assortiment Makroudh', price: 28, images: [], category: 'Traditionnel' },
-    { id: '4', title: 'Café Torréfié Artisanal', price: 22, images: [], category: 'Boissons' },
-    { id: '5', title: 'Harissa Maison Bio', price: 15, images: [], category: 'Épicerie' },
-    { id: '6', title: 'Coffret Dattes Deglet Nour', price: 55, images: [], category: 'Fruits Secs' },
-  ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -51,6 +45,17 @@ export function FlavorTheme({ theme, storeName, products = [], branding, navigat
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

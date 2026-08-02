@@ -38,7 +38,7 @@ export function VendorsAnalyticsTab({ data }: VendorsAnalyticsTabProps) {
                 {(top_performing_vendors || []).map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">{v.name}</td>
-                    <td className="py-3 px-3 text-slate-500">{v.subdomain}.pandamarket.tn</td>
+                    <td className="py-3 px-3 text-slate-500">{v.subdomain}.garbage.team</td>
                     <td className="py-3 px-3 uppercase text-[10px] font-black text-indigo-600">{v.subscription_plan}</td>
                     <td className="py-3 px-3 font-bold">{v.products_count} items</td>
                     <td className="py-3 px-3">

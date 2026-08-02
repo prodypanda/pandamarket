@@ -393,7 +393,7 @@ function storeContactLines(order: Order) {
     [stringSetting(settings, 'city'), stringSetting(settings, 'country')].filter(Boolean).join(', '),
     stringSetting(settings, 'phone'),
     stringSetting(settings, 'email'),
-    order.store_custom_domain || (order.store_subdomain ? `${order.store_subdomain}.pandamarket.tn` : ''),
+    order.store_custom_domain || (order.store_subdomain ? `${order.store_subdomain}.garbage.team` : ''),
   ].filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
 }
 

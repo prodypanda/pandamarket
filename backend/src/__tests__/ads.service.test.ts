@@ -116,10 +116,12 @@ describe('AdsService',()=>{
   const payload={campaign_id:'pd_adcmp_A',creative_id:'pd_adcrt_A',placement_id:'pd_adpl_A',exp:Date.now()+60000};
   const encoded=Buffer.from(JSON.stringify(payload)).toString('base64url');
   const crypto=await import('crypto');const signature=crypto.createHmac('sha256','test-secret').update(encoded).digest('base64url');
-  const client={query:vi.fn().mockResolvedValueOnce(result([{id:'pd_adevt_existing'}]))};
+  const client={query:vi.fn()
+   .mockResolvedValueOnce(result([]))
+   .mockResolvedValueOnce(result([{id:'pd_adevt_existing'}]))};
   mockTransaction.mockImplementation(async(fn:any)=>fn(client));
   await expect(service.recordEvent({token:`${encoded}.${signature}`,eventType:'click',eventKey:'existing-event-key'})).resolves.toEqual({recorded:false,duplicate:true});
-  expect(client.query).toHaveBeenCalledTimes(1);
+  expect(client.query).toHaveBeenCalledTimes(2);
  });
 
  it('applies configured click and view windows to attribution lookup',async()=>{

@@ -14,6 +14,7 @@ import {
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * Boutique Theme — Luxury fashion & lifestyle.
@@ -27,16 +28,7 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding, navig
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Silk Evening Dress', price: 450, images: [], category: 'Robes' },
-        { id: '2', title: 'Leather Clutch', price: 280, images: [], category: 'Maroquinerie' },
-        { id: '3', title: 'Pearl Earrings', price: 195, images: [], category: 'Bijoux' },
-        { id: '4', title: 'Cashmere Scarf', price: 320, images: [], category: 'Accessoires' },
-        { id: '5', title: 'Suede Heels', price: 380, images: [], category: 'Chaussures' },
-        { id: '6', title: 'Gold Bracelet', price: 520, images: [], category: 'Bijoux' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -57,6 +49,17 @@ export function BoutiqueTheme({ theme, storeName, products = [], branding, navig
       style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}
     >
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

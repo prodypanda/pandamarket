@@ -54,8 +54,16 @@ vi.mock('../services/platform-config.service', () => ({
 
 describe('StoreService maintenance publishing defaults', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.assertPlanIsEnabled.mockResolvedValue(undefined);
+    // resetAllMocks (not clearAllMocks) also clears one-time mockResolvedValueOnce
+    // queues that would otherwise bleed across tests and misalign query mocks.
+    vi.resetAllMocks();
+    // createForUser reads yearly_price off the limits returned by assertPlanIsEnabled.
+    mocks.assertPlanIsEnabled.mockResolvedValue({
+      plan_id: 'free',
+      max_products: 10,
+      yearly_price: 0,
+      is_enabled: true,
+    });
     mocks.walletCreate.mockResolvedValue(undefined);
     mocks.creditsCreate.mockResolvedValue(undefined);
     mocks.transaction.mockImplementation(async (callback) =>

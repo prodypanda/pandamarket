@@ -452,7 +452,7 @@ export default function SubscriptionOrdersPage() {
                           </button>
                           {ord.store_subdomain && (
                             <span className="text-[11px] text-slate-400 font-mono">
-                              {ord.store_subdomain}.pandamarket.tn
+                              {ord.store_subdomain}.garbage.team
                             </span>
                           )}
                         </div>

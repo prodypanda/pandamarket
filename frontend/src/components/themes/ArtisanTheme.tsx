@@ -23,16 +23,7 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, naviga
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Savon Artisanal Lavande', price: 18, images: [], category: 'Soins' },
-        { id: '2', title: 'Bol en Céramique', price: 45, images: [], category: 'Maison' },
-        { id: '3', title: 'Huile d\'Olive Bio', price: 32, images: [], category: 'Alimentaire' },
-        { id: '4', title: 'Bougie Parfumée', price: 28, images: [], category: 'Maison' },
-        { id: '5', title: 'Panier Tressé', price: 65, images: [], category: 'Décoration' },
-        { id: '6', title: 'Miel de Montagne', price: 42, images: [], category: 'Alimentaire' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 

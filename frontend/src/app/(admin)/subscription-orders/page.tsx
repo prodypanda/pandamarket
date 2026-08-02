@@ -1669,7 +1669,7 @@ export default function SubscriptionOrdersPage() {
                                 <HeartPulse className="w-3 h-3" /> {health.score}/100
                               </span>
                             </div>
-                            <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.pandamarket.tn</span>
+                            <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.garbage.team</span>
                             <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
                           </div>
                         </td>
@@ -2704,7 +2704,7 @@ export default function SubscriptionOrdersPage() {
               <div>
                 <p className="text-slate-400 font-bold uppercase">Store Name</p>
                 <p className="font-bold text-slate-900 dark:text-white">{drawerOrder.store_name}</p>
-                <p className="text-slate-500 dark:text-slate-400 text-[11px]">{drawerOrder.store_subdomain}.pandamarket.tn</p>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px]">{drawerOrder.store_subdomain}.garbage.team</p>
               </div>
               <div>
                 <p className="text-slate-400 font-bold uppercase">Seller Email</p>
@@ -2910,7 +2910,7 @@ export default function SubscriptionOrdersPage() {
                   </button>
                 </div>
                 <p className="font-bold text-slate-900 text-sm mt-0.5">{invoiceOrder.store_name}</p>
-                <p className="text-slate-600">Subdomain: {invoiceOrder.store_subdomain}.pandamarket.tn</p>
+                <p className="text-slate-600">Subdomain: {invoiceOrder.store_subdomain}.garbage.team</p>
                 <p className="text-slate-600">Email: {invoiceOrder.seller_email}</p>
 
                 {isEditingTaxInfo ? (

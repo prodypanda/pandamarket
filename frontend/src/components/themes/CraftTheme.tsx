@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Craft Theme — DIY/handmade, rustic textures, warm palette. */
 export function CraftTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -16,14 +17,7 @@ export function CraftTheme({ theme, storeName, products = [], branding, navigati
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Hand-Knit Scarf', price: 75, images: [], category: 'Knitting' },
-    { id: '2', title: 'Pottery Vase', price: 120, images: [], category: 'Ceramics' },
-    { id: '3', title: 'Macramé Wall Hanging', price: 95, images: [], category: 'Decor' },
-    { id: '4', title: 'Wooden Cutting Board', price: 65, images: [], category: 'Woodwork' },
-    { id: '5', title: 'Beeswax Candle Set', price: 35, images: [], category: 'Candles' },
-    { id: '6', title: 'Leather Journal', price: 55, images: [], category: 'Leather' },
-  ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
 
@@ -40,6 +34,17 @@ export function CraftTheme({ theme, storeName, products = [], branding, navigati
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen relative flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

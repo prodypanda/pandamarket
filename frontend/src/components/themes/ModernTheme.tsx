@@ -14,6 +14,7 @@ import {
 } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 export function ModernTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
@@ -21,14 +22,7 @@ export function ModernTheme({ theme, storeName, products = [], branding, navigat
   const [activeCategory, setActiveCategory] = useState('');
 
   const tags = ['New Arrival', 'Trending', 'Pro', 'Best Seller'];
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Neon Cyber Keyboard', price: 350, images: [], category: 'Peripherals' },
-        { id: '2', title: 'Holographic Display', price: 1200, images: [], category: 'Displays' },
-        { id: '3', title: 'Quantum Processor Unit', price: 899, images: [], category: 'Hardware' },
-        { id: '4', title: 'Neural Link Headset', price: 450, images: [], category: 'Audio' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -53,6 +47,17 @@ export function ModernTheme({ theme, storeName, products = [], branding, navigat
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full blur-[120px] opacity-20 animate-pulse pointer-events-none" style={{ animationDelay: '2s' }} />
 
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

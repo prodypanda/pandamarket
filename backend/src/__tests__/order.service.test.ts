@@ -55,6 +55,12 @@ describe('OrderService storefront checkout visibility', () => {
     const { OrderService } = await import('../services/order.service');
     const orderService = new OrderService();
 
+    // FOR UPDATE lock query (runs before the product detail SELECT)
+    mocks.clientQuery.mockResolvedValueOnce({
+      rows: [{ id: 'pd_product_1' }],
+      rowCount: 1,
+    });
+    // Product detail SELECT (store is in maintenance → not publicly verified)
     mocks.clientQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -84,6 +90,6 @@ describe('OrderService storefront checkout visibility', () => {
       expect.stringContaining('s.status AS store_status'),
       ['pd_product_1'],
     );
-    expect(mocks.clientQuery).toHaveBeenCalledTimes(1);
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(2);
   });
 });

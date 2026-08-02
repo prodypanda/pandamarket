@@ -262,7 +262,7 @@ export default function DedicatedFraudRadarPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">{item.store_name || 'N/A'}</h3>
-                  <p className="text-slate-400 text-xs font-mono">{item.store_subdomain || 'unknown'}.pandamarket.tn</p>
+                  <p className="text-slate-400 text-xs font-mono">{item.store_subdomain || 'unknown'}.garbage.team</p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${item.health_scorecard.level === 'critical' ? 'bg-red-100 text-red-700' : item.health_scorecard.level === 'at_risk' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} flex items-center gap-1`}>
                   <HeartPulse className="w-3 h-3" /> Score {item.health_scorecard.score}/100

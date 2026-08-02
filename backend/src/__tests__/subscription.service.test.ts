@@ -30,6 +30,12 @@ vi.mock('../utils/plans', () => ({
   },
 }));
 
+vi.mock('../services/credits.service', () => ({
+  creditsService: {
+    setForPlan: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import { query } from '../db/pool';
 import { SubscriptionService } from '../services/subscription.service';
 
@@ -155,6 +161,50 @@ describe('SubscriptionService', () => {
     });
 
     it('should allow upgrade without product count check', async () => {
+      // getLimits('free') — current plan (price 0)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          plan_id: 'free',
+          max_products: 10,
+          max_images_per_product: 2,
+          has_ai_seo: false,
+          has_image_compression: false,
+          has_custom_domain: false,
+          has_page_builder: false,
+          has_direct_payment: false,
+          has_white_label: false,
+          commission_rate: '15.00',
+          ai_tokens_included: 0,
+          yearly_price: '0.00',
+          is_enabled: true,
+        }],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
+      } as any);
+      // assertPlanIsEnabled('starter') -> getLimits('starter') — new plan (price 300, upgrade)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          plan_id: 'starter',
+          max_products: 50,
+          max_images_per_product: 5,
+          has_ai_seo: true,
+          has_image_compression: true,
+          has_custom_domain: true,
+          has_page_builder: false,
+          has_direct_payment: false,
+          has_white_label: false,
+          commission_rate: '0.00',
+          ai_tokens_included: 50,
+          yearly_price: '300.00',
+          is_enabled: true,
+        }],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
+      } as any);
       // Update store
       mockQuery.mockResolvedValueOnce({
         rows: [],
@@ -170,7 +220,29 @@ describe('SubscriptionService', () => {
     });
 
     it('should block downgrade when product count exceeds new limit', async () => {
-      // getLimits for new plan
+      // getLimits('starter') — current plan (price 300, higher)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          plan_id: 'starter',
+          max_products: 50,
+          max_images_per_product: 5,
+          has_ai_seo: true,
+          has_image_compression: true,
+          has_custom_domain: true,
+          has_page_builder: false,
+          has_direct_payment: false,
+          has_white_label: false,
+          commission_rate: '0.00',
+          ai_tokens_included: 50,
+          yearly_price: '300.00',
+          is_enabled: true,
+        }],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
+      } as any);
+      // assertPlanIsEnabled('free') -> getLimits('free') — new plan (price 0, lower → downgrade)
       mockQuery.mockResolvedValueOnce({
         rows: [{
           plan_id: 'free',
@@ -185,6 +257,7 @@ describe('SubscriptionService', () => {
           commission_rate: '15.00',
           ai_tokens_included: 0,
           yearly_price: '0.00',
+          is_enabled: true,
         }],
         rowCount: 1,
         command: 'SELECT',

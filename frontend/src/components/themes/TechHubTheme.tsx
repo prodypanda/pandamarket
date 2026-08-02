@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * TechHub Theme — Electronics, gadgets, tech products.
@@ -26,18 +27,7 @@ export function TechHubTheme({ theme, storeName, products = [], branding, naviga
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'Wireless Pro Earbuds', price: 189, images: [], category: 'Audio' },
-        { id: '2', title: 'Mechanical Keyboard RGB', price: 350, images: [], category: 'Peripherals' },
-        { id: '3', title: 'Ultra-Wide Monitor 34"', price: 1200, images: [], category: 'Displays' },
-        { id: '4', title: 'Gaming Mouse 16K DPI', price: 95, images: [], category: 'Peripherals' },
-        { id: '5', title: 'USB-C Hub 12-in-1', price: 75, images: [], category: 'Accessories' },
-        { id: '6', title: 'Portable SSD 2TB', price: 280, images: [], category: 'Storage' },
-        { id: '7', title: 'Webcam 4K HDR', price: 165, images: [], category: 'Video' },
-        { id: '8', title: 'Smart LED Strip 5m', price: 55, images: [], category: 'Lighting' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -55,6 +45,17 @@ export function TechHubTheme({ theme, storeName, products = [], branding, naviga
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

@@ -13,6 +13,7 @@ import {
   getStorefrontProductPath,
 } from './shared';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /**
  * Neon Theme — Dark mode default, neon accent colors, gaming/tech vibe.
@@ -26,16 +27,7 @@ export function NeonTheme({ theme, storeName, products = [], branding, navigatio
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const allProducts = products.length > 0
-    ? products
-    : [
-        { id: '1', title: 'RGB Gaming Headset', price: 249, images: [], category: 'Gaming' },
-        { id: '2', title: 'Neon LED Controller', price: 89, images: [], category: 'Accessories' },
-        { id: '3', title: 'Mechanical Keypad', price: 175, images: [], category: 'Peripherals' },
-        { id: '4', title: 'Stream Deck Pro', price: 320, images: [], category: 'Streaming' },
-        { id: '5', title: 'Gaming Chair X', price: 890, images: [], category: 'Furniture' },
-        { id: '6', title: 'VR Headset Elite', price: 1200, images: [], category: 'VR' },
-      ];
+  const allProducts = products;
 
   const categories = Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))) as string[];
 
@@ -53,6 +45,17 @@ export function NeonTheme({ theme, storeName, products = [], branding, navigatio
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
 

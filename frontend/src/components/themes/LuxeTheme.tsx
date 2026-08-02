@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
 import { ThemeLayout } from './ThemeLayout';
 import { StorefrontFooter } from '../store/StorefrontFooter';
+import { StorefrontHeader } from '../store/StorefrontHeader';
 
 /** Luxe Theme — High-end jewelry/watches, dark with gold accents. */
 export function LuxeTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
@@ -16,12 +17,7 @@ export function LuxeTheme({ theme, storeName, products = [], branding, navigatio
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
 
-  const allProducts = products.length > 0 ? products : [
-    { id: '1', title: 'Diamond Pendant', price: 2800, images: [], category: 'Necklaces' },
-    { id: '2', title: 'Swiss Chronograph', price: 4500, images: [], category: 'Watches' },
-    { id: '3', title: 'Gold Cuff Bracelet', price: 1200, images: [], category: 'Bracelets' },
-    { id: '4', title: 'Sapphire Ring', price: 3200, images: [], category: 'Rings' },
-  ];
+  const allProducts = products;
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))] as string[];
 
@@ -38,6 +34,17 @@ export function LuxeTheme({ theme, storeName, products = [], branding, navigatio
   return (
     <div className={`${theme.typography.fontFamily} min-h-screen relative flex flex-col`} style={{ ...colorVars(tc.colors), backgroundColor: tc.colors.background, color: tc.colors.text }}>
       {branding?.favicon_url && <link rel="icon" href={branding.favicon_url} />}
+      <StorefrontHeader
+        storeName={storeName}
+        branding={branding}
+        theme={theme}
+        navigation={navigation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
 
 
       {children ? (
