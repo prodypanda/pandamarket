@@ -259,6 +259,54 @@ function renderBlockContent(
     case 'social':
       return <StorefrontSocialLinks branding={branding} />;
 
+    case 'newsletter': {
+      const title = String(content.title || 'Inscrivez-vous à la newsletter');
+      const placeholder = String(content.placeholder || 'Votre email');
+      const buttonLabel = String(content.button_label || 'S\'inscrire');
+      return (
+        <div className="space-y-2">
+          <p className="text-xs font-bold" style={{ color: mutedColor }}>
+            {title}
+          </p>
+          <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
+            <input
+              type="email"
+              placeholder={placeholder}
+              className="flex-1 rounded-md border px-3 py-1.5 text-xs"
+              style={{ borderColor: `${mutedColor}30`, backgroundColor: 'transparent', color: mutedColor }}
+            />
+            <button
+              type="submit"
+              className="rounded-md px-3 py-1.5 text-xs font-bold text-white"
+              style={{ backgroundColor: '#B91C1C' }}
+            >
+              {buttonLabel}
+            </button>
+          </form>
+        </div>
+      );
+    }
+
+    case 'legal': {
+      const links: { url?: string; label?: string }[] = [
+        content.cgv_url ? { url: String(content.cgv_url), label: 'CGV' } : null,
+        content.privacy_url ? { url: String(content.privacy_url), label: 'Confidentialité' } : null,
+        content.refund_url ? { url: String(content.refund_url), label: 'Remboursements' } : null,
+      ].filter(Boolean) as { url?: string; label?: string }[];
+      if (links.length === 0) return null;
+      return (
+        <ul className="space-y-1.5 text-xs" style={{ color: mutedColor }}>
+          {links.map((link, idx) => (
+            <li key={idx}>
+              <Link href={link.url || `${storePathBase}/`} className="hover:underline">
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
     case 'payment_badges':
       return (
         <div className="flex flex-wrap gap-2 text-xs" style={{ color: mutedColor }}>

@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { getStorefrontUrl } from '@/lib/store-hosts';
 
 interface StoreData {
   id: string;
@@ -105,11 +106,10 @@ export default function OnlineStoreOverviewPage() {
     );
   }
 
-  const storefrontUrl = store?.custom_domain
-    ? `https://${store.custom_domain}`
-    : store?.subdomain
-    ? `/store/${store.subdomain}`
-    : '#';
+  const storefrontUrl = getStorefrontUrl({
+    subdomain: store?.subdomain,
+    customDomain: store?.custom_domain,
+  });
 
   const isPublished = store?.status === 'verified';
 

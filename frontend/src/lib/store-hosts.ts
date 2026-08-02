@@ -142,3 +142,41 @@ export function classifyHost(host: string): HostType {
 export function getStorePathBase(storeHost: string, host: string): string {
   return isMarketplaceHost(host) ? `/store/${storeHost}` : '';
 }
+
+/**
+ * Returns the marketplace base domain (without protocol or www.).
+ * Priority: NEXT_PUBLIC_MARKETPLACE_DOMAIN env > derived from window location > garbage.team fallback.
+ */
+export function getMarketplaceDomain(): string {
+  const envDomain = process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN;
+  if (envDomain) {
+    const host = extractHost(`https://${envDomain}`);
+    if (host) return host.startsWith('www.') ? host.slice(4) : host;
+  }
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (isMarketplaceHost(host)) {
+      return host.startsWith('www.') ? host.slice(4) : host;
+    }
+  }
+
+  return 'garbage.team';
+}
+
+/**
+ * Builds the full storefront URL for a store.
+ * Uses custom domain if available, otherwise constructs subdomain.marketplace-domain.
+ */
+export function getStorefrontUrl(opts: {
+  subdomain?: string | null;
+  customDomain?: string | null;
+}): string {
+  if (opts.customDomain) {
+    return `https://${opts.customDomain}`;
+  }
+  if (opts.subdomain) {
+    return `https://${opts.subdomain}.${getMarketplaceDomain()}`;
+  }
+  return '#';
+}

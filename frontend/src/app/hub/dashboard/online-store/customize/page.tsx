@@ -7,6 +7,7 @@ import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanne
 import { type ThemeCustomization, type ThemeId } from '@/lib/themes';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { getStorefrontUrl } from '@/lib/store-hosts';
 
 export default function ThemeCustomizePage() {
   const [themeId, setThemeId] = useState<ThemeId>('classic');
@@ -119,8 +120,13 @@ export default function ThemeCustomizePage() {
                 });
                 if (tokenRes.ok) {
                   const { token } = await tokenRes.json();
-                  const host = customDomain || `${subdomain}.garbage.team`;
-                  window.open(`/store/${encodeURIComponent(host)}/preview?token=${token}`, '_blank');
+                  const storefrontUrl = getStorefrontUrl({ subdomain, customDomain });
+                  // Open the preview on the actual storefront subdomain so the
+                  // theme renders in its real context (own domain, own paths).
+                  const previewUrl = storefrontUrl !== '#'
+                    ? `${storefrontUrl}/preview?token=${token}`
+                    : `/store/${encodeURIComponent(subdomain)}/preview?token=${token}`;
+                  window.open(previewUrl, '_blank');
                 }
               } catch {
                 setFeedback({ message: 'Erreur lors de la génération de l\'aperçu', isError: true });

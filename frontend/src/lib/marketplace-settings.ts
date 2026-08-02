@@ -108,7 +108,10 @@ export function getMarketplacePublicUrl(settings?: Pick<MarketplaceSettings, 'ma
   const candidates = [
     settings?.marketplace_public_url,
     process.env.NEXT_PUBLIC_HUB_URL,
-    'https://pandamarket.tn',
+    process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN
+      ? `https://${process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN}`
+      : undefined,
+    'https://garbage.team',
   ];
 
   for (const candidate of candidates) {
@@ -116,7 +119,7 @@ export function getMarketplacePublicUrl(settings?: Pick<MarketplaceSettings, 'ma
     if (normalized) return normalized;
   }
 
-  return 'https://pandamarket.tn';
+  return 'https://garbage.team';
 }
 
 function normalizeHttpUrl(value?: string): string {

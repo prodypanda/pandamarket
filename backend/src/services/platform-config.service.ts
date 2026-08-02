@@ -16,7 +16,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
   marketplace_logo_dark_url: '',
   marketplace_favicon_url: '/favicon.ico',
   marketplace_og_image_url: '/og-image.png',
-  marketplace_public_url: 'https://pandamarket.tn',
+  marketplace_public_url: 'https://garbage.team',
   marketplace_theme: 'panda',
   marketplace_primary_color: '#B91C1C',
   marketplace_secondary_color: '#C6922E',
