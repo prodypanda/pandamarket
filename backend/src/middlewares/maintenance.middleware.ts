@@ -4,6 +4,19 @@ import { getRedis } from '../db/redis';
 
 const CACHE_KEY = 'pd:maintenance:config';
 const CACHE_TTL_SECONDS = 15;
+// Redis is configured with maxRetriesPerRequest: null (required by BullMQ), so
+// commands can hang indefinitely when the connection is flaky. Bound every Redis
+// call here so a degraded Redis never blocks the request pipeline.
+const REDIS_OP_TIMEOUT_MS = 1500;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Redis op timeout')), ms);
+    promise
+      .then((value) => { clearTimeout(timer); resolve(value); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
 
 interface MaintenanceConfig {
   maintenance_enabled: boolean;
@@ -37,10 +50,10 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
 
 async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
   try {
-    const cached = await getRedis().get(CACHE_KEY);
+    const cached = await withTimeout(getRedis().get(CACHE_KEY), REDIS_OP_TIMEOUT_MS);
     if (cached) return JSON.parse(cached);
   } catch {
-    // Redis unavailable — fall through to DB
+    // Redis unavailable/slow — fall through to DB
   }
 
   const { rows } = await query<{ key: string; value: string }>(
@@ -56,9 +69,9 @@ async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
   }
 
   try {
-    await getRedis().setex(CACHE_KEY, CACHE_TTL_SECONDS, JSON.stringify(config));
+    await withTimeout(getRedis().setex(CACHE_KEY, CACHE_TTL_SECONDS, JSON.stringify(config)), REDIS_OP_TIMEOUT_MS);
   } catch {
-    // Redis unavailable — proceed without cache
+    // Redis unavailable/slow — proceed without cache
   }
 
   return config;
