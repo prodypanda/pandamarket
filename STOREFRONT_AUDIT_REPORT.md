@@ -279,3 +279,83 @@ Deep audit of the storefront implementation (commit `f8a58df` by external AI age
 - Backend health: ✅ `https://pandamarket-backend-zjr5.onrender.com/health` returns 200
 - Vercel deploy: ✅ triggered (commit `0f5aa7a`)
 - Render deploy: ✅ triggered (commit `0f5aa7a`)
+
+---
+
+## Round 4 Issues Found & Fixed (commits `82ea167` → `5f3a93d`)
+
+### P0-8: ReferenceSelector Not Updating When Type Changes
+
+**File:** `frontend/src/components/dashboard/ReferenceSelector.tsx`
+
+**Bug:** When a seller changed the menu item type (e.g., from "page" to "product"), the dropdown didn't update — it still showed the pages from the previous type. Also, product/category/collection all showed the same elements because the `collection` endpoint pointed to the categories API.
+
+**Fix:**
+- Added a separate `useEffect([type])` that clears `options`, `query`, and `selectedLabel` when the type changes.
+- Fetch effect now depends on `[open, type]` only (removed `options.length` check that prevented re-fetching).
+- Removed the `collection` entry from `ENDPOINTS` map (was pointing to categories endpoint). Collection type now shows "no collections available" message.
+
+### P0-9: Seller Dashboard i18n — Complete Translation of All 35 Dashboard Pages
+
+**Files:** All 35 `page.tsx` files under `frontend/src/app/hub/dashboard/`, plus `frontend/src/i18n/messages/{fr,en,ar}.json`
+
+**Bug:** Only 3 dashboard pages had `useLocale()` integrated. The remaining 32+ pages had hardcoded French or English strings — switching languages had no effect.
+
+**Fix:**
+- Converted ALL 35 dashboard pages to use `useLocale()` hook with `t()` calls for every hardcoded string.
+- Added **1,426 new translation keys** across **33 sections** in each of the 3 locale files (fr, en, ar) — **4,278 total translation entries**.
+- All dates now use locale-aware formatting (`ar-TN`/`en-US`/`fr-TN`).
+- Status labels, error messages, table headers, buttons, placeholders, tooltips — all translated.
+- Constants defined outside components (like `ORDER_STATUS_COLORS`) were refactored to use `labelKey` strings resolved via `t()` inside the component.
+
+**Pages converted (by section):**
+| Section | Page | Keys |
+|---|---|---|
+| overview | dashboard/page.tsx | 77 |
+| wallet | wallet/page.tsx | 22 |
+| financial | financial/page.tsx | 80 |
+| orders | orders/page.tsx | 239 |
+| themes | online-store/themes | 7 |
+| customize | online-store/customize | 5 |
+| seo | online-store/seo | 7 |
+| integrations | online-store/integrations | 15 |
+| customers | online-store/customers | 3 |
+| domains | online-store/domains | 11 |
+| categories | categories/page.tsx | 37 |
+| media | media/page.tsx | 25 |
+| pageBuilder | page-builder/page.tsx | 65 |
+| subscription | subscription/page.tsx | 75 |
+| support | support/page.tsx | 31 |
+| kyc | kyc/page.tsx | 28 |
+| paymentConfig | payment-config/page.tsx | 38 |
+| analytics | analytics/page.tsx | 49 |
+| reports | reports/page.tsx | 51 |
+| notifications | notifications/page.tsx | 15 |
+| messages | messages/page.tsx | 2 |
+| mySubscriptionOrders | my-subscription-orders | 88 |
+| apiKeys | api-keys/page.tsx | 40 |
+| reportDetail | reports/[id]/page.tsx | 25 |
+| selectStore | select-store/page.tsx | 15 |
+| paymentMethod | subscription/payment-method | 15 |
+| webhooks | webhooks/page.tsx | 31 |
+| ai | ai/AiToolsStudio.tsx | 100+ |
+
+### Validation (Round 4)
+
+- Frontend type-check: ✅ pass (all 5 commits)
+- Frontend ESLint: ✅ no errors (only pre-existing warnings)
+- All 35 dashboard pages have `useLocale()` ✅
+- 1,426 translation keys in fr.json/en.json/ar.json ✅
+- Vercel deploy: ✅ triggered (commit `5f3a93d`)
+- Render deploy: ✅ triggered (commit `82ea167`)
+
+---
+
+## Summary of All Fixes (Rounds 1-4)
+
+| Round | Commit | Fixes |
+|---|---|---|
+| 1 | `245aec3` | 7 P0/P1 bugs (publish toggle, theme headers, domain config, customers endpoint) |
+| 2 | `98e83db` | 5 P0/P1 bugs (View Storefront redirect, domain fallback, footer blocks UI) |
+| 3 | `576d2fe`-`0f5aa7a` | 4 P0/P1 bugs (wallet retention, ReferenceSelector, mega menu, partial i18n) |
+| 4 | `82ea167`-`5f3a93d` | 2 P0 bugs (ReferenceSelector cache fix, complete dashboard i18n) |
