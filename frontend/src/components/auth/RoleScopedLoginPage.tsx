@@ -159,20 +159,23 @@ export function RoleScopedLoginPage({
   };
 
   if (isAdmin) {
+    const ledger = [
+      { icon: ShieldCheck, title: 'Two-factor verification', detail: 'Required on every admin session.' },
+      { icon: LockKeyhole, title: 'Audit-logged sessions', detail: 'Every privileged action is recorded.' },
+      { icon: Fingerprint, title: 'Encrypted in transit', detail: 'TLS end-to-end on each request.' },
+    ];
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#020617] px-4 py-8 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(124,58,237,0.34),transparent_30%),radial-gradient(circle_at_82%_10%,rgba(14,165,233,0.22),transparent_25%),radial-gradient(circle_at_70%_86%,rgba(217,70,239,0.16),transparent_30%),linear-gradient(135deg,#020617,#070b1d_46%,#111827)]" />
-        <div className="admin-vault-grid absolute -inset-20 opacity-25 [background-image:linear-gradient(rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.14)_1px,transparent_1px)] [background-size:56px_56px]" />
-        <div className="admin-vault-dots absolute inset-0 [background-image:radial-gradient(circle_at_center,rgba(34,211,238,0.24)_1px,transparent_1px)] [background-size:24px_24px]" />
-        <div className="admin-vault-orb absolute -left-28 top-1/3 h-80 w-80 rounded-full bg-cyan-400/12 blur-3xl" />
-        <div className="admin-vault-orb-delayed absolute -right-28 bottom-8 h-96 w-96 rounded-full bg-fuchsia-500/12 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[42rem] w-[42rem] -translate-x-1/2 -translate-y-1/2 lg:block">
-          <div className="admin-vault-ring absolute inset-0 rounded-full border border-cyan-200/10 [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
-          <div className="admin-vault-ring-reverse absolute inset-16 rounded-full border border-violet-300/15 [mask-image:linear-gradient(to_top,black,transparent_72%)]" />
-          <div className="admin-vault-breathe absolute inset-36 rounded-full border border-fuchsia-300/20 bg-white/[0.02]" />
-        </div>
+      <div className="relative min-h-screen overflow-hidden bg-[#070b1d] px-4 py-8 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 16% 12%, rgba(124,58,237,0.16), transparent 38%), radial-gradient(circle at 88% 92%, rgba(56,189,248,0.09), transparent 40%), linear-gradient(180deg, #070b1d, #0a0e22 60%, #070b1d)',
+          }}
+        />
 
-        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col">
+        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col">
           <div className="flex items-center justify-between gap-4">
             <MarketplaceBrand
               href={logoHref}
@@ -181,61 +184,60 @@ export function RoleScopedLoginPage({
               marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
               marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
               logoSurface="dark"
-              className="rounded-full border border-white/10 bg-white/[0.08] px-5 py-3 text-sm font-black shadow-2xl shadow-violet-950/30 backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.12] hover:shadow-cyan-950/30"
+              className="rounded-full border border-white/10 bg-white/[0.05] px-5 py-3 text-sm font-black shadow-xl shadow-black/30 transition duration-300 hover:border-white/20 hover:bg-white/[0.08]"
               imageClassName="h-8 max-w-[160px] object-contain"
               textClassName="text-sm font-black text-white"
               fallbackMarkClassName="text-xl"
               showTextWithLogo
             />
-            <div className="hidden items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-200 shadow-lg shadow-emerald-950/20 backdrop-blur-xl sm:flex">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)]" />
+            <div className="hidden items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-400/[0.06] px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90 sm:flex">
+              <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
               Secure channel armed
             </div>
           </div>
 
-          <div className="grid flex-1 items-center gap-12 py-10 lg:grid-cols-[1.06fr_0.94fr]">
-            <section className="admin-vault-panel relative">
-              <div className="absolute -left-8 top-10 hidden h-32 w-1 rounded-full bg-gradient-to-b from-cyan-300 via-violet-400 to-transparent shadow-[0_0_32px_rgba(34,211,238,0.45)] lg:block" />
-              <span className="inline-flex rounded-full border border-violet-300/20 bg-violet-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-violet-100 shadow-xl shadow-violet-950/30 backdrop-blur transition duration-300 hover:border-cyan-200/35 hover:bg-cyan-300/10">
-                Superadmin zero-trust portal
-              </span>
-              <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Enter the world&apos;s most secure marketplace <span className="bg-gradient-to-r from-cyan-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">vault.</span>
+          <div className="grid flex-1 items-center gap-12 py-10 lg:grid-cols-[1.05fr_0.95fr]">
+            <section className="admin-vault-panel relative hidden lg:block">
+              <h1 className="max-w-xl text-5xl font-semibold leading-[1.04] tracking-[-0.03em] text-white">
+                Restricted access to the{' '}
+                <span className="font-black text-violet-300">admin console.</span>
               </h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300">
-                This is the critical control plane for PandaMarket. Every credential is challenged, every route is restricted, and every privileged session enters through a hardened administrative gateway.
+              <p className="mt-6 max-w-md text-base leading-7 text-slate-300/90">
+                The critical control surface for PandaMarket governance — vendors, finance, audit, and platform-critical controls. Every credential is challenged and every privileged session is audit-logged.
               </p>
 
-              <div aria-hidden="true" className="relative mt-12 hidden h-48 max-w-xl overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-cyan-950/20 backdrop-blur-xl lg:block">
-                <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(34,211,238,0.10),transparent)]" />
-                <div className="admin-vault-ring absolute left-10 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full border border-cyan-200/15" />
-                <div className="admin-vault-ring-reverse absolute left-20 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full border border-fuchsia-200/15" />
-                <div className="absolute right-8 top-1/2 h-1 w-44 -translate-y-1/2 rounded-full bg-gradient-to-r from-cyan-300 via-violet-400 to-transparent shadow-[0_0_32px_rgba(34,211,238,0.45)]" />
-                <div className="admin-vault-orb absolute right-24 top-1/2 h-16 w-16 -translate-y-1/2 rounded-full bg-cyan-300/20 blur-xl" />
-              </div>
+              <ul className="mt-12 max-w-md divide-y divide-white/[0.06] border-t border-white/[0.06]">
+                {ledger.map(({ icon: Icon, title, detail }) => (
+                  <li key={title} className="flex items-start gap-4 py-4">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-300/15 bg-violet-400/[0.08]">
+                      <Icon className="h-4 w-4 text-violet-200" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-white">{title}</span>
+                      <span className="mt-0.5 block text-sm text-slate-400">{detail}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <div className="admin-vault-card relative mx-auto w-full max-w-md">
-              <div className="absolute -inset-1 rounded-[2.25rem] bg-gradient-to-br from-cyan-300/35 via-violet-500/45 to-fuchsia-500/30 opacity-80 blur-xl" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/[0.88] p-7 shadow-2xl shadow-black/50 backdrop-blur-2xl transition duration-500 hover:-translate-y-1 hover:border-cyan-200/25 hover:shadow-[0_28px_90px_rgba(8,47,73,0.45)] sm:p-8">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
-                <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-7 shadow-[0_30px_80px_-24px_rgba(124,58,237,0.28)] backdrop-blur-xl sm:p-8">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/50 to-transparent" />
+                <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-violet-500/12 blur-3xl" />
                 <div className="relative">
                   <div className="mb-7 flex items-start justify-between gap-5">
                     <div>
-                      <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.26em] text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
-                        Clearance required
-                      </span>
-                      <h2 className="mt-5 text-3xl font-black tracking-tight text-white">{title}</h2>
-                      <p className="mt-3 text-sm leading-6 text-slate-400">{subtitle}</p>
+                      <h2 className="text-2xl font-black tracking-[-0.02em] text-white">{title}</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">{subtitle}</p>
                     </div>
-                    <div className="admin-vault-breathe flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-400/10">
-                      <LockKeyhole className="h-8 w-8 text-violet-100" />
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/15 bg-violet-400/[0.08]">
+                      <LockKeyhole className="h-6 w-6 text-violet-200" />
                     </div>
                   </div>
 
                   {error && (
-                    <div className="mb-4 rounded-2xl border border-red-400/25 bg-red-500/10 p-3 text-sm font-semibold text-red-100">
+                    <div role="alert" className="mb-4 rounded-xl border border-red-400/25 bg-red-500/[0.08] px-3.5 py-3 text-sm font-medium text-red-200">
                       {error}
                     </div>
                   )}
@@ -243,14 +245,19 @@ export function RoleScopedLoginPage({
                   <form onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit} className="space-y-5">
                     {twoFactorChallengeId ? (
                       <div className="group">
-                        <label className="mb-2 block text-sm font-black text-slate-200">Authenticator code</label>
+                        <label htmlFor="admin-otp" className="mb-2 block text-sm font-semibold text-slate-200">Authenticator code</label>
                         <div className="relative">
-                          <ShieldCheck className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
+                          <ShieldCheck className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-300/70 transition group-focus-within:text-violet-200" />
                           <input
+                            id="admin-otp"
+                            name="otp"
                             type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            autoFocus
                             value={twoFactorCode}
                             onChange={(e) => setTwoFactorCode(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 pl-11 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.08] focus:border-cyan-200/55 focus:bg-white/[0.10] focus:ring-4 focus:ring-cyan-300/10"
+                            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 text-sm text-white outline-none transition duration-200 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.06] focus:border-violet-300/50 focus:bg-white/[0.06] focus:ring-4 focus:ring-violet-400/15"
                             placeholder="123456 or recovery code"
                             required
                           />
@@ -259,14 +266,19 @@ export function RoleScopedLoginPage({
                     ) : (
                       <>
                         <div className="group">
-                          <label className="mb-2 block text-sm font-black text-slate-200">Authorized email</label>
+                          <label htmlFor="admin-email" className="mb-2 block text-sm font-semibold text-slate-200">Authorized email</label>
                           <div className="relative">
-                            <Fingerprint className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
+                            <Fingerprint className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-300/70 transition group-focus-within:text-violet-200" />
                             <input
+                              id="admin-email"
+                              name="email"
                               type="email"
+                              inputMode="email"
+                              autoComplete="email"
+                              autoFocus
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 pl-11 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.08] focus:border-cyan-200/55 focus:bg-white/[0.10] focus:ring-4 focus:ring-cyan-300/10"
+                              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 text-sm text-white outline-none transition duration-200 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.06] focus:border-violet-300/50 focus:bg-white/[0.06] focus:ring-4 focus:ring-violet-400/15"
                               placeholder="superadmin@pandamarket.tn"
                               required
                             />
@@ -274,21 +286,25 @@ export function RoleScopedLoginPage({
                         </div>
 
                         <div className="group">
-                          <label className="mb-2 block text-sm font-black text-slate-200">Master passphrase</label>
+                          <label htmlFor="admin-password" className="mb-2 block text-sm font-semibold text-slate-200">Master passphrase</label>
                           <div className="relative">
-                            <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200 transition duration-300 group-focus-within:text-cyan-200 group-focus-within:drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]" />
+                            <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-300/70 transition group-focus-within:text-violet-200" />
                             <input
+                              id="admin-password"
+                              name="password"
                               type={showPassword ? 'text' : 'password'}
+                              autoComplete="current-password"
+                              enterKeyHint="go"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
-                              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 pl-11 pr-12 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.08] focus:border-cyan-200/55 focus:bg-white/[0.10] focus:ring-4 focus:ring-cyan-300/10"
+                              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 pr-12 text-sm text-white outline-none transition duration-200 placeholder:text-slate-600 hover:border-white/20 hover:bg-white/[0.06] focus:border-violet-300/50 focus:bg-white/[0.06] focus:ring-4 focus:ring-violet-400/15"
                               placeholder="••••••••••••"
                               required
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-200"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40"
                               aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -297,10 +313,10 @@ export function RoleScopedLoginPage({
                         </div>
 
                         <div className="flex items-center justify-between text-sm">
-                          <Link href="/forgot-password" className="font-bold text-cyan-200 transition hover:text-cyan-100 hover:underline">
+                          <Link href="/forgot-password" className="font-semibold text-violet-300 transition hover:text-violet-200 hover:underline">
                             Recover credentials
                           </Link>
-                          <Link href="/hub" className="font-semibold text-slate-500 transition hover:text-slate-300">
+                          <Link href="/hub" className="font-medium text-slate-500 transition hover:text-slate-300">
                             Exit perimeter
                           </Link>
                         </div>
@@ -310,19 +326,22 @@ export function RoleScopedLoginPage({
                     <button
                       type="submit"
                       disabled={loading}
-                      className="admin-vault-button group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 px-5 py-4 font-black text-white shadow-[0_22px_60px_rgba(124,58,237,0.34)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_26px_70px_rgba(34,211,238,0.28)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-violet-600 px-5 py-3.5 font-semibold text-white shadow-[0_12px_32px_-8px_rgba(124,58,237,0.6)] transition-all duration-200 hover:bg-violet-500 hover:shadow-[0_16px_40px_-10px_rgba(124,58,237,0.7)] active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                     >
-                      <span className="absolute inset-0 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-[120%]" />
                       {loading ? (
-                        <div className="relative h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                       ) : (
                         <>
-                          <LogIn className="relative h-4 w-4" />
-                          <span className="relative">{twoFactorChallengeId ? 'Verify second factor' : 'Unlock secure portal'}</span>
+                          <LogIn className="h-4 w-4" />
+                          <span>{twoFactorChallengeId ? 'Verify second factor' : 'Unlock secure portal'}</span>
                         </>
                       )}
                     </button>
                   </form>
+
+                  <p className="mt-6 text-center text-xs text-slate-500">
+                    Sessions are protected with two-factor verification and audit logging.
+                  </p>
                 </div>
               </div>
             </div>
