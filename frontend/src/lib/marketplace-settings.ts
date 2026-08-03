@@ -93,9 +93,18 @@ export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';
 export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {
-      next: { revalidate: 30, tags: [MARKETPLACE_SETTINGS_TAG] },
-    });
+    // Short timeout so builds don't hang when the backend is slow/cold-starting.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {
+        next: { revalidate: 30, tags: [MARKETPLACE_SETTINGS_TAG] },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) return {};
     const data = await res.json();
     return data.data || {};

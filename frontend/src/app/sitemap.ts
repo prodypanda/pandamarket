@@ -33,9 +33,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let productPages: MetadataRoute.Sitemap = [];
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=1000`, {
-      next: { revalidate: 3600 },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=1000`, {
+        next: { revalidate: 3600 },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (res.ok) {
       const data = await res.json();
       productPages = (data.data || []).map((product: SitemapProduct) => ({
@@ -53,9 +61,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let categoryPages: MetadataRoute.Sitemap = [];
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/categories`, {
-      next: { revalidate: 3600 },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(`${backendUrl}/api/pd/categories`, {
+        next: { revalidate: 3600 },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (res.ok) {
       const data = await res.json();
       categoryPages = (data.data || []).map((category: SitemapCategory) => ({
