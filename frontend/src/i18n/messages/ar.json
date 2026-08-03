@@ -830,7 +830,19 @@
       "addingDomain": "جارٍ الإضافة...",
       "addDomain": "إضافة النطاق",
       "purchasing": "جارٍ الشراء...",
-      "confirmPurchase": "تأكيد الشراء"
+      "confirmPurchase": "تأكيد الشراء",
+      "logoSelected": "تم اختيار الشعار. اضغط حفظ للتطبيق.",
+      "shippingPoliciesUpdated": "تم تحديث الشحن والسياسات العامة",
+      "securityTab": "الأمان",
+      "shippingTab": "الشحن",
+      "storeLogo": "شعار المتجر",
+      "enableMaintenance": "تفعيل الصيانة",
+      "saving": "جارٍ الحفظ...",
+      "loadError": "تعذر تحميل الإعدادات",
+      "invalidImageFormat": "يرجى اختيار صورة بصيغة JPG أو PNG أو WebP.",
+      "uploadFailed": "فشل الرفع",
+      "coverSelected": "تم اختيار صورة الغلاف. اضغط حفظ للتطبيق.",
+      "applyTheme": "تطبيق السمة"
     },
     "wallet": {
       "title": "محفظتي",

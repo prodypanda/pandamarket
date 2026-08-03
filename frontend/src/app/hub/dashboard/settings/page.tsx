@@ -195,7 +195,7 @@ export default function SettingsPage() {
         setStoreIsVerified(Boolean(store.is_verified));
         setMaintenanceMessage(store.settings?.maintenance_message || '');
       } else {
-        setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
+        setError(await getErrorMessage(res, t('dashboardPages.settings.loadError')));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.networkError'));
@@ -432,7 +432,7 @@ export default function SettingsPage() {
     try {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        throw new Error('Veuillez choisir une image JPG, PNG ou WebP.');
+        throw new Error(t('dashboardPages.settings.invalidImageFormat'));
       }
 
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
@@ -447,7 +447,7 @@ export default function SettingsPage() {
         }),
       });
 
-      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Upload impossible'));
+      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, t('dashboardPages.settings.uploadFailed')));
       const presignData = await presignRes.json();
       const uploadUrl = presignData.upload_url as string | undefined;
       const publicUrl = presignData.public_url as string | undefined;
@@ -458,13 +458,13 @@ export default function SettingsPage() {
         headers: { 'Content-Type': file.type },
         body: file,
       });
-      if (!uploadRes.ok) throw new Error('Upload impossible');
+      if (!uploadRes.ok) throw new Error(t('dashboardPages.settings.uploadFailed'));
 
       updateLogoTarget(target, publicUrl);
       await fetchMediaItems();
-      showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
+      showFeedback(t('dashboardPages.settings.logoSelected'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Upload impossible', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.settings.uploadFailed'), true);
     } finally {
       setUploadingLogo(false);
     }
@@ -476,7 +476,7 @@ export default function SettingsPage() {
     try {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        throw new Error('Veuillez choisir une image JPG, PNG ou WebP.');
+        throw new Error(t('dashboardPages.settings.invalidImageFormat'));
       }
 
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
@@ -491,7 +491,7 @@ export default function SettingsPage() {
         }),
       });
 
-      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Upload impossible'));
+      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, t('dashboardPages.settings.uploadFailed')));
       const presignData = await presignRes.json();
       const uploadUrl = presignData.upload_url as string | undefined;
       const publicUrl = presignData.public_url as string | undefined;
@@ -502,13 +502,13 @@ export default function SettingsPage() {
         headers: { 'Content-Type': file.type },
         body: file,
       });
-      if (!uploadRes.ok) throw new Error('Upload impossible');
+      if (!uploadRes.ok) throw new Error(t('dashboardPages.settings.uploadFailed'));
 
       setMarketplaceHeaderImageUrl(publicUrl);
       await fetchMediaItems();
-      showFeedback('Image de couverture sélectionnée. Cliquez sur Sauvegarder pour appliquer.');
+      showFeedback(t('dashboardPages.settings.coverSelected'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Upload impossible', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.settings.uploadFailed'), true);
     } finally {
       setUploadingHeaderImage(false);
     }
@@ -765,7 +765,7 @@ export default function SettingsPage() {
         return;
       }
 
-      showFeedback('Livraison et politiques publiques mises à jour');
+      showFeedback(t('dashboardPages.settings.shippingPoliciesUpdated'));
     } catch (err) {
       showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
@@ -775,10 +775,10 @@ export default function SettingsPage() {
 
   const tabs: { id: Tab; label: string; icon: typeof Settings }[] = [
     { id: 'store', label: t('dashboardPages.settings.storeTab'), icon: Settings },
-    { id: 'security', label: 'Sécurité', icon: ShieldCheck },
+    { id: 'security', label: t('dashboardPages.settings.securityTab'), icon: ShieldCheck },
     { id: 'theme', label: 'Thème', icon: Palette },
     { id: 'domain', label: t('dashboardPages.settings.domainTab'), icon: Globe },
-    { id: 'shipping', label: 'Livraison', icon: Truck },
+    { id: 'shipping', label: t('dashboardPages.settings.shippingTab'), icon: Truck },
     { id: 'emails', label: 'Emails', icon: Mail },
   ];
   const hasPendingSellerTypeRequest = pendingSellerTypeRequest?.status === 'pending' && Boolean(pendingSellerTypeRequest.requested_type);
@@ -1112,7 +1112,7 @@ export default function SettingsPage() {
                     <div className={`flex h-24 items-center justify-center overflow-hidden rounded-xl border border-gray-200 ${logo.previewClass}`}>
                       {logo.value ? (
                         <div
-                          aria-label={`${storeName || 'Logo boutique'} ${logo.label}`}
+                          aria-label={`${storeName || t('dashboardPages.settings.storeLogo')} ${logo.label}`}
                           role="img"
                           className="h-full w-full bg-contain bg-center bg-no-repeat"
                           style={{ backgroundImage: `url(${logo.value})` }}
@@ -1296,7 +1296,7 @@ export default function SettingsPage() {
                           ? storeIsVerified
                             ? 'Remettre en ligne'
                             : t('dashboardPages.settings.saveMessage')
-                          : 'Activer la maintenance'}
+                          : t('dashboardPages.settings.enableMaintenance')}
                     </button>
                   </div>
                 </div>
@@ -1309,7 +1309,7 @@ export default function SettingsPage() {
               className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.save')}
             </button>
           </div>
         )}
@@ -1391,7 +1391,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 px-6 py-2.5 mt-4 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Sauvegarde...' : 'Appliquer le thème'}
+                {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.applyTheme')}
               </button>
             </div>
 
@@ -1632,7 +1632,7 @@ export default function SettingsPage() {
               className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.save')}
             </button>
           </div>
         )}
@@ -1667,7 +1667,7 @@ export default function SettingsPage() {
                       onClick={() => {
                         updateLogoTarget(logoPickerTarget, item.url);
                         setLogoPickerTarget(null);
-                        showFeedback('Logo sélectionné. Cliquez sur Sauvegarder pour appliquer.');
+                        showFeedback(t('dashboardPages.settings.logoSelected'));
                       }}
                       className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"
                     >

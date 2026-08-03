@@ -830,7 +830,19 @@
       "addingDomain": "Adding...",
       "addDomain": "Add domain",
       "purchasing": "Purchasing...",
-      "confirmPurchase": "Confirm purchase"
+      "confirmPurchase": "Confirm purchase",
+      "logoSelected": "Logo selected. Click Save to apply.",
+      "shippingPoliciesUpdated": "Shipping and public policies updated",
+      "securityTab": "Security",
+      "shippingTab": "Shipping",
+      "storeLogo": "Store logo",
+      "enableMaintenance": "Enable maintenance",
+      "saving": "Saving...",
+      "loadError": "Unable to load settings",
+      "invalidImageFormat": "Please choose a JPG, PNG, or WebP image.",
+      "uploadFailed": "Upload failed",
+      "coverSelected": "Cover image selected. Click Save to apply.",
+      "applyTheme": "Apply theme"
     },
     "wallet": {
       "title": "My Wallet",
