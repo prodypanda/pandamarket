@@ -241,6 +241,26 @@ body {
   }
 }
 
+@keyframes auth-rise {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.auth-panel {
+  animation: auth-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-card {
+  animation: auth-rise 0.85s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel,
+  .auth-card {
+    animation: none;
+  }
+}
+
 /* Skeleton loader */
 .skeleton {
   background: linear-gradient(90deg, var(--color-gray-100) 25%, var(--color-gray-50) 50%, var(--color-gray-100) 75%);

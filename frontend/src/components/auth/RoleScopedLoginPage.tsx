@@ -9,6 +9,7 @@ import {
   KeyRound,
   LockKeyhole,
   LogIn,
+  Mail,
   ShieldCheck,
   Sparkles,
   Store,
@@ -65,25 +66,20 @@ export function RoleScopedLoginPage({
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const isAdmin = variant === 'admin';
-  const accent = isAdmin ? '#7C3AED' : '#F97316';
-  const accentSoft = isAdmin ? 'bg-violet-50 text-violet-700 ring-violet-100' : 'bg-orange-50 text-orange-700 ring-orange-100';
-  const pageBg = isAdmin
-    ? 'bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.22),transparent_34%),linear-gradient(135deg,#020617,#111827_52%,#312e81)]'
-    : 'bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.24),transparent_35%),linear-gradient(135deg,#111827,#431407_55%,#7c2d12)]';
   const heroTitle = isAdmin ? 'Centre de contrôle marketplace' : 'Espace vendeur haute performance';
   const heroText = isAdmin
     ? 'Surveillez les vendeurs, les retraits, les mandats et les paramètres clés depuis un accès sécurisé.'
     : 'Retrouvez vos commandes, revenus, produits et outils de croissance dans un tableau de bord pensé pour vendre plus vite.';
   const heroItems = isAdmin
     ? [
-      { label: 'Accès sécurisé', icon: ShieldCheck },
-      { label: 'Pilotage global', icon: BarChart3 },
-      { label: 'Audit marketplace', icon: LockKeyhole },
+      { label: 'Accès sécurisé', detail: 'Accès protégé et chiffré.', icon: ShieldCheck },
+      { label: 'Pilotage global', detail: 'Vendeurs, finance et audit.', icon: BarChart3 },
+      { label: 'Audit marketplace', detail: 'Traçabilité des actions.', icon: LockKeyhole },
     ]
     : [
-      { label: 'Boutique en ligne', icon: Store },
-      { label: 'Revenus & wallet', icon: BarChart3 },
-      { label: 'Outils vendeurs', icon: Sparkles },
+      { label: 'Boutique en ligne', detail: 'Votre vitrine, prête à vendre.', icon: Store },
+      { label: 'Revenus & wallet', detail: 'Ventes, revenus et paiements.', icon: BarChart3 },
+      { label: 'Outils vendeurs', detail: 'Croissance et gestion intégrées.', icon: Sparkles },
     ];
   useEffect(() => {
     let cancelled = false;
@@ -352,9 +348,17 @@ export function RoleScopedLoginPage({
   }
 
   return (
-    <div className={`min-h-screen px-4 py-10 text-white ${pageBg}`}>
-      <div className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="hidden lg:block">
+    <div className="relative min-h-screen overflow-hidden bg-[#0c0a09] px-4 py-10 text-white">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 16% 14%, rgba(249,115,22,0.16), transparent 38%), radial-gradient(circle at 86% 88%, rgba(217,119,6,0.08), transparent 42%), linear-gradient(180deg, #0c0a09, #1a1208 60%, #0c0a09)',
+        }}
+      />
+      <div className="relative mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="auth-panel relative hidden lg:block">
           <MarketplaceBrand
             href={logoHref}
             marketplaceName={marketplaceSettings.marketplace_name}
@@ -362,33 +366,35 @@ export function RoleScopedLoginPage({
             marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
             marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
             logoSurface="dark"
-            className="rounded-full bg-white/10 px-5 py-3 text-sm font-black backdrop-blur transition hover:bg-white/15"
+            className="rounded-full border border-white/10 bg-white/[0.05] px-5 py-3 text-sm font-black shadow-xl shadow-black/30 transition duration-300 hover:border-white/20 hover:bg-white/[0.08]"
             imageClassName="h-8 max-w-[160px] object-contain"
             textClassName="text-sm font-black text-white"
             fallbackMarkClassName="text-xl"
             showTextWithLogo
           />
-          <div className="mt-10 max-w-xl">
-            <span className={`inline-flex rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ring-1 ${accentSoft}`}>
-              {isAdmin ? 'Superadmin' : 'Vendeur'}
-            </span>
-            <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight">{heroTitle}</h1>
-            <p className="mt-5 text-lg leading-8 text-white/72">{heroText}</p>
-          </div>
-          <div className="mt-10 grid max-w-2xl grid-cols-3 gap-4">
+          <h1 className="mt-10 max-w-xl text-5xl font-semibold leading-[1.04] tracking-[-0.03em] text-white">
+            {heroTitle}
+          </h1>
+          <p className="mt-6 max-w-md text-base leading-7 text-white/70">{heroText}</p>
+          <ul className="mt-12 max-w-md divide-y divide-white/[0.06] border-t border-white/[0.06]">
             {heroItems.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                  <Icon className="h-6 w-6" style={{ color: accent }} />
-                  <p className="mt-4 text-sm font-bold text-white/86">{item.label}</p>
-                </div>
+                <li key={item.label} className="flex items-start gap-4 py-4">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-300/15 bg-orange-400/[0.08]">
+                    <Icon className="h-4 w-4 text-orange-300" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-white">{item.label}</span>
+                    <span className="mt-0.5 block text-sm text-white/55">{item.detail}</span>
+                  </span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </section>
 
-        <div className="mx-auto w-full max-w-md">
+        <div className="auth-card relative mx-auto w-full max-w-md">
           <div className="mb-7 text-center lg:hidden">
             <MarketplaceBrand
               href={logoHref}
@@ -405,110 +411,126 @@ export function RoleScopedLoginPage({
             />
           </div>
 
-          <div className="rounded-[2rem] border border-white/70 bg-white p-7 text-gray-950 shadow-2xl shadow-black/25 sm:p-8">
+          <div className="relative overflow-hidden rounded-2xl border border-stone-200/80 bg-white p-7 text-gray-950 shadow-[0_30px_80px_-24px_rgba(0,0,0,0.45)] sm:p-8">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent" />
             <div className="mb-7">
-              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ring-1 ${accentSoft}`}>
-                {isAdmin ? 'Accès protégé' : 'Dashboard vendeur'}
-              </span>
-              <h1 className="mt-4 text-3xl font-black text-gray-950">{title}</h1>
+              <h1 className="text-2xl font-black tracking-[-0.02em] text-gray-950">{title}</h1>
               <p className="mt-2 text-sm leading-6 text-gray-500">{subtitle}</p>
             </div>
 
-          {error && (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit} className="space-y-5">
-            {twoFactorChallengeId ? (
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">Code 2FA</label>
-                <input
-                  type="text"
-                  value={twoFactorCode}
-                  onChange={(e) => setTwoFactorCode(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
-                  style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                  placeholder="123456 ou code de secours"
-                  required
-                />
+            {error && (
+              <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-medium text-red-700">
+                {error}
               </div>
-            ) : (
-              <>
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
-                    style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                    placeholder="votre@email.tn"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">Mot de passe</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 text-sm text-gray-950 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2"
-                      style={{ '--tw-ring-color': `${accent}40` } as React.CSSProperties}
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <Link href="/forgot-password" className="font-bold hover:underline" style={{ color: accent }}>
-                    Mot de passe oublié ?
-                  </Link>
-                  <Link href="/hub" className="text-gray-500 hover:text-gray-700">
-                    Retour au hub
-                  </Link>
-                </div>
-              </>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 font-black text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: accent, boxShadow: `0 18px 40px ${accent}33` }}
-            >
-              {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <form onSubmit={twoFactorChallengeId ? handleTwoFactorSubmit : handleSubmit} className="space-y-5">
+              {twoFactorChallengeId ? (
+                <div className="group">
+                  <label htmlFor="seller-otp" className="mb-2 block text-sm font-semibold text-gray-700">Code 2FA</label>
+                  <div className="relative">
+                    <ShieldCheck className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-500/60 transition group-focus-within:text-orange-500" />
+                    <input
+                      id="seller-otp"
+                      name="otp"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pl-11 text-sm text-gray-950 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/15"
+                      placeholder="123456 ou code de secours"
+                      required
+                    />
+                  </div>
+                </div>
               ) : (
                 <>
-                  <LogIn className="h-4 w-4" />
-                  {twoFactorChallengeId ? 'Vérifier le code' : 'Se connecter'}
+                  <div className="group">
+                    <label htmlFor="seller-email" className="mb-2 block text-sm font-semibold text-gray-700">Email</label>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-500/60 transition group-focus-within:text-orange-500" />
+                      <input
+                        id="seller-email"
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        autoFocus
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pl-11 text-sm text-gray-950 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/15"
+                        placeholder="votre@email.tn"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="group">
+                    <label htmlFor="seller-password" className="mb-2 block text-sm font-semibold text-gray-700">Mot de passe</label>
+                    <div className="relative">
+                      <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-500/60 transition group-focus-within:text-orange-500" />
+                      <input
+                        id="seller-password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        enterKeyHint="go"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pl-11 pr-12 text-sm text-gray-950 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/15"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-gray-400 transition hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40"
+                        aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <Link href="/forgot-password" className="font-semibold text-orange-600 transition hover:text-orange-700 hover:underline">
+                      Mot de passe oublié ?
+                    </Link>
+                    <Link href="/hub" className="font-medium text-gray-500 transition hover:text-gray-700">
+                      Retour au hub
+                    </Link>
+                  </div>
                 </>
               )}
-            </button>
-          </form>
 
-          {registerHref && registerLabel && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Pas encore de compte ?{' '}
-                <Link href={registerHref} className="font-bold hover:underline" style={{ color: accent }}>
-                  {registerLabel} →
-                </Link>
-              </p>
-            </div>
-          )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 font-semibold text-white shadow-[0_12px_32px_-8px_rgba(249,115,22,0.55)] transition-all duration-200 hover:bg-orange-600 hover:shadow-[0_16px_40px_-10px_rgba(249,115,22,0.65)] active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              >
+                {loading ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    {twoFactorChallengeId ? 'Vérifier le code' : 'Se connecter'}
+                  </>
+                )}
+              </button>
+            </form>
+
+            {registerHref && registerLabel && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Pas encore de compte ?{' '}
+                  <Link href={registerHref} className="font-semibold text-orange-600 transition hover:text-orange-700 hover:underline">
+                    {registerLabel} →
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
