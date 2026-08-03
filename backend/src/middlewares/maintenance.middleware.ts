@@ -116,6 +116,7 @@ const BYPASS_PATH_PREFIXES = [
   '/api/pd/marketplace/maintenance',
   '/health',
   '/ready',
+  '/debug/',
   '/metrics',
   '/api/docs',
 ];

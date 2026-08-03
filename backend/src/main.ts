@@ -347,6 +347,60 @@ async function bootstrap() {
     });
   });
 
+  // Temporary granular connectivity diagnostics (strict timeouts, never hangs).
+  app.get('/debug/diag', async (_req, res) => {
+    const net = await import('net');
+    const { URL } = await import('url');
+    const results: Record<string, unknown> = {};
+    const dbUrl = config.databaseUrl;
+    let dbHost = '';
+    let dbPort = 5432;
+    try {
+      const u = new URL(dbUrl);
+      dbHost = u.hostname;
+      dbPort = parseInt(u.port || '5432', 10);
+    } catch (e) {
+      results.db_url_parse = 'error';
+    }
+    results.db_target = `${dbHost}:${dbPort}`;
+
+    // 1. TCP connect to DB host:port
+    results.tcp_db = await new Promise((resolve) => {
+      const t0 = Date.now();
+      const sock = net.default.connect({ host: dbHost, port: dbPort });
+      const done = (val: unknown) => { clearTimeout(timer); sock.destroy(); resolve(val); };
+      const timer = setTimeout(() => done({ status: 'timeout', ms: Date.now() - t0 }), 6000);
+      sock.on('connect', () => done({ status: 'ok', ms: Date.now() - t0 }));
+      sock.on('error', (err) => done({ status: 'error', ms: Date.now() - t0, err: err.message }));
+    });
+
+    // 2. pg connect + query with strict timeouts
+    try {
+      const { Client } = await import('pg');
+      const t0 = Date.now();
+      const client = new Client({
+        connectionString: dbUrl,
+        ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
+        connectionTimeoutMillis: 6000,
+        query_timeout: 6000,
+      });
+      try {
+        await client.connect();
+        const qr = await client.query('SELECT 1 AS ok');
+        results.db_query = { status: 'ok', ms: Date.now() - t0, rows: qr.rows.length };
+      } finally {
+        client.end().catch(() => {});
+      }
+    } catch (e) {
+      results.db_query = { status: 'error', err: (e as Error).message };
+    }
+
+    // 3. Redis target
+    results.redis_url = (config.redisUrl || '').replace(/:([^:@/]+)@/, ':***@');
+
+    res.json(results);
+  });
+
   // Sentry error handler (must be before custom error handler)
   app.use(sentryErrorHandler());
 
