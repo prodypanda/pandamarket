@@ -1,11 +1,81 @@
-# Storefront Audit Report — 2026-08-02 (Updated)
+# Storefront Audit Report — 2026-08-03 (Updated)
 
 ## Executive Summary
 
-Deep audit of the storefront implementation (commit `f8a58df` by external AI agent) using live access (Render, Vercel, Supabase, GitHub). Found and fixed **12 P0/P1 bugs** across 32+ files in two rounds. All fixes verified with type-checks and tests (frontend: 86/86, backend: 347/347).
+Deep audit of the storefront implementation (commit `f8a58df` by external AI agent) using live access (Render, Vercel, Supabase, GitHub). Found and fixed **18+ P0/P1 bugs** across 40+ files in five rounds. All fixes verified with type-checks and tests (frontend: 86/86, backend: 347/347).
 
 **Round 1** (commit `245aec3`): 7 P0/P1 bugs fixed across 25+ files.
 **Round 2** (commit `98e83db`): 5 P0/P1 bugs fixed across 7 files.
+**Round 3** (commits `576d2fe`–`ed26b78`): Wallet retention, navigation selector, mega menu, i18n.
+**Round 4** (commits `82ea167`–`6285ffd`): ReferenceSelector caching fix, 35 dashboard pages i18n.
+**Round 5** (commits `26c7c03`–`da2a87f`): Render deploy failures, Redis timeout, start command path, navigation key prop, remaining i18n, View Storefront URL.
+
+---
+
+## Round 5 Issues Found & Fixed (commits `26c7c03`, `da2a87f`)
+
+### P0-7: Render Deployment Failures (ALL deploys failing for 14+ hours)
+**Files:** `backend/src/main.ts`, Render service config
+
+**Bug:** ALL Render deploys since commit `ed26b78a` (2026-08-02T20:33Z) were failing with `update_failed`. The build succeeded but the deploy phase timed out at 15 minutes (Render free plan limit). Root cause: `getRedis().ping()` in `main.ts` hung indefinitely because `maxRetriesPerRequest: null` (required by BullMQ) means infinite retry on connection failure. When Redis was unreachable for new connections, the server never reached `app.listen()` and Render timed out.
+
+**Fix:**
+1. Made Redis ping non-fatal with 5-second `Promise.race` timeout — server starts even if Redis is down
+2. Made BullMQ job scheduling non-blocking (`void` instead of `await`) — bootstrap never hangs
+3. Added `/health` health check path on Render service
+4. Fixed start command path: `cd backend && node dist/backend/src/migrations/run.js && node dist/backend/src/main.js`
+
+**Verification:** Deploy `dep-d9o6kh61egvs739ahqsg` for commit `da2a87f` is `live` ✅
+
+### P0-8: Wallet Retention (5555 TND stuck in pending)
+**Confirmed working.** Atelier Médina wallet: balance=4875.000 (available), pending_balance=0.000, retention_days=2. The fix from Round 3 (commit `576d2fe`) is confirmed live.
+
+### P1-9: ReferenceSelector Not Updating When Type Changes
+**File:** `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`
+
+**Bug:** When changing the menu item type (page → product → category), the ReferenceSelector component didn't fully reset. React reused the component instance, and the cached options from the previous type persisted.
+
+**Fix:**
+1. Added `key={item.type}` to the ReferenceSelector wrapper div — forces React to unmount and remount the component on type change, clearing all internal state
+2. Modified `handleUpdateItem` to also clear `reference_id` when `type` changes — prevents stale references (e.g., a page ID when switching to product type)
+
+### P1-10: Navigation Page Hardcoded French (i18n gaps)
+**File:** `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`
+
+**Bug:** The `FooterBlockContentEditor` component had 15+ hardcoded French strings (placeholders, labels, descriptions). The `FOOTER_BLOCK_TYPES` array used hardcoded French labels.
+
+**Fix:** Added `useLocale()` to `FooterBlockContentEditor`, replaced all hardcoded strings with `t()` calls. Added 35 new translation keys per locale (105 total).
+
+### P1-11: "View Storefront" Button Redirect (Re-fix)
+**File:** `frontend/src/app/hub/dashboard/page.tsx`, `frontend/src/app/(admin)/stores/page.tsx`
+
+**Bug:** The Round 2 fix used a `getStorefrontUrl()` helper, but the dashboard overview page still used the old `/store/${subdomain}` path (marketplace hub page, not the storefront website).
+
+**Fix:** Updated `storefrontHref` to construct the actual storefront URL:
+```ts
+const platformDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '');
+const storefrontHref = store?.custom_domain
+  ? `https://${store.custom_domain}`
+  : store?.subdomain
+    ? `https://${encodeURIComponent(store.subdomain)}.${platformDomain}`
+    : '/hub';
+```
+Same fix applied to admin stores page.
+
+### P1-12: Marketplace Domain Default Wrong
+**File:** `frontend/src/app/(admin)/settings/page.tsx`
+
+**Bug:** `DEFAULT_SETTINGS.marketplace_public_url` was `'https://pandamarket.tn'` (old domain) instead of `'https://garbage.team'`.
+
+**Fix:** Changed default to `'https://garbage.team'`.
+
+### i18n Completeness Audit
+- French: 2484 keys ✅
+- English: 2489 keys (was 2488, added missing `ads.uploadProofBtn`) ✅
+- Arabic: 2484 keys ✅
+- Missing keys in EN: 0 (was 1, now fixed)
+- Missing keys in AR: 0 ✅
+- All 35+ dashboard pages use `useLocale()` ✅
 
 ---
 
