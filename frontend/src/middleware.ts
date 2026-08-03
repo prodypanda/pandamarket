@@ -133,13 +133,23 @@ function forwardedIpHeaders(req: NextRequest) {
   return clientIp ? { 'x-forwarded-for': clientIp } : undefined;
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 3000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getMaintenanceStatus(req: NextRequest): Promise<MaintenanceStatus> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/marketplace/maintenance`, {
+    const res = await fetchWithTimeout(`${backendUrl}/api/pd/marketplace/maintenance`, {
       headers: forwardedIpHeaders(req),
       cache: 'no-store',
-    });
+    }, 3000);
     if (!res.ok) return { maintenance_enabled: false, maintenance_active_for_request: false, maintenance_block_storefronts: false };
     const data = await res.json();
     const enabled = data.data?.maintenance_enabled === true || data.data?.maintenance_enabled === 'true';
@@ -158,10 +168,10 @@ async function getMaintenanceStatus(req: NextRequest): Promise<MaintenanceStatus
 async function getStorefrontStatus(storeHost: string, req: NextRequest): Promise<StorefrontStatus | null> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`, {
+    const res = await fetchWithTimeout(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`, {
       headers: forwardedIpHeaders(req),
       cache: 'no-store',
-    });
+    }, 3000);
     if (!res.ok) return null;
     const data = await res.json();
     return { status: data.store?.status };
