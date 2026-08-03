@@ -805,7 +805,14 @@
       "activated": "تم تفعيل القالب",
       "active": "نشط",
       "preview": "معاينة",
-      "customize": "تخصيص"
+      "customize": "تخصيص",
+      "applySuccess": "تم تطبيق القالب \"{name}\" بنجاح!",
+      "applyError": "خطأ أثناء تغيير القالب",
+      "networkError": "خطأ في الشبكة",
+      "customizeActive": "تخصيص القالب النشط",
+      "applying": "جارٍ التطبيق...",
+      "activeTheme": "القالب النشط",
+      "applyTheme": "تطبيق هذا القالب"
     },
     "customize": {
       "title": "تخصيص القالب",
@@ -823,7 +830,12 @@
       "save": "حفظ",
       "saved": "تم حفظ التخصيص",
       "reset": "إعادة تعيين",
-      "livePreview": "معاينة مباشرة"
+      "livePreview": "معاينة مباشرة",
+      "saveError": "خطأ أثناء الحفظ",
+      "networkError": "خطأ في الشبكة",
+      "activeThemeSubtitle": "اضبط الألوان والخطوط واللافتات وتخطيط القالب النشط ({themeId}).",
+      "previewError": "خطأ أثناء إنشاء المعاينة",
+      "fullscreenPreview": "معاينة بملء الشاشة"
     },
     "seo": {
       "title": "تحسين محركات البحث",
@@ -834,7 +846,14 @@
       "ogImage": "صورة Open Graph",
       "robots": "الروبوتات",
       "save": "حفظ",
-      "saved": "تم حفظ SEO"
+      "saved": "تم حفظ SEO",
+      "saveError": "خطأ أثناء حفظ إعدادات SEO",
+      "networkError": "خطأ في الشبكة",
+      "metaTitlePlaceholder": "عنوان المتجر لمحرك جوجل (مثال: حرفتي اليدوية — منتجات عضوية وكتانية)",
+      "metaDescriptionPlaceholder": "وصف موجز لنشاطك يظهر في نتائج البحث (يُنصح بـ 150-160 حرفًا)",
+      "keywordsPlaceholder": "كلمات مفتاحية مفصولة بفواصل (مثال: حرف يدوية، تونيك، زيت زيتون، تونس)",
+      "ogImagePlaceholder": "https://... (الصورة المعروضة عند المشاركة على فيسبوك/واتساب/X)",
+      "saving": "جارٍ الحفظ..."
     },
     "integrations": {
       "title": "التكاملات والبيكسلات",
@@ -846,7 +865,22 @@
       "status": "الحالة",
       "actions": "إجراءات",
       "active": "نشط",
-      "inactive": "غير نشط"
+      "inactive": "غير نشط",
+      "saveSuccess": "تم حفظ التكاملات والبرامج النصية بنجاح!",
+      "saveError": "خطأ أثناء الحفظ",
+      "networkError": "خطأ في الشبكة",
+      "googleAnalyticsId": "معرّف Google Analytics",
+      "googleAnalyticsPlaceholder": "G-XXXXXXXXXX",
+      "metaPixelId": "معرّف Meta / Facebook Pixel",
+      "metaPixelPlaceholder": "123456789012345",
+      "tiktokPixelId": "معرّف TikTok Pixel",
+      "tiktokPlaceholder": "C1234567890",
+      "customHeadJs": "جافاسكريبت مخصص (<head>)",
+      "customHeadJsPlaceholder": "// كود JS يُحقن في head لجميع صفحات المتجر",
+      "customBodyJs": "جافاسكريبت مخصص (<body> - نهاية الصفحة)",
+      "customBodyJsPlaceholder": "// كود JS يُحقن في نهاية body لجميع صفحات المتجر",
+      "saving": "جارٍ الحفظ...",
+      "saveButton": "حفظ التكاملات"
     },
     "customers": {
       "title": "العملاء",
@@ -857,7 +891,10 @@
       "totalSpent": "إجمالي الإنفاق",
       "joinDate": "تاريخ التسجيل",
       "noCustomers": "لا يوجد عملاء",
-      "search": "البحث عن عميل…"
+      "search": "البحث عن عميل…",
+      "contact": "اتصال",
+      "defaultCustomerName": "مشترٍ",
+      "noSearchResults": "لا يوجد عميل يطابق بحثك."
     },
     "domains": {
       "title": "النطاقات",
@@ -868,7 +905,18 @@
       "verifyDomain": "تحقق من النطاق",
       "verified": "تم التحقق",
       "pending": "قيد الانتظار",
-      "addCustomDomain": "إضافة نطاق مخصص"
+      "addCustomDomain": "إضافة نطاق مخصص",
+      "freeSubdomain": "نطاق فرعي مجاني من PandaMarket",
+      "subdomainDesc": "النطاق الافتراضي نشط دائماً ومؤمّن بشهادة SSL.",
+      "open": "فتح",
+      "customDomainHeading": "اسم نطاق مخصص (.tn، .com، إلخ)",
+      "customDomainDesc": "أدخل نطاقك المخصص الخاص بك (مثال: my-shop.tn). تأكد من توجيه سجلات DNS الخاصة بـ CNAME أو A إلى خوادمنا.",
+      "customDomainPlaceholder": "مثال: my-shop.tn",
+      "saving": "جاري الحفظ...",
+      "saveDomain": "حفظ النطاق",
+      "successMessage": "تم تحديث اسم النطاق بنجاح!",
+      "errorSaving": "خطأ أثناء حفظ النطاق",
+      "networkError": "خطأ في الشبكة"
     },
     "categories": {
       "title": "الفئات",

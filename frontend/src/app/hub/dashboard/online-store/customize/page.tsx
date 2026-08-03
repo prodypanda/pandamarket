@@ -8,8 +8,10 @@ import { type ThemeCustomization, type ThemeId } from '@/lib/themes';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { getStorefrontUrl } from '@/lib/store-hosts';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export default function ThemeCustomizePage() {
+  const { t, locale } = useLocale();
   const [themeId, setThemeId] = useState<ThemeId>('classic');
   const [initialCustomization, setInitialCustomization] = useState<ThemeCustomization>({});
   const [currentCustomization, setCurrentCustomization] = useState<ThemeCustomization>({});
@@ -60,13 +62,13 @@ export default function ThemeCustomizePage() {
         setInitialCustomization(payload);
         setCurrentCustomization(payload);
         setIsDirty(false);
-        setFeedback({ message: 'Personnalisation sauvegardée avec succès !' });
+        setFeedback({ message: t('dashboardPages.customize.saved') });
         revalidateStoreCache({ subdomain, custom_domain: customDomain });
       } else {
-        setFeedback({ message: 'Erreur lors de la sauvegarde', isError: true });
+        setFeedback({ message: t('dashboardPages.customize.saveError'), isError: true });
       }
     } catch (err) {
-      setFeedback({ message: err instanceof Error ? err.message : 'Erreur réseau', isError: true });
+      setFeedback({ message: err instanceof Error ? err.message : t('dashboardPages.customize.networkError'), isError: true });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -95,9 +97,9 @@ export default function ThemeCustomizePage() {
               <Sparkles className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Personnalisation du thème</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.customize.title')}</h1>
               <p className="text-sm text-slate-500">
-                Ajustez les couleurs, typographies, bannières et agencement du thème actif ({themeId}).
+                {t('dashboardPages.customize.activeThemeSubtitle', { themeId })}
               </p>
             </div>
           </div>
@@ -129,13 +131,13 @@ export default function ThemeCustomizePage() {
                   window.open(previewUrl, '_blank');
                 }
               } catch {
-                setFeedback({ message: 'Erreur lors de la génération de l\'aperçu', isError: true });
+                setFeedback({ message: t('dashboardPages.customize.previewError'), isError: true });
               }
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-sm"
           >
             <Sparkles className="h-4 w-4 text-amber-400" />
-            <span>Aperçu plein écran</span>
+            <span>{t('dashboardPages.customize.fullscreenPreview')}</span>
           </button>
         </div>
 

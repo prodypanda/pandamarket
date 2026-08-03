@@ -5,8 +5,10 @@ import { fetchWithCsrf } from '@/lib/api';
 import { Globe, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export default function DomainsPage() {
+  const { t } = useLocale();
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [initialCustomDomain, setInitialCustomDomain] = useState('');
@@ -48,17 +50,17 @@ export default function DomainsPage() {
       if (res.ok) {
         setInitialCustomDomain(customDomain);
         setIsDirty(false);
-        setFeedback({ message: 'Nom de domaine mis à jour avec succès !' });
+        setFeedback({ message: t('dashboardPages.domains.successMessage') });
         revalidateStoreCache({ subdomain, custom_domain: customDomain.trim() || null });
       } else {
         const errData = await res.json().catch(() => ({}));
         setFeedback({
-          message: errData.error?.message || errData.message || 'Erreur lors de la sauvegarde du domaine',
+          message: errData.error?.message || errData.message || t('dashboardPages.domains.errorSaving'),
           isError: true,
         });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('dashboardPages.domains.networkError'), isError: true });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -86,9 +88,9 @@ export default function DomainsPage() {
             <Globe className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Noms de domaine</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.domains.title')}</h1>
             <p className="text-sm text-slate-500">
-              Gérez votre sous-domaine gratuit PandaMarket et votre nom de domaine personnalisé.
+              {t('dashboardPages.domains.subtitle')}
             </p>
           </div>
         </div>
@@ -108,11 +110,11 @@ export default function DomainsPage() {
 
       {/* Primary Subdomain Card */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-slate-900">Sous-domaine gratuit PandaMarket</h2>
+        <h2 className="text-base font-bold text-slate-900">{t('dashboardPages.domains.freeSubdomain')}</h2>
         <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 border border-slate-200">
           <div>
             <p className="text-sm font-bold text-slate-900">{subdomain}.garbage.team</p>
-            <p className="text-xs text-slate-500">Domaine par défaut toujours actif et sécurisé SSL.</p>
+            <p className="text-xs text-slate-500">{t('dashboardPages.domains.subdomainDesc')}</p>
           </div>
           <a
             href={`/store/${subdomain}`}
@@ -120,7 +122,7 @@ export default function DomainsPage() {
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-[#B91C1C] hover:text-[#B91C1C] transition"
           >
-            <span>Ouvrir</span>
+            <span>{t('dashboardPages.domains.open')}</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
@@ -128,12 +130,12 @@ export default function DomainsPage() {
 
       {/* Custom Domain Card */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-slate-900">Nom de domaine personnalisé (.tn, .com, etc.)</h2>
+        <h2 className="text-base font-bold text-slate-900">{t('dashboardPages.domains.customDomainHeading')}</h2>
         <p className="text-xs text-slate-500">
-          Entrez votre propre domaine personnalisé (ex: boutique.tn). Assurez-vous d&apos;avoir fait pointer vos DNS CNAME ou A vers nos serveurs.
+          {t('dashboardPages.domains.customDomainDesc')}
         </p>
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Domaine personnalisé</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.domains.customDomain')}</label>
           <input
             type="text"
             value={customDomain}
@@ -141,7 +143,7 @@ export default function DomainsPage() {
               setCustomDomain(e.target.value);
               setIsDirty(true);
             }}
-            placeholder="ex: ma-boutique.tn"
+            placeholder={t('dashboardPages.domains.customDomainPlaceholder')}
             className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
@@ -153,7 +155,7 @@ export default function DomainsPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
-          {saving ? 'Sauvegarde...' : 'Enregistrer le domaine'}
+          {saving ? t('dashboardPages.domains.saving') : t('dashboardPages.domains.saveDomain')}
         </button>
       </div>
 

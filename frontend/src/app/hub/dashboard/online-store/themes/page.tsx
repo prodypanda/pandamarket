@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useLocale } from '@/contexts/LocaleContext';
 import { fetchWithCsrf } from '@/lib/api';
 import { themes, type ThemeId } from '@/lib/themes';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { Palette, Check, Sparkles, ArrowRight, RefreshCw } from 'lucide-react';
 
 export default function ThemesPage() {
+  const { t, locale } = useLocale();
   const [activeThemeId, setActiveThemeId] = useState<ThemeId | null>(null);
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState<string | null>(null);
@@ -48,14 +50,14 @@ export default function ThemesPage() {
       if (res.ok) {
         const data = await res.json();
         setActiveThemeId(data.store?.theme_id || themeId);
-        setFeedback({ message: `Thème "${themes[themeId].name}" appliqué avec succès !` });
+        setFeedback({ message: t('dashboardPages.themes.applySuccess', { name: themes[themeId].name }) });
         revalidateStoreCache({ subdomain, custom_domain: customDomain });
       } else {
         const errData = await res.json().catch(() => ({}));
-        setFeedback({ message: errData.error?.message || 'Erreur lors du changement de thème', isError: true });
+        setFeedback({ message: errData.error?.message || t('dashboardPages.themes.applyError'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('dashboardPages.themes.networkError'), isError: true });
     } finally {
       setApplying(null);
       setTimeout(() => setFeedback(null), 4000);
@@ -83,9 +85,9 @@ export default function ThemesPage() {
                 <Palette className="h-5 w-5" />
               </span>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Thèmes & Style</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.themes.title')}</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Choisissez parmi {themeList.length} thèmes professionnels et personnalisez l&apos;apparence de votre boutique.
+                  {t('dashboardPages.themes.subtitle', { count: themeList.length })}
                 </p>
               </div>
             </div>
@@ -97,7 +99,7 @@ export default function ThemesPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-sm"
             >
               <Sparkles className="h-4 w-4 text-amber-400" />
-              <span>Personnaliser le thème actif</span>
+              <span>{t('dashboardPages.themes.customizeActive')}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           )}
@@ -184,7 +186,7 @@ export default function ThemesPage() {
                 {isActive && (
                   <div className="absolute top-2 right-2 rounded-full bg-[#B91C1C] px-2 py-1 text-[9px] font-bold text-white shadow-lg flex items-center gap-1">
                     <Check className="h-2.5 w-2.5" />
-                    Actif
+                    {t('dashboardPages.themes.active')}
                   </div>
                 )}
               </div>
@@ -221,15 +223,15 @@ export default function ThemesPage() {
                   {isApplying ? (
                     <span className="flex items-center justify-center gap-1.5">
                       <RefreshCw className="h-3 w-3 animate-spin" />
-                      Application...
+                      {t('dashboardPages.themes.applying')}
                     </span>
                   ) : isActive ? (
                     <span className="flex items-center justify-center gap-1.5">
                       <Check className="h-3 w-3" />
-                      Thème actif
+                      {t('dashboardPages.themes.activeTheme')}
                     </span>
                   ) : (
-                    'Appliquer ce thème'
+                    t('dashboardPages.themes.applyTheme')
                   )}
                 </button>
               </div>

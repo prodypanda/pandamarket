@@ -805,7 +805,14 @@
       "activated": "Theme activated",
       "active": "Active",
       "preview": "Preview",
-      "customize": "Customize"
+      "customize": "Customize",
+      "applySuccess": "Theme \"{name}\" applied successfully!",
+      "applyError": "Error changing theme",
+      "networkError": "Network error",
+      "customizeActive": "Customize active theme",
+      "applying": "Applying...",
+      "activeTheme": "Active theme",
+      "applyTheme": "Apply this theme"
     },
     "customize": {
       "title": "Theme customization",
@@ -823,7 +830,12 @@
       "save": "Save",
       "saved": "Customization saved",
       "reset": "Reset",
-      "livePreview": "Live preview"
+      "livePreview": "Live preview",
+      "saveError": "Error saving changes",
+      "networkError": "Network error",
+      "activeThemeSubtitle": "Adjust the colors, typography, banners and layout of the active theme ({themeId}).",
+      "previewError": "Error generating preview",
+      "fullscreenPreview": "Fullscreen preview"
     },
     "seo": {
       "title": "SEO & Meta",
@@ -834,7 +846,14 @@
       "ogImage": "Open Graph image",
       "robots": "Robots",
       "save": "Save",
-      "saved": "SEO saved"
+      "saved": "SEO saved",
+      "saveError": "Error saving SEO settings",
+      "networkError": "Network error",
+      "metaTitlePlaceholder": "Store title for Google (e.g. My Artisanal Shop — Organic & Linen Products)",
+      "metaDescriptionPlaceholder": "Concise description of your activity shown in search results (150-160 characters recommended)",
+      "keywordsPlaceholder": "Comma-separated keywords (e.g. handmade, tunic, olive oil, tunisia)",
+      "ogImagePlaceholder": "https://... (Image shown when shared on Facebook/WhatsApp/X)",
+      "saving": "Saving..."
     },
     "integrations": {
       "title": "Integrations & Pixels",
@@ -846,7 +865,22 @@
       "status": "Status",
       "actions": "Actions",
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "saveSuccess": "Integrations and scripts saved successfully!",
+      "saveError": "Error saving",
+      "networkError": "Network error",
+      "googleAnalyticsId": "Google Analytics ID",
+      "googleAnalyticsPlaceholder": "G-XXXXXXXXXX",
+      "metaPixelId": "Meta / Facebook Pixel ID",
+      "metaPixelPlaceholder": "123456789012345",
+      "tiktokPixelId": "TikTok Pixel ID",
+      "tiktokPlaceholder": "C1234567890",
+      "customHeadJs": "Custom JavaScript (<head>)",
+      "customHeadJsPlaceholder": "// JS code injected into the head of all storefront pages",
+      "customBodyJs": "Custom JavaScript (<body> - end of page)",
+      "customBodyJsPlaceholder": "// JS code injected at the end of body on all storefront pages",
+      "saving": "Saving...",
+      "saveButton": "Save integrations"
     },
     "customers": {
       "title": "Customers",
@@ -857,7 +891,10 @@
       "totalSpent": "Total spent",
       "joinDate": "Join date",
       "noCustomers": "No customers",
-      "search": "Search a customer…"
+      "search": "Search a customer…",
+      "contact": "Contact",
+      "defaultCustomerName": "Buyer",
+      "noSearchResults": "No customers match your search."
     },
     "domains": {
       "title": "Domains",
@@ -868,7 +905,18 @@
       "verifyDomain": "Verify domain",
       "verified": "Verified",
       "pending": "Pending",
-      "addCustomDomain": "Add custom domain"
+      "addCustomDomain": "Add custom domain",
+      "freeSubdomain": "Free PandaMarket subdomain",
+      "subdomainDesc": "Default domain always active with SSL security.",
+      "open": "Open",
+      "customDomainHeading": "Custom domain name (.tn, .com, etc.)",
+      "customDomainDesc": "Enter your own custom domain (e.g.: my-shop.tn). Make sure your CNAME or A DNS records point to our servers.",
+      "customDomainPlaceholder": "e.g.: my-shop.tn",
+      "saving": "Saving...",
+      "saveDomain": "Save domain",
+      "successMessage": "Domain name updated successfully!",
+      "errorSaving": "Error saving domain",
+      "networkError": "Network error"
     },
     "categories": {
       "title": "Categories",

@@ -805,7 +805,14 @@
       "activated": "Thème activé",
       "active": "Actif",
       "preview": "Aperçu",
-      "customize": "Personnaliser"
+      "customize": "Personnaliser",
+      "applySuccess": "Thème \"{name}\" appliqué avec succès !",
+      "applyError": "Erreur lors du changement de thème",
+      "networkError": "Erreur réseau",
+      "customizeActive": "Personnaliser le thème actif",
+      "applying": "Application...",
+      "activeTheme": "Thème actif",
+      "applyTheme": "Appliquer ce thème"
     },
     "customize": {
       "title": "Personnalisation du thème",
@@ -823,7 +830,12 @@
       "save": "Sauvegarder",
       "saved": "Personnalisation sauvegardée",
       "reset": "Réinitialiser",
-      "livePreview": "Aperçu en direct"
+      "livePreview": "Aperçu en direct",
+      "saveError": "Erreur lors de la sauvegarde",
+      "networkError": "Erreur réseau",
+      "activeThemeSubtitle": "Ajustez les couleurs, typographies, bannières et agencement du thème actif ({themeId}).",
+      "previewError": "Erreur lors de la génération de l'aperçu",
+      "fullscreenPreview": "Aperçu plein écran"
     },
     "seo": {
       "title": "SEO & Méta",
@@ -834,7 +846,14 @@
       "ogImage": "Image Open Graph",
       "robots": "Robots",
       "save": "Sauvegarder",
-      "saved": "SEO sauvegardé"
+      "saved": "SEO sauvegardé",
+      "saveError": "Erreur lors de la sauvegarde du SEO",
+      "networkError": "Erreur réseau",
+      "metaTitlePlaceholder": "Titre de la boutique pour Google (ex: Ma Boutique Artisanale — Produits Bio & Lin)",
+      "metaDescriptionPlaceholder": "Description concise de votre activité affichée dans les résultats de recherche (150-160 caractères recommandés)",
+      "keywordsPlaceholder": "Mots-clés séparés par des virgules (ex: artisanat, tunique, huile d'olive, tunisie)",
+      "ogImagePlaceholder": "https://... (Image affichée lors du partage sur Facebook/WhatsApp/X)",
+      "saving": "Sauvegarde..."
     },
     "integrations": {
       "title": "Intégrations & Pixels",
@@ -846,7 +865,22 @@
       "status": "Statut",
       "actions": "Actions",
       "active": "Actif",
-      "inactive": "Inactif"
+      "inactive": "Inactif",
+      "saveSuccess": "Intégrations et scripts sauvegardés avec succès !",
+      "saveError": "Erreur lors de la sauvegarde",
+      "networkError": "Erreur réseau",
+      "googleAnalyticsId": "Google Analytics ID",
+      "googleAnalyticsPlaceholder": "G-XXXXXXXXXX",
+      "metaPixelId": "Meta / Facebook Pixel ID",
+      "metaPixelPlaceholder": "123456789012345",
+      "tiktokPixelId": "TikTok Pixel ID",
+      "tiktokPlaceholder": "C1234567890",
+      "customHeadJs": "Script JavaScript personnalisé (<head>)",
+      "customHeadJsPlaceholder": "// Code JS injecté dans le head de toutes les pages storefront",
+      "customBodyJs": "Script JavaScript personnalisé (<body> - fin de page)",
+      "customBodyJsPlaceholder": "// Code JS injecté en fin de body sur toutes les pages storefront",
+      "saving": "Sauvegarde...",
+      "saveButton": "Enregistrer les intégrations"
     },
     "customers": {
       "title": "Clients",
@@ -857,7 +891,10 @@
       "totalSpent": "Total dépensé",
       "joinDate": "Date d'inscription",
       "noCustomers": "Aucun client",
-      "search": "Rechercher un client…"
+      "search": "Rechercher un client…",
+      "contact": "Contact",
+      "defaultCustomerName": "Acheteur",
+      "noSearchResults": "Aucun client ne correspond à votre recherche."
     },
     "domains": {
       "title": "Domaines",
@@ -868,7 +905,18 @@
       "verifyDomain": "Vérifier le domaine",
       "verified": "Vérifié",
       "pending": "En attente",
-      "addCustomDomain": "Ajouter un domaine personnalisé"
+      "addCustomDomain": "Ajouter un domaine personnalisé",
+      "freeSubdomain": "Sous-domaine gratuit PandaMarket",
+      "subdomainDesc": "Domaine par défaut toujours actif et sécurisé SSL.",
+      "open": "Ouvrir",
+      "customDomainHeading": "Nom de domaine personnalisé (.tn, .com, etc.)",
+      "customDomainDesc": "Entrez votre propre domaine personnalisé (ex: boutique.tn). Assurez-vous d'avoir fait pointer vos DNS CNAME ou A vers nos serveurs.",
+      "customDomainPlaceholder": "ex: ma-boutique.tn",
+      "saving": "Sauvegarde...",
+      "saveDomain": "Enregistrer le domaine",
+      "successMessage": "Nom de domaine mis à jour avec succès !",
+      "errorSaving": "Erreur lors de la sauvegarde du domaine",
+      "networkError": "Erreur réseau"
     },
     "categories": {
       "title": "Catégories",

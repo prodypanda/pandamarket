@@ -5,6 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { Search, Save, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface SeoSettings {
   meta_title?: string;
@@ -14,6 +15,7 @@ interface SeoSettings {
 }
 
 export default function SeoSettingsPage() {
+  const { t } = useLocale();
   const [seo, setSeo] = useState<SeoSettings>({
     meta_title: '',
     meta_description: '',
@@ -69,13 +71,13 @@ export default function SeoSettingsPage() {
       if (res.ok) {
         setInitialSeo(seo);
         setIsDirty(false);
-        setFeedback({ message: 'Paramètres SEO sauvegardés avec succès !' });
+        setFeedback({ message: t('dashboardPages.seo.saved') });
         revalidateStoreCache({ subdomain, custom_domain: customDomain });
       } else {
-        setFeedback({ message: 'Erreur lors de la sauvegarde du SEO', isError: true });
+        setFeedback({ message: t('dashboardPages.seo.saveError'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('dashboardPages.seo.networkError'), isError: true });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -103,9 +105,9 @@ export default function SeoSettingsPage() {
             <Search className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">SEO & Référencement</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.seo.title')}</h1>
             <p className="text-sm text-slate-500">
-              Optimisez le titre, la description et les balises de partage de votre boutique pour les moteurs de recherche.
+              {t('dashboardPages.seo.subtitle')}
             </p>
           </div>
         </div>
@@ -125,45 +127,45 @@ export default function SeoSettingsPage() {
 
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Méta-titre (Title Tag)</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.seo.metaTitle')}</label>
           <input
             type="text"
             value={seo.meta_title || ''}
             onChange={(e) => handleChange('meta_title', e.target.value)}
-            placeholder="Titre de la boutique pour Google (ex: Ma Boutique Artisanale — Produits Bio & Lin)"
+            placeholder={t('dashboardPages.seo.metaTitlePlaceholder')}
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Méta-description</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.seo.metaDescription')}</label>
           <textarea
             rows={3}
             value={seo.meta_description || ''}
             onChange={(e) => handleChange('meta_description', e.target.value)}
-            placeholder="Description concise de votre activité affichée dans les résultats de recherche (150-160 caractères recommandés)"
+            placeholder={t('dashboardPages.seo.metaDescriptionPlaceholder')}
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Mots-clés (Keywords)</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.seo.keywords')}</label>
           <input
             type="text"
             value={seo.keywords || ''}
             onChange={(e) => handleChange('keywords', e.target.value)}
-            placeholder="Mots-clés séparés par des virgules (ex: artisanat, tunique, huile d'olive, tunisie)"
+            placeholder={t('dashboardPages.seo.keywordsPlaceholder')}
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Image de partage OpenGraph (URL)</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.seo.ogImage')}</label>
           <input
             type="text"
             value={seo.og_image_url || ''}
             onChange={(e) => handleChange('og_image_url', e.target.value)}
-            placeholder="https://... (Image affichée lors du partage sur Facebook/WhatsApp/X)"
+            placeholder={t('dashboardPages.seo.ogImagePlaceholder')}
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
@@ -175,7 +177,7 @@ export default function SeoSettingsPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
-          {saving ? 'Sauvegarde...' : 'Enregistrer le SEO'}
+          {saving ? t('dashboardPages.seo.saving') : t('dashboardPages.seo.save')}
         </button>
       </div>
 

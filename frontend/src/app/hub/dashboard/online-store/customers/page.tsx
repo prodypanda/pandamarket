@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 import { Users, Search, RefreshCw, Mail, Calendar, ShoppingBag } from 'lucide-react';
 
 interface StorefrontCustomer {
@@ -15,9 +16,12 @@ interface StorefrontCustomer {
 }
 
 export default function StorefrontCustomersPage() {
+  const { t, locale } = useLocale();
   const [customers, setCustomers] = useState<StorefrontCustomer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -65,10 +69,12 @@ export default function StorefrontCustomersPage() {
               <span className="rounded-xl bg-[#B91C1C]/10 p-2 text-[#B91C1C]">
                 <Users className="h-5 w-5" />
               </span>
-              <h1 className="text-2xl font-bold text-slate-900">Clients Storefront</h1>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {t('dashboardPages.customers.title')}
+              </h1>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              Liste des comptes acheteurs enregistrés sur votre boutique en ligne.
+              {t('dashboardPages.customers.subtitle')}
             </p>
           </div>
 
@@ -78,7 +84,7 @@ export default function StorefrontCustomersPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un client..."
+              placeholder={t('dashboardPages.customers.search')}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
             />
           </div>
@@ -91,10 +97,10 @@ export default function StorefrontCustomersPage() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50/50 text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Client</th>
-                  <th className="px-6 py-3.5">Contact</th>
-                  <th className="px-6 py-3.5">Inscrit le</th>
-                  <th className="px-6 py-3.5 text-right">Commandes</th>
+                  <th className="px-6 py-3.5">{t('dashboardPages.customers.name')}</th>
+                  <th className="px-6 py-3.5">{t('dashboardPages.customers.contact')}</th>
+                  <th className="px-6 py-3.5">{t('dashboardPages.customers.joinDate')}</th>
+                  <th className="px-6 py-3.5 text-right">{t('dashboardPages.customers.orders')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
@@ -102,7 +108,7 @@ export default function StorefrontCustomersPage() {
                   <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900">
-                        {[c.first_name, c.last_name].filter(Boolean).join(' ') || 'Acheteur'}
+                        {[c.first_name, c.last_name].filter(Boolean).join(' ') || t('dashboardPages.customers.defaultCustomerName')}
                       </div>
                       <div className="text-[11px] text-slate-400">{c.id}</div>
                     </td>
@@ -116,7 +122,7 @@ export default function StorefrontCustomersPage() {
                     <td className="px-6 py-4 text-slate-500">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{new Date(c.created_at).toLocaleDateString('fr-FR')}</span>
+                        <span>{new Date(c.created_at).toLocaleDateString(dateLocale)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -132,7 +138,9 @@ export default function StorefrontCustomersPage() {
           </div>
         ) : (
           <div className="py-12 text-center text-xs text-slate-400">
-            {searchQuery ? 'Aucun client ne correspond à votre recherche.' : 'Aucun client enregistré pour l\'instant.'}
+            {searchQuery
+              ? t('dashboardPages.customers.noSearchResults')
+              : t('dashboardPages.customers.noCustomers')}
           </div>
         )}
       </div>

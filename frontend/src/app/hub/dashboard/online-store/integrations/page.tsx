@@ -5,6 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { Code2, Save, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface IntegrationsSettings {
   google_analytics_id?: string;
@@ -15,6 +16,7 @@ interface IntegrationsSettings {
 }
 
 export default function IntegrationsPage() {
+  const { t, locale } = useLocale();
   const [integrations, setIntegrations] = useState<IntegrationsSettings>({
     google_analytics_id: '',
     facebook_pixel_id: '',
@@ -71,13 +73,13 @@ export default function IntegrationsPage() {
       if (res.ok) {
         setInitialIntegrations(integrations);
         setIsDirty(false);
-        setFeedback({ message: 'Intégrations et scripts sauvegardés avec succès !' });
+        setFeedback({ message: t('dashboardPages.integrations.saveSuccess') });
         revalidateStoreCache({ subdomain, custom_domain: customDomain });
       } else {
-        setFeedback({ message: 'Erreur lors de la sauvegarde', isError: true });
+        setFeedback({ message: t('dashboardPages.integrations.saveError'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('dashboardPages.integrations.networkError'), isError: true });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 4000);
@@ -105,9 +107,9 @@ export default function IntegrationsPage() {
             <Code2 className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Intégrations & Scripts</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.integrations.title')}</h1>
             <p className="text-sm text-slate-500">
-              Injectez vos pixels de suivi et scripts tiers (Google Analytics, Meta Pixel, TikTok Pixel).
+              {t('dashboardPages.integrations.subtitle')}
             </p>
           </div>
         </div>
@@ -128,57 +130,57 @@ export default function IntegrationsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">Google Analytics ID</label>
+            <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.googleAnalyticsId')}</label>
             <input
               type="text"
               value={integrations.google_analytics_id || ''}
               onChange={(e) => handleChange('google_analytics_id', e.target.value)}
-              placeholder="G-XXXXXXXXXX"
+              placeholder={t('dashboardPages.integrations.googleAnalyticsPlaceholder')}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">Meta / Facebook Pixel ID</label>
+            <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.metaPixelId')}</label>
             <input
               type="text"
               value={integrations.facebook_pixel_id || ''}
               onChange={(e) => handleChange('facebook_pixel_id', e.target.value)}
-              placeholder="123456789012345"
+              placeholder={t('dashboardPages.integrations.metaPixelPlaceholder')}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">TikTok Pixel ID</label>
+            <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.tiktokPixelId')}</label>
             <input
               type="text"
               value={integrations.tiktok_pixel_id || ''}
               onChange={(e) => handleChange('tiktok_pixel_id', e.target.value)}
-              placeholder="C1234567890"
+              placeholder={t('dashboardPages.integrations.tiktokPlaceholder')}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Script JavaScript personnalisé (&lt;head&gt;)</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.customHeadJs')}</label>
           <textarea
             rows={4}
             value={integrations.custom_head_js || ''}
             onChange={(e) => handleChange('custom_head_js', e.target.value)}
-            placeholder="// Code JS injecté dans le head de toutes les pages storefront"
+            placeholder={t('dashboardPages.integrations.customHeadJsPlaceholder')}
             className="w-full font-mono text-xs rounded-xl border border-slate-200 bg-slate-900 text-slate-100 p-3 placeholder-slate-500 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">Script JavaScript personnalisé (&lt;body&gt; - fin de page)</label>
+          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.customBodyJs')}</label>
           <textarea
             rows={4}
             value={integrations.custom_body_js || ''}
             onChange={(e) => handleChange('custom_body_js', e.target.value)}
-            placeholder="// Code JS injecté en fin de body sur toutes les pages storefront"
+            placeholder={t('dashboardPages.integrations.customBodyJsPlaceholder')}
             className="w-full font-mono text-xs rounded-xl border border-slate-200 bg-slate-900 text-slate-100 p-3 placeholder-slate-500 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
           />
         </div>
@@ -190,7 +192,7 @@ export default function IntegrationsPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
-          {saving ? 'Sauvegarde...' : 'Enregistrer les intégrations'}
+          {saving ? t('dashboardPages.integrations.saving') : t('dashboardPages.integrations.saveButton')}
         </button>
       </div>
 
