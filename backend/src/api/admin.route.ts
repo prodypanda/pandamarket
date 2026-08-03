@@ -2929,13 +2929,15 @@ router.delete(
     const { older_than_days, log_type } = req.body as z.infer<typeof auditLogPurgeSchema>;
     const roleFilter =
       log_type === 'buyer'
-        ? "'customer'"
+        ? ['customer']
         : log_type === 'seller'
-          ? "'vendor'"
-          : "'admin', 'super_admin'";
+          ? ['vendor']
+          : ['admin', 'super_admin'];
 
+    // Fully parameterized: dynamic interval via $1::int and role list via ANY($2).
     const { rowCount } = await query(
-      `DELETE FROM pd_audit_log WHERE created_at < NOW() - INTERVAL '${older_than_days} days' AND actor_role IN (${roleFilter})`,
+      `DELETE FROM pd_audit_log WHERE created_at < NOW() - ($1::int * INTERVAL '1 day') AND actor_role = ANY($2)`,
+      [older_than_days, roleFilter],
     );
 
     res.status(200).json({ deleted: rowCount });
