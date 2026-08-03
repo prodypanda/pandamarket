@@ -15,7 +15,7 @@
  * OTP is stored in Redis with a 10-minute TTL.
  */
 
-import { getRedis } from '../db/redis';
+import { getRedis, withRedisTimeout } from '../db/redis';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdRateLimitError } from '../errors';
@@ -105,7 +105,7 @@ export class SmsService {
     const redis = getRedis();
 
     // Rate limit: 1 OTP per minute per phone
-    const rateLimited = await redis.get(otpRateLimitKey(normalised));
+    const rateLimited = await withRedisTimeout(redis.get(otpRateLimitKey(normalised)));
     if (rateLimited) {
       throw new PdRateLimitError(OTP_RATE_LIMIT_SECONDS);
     }
@@ -114,9 +114,9 @@ export class SmsService {
     const otp = generateOtp();
 
     // Store in Redis
-    await redis.setex(otpKey(normalised), OTP_TTL_SECONDS, otp);
-    await redis.del(otpAttemptsKey(normalised)); // Reset attempts
-    await redis.setex(otpRateLimitKey(normalised), OTP_RATE_LIMIT_SECONDS, '1');
+    await withRedisTimeout(redis.setex(otpKey(normalised), OTP_TTL_SECONDS, otp));
+    await withRedisTimeout(redis.del(otpAttemptsKey(normalised))); // Reset attempts
+    await withRedisTimeout(redis.setex(otpRateLimitKey(normalised), OTP_RATE_LIMIT_SECONDS, '1'));
 
     // Send via configured provider
     const sent = await this.dispatchSms(
@@ -146,22 +146,22 @@ export class SmsService {
     const redis = getRedis();
 
     // Check attempt count
-    const attempts = parseInt((await redis.get(otpAttemptsKey(normalised))) ?? '0', 10);
+    const attempts = parseInt((await withRedisTimeout(redis.get(otpAttemptsKey(normalised)))) ?? '0', 10);
     if (attempts >= OTP_MAX_ATTEMPTS) {
       // Delete the OTP to force re-send
-      await redis.del(otpKey(normalised));
+      await withRedisTimeout(redis.del(otpKey(normalised)));
       throw new PdValidationError('Too many failed attempts. Please request a new code.');
     }
 
     // Get stored OTP
-    const storedOtp = await redis.get(otpKey(normalised));
+    const storedOtp = await withRedisTimeout(redis.get(otpKey(normalised)));
     if (!storedOtp) {
       throw new PdValidationError('Code expired or not found. Please request a new code.');
     }
 
     // Increment attempts
-    await redis.incr(otpAttemptsKey(normalised));
-    await redis.expire(otpAttemptsKey(normalised), OTP_TTL_SECONDS);
+    await withRedisTimeout(redis.incr(otpAttemptsKey(normalised)));
+    await withRedisTimeout(redis.expire(otpAttemptsKey(normalised), OTP_TTL_SECONDS));
 
     // Constant-time comparison (prevent timing attacks)
     if (otp.length !== storedOtp.length) return false;
@@ -175,8 +175,8 @@ export class SmsService {
     }
 
     // OTP is valid — clean up
-    await redis.del(otpKey(normalised));
-    await redis.del(otpAttemptsKey(normalised));
+    await withRedisTimeout(redis.del(otpKey(normalised)));
+    await withRedisTimeout(redis.del(otpAttemptsKey(normalised)));
 
     logger.info({ phone: normalised.slice(0, 7) + '****' }, 'OTP verified successfully');
     return true;

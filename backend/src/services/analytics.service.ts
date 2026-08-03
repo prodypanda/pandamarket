@@ -5,7 +5,7 @@
  */
 
 import { query } from '../db/pool';
-import { getRedis } from '../db/redis';
+import { getRedis, withRedisTimeout } from '../db/redis';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdNotFoundError, PdErrorCode } from '../errors';
 import { pdId } from '../utils/crypto';
@@ -175,7 +175,7 @@ export class AnalyticsService {
   private async getCachedData<T>(key: string, fetcher: () => Promise<T>, ttlSeconds: number): Promise<T> {
     try {
       const redis = getRedis();
-      const cached = await redis.get(key);
+      const cached = await withRedisTimeout(redis.get(key));
       if (cached) {
         return JSON.parse(cached);
       }
@@ -187,7 +187,7 @@ export class AnalyticsService {
 
     try {
       const redis = getRedis();
-      await redis.set(key, JSON.stringify(freshData), 'EX', ttlSeconds);
+      await withRedisTimeout(redis.set(key, JSON.stringify(freshData), 'EX', ttlSeconds));
     } catch (err) {
       logger.warn({ err, key }, 'Redis cache write error');
     }

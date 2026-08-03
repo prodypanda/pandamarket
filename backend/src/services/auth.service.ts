@@ -4,7 +4,7 @@
 
 import bcrypt from 'bcryptjs';
 import { query, transaction } from '../db/pool';
-import { getRedis } from '../db/redis';
+import { getRedis, withRedisTimeout } from '../db/redis';
 import {
   PdAuthenticationError,
   PdConflictError,
@@ -446,7 +446,7 @@ export class AuthService {
     }
     const secret = generateTotpSecret();
     const redis = getRedis();
-    await redis.set(`pd:2fa_setup:${userId}`, secret, 'EX', TWO_FACTOR_SETUP_TTL_SECONDS);
+    await withRedisTimeout(redis.set(`pd:2fa_setup:${userId}`, secret, 'EX', TWO_FACTOR_SETUP_TTL_SECONDS));
     return {
       secret,
       formatted_secret: formatTotpSecret(secret),
@@ -457,7 +457,7 @@ export class AuthService {
 
   async confirmTwoFactorSetup(userId: string, code: string): Promise<{ status: TwoFactorStatus; recovery_codes: string[] }> {
     const redis = getRedis();
-    const secret = await redis.get(`pd:2fa_setup:${userId}`);
+    const secret = await withRedisTimeout(redis.get(`pd:2fa_setup:${userId}`));
     if (!secret) {
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_2FA_INVALID,
@@ -480,7 +480,7 @@ export class AuthService {
        WHERE id = $1`,
       [userId, encrypt(secret), JSON.stringify(recoveryCodeHashes)],
     );
-    await redis.del(`pd:2fa_setup:${userId}`);
+    await withRedisTimeout(redis.del(`pd:2fa_setup:${userId}`));
     return {
       status: await this.getTwoFactorStatus(userId),
       recovery_codes: recoveryCodes,
@@ -508,19 +508,19 @@ export class AuthService {
   async createTwoFactorChallenge(user: UserRow): Promise<{ challenge_id: string; expires_in: number }> {
     const challengeId = randomHex(24);
     const redis = getRedis();
-    await redis.set(`pd:2fa_challenge:${challengeId}`, user.id, 'EX', TWO_FACTOR_CHALLENGE_TTL_SECONDS);
+    await withRedisTimeout(redis.set(`pd:2fa_challenge:${challengeId}`, user.id, 'EX', TWO_FACTOR_CHALLENGE_TTL_SECONDS));
     return { challenge_id: challengeId, expires_in: TWO_FACTOR_CHALLENGE_TTL_SECONDS };
   }
 
   async verifyTwoFactorChallenge(challengeId: string, code: string): Promise<UserRow> {
     const redis = getRedis();
-    const userId = await redis.get(`pd:2fa_challenge:${challengeId}`);
+    const userId = await withRedisTimeout(redis.get(`pd:2fa_challenge:${challengeId}`));
     if (!userId) {
       throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Two-factor challenge expired');
     }
     const user = await this.getUserWithTwoFactor(userId);
     await this.verifyTwoFactorForUser(user, code);
-    await redis.del(`pd:2fa_challenge:${challengeId}`);
+    await withRedisTimeout(redis.del(`pd:2fa_challenge:${challengeId}`));
     return user;
   }
 
@@ -567,7 +567,7 @@ export class AuthService {
     const tokenHash = sha256(token);
     const redis = getRedis();
     // Store token hash → userId mapping with 1-hour expiry
-    await redis.set(`pd:reset_token:${tokenHash}`, userId, 'EX', 3600);
+    await withRedisTimeout(redis.set(`pd:reset_token:${tokenHash}`, userId, 'EX', 3600));
 
     // Build the reset link and queue the email
     const hubDomain = config.hubDomain.startsWith('http')
@@ -592,7 +592,7 @@ export class AuthService {
     validatePasswordPolicy(newPassword, settings);
     const tokenHash = sha256(token);
     const redis = getRedis();
-    const userId = await redis.get(`pd:reset_token:${tokenHash}`);
+    const userId = await withRedisTimeout(redis.get(`pd:reset_token:${tokenHash}`));
     if (!userId) {
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_TOKEN_INVALID,
@@ -602,7 +602,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, config.bcryptRounds);
     await query('UPDATE pd_user SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
     // Invalidate the token
-    await redis.del(`pd:reset_token:${tokenHash}`);
+    await withRedisTimeout(redis.del(`pd:reset_token:${tokenHash}`));
     // Revoke all refresh tokens (force re-login)
     await this.logout(userId);
     await accountSecurityService.recordEvent({
@@ -629,7 +629,7 @@ export class AuthService {
     const token = randomBytes(32).toString('hex');
     const tokenHash = sha256(token);
     const redis = getRedis();
-    await redis.set(`pd:verify_email:${tokenHash}`, userId, 'EX', 86400); // 24 hours
+    await withRedisTimeout(redis.set(`pd:verify_email:${tokenHash}`, userId, 'EX', 86400)); // 24 hours
 
     // Build the verification link and queue the email
     const hubDomain = config.hubDomain.startsWith('http')
@@ -652,7 +652,7 @@ export class AuthService {
   async verifyEmail(token: string): Promise<void> {
     const tokenHash = sha256(token);
     const redis = getRedis();
-    const userId = await redis.get(`pd:verify_email:${tokenHash}`);
+    const userId = await withRedisTimeout(redis.get(`pd:verify_email:${tokenHash}`));
     if (!userId) {
       throw new PdAuthenticationError(
         PdErrorCode.AUTH_TOKEN_INVALID,
@@ -660,7 +660,7 @@ export class AuthService {
       );
     }
     await query('UPDATE pd_user SET email_verified = true WHERE id = $1', [userId]);
-    await redis.del(`pd:verify_email:${tokenHash}`);
+    await withRedisTimeout(redis.del(`pd:verify_email:${tokenHash}`));
     logger.info({ user_id: userId }, 'Email verified');
   }
 
