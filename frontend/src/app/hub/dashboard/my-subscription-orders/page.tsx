@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Link from 'next/link';
+import { useLocale } from '@/contexts/LocaleContext';
 import {
   ReceiptText,
   Search,
@@ -69,26 +70,34 @@ interface OrdersResponse {
   summary: SummaryStats;
 }
 
-const GATEWAY_NAMES: Record<string, string> = {
-  flouci: 'Flouci (Carte bancaire)',
-  konnect: 'Konnect Pay',
-  paypal: 'PayPal International',
-  manual_mandat: 'Mandat Minute / STB',
-  cod: 'Paiement COD',
-};
+function buildGatewayNames(t: (key: string, params?: Record<string, string | number>) => string): Record<string, string> {
+  return {
+    flouci: t('dashboardPages.mySubscriptionOrders.gatewayFlouci'),
+    konnect: t('dashboardPages.mySubscriptionOrders.gatewayKonnect'),
+    paypal: t('dashboardPages.mySubscriptionOrders.gatewayPaypal'),
+    manual_mandat: t('dashboardPages.mySubscriptionOrders.gatewayManualMandat'),
+    cod: t('dashboardPages.mySubscriptionOrders.gatewayCod'),
+  };
+}
 
-const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
-  captured: { label: 'Payé / Actif', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  paid: { label: 'Payé / Actif', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  pending_review: { label: 'En validation Admin', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: <Clock className="w-3.5 h-3.5" /> },
-  pending_proof: { label: 'Attente du Reçu', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', icon: <Clock className="w-3.5 h-3.5" /> },
-  pending: { label: 'En attente', bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', icon: <Clock className="w-3.5 h-3.5" /> },
-  failed: { label: 'Paiement Échoué', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
-  rejected: { label: 'Refusé par Admin', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
-  cancelled: { label: 'Annulé', bg: 'bg-slate-100 border-slate-200', text: 'text-slate-500', icon: <XCircle className="w-3.5 h-3.5" /> },
-};
+function buildStatusBadges(t: (key: string, params?: Record<string, string | number>) => string): Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> {
+  return {
+    captured: { label: t('dashboardPages.mySubscriptionOrders.statusCaptured'), bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    paid: { label: t('dashboardPages.mySubscriptionOrders.statusPaid'), bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    pending_review: { label: t('dashboardPages.mySubscriptionOrders.statusPendingReview'), bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: <Clock className="w-3.5 h-3.5" /> },
+    pending_proof: { label: t('dashboardPages.mySubscriptionOrders.statusPendingProof'), bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', icon: <Clock className="w-3.5 h-3.5" /> },
+    pending: { label: t('dashboardPages.mySubscriptionOrders.statusPending'), bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', icon: <Clock className="w-3.5 h-3.5" /> },
+    failed: { label: t('dashboardPages.mySubscriptionOrders.statusFailed'), bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
+    rejected: { label: t('dashboardPages.mySubscriptionOrders.statusRejected'), bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
+    cancelled: { label: t('dashboardPages.mySubscriptionOrders.statusCancelled'), bg: 'bg-slate-100 border-slate-200', text: 'text-slate-500', icon: <XCircle className="w-3.5 h-3.5" /> },
+  };
+}
 
 export default function SubscriptionOrdersPage() {
+  const { t, locale } = useLocale();
+  const localeCode = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+  const GATEWAY_NAMES = buildGatewayNames(t);
+  const STATUS_BADGES = buildStatusBadges(t);
   const [orders, setOrders] = useState<SubscriptionOrder[]>([]);
   const [userStores, setUserStores] = useState<UserStore[]>([]);
   const [summary, setSummary] = useState<SummaryStats>({ total_spent_tnd: 0, paid_count: 0, pending_count: 0 });
@@ -126,7 +135,7 @@ export default function SubscriptionOrdersPage() {
       const res = await fetchWithCsrf(`/api/pd/subscriptions/orders?${params.toString()}`, {
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Échec du chargement des commandes d\'abonnement');
+      if (!res.ok) throw new Error(t('dashboardPages.mySubscriptionOrders.errorLoadingOrders'));
       const data: OrdersResponse = await res.json();
       setOrders(data.orders || []);
       if (data.user_stores) setUserStores(data.user_stores);
@@ -134,11 +143,11 @@ export default function SubscriptionOrdersPage() {
       setTotalRecords(data.meta?.total || 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.mySubscriptionOrders.errorNetwork'));
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, storeFilter, searchQuery]);
+  }, [page, limit, statusFilter, storeFilter, searchQuery, t]);
 
   const handleSelectStore = async (storeId: string) => {
     setSelectingStoreId(storeId);
@@ -162,7 +171,7 @@ export default function SubscriptionOrdersPage() {
   }, [loadOrders]);
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!confirm('Voulez-vous vraiment annuler cette commande d\'abonnement ?')) return;
+    if (!confirm(t('dashboardPages.mySubscriptionOrders.confirmCancelIntent'))) return;
     setError('');
     setSuccess('');
     try {
@@ -173,14 +182,14 @@ export default function SubscriptionOrdersPage() {
         body: JSON.stringify({ intent_id: orderId }),
       });
       if (res.ok) {
-        setSuccess('Commande d\'abonnement annulée avec succès');
+        setSuccess(t('dashboardPages.mySubscriptionOrders.intentCancelled'));
         await loadOrders();
       } else {
         const data = await res.json();
-        setError(data.error?.message || 'Erreur lors de l\'annulation');
+        setError(data.error?.message || t('dashboardPages.mySubscriptionOrders.errorCancelling'));
       }
     } catch {
-      setError('Erreur réseau lors de l\'annulation');
+      setError(t('dashboardPages.mySubscriptionOrders.errorNetworkCancelling'));
     }
   };
 
@@ -199,7 +208,7 @@ export default function SubscriptionOrdersPage() {
     });
     if (!presignRes.ok) {
       const errData = await presignRes.json().catch(() => ({}));
-      throw new Error(errData.error?.message || 'Échec de la préparation du téléversement du justificatif');
+      throw new Error(errData.error?.message || t('dashboardPages.mySubscriptionOrders.errorPreparingUpload'));
     }
     const presignData = await presignRes.json();
     const uploadRes = await fetch(presignData.upload_url, {
@@ -207,7 +216,7 @@ export default function SubscriptionOrdersPage() {
       headers: { 'Content-Type': contentType },
       body: file,
     });
-    if (!uploadRes.ok) throw new Error('Échec de la transmission du justificatif sur le serveur');
+    if (!uploadRes.ok) throw new Error(t('dashboardPages.mySubscriptionOrders.errorUploadingProof'));
     return presignData.public_url || presignData.file_key;
   };
 
@@ -230,7 +239,7 @@ export default function SubscriptionOrdersPage() {
       }
 
       if (!finalUrl) {
-        setError('Veuillez sélectionner un fichier ou renseigner une URL.');
+        setError(t('dashboardPages.mySubscriptionOrders.errorNoFileOrUrl'));
         setUploading(false);
         return;
       }
@@ -246,17 +255,17 @@ export default function SubscriptionOrdersPage() {
       });
 
       if (res.ok) {
-        setSuccess('🎉 Reçu de paiement transmis avec succès ! En attente de validation.');
+        setSuccess(t('dashboardPages.mySubscriptionOrders.proofSubmitted'));
         setUploadModalOrder(null);
         setProofFile(null);
         setProofUrl('');
         await loadOrders();
       } else {
         const data = await res.json();
-        setError(data.error?.message || 'Échec de la transmission du reçu');
+        setError(data.error?.message || t('dashboardPages.mySubscriptionOrders.errorSubmittingProof'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.mySubscriptionOrders.errorNetwork'));
     } finally {
       setUploading(false);
     }
@@ -269,19 +278,19 @@ export default function SubscriptionOrdersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10 self-start">
             <ReceiptText className="h-4 w-4" />
-            Historique des Factures & Commandes Plateforme
+            {t('dashboardPages.mySubscriptionOrders.headerBadge')}
           </div>
           <Link
             href="/hub/dashboard/subscription"
             className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] hover:bg-[#991B1B] px-5 py-2.5 text-xs font-black text-white transition shadow-lg self-start sm:self-auto"
           >
             <Crown className="h-4 w-4 text-yellow-300" />
-            Changer ou Upgrader de Plan
+            {t('dashboardPages.mySubscriptionOrders.changeOrUpgradePlan')}
           </Link>
         </div>
-        <h1 className="mt-5 text-3xl font-black sm:text-4xl">Commandes & Factures d&apos;Abonnement</h1>
+        <h1 className="mt-5 text-3xl font-black sm:text-4xl">{t('dashboardPages.mySubscriptionOrders.pageTitle')}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
-          Consultez l&apos;ensemble des commandes d&apos;abonnement effectuées sur la plateforme, téléchargez vos factures officielles et transmettez vos preuves de virement.
+          {t('dashboardPages.mySubscriptionOrders.pageSubtitle')}
         </p>
       </div>
 
@@ -301,27 +310,27 @@ export default function SubscriptionOrdersPage() {
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Investi sur la Plateforme</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiTotalSpentLabel')}</span>
           <p className="text-3xl font-black text-slate-900">{summary.total_spent_tnd.toFixed(2)} TND</p>
-          <p className="text-xs text-slate-500 font-medium">{summary.paid_count} facture(s) acquittée(s)</p>
+          <p className="text-xs text-slate-500 font-medium">{summary.paid_count} {t('dashboardPages.mySubscriptionOrders.kpiTotalSpentSub')}</p>
         </div>
 
         <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Commandes en Attente</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiPendingLabel')}</span>
           <p className="text-3xl font-black text-amber-600">{summary.pending_count}</p>
-          <p className="text-xs text-slate-500 font-medium">Reçus de virement ou validation admin</p>
+          <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiPendingSub')}</p>
         </div>
 
         <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Gestion des Abonnements</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiManageLabel')}</span>
           <Link
             href="/hub/dashboard/subscription"
             className="inline-flex items-center gap-1.5 text-sm font-black text-[#B91C1C] hover:underline"
           >
-            <span>Voir les détails du plan actuel</span>
+            <span>{t('dashboardPages.mySubscriptionOrders.kpiManageLink')}</span>
             <ArrowUpRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-slate-500 font-medium">Starter, Pro, Agency & Sur-mesure</p>
+          <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiManageSub')}</p>
         </div>
       </div>
 
@@ -330,11 +339,11 @@ export default function SubscriptionOrdersPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Filter className="w-4 h-4 text-slate-400 ml-2" />
           {[
-            { id: 'all', label: 'Toutes' },
-            { id: 'captured', label: 'Payées' },
-            { id: 'pending_review', label: 'En Validation' },
-            { id: 'pending_proof', label: 'Attente Reçu' },
-            { id: 'cancelled', label: 'Annulées' },
+            { id: 'all', label: t('dashboardPages.mySubscriptionOrders.filterAll') },
+            { id: 'captured', label: t('dashboardPages.mySubscriptionOrders.filterPaid') },
+            { id: 'pending_review', label: t('dashboardPages.mySubscriptionOrders.filterPendingReview') },
+            { id: 'pending_proof', label: t('dashboardPages.mySubscriptionOrders.filterPendingProof') },
+            { id: 'cancelled', label: t('dashboardPages.mySubscriptionOrders.filterCancelled') },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -363,7 +372,7 @@ export default function SubscriptionOrdersPage() {
                 }}
                 className="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
               >
-                <option value="all">Toutes mes boutiques ({userStores.length})</option>
+                <option value="all">{t('dashboardPages.mySubscriptionOrders.allStoresOption', { count: userStores.length })}</option>
                 {userStores.map((st) => (
                   <option key={st.id} value={st.id}>
                     {st.name} {st.subdomain ? `(${st.subdomain})` : ''}
@@ -378,7 +387,7 @@ export default function SubscriptionOrdersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Rechercher par N° commande, boutique, plan..."
+            placeholder={t('dashboardPages.mySubscriptionOrders.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -394,21 +403,21 @@ export default function SubscriptionOrdersPage() {
         {loading ? (
           <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin text-[#B91C1C]" />
-            <p className="text-xs font-bold text-slate-600">Chargement des commandes d&apos;abonnement...</p>
+            <p className="text-xs font-bold text-slate-600">{t('dashboardPages.mySubscriptionOrders.loadingOrders')}</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
             <ReceiptText className="w-12 h-12 text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-800">Aucune commande d&apos;abonnement trouvée</h3>
+            <h3 className="text-lg font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.noOrdersTitle')}</h3>
             <p className="text-xs text-slate-500 max-w-sm">
-              Vous n&apos;avez pas encore passé de commande d&apos;abonnement correspondant aux critères sélectionnés.
+              {t('dashboardPages.mySubscriptionOrders.noOrdersDesc')}
             </p>
             <Link
               href="/hub/dashboard/subscription"
               className="mt-2 inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white shadow-sm"
             >
               <Sparkles className="w-4 h-4 text-yellow-300" />
-              Découvrir les plans d&apos;abonnement
+              {t('dashboardPages.mySubscriptionOrders.discoverPlans')}
             </Link>
           </div>
         ) : (
@@ -416,14 +425,14 @@ export default function SubscriptionOrdersPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4">N° Commande</th>
-                  <th className="px-6 py-4">Boutique</th>
-                  <th className="px-6 py-4">Formule</th>
-                  <th className="px-6 py-4">Montant</th>
-                  <th className="px-6 py-4">Mode de Paiement</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Statut</th>
-                  <th className="px-6 py-4 text-right">Actions / Facture</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colOrderNumber')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colStore')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colPlan')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colAmount')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colPaymentMethod')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colDate')}</th>
+                  <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colStatus')}</th>
+                  <th className="px-6 py-4 text-right">{t('dashboardPages.mySubscriptionOrders.colActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -444,10 +453,10 @@ export default function SubscriptionOrdersPage() {
                             onClick={() => handleSelectStore(ord.store_id)}
                             disabled={selectingStoreId === ord.store_id}
                             className="font-bold text-slate-900 flex items-center gap-1.5 hover:text-[#B91C1C] text-left transition group"
-                            title="Cliquer pour basculer sur cette boutique"
+                            title={t('dashboardPages.mySubscriptionOrders.switchStoreTitle')}
                           >
                             <Building className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#B91C1C]" />
-                            <span>{ord.store_name || 'Boutique'}</span>
+                            <span>{ord.store_name || t('dashboardPages.mySubscriptionOrders.defaultStoreName')}</span>
                             {selectingStoreId === ord.store_id && <Loader2 className="w-3 h-3 animate-spin text-[#B91C1C]" />}
                           </button>
                           {ord.store_subdomain && (
@@ -463,7 +472,7 @@ export default function SubscriptionOrdersPage() {
                         </span>
                         {ord.from_plan && (
                           <span className="text-[11px] text-slate-400 block">
-                            (Depuis {ord.from_plan})
+                            ({t('dashboardPages.mySubscriptionOrders.fromPlan', { plan: ord.from_plan })})
                           </span>
                         )}
                       </td>
@@ -474,7 +483,7 @@ export default function SubscriptionOrdersPage() {
                         {GATEWAY_NAMES[ord.gateway] || ord.gateway}
                       </td>
                       <td className="px-6 py-4 text-slate-500">
-                        {new Date(ord.created_at).toLocaleDateString('fr-TN', {
+                        {new Date(ord.created_at).toLocaleDateString(localeCode, {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric',
@@ -496,7 +505,7 @@ export default function SubscriptionOrdersPage() {
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-100 shadow-sm"
                           >
                             <Printer className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Facture</span>
+                            <span>{t('dashboardPages.mySubscriptionOrders.invoiceAction')}</span>
                           </button>
                         )}
 
@@ -507,7 +516,7 @@ export default function SubscriptionOrdersPage() {
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 font-bold text-white hover:bg-amber-700 shadow-sm"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>Reçu</span>
+                            <span>{t('dashboardPages.mySubscriptionOrders.receiptAction')}</span>
                           </button>
                         )}
 
@@ -517,7 +526,7 @@ export default function SubscriptionOrdersPage() {
                             onClick={() => handleCancelOrder(ord.id)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 font-bold text-rose-600 hover:bg-rose-50"
                           >
-                            <span>Annuler</span>
+                            <span>{t('dashboardPages.mySubscriptionOrders.cancelAction')}</span>
                           </button>
                         )}
                       </td>
@@ -533,7 +542,7 @@ export default function SubscriptionOrdersPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 bg-slate-50/50">
             <div className="text-xs text-slate-500 font-semibold">
-              Page {page} sur {totalPages} ({totalRecords} enregistrement(s))
+              {t('dashboardPages.mySubscriptionOrders.paginationInfo', { page, total: totalPages, records: totalRecords })}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -542,14 +551,14 @@ export default function SubscriptionOrdersPage() {
                 className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>Précédent</span>
+                <span>{t('dashboardPages.mySubscriptionOrders.previous')}</span>
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
                 className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 disabled:opacity-50"
               >
-                <span>Suivant</span>
+                <span>{t('dashboardPages.mySubscriptionOrders.next')}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -564,16 +573,16 @@ export default function SubscriptionOrdersPage() {
             {/* Invoice Header */}
             <div className="flex items-start justify-between border-b border-slate-100 pb-6">
               <div>
-                <span className="text-xs font-black uppercase tracking-widest text-[#B91C1C]">PandaMarket Platform</span>
-                <h2 className="text-2xl font-black text-slate-900 mt-1">FACTURE DE SERVICE</h2>
-                <p className="text-xs font-mono text-slate-500 mt-0.5">Réf: INV-{selectedInvoice.id.slice(-8).toUpperCase()}</p>
+                <span className="text-xs font-black uppercase tracking-widest text-[#B91C1C]">{t('dashboardPages.mySubscriptionOrders.invoicePlatform')}</span>
+                <h2 className="text-2xl font-black text-slate-900 mt-1">{t('dashboardPages.mySubscriptionOrders.invoiceTitle')}</h2>
+                <p className="text-xs font-mono text-slate-500 mt-0.5">{t('dashboardPages.mySubscriptionOrders.invoiceRef', { ref: selectedInvoice.id.slice(-8).toUpperCase() })}</p>
               </div>
               <div className="text-right">
                 <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 rounded-full text-xs">
-                  ✓ PAYÉE & ACQUITTÉE
+                  {t('dashboardPages.mySubscriptionOrders.invoicePaidBadge')}
                 </span>
                 <p className="text-xs text-slate-500 mt-2">
-                  Date: {new Date(selectedInvoice.created_at).toLocaleDateString('fr-TN')}
+                  {t('dashboardPages.mySubscriptionOrders.invoiceDateLabel')}: {new Date(selectedInvoice.created_at).toLocaleDateString(localeCode)}
                 </p>
               </div>
             </div>
@@ -581,17 +590,17 @@ export default function SubscriptionOrdersPage() {
             {/* Billed To / Company Details */}
             <div className="grid grid-cols-2 gap-6 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div>
-                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">Prestataire</span>
-                <p className="font-black text-slate-900">PandaMarket SARL</p>
-                <p className="text-slate-600">Plateforme E-Commerce B2B</p>
-                <p className="text-slate-600">MF: 1234567/A/P/000</p>
-                <p className="text-slate-600">Tunis, Tunisie</p>
+                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLabel')}</span>
+                <p className="font-black text-slate-900">{t('dashboardPages.mySubscriptionOrders.invoiceProviderName')}</p>
+                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderDesc')}</p>
+                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderMf')}</p>
+                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLocation')}</p>
               </div>
               <div>
-                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">Bénéficiaire / Boutique</span>
-                <p className="font-black text-slate-900">N° Store #{selectedInvoice.store_id.slice(-8)}</p>
-                <p className="text-slate-600">Abonnement Formule {selectedInvoice.target_plan.toUpperCase()}</p>
-                <p className="text-slate-600">Règlement via {GATEWAY_NAMES[selectedInvoice.gateway] || selectedInvoice.gateway}</p>
+                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceBeneficiaryLabel')}</span>
+                <p className="font-black text-slate-900">{t('dashboardPages.mySubscriptionOrders.invoiceStoreNumber', { ref: selectedInvoice.store_id.slice(-8) })}</p>
+                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceSubscriptionPlan', { plan: selectedInvoice.target_plan.toUpperCase() })}</p>
+                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoicePaymentVia', { gateway: GATEWAY_NAMES[selectedInvoice.gateway] || selectedInvoice.gateway })}</p>
               </div>
             </div>
 
@@ -600,22 +609,22 @@ export default function SubscriptionOrdersPage() {
               <table className="w-full text-left">
                 <thead className="bg-slate-100 text-slate-600 font-bold">
                   <tr>
-                    <th className="p-3">Description du Service</th>
-                    <th className="p-3">Période</th>
-                    <th className="p-3 text-right">Montant (TND)</th>
+                    <th className="p-3">{t('dashboardPages.mySubscriptionOrders.invoiceColDescription')}</th>
+                    <th className="p-3">{t('dashboardPages.mySubscriptionOrders.invoiceColPeriod')}</th>
+                    <th className="p-3 text-right">{t('dashboardPages.mySubscriptionOrders.invoiceColAmount')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   <tr>
                     <td className="p-3">
                       <span className="font-bold text-slate-900 block">
-                        Abonnement Plateforme — Plan {selectedInvoice.target_plan.toUpperCase()}
+                        {t('dashboardPages.mySubscriptionOrders.invoiceLineItem', { plan: selectedInvoice.target_plan.toUpperCase() })}
                       </span>
                       <span className="text-slate-500 text-[11px]">
-                        Accès complet au catalogue, builder et outils marketplace
+                        {t('dashboardPages.mySubscriptionOrders.invoiceLineItemDesc')}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-600">1 An</td>
+                    <td className="p-3 text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoicePeriod')}</td>
                     <td className="p-3 text-right font-bold text-slate-900">
                       {Number(selectedInvoice.amount).toFixed(2)} TND
                     </td>
@@ -627,11 +636,11 @@ export default function SubscriptionOrdersPage() {
             {/* Invoice Totals */}
             <div className="flex justify-between items-center pt-2">
               <div className="text-xs text-slate-500 space-y-1">
-                <p>TVA non applicable / Exonérée d&apos;impôt direct</p>
-                <p>Facture générée automatiquement par la plateforme PandaMarket</p>
+                <p>{t('dashboardPages.mySubscriptionOrders.invoiceTaxNote')}</p>
+                <p>{t('dashboardPages.mySubscriptionOrders.invoiceAutoGenerated')}</p>
               </div>
               <div className="text-right">
-                <span className="text-xs text-slate-500 font-bold uppercase block">Total Net Payé</span>
+                <span className="text-xs text-slate-500 font-bold uppercase block">{t('dashboardPages.mySubscriptionOrders.invoiceTotalNet')}</span>
                 <span className="text-2xl font-black text-slate-900">{Number(selectedInvoice.amount).toFixed(2)} TND</span>
               </div>
             </div>
@@ -643,7 +652,7 @@ export default function SubscriptionOrdersPage() {
                 onClick={() => setSelectedInvoice(null)}
                 className="px-5 py-2.5 rounded-2xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100"
               >
-                Fermer
+                {t('dashboardPages.mySubscriptionOrders.close')}
               </button>
               <button
                 type="button"
@@ -651,7 +660,7 @@ export default function SubscriptionOrdersPage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shadow-md"
               >
                 <Printer className="w-4 h-4" />
-                Imprimer la Facture
+                {t('dashboardPages.mySubscriptionOrders.printInvoice')}
               </button>
             </div>
           </div>
@@ -664,8 +673,8 @@ export default function SubscriptionOrdersPage() {
           <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Transmettre le Reçu de Paiement</h3>
-                <p className="text-xs text-slate-500">Commande #{uploadModalOrder.id.slice(-8)} — Plan {uploadModalOrder.target_plan.toUpperCase()}</p>
+                <h3 className="text-lg font-bold text-slate-900">{t('dashboardPages.mySubscriptionOrders.uploadProofTitle')}</h3>
+                <p className="text-xs text-slate-500">{t('dashboardPages.mySubscriptionOrders.uploadProofSubtitle', { ref: uploadModalOrder.id.slice(-8), plan: uploadModalOrder.target_plan.toUpperCase() })}</p>
               </div>
               <button
                 type="button"
@@ -679,14 +688,14 @@ export default function SubscriptionOrdersPage() {
             <div className="space-y-4">
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
                 <p className="font-bold flex items-center gap-1">
-                  <Building className="w-4 h-4 text-amber-700" /> Mandat Minute / STB Bancaire
+                  <Building className="w-4 h-4 text-amber-700" /> {t('dashboardPages.mySubscriptionOrders.mandatBankTitle')}
                 </p>
-                <p>RIB STB : <strong>10 000 0000000000000 00</strong> (PandaMarket SARL)</p>
-                <p>Vous pouvez téléverser votre reçu ci-dessous.</p>
+                <p>{t('dashboardPages.mySubscriptionOrders.mandatRibLabel')}: <strong>10 000 0000000000000 00</strong> ({t('dashboardPages.mySubscriptionOrders.invoiceProviderName')})</p>
+                <p>{t('dashboardPages.mySubscriptionOrders.mandatUploadHint')}</p>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">Fichier Reçu / Justificatif (Image/PDF)</label>
+                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.fileLabel')}</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
@@ -696,7 +705,7 @@ export default function SubscriptionOrdersPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">OU Lien / URL de l&apos;image</label>
+                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.orUrlLabel')}</label>
                 <input
                   type="url"
                   value={proofUrl}
@@ -713,7 +722,7 @@ export default function SubscriptionOrdersPage() {
                 onClick={() => setUploadModalOrder(null)}
                 className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-200"
               >
-                Annuler
+                {t('dashboardPages.mySubscriptionOrders.cancelAction')}
               </button>
               <button
                 type="button"
@@ -721,7 +730,7 @@ export default function SubscriptionOrdersPage() {
                 disabled={uploading}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-2xl text-xs hover:bg-[#991B1B] disabled:opacity-50"
               >
-                {uploading ? 'Transmission...' : 'Soumettre le Reçu'}
+                {uploading ? t('dashboardPages.mySubscriptionOrders.transmitting') : t('dashboardPages.mySubscriptionOrders.submitReceipt')}
               </button>
             </div>
           </div>

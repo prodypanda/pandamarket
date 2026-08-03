@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart3,
@@ -87,17 +88,7 @@ const STATUS_COLORS: Record<string, string> = {
   refunded: '#8B5CF6',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'En attente',
-  processing: 'En cours',
-  payment_required: 'Paiement requis',
-  fulfilled: 'Expédié',
-  delivered: 'Livré',
-  cancelled: 'Annulé',
-  refunded: 'Remboursé',
-};
 
-const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
 const RANK_COLORS = ['from-yellow-400 to-amber-500', 'from-gray-300 to-gray-400', 'from-orange-400 to-orange-600'];
 
@@ -109,6 +100,26 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
+  const { t, locale } = useLocale();
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+  const statusLabels: Record<string, string> = {
+    pending: t('dashboardPages.analytics.statusPending'),
+    processing: t('dashboardPages.analytics.statusProcessing'),
+    payment_required: t('dashboardPages.analytics.statusPaymentRequired'),
+    fulfilled: t('dashboardPages.analytics.statusFulfilled'),
+    delivered: t('dashboardPages.analytics.statusDelivered'),
+    cancelled: t('dashboardPages.analytics.statusCancelled'),
+    refunded: t('dashboardPages.analytics.statusRefunded'),
+  };
+  const dayLabels = [
+    t('dashboardPages.analytics.daySun'),
+    t('dashboardPages.analytics.dayMon'),
+    t('dashboardPages.analytics.dayTue'),
+    t('dashboardPages.analytics.dayWed'),
+    t('dashboardPages.analytics.dayThu'),
+    t('dashboardPages.analytics.dayFri'),
+    t('dashboardPages.analytics.daySat'),
+  ];
 
   const fetchAnalytics = useCallback(async (p: number) => {
     setLoading(true);
@@ -147,35 +158,35 @@ export default function AnalyticsPage() {
   const kpiCards = kpis
     ? [
         {
-          label: 'Revenu total',
+          label: t('dashboardPages.analytics.kpiRevenue'),
           value: formatPrice(kpis.total_revenue),
           icon: DollarSign,
           gradient: 'from-amber-500 to-teal-600',
           bg: 'bg-amber-50',
         },
         {
-          label: 'Commandes',
+          label: t('dashboardPages.analytics.kpiOrders'),
           value: String(kpis.total_orders),
           icon: ShoppingCart,
           gradient: 'from-blue-500 to-indigo-600',
           bg: 'bg-blue-50',
         },
         {
-          label: 'Panier moyen',
+          label: t('dashboardPages.analytics.kpiAvgOrder'),
           value: formatPrice(kpis.avg_order_value),
           icon: Package,
           gradient: 'from-violet-500 to-purple-600',
           bg: 'bg-violet-50',
         },
         {
-          label: 'Clients fidèles',
+          label: t('dashboardPages.analytics.kpiRepeatCustomers'),
           value: `${kpis.repeat_customer_rate}%`,
           icon: Repeat,
           gradient: 'from-amber-500 to-orange-600',
           bg: 'bg-amber-50',
         },
         {
-          label: 'Croissance',
+          label: t('dashboardPages.analytics.kpiGrowth'),
           value: `${kpis.conversion_period_growth >= 0 ? '+' : ''}${kpis.conversion_period_growth}%`,
           icon: kpis.conversion_period_growth >= 0 ? TrendingUp : TrendingDown,
           gradient: kpis.conversion_period_growth >= 0 ? 'from-amber-500 to-green-600' : 'from-red-500 to-rose-600',
@@ -228,11 +239,11 @@ export default function AnalyticsPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
               <BarChart3 className="h-4 w-4" />
-              Analytics
+              {t('dashboardPages.analytics.badge')}
             </div>
-            <h1 className="mt-3 text-2xl font-black tracking-tight">Performance de votre boutique</h1>
+            <h1 className="mt-3 text-2xl font-black tracking-tight">{t('dashboardPages.analytics.title')}</h1>
             <p className="mt-1 text-sm text-amber-50/70">
-              Analysez vos ventes, produits et tendances pour optimiser votre activité.
+              {t('dashboardPages.analytics.subtitle')}
             </p>
           </div>
           {/* Period selector */}
@@ -247,7 +258,7 @@ export default function AnalyticsPage() {
                     : 'text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                {p}j
+                {t('dashboardPages.analytics.periodButton', { p })}
               </button>
             ))}
           </div>
@@ -287,18 +298,18 @@ export default function AnalyticsPage() {
           {bestDay && bestDay.revenue > 0 && (
             <div className="inline-flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
               <Sparkles className="h-4 w-4 text-amber-600" />
-              Meilleur jour : <strong>{DAY_LABELS[bestDay.day]}</strong> avec {formatPrice(bestDay.revenue)}
+              {t('dashboardPages.analytics.bestDayPrefix')} <strong>{dayLabels[bestDay.day]}</strong> {t('dashboardPages.analytics.bestDaySuffix', { revenue: formatPrice(bestDay.revenue) })}
             </div>
           )}
           {kpis.total_orders > 0 && (
             <div className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800">
               <Target className="h-4 w-4 text-blue-600" />
-              {kpis.total_orders} commande{kpis.total_orders > 1 ? 's' : ''} sur {period} jours
+              {t('dashboardPages.analytics.ordersOverPeriod', { count: kpis.total_orders, s: kpis.total_orders > 1 ? 's' : '', period })}
             </div>
           )}
           <div className="inline-flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-600">
             <Calendar className="h-4 w-4 text-gray-400" />
-            Période : {period} derniers jours
+            {t('dashboardPages.analytics.periodLabel', { period })}
           </div>
         </div>
       )}
@@ -309,9 +320,9 @@ export default function AnalyticsPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-black text-gray-900">Tendance des revenus</h3>
+              <h3 className="text-base font-black text-gray-900">{t('dashboardPages.analytics.revenueTrendTitle')}</h3>
               <p className="text-xs text-gray-500">
-                {period} derniers jours • {formatCompact(kpis?.total_revenue ?? 0)} TND
+                {t('dashboardPages.analytics.revenueTrendSubtitle', { period, revenue: formatCompact(kpis?.total_revenue ?? 0) })}
               </p>
             </div>
             <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${(kpis?.conversion_period_growth ?? 0) >= 0 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-500'}`}>
@@ -344,7 +355,7 @@ export default function AnalyticsPage() {
                 )}
                 {points.map((p, i) => (
                   <circle key={i} cx={p.x} cy={p.y} r="4" fill="white" stroke="#B91C1C" strokeWidth="2" className="opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                    <title>{`${new Date(p.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}: ${formatPrice(p.revenue)} (${p.orders} cmd)`}</title>
+                    <title>{t('dashboardPages.analytics.chartTooltip', { date: new Date(p.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }), revenue: formatPrice(p.revenue), orders: p.orders })}</title>
                   </circle>
                 ))}
               </svg>
@@ -357,12 +368,12 @@ export default function AnalyticsPage() {
               {/* X-axis labels */}
               <div className="flex justify-between mt-1 text-[10px] text-gray-400">
                 <span>
-                  {trend[0] && new Date(trend[0].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}
+                  {trend[0] && new Date(trend[0].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
                 </span>
                 <span>
-                  {trend[Math.floor(trend.length / 2)] && new Date(trend[Math.floor(trend.length / 2)].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}
+                  {trend[Math.floor(trend.length / 2)] && new Date(trend[Math.floor(trend.length / 2)].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
                 </span>
-                <span>Aujourd&apos;hui</span>
+                <span>{t('dashboardPages.analytics.today')}</span>
               </div>
             </div>
           )}
@@ -370,14 +381,14 @@ export default function AnalyticsPage() {
 
         {/* Order Status Donut */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-black text-gray-900 mb-4">Répartition des commandes</h3>
+          <h3 className="text-base font-black text-gray-900 mb-4">{t('dashboardPages.analytics.orderBreakdownTitle')}</h3>
           {loading ? (
             <div className="h-[180px] animate-pulse rounded-lg bg-gray-50" />
           ) : breakdown.length === 0 ? (
             <div className="flex h-[180px] flex-col items-center justify-center text-center">
               <ShoppingCart className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm font-semibold text-gray-400">Aucune commande</p>
-              <p className="mt-1 text-xs text-gray-300">Les données apparaîtront ici</p>
+              <p className="text-sm font-semibold text-gray-400">{t('dashboardPages.analytics.noOrders')}</p>
+              <p className="mt-1 text-xs text-gray-300">{t('dashboardPages.analytics.noOrdersHint')}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -401,7 +412,7 @@ export default function AnalyticsPage() {
                   {totalBreakdown > 1 ? totalBreakdown : breakdown.reduce((s, b) => s + b.count, 0)}
                 </text>
                 <text x="80" y="94" textAnchor="middle" className="text-xs fill-gray-500">
-                  commandes
+                  {t('dashboardPages.analytics.ordersCount')}
                 </text>
               </svg>
               <div className="space-y-1.5 w-full">
@@ -411,7 +422,7 @@ export default function AnalyticsPage() {
                     <div key={b.status} className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[b.status] || '#9CA3AF' }} />
-                        <span className="text-gray-600">{STATUS_LABELS[b.status] || b.status}</span>
+                        <span className="text-gray-600">{statusLabels[b.status] || b.status}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{pct}%</span>
@@ -431,9 +442,9 @@ export default function AnalyticsPage() {
         {/* Top Products */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-base font-black text-gray-900">Produits les plus vendus</h3>
+            <h3 className="text-base font-black text-gray-900">{t('dashboardPages.analytics.topProductsTitle')}</h3>
             <Link href="/hub/dashboard/products" className="text-xs font-bold text-[#B91C1C] hover:underline">
-              Voir tous les produits →
+              {t('dashboardPages.analytics.viewAllProducts')}
             </Link>
           </div>
           {loading ? (
@@ -445,8 +456,8 @@ export default function AnalyticsPage() {
           ) : topProducts.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center text-center">
               <Package className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm font-semibold text-gray-400">Aucune vente sur cette période</p>
-              <p className="mt-1 text-xs text-gray-300">Ajoutez des produits pour commencer</p>
+              <p className="text-sm font-semibold text-gray-400">{t('dashboardPages.analytics.noSales')}</p>
+              <p className="mt-1 text-xs text-gray-300">{t('dashboardPages.analytics.noSalesHint')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -495,7 +506,7 @@ export default function AnalyticsPage() {
 
                     <div className="text-right shrink-0">
                       <p className="text-sm font-black text-gray-900">{formatCompact(product.revenue)}</p>
-                      <p className="text-[10px] font-semibold text-gray-400">{product.units_sold} unités</p>
+                      <p className="text-[10px] font-semibold text-gray-400">{t('dashboardPages.analytics.units', { count: product.units_sold, s: product.units_sold > 1 ? 's' : '' })}</p>
                     </div>
 
                     <ExternalLink className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -508,17 +519,17 @@ export default function AnalyticsPage() {
 
         {/* Day-of-Week Heatmap */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-black text-gray-900 mb-5">Revenus par jour</h3>
+          <h3 className="text-base font-black text-gray-900 mb-5">{t('dashboardPages.analytics.revenueByDayTitle')}</h3>
           {loading ? (
             <div className="h-[200px] animate-pulse rounded-lg bg-gray-50" />
           ) : revenueByDay.length === 0 ? (
             <div className="flex h-[200px] flex-col items-center justify-center text-center">
               <Calendar className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm font-semibold text-gray-400">Pas de données</p>
+              <p className="text-sm font-semibold text-gray-400">{t('dashboardPages.analytics.noData')}</p>
             </div>
           ) : (
             <div className="space-y-2.5">
-              {DAY_LABELS.map((label, dayIdx) => {
+              {dayLabels.map((label, dayIdx) => {
                 const dayData = revenueByDay.find((d) => d.day === dayIdx);
                 const rev = dayData?.revenue ?? 0;
                 const intensity = maxDayRevenue > 0 ? rev / maxDayRevenue : 0;
@@ -541,7 +552,7 @@ export default function AnalyticsPage() {
                       )}
                     </div>
                     <span className="w-14 text-right text-[10px] font-semibold text-gray-400">
-                      {dayData?.orders ?? 0} cmd
+                      {t('dashboardPages.analytics.ordersShort', { count: dayData?.orders ?? 0 })}
                     </span>
                   </div>
                 );

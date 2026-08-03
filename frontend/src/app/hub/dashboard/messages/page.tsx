@@ -1,13 +1,16 @@
 'use client';
 
 import { ChatInbox } from '../../../../components/chat/ChatInbox';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export default function SellerMessagesPage() {
+  const { t } = useLocale();
+
   return (
     <ChatInbox
       mode="seller"
-      title="Message center"
-      subtitle="Manage buyer conversations and private hub administrator support threads from one robust seller inbox."
+      title={t('dashboardPages.messages.title')}
+      subtitle={t('dashboardPages.messages.subtitle')}
     />
   );
 }

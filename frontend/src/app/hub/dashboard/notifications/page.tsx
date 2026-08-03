@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, Check, CheckCheck, Loader2, Filter, Trash2 } from 'lucide-react';
 
@@ -30,6 +31,7 @@ const typeIcons: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
+  const { t, locale } = useLocale();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -66,14 +68,14 @@ export default function NotificationsPage() {
         setNotifications(data.data || []);
         setTotalPages(data.meta?.total_pages || 1);
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement des notifications'));
+        setError(await getErrorMessage(res, t('dashboardPages.notifications.failedToLoad')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.notifications.networkError'));
     } finally {
       setLoading(false);
     }
-  }, [filter, getErrorMessage, page]);
+  }, [filter, getErrorMessage, page, t]);
 
   useEffect(() => {
     fetchNotifications();
@@ -87,14 +89,14 @@ export default function NotificationsPage() {
         credentials: 'include',
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        setError(await getErrorMessage(res, t('dashboardPages.notifications.updateFailed')));
         return;
       }
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.notifications.networkError'));
     }
   };
 
@@ -107,12 +109,12 @@ export default function NotificationsPage() {
         credentials: 'include',
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        setError(await getErrorMessage(res, t('dashboardPages.notifications.updateFailed')));
         return;
       }
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.notifications.networkError'));
     } finally {
       setMarkingAll(false);
     }
@@ -128,10 +130,10 @@ export default function NotificationsPage() {
       if (res.ok) {
         setNotifications((prev) => prev.filter((n) => n.id !== id));
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de la suppression'));
+        setError(await getErrorMessage(res, t('dashboardPages.notifications.deleteFailed')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.notifications.networkError'));
     }
   };
 
@@ -144,14 +146,14 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Bell className="w-6 h-6 text-[#B91C1C]" />
-            Notifications
+            {t('dashboardPages.notifications.title')}
             {unreadCount > 0 && (
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                 {unreadCount}
               </span>
             )}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Restez informé de l&apos;activité de votre boutique.</p>
+          <p className="text-gray-500 text-sm mt-1">{t('dashboardPages.notifications.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -159,7 +161,7 @@ export default function NotificationsPage() {
             className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Filter className="w-4 h-4 mr-2" />
-            {filter === 'all' ? 'Non lues uniquement' : 'Toutes'}
+            {filter === 'all' ? t('dashboardPages.notifications.filterUnreadOnly') : t('dashboardPages.notifications.filterAll')}
           </button>
           {unreadCount > 0 && (
             <button
@@ -172,7 +174,7 @@ export default function NotificationsPage() {
               ) : (
                 <CheckCheck className="w-4 h-4 mr-2" />
               )}
-              Tout marquer comme lu
+              {t('dashboardPages.notifications.markAllAsRead')}
             </button>
           )}
         </div>
@@ -193,7 +195,7 @@ export default function NotificationsPage() {
         ) : notifications.length === 0 ? (
           <div className="text-center py-16">
             <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Aucune notification.</p>
+            <p className="text-gray-500">{t('dashboardPages.notifications.empty')}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -219,7 +221,7 @@ export default function NotificationsPage() {
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
                   <span className="text-xs text-gray-400 mt-1 block">
-                    {new Date(notif.created_at).toLocaleDateString('fr-TN', {
+                    {new Date(notif.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
                       day: 'numeric',
                       month: 'short',
                       hour: '2-digit',
@@ -231,7 +233,7 @@ export default function NotificationsPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
                     className="p-1.5 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/10 rounded-lg transition-colors flex-shrink-0"
-                    title="Marquer comme lu"
+                    title={t('dashboardPages.notifications.markAsRead')}
                   >
                     <Check className="w-4 h-4" />
                   </button>
@@ -239,7 +241,7 @@ export default function NotificationsPage() {
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
                   className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                  title="Supprimer"
+                  title={t('dashboardPages.notifications.delete')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -256,15 +258,15 @@ export default function NotificationsPage() {
               disabled={page <= 1}
               className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
             >
-              ← Précédent
+              ← {t('dashboardPages.notifications.previous')}
             </button>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
+            <span className="text-sm text-gray-500">{t('dashboardPages.notifications.page', { current: page, total: totalPages })}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
             >
-              Suivant →
+              {t('dashboardPages.notifications.next')} →
             </button>
           </div>
         )}

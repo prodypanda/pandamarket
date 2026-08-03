@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Clock, Eye, Loader2, MessageSquare, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
@@ -40,23 +41,24 @@ interface ReportMeta {
   summary?: ReportSummary;
 }
 
-const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; border: string; icon: typeof AlertTriangle }> = {
-  open: { label: 'Open', color: 'bg-red-50 text-red-700 ring-red-100', border: 'border-red-100', icon: AlertTriangle },
-  investigating: { label: 'Investigating', color: 'bg-yellow-50 text-yellow-700 ring-yellow-100', border: 'border-yellow-100', icon: Clock },
-  awaiting_buyer: { label: 'Awaiting buyer', color: 'bg-blue-50 text-blue-700 ring-blue-100', border: 'border-blue-100', icon: MessageSquare },
-  awaiting_seller: { label: 'Action required', color: 'bg-purple-50 text-purple-700 ring-purple-100', border: 'border-purple-100', icon: ShieldAlert },
-  resolved: { label: 'Resolved', color: 'bg-green-50 text-green-700 ring-green-100', border: 'border-green-100', icon: CheckCircle },
-  dismissed: { label: 'Dismissed', color: 'bg-gray-100 text-gray-600 ring-gray-200', border: 'border-gray-100', icon: XCircle },
+const STATUS_CONFIG: Record<ReportStatus, { labelKey: string; color: string; border: string; icon: typeof AlertTriangle }> = {
+  open: { labelKey: 'dashboardPages.reports.statusOpen', color: 'bg-red-50 text-red-700 ring-red-100', border: 'border-red-100', icon: AlertTriangle },
+  investigating: { labelKey: 'dashboardPages.reports.statusInvestigating', color: 'bg-yellow-50 text-yellow-700 ring-yellow-100', border: 'border-yellow-100', icon: Clock },
+  awaiting_buyer: { labelKey: 'dashboardPages.reports.statusAwaitingBuyer', color: 'bg-blue-50 text-blue-700 ring-blue-100', border: 'border-blue-100', icon: MessageSquare },
+  awaiting_seller: { labelKey: 'dashboardPages.reports.statusAwaitingSeller', color: 'bg-purple-50 text-purple-700 ring-purple-100', border: 'border-purple-100', icon: ShieldAlert },
+  resolved: { labelKey: 'dashboardPages.reports.statusResolved', color: 'bg-green-50 text-green-700 ring-green-100', border: 'border-green-100', icon: CheckCircle },
+  dismissed: { labelKey: 'dashboardPages.reports.statusDismissed', color: 'bg-gray-100 text-gray-600 ring-gray-200', border: 'border-gray-100', icon: XCircle },
 };
 
-const PRIORITY_CONFIG: Record<ReportPriority, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'bg-gray-100 text-gray-600' },
-  medium: { label: 'Medium', color: 'bg-blue-50 text-blue-700' },
-  high: { label: 'High', color: 'bg-orange-50 text-orange-700' },
-  critical: { label: 'Critical', color: 'bg-red-50 text-red-700' },
+const PRIORITY_CONFIG: Record<ReportPriority, { labelKey: string; color: string }> = {
+  low: { labelKey: 'dashboardPages.reports.priorityLow', color: 'bg-gray-100 text-gray-600' },
+  medium: { labelKey: 'dashboardPages.reports.priorityMedium', color: 'bg-blue-50 text-blue-700' },
+  high: { labelKey: 'dashboardPages.reports.priorityHigh', color: 'bg-orange-50 text-orange-700' },
+  critical: { labelKey: 'dashboardPages.reports.priorityCritical', color: 'bg-red-50 text-red-700' },
 };
 
 export default function VendorReportsPage() {
+  const { t, locale } = useLocale();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -81,17 +83,17 @@ export default function VendorReportsPage() {
       const params = new URLSearchParams({ page: String(page), limit: '10' });
       if (filter !== 'all') params.set('status', filter);
       const res = await fetchWithCsrf(`/api/pd/reports/store?${params.toString()}`, { credentials: 'include' });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load reports'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.reports.failedToLoad')));
       const data = await res.json();
       setReports(data.data || []);
       setMeta(data.meta || { page, limit: 10, total: 0, total_pages: 1 });
     } catch (err) {
       setReports([]);
-      setError(err instanceof Error ? err.message : 'Network error');
+      setError(err instanceof Error ? err.message : t('dashboardPages.reports.networkError'));
     } finally {
       setLoading(false);
     }
-  }, [filter, getErrorMessage, page]);
+  }, [filter, getErrorMessage, page, t]);
 
   useEffect(() => {
     void fetchReports();
@@ -106,9 +108,11 @@ export default function VendorReportsPage() {
     setPage(1);
   }
 
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+
   function formatDate(value?: string | null) {
     if (!value) return '—';
-    return new Date(value).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(value).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   function reportRef(report: Report) {
@@ -126,11 +130,11 @@ export default function VendorReportsPage() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-white/80">
               <ShieldAlert className="h-3.5 w-3.5" />
-              Case management
+              {t('dashboardPages.reports.badge')}
             </span>
-            <h1 className="mt-4 text-3xl font-black tracking-tight">Reports & Disputes</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight">{t('dashboardPages.reports.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white/75">
-              Track reports filed against your store, review marketplace notes, and respond with evidence from each case.
+              {t('dashboardPages.reports.subtitle')}
             </p>
           </div>
           <button
@@ -140,18 +144,18 @@ export default function VendorReportsPage() {
             className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-white/90 disabled:opacity-70"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh
+            {t('dashboardPages.reports.refresh')}
           </button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {[
-          { label: 'Total cases', value: summary?.total ?? meta.total, icon: AlertTriangle, tone: 'text-slate-700 bg-slate-50' },
-          { label: 'Open', value: summary?.open ?? reports.filter((report) => report.status === 'open').length, icon: AlertTriangle, tone: 'text-red-700 bg-red-50' },
-          { label: 'Investigating', value: summary?.investigating ?? reports.filter((report) => report.status === 'investigating').length, icon: Clock, tone: 'text-yellow-700 bg-yellow-50' },
-          { label: 'High priority', value: summary?.high_priority ?? reports.filter((report) => ['high', 'critical'].includes(report.priority || '')).length, icon: ShieldAlert, tone: 'text-orange-700 bg-orange-50' },
-          { label: 'Action required', value: actionRequiredCount, icon: MessageSquare, tone: 'text-purple-700 bg-purple-50' },
+          { label: t('dashboardPages.reports.statTotalCases'), value: summary?.total ?? meta.total, icon: AlertTriangle, tone: 'text-slate-700 bg-slate-50' },
+          { label: t('dashboardPages.reports.statOpen'), value: summary?.open ?? reports.filter((report) => report.status === 'open').length, icon: AlertTriangle, tone: 'text-red-700 bg-red-50' },
+          { label: t('dashboardPages.reports.statInvestigating'), value: summary?.investigating ?? reports.filter((report) => report.status === 'investigating').length, icon: Clock, tone: 'text-yellow-700 bg-yellow-50' },
+          { label: t('dashboardPages.reports.statHighPriority'), value: summary?.high_priority ?? reports.filter((report) => ['high', 'critical'].includes(report.priority || '')).length, icon: ShieldAlert, tone: 'text-orange-700 bg-orange-50' },
+          { label: t('dashboardPages.reports.statActionRequired'), value: actionRequiredCount, icon: MessageSquare, tone: 'text-purple-700 bg-purple-50' },
         ].map((item) => (
           <div key={item.label} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className={`mb-4 inline-flex rounded-2xl p-3 ${item.tone}`}>
@@ -176,7 +180,7 @@ export default function VendorReportsPage() {
                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
             }`}
           >
-            {status === 'all' ? 'All cases' : STATUS_CONFIG[status].label}
+            {status === 'all' ? t('dashboardPages.reports.filterAll') : t(STATUS_CONFIG[status].labelKey)}
           </button>
         ))}
       </div>
@@ -201,11 +205,11 @@ export default function VendorReportsPage() {
       ) : reports.length === 0 ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center shadow-sm">
           <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[#B91C1C]" />
-          <h3 className="mb-2 text-lg font-bold text-gray-900">No reports</h3>
+          <h3 className="mb-2 text-lg font-bold text-gray-900">{t('dashboardPages.reports.emptyTitle')}</h3>
           <p className="text-sm text-gray-500">
             {filter === 'all'
-              ? 'Your store has no reports filed against it. Keep up the great work!'
-              : `No ${filter} reports found.`}
+              ? t('dashboardPages.reports.emptyAll')
+              : t('dashboardPages.reports.emptyFiltered', { filter: t(STATUS_CONFIG[filter as ReportStatus].labelKey) })}
           </p>
         </div>
       ) : (
@@ -224,16 +228,16 @@ export default function VendorReportsPage() {
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ring-1 ${config.color}`}>
                         <StatusIcon className="h-3.5 w-3.5" />
-                        {config.label}
+                        {t(config.labelKey)}
                       </span>
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${priority.color}`}>
-                        {priority.label}
+                        {t(priority.labelKey)}
                       </span>
                       {report.category && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">{report.category}</span>}
                       <span className="font-mono text-xs font-bold text-gray-400">{reportRef(report)}</span>
                       {report.order_id && (
                         <span className="font-mono text-xs font-bold text-gray-400">
-                          Order #{report.order_id.slice(-8).toUpperCase()}
+                          {t('dashboardPages.reports.orderRef', { id: report.order_id.slice(-8).toUpperCase() })}
                         </span>
                       )}
                     </div>
@@ -241,10 +245,10 @@ export default function VendorReportsPage() {
                       {report.reason}
                     </h2>
                     <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-bold text-gray-400">
-                      <span>Filed {formatDate(report.created_at)}</span>
-                      {report.reporter_email && <span>Buyer {report.reporter_email}</span>}
-                      {report.updated_at && <span>Updated {formatDate(report.updated_at)}</span>}
-                      {report.resolved_at && <span>Resolved {formatDate(report.resolved_at)}</span>}
+                      <span>{t('dashboardPages.reports.filed')} {formatDate(report.created_at)}</span>
+                      {report.reporter_email && <span>{t('dashboardPages.reports.buyer')} {report.reporter_email}</span>}
+                      {report.updated_at && <span>{t('dashboardPages.reports.updated')} {formatDate(report.updated_at)}</span>}
+                      {report.resolved_at && <span>{t('dashboardPages.reports.resolved')} {formatDate(report.resolved_at)}</span>}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -254,13 +258,13 @@ export default function VendorReportsPage() {
                       className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <Eye className="h-4 w-4" />
-                      Quick view
+                      {t('dashboardPages.reports.quickView')}
                     </button>
                     <Link
                       href={`/hub/dashboard/reports/${report.id}`}
                       className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-2 text-sm font-black text-white hover:bg-[#991B1B]"
                     >
-                      Open case
+                      {t('dashboardPages.reports.openCase')}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
@@ -268,7 +272,7 @@ export default function VendorReportsPage() {
 
                 {report.admin_notes && (
                   <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                    <p className="mb-1 text-xs font-black uppercase tracking-wide text-blue-700">Admin response</p>
+                    <p className="mb-1 text-xs font-black uppercase tracking-wide text-blue-700">{t('dashboardPages.reports.adminResponse')}</p>
                     <p className="line-clamp-3 text-sm leading-6 text-blue-800">{report.admin_notes}</p>
                   </div>
                 )}
@@ -281,7 +285,11 @@ export default function VendorReportsPage() {
       {!loading && reports.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-gray-500">
-            Showing page {meta.page || page} of {Math.max(1, meta.total_pages || 1)} · {meta.total || reports.length} total case{(meta.total || reports.length) !== 1 ? 's' : ''}
+            {t('dashboardPages.reports.paginationSummary', {
+              page: meta.page || page,
+              total: Math.max(1, meta.total_pages || 1),
+              count: meta.total || reports.length,
+            })}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -291,7 +299,7 @@ export default function VendorReportsPage() {
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
-              Previous
+              {t('dashboardPages.reports.previous')}
             </button>
             <button
               type="button"
@@ -299,7 +307,7 @@ export default function VendorReportsPage() {
               disabled={page >= (meta.total_pages || 1)}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 disabled:opacity-40"
             >
-              Next
+              {t('dashboardPages.reports.next')}
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -311,7 +319,7 @@ export default function VendorReportsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Report Details</h3>
+              <h3 className="text-lg font-bold text-gray-900">{t('dashboardPages.reports.detailsTitle')}</h3>
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -323,62 +331,62 @@ export default function VendorReportsPage() {
 
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Report ID</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.reportId')}</p>
                 <p className="text-sm text-gray-900 font-mono">{selectedReport.id}</p>
               </div>
 
               {selectedReport.category && (
                 <div>
-                  <p className="mb-1 text-xs font-medium text-gray-500">Category</p>
+                  <p className="mb-1 text-xs font-medium text-gray-500">{t('dashboardPages.reports.category')}</p>
                   <p className="text-sm font-semibold text-gray-900">{selectedReport.category}</p>
                 </div>
               )}
 
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Status</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.status')}</p>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-black ring-1 ${STATUS_CONFIG[selectedReport.status].color}`}>
-                  {STATUS_CONFIG[selectedReport.status].label}
+                  {t(STATUS_CONFIG[selectedReport.status].labelKey)}
                 </span>
               </div>
 
               <div>
-                <p className="mb-1 text-xs font-medium text-gray-500">Priority</p>
+                <p className="mb-1 text-xs font-medium text-gray-500">{t('dashboardPages.reports.priority')}</p>
                 <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${priorityConfig(selectedReport.priority).color}`}>
-                  {priorityConfig(selectedReport.priority).label}
+                  {t(priorityConfig(selectedReport.priority).labelKey)}
                 </span>
               </div>
 
               {selectedReport.order_id && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-1">Related Order</p>
+                  <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.relatedOrder')}</p>
                   <p className="text-sm text-gray-900 font-mono">{selectedReport.order_id}</p>
                 </div>
               )}
 
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Reason</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.reason')}</p>
                 <p className="text-sm text-gray-700">{selectedReport.reason}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Filed On</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.filedOn')}</p>
                 <p className="text-sm text-gray-900">
-                  {new Date(selectedReport.created_at).toLocaleString('fr-TN')}
+                  {new Date(selectedReport.created_at).toLocaleString(dateLocale)}
                 </p>
               </div>
 
               {selectedReport.admin_notes && (
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <p className="text-xs font-medium text-blue-700 mb-1">Admin Notes</p>
+                  <p className="text-xs font-medium text-blue-700 mb-1">{t('dashboardPages.reports.adminNotes')}</p>
                   <p className="text-sm text-blue-800">{selectedReport.admin_notes}</p>
                 </div>
               )}
 
               {selectedReport.resolved_at && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-1">Resolved On</p>
+                  <p className="text-xs font-medium text-gray-500 mb-1">{t('dashboardPages.reports.resolvedOn')}</p>
                   <p className="text-sm text-gray-900">
-                    {new Date(selectedReport.resolved_at).toLocaleString('fr-TN')}
+                    {new Date(selectedReport.resolved_at).toLocaleString(dateLocale)}
                   </p>
                 </div>
               )}
@@ -389,7 +397,7 @@ export default function VendorReportsPage() {
                 href={`/hub/dashboard/reports/${selectedReport.id}`}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-sm font-black text-white hover:bg-[#991B1B]"
               >
-                Open full case
+                {t('dashboardPages.reports.openFullCase')}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <button
@@ -397,7 +405,7 @@ export default function VendorReportsPage() {
                 onClick={() => setSelectedReport(null)}
                 className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
               >
-                Close
+                {t('dashboardPages.reports.close')}
               </button>
             </div>
           </div>
