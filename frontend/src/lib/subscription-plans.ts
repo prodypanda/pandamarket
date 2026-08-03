@@ -164,7 +164,15 @@ export function toDisplayPlan(plan: SubscriptionPlanLimits, highlightPlanId = 'p
 
 export async function fetchEnabledSubscriptionPlans(baseUrl = ''): Promise<DisplayPlan[]> {
   try {
-    const res = await fetch(`${baseUrl}/api/pd/subscriptions/plans`, { credentials: 'include' });
+    // Short timeout so builds don't hang when the backend is slow/cold-starting.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/api/pd/subscriptions/plans`, { credentials: 'include', signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) return [];
     const data = await res.json();
     const rows: Record<string, unknown>[] = Array.isArray(data.plans) ? data.plans : [];
