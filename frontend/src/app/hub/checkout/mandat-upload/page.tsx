@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Upload, FileText, CheckCircle, ArrowRight, Loader2, Info } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
@@ -20,6 +20,23 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mandatInfo, setMandatInfo] = useState<{ recipient_name?: string; recipient_cin?: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithCsrf('/api/pd/subscriptions/mandat-instructions', { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setMandatInfo(json?.data ?? null);
+      })
+      .catch(() => {
+        // Leave null — generic instructions are shown instead of wrong recipient data.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -128,8 +145,14 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
       <div className={`${classes.primarySoft} p-4 rounded-2xl flex gap-4 mb-8`}>
         <Info className="w-6 h-6 flex-shrink-0" />
         <p className="text-sm text-gray-800">
-          Please complete a Mandat Minute transfer at La Poste to <strong>PandaMarket SARL</strong> (CIN: 12345678). 
-          Then, take a clear photo of your receipt and upload it here to validate your order.
+          {mandatInfo?.recipient_name ? (
+            <>
+              Please complete a Mandat Minute transfer at La Poste to <strong>{mandatInfo.recipient_name}</strong>
+              {mandatInfo.recipient_cin ? ` (CIN: ${mandatInfo.recipient_cin})` : ''}. Then, take a clear photo of your receipt and upload it here to validate your order.
+            </>
+          ) : (
+            'Please complete the Mandat Minute transfer using the recipient details provided with your order, then take a clear photo of your receipt and upload it here to validate your order.'
+          )}
         </p>
       </div>
 

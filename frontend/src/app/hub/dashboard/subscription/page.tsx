@@ -59,6 +59,17 @@ interface CurrentPlan {
   pending_intents?: PendingIntent[];
 }
 
+interface MandatInstructions {
+  recipient_name?: string;
+  recipient_cin?: string;
+  recipient_city?: string;
+  bank_name?: string;
+  bank_rib?: string;
+  bank_iban?: string;
+  recipient_phone?: string;
+  proof_email?: string;
+}
+
 function formatPrice(price: number): string {
   return `${price.toFixed(0)} TND`;
 }
@@ -88,6 +99,25 @@ function SubscriptionContent() {
   const [mandatProofUrl, setMandatProofUrl] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [mandatInfo, setMandatInfo] = useState<MandatInstructions | null>(null);
+
+  // Load Mandat Minute recipient instructions from platform settings once,
+  // so we never hardcode bank details in the UI.
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithCsrf('/api/pd/subscriptions/mandat-instructions', { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setMandatInfo(json?.data ?? null);
+      })
+      .catch(() => {
+        // Leave null — placeholder dashes render instead of wrong bank data.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Upload proof modal state for pending order
   const [uploadModalIntent, setUploadModalIntent] = useState<PendingIntent | null>(null);
@@ -632,10 +662,10 @@ function SubscriptionContent() {
                       <p className="font-bold text-amber-950 flex items-center gap-1">
                         <Building className="w-4 h-4 text-amber-700" /> {t('dashboardPages.subscription.mandatInstructionsTitle')}
                       </p>
-                      <p>• {t('dashboardPages.subscription.mandatBeneficiary')}: <strong>PandaMarket SARL</strong></p>
-                      <p>• {t('dashboardPages.subscription.mandatIdLabel')}: <strong>01234567</strong> ({t('dashboardPages.subscription.mandatCity')})</p>
-                      <p>• {t('dashboardPages.subscription.mandatRibLabel')}: <strong>10 000 0000000000000 00</strong></p>
-                      <p>• {t('dashboardPages.subscription.mandatEmailLabel')}: <strong className="underline text-amber-950">billing@pandamarket.tn</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatBeneficiary')}: <strong>{mandatInfo?.recipient_name || '—'}</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatIdLabel')}: <strong>{mandatInfo?.recipient_cin || '—'}</strong>{mandatInfo?.recipient_city ? ` (${mandatInfo.recipient_city})` : ''}</p>
+                      <p>• {t('dashboardPages.subscription.mandatRibLabel')}: <strong>{mandatInfo?.bank_rib || '—'}</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatEmailLabel')}: <strong className="underline text-amber-950">{mandatInfo?.proof_email || '—'}</strong></p>
                     </div>
 
                     <div className="space-y-2 border-t border-amber-200 pt-3">

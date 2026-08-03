@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, Code2, ShoppingBag, Play } from 'lucide-react';
+import { Download, Code2, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { type ThemeProps, useThemeCustomization, colorVars, formatStorePrice, getStoreProductImage, getStorefrontProductPath } from './shared';
@@ -87,9 +87,6 @@ export function DigitalTheme({ theme, storeName, products = [], branding, naviga
                   </div>
                 ) : tc.heroStyle === 'video' ? (
                   <div>
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6 border border-white/10 bg-white/5 text-gray-300">
-                      <Play className="w-3.5 h-3.5 fill-current text-white" /> Demo Video Preview
-                    </div>
                     <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-6 text-white">
                       Build Faster with <span style={{ color: accent }}>Assets</span>
                     </h2>

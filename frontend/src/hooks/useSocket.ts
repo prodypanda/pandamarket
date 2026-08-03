@@ -46,6 +46,22 @@ export interface UseSocketReturn {
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:9000';
 
 /**
+ * Guard against a misconfigured env: if the page is served over https but the
+ * socket target is a plain-http localhost URL, connecting would fail as mixed
+ * content — skip realtime and let the polling fallback handle notifications.
+ */
+function isBlockedMixedContentTarget(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (window.location.protocol !== 'https:') return false;
+  try {
+    const target = new URL(BACKEND_URL, window.location.origin);
+    return target.protocol === 'http:' && (target.hostname === 'localhost' || target.hostname === '127.0.0.1');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Maximum reconnection attempts before giving up.
  * After this, falls back to polling (handled by NotificationBell's existing 30s interval).
  */
@@ -64,7 +80,7 @@ export function useSocket({ token, enabled = true }: UseSocketOptions): UseSocke
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!enabled || !token) {
+    if (!enabled || !token || isBlockedMixedContentTarget()) {
       // Disconnect if we were connected but conditions changed
       if (socketRef.current) {
         socketRef.current.disconnect();

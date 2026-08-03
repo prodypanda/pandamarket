@@ -353,7 +353,6 @@ export default function DashboardLayout({
         credentials: 'include',
       });
     } finally {
-      localStorage.removeItem('pd_access_token');
       window.location.href = '/login/seller';
     }
   };

@@ -124,7 +124,6 @@ export default function BuyerAccountPage() {
         credentials: 'include',
       });
     } finally {
-      localStorage.removeItem('pd_access_token');
       window.location.href = '/login/buyer';
     }
   };

@@ -330,7 +330,6 @@ export default function AdminLayout({
         credentials: 'include',
       });
     } finally {
-      localStorage.removeItem('pd_access_token');
       window.location.href = '/login/admin';
     }
   };
@@ -598,7 +597,7 @@ export default function AdminLayout({
               <Store className="h-4 w-4" />
               {t('admin.top.goToHub')}
             </Link>
-            <span className="hidden text-sm font-semibold text-gray-500 lg:inline">admin@pandamarket.tn</span>
+            <span className="hidden text-sm font-semibold text-gray-500 lg:inline">PandaMarket Admin</span>
             <button
               type="button"
               onClick={handleLogout}

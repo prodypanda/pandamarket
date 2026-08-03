@@ -15,6 +15,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useSocket, type PdSocketEvent } from '../hooks/useSocket';
+import { fetchWithCsrf } from '../lib/api';
 
 interface SocketContextValue {
   /** Whether the WebSocket is currently connected */
@@ -36,15 +37,26 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [realtimeNotificationCount, setRealtimeNotificationCount] = useState(0);
   const listenersAttached = useRef(false);
 
-  // Try to get token from cookie or localStorage on mount
+  // Fetch a short-lived socket token using the httpOnly session cookie.
+  // If the user is not logged in or the request fails, the token stays null
+  // and no socket connects (NotificationBell's polling fallback covers it).
   useEffect(() => {
-    // Check for token in localStorage (set by auth flow)
-    const storedToken = typeof window !== 'undefined'
-      ? localStorage.getItem('pd_access_token')
-      : null;
-    if (storedToken) {
-      setToken(storedToken);
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchWithCsrf('/api/pd/auth/socket-token', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && typeof data?.token === 'string' && data.token) {
+          setToken(data.token);
+        }
+      } catch {
+        // Not logged in / network error — realtime disabled, polling remains.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const { isConnected, on, socket } = useSocket({
