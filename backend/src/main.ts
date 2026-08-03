@@ -417,8 +417,19 @@ async function bootstrap() {
       results.pool_query = { status: 'error', err: (e as Error).message, totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount };
     }
 
-    // 4. Redis target
+    // 4. Redis target + ping probe (bounded)
     results.redis_url = (config.redisUrl || '').replace(/:([^:@/]+)@/, ':***@');
+    try {
+      const { getRedis } = await import('./db/redis');
+      const t0 = Date.now();
+      const pingResult = await Promise.race([
+        getRedis().ping(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('redis ping timeout 6s')), 6000)),
+      ]);
+      results.redis_ping = { status: 'ok', ms: Date.now() - t0, reply: pingResult };
+    } catch (e) {
+      results.redis_ping = { status: 'error', err: (e as Error).message };
+    }
 
     res.json(results);
   });

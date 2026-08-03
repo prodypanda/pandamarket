@@ -1,5 +1,5 @@
 import { query, transaction } from '../db/pool';
-import { getRedis } from '../db/redis';
+import { getRedis, withRedisTimeout } from '../db/redis';
 import { logger } from '../utils/logger';
 
 export type PlatformSettingValue = string | number | boolean;
@@ -645,7 +645,7 @@ function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
 class PlatformConfigService {
   private async readCachedSettings(): Promise<PlatformSettings | null> {
     try {
-      const cached = await getRedis().get(PLATFORM_CONFIG_CACHE_KEY);
+      const cached = await withRedisTimeout(getRedis().get(PLATFORM_CONFIG_CACHE_KEY));
       if (!cached) return null;
       return { ...PLATFORM_SETTING_DEFAULTS, ...(JSON.parse(cached) as Partial<PlatformSettings>) } as PlatformSettings;
     } catch (err) {
@@ -656,7 +656,7 @@ class PlatformConfigService {
 
   private async writeCachedSettings(settings: PlatformSettings) {
     try {
-      await getRedis().setex(PLATFORM_CONFIG_CACHE_KEY, PLATFORM_CONFIG_CACHE_TTL_SECONDS, JSON.stringify(settings));
+      await withRedisTimeout(getRedis().setex(PLATFORM_CONFIG_CACHE_KEY, PLATFORM_CONFIG_CACHE_TTL_SECONDS, JSON.stringify(settings)));
     } catch (err) {
       logger.warn({ err }, 'Failed to write platform config cache');
     }
@@ -665,10 +665,12 @@ class PlatformConfigService {
   private async invalidateCache(updatedKeys: PlatformSettingKey[]) {
     try {
       const redis = getRedis();
-      await redis.del(PLATFORM_CONFIG_CACHE_KEY);
-      await redis.publish(
-        PLATFORM_CONFIG_INVALIDATION_CHANNEL,
-        JSON.stringify({ updated_keys: updatedKeys, updated_at: new Date().toISOString() }),
+      await withRedisTimeout(redis.del(PLATFORM_CONFIG_CACHE_KEY));
+      await withRedisTimeout(
+        redis.publish(
+          PLATFORM_CONFIG_INVALIDATION_CHANNEL,
+          JSON.stringify({ updated_keys: updatedKeys, updated_at: new Date().toISOString() }),
+        ),
       );
     } catch (err) {
       logger.warn({ err }, 'Failed to invalidate platform config cache');

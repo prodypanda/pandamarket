@@ -26,3 +26,23 @@ export async function closeRedis(): Promise<void> {
     redis = null;
   }
 }
+
+/**
+ * Bound a Redis command so a degraded/disconnected Redis (which otherwise hangs
+ * forever because `maxRetriesPerRequest: null` is required by BullMQ) rejects
+ * quickly instead of wedging the caller. Use for all non-BullMQ Redis access.
+ */
+export function withRedisTimeout<T>(promise: Promise<T>, ms = 1500): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Redis operation timed out after ${ms}ms`)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
