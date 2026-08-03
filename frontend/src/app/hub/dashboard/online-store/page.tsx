@@ -84,16 +84,16 @@ export default function OnlineStoreOverviewPage() {
         setStore((prev) => (prev ? { ...prev, status: data.store?.status || (goingOffline ? 'maintenance' : 'verified') } : null));
         setFeedback({
           message: goingOffline
-            ? 'Boutique mise hors-ligne (mode maintenance).'
-            : 'Boutique publiée et accessible en ligne !',
+            ? t('dashboardPages.onlineStore.maintenanceMode')
+            : t('dashboardPages.onlineStore.published'),
         });
         revalidateStoreCache({ subdomain: store.subdomain, custom_domain: store.custom_domain });
       } else {
         const errData = await res.json().catch(() => ({}));
-        setFeedback({ message: errData.error?.message || 'Erreur lors de la mise à jour du statut', isError: true });
+        setFeedback({ message: errData.error?.message || t('dashboardPages.onlineStore.updateStatusError'), isError: true });
       }
     } catch {
-      setFeedback({ message: 'Erreur réseau', isError: true });
+      setFeedback({ message: t('common.networkError'), isError: true });
     } finally {
       setPublishing(false);
       setTimeout(() => setFeedback(null), 4000);

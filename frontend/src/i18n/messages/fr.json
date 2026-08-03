@@ -26,7 +26,8 @@
     "currency": "TND",
     "poweredBy": "Propulsé par 🐼 PandaMarket",
     "noResults": "Aucun résultat trouvé",
-    "memberSince": "Membre depuis {date}"
+    "memberSince": "Membre depuis {date}",
+    "networkError": "Erreur réseau"
   },
   "nav": {
     "home": "Accueil",
@@ -814,7 +815,22 @@
       "general": "Général",
       "branding": "Image de marque",
       "contact": "Contact",
-      "social": "Réseaux sociaux"
+      "social": "Réseaux sociaux",
+      "storeTab": "Boutique",
+      "domainTab": "Domaine",
+      "domainAdded": "Domaine ajouté ! Configuration DNS disponible ci-dessous.",
+      "domainVerified": "Domaine vérifié avec succès ! SSL actif.",
+      "domainPrimary": "Domaine défini comme domaine principal !",
+      "domainDeleted": "Domaine supprimé",
+      "purchaseError": "Erreur lors de l'achat",
+      "maintenancePlaceholder": "Message affiché aux visiteurs pendant la maintenance...",
+      "maintenanceSaved": "Message de maintenance sauvegardé",
+      "storeBackOnline": "Boutique remise en ligne",
+      "saveMessage": "Enregistrer le message",
+      "addingDomain": "Ajout en cours...",
+      "addDomain": "Ajouter le domaine",
+      "purchasing": "Achat en cours...",
+      "confirmPurchase": "Confirmer l'achat"
     },
     "wallet": {
       "title": "Mon Wallet",
@@ -865,7 +881,9 @@
       "customDomain": "Domaine personnalisé",
       "theme": "Thème actif",
       "noTheme": "Aucun thème sélectionné",
-      "visit": "Visiter"
+      "visit": "Visiter",
+      "maintenanceMode": "Boutique mise hors-ligne (mode maintenance).",
+      "updateStatusError": "Erreur lors de la mise à jour du statut"
     },
     "themes": {
       "title": "Thèmes & Style",
@@ -1143,7 +1161,36 @@
       "errorCreatingMaintenance": "Erreur lors de la création de la page maintenance",
       "maintenanceCreatedNotice": "Page maintenance créée. Personnalisez-la, puis publiez-la pour remplacer la page maintenance standard.",
       "maintenanceCreated": "Page maintenance créée.",
-      "last30Days": "30j"
+      "last30Days": "30j",
+      "noH1Detected": "Aucun titre H1 détecté.",
+      "seoTitle": "Titre SEO",
+      "characters": "caractères",
+      "titleMissing": "Titre manquant",
+      "description": "Description",
+      "descriptionMissing": "Description manquante",
+      "seoDescription": "Description SEO",
+      "noObviousRisk": "Aucun risque évident",
+      "noProblemDetected": "Aucun problème détecté",
+      "noImageFound": "Aucune image trouvée dans la médiathèque.",
+      "autosavedAt": "Brouillon autosauvegardé à",
+      "pagePublishedOnline": "Page publiée en ligne.",
+      "pageRemovedFromPublic": "Page retirée du public.",
+      "draftSavedAt": "Brouillon sauvegardé à",
+      "storePage": "Page boutique",
+      "aiSeoProposed": "Titre et description SEO proposés.",
+      "untitledPage": "Page sans titre",
+      "undoLastChange": "Annuler la dernière modification",
+      "importing": "Import...",
+      "loadingMedia": "Chargement...",
+      "media": "Médias",
+      "previewDots": "Aperçu...",
+      "preview": "Aperçu",
+      "socialPreview": "Aperçu social",
+      "seoDescriptionSocial": "Description SEO affichée dans les partages sociaux.",
+      "publicTitle": "Titre public",
+      "chooseSeoImage": "Choisir image SEO",
+      "customPosition": "Position personnalisée",
+      "searchMediaLibrary": "Rechercher dans la médiathèque..."
     },
     "financial": {
       "title": "Bilan financier",

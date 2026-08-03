@@ -26,7 +26,8 @@
     "currency": "TND",
     "poweredBy": "Powered by 🐼 PandaMarket",
     "noResults": "No results found",
-    "memberSince": "Member since {date}"
+    "memberSince": "Member since {date}",
+    "networkError": "Network error"
   },
   "nav": {
     "home": "Home",
@@ -814,7 +815,22 @@
       "general": "General",
       "branding": "Branding",
       "contact": "Contact",
-      "social": "Social"
+      "social": "Social",
+      "storeTab": "Store",
+      "domainTab": "Domain",
+      "domainAdded": "Domain added! DNS configuration available below.",
+      "domainVerified": "Domain verified successfully! SSL active.",
+      "domainPrimary": "Domain set as primary!",
+      "domainDeleted": "Domain deleted",
+      "purchaseError": "Purchase error",
+      "maintenancePlaceholder": "Message shown to visitors during maintenance...",
+      "maintenanceSaved": "Maintenance message saved",
+      "storeBackOnline": "Store back online",
+      "saveMessage": "Save message",
+      "addingDomain": "Adding...",
+      "addDomain": "Add domain",
+      "purchasing": "Purchasing...",
+      "confirmPurchase": "Confirm purchase"
     },
     "wallet": {
       "title": "My Wallet",
@@ -865,7 +881,9 @@
       "customDomain": "Custom domain",
       "theme": "Active theme",
       "noTheme": "No theme selected",
-      "visit": "Visit"
+      "visit": "Visit",
+      "maintenanceMode": "Store taken offline (maintenance mode).",
+      "updateStatusError": "Error updating status"
     },
     "themes": {
       "title": "Themes & Style",
@@ -1143,7 +1161,36 @@
       "errorCreatingMaintenance": "Error creating maintenance page",
       "maintenanceCreatedNotice": "Maintenance page created. Customize it, then publish it to replace the standard maintenance page.",
       "maintenanceCreated": "Maintenance page created.",
-      "last30Days": "30d"
+      "last30Days": "30d",
+      "noH1Detected": "No H1 title detected.",
+      "seoTitle": "SEO Title",
+      "characters": "characters",
+      "titleMissing": "Title missing",
+      "description": "Description",
+      "descriptionMissing": "Description missing",
+      "seoDescription": "SEO Description",
+      "noObviousRisk": "No obvious risk",
+      "noProblemDetected": "No problem detected",
+      "noImageFound": "No image found in media library.",
+      "autosavedAt": "Draft auto-saved at",
+      "pagePublishedOnline": "Page published online.",
+      "pageRemovedFromPublic": "Page removed from public.",
+      "draftSavedAt": "Draft saved at",
+      "storePage": "Store page",
+      "aiSeoProposed": "SEO title and description proposed.",
+      "untitledPage": "Untitled page",
+      "undoLastChange": "Undo last change",
+      "importing": "Import...",
+      "loadingMedia": "Loading...",
+      "media": "Media",
+      "previewDots": "Preview...",
+      "preview": "Preview",
+      "socialPreview": "Social preview",
+      "seoDescriptionSocial": "SEO description shown in social shares.",
+      "publicTitle": "Public title",
+      "chooseSeoImage": "Choose SEO image",
+      "customPosition": "Custom position",
+      "searchMediaLibrary": "Search media library..."
     },
     "financial": {
       "title": "Financial Report",

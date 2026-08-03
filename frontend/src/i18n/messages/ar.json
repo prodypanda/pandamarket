@@ -26,7 +26,8 @@
     "currency": "د.ت",
     "poweredBy": "مدعوم من 🐼 باندا ماركت",
     "noResults": "لم يتم العثور على نتائج",
-    "memberSince": "عضو منذ {date}"
+    "memberSince": "عضو منذ {date}",
+    "networkError": "خطأ في الشبكة"
   },
   "nav": {
     "home": "الرئيسية",
@@ -814,7 +815,22 @@
       "general": "عام",
       "branding": "الهوية",
       "contact": "اتصال",
-      "social": "وسائل التواصل"
+      "social": "وسائل التواصل",
+      "storeTab": "المتجر",
+      "domainTab": "النطاق",
+      "domainAdded": "تمت إضافة النطاق! تكوين DNS متاح أدناه.",
+      "domainVerified": "تم التحقق من النطاق بنجاح! SSL نشط.",
+      "domainPrimary": "تم تعيين النطاق كنطاق رئيسي!",
+      "domainDeleted": "تم حذف النطاق",
+      "purchaseError": "خطأ في الشراء",
+      "maintenancePlaceholder": "الرسالة المعروضة للزوار أثناء الصيانة...",
+      "maintenanceSaved": "تم حفظ رسالة الصيانة",
+      "storeBackOnline": "المتجر متصل مرة أخرى",
+      "saveMessage": "حفظ الرسالة",
+      "addingDomain": "جارٍ الإضافة...",
+      "addDomain": "إضافة النطاق",
+      "purchasing": "جارٍ الشراء...",
+      "confirmPurchase": "تأكيد الشراء"
     },
     "wallet": {
       "title": "محفظتي",
@@ -865,7 +881,9 @@
       "customDomain": "النطاق المخصص",
       "theme": "القالب النشط",
       "noTheme": "لم يتم اختيار قالب",
-      "visit": "زيارة"
+      "visit": "زيارة",
+      "maintenanceMode": "المتجر غير متصل (وضع الصيانة).",
+      "updateStatusError": "خطأ في تحديث الحالة"
     },
     "themes": {
       "title": "القوالب والنمط",
@@ -1143,7 +1161,36 @@
       "errorCreatingMaintenance": "خطأ أثناء إنشاء صفحة الصيانة",
       "maintenanceCreatedNotice": "تم إنشاء صفحة الصيانة. خصصها ثم انشرها لتحل محل صفحة الصيانة القياسية.",
       "maintenanceCreated": "تم إنشاء صفحة الصيانة.",
-      "last30Days": "30ي"
+      "last30Days": "30ي",
+      "noH1Detected": "لم يتم العثور على عنوان H1.",
+      "seoTitle": "عنوان SEO",
+      "characters": "حرف",
+      "titleMissing": "العنوان مفقود",
+      "description": "الوصف",
+      "descriptionMissing": "الوصف مفقود",
+      "seoDescription": "وصف SEO",
+      "noObviousRisk": "لا يوجد خطر واضح",
+      "noProblemDetected": "لم يتم اكتشاف مشاكل",
+      "noImageFound": "لم يتم العثور على صور في مكتبة الوسائط.",
+      "autosavedAt": "تم حفظ المسودة تلقائياً في",
+      "pagePublishedOnline": "تم نشر الصفحة عبر الإنترنت.",
+      "pageRemovedFromPublic": "تمت إزالة الصفحة من العرض العام.",
+      "draftSavedAt": "تم حفظ المسودة في",
+      "storePage": "صفحة المتجر",
+      "aiSeoProposed": "تم اقتراح عنوان ووصف SEO.",
+      "untitledPage": "صفحة بدون عنوان",
+      "undoLastChange": "تراجع عن آخر تعديل",
+      "importing": "استيراد...",
+      "loadingMedia": "جارٍ التحميل...",
+      "media": "الوسائط",
+      "previewDots": "معاينة...",
+      "preview": "معاينة",
+      "socialPreview": "معاينة اجتماعية",
+      "seoDescriptionSocial": "وصف SEO المعروض في المشاركات الاجتماعية.",
+      "publicTitle": "العنوان العام",
+      "chooseSeoImage": "اختر صورة SEO",
+      "customPosition": "موضع مخصص",
+      "searchMediaLibrary": "ابحث في مكتبة الوسائط..."
     },
     "financial": {
       "title": "التقرير المالي",

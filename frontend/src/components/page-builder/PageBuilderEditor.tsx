@@ -4,6 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { normalizePublicAssetUrl } from '@/lib/public-assets';
 import { getMarketplaceDomain } from '@/lib/store-hosts';
+import { useLocale } from '@/contexts/LocaleContext';
 import 'grapesjs/dist/css/grapes.min.css';
 /**
  * PageBuilderEditor — GrapesJS integration for PandaMarket vendor dashboard.
@@ -243,7 +244,9 @@ interface SectionLibraryItem {
   id: string;
   section: TemplateSection;
   title: string;
+  titleKey: string;
   description: string;
+  descKey: string;
   icon: LucideIcon;
   preview: SectionPreviewType;
   content: string;
@@ -253,15 +256,15 @@ type SectionPreviewType = 'hero' | 'products' | 'collections' | 'banner' | 'faq'
 
 type BlockPreviewType = SectionPreviewType | 'shipping' | 'payment' | 'footer' | 'newsletter' | 'video' | 'team' | 'countdown' | 'carousel' | 'logos' | 'pricing' | 'form' | 'map' | 'blog' | 'size' | 'returns' | 'instagram';
 
-const SECTION_LIBRARY_LABELS: Record<TemplateSection, { label: string; icon: LucideIcon }> = {
-  hero: { label: 'Hero', icon: Store },
-  products: { label: 'Produits', icon: ShoppingBag },
-  faq: { label: 'FAQ', icon: HelpCircle },
-  testimonials: { label: 'Avis', icon: Star },
-  policies: { label: 'Politiques', icon: ShieldCheck },
-  contact: { label: 'Contact', icon: Phone },
-  banner: { label: 'Bannière', icon: Megaphone },
-  collections: { label: 'Collections', icon: Tags },
+const SECTION_LIBRARY_LABELS: Record<TemplateSection, { label: string; labelKey: string; icon: LucideIcon }> = {
+  hero: { label: 'Hero', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelHero', icon: Store },
+  products: { label: 'Produits', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelProducts', icon: ShoppingBag },
+  faq: { label: 'FAQ', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelFaq', icon: HelpCircle },
+  testimonials: { label: 'Avis', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelTestimonials', icon: Star },
+  policies: { label: 'Politiques', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelPolicies', icon: ShieldCheck },
+  contact: { label: 'Contact', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelContact', icon: Phone },
+  banner: { label: 'Bannière', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelBanner', icon: Megaphone },
+  collections: { label: 'Collections', labelKey: 'dashboardPages.pageBuilder.editor.sectionLabelCollections', icon: Tags },
 };
 
 const SECTION_LIBRARY_FILTERS: TemplateSection[] = [
@@ -294,7 +297,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'store-hero',
     section: 'hero',
     title: 'Hero boutique dynamique',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionHeroTitle',
     description: 'Nom, description, logo et couleur de la boutique.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionHeroDesc',
     icon: Store,
     preview: 'hero',
     content: `
@@ -309,7 +314,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'featured-products',
     section: 'products',
     title: 'Produits sélectionnés',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionFeaturedProductsTitle',
     description: 'Affiche des produits publiés ou choisis manuellement.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionFeaturedProductsDesc',
     icon: ShoppingBag,
     preview: 'products',
     content: `
@@ -329,7 +336,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'category-showcase',
     section: 'collections',
     title: 'Collections dynamiques',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionCategoryShowcaseTitle',
     description: 'Met en avant les catégories actives de la boutique.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionCategoryShowcaseDesc',
     icon: Tags,
     preview: 'collections',
     content: `
@@ -349,7 +358,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'cta-banner',
     section: 'banner',
     title: 'Bannière promotion',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionCtaBannerTitle',
     description: 'Annonce courte avec appel à l’action.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionCtaBannerDesc',
     icon: Megaphone,
     preview: 'banner',
     content: `
@@ -364,7 +375,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'faq',
     section: 'faq',
     title: 'FAQ compacte',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionFaqTitle',
     description: 'Questions fréquentes prêtes à personnaliser.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionFaqDesc',
     icon: HelpCircle,
     preview: 'faq',
     content: `
@@ -382,7 +395,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'testimonials',
     section: 'testimonials',
     title: 'Avis clients',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionTestimonialsTitle',
     description: 'Deux cartes d’avis pour rassurer les acheteurs.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionTestimonialsDesc',
     icon: Star,
     preview: 'testimonials',
     content: `
@@ -399,7 +414,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'store-policies',
     section: 'policies',
     title: 'Politiques boutique',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionStorePoliciesTitle',
     description: 'Livraison, retours et paiement connectés.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionStorePoliciesDesc',
     icon: ShieldCheck,
     preview: 'policies',
     content: `
@@ -416,7 +433,9 @@ const SECTION_LIBRARY: SectionLibraryItem[] = [
     id: 'store-contact',
     section: 'contact',
     title: 'Contact boutique',
+    titleKey: 'dashboardPages.pageBuilder.editor.sectionStoreContactTitle',
     description: 'Email, téléphone et adresse configurés.',
+    descKey: 'dashboardPages.pageBuilder.editor.sectionStoreContactDesc',
     icon: Phone,
     preview: 'contact',
     content: `
@@ -600,9 +619,11 @@ function applyPageContentToGrapesEditor(
   editor.setStyle(mergeEditorCss(componentCss, css));
 }
 
-function filenameFromUrl(url: string): string {
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
+function filenameFromUrl(url: string, t?: TranslateFn): string {
   const path = url.split('?')[0].split('#')[0];
-  const name = path.split('/').pop() || 'Image boutique';
+  const name = path.split('/').pop() || (t ? t('dashboardPages.pageBuilder.editor.imageFallback') : 'Image boutique');
   try {
     return decodeURIComponent(name);
   } catch {
@@ -610,10 +631,11 @@ function filenameFromUrl(url: string): string {
   }
 }
 
-function formatVersionDate(value?: string | null): string {
-  if (!value) return 'Date inconnue';
+function formatVersionDate(value?: string | null, t?: TranslateFn): string {
+  const fallback = t ? t('dashboardPages.pageBuilder.editor.unknownDate') : 'Date inconnue';
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+  if (Number.isNaN(date.getTime())) return fallback;
   return date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -674,7 +696,19 @@ function styleAttributeToObject(style: string): Record<string, string> {
     }, {});
 }
 
-function dynamicBlockLabel(blockType: string): string {
+const DYNAMIC_BLOCK_LABEL_KEYS: Record<string, string> = {
+  'store-hero': 'dashboardPages.pageBuilder.editor.dynamicBlockHero',
+  'product-grid': 'dashboardPages.pageBuilder.editor.dynamicBlockProductGrid',
+  'featured-products': 'dashboardPages.pageBuilder.editor.dynamicBlockFeaturedProducts',
+  'category-showcase': 'dashboardPages.pageBuilder.editor.dynamicBlockCategoryShowcase',
+  'store-contact': 'dashboardPages.pageBuilder.editor.dynamicBlockStoreContact',
+  'shipping-policy': 'dashboardPages.pageBuilder.editor.dynamicBlockShippingPolicy',
+  'payment-policy': 'dashboardPages.pageBuilder.editor.dynamicBlockPaymentPolicy',
+  'store-policies': 'dashboardPages.pageBuilder.editor.dynamicBlockStorePolicies',
+};
+
+function dynamicBlockLabel(blockType: string, t?: TranslateFn): string {
+  if (t) return t(DYNAMIC_BLOCK_LABEL_KEYS[blockType] || 'dashboardPages.pageBuilder.editor.dynamicBlockFallback');
   const labels: Record<string, string> = {
     'store-hero': 'Hero boutique',
     'product-grid': 'Grille produits',
@@ -716,20 +750,20 @@ function supportsImageControl(blockType: string): boolean {
 }
 
 const HERO_IMAGE_POSITION_OPTIONS = [
-  { label: 'Haut gauche', value: 'left top' },
-  { label: 'Haut centre', value: 'center top' },
-  { label: 'Haut droite', value: 'right top' },
-  { label: 'Centre gauche', value: 'left center' },
-  { label: 'Centre', value: 'center center' },
-  { label: 'Centre droite', value: 'right center' },
-  { label: 'Bas gauche', value: 'left bottom' },
-  { label: 'Bas centre', value: 'center bottom' },
-  { label: 'Bas droite', value: 'right bottom' },
+  { label: 'Haut gauche', labelKey: 'dashboardPages.pageBuilder.editor.posTopLeft', value: 'left top' },
+  { label: 'Haut centre', labelKey: 'dashboardPages.pageBuilder.editor.posTopCenter', value: 'center top' },
+  { label: 'Haut droite', labelKey: 'dashboardPages.pageBuilder.editor.posTopRight', value: 'right top' },
+  { label: 'Centre gauche', labelKey: 'dashboardPages.pageBuilder.editor.posCenterLeft', value: 'left center' },
+  { label: 'Centre', labelKey: 'dashboardPages.pageBuilder.editor.posCenter', value: 'center center' },
+  { label: 'Centre droite', labelKey: 'dashboardPages.pageBuilder.editor.posCenterRight', value: 'right center' },
+  { label: 'Bas gauche', labelKey: 'dashboardPages.pageBuilder.editor.posBottomLeft', value: 'left bottom' },
+  { label: 'Bas centre', labelKey: 'dashboardPages.pageBuilder.editor.posBottomCenter', value: 'center bottom' },
+  { label: 'Bas droite', labelKey: 'dashboardPages.pageBuilder.editor.posBottomRight', value: 'right bottom' },
 ];
 
 const HERO_IMAGE_FIT_OPTIONS = [
-  { label: 'Recadrer pour remplir', value: 'cover' },
-  { label: 'Afficher toute l’image', value: 'contain' },
+  { label: 'Recadrer pour remplir', labelKey: 'dashboardPages.pageBuilder.editor.fitCover', value: 'cover' },
+  { label: 'Afficher toute l’image', labelKey: 'dashboardPages.pageBuilder.editor.fitContain', value: 'contain' },
 ] as const;
 
 function normalizeHeroImagePosition(value?: string): string {
@@ -770,22 +804,22 @@ function extractFirstHeroImageUrl(html?: string): string {
   return normalizePublicAssetUrl(dataImage || image || backgroundMatch?.[1] || '');
 }
 
-function seoImageQualityMessage(meta: SeoImageMeta | null): { type: 'success' | 'warning' | 'error'; message: string } | null {
+function seoImageQualityMessage(meta: SeoImageMeta | null, t: TranslateFn): { type: 'success' | 'warning' | 'error'; message: string } | null {
   if (!meta) return null;
-  if (meta.status === 'loading') return { type: 'warning', message: 'Analyse des dimensions de l’image...' };
-  if (meta.status === 'error') return { type: 'error', message: 'Impossible de lire les dimensions de cette image.' };
+  if (meta.status === 'loading') return { type: 'warning', message: t('dashboardPages.pageBuilder.editor.seoImageAnalyzing') };
+  if (meta.status === 'error') return { type: 'error', message: t('dashboardPages.pageBuilder.editor.seoImageReadError') };
   if (!meta.width || !meta.height) return null;
   const ratio = meta.width / meta.height;
   if (meta.width < 1200 || meta.height < 630) {
-    return { type: 'warning', message: `Image petite (${meta.width} × ${meta.height}). Recommandé : au moins 1200 × 630 px.` };
+    return { type: 'warning', message: t('dashboardPages.pageBuilder.editor.seoImageSmall', { w: meta.width, h: meta.height }) };
   }
   if (ratio < 1.55) {
-    return { type: 'warning', message: `Image trop verticale (${meta.width} × ${meta.height}). Les partages sociaux préfèrent un format horizontal 1.91:1.` };
+    return { type: 'warning', message: t('dashboardPages.pageBuilder.editor.seoImageTooVertical', { w: meta.width, h: meta.height }) };
   }
   if (ratio > 2.25) {
-    return { type: 'warning', message: `Image très panoramique (${meta.width} × ${meta.height}). Elle risque d’être recadrée sur les réseaux.` };
+    return { type: 'warning', message: t('dashboardPages.pageBuilder.editor.seoImageTooPanoramic', { w: meta.width, h: meta.height }) };
   }
-  return { type: 'success', message: `Bon format SEO (${meta.width} × ${meta.height}).` };
+  return { type: 'success', message: t('dashboardPages.pageBuilder.editor.seoImageGoodFormat', { w: meta.width, h: meta.height }) };
 }
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
@@ -834,7 +868,7 @@ function buildSectionOutline(html: string): SectionOutlineItem[] {
   }));
 }
 
-function buildAccessibilityWarnings(html: string): string[] {
+function buildAccessibilityWarnings(html: string, t: TranslateFn): string[] {
   if (typeof document === 'undefined') return [];
   const template = document.createElement('template');
   template.innerHTML = editorBodyHtml(html);
@@ -846,15 +880,15 @@ function buildAccessibilityWarnings(html: string): string[] {
   const h1Count = template.content.querySelectorAll('h1').length;
   const emptyActions = Array.from(template.content.querySelectorAll('a,button')).filter((element) => !element.textContent?.trim()).length;
   return [
-    imagesWithoutAlt ? `${imagesWithoutAlt} image${imagesWithoutAlt > 1 ? 's' : ''} sans texte alternatif.` : '',
-    unsafeLinks ? `${unsafeLinks} lien${unsafeLinks > 1 ? 's' : ''} vide${unsafeLinks > 1 ? 's' : ''} ou temporaire${unsafeLinks > 1 ? 's' : ''}.` : '',
-    h1Count === 0 ? 'Aucun titre H1 détecté.' : '',
-    h1Count > 1 ? `${h1Count} titres H1 détectés, gardez idéalement un H1 principal.` : '',
-    emptyActions ? `${emptyActions} bouton${emptyActions > 1 ? 's' : ''} ou lien${emptyActions > 1 ? 's' : ''} sans libellé.` : '',
+    imagesWithoutAlt ? t('dashboardPages.pageBuilder.editor.a11yImagesWithoutAlt', { count: imagesWithoutAlt }) : '',
+    unsafeLinks ? t('dashboardPages.pageBuilder.editor.a11yUnsafeLinks', { count: unsafeLinks }) : '',
+    h1Count === 0 ? t('dashboardPages.pageBuilder.editor.a11yNoH1') : '',
+    h1Count > 1 ? t('dashboardPages.pageBuilder.editor.a11yMultipleH1', { count: h1Count }) : '',
+    emptyActions ? t('dashboardPages.pageBuilder.editor.a11yEmptyActions', { count: emptyActions }) : '',
   ].filter(Boolean);
 }
 
-function buildMobileWarnings(html: string, css: string): string[] {
+function buildMobileWarnings(html: string, css: string, t: TranslateFn): string[] {
   const source = `${html}\n${css}`;
   const fixedWidths = Array.from(source.matchAll(/(?:width|min-width)\s*:\s*(\d{3,4})px/gi))
     .map((match) => Number(match[1]))
@@ -866,9 +900,9 @@ function buildMobileWarnings(html: string, css: string): string[] {
   if (template) template.innerHTML = editorBodyHtml(html);
   const tables = template?.content.querySelectorAll('table').length || 0;
   return [
-    fixedWidths.length ? `${fixedWidths.length} largeur${fixedWidths.length > 1 ? 's' : ''} fixe${fixedWidths.length > 1 ? 's' : ''} au-dessus de 390px.` : '',
-    largeText.length ? `${largeText.length} texte${largeText.length > 1 ? 's' : ''} très grand${largeText.length > 1 ? 's' : ''} à vérifier sur mobile.` : '',
-    tables ? `${tables} tableau${tables > 1 ? 'x' : ''} à tester sur écran étroit.` : '',
+    fixedWidths.length ? t('dashboardPages.pageBuilder.editor.mobileFixedWidths', { count: fixedWidths.length }) : '',
+    largeText.length ? t('dashboardPages.pageBuilder.editor.mobileLargeText', { count: largeText.length }) : '',
+    tables ? t('dashboardPages.pageBuilder.editor.mobileTables', { count: tables }) : '',
   ].filter(Boolean);
 }
 
@@ -1023,6 +1057,7 @@ export function PageBuilderEditor({
   initialNotice,
   hasAiSeo = false,
 }: PageBuilderEditorProps) {
+  const { t } = useLocale();
   const editorRef = useRef<GrapesJSEditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const blockPanelRef = useRef<HTMLDivElement>(null);
@@ -1164,68 +1199,68 @@ export function PageBuilderEditor({
     });
   }, [seoImageSearch, storeMediaAssets]);
 
-  const seoImageQuality = useMemo(() => seoImageQualityMessage(seoImageMeta), [seoImageMeta]);
+  const seoImageQuality = useMemo(() => seoImageQualityMessage(seoImageMeta, t), [seoImageMeta, t]);
   const seoChecks = useMemo(() => {
     const titleLength = pageSettings.seo_title.trim().length;
     const descriptionLength = pageSettings.seo_description.trim().length;
     return [
       {
-        label: 'Titre SEO',
+        label: t('dashboardPages.pageBuilder.editor.seoTitleLabel'),
         ok: titleLength >= 35 && titleLength <= 70,
-        text: titleLength ? `${titleLength}/70 caractères` : 'Titre manquant',
+        text: titleLength ? t('dashboardPages.pageBuilder.editor.seoTitleChars', { count: titleLength }) : t('dashboardPages.pageBuilder.editor.seoTitleMissing'),
       },
       {
-        label: 'Description',
+        label: t('dashboardPages.pageBuilder.editor.seoDescriptionLabel'),
         ok: descriptionLength >= 80 && descriptionLength <= 160,
-        text: descriptionLength ? `${descriptionLength}/160 caractères` : 'Description manquante',
+        text: descriptionLength ? t('dashboardPages.pageBuilder.editor.seoDescriptionChars', { count: descriptionLength }) : t('dashboardPages.pageBuilder.editor.seoDescriptionMissing'),
       },
       {
-        label: 'Image sociale',
+        label: t('dashboardPages.pageBuilder.editor.seoSocialImage'),
         ok: Boolean(pageSettings.og_image),
-        text: pageSettings.og_image ? 'Image sélectionnée' : 'Image manquante',
+        text: pageSettings.og_image ? t('dashboardPages.pageBuilder.editor.seoImageSelected') : t('dashboardPages.pageBuilder.editor.seoImageMissing'),
       },
       {
-        label: 'Indexation',
+        label: t('dashboardPages.pageBuilder.editor.seoIndexation'),
         ok: !pageSettings.noindex,
-        text: pageSettings.noindex ? 'Noindex actif' : 'Indexable',
+        text: pageSettings.noindex ? t('dashboardPages.pageBuilder.editor.seoNoindexActive') : t('dashboardPages.pageBuilder.editor.seoIndexable'),
       },
     ];
-  }, [pageSettings.noindex, pageSettings.og_image, pageSettings.seo_description, pageSettings.seo_title]);
+  }, [pageSettings.noindex, pageSettings.og_image, pageSettings.seo_description, pageSettings.seo_title, t]);
 
-  const accessibilityWarnings = useMemo(() => buildAccessibilityWarnings(currentHtml), [currentHtml]);
-  const mobileWarnings = useMemo(() => buildMobileWarnings(currentHtml, currentCss), [currentCss, currentHtml]);
+  const accessibilityWarnings = useMemo(() => buildAccessibilityWarnings(currentHtml, t), [currentHtml, t]);
+  const mobileWarnings = useMemo(() => buildMobileWarnings(currentHtml, currentCss, t), [currentCss, currentHtml, t]);
   const publishChecklist = useMemo<ChecklistItem[]>(() => [
     {
-      label: 'Titre SEO',
+      label: t('dashboardPages.pageBuilder.editor.seoTitleLabel'),
       ok: seoChecks[0]?.ok ?? false,
-      text: seoChecks[0]?.text || 'Titre manquant',
+      text: seoChecks[0]?.text || t('dashboardPages.pageBuilder.editor.seoTitleMissing'),
     },
     {
-      label: 'Description SEO',
+      label: t('dashboardPages.pageBuilder.editor.seoDescriptionFull'),
       ok: seoChecks[1]?.ok ?? false,
-      text: seoChecks[1]?.text || 'Description manquante',
+      text: seoChecks[1]?.text || t('dashboardPages.pageBuilder.editor.seoDescriptionMissing'),
     },
     {
-      label: 'Image de partage',
+      label: t('dashboardPages.pageBuilder.editor.seoShareImage'),
       ok: Boolean(pageSettings.og_image),
-      text: pageSettings.og_image ? 'Image configurée' : 'Recommandée pour Facebook/WhatsApp',
+      text: pageSettings.og_image ? t('dashboardPages.pageBuilder.editor.seoImageConfigured') : t('dashboardPages.pageBuilder.editor.seoImageRecommended'),
     },
     {
-      label: 'Mobile',
+      label: t('dashboardPages.pageBuilder.editor.checklistMobile'),
       ok: mobileWarnings.length === 0,
-      text: mobileWarnings.length ? `${mobileWarnings.length} point${mobileWarnings.length > 1 ? 's' : ''} à vérifier` : 'Aucun risque évident',
+      text: mobileWarnings.length ? t('dashboardPages.pageBuilder.editor.checklistPointsToCheck', { count: mobileWarnings.length }) : t('dashboardPages.pageBuilder.editor.checklistNoObviousRisk'),
     },
     {
-      label: 'Accessibilité',
+      label: t('dashboardPages.pageBuilder.editor.checklistAccessibility'),
       ok: accessibilityWarnings.length === 0,
-      text: accessibilityWarnings.length ? `${accessibilityWarnings.length} amélioration${accessibilityWarnings.length > 1 ? 's' : ''}` : 'Aucun problème détecté',
+      text: accessibilityWarnings.length ? t('dashboardPages.pageBuilder.editor.checklistImprovements', { count: accessibilityWarnings.length }) : t('dashboardPages.pageBuilder.editor.checklistNoProblem'),
     },
     {
-      label: 'Indexation',
+      label: t('dashboardPages.pageBuilder.editor.seoIndexation'),
       ok: !pageSettings.noindex,
-      text: pageSettings.noindex ? 'Noindex actif' : 'La page peut être indexée',
+      text: pageSettings.noindex ? t('dashboardPages.pageBuilder.editor.seoNoindexActive') : t('dashboardPages.pageBuilder.editor.seoPageIndexable'),
     },
-  ], [accessibilityWarnings.length, mobileWarnings.length, pageSettings.noindex, pageSettings.og_image, seoChecks]);
+  ], [accessibilityWarnings.length, mobileWarnings.length, pageSettings.noindex, pageSettings.og_image, seoChecks, t]);
   const publishChecklistScore = publishChecklist.filter((item) => item.ok).length;
 
   const insertLibrarySection = useCallback((section: SectionLibraryItem, mode: 'click' | 'drop' = 'click') => {
@@ -1237,10 +1272,10 @@ export function PageBuilderEditor({
     setFeedback({
       type: 'success',
       message: mode === 'drop'
-        ? `Section "${section.title}" déposée dans le brouillon.`
-        : `Section "${section.title}" ajoutée au brouillon.`,
+        ? t('dashboardPages.pageBuilder.editor.sectionDropped', { name: t(section.titleKey) })
+        : t('dashboardPages.pageBuilder.editor.sectionAdded', { name: t(section.titleKey) }),
     });
-  }, [refreshEditorSnapshot]);
+  }, [refreshEditorSnapshot, t]);
 
   const handleSectionDragStart = useCallback((event: DragEvent<HTMLButtonElement>, section: SectionLibraryItem) => {
     if (!editorRef.current) return;
@@ -1248,8 +1283,8 @@ export function PageBuilderEditor({
     setIsSectionDropActive(false);
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('application/x-pd-section-id', section.id);
-    event.dataTransfer.setData('text/plain', section.title);
-  }, []);
+    event.dataTransfer.setData('text/plain', t(section.titleKey));
+  }, [t]);
 
   const handleSectionDragEnd = useCallback(() => {
     setDraggedSectionId(null);
@@ -1333,22 +1368,22 @@ export function PageBuilderEditor({
     try {
       const res = await fetchWithCsrf(`/api/pd/page-builder/pages/${pageId}/versions`, { credentials: 'include' });
       if (!res.ok) {
-        throw new Error(await responseErrorMessage(res, 'Impossible de charger l’historique'));
+        throw new Error(await responseErrorMessage(res, t('dashboardPages.pageBuilder.editor.errorLoadHistory')));
       }
       const data = await res.json();
       setVersions(data.data || []);
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Impossible de charger l’historique',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorLoadHistory'),
       });
     } finally {
       setVersionsLoading(false);
     }
-  }, [pageId]);
+  }, [pageId, t]);
 
   const restoreVersion = useCallback(async (version: PageBuilderVersion) => {
-    if (!window.confirm(`Restaurer la version ${version.version_number} dans le brouillon ? La page publique ne changera pas avant publication.`)) {
+    if (!window.confirm(t('dashboardPages.pageBuilder.editor.confirmRestore', { n: version.version_number }))) {
       return;
     }
     setRestoringVersionId(version.id);
@@ -1360,29 +1395,29 @@ export function PageBuilderEditor({
       });
       const data = await res.json().catch(() => null) as { page?: RestoredPagePayload; error?: { message?: string }; message?: string } | null;
       if (!res.ok || !data?.page) {
-        throw new Error(data?.error?.message || data?.message || 'Impossible de restaurer cette version');
+        throw new Error(data?.error?.message || data?.message || t('dashboardPages.pageBuilder.editor.errorRestoreVersion'));
       }
       applyRestoredPageToEditor(data.page);
       setFeedback({
         type: 'success',
-        message: `Version ${version.version_number} restaurée dans le brouillon. Prévisualisez puis publiez pour la mettre en ligne.`,
+        message: t('dashboardPages.pageBuilder.editor.versionRestored', { n: version.version_number }),
       });
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Impossible de restaurer cette version',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorRestoreVersion'),
       });
     } finally {
       setRestoringVersionId(null);
     }
-  }, [applyRestoredPageToEditor, pageId]);
+  }, [applyRestoredPageToEditor, pageId, t]);
 
   const loadStoreMediaAssets = useCallback(async (targetEditor = editorRef.current, showSuccess = false) => {
     setAssetLoading(true);
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/media?limit=100', { credentials: 'include' });
       if (!res.ok) {
-        throw new Error(await responseErrorMessage(res, 'Impossible de charger la médiathèque'));
+        throw new Error(await responseErrorMessage(res, t('dashboardPages.pageBuilder.editor.errorLoadMedia')));
       }
       const data = await res.json();
       const items = ((data.data || []) as BuilderMediaItem[])
@@ -1393,25 +1428,25 @@ export function PageBuilderEditor({
       if (showSuccess) {
         setFeedback({
           type: 'success',
-          message: count ? `${count} image${count > 1 ? 's' : ''} chargée${count > 1 ? 's' : ''} dans la médiathèque.` : 'Aucune image trouvée dans la médiathèque.',
+          message: count ? t('dashboardPages.pageBuilder.editor.mediaLoaded', { count }) : t('dashboardPages.pageBuilder.editor.mediaNoneFound'),
         });
       }
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Impossible de charger la médiathèque',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorLoadMedia'),
       });
     } finally {
       setAssetLoading(false);
     }
-  }, [addStoreMediaToEditor]);
+  }, [addStoreMediaToEditor, t]);
 
   const uploadEditorAsset = useCallback(async (file: File, targetEditor = editorRef.current) => {
     if (!file.type.startsWith('image/')) {
-      throw new Error('Veuillez importer une image.');
+      throw new Error(t('dashboardPages.pageBuilder.editor.errorNeedImage'));
     }
     if (file.size > 10 * 1024 * 1024) {
-      throw new Error('L’image doit faire moins de 10 MB.');
+      throw new Error(t('dashboardPages.pageBuilder.editor.errorImageTooLarge'));
     }
 
     const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
@@ -1426,11 +1461,11 @@ export function PageBuilderEditor({
       }),
     });
     if (!presignRes.ok) {
-      throw new Error(await responseErrorMessage(presignRes, 'Impossible de préparer l’import'));
+      throw new Error(await responseErrorMessage(presignRes, t('dashboardPages.pageBuilder.editor.errorPrepareImport')));
     }
     const presignData = await presignRes.json();
     if (!presignData.upload_url || !presignData.public_url) {
-      throw new Error('URL d’import invalide.');
+      throw new Error(t('dashboardPages.pageBuilder.editor.errorInvalidImportUrl'));
     }
 
     const uploadRes = await fetch(presignData.upload_url, {
@@ -1439,7 +1474,7 @@ export function PageBuilderEditor({
       body: file,
     });
     if (!uploadRes.ok) {
-      throw new Error('Échec de l’import de l’image.');
+      throw new Error(t('dashboardPages.pageBuilder.editor.errorImportFailed'));
     }
 
     const asset: GrapesJSAsset = {
@@ -1449,7 +1484,7 @@ export function PageBuilderEditor({
     };
     targetEditor?.AssetManager.add(asset);
     return asset;
-  }, []);
+  }, [t]);
 
   const uploadEditorAssets = useCallback(async (files: File[], targetEditor = editorRef.current) => {
     if (!files.length) return;
@@ -1459,23 +1494,23 @@ export function PageBuilderEditor({
       await Promise.all(files.map((file) => uploadEditorAsset(file, targetEditor)));
       setFeedback({
         type: 'success',
-        message: `${files.length} image${files.length > 1 ? 's' : ''} importée${files.length > 1 ? 's' : ''} dans la médiathèque.`,
+        message: t('dashboardPages.pageBuilder.editor.mediaImported', { count: files.length }),
       });
       await loadStoreMediaAssets(targetEditor);
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Import image échoué',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorImportImageFailed'),
       });
     } finally {
       setAssetUploading(false);
     }
-  }, [loadStoreMediaAssets, uploadEditorAsset]);
+  }, [loadStoreMediaAssets, t, uploadEditorAsset]);
 
   const dynamicPreviewContext = useMemo<PageBuilderDynamicContext>(() => {
     const settings = builderStore?.settings || {};
     return {
-      storeName: builderStore?.name || initialData?.title || 'Votre boutique',
+      storeName: builderStore?.name || initialData?.title || t('dashboardPages.pageBuilder.editor.yourStore'),
       storeDescription: settingsString(settings, 'store_description') || settingsString(settings, 'description'),
       storePathBase: '',
       primaryColor: settingsColor(settings, 'primary') || '#16C784',
@@ -2130,15 +2165,15 @@ export function PageBuilderEditor({
         message?: string;
       } | null;
       if (!res.ok) {
-        throw new Error(data?.error?.message || data?.message || 'Erreur de sauvegarde');
+        throw new Error(data?.error?.message || data?.message || t('dashboardPages.pageBuilder.editor.errorSave'));
       }
       setHasUnsavedChanges(false);
       const savedAt = new Date().toLocaleTimeString('fr-FR');
       setLastSaved(savedAt);
       refreshEditorSnapshot(editor);
       recordActivity(
-        isAutosave ? 'Autosave' : opts.isPublished !== undefined ? (opts.isPublished ? 'Published version' : 'Unpublished') : 'Draft saved',
-        isAutosave ? `Brouillon autosauvegardé à ${savedAt}.` : opts.isPublished !== undefined ? (opts.isPublished ? 'Page publiée en ligne.' : 'Page retirée du public.') : `Brouillon sauvegardé à ${savedAt}.`,
+        isAutosave ? t('dashboardPages.pageBuilder.editor.activityAutosave') : opts.isPublished !== undefined ? (opts.isPublished ? t('dashboardPages.pageBuilder.editor.activityPublishedVersion') : t('dashboardPages.pageBuilder.editor.activityUnpublished')) : t('dashboardPages.pageBuilder.editor.activityDraftSaved'),
+        isAutosave ? t('dashboardPages.pageBuilder.editor.autosavedAt', { time: savedAt }) : opts.isPublished !== undefined ? (opts.isPublished ? t('dashboardPages.pageBuilder.editor.pagePublishedOnline') : t('dashboardPages.pageBuilder.editor.pageRemovedFromPublic')) : t('dashboardPages.pageBuilder.editor.draftSavedAt', { time: savedAt }),
         'success',
       );
       if (opts.isPublished !== undefined) {
@@ -2155,10 +2190,10 @@ export function PageBuilderEditor({
       setFeedback({
         type: 'success',
         message: isAutosave
-          ? 'Brouillon autosauvegardé.'
+          ? t('dashboardPages.pageBuilder.editor.autosavedShort')
           : opts.isPublished !== undefined
-            ? opts.isPublished ? 'Page publiée.' : 'Page dépubliée.'
-            : 'Brouillon sauvegardé.',
+            ? opts.isPublished ? t('dashboardPages.pageBuilder.editor.pagePublishedShort') : t('dashboardPages.pageBuilder.editor.pageUnpublishedShort')
+            : t('dashboardPages.pageBuilder.editor.draftSavedShort'),
       });
       if (!isAutosave) {
         onSave?.();
@@ -2167,7 +2202,7 @@ export function PageBuilderEditor({
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Erreur de sauvegarde',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorSave'),
       });
       return false;
     } finally {
@@ -2178,7 +2213,7 @@ export function PageBuilderEditor({
         setSaving(false);
       }
     }
-  }, [globalStyles, initialData, loadVersions, onSave, pageId, pageSettings, recordActivity, refreshEditorSnapshot, storeId]);
+  }, [globalStyles, initialData, loadVersions, onSave, pageId, pageSettings, recordActivity, refreshEditorSnapshot, storeId, t]);
 
   // Save handler
   const handleSave = useCallback(() => {
@@ -2189,7 +2224,7 @@ export function PageBuilderEditor({
     if (!editorReady || previewing) return;
     const host = storeHost?.trim();
     if (!host) {
-      setFeedback({ type: 'error', message: 'Impossible de déterminer le lien de la boutique pour l’aperçu.' });
+      setFeedback({ type: 'error', message: t('dashboardPages.pageBuilder.editor.errorNoPreviewLink') });
       return;
     }
     const previewWindow = window.open('about:blank', '_blank');
@@ -2212,7 +2247,7 @@ export function PageBuilderEditor({
         message?: string;
       } | null;
       if (!res.ok || !data?.token || !data.page?.slug) {
-        throw new Error(data?.error?.message || data?.message || 'Impossible de générer l’aperçu');
+        throw new Error(data?.error?.message || data?.message || t('dashboardPages.pageBuilder.editor.errorGeneratePreview'));
       }
       const previewPath = data.page.is_homepage
         ? `/store/${encodeURIComponent(host)}`
@@ -2224,17 +2259,17 @@ export function PageBuilderEditor({
       } else {
         window.open(previewUrl, '_blank', 'noopener,noreferrer');
       }
-      setFeedback({ type: 'success', message: 'Aperçu du brouillon ouvert.' });
+      setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.previewOpened') });
     } catch (err) {
       previewWindow?.close();
       setFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Impossible de générer l’aperçu',
+        message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorGeneratePreview'),
       });
     } finally {
       setPreviewing(false);
     }
-  }, [editorReady, pageId, persistPage, previewing, storeHost]);
+  }, [editorReady, pageId, persistPage, previewing, storeHost, t]);
 
   // Publish/Unpublish handler
   const handleTogglePublish = useCallback(async () => {
@@ -2245,7 +2280,7 @@ export function PageBuilderEditor({
       if (newPublished) {
         setPublishChecklistOpen(true);
         const openIssues = publishChecklist.filter((item) => !item.ok);
-        if (openIssues.length && !window.confirm(`Publier avec ${openIssues.length} point(s) à vérifier ?`)) {
+        if (openIssues.length && !window.confirm(t('dashboardPages.pageBuilder.editor.confirmPublishWithIssues', { count: openIssues.length }))) {
           return;
         }
       }
@@ -2309,7 +2344,7 @@ export function PageBuilderEditor({
   }, [editorReady, hasUnsavedChanges, persistPage]);
 
   const handleBack = () => {
-    if (hasUnsavedChanges && !window.confirm('Vous avez des changements non sauvegardés. Quitter quand même ?')) {
+    if (hasUnsavedChanges && !window.confirm(t('dashboardPages.pageBuilder.editor.confirmLeaveUnsaved'))) {
       return;
     }
     onBack?.();
@@ -2365,8 +2400,8 @@ export function PageBuilderEditor({
     setActiveDevice(device);
     setDeviceMenuOpen(false);
     if (device === 'Mobile' && mobileWarnings.length) {
-      setFeedback({ type: 'error', message: `Mobile: ${mobileWarnings.length} point(s) à vérifier avant publication.` });
-      recordActivity('Mobile warning', `${mobileWarnings.length} point(s) détecté(s).`, 'warning');
+      setFeedback({ type: 'error', message: t('dashboardPages.pageBuilder.editor.mobileWarningsNotice', { count: mobileWarnings.length }) });
+      recordActivity(t('dashboardPages.pageBuilder.editor.activityMobileWarning'), t('dashboardPages.pageBuilder.editor.mobileWarningsDetected', { count: mobileWarnings.length }), 'warning');
     }
   };
 
@@ -2419,13 +2454,13 @@ export function PageBuilderEditor({
     updatePageSetting('og_image', src);
     setSeoImagePickerOpen(false);
     setSeoImagePickerError('');
-    setFeedback({ type: 'success', message: 'Image de partage mise à jour.' });
+    setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.shareImageUpdated') });
   };
 
   const handleUseHeroImageForSeo = () => {
     if (!heroImageUrl) return;
     updatePageSetting('og_image', heroImageUrl);
-    setFeedback({ type: 'success', message: 'Image hero utilisée comme image de partage.' });
+    setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.heroImageUsedForShare') });
   };
 
   const handleUploadPageOgImage = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -2439,10 +2474,10 @@ export function PageBuilderEditor({
       const asset = await uploadEditorAsset(file, editorRef.current);
       updatePageSetting('og_image', asset.src);
       setSeoImagePickerOpen(false);
-      setFeedback({ type: 'success', message: 'Image importée et définie comme image de partage.' });
+      setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.imageImportedAsShare') });
       await loadStoreMediaAssets(editorRef.current);
     } catch (err) {
-      setSeoImagePickerError(err instanceof Error ? err.message : 'Import image échoué');
+      setSeoImagePickerError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorImportImageFailed'));
     } finally {
       setAssetUploading(false);
     }
@@ -2458,7 +2493,7 @@ export function PageBuilderEditor({
       refreshEditorSnapshot(editor);
     }
     setHasUnsavedChanges(true);
-    recordActivity('Global styles', 'Styles globaux mis à jour.', 'info');
+    recordActivity(t('dashboardPages.pageBuilder.editor.activityGlobalStyles'), t('dashboardPages.pageBuilder.editor.globalStylesUpdated'), 'info');
   };
 
   const handleSaveSelectedSection = () => {
@@ -2466,16 +2501,16 @@ export function PageBuilderEditor({
     const rawHtml = component?.toHTML?.() || '';
     const html = sanitizeTemplateHtml(rawHtml);
     if (!html) {
-      setFeedback({ type: 'error', message: 'Sélectionnez une section sur la page avant de la sauvegarder.' });
+      setFeedback({ type: 'error', message: t('dashboardPages.pageBuilder.editor.errorSelectSectionFirst') });
       return;
     }
-    const name = window.prompt('Nom de la section réutilisable', safeText(String(component?.get?.('name') || selectedDynamicBlock?.blockType || 'Section personnalisée'), 'Section personnalisée'));
+    const name = window.prompt(t('dashboardPages.pageBuilder.editor.promptSectionName'), safeText(String(component?.get?.('name') || selectedDynamicBlock?.blockType || t('dashboardPages.pageBuilder.editor.customSection')), t('dashboardPages.pageBuilder.editor.customSection')));
     if (!name) return;
     const nextSections = [{ id: `${Date.now()}`, name: name.slice(0, 80), html, createdAt: new Date().toISOString() }, ...savedSections].slice(0, 20);
     setSavedSections(nextSections);
     window.localStorage.setItem(savedSectionsStorageKey, JSON.stringify(nextSections));
-    setFeedback({ type: 'success', message: 'Section sauvegardée dans votre bibliothèque locale.' });
-    recordActivity('Saved section', name.slice(0, 80), 'success');
+    setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.sectionSavedLocal') });
+    recordActivity(t('dashboardPages.pageBuilder.editor.activitySavedSection'), name.slice(0, 80), 'success');
   };
 
   const handleInsertSavedSection = (section: SavedSectionItem) => {
@@ -2484,7 +2519,7 @@ export function PageBuilderEditor({
     editor.addComponents(section.html);
     refreshEditorSnapshot(editor);
     setHasUnsavedChanges(true);
-    setFeedback({ type: 'success', message: `Section "${section.name}" ajoutée.` });
+    setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.savedSectionAdded', { name: section.name }) });
   };
 
   const handleDeleteSavedSection = (sectionId: string) => {
@@ -2503,14 +2538,14 @@ export function PageBuilderEditor({
     downloadTemplateFile(`${filenameBase}-pandamarket-template.json`, {
       panda_template_version: '1.0',
       type: 'pandamarket-page-builder-template',
-      name: initialData?.title || 'PandaMarket template',
+      name: initialData?.title || t('dashboardPages.pageBuilder.editor.defaultTemplateName'),
       exported_at: new Date().toISOString(),
       html,
       css,
       settings: pageSettings,
       globalStyles,
     });
-    recordActivity('Template export', 'Template JSON sécurisé téléchargé.', 'success');
+    recordActivity(t('dashboardPages.pageBuilder.editor.activityTemplateExport'), t('dashboardPages.pageBuilder.editor.templateExported'), 'success');
   };
 
   const handleImportTemplate = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -2523,7 +2558,7 @@ export function PageBuilderEditor({
       const template = await readTemplateFile(file);
       const html = sanitizeTemplateHtml(template.html || '');
       const css = sanitizeTemplateCss(template.css || '');
-      if (!html) throw new Error('Template vide après vérification de sécurité.');
+      if (!html) throw new Error(t('dashboardPages.pageBuilder.editor.errorTemplateEmpty'));
       const importedStyles = normalizeGlobalStyles({ ...globalStyles, ...(template.globalStyles || {}) });
       editorRef.current.setComponents(html);
       editorRef.current.setStyle(withPageGlobalStyleCss(css, importedStyles));
@@ -2531,11 +2566,11 @@ export function PageBuilderEditor({
       setPageSettings((prev) => ({ ...prev, ...normalizeImportedSettings(template.settings) }));
       refreshEditorSnapshot(editorRef.current);
       setHasUnsavedChanges(true);
-      setFeedback({ type: 'success', message: 'Template importé dans le brouillon après vérification de sécurité.' });
-      recordActivity('Template import', template.name || file.name, 'success');
+      setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.templateImported') });
+      recordActivity(t('dashboardPages.pageBuilder.editor.activityTemplateImport'), template.name || file.name, 'success');
     } catch (err) {
-      setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Import template échoué' });
-      recordActivity('Template import failed', err instanceof Error ? err.message : 'Import échoué', 'error');
+      setFeedback({ type: 'error', message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorTemplateImportFailed') });
+      recordActivity(t('dashboardPages.pageBuilder.editor.activityTemplateImportFailed'), err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorImportFailedGeneric'), 'error');
     } finally {
       setTemplateImporting(false);
     }
@@ -2543,7 +2578,7 @@ export function PageBuilderEditor({
 
   const handleAiCopyHelper = async () => {
     if (!hasAiSeo) {
-      setFeedback({ type: 'error', message: 'Assistant IA SEO disponible avec une option IA SEO active.' });
+      setFeedback({ type: 'error', message: t('dashboardPages.pageBuilder.editor.errorAiSeoRequired') });
       return;
     }
     setAiCopyLoading(true);
@@ -2553,7 +2588,7 @@ export function PageBuilderEditor({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          page_title: initialData?.title || builderStore?.name || 'Page boutique',
+          page_title: initialData?.title || builderStore?.name || t('dashboardPages.pageBuilder.editor.defaultPageTitle'),
           current_seo_title: pageSettings.seo_title,
           current_seo_description: pageSettings.seo_description,
           section_outline: sectionOutline.map((section) => section.label).slice(0, 12),
@@ -2562,7 +2597,7 @@ export function PageBuilderEditor({
       });
       const data = await res.json().catch(() => null) as { suggestions?: { seo_title?: string; seo_description?: string; cta?: string }; error?: { message?: string }; message?: string } | null;
       if (!res.ok || !data?.suggestions) {
-        throw new Error(data?.error?.message || data?.message || 'Assistant IA indisponible');
+        throw new Error(data?.error?.message || data?.message || t('dashboardPages.pageBuilder.editor.errorAiUnavailable'));
       }
       setPageSettings((prev) => ({
         ...prev,
@@ -2570,10 +2605,10 @@ export function PageBuilderEditor({
         seo_description: data.suggestions?.seo_description?.slice(0, 320) || prev.seo_description,
       }));
       setHasUnsavedChanges(true);
-      setFeedback({ type: 'success', message: `Suggestions IA appliquées. CTA proposé: ${data.suggestions.cta || 'Voir la boutique'}` });
-      recordActivity('AI copy helper', 'Titre et description SEO proposés.', 'success');
+      setFeedback({ type: 'success', message: t('dashboardPages.pageBuilder.editor.aiSuggestionsApplied', { cta: data.suggestions.cta || t('dashboardPages.pageBuilder.editor.aiDefaultCta') }) });
+      recordActivity(t('dashboardPages.pageBuilder.editor.activityAiCopyHelper'), t('dashboardPages.pageBuilder.editor.aiSeoProposed'), 'success');
     } catch (err) {
-      setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Assistant IA indisponible' });
+      setFeedback({ type: 'error', message: err instanceof Error ? err.message : t('dashboardPages.pageBuilder.editor.errorAiUnavailable') });
     } finally {
       setAiCopyLoading(false);
     }
@@ -3054,25 +3089,25 @@ export function PageBuilderEditor({
             className="flex items-center gap-1.5 rounded-full border border-[#E4D8C6] bg-white px-3 py-1.5 text-sm font-semibold text-[#5F6472] shadow-sm transition-colors hover:border-[#D6B779] hover:text-[#1A1A2E]"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour
+            {t('dashboardPages.pageBuilder.editor.back')}
           </button>
           <div className="w-px h-7 bg-[#E4D8C6]" />
           <div>
             <span className="block text-sm font-bold text-[#1A1A2E]">
-              {initialData?.title || 'Page sans titre'}
+              {initialData?.title || t('dashboardPages.pageBuilder.editor.untitledPage')}
             </span>
             <span className="text-[11px] font-medium text-[#8A8174]">
-              {hasUnsavedChanges ? 'Unpublished changes' : isPublished ? 'Published version live' : 'Saved as draft'}
+              {hasUnsavedChanges ? t('dashboardPages.pageBuilder.editor.unpublishedChanges') : isPublished ? t('dashboardPages.pageBuilder.editor.publishedLive') : t('dashboardPages.pageBuilder.editor.savedAsDraft')}
             </span>
           </div>
           {hasUnsavedChanges && (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Unpublished changes</span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">{t('dashboardPages.pageBuilder.editor.unpublishedChanges')}</span>
           )}
           {lastSaved && !hasUnsavedChanges && (
-            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Saved as draft · {lastSaved}</span>
+            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{t('dashboardPages.pageBuilder.editor.savedAsDraftTime', { time: lastSaved })}</span>
           )}
           {isPublished && !hasUnsavedChanges && (
-            <span className="rounded-full border border-[#CCD8FF] bg-[#EEF3FF] px-2.5 py-1 text-xs font-bold text-[#3153B7]">Published version live</span>
+            <span className="rounded-full border border-[#CCD8FF] bg-[#EEF3FF] px-2.5 py-1 text-xs font-bold text-[#3153B7]">{t('dashboardPages.pageBuilder.editor.publishedLive')}</span>
           )}
         </div>
 
@@ -3082,21 +3117,21 @@ export function PageBuilderEditor({
               type="button"
               onClick={handleUndo}
               disabled={!editorReady || !canUndo}
-              title="Annuler la dernière modification"
+              title={t('dashboardPages.pageBuilder.editor.undoTitle')}
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-[#4B5563] transition-colors hover:bg-[#F4EDE2] hover:text-[#1A1A2E] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Undo2 className="h-3.5 w-3.5" />
-              Undo
+              {t('dashboardPages.pageBuilder.editor.undo')}
             </button>
             <button
               type="button"
               onClick={handleRedo}
               disabled={!editorReady || !canRedo}
-              title="Rétablir la modification"
+              title={t('dashboardPages.pageBuilder.editor.redoTitle')}
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-[#4B5563] transition-colors hover:bg-[#F4EDE2] hover:text-[#1A1A2E] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Redo2 className="h-3.5 w-3.5" />
-              Redo
+              {t('dashboardPages.pageBuilder.editor.redo')}
             </button>
           </div>
           <button
@@ -3104,7 +3139,7 @@ export function PageBuilderEditor({
             onClick={handleToggleComponentsVisible}
             disabled={!editorReady}
             aria-pressed={componentsVisible}
-            title="Afficher ou masquer les contours des composants"
+            title={t('dashboardPages.pageBuilder.editor.componentsVisibilityTitle')}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold shadow-sm transition-colors disabled:opacity-40 ${
               componentsVisible
                 ? 'border-[#1A1A2E] bg-[#1A1A2E] text-white hover:bg-[#252543]'
@@ -3112,7 +3147,7 @@ export function PageBuilderEditor({
             }`}
           >
             {componentsVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            View components
+            {t('dashboardPages.pageBuilder.editor.viewComponents')}
           </button>
           <div className="relative">
             <button
@@ -3158,7 +3193,7 @@ export function PageBuilderEditor({
             ) : (
               <ImageIcon className="h-3.5 w-3.5" />
             )}
-            {assetUploading ? 'Import...' : assetLoading ? 'Chargement...' : 'Médias'}
+            {assetUploading ? t('dashboardPages.pageBuilder.editor.importing') : assetLoading ? t('dashboardPages.pageBuilder.editor.loading') : t('dashboardPages.pageBuilder.editor.media')}
           </button>
           {/* Save Button */}
           <button
@@ -3171,7 +3206,7 @@ export function PageBuilderEditor({
             ) : (
               <Save className="w-4 h-4" />
             )}
-            {saving ? 'Sauvegarde...' : 'Sauvegarder brouillon'}
+            {saving ? t('dashboardPages.pageBuilder.editor.saving') : t('dashboardPages.pageBuilder.editor.saveDraft')}
           </button>
 
           <button
@@ -3184,7 +3219,7 @@ export function PageBuilderEditor({
             ) : (
               <ExternalLink className="w-4 h-4" />
             )}
-            {previewing ? 'Aperçu...' : 'Aperçu'}
+            {previewing ? t('dashboardPages.pageBuilder.editor.previewing') : t('dashboardPages.pageBuilder.editor.preview')}
           </button>
 
           {/* Publish/Unpublish Button */}
@@ -3204,7 +3239,7 @@ export function PageBuilderEditor({
             ) : (
               <Eye className="w-4 h-4" />
             )}
-            {publishing ? '...' : isPublished ? 'Dépublier' : 'Publier'}
+            {publishing ? '...' : isPublished ? t('dashboardPages.pageBuilder.editor.unpublish') : t('dashboardPages.pageBuilder.editor.publish')}
           </button>
         </div>
       </div>
@@ -3222,7 +3257,7 @@ export function PageBuilderEditor({
           ) : (
             <CheckCircle2 className="h-4 w-4" />
           )}
-          <span>{autosaving ? 'Autosauvegarde en cours...' : feedback?.message}</span>
+          <span>{autosaving ? t('dashboardPages.pageBuilder.editor.autosaving') : feedback?.message}</span>
         </div>
       )}
 
@@ -3233,7 +3268,7 @@ export function PageBuilderEditor({
           <div className="order-[50] border-b border-[#E4D8C6] p-4">
             <div className="mb-3 flex items-center gap-2">
               <FileJson className="h-4 w-4 text-[#8A6F3D]" />
-              <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">Templates sécurisés</h3>
+              <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.secureTemplates')}</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -3243,24 +3278,24 @@ export function PageBuilderEditor({
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E4D8C6] bg-white px-3 py-2 text-xs font-bold text-[#4B5563] shadow-sm hover:border-[#D6B779] disabled:opacity-40"
               >
                 <Download className="h-3.5 w-3.5" />
-                Export
+                {t('dashboardPages.pageBuilder.editor.export')}
               </button>
               <label className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E4D8C6] bg-white px-3 py-2 text-xs font-bold text-[#4B5563] shadow-sm hover:border-[#D6B779] ${!editorReady ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}>
                 {templateImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                Import
+                {t('dashboardPages.pageBuilder.editor.import')}
                 <input type="file" accept="application/json,.json" onChange={handleImportTemplate} disabled={!editorReady || templateImporting} className="hidden" />
               </label>
             </div>
-            <p className="mt-2 text-[10px] leading-snug text-[#7C7468]">Import JSON vérifié: scripts, iframes, événements et URLs dangereuses sont retirés avant chargement.</p>
+            <p className="mt-2 text-[10px] leading-snug text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.templateImportHelp')}</p>
           </div>
           <div className="order-[10] border-b border-[#E4D8C6] p-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-bold uppercase tracking-[0.14em] text-[#8A6F3D]">Recherche blocs</span>
+              <span className="mb-1 block text-xs font-bold uppercase tracking-[0.14em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.searchBlocks')}</span>
               <input
                 type="search"
                 value={blockSearch}
                 onChange={(event) => setBlockSearch(event.target.value)}
-                placeholder="Hero, produit, FAQ..."
+                placeholder={t('dashboardPages.pageBuilder.editor.searchBlocksPlaceholder')}
                 className="w-full rounded-xl border border-[#E4D8C6] bg-white px-3 py-2 text-xs font-semibold text-[#1A1A2E] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
               />
             </label>
@@ -3274,14 +3309,14 @@ export function PageBuilderEditor({
             >
               <span>
                 <span className="block text-xs font-bold text-[#8A6F3D] uppercase tracking-[0.18em]">
-                Sections rapides
+                {t('dashboardPages.pageBuilder.editor.quickSections')}
                 </span>
                 <span className="mt-1 block text-[11px] leading-relaxed text-[#7C7468]">
-                  Glissez une section vers la page, ou cliquez pour l’ajouter à la fin.
+                  {t('dashboardPages.pageBuilder.editor.quickSectionsHelp')}
                 </span>
               </span>
               <span className="rounded-full border border-[#E4D8C6] bg-white px-2 py-1 text-[10px] font-bold text-[#6B6258]">
-                {sectionsQuickOpen ? 'Fermer' : 'Ouvrir'}
+                {sectionsQuickOpen ? t('dashboardPages.pageBuilder.editor.close') : t('dashboardPages.pageBuilder.editor.open')}
               </span>
             </button>
             {sectionsQuickOpen && (
@@ -3296,7 +3331,7 @@ export function PageBuilderEditor({
                         : 'border-[#E4D8C6] bg-white text-[#6B7280] hover:border-[#D6B779] hover:text-[#1A1A2E]'
                     }`}
                   >
-                    Tous
+                    {t('dashboardPages.pageBuilder.editor.all')}
                   </button>
                   {SECTION_LIBRARY_FILTERS.map((filter) => {
                     const option = SECTION_LIBRARY_LABELS[filter];
@@ -3312,7 +3347,7 @@ export function PageBuilderEditor({
                             : 'border-[#E4D8C6] bg-white text-[#6B7280] hover:border-[#D6B779] hover:text-[#1A1A2E]'
                         }`}
                       >
-                        <Icon className="inline h-3 w-3" /> {option.label}
+                        <Icon className="inline h-3 w-3" /> {t(option.labelKey)}
                       </button>
                     );
                   })}
@@ -3329,7 +3364,7 @@ export function PageBuilderEditor({
                         onDragEnd={handleSectionDragEnd}
                         onClick={() => insertLibrarySection(section)}
                         disabled={!editorReady}
-                        aria-label={`Glisser ou ajouter la section ${section.title}`}
+                        aria-label={t('dashboardPages.pageBuilder.editor.dragOrAddSection', { name: t(section.titleKey) })}
                         data-testid={`page-builder-section-${section.id}`}
                         className={`group w-full cursor-grab rounded-2xl border p-2.5 text-left shadow-sm transition-all active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 ${
                           draggedSectionId === section.id
@@ -3340,10 +3375,10 @@ export function PageBuilderEditor({
                         <SectionVisualPreview preview={section.preview} Icon={Icon} />
                         <span className="mt-2 flex items-start gap-2">
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-bold text-[#1A1A2E]">{section.title}</span>
-                            <span className="mt-0.5 block text-[10px] leading-snug text-[#7C7468]">{section.description}</span>
+                            <span className="block truncate text-xs font-bold text-[#1A1A2E]">{t(section.titleKey)}</span>
+                            <span className="mt-0.5 block text-[10px] leading-snug text-[#7C7468]">{t(section.descKey)}</span>
                             <span className="mt-2 inline-flex items-center rounded-full border border-[#D6B779]/20 bg-[#D6B779]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#8A6F3D]">
-                              Glisser
+                              {t('dashboardPages.pageBuilder.editor.drag')}
                             </span>
                           </span>
                           <Plus className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#9CA3AF] transition-colors group-hover:text-[#16C784]" />
@@ -3353,7 +3388,7 @@ export function PageBuilderEditor({
                   })}
                   {!filteredSectionLibrary.length && (
                     <p className="rounded-xl border border-dashed border-[#E4D8C6] bg-white p-3 text-xs font-medium text-[#7C7468]">
-                      Aucune section rapide trouvée.
+                      {t('dashboardPages.pageBuilder.editor.noQuickSections')}
                     </p>
                   )}
                 </div>
@@ -3364,7 +3399,7 @@ export function PageBuilderEditor({
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-[#8A6F3D]" />
-                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">Mes sections</h3>
+                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.mySections')}</h3>
               </div>
               <button
                 type="button"
@@ -3372,7 +3407,7 @@ export function PageBuilderEditor({
                 disabled={!editorReady}
                 className="rounded-full border border-[#E4D8C6] bg-white px-2 py-1 text-[10px] font-bold text-[#6B6258] hover:border-[#D6B779] disabled:opacity-40"
               >
-                Sauver
+                {t('dashboardPages.pageBuilder.editor.save')}
               </button>
             </div>
             {savedSections.length ? (
@@ -3381,7 +3416,7 @@ export function PageBuilderEditor({
                   <div key={section.id} className="rounded-xl border border-[#E4D8C6] bg-white p-2 shadow-sm">
                     <p className="truncate text-xs font-bold text-[#1A1A2E]">{section.name}</p>
                     <div className="mt-2 flex gap-1.5">
-                      <button type="button" onClick={() => handleInsertSavedSection(section)} className="flex-1 rounded-lg bg-[#16C784] px-2 py-1.5 text-[10px] font-bold text-white">Ajouter</button>
+                      <button type="button" onClick={() => handleInsertSavedSection(section)} className="flex-1 rounded-lg bg-[#16C784] px-2 py-1.5 text-[10px] font-bold text-white">{t('dashboardPages.pageBuilder.editor.add')}</button>
                       <button type="button" onClick={() => handleDeleteSavedSection(section.id)} className="rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-red-600">
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -3390,12 +3425,12 @@ export function PageBuilderEditor({
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed border-[#E4D8C6] bg-white/70 p-3 text-xs text-[#7C7468]">Sélectionnez un bloc/section dans la page puis cliquez Sauver.</p>
+              <p className="rounded-xl border border-dashed border-[#E4D8C6] bg-white/70 p-3 text-xs text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.mySectionsHelp')}</p>
             )}
           </div>
           <div className="order-[30] p-4 pb-2">
             <h3 className="text-xs font-bold text-[#8A6F3D] uppercase tracking-[0.18em] mb-2">
-              Blocs
+              {t('dashboardPages.pageBuilder.editor.blocks')}
             </h3>
           </div>
           <div ref={blockPanelRef} id="gjs-blocks" className="order-[31] px-3 pb-4 text-[#1A1A2E]" />
@@ -3413,7 +3448,7 @@ export function PageBuilderEditor({
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 text-[#16C784] animate-spin mx-auto mb-3" />
-                <p className="text-sm text-[#7C7468]">Chargement de l&apos;éditeur...</p>
+                <p className="text-sm text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.loadingEditor')}</p>
               </div>
             </div>
           )}
@@ -3431,10 +3466,10 @@ export function PageBuilderEditor({
             >
               <div className="pointer-events-none rounded-2xl border border-white/60 bg-white/95 px-6 py-5 text-center shadow-xl">
                 <p className="text-sm font-bold text-[#1A1A2E]">
-                  Déposez la section ici
+                  {t('dashboardPages.pageBuilder.editor.dropSectionHere')}
                 </p>
                 <p className="mt-1 text-xs text-[#7C7468]">
-                  Elle sera ajoutée au brouillon de la page.
+                  {t('dashboardPages.pageBuilder.editor.dropSectionHelp')}
                 </p>
               </div>
             </div>
@@ -3448,12 +3483,12 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Clock3 className="h-3.5 w-3.5" />
-                Timeline sauvegarde
+                {t('dashboardPages.pageBuilder.editor.saveTimeline')}
               </summary>
               <div className="mt-3 space-y-2">
                 <div className="rounded-xl border border-[#E4D8C6] bg-white p-3 text-xs shadow-sm">
-                  <p className="font-bold text-[#1A1A2E]">{autosaving ? 'Autosave en cours...' : hasUnsavedChanges ? 'Changements non sauvegardés' : lastSaved ? `Dernier brouillon: ${lastSaved}` : 'Aucune sauvegarde récente'}</p>
-                  <p className="mt-1 text-[11px] text-[#7C7468]">Autosave toutes les 30 secondes après modification.</p>
+                  <p className="font-bold text-[#1A1A2E]">{autosaving ? t('dashboardPages.pageBuilder.editor.autosaveInProgress') : hasUnsavedChanges ? t('dashboardPages.pageBuilder.editor.unsavedChanges') : lastSaved ? t('dashboardPages.pageBuilder.editor.lastDraft', { time: lastSaved }) : t('dashboardPages.pageBuilder.editor.noRecentSave')}</p>
+                  <p className="mt-1 text-[11px] text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.autosaveHelp')}</p>
                 </div>
                 {activityTimeline.map((item) => (
                   <div key={item.id} className="rounded-xl border border-[#E4D8C6] bg-white p-2 text-xs shadow-sm">
@@ -3472,26 +3507,26 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Palette className="h-3.5 w-3.5" />
-                Styles globaux
+                {t('dashboardPages.pageBuilder.editor.globalStyles')}
               </summary>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {([
-                  ['primaryColor', 'Primaire'],
-                  ['backgroundColor', 'Fond'],
-                  ['surfaceColor', 'Surface'],
-                  ['textColor', 'Texte'],
-                ] as Array<[keyof PageGlobalStyles, string]>).map(([field, label]) => (
+                  ['primaryColor', 'dashboardPages.pageBuilder.editor.colorPrimary'],
+                  ['backgroundColor', 'dashboardPages.pageBuilder.editor.colorBackground'],
+                  ['surfaceColor', 'dashboardPages.pageBuilder.editor.colorSurface'],
+                  ['textColor', 'dashboardPages.pageBuilder.editor.colorText'],
+                ] as Array<[keyof PageGlobalStyles, string]>).map(([field, labelKey]) => (
                   <label key={field} className="block rounded-xl border border-[#E4D8C6] bg-white p-2 text-[11px] font-bold text-[#6B6258]">
-                    {label}
+                    {t(labelKey)}
                     <input type="color" value={globalStyles[field]} onChange={(event) => handleGlobalStyleChange(field, event.target.value)} className="mt-1 h-8 w-full rounded border border-[#E4D8C6]" />
                   </label>
                 ))}
                 <label className="col-span-2 block rounded-xl border border-[#E4D8C6] bg-white p-2 text-[11px] font-bold text-[#6B6258]">
-                  Espacement sections
+                  {t('dashboardPages.pageBuilder.editor.sectionSpacing')}
                   <input type="range" min="24" max="120" value={globalStyles.sectionSpacing} onChange={(event) => handleGlobalStyleChange('sectionSpacing', event.target.value)} className="mt-1 w-full accent-[#16C784]" />
                 </label>
                 <label className="col-span-2 block rounded-xl border border-[#E4D8C6] bg-white p-2 text-[11px] font-bold text-[#6B6258]">
-                  Rayon boutons
+                  {t('dashboardPages.pageBuilder.editor.buttonRadius')}
                   <input type="range" min="0" max="999" value={globalStyles.buttonRadius} onChange={(event) => handleGlobalStyleChange('buttonRadius', event.target.value)} className="mt-1 w-full accent-[#16C784]" />
                 </label>
               </div>
@@ -3502,14 +3537,14 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Share2 className="h-3.5 w-3.5" />
-                Aperçu social
+                {t('dashboardPages.pageBuilder.editor.socialPreview')}
               </summary>
               <div className="mt-3 overflow-hidden rounded-2xl border border-[#E4D8C6] bg-white shadow-sm">
                 <div className="aspect-[1200/630] bg-[#F4EDE2] bg-cover bg-center" style={{ backgroundImage: pageSettings.og_image ? `url("${pageSettings.og_image.replace(/"/g, '\\"')}")` : undefined }} />
                 <div className="p-3">
-                  <p className="truncate text-xs font-bold text-[#1A1A2E]">{pageSettings.seo_title || initialData?.title || 'Titre de page'}</p>
-                  <p className="mt-1 line-clamp-2 text-[11px] text-[#7C7468]">{pageSettings.seo_description || 'Description SEO affichée dans les partages sociaux.'}</p>
-                  <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-wider text-[#8A6F3D]">{storeHost || 'boutique'}.{getMarketplaceDomain()}</p>
+                  <p className="truncate text-xs font-bold text-[#1A1A2E]">{pageSettings.seo_title || initialData?.title || t('dashboardPages.pageBuilder.editor.pageTitleDefault')}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] text-[#7C7468]">{pageSettings.seo_description || t('dashboardPages.pageBuilder.editor.seoDescriptionSocialHelp')}</p>
+                  <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-wider text-[#8A6F3D]">{storeHost || t('dashboardPages.pageBuilder.editor.storeDefault')}.{getMarketplaceDomain()}</p>
                 </div>
               </div>
             </details>
@@ -3519,16 +3554,16 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Wand2 className="h-3.5 w-3.5" />
-                Assistant IA copy
+                {t('dashboardPages.pageBuilder.editor.aiCopyAssistant')}
               </summary>
               <div className="mt-3 rounded-xl border border-[#E4D8C6] bg-white p-3 text-xs shadow-sm">
-                <p className="leading-relaxed text-[#7C7468]">Génère un titre SEO et une description depuis le contenu actuel. Utilise les crédits IA SEO du plan.</p>
+                <p className="leading-relaxed text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.aiCopyHelp')}</p>
                 {!hasAiSeo && (
-                  <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"><Lock className="h-3 w-3" /> IA SEO requise</p>
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"><Lock className="h-3 w-3" /> {t('dashboardPages.pageBuilder.editor.aiSeoRequiredBadge')}</p>
                 )}
                 <button type="button" onClick={handleAiCopyHelper} disabled={aiCopyLoading || !editorReady} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A1A2E] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
                   {aiCopyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Générer suggestions
+                  {t('dashboardPages.pageBuilder.editor.generateSuggestions')}
                 </button>
               </div>
             </details>
@@ -3538,7 +3573,7 @@ export function PageBuilderEditor({
             <details open={publishChecklistOpen} onToggle={(event) => setPublishChecklistOpen(event.currentTarget.open)}>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                Checklist publication
+                {t('dashboardPages.pageBuilder.editor.publishChecklist')}
               </summary>
               <div className="pd-checklist-card mt-3 rounded-2xl border border-[#E4D8C6] bg-white p-3 shadow-sm">
                 <div className="mb-3 h-2 overflow-hidden rounded-full bg-[#F4EDE2]">
@@ -3560,12 +3595,12 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Smartphone className="h-3.5 w-3.5" />
-                Warnings mobile
+                {t('dashboardPages.pageBuilder.editor.mobileWarnings')}
               </summary>
               <div className="mt-3 space-y-2">
                 {mobileWarnings.length ? mobileWarnings.map((warning) => (
                   <p key={warning} className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-700">{warning}</p>
-                )) : <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">Aucun risque mobile évident.</p>}
+                )) : <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">{t('dashboardPages.pageBuilder.editor.noMobileRisk')}</p>}
               </div>
             </details>
           </div>
@@ -3574,12 +3609,12 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <Accessibility className="h-3.5 w-3.5" />
-                Accessibilité
+                {t('dashboardPages.pageBuilder.editor.accessibility')}
               </summary>
               <div className="mt-3 space-y-2">
                 {accessibilityWarnings.length ? accessibilityWarnings.map((warning) => (
                   <p key={warning} className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-700">{warning}</p>
-                )) : <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">Aucun problème évident détecté.</p>}
+                )) : <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs font-semibold text-emerald-700">{t('dashboardPages.pageBuilder.editor.noAccessibilityIssue')}</p>}
               </div>
             </details>
           </div>
@@ -3587,41 +3622,41 @@ export function PageBuilderEditor({
           <div className="order-[10] border-b border-[#E4D8C6] p-4">
             <details open>
               <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
-                Paramètres page
+                {t('dashboardPages.pageBuilder.editor.pageSettings')}
               </summary>
               <div className="mt-3 space-y-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Titre SEO</span>
+                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.seoTitleLabel')}</span>
                   <input
                     type="text"
                     value={pageSettings.seo_title}
                     onChange={(event) => updatePageSetting('seo_title', event.target.value)}
-                    placeholder={initialData?.title || 'Titre public'}
+                    placeholder={initialData?.title || t('dashboardPages.pageBuilder.editor.seoTitlePlaceholder')}
                     maxLength={200}
                     className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Description SEO</span>
+                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.seoDescriptionFull')}</span>
                   <textarea
                     value={pageSettings.seo_description}
                     onChange={(event) => updatePageSetting('seo_description', event.target.value)}
                     rows={3}
                     maxLength={320}
-                    placeholder="Résumé affiché dans Google et les partages sociaux"
+                    placeholder={t('dashboardPages.pageBuilder.editor.seoDescriptionPlaceholder')}
                     className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                   />
                 </label>
                 <div>
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-[#6B6258]">Image de partage</span>
+                    <span className="text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.seoShareImage')}</span>
                     {pageSettings.og_image && (
                       <button
                         type="button"
                         onClick={() => updatePageSetting('og_image', '')}
                         className="text-[11px] font-semibold text-red-600 hover:text-red-700"
                       >
-                        Effacer
+                        {t('dashboardPages.pageBuilder.editor.clear')}
                       </button>
                     )}
                   </div>
@@ -3670,7 +3705,7 @@ export function PageBuilderEditor({
                     ) : (
                       <ImageIcon className="h-3.5 w-3.5" />
                     )}
-                    {assetUploading ? 'Import...' : assetLoading ? 'Chargement...' : 'Choisir image SEO'}
+                    {assetUploading ? t('dashboardPages.pageBuilder.editor.importing') : assetLoading ? t('dashboardPages.pageBuilder.editor.loading') : t('dashboardPages.pageBuilder.editor.chooseSeoImage')}
                   </button>
                   {heroImageUrl && (
                     <button
@@ -3679,11 +3714,11 @@ export function PageBuilderEditor({
                       className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#D6B779] bg-[#FFF8E8] px-3 py-2 text-xs font-semibold text-[#8A6F3D] shadow-sm transition-colors hover:bg-[#F8F2E8]"
                     >
                       <ImageIcon className="h-3.5 w-3.5" />
-                      Use current hero image as SEO image
+                      {t('dashboardPages.pageBuilder.editor.useHeroAsSeoImage')}
                     </button>
                   )}
                   <p className="mt-1 text-[10px] leading-snug text-[#7C7468]">
-                    Format recommandé : image large 1200 × 630 px pour les partages sociaux.
+                    {t('dashboardPages.pageBuilder.editor.seoImageFormatHelp')}
                   </p>
                 </div>
                 <label className="flex items-start gap-2 rounded-lg border border-[#E4D8C6] bg-white p-2 text-xs font-medium text-[#4B5563] shadow-sm">
@@ -3693,7 +3728,7 @@ export function PageBuilderEditor({
                     onChange={(event) => updatePageSetting('show_in_navigation', event.target.checked)}
                     className="mt-0.5 h-3.5 w-3.5 accent-[#16C784]"
                   />
-                  Afficher dans la navigation
+                  {t('dashboardPages.pageBuilder.editor.showInNavigation')}
                 </label>
                 <label className="flex items-start gap-2 rounded-lg border border-[#E4D8C6] bg-white p-2 text-xs font-medium text-[#4B5563] shadow-sm">
                   <input
@@ -3702,7 +3737,7 @@ export function PageBuilderEditor({
                     onChange={(event) => updatePageSetting('show_in_footer', event.target.checked)}
                     className="mt-0.5 h-3.5 w-3.5 accent-[#16C784]"
                   />
-                  Afficher dans le footer
+                  {t('dashboardPages.pageBuilder.editor.showInFooter')}
                 </label>
                 <label className="flex items-start gap-2 rounded-lg border border-[#E4D8C6] bg-white p-2 text-xs font-medium text-[#4B5563] shadow-sm">
                   <input
@@ -3711,10 +3746,10 @@ export function PageBuilderEditor({
                     onChange={(event) => updatePageSetting('noindex', event.target.checked)}
                     className="mt-0.5 h-3.5 w-3.5 accent-[#16C784]"
                   />
-                  Masquer des moteurs de recherche
+                  {t('dashboardPages.pageBuilder.editor.hideFromSearchEngines')}
                 </label>
                 <div className="rounded-xl border border-[#E4D8C6] bg-white p-3 shadow-sm">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#8A6F3D]">SEO quality helper</p>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.seoQualityHelper')}</p>
                   <div className="space-y-1.5">
                     {seoChecks.map((check) => (
                       <div key={check.label} className="flex items-center justify-between gap-2 text-[11px]">
@@ -3729,7 +3764,7 @@ export function PageBuilderEditor({
                   </div>
                 </div>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Ordre</span>
+                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.sortOrder')}</span>
                   <input
                     type="number"
                     min="0"
@@ -3746,12 +3781,12 @@ export function PageBuilderEditor({
             <details>
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">
                 <History className="h-3.5 w-3.5" />
-                Historique
+                {t('dashboardPages.pageBuilder.editor.history')}
               </summary>
               <div className="mt-3 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] leading-relaxed text-[#7C7468]">
-                    Draft saved = brouillon interne. Published version = page live. Restored version = version copiée dans le brouillon avant publication.
+                    {t('dashboardPages.pageBuilder.editor.historyHelp')}
                   </p>
                   <button
                     type="button"
@@ -3759,13 +3794,13 @@ export function PageBuilderEditor({
                     disabled={versionsLoading}
                     className="rounded-lg border border-[#E4D8C6] bg-white px-2 py-1 text-[11px] font-semibold text-[#4B5563] shadow-sm hover:border-[#D6B779] hover:text-[#1A1A2E] disabled:opacity-40"
                   >
-                    {versionsLoading ? '...' : 'Actualiser'}
+                    {versionsLoading ? '...' : t('dashboardPages.pageBuilder.editor.refresh')}
                   </button>
                 </div>
                 {versionsLoading && !versions.length ? (
                   <div className="flex items-center gap-2 rounded-lg border border-[#E4D8C6] bg-white p-3 text-xs text-[#6B7280] shadow-sm">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Chargement...
+                    {t('dashboardPages.pageBuilder.editor.loading')}
                   </div>
                 ) : versions.length ? (
                   <div className="max-h-64 space-y-2 overflow-y-auto">
@@ -3776,14 +3811,14 @@ export function PageBuilderEditor({
                           <div className="mb-2 flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <p className="truncate text-xs font-bold text-[#1A1A2E]">
-                                Published version #{version.version_number}
+                                {t('dashboardPages.pageBuilder.editor.publishedVersionNumber', { n: version.version_number })}
                               </p>
                               <p className="truncate text-[11px] text-[#7C7468]">
-                                {formatVersionDate(version.published_at || version.created_at)}
+                                {formatVersionDate(version.published_at || version.created_at, t)}
                               </p>
                             </div>
                             <span className="rounded-full bg-[#16C784]/10 px-2 py-0.5 text-[10px] font-bold text-[#16C784]">
-                              Published version
+                              {t('dashboardPages.pageBuilder.editor.publishedVersion')}
                             </span>
                           </div>
                           <p className="mb-2 truncate text-[11px] text-[#6B7280]">
@@ -3800,7 +3835,7 @@ export function PageBuilderEditor({
                             ) : (
                               <RotateCcw className="h-3.5 w-3.5" />
                             )}
-                            {restoring ? 'Restoring version...' : 'Restore as draft'}
+                            {restoring ? t('dashboardPages.pageBuilder.editor.restoringVersion') : t('dashboardPages.pageBuilder.editor.restoreAsDraft')}
                           </button>
                         </div>
                       );
@@ -3808,7 +3843,7 @@ export function PageBuilderEditor({
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-[#E4D8C6] bg-white/70 p-3 text-xs text-[#7C7468]">
-                    Aucune version publiée pour cette page.
+                    {t('dashboardPages.pageBuilder.editor.noPublishedVersions')}
                   </div>
                 )}
               </div>
@@ -3818,36 +3853,36 @@ export function PageBuilderEditor({
             <div className="order-[40] border-b border-[#E4D8C6] p-4">
               <div className="mb-3">
                 <p className="text-xs font-bold text-[#8A6F3D] uppercase tracking-[0.18em]">
-                  Bloc dynamique
+                  {t('dashboardPages.pageBuilder.editor.dynamicBlockFallback')}
                 </p>
                 <h3 className="mt-1 text-sm font-bold text-[#1A1A2E]">
-                  {dynamicBlockLabel(selectedBlockType)}
+                  {dynamicBlockLabel(selectedBlockType, t)}
                 </h3>
                 <p className="mt-1 text-[11px] leading-relaxed text-[#7C7468]">
-                  Ces paramètres contrôlent les données réelles rendues sur la boutique publique.
+                  {t('dashboardPages.pageBuilder.editor.dynamicBlockHelp')}
                 </p>
               </div>
 
               <div className="space-y-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Titre</span>
+                  <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.titleLabel')}</span>
                   <input
                     type="text"
                     value={selectedDynamicBlock.attrs['data-pd-title'] || ''}
                     onChange={(event) => updateDynamicBlockAttribute('data-pd-title', event.target.value)}
-                    placeholder={dynamicBlockLabel(selectedBlockType)}
+                    placeholder={dynamicBlockLabel(selectedBlockType, t)}
                     className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                   />
                 </label>
 
                 {supportsSubtitleControl(selectedBlockType) && (
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Sous-titre</span>
+                    <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.subtitle')}</span>
                     <textarea
                       value={selectedDynamicBlock.attrs['data-pd-subtitle'] || ''}
                       onChange={(event) => updateDynamicBlockAttribute('data-pd-subtitle', event.target.value)}
                       rows={3}
-                      placeholder="Texte descriptif du bloc"
+                      placeholder={t('dashboardPages.pageBuilder.editor.subtitlePlaceholder')}
                       className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                     />
                   </label>
@@ -3856,14 +3891,14 @@ export function PageBuilderEditor({
                 {supportsImageControl(selectedBlockType) && (
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-[#6B6258]">Image hero</span>
+                      <span className="text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.heroImage')}</span>
                       {selectedDynamicBlock.attrs['data-pd-image-url'] && (
                         <button
                           type="button"
                           onClick={() => updateDynamicBlockAttribute('data-pd-image-url', '')}
                           className="text-[11px] font-semibold text-red-600 hover:text-red-700"
                         >
-                          Effacer
+                          {t('dashboardPages.pageBuilder.editor.clear')}
                         </button>
                       )}
                     </div>
@@ -3889,13 +3924,13 @@ export function PageBuilderEditor({
                     />
                     <div className="mb-2 rounded-xl border border-[#E4D8C6] bg-white p-3 shadow-sm">
                       <div className="mb-3 flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-[#1A1A2E]">Cadrage de l’image</span>
+                        <span className="text-xs font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.editor.imageCropping')}</span>
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[#16C784]">
-                          {selectedHeroImageFit === 'cover' ? 'Crop actif' : 'Image complète'}
+                          {selectedHeroImageFit === 'cover' ? t('dashboardPages.pageBuilder.editor.cropActive') : t('dashboardPages.pageBuilder.editor.fullImage')}
                         </span>
                       </div>
                       <label className="block">
-                        <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Position rapide</span>
+                        <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.quickPosition')}</span>
                         <select
                           value={selectedHeroPositionSelectValue}
                           onChange={(event) => {
@@ -3904,16 +3939,16 @@ export function PageBuilderEditor({
                           className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                         >
                           {selectedHeroPositionSelectValue === '__custom__' && (
-                            <option value="__custom__">Position personnalisée</option>
+                            <option value="__custom__">{t('dashboardPages.pageBuilder.editor.customPosition')}</option>
                           )}
                           {HERO_IMAGE_POSITION_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
+                            <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                           ))}
                         </select>
                       </label>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <label className="block">
-                          <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Horizontal</span>
+                          <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.horizontal')}</span>
                           <input
                             type="range"
                             min="0"
@@ -3924,7 +3959,7 @@ export function PageBuilderEditor({
                           />
                         </label>
                         <label className="block">
-                          <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Vertical</span>
+                          <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.vertical')}</span>
                           <input
                             type="range"
                             min="0"
@@ -3936,14 +3971,14 @@ export function PageBuilderEditor({
                         </label>
                       </div>
                       <label className="mt-3 block">
-                        <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Recadrage</span>
+                        <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.cropping')}</span>
                         <select
                           value={selectedHeroImageFit}
                           onChange={(event) => updateDynamicBlockAttribute('data-pd-image-fit', normalizeHeroImageFit(event.target.value))}
                           className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                         >
                           {HERO_IMAGE_FIT_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
+                            <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                           ))}
                         </select>
                       </label>
@@ -3959,14 +3994,14 @@ export function PageBuilderEditor({
                       ) : (
                         <ImageIcon className="h-3.5 w-3.5" />
                       )}
-                      Choisir depuis les médias
+                      {t('dashboardPages.pageBuilder.editor.chooseFromMedia')}
                     </button>
                   </div>
                 )}
 
                 {supportsLimitControl(selectedBlockType) && (
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Nombre à afficher</span>
+                    <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.countToShow')}</span>
                     <select
                       value={selectedDynamicBlock.attrs['data-pd-limit'] || (selectedBlockType === 'featured-products' ? '4' : '8')}
                       onChange={(event) => updateDynamicBlockAttribute('data-pd-limit', event.target.value)}
@@ -3982,13 +4017,13 @@ export function PageBuilderEditor({
                 {supportsProductControls(selectedBlockType) && (
                   <>
                     <label className="block">
-                      <span className="mb-1 block text-xs font-semibold text-[#6B6258]">Filtrer par catégorie</span>
+                      <span className="mb-1 block text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.filterByCategory')}</span>
                       <select
                         value={selectedDynamicBlock.attrs['data-pd-category'] || ''}
                         onChange={(event) => updateDynamicBlockAttribute('data-pd-category', event.target.value)}
                         className="w-full rounded-lg border border-[#E4D8C6] bg-white px-3 py-2 text-xs text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                       >
-                        <option value="">Toutes les catégories</option>
+                        <option value="">{t('dashboardPages.pageBuilder.editor.allCategories')}</option>
                         {builderCategories.map((category) => {
                           const slug = category.slug || slugSegment(category.name);
                           return (
@@ -4003,14 +4038,14 @@ export function PageBuilderEditor({
 
                     <div>
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-[#6B6258]">Produits manuels</span>
+                        <span className="text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.manualProducts')}</span>
                         {selectedProductIds.length > 0 && (
                           <button
                             type="button"
                             onClick={() => updateDynamicBlockAttribute('data-pd-product-ids', '')}
                             className="text-[11px] font-semibold text-red-600 hover:text-red-700"
                           >
-                            Effacer
+                            {t('dashboardPages.pageBuilder.editor.clear')}
                           </button>
                         )}
                       </div>
@@ -4035,12 +4070,12 @@ export function PageBuilderEditor({
                           );
                         }) : (
                           <p className="px-2 py-3 text-xs text-[#7C7468]">
-                            Aucun produit chargé.
+                            {t('dashboardPages.pageBuilder.editor.noProductsLoaded')}
                           </p>
                         )}
                       </div>
                       <p className="mt-1 text-[11px] text-[#7C7468]">
-                        Si des produits sont cochés, ils seront affichés en priorité dans cet ordre de sélection.
+                        {t('dashboardPages.pageBuilder.editor.manualProductsHelp')}
                       </p>
                     </div>
                   </>
@@ -4049,14 +4084,14 @@ export function PageBuilderEditor({
                 {supportsCategorySelectionControls(selectedBlockType) && (
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-[#6B6258]">Collections à afficher</span>
+                      <span className="text-xs font-semibold text-[#6B6258]">{t('dashboardPages.pageBuilder.editor.collectionsToShow')}</span>
                       {selectedCategorySlugs.length > 0 && (
                         <button
                           type="button"
                           onClick={() => updateDynamicBlockAttribute('data-pd-category-slugs', '')}
                           className="text-[11px] font-semibold text-red-600 hover:text-red-700"
                         >
-                          Effacer
+                          {t('dashboardPages.pageBuilder.editor.clear')}
                         </button>
                       )}
                     </div>
@@ -4075,19 +4110,19 @@ export function PageBuilderEditor({
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-xs font-semibold text-[#1A1A2E]">{category.name}</span>
                               <span className="block truncate text-[10px] text-[#7C7468]">
-                                {category.product_count ? `${category.product_count} produit${Number(category.product_count) > 1 ? 's' : ''}` : slug}
+                                {category.product_count ? t('dashboardPages.pageBuilder.editor.productCount', { count: category.product_count }) : slug}
                               </span>
                             </span>
                           </label>
                         );
                       }) : (
                         <p className="px-2 py-3 text-xs text-[#7C7468]">
-                          Aucune collection chargée.
+                          {t('dashboardPages.pageBuilder.editor.noCollectionsLoaded')}
                         </p>
                       )}
                     </div>
                     <p className="mt-1 text-[11px] text-[#7C7468]">
-                      Si aucune collection n&apos;est cochée, le bloc affiche automatiquement les collections actives.
+                      {t('dashboardPages.pageBuilder.editor.collectionsHelp')}
                     </p>
                   </div>
                 )}
@@ -4097,12 +4132,12 @@ export function PageBuilderEditor({
           <div className="order-[20] border-b border-[#E4D8C6]">
             <div className="p-4 pb-2">
               <h3 className="text-xs font-bold text-[#8A6F3D] uppercase tracking-[0.18em] mb-2">
-                Styles
+                {t('dashboardPages.pageBuilder.editor.styles')}
               </h3>
             </div>
             <div className="px-3 pb-3">
               <div className="rounded-2xl border border-[#E4D8C6] bg-white p-3 shadow-sm">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#8A6F3D]">Classes & états</p>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.classesAndStates')}</p>
                 <div ref={selectorPanelRef} id="gjs-selectors" />
               </div>
             </div>
@@ -4111,7 +4146,7 @@ export function PageBuilderEditor({
           <div className="order-[999] sticky bottom-0 z-20 border-t border-[#E4D8C6] bg-[#FBF8F1] shadow-[0_-10px_24px_rgba(26,26,46,0.08)]">
             <div className="p-4 pb-2">
               <h3 className="text-xs font-bold text-[#8A6F3D] uppercase tracking-[0.18em] mb-2">
-                Calques
+                {t('dashboardPages.pageBuilder.editor.layers')}
               </h3>
             </div>
             <div ref={layerPanelRef} id="gjs-layers" className="max-h-64 overflow-y-auto px-3 pb-4" />
@@ -4129,17 +4164,17 @@ export function PageBuilderEditor({
           >
             <div className="flex items-start justify-between gap-4 border-b border-[#E4D8C6] bg-gradient-to-r from-[#FFFDF8] to-[#F8F2E8] px-6 py-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8A6F3D]">SEO & partage social</p>
-                <h2 className="mt-1 text-xl font-black text-[#1A1A2E]">Choisir l’image de partage</h2>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.seoAndSocialShare')}</p>
+                <h2 className="mt-1 text-xl font-black text-[#1A1A2E]">{t('dashboardPages.pageBuilder.editor.chooseShareImage')}</h2>
                 <p className="mt-1 text-sm font-medium text-[#7C7468]">
-                  Sélectionnez une image existante ou importez une nouvelle image optimisée pour Facebook, WhatsApp et Google.
+                  {t('dashboardPages.pageBuilder.editor.chooseShareImageHelp')}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSeoImagePickerOpen(false)}
                 className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full border border-[#E4D8C6] bg-white text-xl font-bold text-[#6B6258] shadow-sm transition-colors hover:border-[#D6B779] hover:text-[#1A1A2E]"
-                aria-label="Fermer"
+                aria-label={t('dashboardPages.pageBuilder.editor.close')}
               >
                 ×
               </button>
@@ -4156,17 +4191,17 @@ export function PageBuilderEditor({
                   ) : (
                     <div className="flex aspect-[1200/630] flex-col items-center justify-center gap-2 text-[#8A6F3D]">
                       <ImageIcon className="h-9 w-9" />
-                      <span className="text-xs font-bold">Aucune image sélectionnée</span>
+                      <span className="text-xs font-bold">{t('dashboardPages.pageBuilder.editor.noImageSelected')}</span>
                     </div>
                   )}
                 </div>
                 <div className="mt-4 rounded-2xl border border-[#E4D8C6] bg-[#FFFDF8] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[#8A6F3D]">Aperçu actuel</p>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.editor.currentPreview')}</p>
                   <p className="mt-2 truncate text-sm font-bold text-[#1A1A2E]">
-                    {pageSettings.og_image ? filenameFromUrl(pageSettings.og_image) : 'Pas encore configurée'}
+                    {pageSettings.og_image ? filenameFromUrl(pageSettings.og_image, t) : t('dashboardPages.pageBuilder.editor.notConfiguredYet')}
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-[#7C7468]">
-                    Utilisez une image claire, horizontale, avec peu de texte. Taille conseillée : 1200 × 630 px.
+                    {t('dashboardPages.pageBuilder.editor.seoImageTips')}
                   </p>
                   {seoImageQuality && (
                     <p className={`mt-3 rounded-xl border px-3 py-2 text-xs font-semibold ${
@@ -4186,7 +4221,7 @@ export function PageBuilderEditor({
                       className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#D6B779] bg-white px-4 py-2 text-xs font-bold text-[#8A6F3D] transition-colors hover:bg-[#FFF8E8]"
                     >
                       <ImageIcon className="h-4 w-4" />
-                      Use current hero image
+                      {t('dashboardPages.pageBuilder.editor.useHeroImage')}
                     </button>
                   )}
                   {pageSettings.og_image && (
@@ -4195,7 +4230,7 @@ export function PageBuilderEditor({
                       onClick={() => updatePageSetting('og_image', '')}
                       className="mt-3 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-100"
                     >
-                      Retirer l’image
+                      {t('dashboardPages.pageBuilder.editor.removeImage')}
                     </button>
                   )}
                 </div>
@@ -4213,7 +4248,7 @@ export function PageBuilderEditor({
                       type="search"
                       value={seoImageSearch}
                       onChange={(event) => setSeoImageSearch(event.target.value)}
-                      placeholder="Rechercher dans la médiathèque..."
+                      placeholder={t('dashboardPages.pageBuilder.editor.searchMediaPlaceholder')}
                       className="w-full rounded-2xl border border-[#E4D8C6] bg-white px-4 py-3 text-sm font-semibold text-[#1A1A2E] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#D6B779] focus:ring-4 focus:ring-[#D6B779]/15"
                     />
                   </div>
@@ -4225,11 +4260,11 @@ export function PageBuilderEditor({
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-[#E4D8C6] bg-white px-4 py-2.5 text-sm font-bold text-[#6B6258] shadow-sm transition-colors hover:border-[#D6B779] hover:text-[#1A1A2E] disabled:opacity-50"
                     >
                       {assetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      Actualiser
+                      {t('dashboardPages.pageBuilder.editor.refresh')}
                     </button>
                     <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-[#16C784] px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-[#14b876]">
                       {assetUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                      {assetUploading ? 'Import...' : 'Importer'}
+                      {assetUploading ? t('dashboardPages.pageBuilder.editor.importing') : t('dashboardPages.pageBuilder.editor.importAction')}
                       <input type="file" accept="image/*" onChange={handleUploadPageOgImage} disabled={assetUploading} className="hidden" />
                     </label>
                   </div>
@@ -4243,14 +4278,14 @@ export function PageBuilderEditor({
                   ) : filteredSeoMediaAssets.length === 0 ? (
                     <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl border border-dashed border-[#E4D8C6] bg-white px-6 text-center">
                       <ImageIcon className="h-10 w-10 text-[#D6B779]" />
-                      <p className="mt-3 text-sm font-bold text-[#1A1A2E]">Aucune image trouvée</p>
-                      <p className="mt-1 text-xs text-[#7C7468]">Importez une image ou modifiez votre recherche.</p>
+                      <p className="mt-3 text-sm font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.editor.noImagesFound')}</p>
+                      <p className="mt-1 text-xs text-[#7C7468]">{t('dashboardPages.pageBuilder.editor.noImagesFoundHelp')}</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                       {filteredSeoMediaAssets.map((asset) => {
                         const selected = pageSettings.og_image === asset.url;
-                        const label = asset.alt_text || asset.product_title || filenameFromUrl(asset.url);
+                        const label = asset.alt_text || asset.product_title || filenameFromUrl(asset.url, t);
                         return (
                           <button
                             key={asset.url}
@@ -4266,11 +4301,11 @@ export function PageBuilderEditor({
                             />
                             <div className="p-3">
                               <p className="truncate text-sm font-bold text-[#1A1A2E]">{label}</p>
-                              <p className="mt-1 truncate text-xs font-medium text-[#7C7468]">{filenameFromUrl(asset.url)}</p>
+                              <p className="mt-1 truncate text-xs font-medium text-[#7C7468]">{filenameFromUrl(asset.url, t)}</p>
                               <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${
                                 selected ? 'bg-[#16C784]/10 text-[#0F9F69]' : 'bg-[#F4EDE2] text-[#8A6F3D]'
                               }`}>
-                                {selected ? 'Sélectionnée' : 'Utiliser'}
+                                {selected ? t('dashboardPages.pageBuilder.editor.selectedBadge') : t('dashboardPages.pageBuilder.editor.use')}
                               </span>
                             </div>
                           </button>

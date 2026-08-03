@@ -67,7 +67,7 @@ interface ApiTheme {
   is_active: boolean;
 }
 
-async function getErrorMessage(res: Response, fallback = 'Erreur') {
+async function getErrorMessage(res: Response, fallback = 'Error') {
   try {
     const data = await res.json();
     return data.error?.message || data.message || `${fallback} (${res.status})`;
@@ -198,7 +198,7 @@ export default function SettingsPage() {
         setError(await getErrorMessage(res, 'Impossible de charger les paramètres'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('common.networkError'));
     } finally {
       setLoading(false);
     }
@@ -385,7 +385,7 @@ export default function SettingsPage() {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setSaving(false);
     }
@@ -408,7 +408,7 @@ export default function SettingsPage() {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setCancellingSellerTypeRequest(false);
     }
@@ -546,7 +546,7 @@ export default function SettingsPage() {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setSaving(false);
     }
@@ -566,10 +566,10 @@ export default function SettingsPage() {
         setPurchaseConfirmTheme(null);
         showFeedback(`Thème « ${theme.name} » acheté avec succès !`);
       } else {
-        showFeedback(await getErrorMessage(res, 'Erreur lors de l\'achat'), true);
+        showFeedback(await getErrorMessage(res, t('dashboardPages.settings.purchaseError')), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setPurchasing(false);
     }
@@ -625,7 +625,7 @@ export default function SettingsPage() {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     }
   };
 
@@ -661,14 +661,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ hostname: newDomainHostname }),
       });
       if (res.ok) {
-        showFeedback('Domaine ajouté ! Configuration DNS disponible ci-dessous.');
+        showFeedback(t('dashboardPages.settings.domainAdded'));
         setNewDomainHostname('');
         fetchDomains();
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setAddingDomain(false);
     }
@@ -684,7 +684,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.domain?.verification_status === 'verified') {
-          showFeedback('Domaine vérifié avec succès ! SSL actif.');
+          showFeedback(t('dashboardPages.settings.domainVerified'));
         } else {
           showFeedback('Vérification DNS échouée. Assurez-vous que le CNAME ou TXT est bien propagé.', true);
         }
@@ -693,7 +693,7 @@ export default function SettingsPage() {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setVerifyingDomainId(null);
     }
@@ -706,13 +706,13 @@ export default function SettingsPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        showFeedback('Domaine défini comme domaine principal !');
+        showFeedback(t('dashboardPages.settings.domainPrimary'));
         fetchDomains();
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     }
   };
 
@@ -724,13 +724,13 @@ export default function SettingsPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        showFeedback('Domaine supprimé');
+        showFeedback(t('dashboardPages.settings.domainDeleted'));
         fetchDomains();
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     }
   };
 
@@ -767,17 +767,17 @@ export default function SettingsPage() {
 
       showFeedback('Livraison et politiques publiques mises à jour');
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
     } finally {
       setSaving(false);
     }
   };
 
   const tabs: { id: Tab; label: string; icon: typeof Settings }[] = [
-    { id: 'store', label: 'Boutique', icon: Settings },
+    { id: 'store', label: t('dashboardPages.settings.storeTab'), icon: Settings },
     { id: 'security', label: 'Sécurité', icon: ShieldCheck },
     { id: 'theme', label: 'Thème', icon: Palette },
-    { id: 'domain', label: 'Domaine', icon: Globe },
+    { id: 'domain', label: t('dashboardPages.settings.domainTab'), icon: Globe },
     { id: 'shipping', label: 'Livraison', icon: Truck },
     { id: 'emails', label: 'Emails', icon: Mail },
   ];
@@ -1241,7 +1241,7 @@ export default function SettingsPage() {
                         <textarea
                           value={maintenanceMessage}
                           onChange={(e) => setMaintenanceMessage(e.target.value)}
-                          placeholder="Message affiché aux visiteurs pendant la maintenance..."
+                          placeholder={t('dashboardPages.settings.maintenancePlaceholder')}
                           rows={2}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
                         />
@@ -1269,16 +1269,16 @@ export default function SettingsPage() {
                             setStoreIsVerified(Boolean(data.store?.is_verified));
                             showFeedback(
                               !storeIsVerified && storeStatus === 'maintenance'
-                                ? 'Message de maintenance sauvegardé'
+                                ? t('dashboardPages.settings.maintenanceSaved')
                                 : enabling
                                   ? 'Mode maintenance activé'
-                                  : 'Boutique remise en ligne',
+                                  : t('dashboardPages.settings.storeBackOnline'),
                             );
                           } else {
                             showFeedback(await getErrorMessage(res), true);
                           }
                         } catch (err) {
-                          showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+                          showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
                         } finally {
                           setTogglingMaintenance(false);
                         }
@@ -1295,7 +1295,7 @@ export default function SettingsPage() {
                         : storeStatus === 'maintenance'
                           ? storeIsVerified
                             ? 'Remettre en ligne'
-                            : 'Enregistrer le message'
+                            : t('dashboardPages.settings.saveMessage')
                           : 'Activer la maintenance'}
                     </button>
                   </div>
@@ -1442,7 +1442,7 @@ export default function SettingsPage() {
                   disabled={addingDomain || !newDomainHostname.trim()}
                   className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {addingDomain ? 'Ajout en cours...' : 'Ajouter le domaine'}
+                  {addingDomain ? t('dashboardPages.settings.addingDomain') : t('dashboardPages.settings.addDomain')}
                 </button>
               </div>
             </div>
@@ -1782,7 +1782,7 @@ export default function SettingsPage() {
                 disabled={purchasing}
                 className="rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-semibold text-white hover:bg-[#991B1B] disabled:opacity-50"
               >
-                {purchasing ? 'Achat en cours...' : 'Confirmer l\'achat'}
+                {purchasing ? t('dashboardPages.settings.purchasing') : t('dashboardPages.settings.confirmPurchase')}
               </button>
             </div>
           </div>
