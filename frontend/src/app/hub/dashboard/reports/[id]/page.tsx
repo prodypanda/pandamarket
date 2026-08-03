@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Download, Loader2, MessageSquare, Paperclip, Send, Upload, XCircle } from 'lucide-react';
 import { fetchWithCsrf } from '../../../../../lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 
 type ReportStatus = 'open' | 'investigating' | 'awaiting_buyer' | 'awaiting_seller' | 'resolved' | 'dismissed';
 
@@ -45,13 +46,13 @@ interface CaseDetails {
   attachments: ReportAttachment[];
 }
 
-const statusConfig: Record<ReportStatus, { label: string; className: string; icon: typeof AlertTriangle }> = {
-  open: { label: 'Open', className: 'bg-red-50 text-red-700 ring-red-100', icon: AlertTriangle },
-  investigating: { label: 'Investigating', className: 'bg-yellow-50 text-yellow-700 ring-yellow-100', icon: Clock },
-  awaiting_buyer: { label: 'Awaiting buyer', className: 'bg-blue-50 text-blue-700 ring-blue-100', icon: MessageSquare },
-  awaiting_seller: { label: 'Action required', className: 'bg-purple-50 text-purple-700 ring-purple-100', icon: MessageSquare },
-  resolved: { label: 'Resolved', className: 'bg-green-50 text-green-700 ring-green-100', icon: CheckCircle },
-  dismissed: { label: 'Dismissed', className: 'bg-gray-100 text-gray-600 ring-gray-200', icon: XCircle },
+const statusConfig: Record<ReportStatus, { className: string; icon: typeof AlertTriangle }> = {
+  open: { className: 'bg-red-50 text-red-700 ring-red-100', icon: AlertTriangle },
+  investigating: { className: 'bg-yellow-50 text-yellow-700 ring-yellow-100', icon: Clock },
+  awaiting_buyer: { className: 'bg-blue-50 text-blue-700 ring-blue-100', icon: MessageSquare },
+  awaiting_seller: { className: 'bg-purple-50 text-purple-700 ring-purple-100', icon: MessageSquare },
+  resolved: { className: 'bg-green-50 text-green-700 ring-green-100', icon: CheckCircle },
+  dismissed: { className: 'bg-gray-100 text-gray-600 ring-gray-200', icon: XCircle },
 };
 
 function formatSize(size: number | string | null) {
@@ -62,6 +63,8 @@ function formatSize(size: number | string | null) {
 }
 
 export default function VendorReportDetailPage() {
+  const { t, locale } = useLocale();
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const params = useParams<{ id: string }>();
   const reportId = params.id;
   const [details, setDetails] = useState<CaseDetails | null>(null);
@@ -75,10 +78,10 @@ export default function VendorReportDetailPage() {
     setLoading(true);
     try {
       const res = await fetchWithCsrf(`/api/pd/reports/store/${reportId}`);
-      if (!res.ok) throw new Error('Report not found');
+      if (!res.ok) throw new Error(t('dashboardPages.reportDetail.errorReportNotFound'));
       setDetails(await res.json());
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : 'Failed to load report');
+      setFeedback(err instanceof Error ? err.message : t('dashboardPages.reportDetail.feedbackLoadFailed'));
     } finally {
       setLoading(false);
     }
@@ -102,9 +105,9 @@ export default function VendorReportDetailPage() {
         body: JSON.stringify({ filename: file.name, content_type: contentType, file_size: file.size, purpose: 'report_evidence' }),
       });
       const presignData = await presignRes.json();
-      if (!presignRes.ok) throw new Error(presignData.error?.message || 'Upload refused');
+      if (!presignRes.ok) throw new Error(presignData.error?.message || t('dashboardPages.reportDetail.errorUploadRefused'));
       const uploadRes = await fetch(presignData.upload_url, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file });
-      if (!uploadRes.ok) throw new Error(`Upload failed for ${file.name}`);
+      if (!uploadRes.ok) throw new Error(t('dashboardPages.reportDetail.errorUploadFailed', { name: file.name }));
       attachments.push({ file_key: presignData.file_key, file_name: file.name, content_type: contentType, file_size: file.size });
     }
     return attachments;
@@ -120,16 +123,16 @@ export default function VendorReportDetailPage() {
       const res = await fetchWithCsrf(`/api/pd/reports/store/${reportId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim() || 'Attachments added.', attachments }),
+        body: JSON.stringify({ body: body.trim() || t('dashboardPages.reportDetail.defaultBodyAttachments'), attachments }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error?.message || 'Failed to send response');
+      if (!res.ok) throw new Error(data?.error?.message || t('dashboardPages.reportDetail.errorSendFailed'));
       setDetails(data);
       setBody('');
       setFiles([]);
-      setFeedback('Response sent to marketplace.');
+      setFeedback(t('dashboardPages.reportDetail.feedbackResponseSent'));
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : 'Send failed');
+      setFeedback(err instanceof Error ? err.message : t('dashboardPages.reportDetail.feedbackSendFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -159,14 +162,14 @@ export default function VendorReportDetailPage() {
   }
 
   if (!report || !config) {
-    return <div className="rounded-2xl bg-white p-10 text-center text-gray-500">{feedback || 'Report not found.'}</div>;
+    return <div className="rounded-2xl bg-white p-10 text-center text-gray-500">{feedback || t('dashboardPages.reportDetail.reportNotFound')}</div>;
   }
 
   return (
     <div className="space-y-6">
       <Link href="/hub/dashboard/reports" className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-gray-900">
         <ArrowLeft className="h-4 w-4" />
-        Back to reports
+        {t('dashboardPages.reportDetail.backToReports')}
       </Link>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.4fr]">
@@ -174,15 +177,15 @@ export default function VendorReportDetailPage() {
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${config.className}`}>
               <StatusIcon className="h-4 w-4" />
-              {config.label}
+              {t(`dashboardPages.reportDetail.statuses.${report.status}`)}
             </span>
-            <h1 className="mt-5 text-2xl font-black text-gray-900">Case #{report.id.slice(-8).toUpperCase()}</h1>
+            <h1 className="mt-5 text-2xl font-black text-gray-900">{t('dashboardPages.reportDetail.caseTitle', { id: report.id.slice(-8).toUpperCase() })}</h1>
             <div className="mt-5 space-y-3 text-sm text-gray-600">
-              <p><span className="font-black text-gray-900">Buyer:</span> {report.reporter_email || 'Marketplace buyer'}</p>
-              <p><span className="font-black text-gray-900">Category:</span> {report.category}</p>
-              <p><span className="font-black text-gray-900">Priority:</span> {report.priority}</p>
-              {report.order_id && <p><span className="font-black text-gray-900">Order:</span> #{report.order_id.slice(-8).toUpperCase()}</p>}
-              <p><span className="font-black text-gray-900">Created:</span> {new Date(report.created_at).toLocaleString('fr-TN')}</p>
+              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.buyerLabel')}</span> {report.reporter_email || t('dashboardPages.reportDetail.buyerDefault')}</p>
+              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.categoryLabel')}</span> {report.category}</p>
+              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.priorityLabel')}</span> {report.priority}</p>
+              {report.order_id && <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.orderLabel')}</span> #{report.order_id.slice(-8).toUpperCase()}</p>}
+              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.createdLabel')}</span> {new Date(report.created_at).toLocaleString(dateLocale)}</p>
             </div>
             <div className="mt-5 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-700">{report.reason}</div>
             {report.admin_notes && <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">{report.admin_notes}</div>}
@@ -191,18 +194,18 @@ export default function VendorReportDetailPage() {
 
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-100 p-6">
-            <h2 className="text-xl font-black text-gray-900">Private marketplace conversation</h2>
-            <p className="mt-1 text-sm text-gray-500">Your response and evidence are visible to marketplace admins, not to the buyer.</p>
+            <h2 className="text-xl font-black text-gray-900">{t('dashboardPages.reportDetail.conversationTitle')}</h2>
+            <p className="mt-1 text-sm text-gray-500">{t('dashboardPages.reportDetail.conversationSubtitle')}</p>
           </div>
 
           <div className="max-h-[520px] space-y-4 overflow-y-auto p-6">
             {details.messages.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">No private messages yet.</div>
+              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">{t('dashboardPages.reportDetail.noMessages')}</div>
             ) : details.messages.map((message) => (
               <div key={message.id} className="rounded-2xl bg-gray-50 p-4">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-gray-400">
                   <span>{message.author_email || message.author_role}</span>
-                  <span>{new Date(message.created_at).toLocaleString('fr-TN')}</span>
+                  <span>{new Date(message.created_at).toLocaleString(dateLocale)}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">{message.body}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -223,18 +226,18 @@ export default function VendorReportDetailPage() {
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={4}
-              placeholder="Respond to marketplace, explain your side, add tracking proof, refund proof, delivery evidence..."
+              placeholder={t('dashboardPages.reportDetail.responsePlaceholder')}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
             />
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50">
                 <Upload className="h-4 w-4" />
-                Attach files
+                {t('dashboardPages.reportDetail.attachFiles')}
                 <input type="file" multiple className="hidden" onChange={onFileChange} accept="image/*,application/pdf,text/plain" />
               </label>
               <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send response
+                {t('dashboardPages.reportDetail.sendResponse')}
               </button>
             </div>
             {files.length > 0 && (

@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
+import { useLocale } from '@/contexts/LocaleContext';
 import {
   Webhook,
   Plus,
@@ -39,18 +40,21 @@ interface DeliveryLog {
 }
 
 const AVAILABLE_EVENTS = [
-  { value: 'pd.order.placed', label: 'Order Placed', desc: 'When a new order is received' },
-  { value: 'pd.order.fulfilled', label: 'Order Fulfilled', desc: 'When an order is shipped' },
-  { value: 'pd.order.cancelled', label: 'Order Cancelled', desc: 'When an order is cancelled' },
-  { value: 'pd.payment.captured', label: 'Payment Captured', desc: 'When a payment is confirmed' },
-  { value: 'pd.product.created', label: 'Product Created', desc: 'When a product is created' },
-  { value: 'pd.product.published', label: 'Product Published', desc: 'When a product is published' },
-  { value: 'pd.stock.low', label: 'Stock Low', desc: 'When product stock falls below threshold' },
+  { value: 'pd.order.placed', key: 'orderPlaced' },
+  { value: 'pd.order.fulfilled', key: 'orderFulfilled' },
+  { value: 'pd.order.cancelled', key: 'orderCancelled' },
+  { value: 'pd.payment.captured', key: 'paymentCaptured' },
+  { value: 'pd.product.created', key: 'productCreated' },
+  { value: 'pd.product.published', key: 'productPublished' },
+  { value: 'pd.stock.low', key: 'stockLow' },
 ];
 
 const API_BASE = '/api/pd';
 
 export default function WebhooksPage() {
+  const { t, locale } = useLocale();
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+
   const [webhooks, setWebhooks] = useState<WebhookSubscription[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,11 +79,11 @@ export default function WebhooksPage() {
         setWebhooks(data.data ?? []);
       }
     } catch {
-      setError('Failed to load webhooks');
+      setError(t('dashboardPages.webhooks.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchDeliveries = useCallback(async (webhookId: string) => {
     try {
@@ -124,10 +128,10 @@ export default function WebhooksPage() {
         fetchWebhooks();
       } else {
         const data = await res.json();
-        setError(data.error?.message ?? 'Failed to create webhook');
+        setError(data.error?.message ?? t('dashboardPages.webhooks.errors.createFailed'));
       }
     } catch {
-      setError('Failed to create webhook');
+      setError(t('dashboardPages.webhooks.errors.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -143,12 +147,12 @@ export default function WebhooksPage() {
       });
       fetchWebhooks();
     } catch {
-      setError('Failed to update webhook');
+      setError(t('dashboardPages.webhooks.errors.updateFailed'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this webhook?')) return;
+    if (!confirm(t('dashboardPages.webhooks.confirmDelete'))) return;
     try {
       await fetchWithCsrf(`${API_BASE}/vendor/webhooks/${id}`, {
         method: 'DELETE',
@@ -157,7 +161,7 @@ export default function WebhooksPage() {
       if (selectedWebhook === id) setSelectedWebhook(null);
       fetchWebhooks();
     } catch {
-      setError('Failed to delete webhook');
+      setError(t('dashboardPages.webhooks.errors.deleteFailed'));
     }
   };
 
@@ -182,10 +186,10 @@ export default function WebhooksPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Webhook className="w-6 h-6 text-[#B91C1C]" />
-            Webhooks
+            {t('dashboardPages.webhooks.title')}
           </h1>
           <p className="text-gray-500 mt-1">
-            Receive real-time notifications when events happen in your store.
+            {t('dashboardPages.webhooks.subtitle')}
           </p>
         </div>
         <button
@@ -193,7 +197,7 @@ export default function WebhooksPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:opacity-90 transition"
         >
           <Plus className="w-4 h-4" />
-          Add Webhook
+          {t('dashboardPages.webhooks.addWebhook')}
         </button>
       </div>
 
@@ -210,8 +214,8 @@ export default function WebhooksPage() {
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="font-medium">Webhook signing secret</p>
-              <p className="text-sm mt-1">Copy this secret now. It is shown only once and is used to verify `X-PD-Signature`.</p>
+              <p className="font-medium">{t('dashboardPages.webhooks.signingSecret')}</p>
+              <p className="text-sm mt-1">{t('dashboardPages.webhooks.signingSecretDesc')}</p>
               <code className="block mt-2 break-all rounded bg-white/70 px-3 py-2 text-xs text-amber-900">
                 {newSecret}
               </code>
@@ -224,10 +228,10 @@ export default function WebhooksPage() {
       {/* Create Form */}
       {showCreate && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">New Webhook</h2>
+          <h2 className="text-lg font-semibold">{t('dashboardPages.webhooks.newWebhook')}</h2>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endpoint URL</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboardPages.webhooks.endpointUrl')}</label>
             <input
               type="url"
               value={newUrl}
@@ -238,7 +242,7 @@ export default function WebhooksPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Events</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('dashboardPages.webhooks.events')}</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {AVAILABLE_EVENTS.map((event) => (
                 <label
@@ -256,8 +260,12 @@ export default function WebhooksPage() {
                     className="mt-0.5 accent-[#B91C1C]"
                   />
                   <div>
-                    <div className="font-medium text-sm">{event.label}</div>
-                    <div className="text-xs text-gray-500">{event.desc}</div>
+                    <div className="font-medium text-sm">
+                      {t(`dashboardPages.webhooks.events.${event.key}.label`)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {t(`dashboardPages.webhooks.events.${event.key}.desc`)}
+                    </div>
                   </div>
                 </label>
               ))}
@@ -271,13 +279,13 @@ export default function WebhooksPage() {
               className="px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Create Webhook
+              {t('dashboardPages.webhooks.createWebhook')}
             </button>
             <button
               onClick={() => { setShowCreate(false); setNewUrl(''); setNewEvents([]); }}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Cancel
+              {t('dashboardPages.webhooks.cancel')}
             </button>
           </div>
         </div>
@@ -287,9 +295,9 @@ export default function WebhooksPage() {
       {webhooks.length === 0 && !showCreate ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <Webhook className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No webhooks configured</h3>
+          <h3 className="text-lg font-medium text-gray-900">{t('dashboardPages.webhooks.noWebhooks')}</h3>
           <p className="text-gray-500 mt-1">
-            Add a webhook to receive real-time event notifications.
+            {t('dashboardPages.webhooks.noWebhooksDesc')}
           </p>
         </div>
       ) : (
@@ -313,11 +321,11 @@ export default function WebhooksPage() {
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
-                      {wh.is_active ? 'Active' : 'Inactive'}
+                      {wh.is_active ? t('dashboardPages.webhooks.active') : t('dashboardPages.webhooks.inactive')}
                     </span>
                     {wh.consecutive_failures > 0 && (
                       <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">
-                        {wh.consecutive_failures} failures
+                        {t('dashboardPages.webhooks.failures', { count: wh.consecutive_failures })}
                       </span>
                     )}
                   </div>
@@ -336,7 +344,8 @@ export default function WebhooksPage() {
                   {wh.last_delivery_at && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
                       <Clock className="w-3 h-3" />
-                      Last delivery: {new Date(wh.last_delivery_at).toLocaleString()}
+                      {t('dashboardPages.webhooks.lastDelivery')}{' '}
+                      {new Date(wh.last_delivery_at).toLocaleString(dateLocale)}
                       {wh.last_status_code && (
                         <span className={wh.last_status_code < 300 ? 'text-green-600' : 'text-red-600'}>
                           ({wh.last_status_code})
@@ -350,14 +359,14 @@ export default function WebhooksPage() {
                   <button
                     onClick={() => setSelectedWebhook(selectedWebhook === wh.id ? null : wh.id)}
                     className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                    title="View deliveries"
+                    title={t('dashboardPages.webhooks.viewDeliveries')}
                   >
                     <RefreshCw className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleToggle(wh.id, wh.is_active)}
                     className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                    title={wh.is_active ? 'Disable' : 'Enable'}
+                    title={wh.is_active ? t('dashboardPages.webhooks.disable') : t('dashboardPages.webhooks.enable')}
                   >
                     {wh.is_active ? (
                       <ToggleRight className="w-5 h-5 text-[#B91C1C]" />
@@ -368,7 +377,7 @@ export default function WebhooksPage() {
                   <button
                     onClick={() => handleDelete(wh.id)}
                     className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                    title="Delete"
+                    title={t('dashboardPages.webhooks.delete')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -378,9 +387,9 @@ export default function WebhooksPage() {
               {/* Delivery Logs */}
               {selectedWebhook === wh.id && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Recent Deliveries</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">{t('dashboardPages.webhooks.recentDeliveries')}</h4>
                   {deliveries.length === 0 ? (
-                    <p className="text-sm text-gray-500">No deliveries yet.</p>
+                    <p className="text-sm text-gray-500">{t('dashboardPages.webhooks.noDeliveries')}</p>
                   ) : (
                     <div className="space-y-2">
                       {deliveries.slice(0, 10).map((d) => (
@@ -396,13 +405,13 @@ export default function WebhooksPage() {
                           <span className="font-mono text-xs text-blue-600">{d.event_type}</span>
                           <span className="text-gray-400">•</span>
                           <span className={`text-xs ${d.status_code && d.status_code < 300 ? 'text-green-600' : 'text-red-600'}`}>
-                            {d.status_code ?? 'N/A'}
+                            {d.status_code ?? t('dashboardPages.webhooks.notAvailable')}
                           </span>
                           {d.error && (
                             <span className="text-xs text-red-500 truncate">{d.error}</span>
                           )}
                           <span className="ml-auto text-xs text-gray-400">
-                            {new Date(d.delivered_at).toLocaleString()}
+                            {new Date(d.delivered_at).toLocaleString(dateLocale)}
                           </span>
                         </div>
                       ))}

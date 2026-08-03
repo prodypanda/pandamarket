@@ -4,6 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, Plus, Store, ExternalLink, ReceiptText } from 'lucide-react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface SellerStore {
   id: string;
@@ -27,6 +28,7 @@ async function getErrorMessage(res: Response, fallback: string) {
 }
 
 export default function SelectStorePage() {
+  const { t, locale } = useLocale();
   const [stores, setStores] = useState<SellerStore[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,14 +42,14 @@ export default function SelectStorePage() {
       setError('');
       try {
         const res = await fetchWithCsrf('/api/pd/stores/mine', { credentials: 'include' });
-        if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load stores'));
+        if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.selectStore.errorLoadStores')));
         const data = await res.json();
         if (cancelled) return;
         const nextStores = Array.isArray(data.stores) ? data.stores : [];
         setStores(nextStores);
         setSelectedStoreId(data.selected_store_id || data.selected_store?.id || null);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load stores');
+        if (!cancelled) setError(err instanceof Error ? err.message : t('dashboardPages.selectStore.errorLoadStores'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -68,10 +70,10 @@ export default function SelectStorePage() {
         credentials: 'include',
         body: JSON.stringify({ store_id: storeId }),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to select store'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.selectStore.errorSelectStore')));
       window.location.href = '/hub/dashboard';
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to select store');
+      setError(err instanceof Error ? err.message : t('dashboardPages.selectStore.errorSelectStore'));
       setSelectingId(null);
     }
   }
@@ -82,19 +84,19 @@ export default function SelectStorePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10 self-start">
             <Store className="h-4 w-4" />
-            Store selector
+            {t('dashboardPages.selectStore.badge')}
           </div>
           <Link
             href="/hub/dashboard/my-subscription-orders"
             className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-300/30 px-4 py-2 text-xs font-black text-amber-200 transition self-start sm:self-auto"
           >
             <ReceiptText className="h-4 w-4 text-amber-400" />
-            Platform Subscription & Orders
+            {t('dashboardPages.selectStore.subscriptionOrdersLink')}
           </Link>
         </div>
-        <h1 className="mt-5 text-3xl font-black sm:text-4xl">Which store do you want to manage?</h1>
+        <h1 className="mt-5 text-3xl font-black sm:text-4xl">{t('dashboardPages.selectStore.title')}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
-          Choose the storefront you want to open. All dashboard pages, products, orders, wallet, settings, API keys, and reports will use the selected store.
+          {t('dashboardPages.selectStore.subtitle')}
         </p>
       </div>
 
@@ -108,17 +110,17 @@ export default function SelectStorePage() {
         <div className="flex min-h-[220px] items-center justify-center rounded-[2rem] bg-white shadow-sm">
           <div className="flex items-center gap-3 text-sm font-black text-gray-500">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Loading your stores...
+            {t('dashboardPages.selectStore.loading')}
           </div>
         </div>
       ) : stores.length === 0 ? (
         <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
           <Store className="mx-auto h-12 w-12 text-gray-300" />
-          <h2 className="mt-4 text-2xl font-black text-gray-900">No stores yet</h2>
-          <p className="mt-2 text-sm text-gray-500">Create your first storefront to start selling.</p>
+          <h2 className="mt-4 text-2xl font-black text-gray-900">{t('dashboardPages.selectStore.noStoresTitle')}</h2>
+          <p className="mt-2 text-sm text-gray-500">{t('dashboardPages.selectStore.noStoresDesc')}</p>
           <Link href="/hub/dashboard/create-store" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-5 py-3 text-sm font-black text-white">
             <Plus className="h-4 w-4" />
-            Create store
+            {t('dashboardPages.selectStore.createStore')}
           </Link>
         </div>
       ) : (
@@ -135,16 +137,16 @@ export default function SelectStorePage() {
                   {isSelected && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Selected
+                      {t('dashboardPages.selectStore.selected')}
                     </span>
                   )}
                 </div>
                 <h2 className="mt-4 text-xl font-black text-gray-900">{store.name}</h2>
-                <p className="mt-1 text-sm font-semibold text-gray-500">{store.subdomain ? `${store.subdomain}.pandamarket` : store.custom_domain || 'Storefront'}</p>
+                <p className="mt-1 text-sm font-semibold text-gray-500">{store.subdomain ? `${store.subdomain}.pandamarket` : store.custom_domain || t('dashboardPages.selectStore.storefrontFallback')}</p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs font-black capitalize">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{store.status || 'unverified'}</span>
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700">{store.seller_type || 'retailer'}</span>
-                  <span className="rounded-full bg-violet-50 px-3 py-1 text-violet-700">{store.subscription_plan || 'free'}</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{t(`dashboardPages.selectStore.status.${store.status || 'unverified'}`)}</span>
+                  <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700">{t(`dashboardPages.selectStore.sellerType.${store.seller_type || 'retailer'}`)}</span>
+                  <span className="rounded-full bg-violet-50 px-3 py-1 text-violet-700">{t(`dashboardPages.selectStore.plan.${store.subscription_plan || 'free'}`)}</span>
                 </div>
                 <div className="mt-5 grid gap-2 sm:grid-cols-2">
                   <button
@@ -154,7 +156,7 @@ export default function SelectStorePage() {
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                    Manage
+                    {t('dashboardPages.selectStore.manage')}
                   </button>
                   {store.subdomain && (
                     <Link
@@ -162,7 +164,7 @@ export default function SelectStorePage() {
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      View store
+                      {t('dashboardPages.selectStore.viewStore')}
                     </Link>
                   )}
                 </div>
@@ -175,7 +177,7 @@ export default function SelectStorePage() {
       <div className="flex justify-center">
         <Link href="/hub/dashboard/create-store" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-700 shadow-sm transition hover:border-[#B91C1C] hover:text-[#B91C1C]">
           <Plus className="h-4 w-4" />
-          Create another store
+          {t('dashboardPages.selectStore.createAnother')}
         </Link>
       </div>
     </div>

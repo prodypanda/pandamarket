@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -98,31 +99,31 @@ interface TokenPack {
   price_tnd: number;
 }
 
-const languageLabels: Record<Language, string> = {
-  fr: 'Français',
-  ar: 'Arabe',
-  en: 'Anglais',
+const languageLabelKeys: Record<Language, string> = {
+  fr: 'dashboardPages.ai.languages.fr',
+  ar: 'dashboardPages.ai.languages.ar',
+  en: 'dashboardPages.ai.languages.en',
 };
 
-const providerLabels: Record<AiProvider, string> = {
-  gemini: 'Gemini',
-  openai: 'OpenAI',
-  claude: 'Claude',
-  custom: 'Custom',
+const providerLabelKeys: Record<AiProvider, string> = {
+  gemini: 'dashboardPages.ai.providers.gemini',
+  openai: 'dashboardPages.ai.providers.openai',
+  claude: 'dashboardPages.ai.providers.claude',
+  custom: 'dashboardPages.ai.providers.custom',
 };
 
-const typeLabels: Record<AiJobType, string> = {
-  image_compression: 'Compression image',
-  seo_generation: 'SEO produit',
-  page_copy: 'Copy page',
-  product_description: 'Description produit',
+const typeLabelKeys: Record<AiJobType, string> = {
+  image_compression: 'dashboardPages.ai.types.image_compression',
+  seo_generation: 'dashboardPages.ai.types.seo_generation',
+  page_copy: 'dashboardPages.ai.types.page_copy',
+  product_description: 'dashboardPages.ai.types.product_description',
 };
 
-const statusLabels: Record<AiJobStatus, string> = {
-  queued: 'En attente',
-  processing: 'En cours',
-  completed: 'Terminé',
-  failed: 'Échoué',
+const statusLabelKeys: Record<AiJobStatus, string> = {
+  queued: 'dashboardPages.ai.statuses.queued',
+  processing: 'dashboardPages.ai.statuses.processing',
+  completed: 'dashboardPages.ai.statuses.completed',
+  failed: 'dashboardPages.ai.statuses.failed',
 };
 
 function getErrorMessage(payload: unknown, fallback: string) {
@@ -141,9 +142,9 @@ function asString(value: unknown) {
   return typeof value === 'string' ? value : '';
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, locale: string) {
   if (!value) return '—';
-  return new Date(value).toLocaleString('fr-TN', {
+  return new Date(value).toLocaleString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -172,6 +173,7 @@ function JobTypeIcon({ type }: { type: AiJobType }) {
 }
 
 export default function AiToolsStudio() {
+  const { t, locale } = useLocale();
   const [credits, setCredits] = useState<Credits | null>(null);
   const [jobs, setJobs] = useState<AiJob[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -220,13 +222,15 @@ export default function AiToolsStudio() {
 
   const imageOptions = useMemo(() => {
     if (!selectedCompressionProduct) return [];
+    const mainLabel = t('dashboardPages.ai.imageLabels.main');
+    const galleryLabel = t('dashboardPages.ai.imageLabels.gallery', { index: 0 });
     const options = [
       selectedCompressionProduct.thumbnail
-        ? { url: selectedCompressionProduct.thumbnail, label: 'Image principale' }
+        ? { url: selectedCompressionProduct.thumbnail, label: mainLabel }
         : null,
       ...(selectedCompressionProduct.images || []).map((image, index) => ({
         url: image.url,
-        label: image.is_thumbnail ? 'Image principale' : `Galerie ${index + 1}`,
+        label: image.is_thumbnail ? mainLabel : galleryLabel.replace('{index}', String(index + 1)),
       })),
     ].filter((item): item is { url: string; label: string } => Boolean(item?.url));
     const seen = new Set<string>();
@@ -235,7 +239,7 @@ export default function AiToolsStudio() {
       seen.add(item.url);
       return true;
     });
-  }, [selectedCompressionProduct]);
+  }, [selectedCompressionProduct, t]);
 
   const isUnlimited = credits?.ai_tokens === -1;
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
@@ -373,12 +377,12 @@ export default function AiToolsStudio() {
         body: JSON.stringify({ pack_id: packId }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Achat de tokens impossible'));
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.buyTokensFailed')));
       setCredits(data.credits || null);
-      showFeedback('Pack de tokens IA acheté depuis votre wallet vendeur.');
+      showFeedback(t('dashboardPages.ai.feedback.tokensBought'));
       void refreshAll();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setBuyingPackId('');
     }
@@ -398,12 +402,12 @@ export default function AiToolsStudio() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Configuration IA impossible'));
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.configFailed')));
       setProviderState(data);
       setProviderForm((current) => ({ ...current, api_key: '' }));
-      showFeedback('Configuration IA vendeur sauvegardée.');
+      showFeedback(t('dashboardPages.ai.feedback.configSaved'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setSavingProvider(false);
     }
@@ -417,12 +421,12 @@ export default function AiToolsStudio() {
         credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Suppression impossible'));
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.deleteFailed')));
       setProviderState((current) => current ? { ...current, config: null } : current);
       setProviderForm((current) => ({ ...current, api_key: '', is_enabled: false }));
-      showFeedback('Configuration IA vendeur supprimée.');
+      showFeedback(t('dashboardPages.ai.feedback.configDeleted'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setSavingProvider(false);
     }
@@ -430,7 +434,7 @@ export default function AiToolsStudio() {
 
   const handleCompress = async () => {
     if (!compressUrl.trim()) {
-      showFeedback('URL de l\'image requise', true);
+      showFeedback(t('dashboardPages.ai.errors.imageUrlRequired'), true);
       return;
     }
     setCompressing(true);
@@ -445,12 +449,12 @@ export default function AiToolsStudio() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Erreur de compression'));
-      showFeedback('Compression lancée. Le résultat apparaîtra dans l’historique.');
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.compressFailed')));
+      showFeedback(t('dashboardPages.ai.feedback.compressStarted'));
       setCompressUrl('');
       void refreshAll();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setCompressing(false);
     }
@@ -458,7 +462,7 @@ export default function AiToolsStudio() {
 
   const handleSeoGenerate = async () => {
     if (!seoProductId) {
-      showFeedback('Sélectionnez un produit avant de générer le SEO.', true);
+      showFeedback(t('dashboardPages.ai.errors.selectProductForSeo'), true);
       return;
     }
     setGenerating(true);
@@ -473,11 +477,11 @@ export default function AiToolsStudio() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Erreur de génération SEO'));
-      showFeedback('Génération SEO lancée. Les champs produit seront mis à jour à la fin du job.');
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.seoFailed')));
+      showFeedback(t('dashboardPages.ai.feedback.seoStarted'));
       void refreshAll();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setGenerating(false);
     }
@@ -485,7 +489,7 @@ export default function AiToolsStudio() {
 
   const handlePageCopy = async () => {
     if (!pageTitle.trim()) {
-      showFeedback('Titre de page requis pour générer une proposition.', true);
+      showFeedback(t('dashboardPages.ai.errors.pageTitleRequired'), true);
       return;
     }
     setCopyGenerating(true);
@@ -506,12 +510,12 @@ export default function AiToolsStudio() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getErrorMessage(data, 'Erreur de génération copy'));
+      if (!res.ok) throw new Error(getErrorMessage(data, t('dashboardPages.ai.errors.copyFailed')));
       setCopySuggestions(data.suggestions || null);
-      showFeedback('Proposition IA générée et enregistrée dans l’historique.');
+      showFeedback(t('dashboardPages.ai.feedback.copyGenerated'));
       void refreshAll();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Erreur réseau', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.ai.errors.network'), true);
     } finally {
       setCopyGenerating(false);
     }
@@ -521,8 +525,8 @@ export default function AiToolsStudio() {
     const productId = asString(job.input_meta?.product_id);
     const product = productId ? products.find((item) => item.id === productId) : null;
     if (product) return product.title;
-    if (job.type === 'page_copy') return asString(job.input_meta?.page_title) || 'Page builder';
-    if (job.input_url) return 'Image';
+    if (job.type === 'page_copy') return asString(job.input_meta?.page_title) || t('dashboardPages.ai.jobTargetPageBuilder');
+    if (job.input_url) return t('dashboardPages.ai.jobTargetImage');
     return productId || '—';
   };
 
@@ -551,11 +555,11 @@ export default function AiToolsStudio() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-amber-100">
               <Sparkles className="h-3.5 w-3.5" />
-              AI seller studio
+              {t('dashboardPages.ai.heroBadge')}
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight">Outils IA</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight">{t('dashboardPages.ai.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-50/85">
-              Compressez les images, générez le SEO produit et préparez des textes courts pour vos pages.
+              {t('dashboardPages.ai.subtitle')}
             </p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/10 p-4">
@@ -564,9 +568,9 @@ export default function AiToolsStudio() {
                 <Zap className="h-5 w-5 text-amber-100" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-100/80">Solde IA</p>
-                <p className="text-2xl font-black">{isUnlimited ? '∞' : credits?.ai_tokens || 0} tokens</p>
-                <p className="text-xs text-amber-50/70">{credits?.tokens_used || 0} utilisés</p>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-100/80">{t('dashboardPages.ai.balanceLabel')}</p>
+                <p className="text-2xl font-black">{isUnlimited ? '∞' : credits?.ai_tokens || 0} {t('dashboardPages.ai.tokensUnit')}</p>
+                <p className="text-xs text-amber-50/70">{credits?.tokens_used || 0} {t('dashboardPages.ai.tokensUsed')}</p>
               </div>
             </div>
           </div>
@@ -585,9 +589,9 @@ export default function AiToolsStudio() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
-          { label: 'Jobs actifs', value: activeJobs, icon: Clock3 },
-          { label: 'Jobs terminés', value: completedJobs, icon: CheckCircle2 },
-          { label: 'Jobs échoués', value: failedJobs, icon: XCircle },
+          { label: t('dashboardPages.ai.stats.active'), value: activeJobs, icon: Clock3 },
+          { label: t('dashboardPages.ai.stats.completed'), value: completedJobs, icon: CheckCircle2 },
+          { label: t('dashboardPages.ai.stats.failed'), value: failedJobs, icon: XCircle },
         ].map((item) => (
           <div key={item.label} className="rounded-3xl border border-gray-100 bg-white p-5 shadow-xl shadow-slate-900/5">
             <div className="flex items-center justify-between">
@@ -608,21 +612,21 @@ export default function AiToolsStudio() {
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-gray-950">
               <Zap className="h-5 w-5 text-[#B91C1C]" />
-              Acheter des tokens IA
+              {t('dashboardPages.ai.buyTokensTitle')}
             </h2>
             <p className="mt-1 text-sm font-semibold text-gray-500">
-              Rechargez votre solde IA immédiatement avec votre wallet vendeur.
+              {t('dashboardPages.ai.buyTokensSubtitle')}
             </p>
           </div>
           {isUnlimited && (
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">
-              Plan illimité
+              {t('dashboardPages.ai.unlimitedPlan')}
             </span>
           )}
         </div>
         {isUnlimited ? (
           <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-bold text-amber-800">
-            Votre abonnement inclut déjà des tokens IA illimités.
+            {t('dashboardPages.ai.unlimitedIncluded')}
           </div>
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -630,7 +634,7 @@ export default function AiToolsStudio() {
               <div key={pack.id} className="rounded-3xl border border-gray-100 bg-gradient-to-br from-white to-amber-50/50 p-5">
                 <p className="text-sm font-black text-gray-950">{pack.label}</p>
                 <p className="mt-2 text-3xl font-black text-[#7F1D1D]">{pack.tokens}</p>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">tokens IA</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">{t('dashboardPages.ai.tokensUnit')}</p>
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <span className="text-sm font-black text-gray-900">{pack.price_tnd.toFixed(3)} TND</span>
                   <button
@@ -640,14 +644,14 @@ export default function AiToolsStudio() {
                     className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-2 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
                   >
                     {buyingPackId === pack.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                    Acheter
+                    {t('dashboardPages.ai.buy')}
                   </button>
                 </div>
               </div>
             ))}
             {tokenPacks.length === 0 && (
               <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm font-bold text-gray-500 md:col-span-3">
-                Aucun pack de tokens IA disponible pour le moment.
+                {t('dashboardPages.ai.noPacks')}
               </div>
             )}
           </div>
@@ -659,21 +663,21 @@ export default function AiToolsStudio() {
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-gray-950">
               <Zap className="h-5 w-5 text-[#B91C1C]" />
-              Fournisseur IA personnel
+              {t('dashboardPages.ai.providerTitle')}
             </h2>
             <p className="mt-1 text-sm font-semibold text-gray-500">
-              Utilisez votre propre clé Gemini, OpenAI, Claude ou endpoint compatible si votre abonnement l’autorise.
+              {t('dashboardPages.ai.providerSubtitle')}
             </p>
           </div>
           {providerState?.config?.api_key_set && (
             <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700 ring-1 ring-green-100">
-              Clé configurée
+              {t('dashboardPages.ai.keyConfigured')}
             </span>
           )}
         </div>
         {providerState && !providerState.allowed ? (
           <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-bold text-amber-800">
-            Cette option dépend de votre abonnement. Passez à un plan compatible pour utiliser votre propre accès IA.
+            {t('dashboardPages.ai.providerNotAllowed')}
           </div>
         ) : (
           <div className="mt-5 grid gap-3 lg:grid-cols-5">
@@ -682,27 +686,27 @@ export default function AiToolsStudio() {
               onChange={(e) => setProviderForm((current) => ({ ...current, provider: e.target.value as AiProvider }))}
               className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             >
-              {Object.entries(providerLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {Object.entries(providerLabelKeys).map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </select>
             <input
               value={providerForm.model}
               onChange={(e) => setProviderForm((current) => ({ ...current, model: e.target.value }))}
-              placeholder="Model"
+              placeholder={t('dashboardPages.ai.modelPlaceholder')}
               className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <input
               value={providerForm.base_url}
               onChange={(e) => setProviderForm((current) => ({ ...current, base_url: e.target.value }))}
-              placeholder="Base URL optionnelle"
+              placeholder={t('dashboardPages.ai.baseUrlPlaceholder')}
               className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <input
               type="password"
               value={providerForm.api_key}
               onChange={(e) => setProviderForm((current) => ({ ...current, api_key: e.target.value }))}
-              placeholder={providerState?.config?.api_key_set ? 'Nouvelle clé optionnelle' : 'Clé API'}
+              placeholder={providerState?.config?.api_key_set ? t('dashboardPages.ai.newKeyPlaceholder') : t('dashboardPages.ai.apiKeyPlaceholder')}
               className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <div className="flex gap-2">
@@ -711,7 +715,7 @@ export default function AiToolsStudio() {
                 onClick={() => setProviderForm((current) => ({ ...current, is_enabled: !current.is_enabled }))}
                 className={`rounded-2xl px-4 py-3 text-xs font-black ring-1 ${providerForm.is_enabled ? 'bg-green-50 text-green-700 ring-green-100' : 'bg-gray-50 text-gray-500 ring-gray-100'}`}
               >
-                {providerForm.is_enabled ? 'Actif' : 'Inactif'}
+                {providerForm.is_enabled ? t('dashboardPages.ai.active') : t('dashboardPages.ai.inactive')}
               </button>
               <button
                 type="button"
@@ -720,7 +724,7 @@ export default function AiToolsStudio() {
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
               >
                 {savingProvider ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Sauver
+                {t('dashboardPages.ai.save')}
               </button>
               {providerState?.config && (
                 <button
@@ -744,8 +748,8 @@ export default function AiToolsStudio() {
               <ImageIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">Compression image</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('image_compression', 1)} token(s) / image</p>
+              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.compressTitle')}</h2>
+              <p className="text-xs font-semibold text-gray-400">{priceFor('image_compression', 1)} {t('dashboardPages.ai.tokensPerImage')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -757,7 +761,7 @@ export default function AiToolsStudio() {
               }}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             >
-              <option value="">Image externe ou sans produit</option>
+              <option value="">{t('dashboardPages.ai.externalOrNoProduct')}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>{product.title}</option>
               ))}
@@ -777,7 +781,7 @@ export default function AiToolsStudio() {
               type="text"
               value={compressUrl}
               onChange={(e) => setCompressUrl(e.target.value)}
-              placeholder="/pd-product-images/... ou https://..."
+              placeholder={t('dashboardPages.ai.imageUrlPlaceholder')}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <button
@@ -787,7 +791,7 @@ export default function AiToolsStudio() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
             >
               {compressing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              {compressing ? 'Compression...' : 'Compresser'}
+              {compressing ? t('dashboardPages.ai.compressing') : t('dashboardPages.ai.compress')}
             </button>
           </div>
         </section>
@@ -798,8 +802,8 @@ export default function AiToolsStudio() {
               <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">SEO automatique</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('seo_generation', 2)} token(s) / produit</p>
+              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.seoTitle')}</h2>
+              <p className="text-xs font-semibold text-gray-400">{priceFor('seo_generation', 2)} {t('dashboardPages.ai.tokensPerProduct')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -808,7 +812,7 @@ export default function AiToolsStudio() {
               onChange={(e) => setSeoProductId(e.target.value)}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             >
-              <option value="">Sélectionner un produit</option>
+              <option value="">{t('dashboardPages.ai.selectProduct')}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>{product.title}</option>
               ))}
@@ -818,8 +822,8 @@ export default function AiToolsStudio() {
               onChange={(e) => setSeoLanguage(e.target.value as Language)}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             >
-              {Object.entries(languageLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {Object.entries(languageLabelKeys).map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </select>
             <button
@@ -829,7 +833,7 @@ export default function AiToolsStudio() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
             >
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {generating ? 'Génération...' : 'Générer le SEO'}
+              {generating ? t('dashboardPages.ai.generating') : t('dashboardPages.ai.generateSeo')}
             </button>
           </div>
         </section>
@@ -840,8 +844,8 @@ export default function AiToolsStudio() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">Copy de page</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('page_copy', 2)} token(s) / proposition</p>
+              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.pageCopyTitle')}</h2>
+              <p className="text-xs font-semibold text-gray-400">{priceFor('page_copy', 2)} {t('dashboardPages.ai.tokensPerProposal')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -849,27 +853,27 @@ export default function AiToolsStudio() {
               type="text"
               value={pageTitle}
               onChange={(e) => setPageTitle(e.target.value)}
-              placeholder="Titre de la page"
+              placeholder={t('dashboardPages.ai.pageTitlePlaceholder')}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <input
               type="text"
               value={currentSeoTitle}
               onChange={(e) => setCurrentSeoTitle(e.target.value)}
-              placeholder="SEO title actuel (optionnel)"
+              placeholder={t('dashboardPages.ai.currentSeoTitlePlaceholder')}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <textarea
               value={currentSeoDescription}
               onChange={(e) => setCurrentSeoDescription(e.target.value)}
-              placeholder="SEO description actuelle (optionnel)"
+              placeholder={t('dashboardPages.ai.currentSeoDescriptionPlaceholder')}
               rows={2}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
             <textarea
               value={sectionOutline}
               onChange={(e) => setSectionOutline(e.target.value)}
-              placeholder="Sections principales, une par ligne"
+              placeholder={t('dashboardPages.ai.sectionsPlaceholder')}
               rows={3}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             />
@@ -878,8 +882,8 @@ export default function AiToolsStudio() {
               onChange={(e) => setCopyLanguage(e.target.value as Language)}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
             >
-              {Object.entries(languageLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {Object.entries(languageLabelKeys).map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </select>
             <button
@@ -889,7 +893,7 @@ export default function AiToolsStudio() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
             >
               {copyGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {copyGenerating ? 'Génération...' : 'Générer la proposition'}
+              {copyGenerating ? t('dashboardPages.ai.generating') : t('dashboardPages.ai.generateProposal')}
             </button>
           </div>
         </section>
@@ -898,7 +902,7 @@ export default function AiToolsStudio() {
       {copySuggestions && (
         <section className="rounded-[2rem] border border-amber-100 bg-amber-50/60 p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black text-[#7F1D1D]">Dernière proposition copy</h2>
+            <h2 className="text-lg font-black text-[#7F1D1D]">{t('dashboardPages.ai.lastProposalTitle')}</h2>
             <button
               type="button"
               onClick={() => {
@@ -908,13 +912,13 @@ export default function AiToolsStudio() {
               }}
               className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-black text-[#B91C1C] transition hover:bg-amber-50"
             >
-              Copier
+              {t('dashboardPages.ai.copy')}
             </button>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {Object.entries(copySuggestions).map(([key, value]) => (
               <div key={key} className="rounded-2xl bg-white p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{key.replaceAll('_', ' ')}</p>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{t(`dashboardPages.ai.copyFields.${key}`)}</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-gray-800">{value}</p>
               </div>
             ))}
@@ -929,8 +933,8 @@ export default function AiToolsStudio() {
               <History className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">Historique IA</h2>
-              <p className="text-xs font-semibold text-gray-400">{meta?.total || jobs.length} jobs enregistrés</p>
+              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.historyTitle')}</h2>
+              <p className="text-xs font-semibold text-gray-400">{meta?.total || jobs.length} {t('dashboardPages.ai.jobsRecorded')}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -939,9 +943,9 @@ export default function AiToolsStudio() {
               onChange={(e) => setHistoryType(e.target.value as 'all' | AiJobType)}
               className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 outline-none focus:border-[#B91C1C]"
             >
-              <option value="all">Tous les types</option>
-              {Object.entries(typeLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              <option value="all">{t('dashboardPages.ai.allTypes')}</option>
+              {Object.entries(typeLabelKeys).map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </select>
             <select
@@ -949,9 +953,9 @@ export default function AiToolsStudio() {
               onChange={(e) => setHistoryStatus(e.target.value as 'all' | AiJobStatus)}
               className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 outline-none focus:border-[#B91C1C]"
             >
-              <option value="all">Tous les statuts</option>
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              <option value="all">{t('dashboardPages.ai.allStatuses')}</option>
+              {Object.entries(statusLabelKeys).map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </select>
             <button
@@ -960,14 +964,14 @@ export default function AiToolsStudio() {
               className="inline-flex items-center gap-2 rounded-full bg-gray-50 px-4 py-2 text-xs font-black text-gray-600 transition hover:bg-gray-100"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Actualiser
+              {t('dashboardPages.ai.refresh')}
             </button>
           </div>
         </div>
 
         <div className="divide-y divide-gray-100">
           {jobs.length === 0 ? (
-            <div className="p-10 text-center text-sm font-semibold text-gray-400">Aucun job IA pour ces filtres.</div>
+            <div className="p-10 text-center text-sm font-semibold text-gray-400">{t('dashboardPages.ai.noJobs')}</div>
           ) : (
             jobs.map((job) => (
               <div key={job.id} className="p-5 transition hover:bg-amber-50/30">
@@ -976,15 +980,15 @@ export default function AiToolsStudio() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-[#7F1D1D]">
                         <JobTypeIcon type={job.type} />
-                        {typeLabels[job.type] || job.type}
+                        {t(typeLabelKeys[job.type]) || job.type}
                       </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ring-1 ${statusClass(job.status)}`}>
                         <StatusIcon status={job.status} />
-                        {statusLabels[job.status] || job.status}
+                        {t(statusLabelKeys[job.status]) || job.status}
                       </span>
                     </div>
                     <p className="mt-3 truncate text-sm font-black text-gray-950">{jobTarget(job)}</p>
-                    <p className="mt-1 text-xs font-semibold text-gray-400">{formatDate(job.created_at)} · {job.tokens_consumed || 0} tokens</p>
+                    <p className="mt-1 text-xs font-semibold text-gray-400">{formatDate(job.created_at, locale)} · {job.tokens_consumed || 0} {t('dashboardPages.ai.tokensUnit')}</p>
                     {job.error_message && (
                       <p className="mt-2 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700">{job.error_message}</p>
                     )}
@@ -992,7 +996,7 @@ export default function AiToolsStudio() {
                       <div className="mt-3 rounded-2xl bg-gray-50 p-3 text-xs text-gray-600">
                         {job.type === 'image_compression' && (
                           <div className="space-y-1">
-                            <p className="font-bold text-gray-800">Gain: {String(job.output.saved_percent ?? 0)}%</p>
+                            <p className="font-bold text-gray-800">{t('dashboardPages.ai.outputLabels.gain')}: {String(job.output.saved_percent ?? 0)}%</p>
                             {asString(job.output.output_url) && (
                               <a
                                 href={asString(job.output.output_url)}
@@ -1000,21 +1004,21 @@ export default function AiToolsStudio() {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 font-black text-[#B91C1C]"
                               >
-                                Voir l’image compressée <ExternalLink className="h-3 w-3" />
+                                {t('dashboardPages.ai.viewCompressedImage')} <ExternalLink className="h-3 w-3" />
                               </a>
                             )}
                           </div>
                         )}
                         {job.type === 'seo_generation' && (
                           <div className="space-y-1">
-                            <p><span className="font-black text-gray-800">Title:</span> {asString(job.output.title)}</p>
-                            <p><span className="font-black text-gray-800">Description:</span> {asString(job.output.description)}</p>
+                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.title')}:</span> {asString(job.output.title)}</p>
+                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.description')}:</span> {asString(job.output.description)}</p>
                           </div>
                         )}
                         {job.type === 'page_copy' && (
                           <div className="space-y-1">
-                            <p><span className="font-black text-gray-800">Hero:</span> {asString(job.output.hero_title)}</p>
-                            <p><span className="font-black text-gray-800">CTA:</span> {asString(job.output.cta)}</p>
+                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.hero')}:</span> {asString(job.output.hero_title)}</p>
+                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.cta')}:</span> {asString(job.output.cta)}</p>
                           </div>
                         )}
                       </div>
@@ -1035,10 +1039,10 @@ export default function AiToolsStudio() {
               disabled={historyPage <= 1}
               className="rounded-full px-4 py-2 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
             >
-              Précédent
+              {t('dashboardPages.ai.previous')}
             </button>
             <span className="text-xs font-black uppercase tracking-[0.16em] text-gray-400">
-              Page {meta.page} / {meta.total_pages}
+              {t('dashboardPages.ai.page')} {meta.page} / {meta.total_pages}
             </span>
             <button
               type="button"
@@ -1046,7 +1050,7 @@ export default function AiToolsStudio() {
               disabled={historyPage >= meta.total_pages}
               className="rounded-full px-4 py-2 text-sm font-black text-[#B91C1C] transition hover:bg-amber-50 disabled:opacity-40"
             >
-              Suivant
+              {t('dashboardPages.ai.next')}
             </button>
           </div>
         )}
