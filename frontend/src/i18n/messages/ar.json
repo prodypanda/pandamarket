@@ -1882,7 +1882,8 @@
         "pending": "قيد الانتظار",
         "suspended": "معلقة",
         "rejected": "مرفوضة",
-        "active": "نشطة"
+        "active": "نشطة",
+        "maintenance": "في صيانة"
       },
       "sellerType": {
         "retailer": "تاجر تجزئة",

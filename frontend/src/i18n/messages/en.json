@@ -1882,7 +1882,8 @@
         "pending": "Pending",
         "suspended": "Suspended",
         "rejected": "Rejected",
-        "active": "Active"
+        "active": "Active",
+        "maintenance": "Maintenance"
       },
       "sellerType": {
         "retailer": "Retailer",
