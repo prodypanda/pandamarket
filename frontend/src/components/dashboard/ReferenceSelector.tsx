@@ -18,11 +18,12 @@ interface Option {
   label: string;
 }
 
-const ENDPOINTS: Record<ReferenceType, string> = {
+const ENDPOINTS: Partial<Record<ReferenceType, string>> = {
   page: '/api/pd/page-builder/pages',
-  product: '/api/pd/stores/me/products',
+  product: '/api/pd/stores/me/products?limit=100',
   category: '/api/pd/stores/me/categories',
-  collection: '/api/pd/stores/me/categories',
+  // No collections API exists yet — handled with a message
+  // collection: null,
 };
 
 const PLACEHOLDERS: Record<ReferenceType, string> = {
@@ -55,11 +56,25 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
   const [selectedLabel, setSelectedLabel] = useState<string>('');
   const ref = useRef<HTMLDivElement>(null);
 
-  // Fetch options when dropdown opens
+  // Clear cached options whenever the type changes (page → product → category etc.)
   useEffect(() => {
-    if (!open || options.length > 0) return;
+    setOptions([]);
+    setQuery('');
+    setSelectedLabel('');
+  }, [type]);
+
+  // Fetch options when dropdown opens (re-fetches every time type changes + opens)
+  useEffect(() => {
+    if (!open) return;
+    const endpoint = ENDPOINTS[type];
+    if (!endpoint) {
+      // No API endpoint for this type (e.g. collections not yet implemented)
+      setOptions([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    fetchWithCsrf(ENDPOINTS[type], { credentials: 'include' })
+    fetchWithCsrf(endpoint, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
         const rows: Record<string, unknown>[] = Array.isArray(data) ? data : (data?.data ?? []);
@@ -67,7 +82,7 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
       })
       .catch(() => setOptions([]))
       .finally(() => setLoading(false));
-  }, [open, type, options.length]);
+  }, [open, type]);
 
   // Resolve the selected label when value changes (e.g. after page reload)
   useEffect(() => {
