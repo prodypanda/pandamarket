@@ -535,3 +535,44 @@ Same fix applied to admin stores page.
 4. **109 tables with RLS disabled**: Security advisory — do NOT auto-enable RLS without policies.
 
 5. **Mega menu**: Already functional — StorefrontHeader renders mega menu when a header menu item has 6+ children. The navigation page supports adding child items via `addChildToTree()`. The user may need guidance on how to use this feature.
+
+---
+
+## Round 7 — Production 504 Outage: Root Causes & Fixes (commits `0e32713`–final)
+
+### Symptom
+Every page returned `504 GATEWAY_TIMEOUT / MIDDLEWARE_INVOCATION_TIMEOUT` on Vercel. Render logs showed Redis `read ECONNRESET` loops.
+
+### Root Cause 1 (the 504): `BACKEND_URL` / `NEXT_PUBLIC_BACKEND_URL` were EMPTY on Vercel
+The Vercel middleware (`frontend/src/middleware.ts`) and SSR pages call the backend via `process.env.BACKEND_URL || 'http://localhost:9000'`. Both env vars were empty, so every middleware/SSR fetch went to `http://localhost:9000` inside Vercel's serverless runtime, which never responds → the middleware hung until Vercel killed it → **504 on every page**.
+
+**Fix:** Set `BACKEND_URL` and `NEXT_PUBLIC_BACKEND_URL` to `https://pandamarket-backend-zjr5.onrender.com` on Vercel. Also added a 3s `AbortController` timeout to the middleware's `getMaintenanceStatus()` / `getStorefrontStatus()` fetches so a slow backend can never hang the middleware again.
+
+### Root Cause 2 (build failures): static pages fetched from the backend at build time with no timeout
+Once `BACKEND_URL` was set, Next.js static generation made real API calls during `next build`. When the backend was slow/cold these hung >60s → `BUILD_UTILS_SPAWN_1`.
+**Fix:** Added 6s `AbortController` timeouts to all build-time fetches: `getMarketplaceSettings()`, hub home (`getTrendingProducts`, `getMarketplaceCategories`), `sitemap.ts`, and `fetchEnabledSubscriptionPlans()`.
+
+### Root Cause 3 (hung API): DB pool handed out half-open connections
+Direct one-shot `pg.Client` connections worked, but the shared `pg.Pool` hung. Idle pool connections get silently dropped by the Supabase pooler/NAT; without TCP keepalive, `pg` reused the dead socket and the query blocked forever (no `statement_timeout`).
+**Fix (`backend/src/db/pool.ts`):** `keepAlive: true`, `idleTimeoutMillis` 30s→10s, `statement_timeout: 30s`.
+
+### Root Cause 4 (hung API): unbounded Redis commands while Redis is down
+Redis is currently unreachable (`PING` times out). Because ioredis uses `maxRetriesPerRequest: null` (required by BullMQ), any `get/setex/del/publish` issued while Redis is down never rejects — it hangs forever. This wedged `/api/pd/marketplace/settings` (platform-config cache), 2FA, password-reset, email-verify, SMS-OTP and analytics cache paths.
+**Fix:** Added `withRedisTimeout()` helper (`backend/src/db/redis.ts`, 1.5s default) and wrapped every non-BullMQ Redis call: maintenance middleware, platform-config cache, auth (2FA setup/challenge, password reset, email verify), SMS OTP, analytics cache. These now fall back to the DB (or fail fast) instead of hanging.
+
+### Verification (all live)
+- `GET /health` → 200 (0.7s)
+- `GET /api/pd/marketplace/settings` → 200 (~4s)
+- `GET /api/pd/products/public` → 200
+- `GET /api/pd/categories` → 200
+- `https://www.garbage.team/hub` → 200
+
+### ⚠️ Still broken: the Redis instance itself
+`pandamarket-redis` (free plan, oregon, v8.1.4, status "available") does not accept connections — `PING` times out from the backend. The Render API does not expose the Redis connection string/password, so it could not be repaired programmatically. The app now degrades gracefully without Redis, but:
+- Settings/config are read from Postgres on every request (slower, ~1.5s added per settings read until Redis is fixed).
+- BullMQ background workers (email, payouts, subscriptions, webhooks, search indexing) are NOT processing.
+
+**Action needed (manual):** In the Render dashboard, open `pandamarket-redis`, copy the full connection string (it includes a password), and set it as `PD_REDIS_URL` on the `pandamarket-backend` service — or recreate the Redis instance if it is faulted. Until then the app runs in DB-fallback mode.
+
+### Cleanup
+Temporary `/debug/diag` connectivity endpoint was added to isolate the pool/Redis hang, then removed once the root causes were confirmed.
