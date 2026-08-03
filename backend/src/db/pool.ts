@@ -16,8 +16,14 @@ export function getPool(): Pool {
       connectionString: config.databaseUrl,
       max: config.databasePoolSize,
       ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
-      idleTimeoutMillis: 30_000,
+      // TCP keepalive detects half-open connections that the Supabase pooler / NAT
+      // silently drops; without it, reusing such a connection hangs the query forever.
+      keepAlive: true,
+      // Drop idle clients quickly so we don't hand out connections the pooler already closed.
+      idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 5_000,
+      // Hard cap on any single query so a wedged connection can't hang a request forever.
+      statement_timeout: 30_000,
     });
 
     pool.on('error', (err) => {

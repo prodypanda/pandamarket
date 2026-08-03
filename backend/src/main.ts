@@ -395,7 +395,29 @@ async function bootstrap() {
       results.db_query = { status: 'error', err: (e as Error).message };
     }
 
-    // 3. Redis target
+    // 3. Shared pool test (the app uses getPool(), not fresh clients)
+    const { getPool } = await import('./db/pool');
+    const pool = getPool();
+    try {
+      const t0 = Date.now();
+      const poolTest = await Promise.race([
+        (async () => {
+          const client = await pool.connect();
+          try {
+            const qr = await client.query('SELECT 1 AS ok');
+            return { status: 'ok', ms: Date.now() - t0, rows: qr.rows.length };
+          } finally {
+            client.release();
+          }
+        })(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('pool test timeout 8s')), 8000)),
+      ]);
+      results.pool_query = { ...(poolTest as object), totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount };
+    } catch (e) {
+      results.pool_query = { status: 'error', err: (e as Error).message, totalCount: pool.totalCount, idleCount: pool.idleCount, waitingCount: pool.waitingCount };
+    }
+
+    // 4. Redis target
     results.redis_url = (config.redisUrl || '').replace(/:([^:@/]+)@/, ':***@');
 
     res.json(results);
