@@ -27,7 +27,10 @@
     "poweredBy": "مدعوم من 🐼 باندا ماركت",
     "noResults": "لم يتم العثور على نتائج",
     "memberSince": "عضو منذ {date}",
-    "networkError": "خطأ في الشبكة"
+    "networkError": "خطأ في الشبكة",
+    "saving": "جارٍ الحفظ...",
+    "saved": "تم الحفظ!",
+    "unsavedChanges": "تغييرات غير محفوظة"
   },
   "nav": {
     "home": "الرئيسية",

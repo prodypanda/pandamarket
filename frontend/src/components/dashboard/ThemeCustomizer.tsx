@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocale } from '@/contexts/LocaleContext';
 import {
   Palette,
   LayoutGrid,
@@ -44,6 +45,7 @@ interface ThemeCustomizerProps {
 }
 
 export function ThemeCustomizer({ themeId, initialCustomization, onSave }: ThemeCustomizerProps) {
+  const { t } = useLocale();
   const theme = themes[themeId] || themes.classic;
 
   const [customization, setCustomization] = useState<ThemeCustomization>(
@@ -133,7 +135,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
             ) : (
               <Save className="w-4 h-4" />
             )}
-            {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé !' : 'Sauvegarder'}
+            {saving ? t('common.saving') : saved ? t('common.saved') : t('common.save')}
           </button>
         </div>
       </div>

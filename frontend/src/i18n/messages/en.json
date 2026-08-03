@@ -27,7 +27,10 @@
     "poweredBy": "Powered by 🐼 PandaMarket",
     "noResults": "No results found",
     "memberSince": "Member since {date}",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "saving": "Saving...",
+    "saved": "Saved!",
+    "unsavedChanges": "Unsaved changes"
   },
   "nav": {
     "home": "Home",
