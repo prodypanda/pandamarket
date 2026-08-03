@@ -17,13 +17,24 @@ export class ManualMandatProvider implements PaymentProvider {
   readonly gateway = PaymentGateway.ManualMandat;
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
+    let recipient = 'PandaMarket SARL';
+    let city = 'Tunis';
+    try {
+      const { platformConfigService } = await import('../../services/platform-config.service');
+      const settings = await platformConfigService.getSettings();
+      recipient = String(settings.mandat_recipient_name || 'PandaMarket SARL');
+      city = String(settings.mandat_recipient_city || 'Tunis');
+    } catch {
+      // Settings unavailable (DB unreachable, test env) — fall back to platform defaults
+    }
+
     return {
       redirect_url: ctx.success_url || `/hub/checkout/mandat-upload?order_id=${ctx.order_id}`,
       gateway_reference: ctx.order_id,
       metadata: {
         instructions: {
-          recipient: 'PandaMarket SARL',
-          city: 'Tunis',
+          recipient,
+          city,
           reference: `PD-ORDER-${ctx.order_id.slice(-8).toUpperCase()}`,
           amount: ctx.amount,
         },

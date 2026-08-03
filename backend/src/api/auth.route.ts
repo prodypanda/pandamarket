@@ -7,6 +7,7 @@ import { incrementBusinessMetric } from '../utils/metrics';
 import { query } from '../db/pool';
 import { PdAuthenticationError, PdErrorCode } from '../errors';
 import { accountSecurityService } from '../services/account-security.service';
+import { signAccessToken } from '../utils/jwt';
 
 const router = Router();
 const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
@@ -461,6 +462,22 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const revoked = await accountSecurityService.revokeOtherSessions(req.user!.id, req.user!.session_id);
     res.status(200).json({ success: true, revoked });
+  }),
+);
+
+router.get(
+  '/socket-token',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    // Fresh short-lived access token for the Socket.IO handshake — the real
+    // access token lives in an httpOnly cookie that browser JS cannot read.
+    const token = signAccessToken({
+      sub: req.user!.id,
+      role: req.user!.role,
+      store_id: req.user!.store_id,
+      session_id: req.user!.session_id ?? null,
+    });
+    res.status(200).json({ token });
   }),
 );
 

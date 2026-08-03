@@ -37,6 +37,30 @@ router.get(
   }),
 );
 
+// Authenticated user (buyer or seller): platform mandat bank-transfer instructions.
+// Lets the UI render the real recipient details from platform settings instead of
+// hardcoding bank data.
+router.get(
+  '/mandat-instructions',
+  requireAuth,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { platformConfigService } = await import('../services/platform-config.service');
+    const s = await platformConfigService.getSettings();
+    res.status(200).json({
+      data: {
+        recipient_name: String(s.mandat_recipient_name || ''),
+        recipient_cin: String(s.mandat_recipient_cin || ''),
+        recipient_city: String(s.mandat_recipient_city || ''),
+        bank_name: String(s.mandat_bank_name || ''),
+        bank_rib: String(s.mandat_bank_rib || ''),
+        bank_iban: String(s.mandat_bank_iban || ''),
+        recipient_phone: String(s.mandat_recipient_phone || ''),
+        proof_email: String(s.mandat_proof_email || ''),
+      },
+    });
+  }),
+);
+
 // Vendor: Get current plan and limits
 router.get(
   '/current',
