@@ -12,6 +12,8 @@ import { query } from '../db/pool';
 import { encrypt, decrypt } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdInternalError } from '../errors';
+import * as dns from 'node:dns/promises';
+import * as net from 'node:net';
 
 // ----------------------------------------------------------------
 // Types
@@ -51,6 +53,46 @@ const SMTP_KEYS = [
 ] as const;
 
 const SMTP_PASS_KEY = 'smtp_pass';
+
+/**
+ * Probe raw TCP reachability of the SMTP server from this host, trying each
+ * resolved IPv4 address in turn. Returns null on success or a user-facing
+ * error message on failure.
+ *
+ * This exists because mail providers (OVH in particular) frequently drop
+ * traffic from cloud/datacenter IPs, which surfaces as an opaque nodemailer
+ * "Connection timeout". A direct probe yields an accurate, actionable error.
+ */
+function probeTcp(host: string, addresses: string[], port: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const attempt = (ip: string, remaining: string[]) => {
+      const socket = net.connect({ host: ip, port, family: 4, timeout: 8000 });
+      const finish = (message: string | null) => {
+        socket.removeAllListeners();
+        socket.destroy();
+        resolve(message);
+      };
+      socket.once('connect', () => finish(null));
+      socket.once('timeout', () => {
+        if (remaining.length > 0) {
+          attempt(remaining[0], remaining.slice(1));
+        } else {
+          finish(
+            `TCP connection to ${host}:${port} (${ip}) timed out. The mail server is unreachable from this server's network — many mail providers silently drop connections from cloud/datacenter IPs. Try another SMTP relay (e.g. Brevo, Mailgun, Postmark, or Gmail with an app password) or ask the provider to allowlist this server.`,
+          );
+        }
+      });
+      socket.once('error', (err: NodeJS.ErrnoException) => {
+        if (remaining.length > 0) {
+          attempt(remaining[0], remaining.slice(1));
+          return;
+        }
+        finish(`TCP connection to ${host}:${port} (${ip}) failed: ${err.code || err.message}.`);
+      });
+    };
+    attempt(addresses[0], addresses.slice(1));
+  });
+}
 
 // ----------------------------------------------------------------
 // Service
@@ -257,14 +299,35 @@ class SmtpConfigService {
       );
     }
 
+    // Stage 1 — DNS resolution (IPv4 only: container IPv6 egress is often
+    // unavailable and can hang connections when AAAA records exist).
+    let addresses: string[];
+    try {
+      addresses = await dns.resolve4(host);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code || 'DNS_ERROR';
+      logger.warn({ host, code }, 'SMTP test DNS resolution failed');
+      return {
+        success: false,
+        message: `SMTP connection failed: DNS lookup for "${host}" returned no IPv4 records (${code}). Check the SMTP hostname.`,
+      };
+    }
+
+    // Stage 2 — raw TCP reachability from this server.
+    const tcpError = await probeTcp(host, addresses, port);
+    if (tcpError) {
+      logger.warn({ host, port, addresses }, 'SMTP test TCP probe failed');
+      return { success: false, message: `SMTP connection failed: ${tcpError}` };
+    }
+
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure,
       auth: user && pass ? { user, pass } : undefined,
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 15_000,
+      connectionTimeout: 12_000,
+      greetingTimeout: 12_000,
+      socketTimeout: 20_000,
     });
 
     try {
@@ -308,9 +371,15 @@ class SmtpConfigService {
 
       return { success: true, message: 'SMTP connection verified successfully' };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown SMTP error';
-      logger.warn({ host, port, err: errorMessage }, 'SMTP test connection failed');
-      return { success: false, message: `SMTP connection failed: ${errorMessage}` };
+      const e = err as Error & { code?: string };
+      const errorMessage = e?.message || 'Unknown SMTP error';
+      // TCP already succeeded at this point, so a timeout here means the SMTP
+      // handshake stalled — almost always a TLS-mode/port mismatch.
+      const hint = /timeout/i.test(errorMessage)
+        ? ` TCP connected but the SMTP handshake stalled — check that "Secure/TLS" matches the port (465 = TLS on connect, 587 = STARTTLS).`
+        : '';
+      logger.warn({ host, port, code: e?.code, err: errorMessage }, 'SMTP test connection failed');
+      return { success: false, message: `SMTP connection failed: ${errorMessage}.${hint}` };
     } finally {
       transporter.close();
     }
