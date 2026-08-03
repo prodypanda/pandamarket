@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload } from 'lucide-react';
 
@@ -192,15 +193,15 @@ interface SavedFilterPreset {
 const ORDERS_COLUMN_STORAGE_KEY = 'pd:seller-orders:columns';
 const ORDERS_PRESETS_STORAGE_KEY = 'pd:seller-orders:filter-presets';
 
-const ORDER_COLUMNS: { key: OrderColumnKey; label: string; required?: boolean }[] = [
-  { key: 'id', label: 'ID Commande', required: true },
-  { key: 'date', label: 'Date' },
-  { key: 'customer', label: 'Client' },
-  { key: 'payment', label: 'Paiement' },
-  { key: 'total', label: 'Total' },
-  { key: 'status', label: 'Statut' },
-  { key: 'fulfillment', label: 'Fulfillment' },
-  { key: 'actions', label: 'Actions', required: true },
+const ORDER_COLUMNS: { key: OrderColumnKey; labelKey: string; required?: boolean }[] = [
+  { key: 'id', labelKey: 'dashboardPages.orders.orderNumber', required: true },
+  { key: 'date', labelKey: 'dashboardPages.orders.date' },
+  { key: 'customer', labelKey: 'dashboardPages.orders.customer' },
+  { key: 'payment', labelKey: 'dashboardPages.orders.paymentStatus' },
+  { key: 'total', labelKey: 'dashboardPages.orders.total' },
+  { key: 'status', labelKey: 'dashboardPages.orders.status' },
+  { key: 'fulfillment', labelKey: 'dashboardPages.orders.fulfillment' },
+  { key: 'actions', labelKey: 'dashboardPages.orders.actions', required: true },
 ];
 
 const DEFAULT_VISIBLE_COLUMNS = ORDER_COLUMNS.reduce((acc, column) => {
@@ -217,13 +218,13 @@ const CARRIER_OPTIONS = [
 ];
 
 const REFUND_REASON_OPTIONS = [
-  { value: 'customer_request', label: 'Demande client' },
-  { value: 'out_of_stock', label: 'Rupture de stock' },
-  { value: 'damaged_item', label: 'Article endommagé' },
-  { value: 'late_delivery', label: 'Livraison en retard' },
-  { value: 'duplicate_order', label: 'Commande dupliquée' },
-  { value: 'goodwill', label: 'Geste commercial' },
-  { value: 'other', label: 'Autre' },
+  { value: 'customer_request', labelKey: 'dashboardPages.orders.refundReasonCustomerRequest' },
+  { value: 'out_of_stock', labelKey: 'dashboardPages.orders.refundReasonOutOfStock' },
+  { value: 'damaged_item', labelKey: 'dashboardPages.orders.refundReasonDamagedItem' },
+  { value: 'late_delivery', labelKey: 'dashboardPages.orders.refundReasonLateDelivery' },
+  { value: 'duplicate_order', labelKey: 'dashboardPages.orders.refundReasonDuplicateOrder' },
+  { value: 'goodwill', labelKey: 'dashboardPages.orders.refundReasonGoodwill' },
+  { value: 'other', labelKey: 'dashboardPages.orders.refundReasonOther' },
 ];
 
 const getStatusColor = (status: string) => {
@@ -238,24 +239,24 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const statusLabel = (status: string) => {
+const statusLabel = (status: string, t: (key: string) => string) => {
   const labels: Record<string, string> = {
-    pending: 'En attente',
-    payment_required: 'Paiement requis',
-    processing: 'En cours',
-    fulfilled: 'Expédié',
-    delivered: 'Livré',
-    cancelled: 'Annulé',
+    pending: t('dashboardPages.orders.pending'),
+    payment_required: t('dashboardPages.orders.paymentRequired'),
+    processing: t('dashboardPages.orders.confirmed'),
+    fulfilled: t('dashboardPages.orders.shipped'),
+    delivered: t('dashboardPages.orders.delivered'),
+    cancelled: t('dashboardPages.orders.cancelled'),
   };
   return labels[status] || status;
 };
 
-const paymentStatusLabel = (status: string) => {
+const paymentStatusLabel = (status: string, t: (key: string) => string) => {
   const labels: Record<string, string> = {
-    pending: 'En attente',
-    captured: 'Payé',
-    failed: 'Échec',
-    refunded: 'Remboursé',
+    pending: t('dashboardPages.orders.pending'),
+    captured: t('dashboardPages.orders.paid'),
+    failed: t('dashboardPages.orders.failed'),
+    refunded: t('dashboardPages.orders.refunded'),
   };
   return labels[status] || status || '—';
 };
@@ -269,8 +270,10 @@ const paymentStatusColor = (status: string) => {
   }
 };
 
-const refundReasonLabel = (reasonCode: string) => (
-  REFUND_REASON_OPTIONS.find((option) => option.value === reasonCode)?.label || reasonCode
+const refundReasonLabel = (reasonCode: string, t: (key: string) => string) => (
+  REFUND_REASON_OPTIONS.find((option) => option.value === reasonCode)?.labelKey
+    ? t(REFUND_REASON_OPTIONS.find((option) => option.value === reasonCode)!.labelKey)
+    : reasonCode
 );
 
 const refundStatusColor = (status: string) => {
@@ -282,22 +285,22 @@ const refundStatusColor = (status: string) => {
   }
 };
 
-const refundStatusLabel = (status: string) => {
+const refundStatusLabel = (status: string, t: (key: string) => string) => {
   const labels: Record<string, string> = {
-    requested: 'Demandé',
-    approved: 'Approuvé',
-    processed: 'Traité',
-    rejected: 'Rejeté',
+    requested: t('dashboardPages.orders.refundRequested'),
+    approved: t('dashboardPages.orders.refundApproved'),
+    processed: t('dashboardPages.orders.refundProcessed'),
+    rejected: t('dashboardPages.orders.refundRejected'),
   };
   return labels[status] || status;
 };
 
-async function getErrorMessage(res: Response, fallback = 'Erreur') {
+async function getErrorMessage(res: Response, fallback = '') {
   try {
     const data = await res.json();
-    return data.error?.message || data.message || `${fallback} (${res.status})`;
+    return data.error?.message || data.message || (fallback ? `${fallback} (${res.status})` : `(${res.status})`);
   } catch {
-    return `${fallback} (${res.status})`;
+    return fallback ? `${fallback} (${res.status})` : `(${res.status})`;
   }
 }
 
@@ -314,11 +317,11 @@ function formatPercent(value: unknown) {
   return `${toNumber(value).toFixed(1)}%`;
 }
 
-function formatHours(value: unknown) {
+function formatHours(value: unknown, t: (key: string, params?: Record<string, string | number>) => string) {
   const hours = toNumber(value);
   if (hours <= 0) return '—';
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  return `${(hours / 24).toFixed(1)}j`;
+  if (hours < 24) return t('dashboardPages.orders.formatHours', { count: hours.toFixed(1) });
+  return t('dashboardPages.orders.formatDays', { count: (hours / 24).toFixed(1) });
 }
 
 function refundRequestedTotal(order: Order) {
@@ -335,9 +338,9 @@ function canRequestRefund(order: Order) {
   return order.payment_status === 'captured' && refundableRemaining(order) > 0;
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value: string | null | undefined, locale: string) {
   if (!value) return '—';
-  return new Date(value).toLocaleString('fr-TN', {
+  return new Date(value).toLocaleString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -355,7 +358,7 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#039;');
 }
 
-function formatAddressLines(address?: ShippingAddress | null) {
+function formatAddressLines(address: ShippingAddress | null | undefined, t: (key: string, params?: Record<string, string | number>) => string) {
   if (!address) return [];
   return [
     [address.first_name, address.last_name].filter(Boolean).join(' ').trim(),
@@ -363,13 +366,13 @@ function formatAddressLines(address?: ShippingAddress | null) {
     address.address_line_2,
     [address.postal_code, address.city].filter(Boolean).join(' ').trim(),
     address.country || 'TN',
-    address.phone ? `Tél: ${address.phone}` : '',
+    address.phone ? t('dashboardPages.orders.phoneLabel', { phone: address.phone }) : '',
   ].filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
 }
 
-function customerName(order: Order) {
+function customerName(order: Order, t: (key: string) => string) {
   const name = [order.customer_first_name, order.customer_last_name].filter(Boolean).join(' ').trim();
-  return name || order.customer_email || order.customer_id || order.storefront_customer_id || 'Client';
+  return name || order.customer_email || order.customer_id || order.storefront_customer_id || t('dashboardPages.orders.customer');
 }
 
 function orderShortId(order: Order) {
@@ -381,14 +384,14 @@ function stringSetting(settings: Record<string, unknown> | null | undefined, key
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function storeDisplayName(order: Order) {
-  return stringSetting(order.store_settings, 'store_name') || order.store_name || 'PandaMarket Seller';
+function storeDisplayName(order: Order, t: (key: string) => string) {
+  return stringSetting(order.store_settings, 'store_name') || order.store_name || t('dashboardPages.orders.defaultSellerName');
 }
 
-function storeContactLines(order: Order) {
+function storeContactLines(order: Order, t: (key: string) => string) {
   const settings = order.store_settings;
   return [
-    storeDisplayName(order),
+    storeDisplayName(order, t),
     stringSetting(settings, 'address'),
     [stringSetting(settings, 'city'), stringSetting(settings, 'country')].filter(Boolean).join(', '),
     stringSetting(settings, 'phone'),
@@ -397,7 +400,7 @@ function storeContactLines(order: Order) {
   ].filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
 }
 
-function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketplaceName: string) {
+function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketplaceName: string, t: (key: string, params?: Record<string, string | number>) => string, locale: string) {
   if (typeof window === 'undefined') return false;
   const printWindow = window.open('', '_blank', 'width=1024,height=768');
   if (!printWindow) return false;
@@ -406,15 +409,15 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
   const currency = order.currency || 'TND';
   const shortId = orderShortId(order);
   const docCode = isInvoice ? `INV-${shortId}` : `DEL-${shortId}`;
-  const docTitle = isInvoice ? 'Facture' : 'Bon de livraison';
+  const docTitle = isInvoice ? t('dashboardPages.orders.invoice') : t('dashboardPages.orders.deliverySlip');
   const docSubtitle = isInvoice
-    ? 'Document de facturation vendeur pour la commande boutique.'
-    : 'Document de préparation colis sans prix, destiné à l’expédition.';
-  const storeLines = storeContactLines(order).map((line) => escapeHtml(line)).join('<br />');
-  const shippingAddressLines = formatAddressLines(order.shipping_address);
+    ? t('dashboardPages.orders.invoiceSubtitle')
+    : t('dashboardPages.orders.deliverySlipSubtitle');
+  const storeLines = storeContactLines(order, t).map((line) => escapeHtml(line)).join('<br />');
+  const shippingAddressLines = formatAddressLines(order.shipping_address, t);
   const shippingAddress = shippingAddressLines.length > 0
     ? shippingAddressLines.map((line) => escapeHtml(line)).join('<br />')
-    : 'Pas d’adresse requise';
+    : t('dashboardPages.orders.noAddressRequired');
   const items = order.items || [];
   const itemRows = items.length > 0
     ? items.map((item, index) => {
@@ -429,7 +432,7 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
           <tr>
             <td class="center">${index + 1}</td>
             <td>
-              <strong>${escapeHtml(item.product_title || 'Produit')}</strong>
+              <strong>${escapeHtml(item.product_title || t('dashboardPages.orders.product'))}</strong>
               ${details ? `<small>${escapeHtml(details)}</small>` : ''}
             </td>
             <td class="center">${escapeHtml(toNumber(item.quantity))}</td>
@@ -443,7 +446,7 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
         <tr>
           <td class="center">${index + 1}</td>
           <td>
-            <strong>${escapeHtml(item.product_title || 'Produit')}</strong>
+            <strong>${escapeHtml(item.product_title || t('dashboardPages.orders.product'))}</strong>
             ${details ? `<small>${escapeHtml(details)}</small>` : ''}
           </td>
           <td class="center">${escapeHtml(toNumber(item.quantity))}</td>
@@ -451,24 +454,24 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
         </tr>
       `;
     }).join('')
-    : `<tr><td colspan="${isInvoice ? 5 : 4}" class="empty">Détail des articles indisponible.</td></tr>`;
+    : `<tr><td colspan="${isInvoice ? 5 : 4}" class="empty">${escapeHtml(t('dashboardPages.orders.itemsDetailUnavailable'))}</td></tr>`;
 
   const tableHeader = isInvoice
     ? `
         <tr>
           <th class="center">#</th>
-          <th>Article</th>
-          <th class="center">Qté</th>
-          <th class="right">Prix unitaire</th>
-          <th class="right">Total</th>
+          <th>${escapeHtml(t('dashboardPages.orders.item'))}</th>
+          <th class="center">${escapeHtml(t('dashboardPages.orders.quantity'))}</th>
+          <th class="right">${escapeHtml(t('dashboardPages.orders.unitPrice'))}</th>
+          <th class="right">${escapeHtml(t('dashboardPages.orders.total'))}</th>
         </tr>
       `
     : `
         <tr>
           <th class="center">#</th>
-          <th>Article à préparer</th>
-          <th class="center">Qté</th>
-          <th class="center">Contrôle</th>
+          <th>${escapeHtml(t('dashboardPages.orders.itemToPrepare'))}</th>
+          <th class="center">${escapeHtml(t('dashboardPages.orders.quantity'))}</th>
+          <th class="center">${escapeHtml(t('dashboardPages.orders.control'))}</th>
         </tr>
       `;
 
@@ -476,23 +479,23 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
     ? `
       <section class="totals">
         <div class="totals-box">
-          <div class="total-row"><span>Sous-total boutique</span><span>${escapeHtml(formatMoney(order.store_subtotal ?? order.subtotal, currency))}</span></div>
-          <div class="total-row"><span>Livraison boutique</span><span>${escapeHtml(formatMoney(order.store_shipping_total ?? order.shipping_total, currency))}</span></div>
-          <div class="total-row final"><span>Total boutique</span><span>${escapeHtml(formatMoney(order.store_total ?? order.total, currency))}</span></div>
+          <div class="total-row"><span>${escapeHtml(t('dashboardPages.orders.storeSubtotal'))}</span><span>${escapeHtml(formatMoney(order.store_subtotal ?? order.subtotal, currency))}</span></div>
+          <div class="total-row"><span>${escapeHtml(t('dashboardPages.orders.storeShipping'))}</span><span>${escapeHtml(formatMoney(order.store_shipping_total ?? order.shipping_total, currency))}</span></div>
+          <div class="total-row final"><span>${escapeHtml(t('dashboardPages.orders.storeTotal'))}</span><span>${escapeHtml(formatMoney(order.store_total ?? order.total, currency))}</span></div>
         </div>
       </section>
     `
     : `
       <section class="delivery-checklist">
-        <div><span class="checkbox"></span> Articles vérifiés</div>
-        <div><span class="checkbox"></span> Adresse confirmée</div>
-        <div><span class="checkbox"></span> Colis emballé</div>
-        <div><span class="checkbox"></span> Suivi renseigné</div>
+        <div><span class="checkbox"></span> ${escapeHtml(t('dashboardPages.orders.itemsChecked'))}</div>
+        <div><span class="checkbox"></span> ${escapeHtml(t('dashboardPages.orders.addressConfirmed'))}</div>
+        <div><span class="checkbox"></span> ${escapeHtml(t('dashboardPages.orders.packagePacked'))}</div>
+        <div><span class="checkbox"></span> ${escapeHtml(t('dashboardPages.orders.trackingFilled'))}</div>
       </section>
       <section class="signature-grid">
-        <div><span>Préparé par</span></div>
-        <div><span>Transporteur</span></div>
-        <div><span>Client / réception</span></div>
+        <div><span>${escapeHtml(t('dashboardPages.orders.preparedBy'))}</span></div>
+        <div><span>${escapeHtml(t('dashboardPages.orders.carrier'))}</span></div>
+        <div><span>${escapeHtml(t('dashboardPages.orders.customerReception'))}</span></div>
       </section>
     `;
 
@@ -840,61 +843,61 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
 </head>
 <body>
   <div class="toolbar">
-    <button type="button" onclick="window.print()">Imprimer ${escapeHtml(docTitle.toLowerCase())}</button>
+    <button type="button" onclick="window.print()">${escapeHtml(t('dashboardPages.orders.print'))} ${escapeHtml(docTitle.toLowerCase())}</button>
   </div>
   <main class="sheet">
     <section class="header">
       <div>
         <div class="brand"><span class="brand-mark">${escapeHtml(marketplaceName.charAt(0).toUpperCase() || 'P')}</span>${escapeHtml(marketplaceName)}</div>
         <h1>${escapeHtml(docTitle)}</h1>
-        <span class="doc-pill">${isInvoice ? 'Document avec montants' : 'Sans prix pour colis'}</span>
+        <span class="doc-pill">${isInvoice ? escapeHtml(t('dashboardPages.orders.documentWithAmounts')) : escapeHtml(t('dashboardPages.orders.packageWithoutPrice'))}</span>
         <p class="muted">${escapeHtml(docSubtitle)}</p>
-        <div class="store-block">${storeLines || escapeHtml(storeDisplayName(order))}</div>
+        <div class="store-block">${storeLines || escapeHtml(storeDisplayName(order, t))}</div>
       </div>
       <div class="document-meta">
         <p class="code">${escapeHtml(docCode)}</p>
-        <div class="meta-row"><span>Document</span><span>${escapeHtml(docTitle)}</span></div>
-        <div class="meta-row"><span>Commande</span><span>#${escapeHtml(shortId)}</span></div>
-        <div class="meta-row"><span>Date commande</span><span>${escapeHtml(formatDateTime(order.created_at))}</span></div>
-        <div class="meta-row"><span>Date impression</span><span>${escapeHtml(formatDateTime(new Date().toISOString()))}</span></div>
+        <div class="meta-row"><span>${escapeHtml(t('dashboardPages.orders.document'))}</span><span>${escapeHtml(docTitle)}</span></div>
+        <div class="meta-row"><span>${escapeHtml(t('dashboardPages.orders.order'))}</span><span>#${escapeHtml(shortId)}</span></div>
+        <div class="meta-row"><span>${escapeHtml(t('dashboardPages.orders.orderDate'))}</span><span>${escapeHtml(formatDateTime(order.created_at, locale))}</span></div>
+        <div class="meta-row"><span>${escapeHtml(t('dashboardPages.orders.printDate'))}</span><span>${escapeHtml(formatDateTime(new Date().toISOString(), locale))}</span></div>
       </div>
     </section>
 
     <section class="status-grid">
-      <div class="status"><span>Commande</span>${escapeHtml(statusLabel(order.status))}</div>
-      <div class="status"><span>Paiement</span>${escapeHtml(paymentStatusLabel(order.payment_status))}</div>
-      <div class="status"><span>Expédition</span>${escapeHtml(fulfillmentLabel(order.fulfillment_status))}</div>
+      <div class="status"><span>${escapeHtml(t('dashboardPages.orders.order'))}</span>${escapeHtml(statusLabel(order.status, t))}</div>
+      <div class="status"><span>${escapeHtml(t('dashboardPages.orders.paymentStatus'))}</span>${escapeHtml(paymentStatusLabel(order.payment_status, t))}</div>
+      <div class="status"><span>${escapeHtml(t('dashboardPages.orders.shipment'))}</span>${escapeHtml(fulfillmentLabel(order.fulfillment_status, t))}</div>
     </section>
 
     <section class="document-grid">
       <div class="card">
-        <h2>Client</h2>
-        <p>${escapeHtml(customerName(order))}</p>
-        <p>${escapeHtml(order.customer_email || 'Email non disponible')}</p>
-        <p>${escapeHtml(order.customer_phone || order.shipping_address?.phone || 'Téléphone non disponible')}</p>
+        <h2>${escapeHtml(t('dashboardPages.orders.customer'))}</h2>
+        <p>${escapeHtml(customerName(order, t))}</p>
+        <p>${escapeHtml(order.customer_email || t('dashboardPages.orders.emailUnavailable'))}</p>
+        <p>${escapeHtml(order.customer_phone || order.shipping_address?.phone || t('dashboardPages.orders.phoneUnavailable'))}</p>
       </div>
       <div class="card">
-        <h2>Adresse livraison</h2>
+        <h2>${escapeHtml(t('dashboardPages.orders.deliveryAddress'))}</h2>
         <p>${shippingAddress}</p>
       </div>
     </section>
 
     <section class="grid">
       <div class="card">
-        <h2>${isInvoice ? 'Paiement' : 'Référence commande'}</h2>
-        <p>${isInvoice ? 'Méthode' : 'ID commande'}: ${escapeHtml(isInvoice ? order.payment_gateway?.replace(/_/g, ' ') || '—' : order.id)}</p>
-        <p>${isInvoice ? 'Référence paiement' : 'Date commande'}: ${escapeHtml(isInvoice ? order.payment_reference || '—' : formatDateTime(order.created_at))}</p>
+        <h2>${isInvoice ? escapeHtml(t('dashboardPages.orders.paymentStatus')) : escapeHtml(t('dashboardPages.orders.orderReference'))}</h2>
+        <p>${isInvoice ? escapeHtml(t('dashboardPages.orders.method')) : escapeHtml(t('dashboardPages.orders.orderIdLabel'))}: ${escapeHtml(isInvoice ? order.payment_gateway?.replace(/_/g, ' ') || '—' : order.id)}</p>
+        <p>${isInvoice ? escapeHtml(t('dashboardPages.orders.paymentReference')) : escapeHtml(t('dashboardPages.orders.orderDate'))}: ${escapeHtml(isInvoice ? order.payment_reference || '—' : formatDateTime(order.created_at, locale))}</p>
       </div>
       <div class="card">
-        <h2>Expédition</h2>
-        <p>Transporteur: ${escapeHtml(order.carrier || '—')}</p>
-        <p>Tracking: ${escapeHtml(order.tracking_number || '—')}</p>
-        <p>Expédiée: ${escapeHtml(formatDateTime(order.shipped_at))}</p>
-        <p>Livrée: ${escapeHtml(formatDateTime(order.delivered_at))}</p>
+        <h2>${escapeHtml(t('dashboardPages.orders.shipment'))}</h2>
+        <p>${escapeHtml(t('dashboardPages.orders.carrier'))}: ${escapeHtml(order.carrier || '—')}</p>
+        <p>${escapeHtml(t('dashboardPages.orders.tracking'))}: ${escapeHtml(order.tracking_number || '—')}</p>
+        <p>${escapeHtml(t('dashboardPages.orders.shippedLabel'))}: ${escapeHtml(formatDateTime(order.shipped_at, locale))}</p>
+        <p>${escapeHtml(t('dashboardPages.orders.deliveredLabel'))}: ${escapeHtml(formatDateTime(order.delivered_at, locale))}</p>
       </div>
     </section>
 
-    <h2 class="section-title">${isInvoice ? 'Articles facturés' : 'Articles à préparer'}</h2>
+    <h2 class="section-title">${isInvoice ? escapeHtml(t('dashboardPages.orders.invoicedItems')) : escapeHtml(t('dashboardPages.orders.itemsToPrepare'))}</h2>
     <table>
       <thead>
         ${tableHeader}
@@ -905,8 +908,8 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
     ${totalsSection}
 
     <section class="footer">
-      <span>${isInvoice ? `Facture générée depuis le tableau de bord vendeur ${escapeHtml(marketplaceName)}.` : 'Merci de vérifier les articles, l’adresse et le suivi avant remise au transporteur.'}</span>
-      <span>Référence complète: ${escapeHtml(order.id)}</span>
+      <span>${isInvoice ? escapeHtml(t('dashboardPages.orders.invoiceFooter', { marketplace: marketplaceName })) : escapeHtml(t('dashboardPages.orders.deliverySlipFooter'))}</span>
+      <span>${escapeHtml(t('dashboardPages.orders.fullReference'))}: ${escapeHtml(order.id)}</span>
     </section>
   </main>
 </body>
@@ -938,7 +941,7 @@ function canGenerateShippingLabel(order: Order) {
   return Boolean(order.fulfillment_id && order.shipping_address && !['delivered', 'cancelled'].includes(order.fulfillment_status || ''));
 }
 
-function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, marketplaceName: string) {
+function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, marketplaceName: string, t: (key: string, params?: Record<string, string | number>) => string, locale: string) {
   if (typeof window === 'undefined') return false;
   if (shipment.label_url) {
     return Boolean(window.open(shipment.label_url, '_blank', 'noopener,noreferrer'));
@@ -946,14 +949,14 @@ function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, 
 
   const printWindow = window.open('', '_blank', 'width=900,height=700');
   if (!printWindow) return false;
-  const recipientLines = formatAddressLines(order.shipping_address).map((line) => escapeHtml(line)).join('<br />');
-  const storeLines = storeContactLines(order).map((line) => escapeHtml(line)).join('<br />');
+  const recipientLines = formatAddressLines(order.shipping_address, t).map((line) => escapeHtml(line)).join('<br />');
+  const storeLines = storeContactLines(order, t).map((line) => escapeHtml(line)).join('<br />');
   const trackingUrl = getTrackingUrl(shipment.provider, shipment.tracking_number);
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Shipping label ${escapeHtml(orderShortId(order))}</title>
+  <title>${escapeHtml(t('dashboardPages.orders.shippingLabel'))} ${escapeHtml(orderShortId(order))}</title>
   <style>
     @page { size: A6; margin: 8mm; }
     body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
@@ -974,11 +977,11 @@ function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, 
     <div class="brand">
       <div>
         <h1>${escapeHtml(marketplaceName)}</h1>
-        <p>Étiquette expédition vendeur</p>
+        <p>${escapeHtml(t('dashboardPages.orders.sellerShippingLabel'))}</p>
       </div>
       <div>
-        <p><strong>Commande:</strong> #${escapeHtml(orderShortId(order))}</p>
-        <p><strong>Date:</strong> ${escapeHtml(formatDateTime(new Date().toISOString()))}</p>
+        <p><strong>${escapeHtml(t('dashboardPages.orders.order'))}:</strong> #${escapeHtml(orderShortId(order))}</p>
+        <p><strong>${escapeHtml(t('dashboardPages.orders.date'))}:</strong> ${escapeHtml(formatDateTime(new Date().toISOString(), locale))}</p>
       </div>
     </div>
     <div class="code">
@@ -988,15 +991,15 @@ function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, 
     </div>
     <div class="grid">
       <div class="block">
-        <h2>Expéditeur</h2>
-        <p>${storeLines || 'PandaMarket Seller'}</p>
+        <h2>${escapeHtml(t('dashboardPages.orders.sender'))}</h2>
+        <p>${storeLines || escapeHtml(t('dashboardPages.orders.defaultSellerName'))}</p>
       </div>
       <div class="block">
-        <h2>Destinataire</h2>
-        <p>${recipientLines || 'Adresse non disponible'}</p>
+        <h2>${escapeHtml(t('dashboardPages.orders.recipient'))}</h2>
+        <p>${recipientLines || escapeHtml(t('dashboardPages.orders.addressUnavailable'))}</p>
       </div>
     </div>
-    <div class="footer">Document imprimable. Utilisez “Enregistrer en PDF” depuis la fenêtre d’impression si nécessaire.</div>
+    <div class="footer">${escapeHtml(t('dashboardPages.orders.shippingLabelFooter'))}</div>
   </section>
 </body>
 </html>`;
@@ -1012,13 +1015,13 @@ function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, 
   return true;
 }
 
-function fulfillmentLabel(status?: string | null) {
-  if (!status) return 'Non expédiable';
+function fulfillmentLabel(status: string | null | undefined, t: (key: string) => string) {
+  if (!status) return t('dashboardPages.orders.notFulfillable');
   const labels: Record<string, string> = {
-    pending: 'À expédier',
-    shipped: 'Expédié',
-    delivered: 'Livré',
-    cancelled: 'Annulé',
+    pending: t('dashboardPages.orders.toShip'),
+    shipped: t('dashboardPages.orders.shipped'),
+    delivered: t('dashboardPages.orders.delivered'),
+    cancelled: t('dashboardPages.orders.cancelled'),
   };
   return labels[status] || status;
 }
@@ -1056,7 +1059,7 @@ function getTrackingUrl(carrier?: string | null, trackingNumber?: string | null)
   return preset ? preset.trackingUrl(tracking) : '';
 }
 
-function buildOrderTimeline(order: Order): TimelineStep[] {
+function buildOrderTimeline(order: Order, t: (key: string, params?: Record<string, string | number>) => string): TimelineStep[] {
   const isCancelled = order.status === 'cancelled' || order.fulfillment_status === 'cancelled';
   const isRefunded = order.status === 'refunded' || order.payment_status === 'refunded';
   const isPaid = order.payment_status === 'captured';
@@ -1066,10 +1069,10 @@ function buildOrderTimeline(order: Order): TimelineStep[] {
 
   if (isCancelled || isRefunded) {
     return [
-      { label: 'Commande créée', description: 'La commande a été enregistrée.', date: order.created_at, state: 'done' },
+      { label: t('dashboardPages.orders.timelineOrderCreated'), description: t('dashboardPages.orders.timelineOrderCreatedDesc'), date: order.created_at, state: 'done' },
       {
-        label: isRefunded ? 'Remboursement' : 'Annulation',
-        description: isRefunded ? 'La commande est marquée comme remboursée.' : 'La commande est marquée comme annulée.',
+        label: isRefunded ? t('dashboardPages.orders.timelineRefund') : t('dashboardPages.orders.timelineCancellation'),
+        description: isRefunded ? t('dashboardPages.orders.timelineRefundDesc') : t('dashboardPages.orders.timelineCancellationDesc'),
         date: order.delivered_at || order.shipped_at || order.created_at,
         state: 'failed',
       },
@@ -1077,27 +1080,27 @@ function buildOrderTimeline(order: Order): TimelineStep[] {
   }
 
   return [
-    { label: 'Commande créée', description: 'La commande a été enregistrée.', date: order.created_at, state: 'done' },
+    { label: t('dashboardPages.orders.timelineOrderCreated'), description: t('dashboardPages.orders.timelineOrderCreatedDesc'), date: order.created_at, state: 'done' },
     {
-      label: 'Paiement confirmé',
-      description: isPaid ? 'Le paiement est capturé.' : 'Le paiement attend confirmation.',
+      label: t('dashboardPages.orders.timelinePaymentConfirmed'),
+      description: isPaid ? t('dashboardPages.orders.timelinePaymentCaptured') : t('dashboardPages.orders.timelinePaymentPending'),
       date: isPaid ? order.created_at : undefined,
       state: isPaid ? 'done' : 'current',
     },
     {
-      label: 'Préparation',
-      description: isProcessing ? 'La commande est prête pour le traitement vendeur.' : 'En attente de paiement avant préparation.',
+      label: t('dashboardPages.orders.timelinePreparation'),
+      description: isProcessing ? t('dashboardPages.orders.timelinePreparationReady') : t('dashboardPages.orders.timelinePreparationWaiting'),
       state: isProcessing ? 'done' : 'pending',
     },
     {
-      label: 'Expédition',
-      description: isShipped ? `Expédiée${order.carrier ? ` via ${order.carrier}` : ''}.` : 'En attente de numéro de suivi.',
+      label: t('dashboardPages.orders.shipment'),
+      description: isShipped ? t('dashboardPages.orders.timelineShippedDesc', { carrier: order.carrier || '' }) : t('dashboardPages.orders.timelineShippedWaiting'),
       date: order.shipped_at,
       state: isShipped ? 'done' : isProcessing ? 'current' : 'pending',
     },
     {
-      label: 'Livraison',
-      description: isDelivered ? 'La livraison est confirmée.' : 'La livraison sera confirmée plus tard.',
+      label: t('dashboardPages.orders.timelineDelivery'),
+      description: isDelivered ? t('dashboardPages.orders.timelineDeliveryConfirmed') : t('dashboardPages.orders.timelineDeliveryPending'),
       date: order.delivered_at,
       state: isDelivered ? 'done' : 'pending',
     },
@@ -1105,6 +1108,7 @@ function buildOrderTimeline(order: Order): TimelineStep[] {
 }
 
 function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; onReviewed: () => void }) {
+  const { t } = useLocale();
   const [receipt, setReceipt] = useState<any | null>(null);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1144,11 +1148,11 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
       if (res.ok) {
         const data = await res.json();
         setReceipt(data.receipt);
-        setFeedback(action === 'approve' ? 'Reçu approuvé. Le paiement est validé !' : 'Reçu rejeté.');
+        setFeedback(action === 'approve' ? t('dashboardPages.orders.mandatReceiptApproved') : t('dashboardPages.orders.mandatReceiptRejected'));
         onReviewed();
       }
     } catch {
-      setFeedback('Erreur lors du traitement du reçu.');
+      setFeedback(t('dashboardPages.orders.mandatReceiptError'));
     } finally {
       setSubmitting(false);
     }
@@ -1159,7 +1163,7 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-black text-amber-900 flex items-center gap-2">
           <ReceiptText className="h-4 w-4 text-amber-600" />
-          Reçu de paiement Mandat Minute
+          {t('dashboardPages.orders.mandatReceiptTitle')}
         </h4>
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
           receipt.status === 'approved'
@@ -1168,15 +1172,15 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
               ? 'bg-red-100 text-red-800'
               : 'bg-amber-100 text-amber-800'
         }`}>
-          {receipt.status === 'approved' ? 'Approuvé' : receipt.status === 'rejected' ? 'Rejeté' : 'En attente de revue'}
+          {receipt.status === 'approved' ? t('dashboardPages.orders.refundApproved') : receipt.status === 'rejected' ? t('dashboardPages.orders.refundRejected') : t('dashboardPages.orders.mandatReceiptPending')}
         </span>
       </div>
 
       <div className="flex items-center justify-between text-xs text-gray-700">
-        <span>Fichier : <strong className="font-mono">{receipt.file_name}</strong></span>
+        <span>{t('dashboardPages.orders.fileLabel')}: <strong className="font-mono">{receipt.file_name}</strong></span>
         {viewUrl && (
           <a href={viewUrl} target="_blank" rel="noreferrer" className="font-bold text-amber-700 hover:underline flex items-center gap-1">
-            <ExternalLink className="h-3.5 w-3.5" /> Voir le reçu
+            <ExternalLink className="h-3.5 w-3.5" /> {t('dashboardPages.orders.viewReceipt')}
           </a>
         )}
       </div>
@@ -1189,7 +1193,7 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
         <div className="space-y-2 pt-2 border-t border-amber-200">
           <input
             type="text"
-            placeholder="Note d'examen (optionnel)..."
+            placeholder={t('dashboardPages.orders.mandatReviewNotePlaceholder')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full text-xs rounded-xl border border-amber-200 p-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
@@ -1200,14 +1204,14 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
               disabled={submitting}
               className="px-3 py-1.5 rounded-xl bg-red-100 text-red-800 font-bold text-xs hover:bg-red-200 transition-colors disabled:opacity-60"
             >
-              Rejeter le reçu
+              {t('dashboardPages.orders.rejectReceipt')}
             </button>
             <button
               onClick={() => handleReview('approve')}
               disabled={submitting}
               className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-1"
             >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Approuver & Valider le paiement
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t('dashboardPages.orders.approveAndValidatePayment')}
             </button>
           </div>
         </div>
@@ -1217,6 +1221,7 @@ function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; o
 }
 
 export default function OrdersPage() {
+  const { t, locale } = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -1298,14 +1303,14 @@ export default function OrdersPage() {
         setTotalPages(data.meta?.total_pages || 1);
         setMeta(data.meta || { page, limit: 20, total: 0, total_pages: 1 });
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement des commandes'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorLoadingOrders')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setLoading(false);
     }
-  }, [channelFilter, countryFilter, customerFilter, dateFrom, dateTo, fulfillmentStatusFilter, hasDisputeFilter, page, paymentGatewayFilter, paymentStatusFilter, productFilter, search, statusFilter]);
+  }, [channelFilter, countryFilter, customerFilter, dateFrom, dateTo, fulfillmentStatusFilter, hasDisputeFilter, page, paymentGatewayFilter, paymentStatusFilter, productFilter, search, statusFilter, t]);
 
   useEffect(() => {
     fetchOrders();
@@ -1495,7 +1500,7 @@ export default function OrdersPage() {
     try {
       const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}`, { credentials: 'include' });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement du détail'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorLoadingDetail')));
         return;
       }
       const data = await res.json();
@@ -1503,7 +1508,7 @@ export default function OrdersPage() {
       setSelectedOrder(detail);
       setSellerNote(detail.seller_note?.body || '');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setLoadingOrderDetail(false);
     }
@@ -1534,10 +1539,10 @@ export default function OrdersPage() {
           await openOrderDetail(order);
         }
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de l’expédition'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorFulfilling')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setFulfillingId('');
     }
@@ -1553,8 +1558,8 @@ export default function OrdersPage() {
   const generateShippingLabel = async (order: Order) => {
     const existingShipment = latestShipment(order);
     if (existingShipment) {
-      const opened = openShipmentLabelDocument(order, existingShipment, marketplaceName);
-      if (!opened) setError('Impossible d’ouvrir l’étiquette. Vérifiez le bloqueur de fenêtres.');
+      const opened = openShipmentLabelDocument(order, existingShipment, marketplaceName, t, locale);
+      if (!opened) setError(t('dashboardPages.orders.errorCannotOpenLabel'));
       return;
     }
 
@@ -1568,7 +1573,7 @@ export default function OrdersPage() {
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de la génération de l’étiquette'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorGeneratingLabel')));
         return;
       }
       const data = await res.json();
@@ -1581,12 +1586,12 @@ export default function OrdersPage() {
       };
       setOrders((current) => current.map((item) => item.id === order.id ? { ...item, carrier: shipment.provider, tracking_number: shipment.tracking_number } : item));
       if (selectedOrder?.id === order.id) setSelectedOrder(nextOrder);
-      const opened = openShipmentLabelDocument(nextOrder, shipment, marketplaceName);
-      if (!opened) setError('Étiquette générée, mais impossible d’ouvrir la fenêtre d’impression.');
+      const opened = openShipmentLabelDocument(nextOrder, shipment, marketplaceName, t, locale);
+      if (!opened) setError(t('dashboardPages.orders.errorLabelGeneratedCannotOpen'));
       await fetchOrders();
       if (selectedOrder?.id === order.id) await openOrderDetail(nextOrder);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setGeneratingLabelId('');
     }
@@ -1595,17 +1600,17 @@ export default function OrdersPage() {
   const openDeliveryProofModal = (order: Order) => {
     setDeliveryProofTarget(order);
     setDeliveryProofFile(null);
-    setDeliveryProofReceivedBy(customerName(order));
+    setDeliveryProofReceivedBy(customerName(order, t));
     setDeliveryProofNote('');
     setError('');
   };
 
   const uploadDeliveryProofFile = async (file: File) => {
     if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
-      throw new Error('Preuve invalide: utilisez JPG, PNG, WebP ou PDF.');
+      throw new Error(t('dashboardPages.orders.errorInvalidProofFormat'));
     }
     if (file.size > 10 * 1024 * 1024) {
-      throw new Error('La preuve doit faire moins de 10 MB.');
+      throw new Error(t('dashboardPages.orders.errorProofTooLarge'));
     }
 
     const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
@@ -1619,16 +1624,16 @@ export default function OrdersPage() {
         purpose: 'delivery_proof',
       }),
     });
-    if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Upload impossible'));
+    if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, t('dashboardPages.orders.errorUploadFailed')));
     const presignData = await presignRes.json();
-    if (!presignData.upload_url || !presignData.file_key) throw new Error('URL upload manquante');
+    if (!presignData.upload_url || !presignData.file_key) throw new Error(t('dashboardPages.orders.errorMissingUploadUrl'));
 
     const uploadRes = await fetch(presignData.upload_url, {
       method: 'PUT',
       headers: { 'Content-Type': file.type },
       body: file,
     });
-    if (!uploadRes.ok) throw new Error('Upload de la preuve impossible');
+    if (!uploadRes.ok) throw new Error(t('dashboardPages.orders.errorProofUploadFailed'));
     return `/api/pd/files/access?key=${encodeURIComponent(presignData.file_key)}`;
   };
 
@@ -1649,7 +1654,7 @@ export default function OrdersPage() {
         }),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors du marquage livré'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorMarkingDelivered')));
         return;
       }
       const deliveredOrder = deliveryProofTarget;
@@ -1659,25 +1664,25 @@ export default function OrdersPage() {
       setDeliveryProofNote('');
       await refreshOrderAfterStatusChange(deliveredOrder);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setSubmittingDeliveryProofId('');
     }
   };
 
-  const openDeliveryProofFile = async (proofUrl?: string | null) => {
+  const openDeliveryProofFile = async (proofUrl: string | null | undefined) => {
     if (!proofUrl) return;
     try {
       if (proofUrl.startsWith('/api/pd/files/access')) {
         const res = await fetchWithCsrf(proofUrl, { credentials: 'include' });
-        if (!res.ok) throw new Error(await getErrorMessage(res, 'Preuve inaccessible'));
+        if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.orders.proofInaccessible')));
         const data = await res.json();
         if (data.download_url) window.open(data.download_url, '_blank', 'noopener,noreferrer');
         return;
       }
       window.open(proofUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Preuve inaccessible');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.proofInaccessible'));
     }
   };
 
@@ -1686,7 +1691,7 @@ export default function OrdersPage() {
   };
 
   const cancelSellerFulfillment = async (order: Order) => {
-    const reason = window.prompt('Pourquoi annuler la partie de commande liée à votre boutique ?');
+    const reason = window.prompt(t('dashboardPages.orders.cancelFulfillmentPrompt'));
     if (!reason?.trim()) return;
     setStatusActionId(order.id);
     setError('');
@@ -1698,12 +1703,12 @@ export default function OrdersPage() {
         body: JSON.stringify({ reason: reason.trim() }),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de l’annulation'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorCancelling')));
         return;
       }
       await refreshOrderAfterStatusChange(order);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setStatusActionId('');
     }
@@ -1723,7 +1728,7 @@ export default function OrdersPage() {
     const amount = toNumber(refundAmount);
     const remaining = refundableRemaining(refundOrderTarget);
     if (amount <= 0 || amount > remaining) {
-      setError(`Le montant doit être compris entre 0 et ${formatMoney(remaining, refundOrderTarget.currency || 'TND')}.`);
+      setError(t('dashboardPages.orders.errorRefundAmount', { max: formatMoney(remaining, refundOrderTarget.currency || 'TND') }));
       return;
     }
     setRefundingOrderId(refundOrderTarget.id);
@@ -1740,7 +1745,7 @@ export default function OrdersPage() {
         }),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de la demande de remboursement'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorRefundRequest')));
         return;
       }
       setRefundOrderTarget(null);
@@ -1751,7 +1756,7 @@ export default function OrdersPage() {
         await openOrderDetail(refundOrderTarget);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setRefundingOrderId('');
     }
@@ -1782,35 +1787,35 @@ export default function OrdersPage() {
         credentials: 'include',
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de l’export'));
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorExporting')));
         return;
       }
       const data = await res.json();
       const rows = (data.data || []) as Order[];
       const columns: CsvColumn[] = [
-        { key: 'id', label: 'Order ID' },
-        { key: 'created_at', label: 'Date', formatter: (value) => formatDateTime(String(value || '')) },
-        { key: 'customer', label: 'Customer' },
-        { key: 'customer_email', label: 'Email' },
-        { key: 'status', label: 'Order Status', formatter: (value) => statusLabel(String(value || '')) },
-        { key: 'payment_status', label: 'Payment Status', formatter: (value) => paymentStatusLabel(String(value || '')) },
-        { key: 'fulfillment_status', label: 'Fulfillment', formatter: (value) => fulfillmentLabel(String(value || '')) },
-        { key: 'carrier', label: 'Carrier' },
-        { key: 'tracking_number', label: 'Tracking Number' },
-        { key: 'store_total', label: 'Store Total' },
-        { key: 'currency', label: 'Currency' },
+        { key: 'id', label: t('dashboardPages.orders.csvOrderId') },
+        { key: 'created_at', label: t('dashboardPages.orders.date'), formatter: (value) => formatDateTime(String(value || ''), locale) },
+        { key: 'customer', label: t('dashboardPages.orders.customer') },
+        { key: 'customer_email', label: t('dashboardPages.orders.csvEmail') },
+        { key: 'status', label: t('dashboardPages.orders.csvOrderStatus'), formatter: (value) => statusLabel(String(value || ''), t) },
+        { key: 'payment_status', label: t('dashboardPages.orders.csvPaymentStatus'), formatter: (value) => paymentStatusLabel(String(value || ''), t) },
+        { key: 'fulfillment_status', label: t('dashboardPages.orders.fulfillment'), formatter: (value) => fulfillmentLabel(String(value || ''), t) },
+        { key: 'carrier', label: t('dashboardPages.orders.carrier') },
+        { key: 'tracking_number', label: t('dashboardPages.orders.csvTrackingNumber') },
+        { key: 'store_total', label: t('dashboardPages.orders.storeTotal') },
+        { key: 'currency', label: t('dashboardPages.orders.csvCurrency') },
       ];
       exportToCsv(
         rows.map((order) => ({
           ...order,
-          customer: customerName(order),
+          customer: customerName(order, t),
           store_total: formatMoney(order.store_total ?? order.total, order.currency || 'TND'),
         })) as Record<string, unknown>[],
         `seller-orders-${new Date().toISOString().slice(0, 10)}.csv`,
         columns,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setExportingOrders(false);
     }
@@ -1820,24 +1825,24 @@ export default function OrdersPage() {
 
   const exportSelectedOrders = () => {
     if (selectedOrders.length === 0) return;
-    const columns: CsvColumn[] = [
-      { key: 'id', label: 'Order ID' },
-      { key: 'created_at', label: 'Date', formatter: (value) => formatDateTime(String(value || '')) },
-      { key: 'customer', label: 'Customer' },
-      { key: 'customer_email', label: 'Email' },
-      { key: 'status', label: 'Order Status', formatter: (value) => statusLabel(String(value || '')) },
-      { key: 'payment_gateway', label: 'Payment Method' },
-      { key: 'payment_status', label: 'Payment Status', formatter: (value) => paymentStatusLabel(String(value || '')) },
-      { key: 'fulfillment_status', label: 'Fulfillment', formatter: (value) => fulfillmentLabel(String(value || '')) },
-      { key: 'carrier', label: 'Carrier' },
-      { key: 'tracking_number', label: 'Tracking Number' },
-      { key: 'store_total', label: 'Store Total' },
-      { key: 'currency', label: 'Currency' },
-    ];
+      const columns: CsvColumn[] = [
+        { key: 'id', label: t('dashboardPages.orders.csvOrderId') },
+        { key: 'created_at', label: t('dashboardPages.orders.date'), formatter: (value) => formatDateTime(String(value || ''), locale) },
+        { key: 'customer', label: t('dashboardPages.orders.customer') },
+        { key: 'customer_email', label: t('dashboardPages.orders.csvEmail') },
+        { key: 'status', label: t('dashboardPages.orders.csvOrderStatus'), formatter: (value) => statusLabel(String(value || ''), t) },
+        { key: 'payment_gateway', label: t('dashboardPages.orders.csvPaymentMethod') },
+        { key: 'payment_status', label: t('dashboardPages.orders.csvPaymentStatus'), formatter: (value) => paymentStatusLabel(String(value || ''), t) },
+        { key: 'fulfillment_status', label: t('dashboardPages.orders.fulfillment'), formatter: (value) => fulfillmentLabel(String(value || ''), t) },
+        { key: 'carrier', label: t('dashboardPages.orders.carrier') },
+        { key: 'tracking_number', label: t('dashboardPages.orders.csvTrackingNumber') },
+        { key: 'store_total', label: t('dashboardPages.orders.storeTotal') },
+        { key: 'currency', label: t('dashboardPages.orders.csvCurrency') },
+      ];
     exportToCsv(
       selectedOrders.map((order) => ({
         ...order,
-        customer: customerName(order),
+        customer: customerName(order, t),
         store_total: formatMoney(order.store_total ?? order.total, order.currency || 'TND'),
       })) as Record<string, unknown>[],
       `seller-orders-selected-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -1848,14 +1853,14 @@ export default function OrdersPage() {
   const printSelectedOrders = (kind: PrintDocumentKind) => {
     if (selectedOrders.length === 0) return;
     selectedOrders.forEach((order) => {
-      openOrderPrintDocument(order, kind, marketplaceName);
+      openOrderPrintDocument(order, kind, marketplaceName, t, locale);
     });
   };
 
   const openBulkFulfillment = () => {
     const fulfillableOrders = selectedOrders.filter(canFulfill);
     if (fulfillableOrders.length === 0) {
-      setError('Aucune commande sélectionnée ne peut être marquée comme expédiée.');
+      setError(t('dashboardPages.orders.errorNoFulfillableSelected'));
       return;
     }
     setError('');
@@ -1916,14 +1921,14 @@ export default function OrdersPage() {
       if (failed.length > 0) {
         setBulkFulfillmentTargets(failed);
         setSelectedOrderIds(failed.map((order) => order.id));
-        setError(`Certaines commandes n’ont pas pu être expédiées: ${failed.map((order) => `#${order.id.slice(-8).toUpperCase()}`).join(', ')}`);
+        setError(t('dashboardPages.orders.errorBulkFulfillmentFailed', { ids: failed.map((order) => `#${order.id.slice(-8).toUpperCase()}`).join(', ') }));
         return;
       }
       setSelectedOrderIds((current) => current.filter((id) => !bulkFulfillmentTargets.some((order) => order.id === id)));
       setBulkFulfillmentTargets([]);
       setBulkFulfillmentDrafts({});
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setBulkFulfilling(false);
     }
@@ -1943,13 +1948,13 @@ export default function OrdersPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data?.error?.message || data?.message || 'Erreur lors de la sauvegarde de la note');
+        throw new Error(data?.error?.message || data?.message || t('dashboardPages.orders.errorSavingNote'));
       }
       setSelectedOrder((current) => current ? { ...current, seller_note: data.note } : current);
       setSellerNote(data.note?.body || '');
-      setNoteFeedback('Note interne sauvegardée.');
+      setNoteFeedback(t('dashboardPages.orders.noteSaved'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setSavingNote(false);
     }
@@ -1958,12 +1963,12 @@ export default function OrdersPage() {
   const printSelectedOrder = (kind: PrintDocumentKind) => {
     if (!selectedOrder) return;
     if (loadingOrderDetail) {
-      setError('Le détail de la commande est encore en chargement.');
+      setError(t('dashboardPages.orders.errorDetailLoading'));
       return;
     }
-    const opened = openOrderPrintDocument(selectedOrder, kind, marketplaceName);
+    const opened = openOrderPrintDocument(selectedOrder, kind, marketplaceName, t, locale);
     if (!opened) {
-      setError('Impossible d’ouvrir la fenêtre d’impression. Vérifiez que les popups sont autorisés.');
+      setError(t('dashboardPages.orders.errorCannotOpenPrint'));
     }
   };
 
@@ -1981,10 +1986,10 @@ export default function OrdersPage() {
         }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error?.message || 'Impossible de démarrer la conversation');
+      if (!res.ok) throw new Error(data?.error?.message || t('dashboardPages.orders.errorCannotStartChat'));
       window.location.href = `/hub/dashboard/messages?conversation=${encodeURIComponent(data.conversation.id)}`;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Conversation indisponible');
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorChatUnavailable'));
     } finally {
       setStartingChatId('');
     }
@@ -2017,11 +2022,11 @@ export default function OrdersPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
               <Truck className="h-4 w-4" />
-              Order Management
+              {t('dashboardPages.orders.orderManagement')}
             </div>
-            <h1 className="mt-3 text-2xl font-black tracking-tight">Commandes</h1>
+            <h1 className="mt-3 text-2xl font-black tracking-tight">{t('dashboardPages.orders.ordersTitle')}</h1>
             <p className="mt-1 text-sm text-amber-50/70">
-              Gérez et expédiez les commandes de vos clients.
+              {t('dashboardPages.orders.ordersSubtitle')}
             </p>
           </div>
           <button
@@ -2031,7 +2036,7 @@ export default function OrdersPage() {
             className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 shadow transition-all hover:-translate-y-0.5 hover:bg-amber-50 disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
+            {t('dashboardPages.orders.refresh')}
           </button>
         </div>
       </div>
@@ -2046,13 +2051,13 @@ export default function OrdersPage() {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         {[
-          { label: 'Revenu 30j', value: formatMoney(summary?.revenue_30d ?? 0), icon: TrendingUp, gradient: 'from-amber-500 to-teal-600' },
-          { label: 'Revenu 7j', value: formatMoney(summary?.revenue_7d ?? 0), icon: TrendingUp, gradient: 'from-emerald-500 to-teal-600' },
-          { label: "Aujourd'hui", value: formatMoney(summary?.revenue_today ?? 0), icon: CalendarDays, gradient: 'from-blue-500 to-indigo-600' },
-          { label: 'À expédier', value: String(summary?.to_ship ?? 0), icon: PackageCheck, gradient: 'from-amber-500 to-orange-600' },
-          { label: 'AOV', value: formatMoney(summary?.average_order_value ?? 0), icon: CreditCard, gradient: 'from-violet-500 to-purple-600' },
-          { label: 'Remboursements', value: formatPercent(summary?.refund_rate ?? 0), icon: Ban, gradient: 'from-red-500 to-rose-700' },
-          { label: 'SLA 48h', value: formatPercent(summary?.fulfillment_sla_rate ?? 0), detail: `Moy. ${formatHours(summary?.average_fulfillment_hours ?? 0)}`, icon: CheckCircle2, gradient: 'from-slate-500 to-slate-700' },
+          { label: t('dashboardPages.orders.revenue30d'), value: formatMoney(summary?.revenue_30d ?? 0), icon: TrendingUp, gradient: 'from-amber-500 to-teal-600' },
+          { label: t('dashboardPages.orders.revenue7d'), value: formatMoney(summary?.revenue_7d ?? 0), icon: TrendingUp, gradient: 'from-emerald-500 to-teal-600' },
+          { label: t('dashboardPages.orders.revenueToday'), value: formatMoney(summary?.revenue_today ?? 0), icon: CalendarDays, gradient: 'from-blue-500 to-indigo-600' },
+          { label: t('dashboardPages.orders.toShip'), value: String(summary?.to_ship ?? 0), icon: PackageCheck, gradient: 'from-amber-500 to-orange-600' },
+          { label: t('dashboardPages.orders.aov'), value: formatMoney(summary?.average_order_value ?? 0), icon: CreditCard, gradient: 'from-violet-500 to-purple-600' },
+          { label: t('dashboardPages.orders.refunds'), value: formatPercent(summary?.refund_rate ?? 0), icon: Ban, gradient: 'from-red-500 to-rose-700' },
+          { label: t('dashboardPages.orders.sla48h'), value: formatPercent(summary?.fulfillment_sla_rate ?? 0), detail: `${t('dashboardPages.orders.avgLabel')} ${formatHours(summary?.average_fulfillment_hours ?? 0, t)}`, icon: CheckCircle2, gradient: 'from-slate-500 to-slate-700' },
         ].map((item) => (
           <div key={item.label} className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5">
             <div className="flex items-center justify-between">
@@ -2078,7 +2083,7 @@ export default function OrdersPage() {
                 type="text"
                 value={search}
                 onChange={(event) => handleSearchChange(event.target.value)}
-                placeholder="Search by order ID or customer..."
+                placeholder={t('dashboardPages.orders.searchPlaceholder')}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] outline-none transition-all"
               />
             </div>
@@ -2089,23 +2094,23 @@ export default function OrdersPage() {
                 onChange={(event) => handleStatusChange(event.target.value)}
                 className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
               >
-                <option value="">Tous les statuts</option>
-                <option value="pending">En attente</option>
-                <option value="payment_required">Paiement requis</option>
-                <option value="processing">En cours</option>
-                <option value="fulfilled">Expédié</option>
-                <option value="delivered">Livré</option>
-                <option value="cancelled">Annulé</option>
+                <option value="">{t('dashboardPages.orders.filterAll')}</option>
+                <option value="pending">{t('dashboardPages.orders.pending')}</option>
+                <option value="payment_required">{t('dashboardPages.orders.paymentRequired')}</option>
+                <option value="processing">{t('dashboardPages.orders.confirmed')}</option>
+                <option value="fulfilled">{t('dashboardPages.orders.shipped')}</option>
+                <option value="delivered">{t('dashboardPages.orders.delivered')}</option>
+                <option value="cancelled">{t('dashboardPages.orders.cancelled')}</option>
               </select>
               <select
                 value={paymentGatewayFilter}
                 onChange={(event) => handlePaymentGatewayChange(event.target.value)}
                 className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
               >
-                <option value="">Tous moyens</option>
+                <option value="">{t('dashboardPages.orders.allPaymentMethods')}</option>
                 <option value="flouci">Flouci</option>
                 <option value="konnect">Konnect</option>
-                <option value="manual_mandat">Mandat</option>
+                <option value="manual_mandat">{t('dashboardPages.orders.mandat')}</option>
                 <option value="cod">COD</option>
               </select>
               <select
@@ -2113,22 +2118,22 @@ export default function OrdersPage() {
                 onChange={(event) => handlePaymentStatusChange(event.target.value)}
                 className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
               >
-                <option value="">Tous paiements</option>
-                <option value="pending">En attente</option>
-                <option value="captured">Payé</option>
-                <option value="failed">Échec</option>
-                <option value="refunded">Remboursé</option>
+                <option value="">{t('dashboardPages.orders.allPayments')}</option>
+                <option value="pending">{t('dashboardPages.orders.pending')}</option>
+                <option value="captured">{t('dashboardPages.orders.paid')}</option>
+                <option value="failed">{t('dashboardPages.orders.failed')}</option>
+                <option value="refunded">{t('dashboardPages.orders.refunded')}</option>
               </select>
               <select
                 value={fulfillmentStatusFilter}
                 onChange={(event) => handleFulfillmentStatusChange(event.target.value)}
                 className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
               >
-                <option value="">Tous fulfillment</option>
-                <option value="pending">À expédier</option>
-                <option value="shipped">Expédié</option>
-                <option value="delivered">Livré</option>
-                <option value="cancelled">Annulé</option>
+                <option value="">{t('dashboardPages.orders.allFulfillment')}</option>
+                <option value="pending">{t('dashboardPages.orders.toShip')}</option>
+                <option value="shipped">{t('dashboardPages.orders.shipped')}</option>
+                <option value="delivered">{t('dashboardPages.orders.delivered')}</option>
+                <option value="cancelled">{t('dashboardPages.orders.cancelled')}</option>
               </select>
               <button
                 type="button"
@@ -2136,7 +2141,7 @@ export default function OrdersPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
               >
                 <Filter className="h-4 w-4" />
-                Avancé
+                {t('dashboardPages.orders.advanced')}
               </button>
             </div>
           </div>
@@ -2145,13 +2150,13 @@ export default function OrdersPage() {
               <input
                 value={customerFilter}
                 onChange={(event) => updateAdvancedFilter(setCustomerFilter, event.target.value)}
-                placeholder="Client, email, téléphone..."
+                placeholder={t('dashboardPages.orders.customerPlaceholder')}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
               />
               <input
                 value={productFilter}
                 onChange={(event) => updateAdvancedFilter(setProductFilter, event.target.value)}
-                placeholder="Produit, SKU, slug..."
+                placeholder={t('dashboardPages.orders.productPlaceholder')}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
               />
               <select
@@ -2159,14 +2164,14 @@ export default function OrdersPage() {
                 onChange={(event) => updateAdvancedFilter(setChannelFilter, event.target.value)}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 outline-none focus:border-[#B91C1C]"
               >
-                <option value="">Tous canaux</option>
+                <option value="">{t('dashboardPages.orders.allChannels')}</option>
                 <option value="marketplace">Marketplace</option>
                 <option value="storefront">Storefront</option>
               </select>
               <input
                 value={countryFilter}
                 onChange={(event) => updateAdvancedFilter(setCountryFilter, event.target.value.toUpperCase().slice(0, 2))}
-                placeholder="Pays (TN)"
+                placeholder={t('dashboardPages.orders.countryPlaceholder')}
                 maxLength={2}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold uppercase outline-none focus:border-[#B91C1C]"
               />
@@ -2177,7 +2182,7 @@ export default function OrdersPage() {
                   onChange={(event) => updateHasDisputeFilter(event.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-[#B91C1C]"
                 />
-                Has dispute
+                {t('dashboardPages.orders.hasDispute')}
               </label>
             </div>
           )}
@@ -2186,7 +2191,7 @@ export default function OrdersPage() {
               <input
                 value={presetName}
                 onChange={(event) => setPresetName(event.target.value)}
-                placeholder="Nom du preset"
+                placeholder={t('dashboardPages.orders.presetNamePlaceholder')}
                 className="min-w-[180px] rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
               />
               <button
@@ -2196,7 +2201,7 @@ export default function OrdersPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-sm font-black text-white disabled:opacity-40"
               >
                 <Save className="h-4 w-4" />
-                Sauver preset
+                {t('dashboardPages.orders.savePreset')}
               </button>
               {savedPresets.map((preset) => (
                 <span key={preset.id} className="inline-flex overflow-hidden rounded-full border border-gray-200 bg-gray-50 text-xs font-black">
@@ -2210,7 +2215,7 @@ export default function OrdersPage() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wide text-gray-400">Colonnes</span>
+              <span className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.columns')}</span>
               {ORDER_COLUMNS.map((column) => (
                 <label key={column.key} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-black text-gray-600">
                   <input
@@ -2220,26 +2225,26 @@ export default function OrdersPage() {
                     onChange={() => toggleColumn(column.key)}
                     className="h-3.5 w-3.5"
                   />
-                  {column.label}
+                  {t(column.labelKey)}
                 </label>
               ))}
             </div>
           </div>
           {selectedOrderIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <span className="mr-2 text-sm font-black text-amber-900">{selectedOrderIds.length} sélectionnée{selectedOrderIds.length > 1 ? 's' : ''}</span>
-              <button type="button" onClick={() => printSelectedOrders('delivery_slip')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">Print labels</button>
-              <button type="button" onClick={() => printSelectedOrders('invoice')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">Print invoices</button>
-              <button type="button" onClick={openBulkFulfillment} className="rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white hover:bg-[#991B1B]">Mark shipped</button>
-              <button type="button" onClick={exportSelectedOrders} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">Export selected</button>
-              <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-full px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">Clear</button>
+              <span className="mr-2 text-sm font-black text-amber-900">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
+              <button type="button" onClick={() => printSelectedOrders('delivery_slip')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printLabels')}</button>
+              <button type="button" onClick={() => printSelectedOrders('invoice')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printInvoices')}</button>
+              <button type="button" onClick={openBulkFulfillment} className="rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white hover:bg-[#991B1B]">{t('dashboardPages.orders.markShipped')}</button>
+              <button type="button" onClick={exportSelectedOrders} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.exportSelected')}</button>
+              <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-full px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.clear')}</button>
             </div>
           )}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="grid gap-3 sm:grid-cols-2 lg:flex">
               <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
                 <CalendarDays className="h-4 w-4 text-gray-400" />
-                <span>Du</span>
+                <span>{t('dashboardPages.orders.from')}</span>
                 <input
                   type="date"
                   value={dateFrom}
@@ -2249,7 +2254,7 @@ export default function OrdersPage() {
               </label>
               <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
                 <CalendarDays className="h-4 w-4 text-gray-400" />
-                <span>Au</span>
+                <span>{t('dashboardPages.orders.to')}</span>
                 <input
                   type="date"
                   value={dateTo}
@@ -2260,7 +2265,7 @@ export default function OrdersPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                {meta.total} résultat{meta.total !== 1 ? 's' : ''}{hasActiveFilters ? ` · ${activeFilterCount} filtre${activeFilterCount > 1 ? 's' : ''}` : ''}
+                {t('dashboardPages.orders.resultCount', { total: meta.total, filters: hasActiveFilters ? ` · ${t('dashboardPages.orders.filterCount', { count: activeFilterCount })}` : '' })}
               </span>
               <button
                 type="button"
@@ -2269,7 +2274,7 @@ export default function OrdersPage() {
                 className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 hover:border-amber-500 hover:bg-amber-50 disabled:opacity-50"
               >
                 {exportingOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Export CSV
+                {t('dashboardPages.orders.exportCsv')}
               </button>
               {hasActiveFilters && (
                 <button
@@ -2277,7 +2282,7 @@ export default function OrdersPage() {
                   onClick={clearFilters}
                   className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
                 >
-                  Réinitialiser
+                  {t('dashboardPages.orders.reset')}
                 </button>
               )}
             </div>
@@ -2289,15 +2294,15 @@ export default function OrdersPage() {
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="w-6 h-6 text-[#B91C1C] animate-spin" />
-              <span className="ml-2 text-gray-500">Chargement des commandes...</span>
+              <span className="ml-2 text-gray-500">{t('dashboardPages.orders.loadingOrders')}</span>
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-4 rounded-2xl bg-gray-100 p-4">
                 <Truck className="h-8 w-8 text-gray-300" />
               </div>
-              <p className="text-sm font-bold text-gray-500">Aucune commande pour le moment</p>
-              <p className="mt-1 text-xs text-gray-400">Les commandes de vos clients apparaîtront ici</p>
+              <p className="text-sm font-bold text-gray-500">{t('dashboardPages.orders.noOrders')}</p>
+              <p className="mt-1 text-xs text-gray-400">{t('dashboardPages.orders.noOrdersHint')}</p>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
@@ -2311,14 +2316,14 @@ export default function OrdersPage() {
                       className="h-4 w-4 rounded border-gray-300"
                     />
                   </th>
-                  {visibleColumns.id && <th className="px-6 py-3.5 font-bold">ID Commande</th>}
-                  {visibleColumns.date && <th className="px-6 py-3.5 font-bold">Date</th>}
-                  {visibleColumns.customer && <th className="px-6 py-3.5 font-bold">Client</th>}
-                  {visibleColumns.payment && <th className="px-6 py-3.5 font-bold">Paiement</th>}
-                  {visibleColumns.total && <th className="px-6 py-3.5 font-bold">Total</th>}
-                  {visibleColumns.status && <th className="px-6 py-3.5 font-bold">Statut</th>}
-                  {visibleColumns.fulfillment && <th className="px-6 py-3.5 font-bold">Fulfillment</th>}
-                  {visibleColumns.actions && <th className="px-6 py-3.5 font-bold text-right">Actions</th>}
+                  {visibleColumns.id && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.orderNumber')}</th>}
+                  {visibleColumns.date && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.date')}</th>}
+                  {visibleColumns.customer && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.customer')}</th>}
+                  {visibleColumns.payment && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.paymentStatus')}</th>}
+                  {visibleColumns.total && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.total')}</th>}
+                  {visibleColumns.status && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.status')}</th>}
+                  {visibleColumns.fulfillment && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.fulfillment')}</th>}
+                  {visibleColumns.actions && <th className="px-6 py-3.5 font-bold text-right">{t('dashboardPages.orders.actions')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -2342,7 +2347,7 @@ export default function OrdersPage() {
                             </span>
                             {openReportCount > 0 && (
                               <span className="inline-flex w-fit rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-black text-red-600">
-                                {openReportCount} dispute{openReportCount > 1 ? 's' : ''}
+                                {t('dashboardPages.orders.disputeCount', { count: openReportCount })}
                               </span>
                             )}
                           </div>
@@ -2350,7 +2355,7 @@ export default function OrdersPage() {
                       )}
                       {visibleColumns.date && (
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {new Date(order.created_at).toLocaleDateString('fr-TN', {
+                          {new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -2359,7 +2364,7 @@ export default function OrdersPage() {
                       )}
                       {visibleColumns.customer && (
                         <td className="px-6 py-4 text-sm">
-                          <p className="font-semibold text-gray-900">{customerName(order)}</p>
+                          <p className="font-semibold text-gray-900">{customerName(order, t)}</p>
                           {order.customer_email && <p className="text-xs text-gray-500">{order.customer_email}</p>}
                         </td>
                       )}
@@ -2369,7 +2374,7 @@ export default function OrdersPage() {
                             {order.payment_gateway?.replace('_', ' ') || '—'}
                           </p>
                           <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentStatusColor(order.payment_status)}`}>
-                            {paymentStatusLabel(order.payment_status)}
+                            {paymentStatusLabel(order.payment_status, t)}
                           </span>
                         </td>
                       )}
@@ -2381,14 +2386,14 @@ export default function OrdersPage() {
                       {visibleColumns.status && (
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
-                            {statusLabel(order.status)}
+                            {statusLabel(order.status, t)}
                           </span>
                         </td>
                       )}
                       {visibleColumns.fulfillment && (
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${fulfillmentColor(order.fulfillment_status)}`}>
-                            {fulfillmentLabel(order.fulfillment_status)}
+                            {fulfillmentLabel(order.fulfillment_status, t)}
                           </span>
                           {order.tracking_number && (
                             getTrackingUrl(order.carrier, order.tracking_number) ? (
@@ -2414,7 +2419,7 @@ export default function OrdersPage() {
                               type="button"
                               onClick={() => void openOrderDetail(order)}
                               className="p-2 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/5 rounded-lg transition-colors"
-                              title="Voir détails"
+                              title={t('dashboardPages.orders.viewDetails')}
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -2423,7 +2428,7 @@ export default function OrdersPage() {
                               onClick={() => startBuyerChat(order)}
                               disabled={startingChatId === order.id}
                               className="p-2 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/5 rounded-lg transition-colors disabled:opacity-40"
-                              title="Message buyer"
+                              title={t('dashboardPages.orders.messageBuyer')}
                             >
                               {startingChatId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -2436,7 +2441,7 @@ export default function OrdersPage() {
                               onClick={() => void generateShippingLabel(order)}
                               disabled={generatingLabelId === order.id || !canGenerateShippingLabel(order)}
                               className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-40"
-                              title="Étiquette transporteur"
+                              title={t('dashboardPages.orders.carrierLabel')}
                             >
                               {generatingLabelId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -2449,7 +2454,7 @@ export default function OrdersPage() {
                               onClick={() => openFulfillmentModal(order)}
                               disabled={fulfillingId === order.id || !canFulfill(order)}
                               className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-40"
-                              title="Marquer expédié"
+                              title={t('dashboardPages.orders.markShipped')}
                             >
                               {fulfillingId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -2462,7 +2467,7 @@ export default function OrdersPage() {
                               onClick={() => void markOrderDelivered(order)}
                               disabled={submittingDeliveryProofId === order.id || !canMarkDelivered(order)}
                               className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-40"
-                              title="Marquer livré"
+                              title={t('dashboardPages.orders.markDelivered')}
                             >
                               {submittingDeliveryProofId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -2485,7 +2490,7 @@ export default function OrdersPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
             <span className="text-xs font-bold text-gray-400">
-              Page {page} sur {totalPages} · {meta.total} commande{meta.total !== 1 ? 's' : ''}
+              {t('dashboardPages.orders.pageOf', { page, total: totalPages, count: meta.total })}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -2493,14 +2498,14 @@ export default function OrdersPage() {
                 disabled={page <= 1}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-40"
               >
-                ← Précédent
+                ← {t('dashboardPages.common.previous')}
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 className="rounded-xl border border-gray-200 bg-gray-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:opacity-40"
               >
-                Suivant →
+                {t('dashboardPages.common.next')} →
               </button>
             </div>
           </div>
@@ -2513,10 +2518,10 @@ export default function OrdersPage() {
             <div className="flex flex-col gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-black text-gray-900">Détails commande</h2>
+                  <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.orderDetails')}</h2>
                   <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{selectedOrder.id.slice(-8).toUpperCase()}</span>
                 </div>
-                <p className="mt-2 text-sm font-semibold text-gray-500">Créée le {formatDateTime(selectedOrder.created_at)}</p>
+                <p className="mt-2 text-sm font-semibold text-gray-500">{t('dashboardPages.orders.createdOn', { date: formatDateTime(selectedOrder.created_at, locale) })}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -2526,7 +2531,7 @@ export default function OrdersPage() {
                   className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-600 transition-colors hover:border-[#B91C1C] hover:text-[#B91C1C] disabled:opacity-50"
                 >
                   <Printer className="h-4 w-4" />
-                  Facture
+                  {t('dashboardPages.orders.invoice')}
                 </button>
                 <button
                   type="button"
@@ -2535,7 +2540,7 @@ export default function OrdersPage() {
                   className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100 disabled:opacity-50"
                 >
                   <ReceiptText className="h-4 w-4" />
-                  Bon livraison
+                  {t('dashboardPages.orders.deliverySlip')}
                 </button>
                 <button
                   type="button"
@@ -2556,25 +2561,25 @@ export default function OrdersPage() {
                   <div className="space-y-5">
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-2xl bg-gray-50 p-4">
-                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">Statut</p>
+                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.status')}</p>
                         <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedOrder.status)}`}>
-                          {statusLabel(selectedOrder.status)}
+                          {statusLabel(selectedOrder.status, t)}
                         </span>
                       </div>
                       <div className="rounded-2xl bg-gray-50 p-4">
-                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">Paiement</p>
+                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.paymentStatus')}</p>
                         <span className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${paymentStatusColor(selectedOrder.payment_status)}`}>
-                          {paymentStatusLabel(selectedOrder.payment_status)}
+                          {paymentStatusLabel(selectedOrder.payment_status, t)}
                         </span>
                       </div>
                       <div className="rounded-2xl bg-gray-50 p-4">
-                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">Fulfillment</p>
+                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.fulfillment')}</p>
                         <span className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${fulfillmentColor(selectedOrder.fulfillment_status)}`}>
-                          {fulfillmentLabel(selectedOrder.fulfillment_status)}
+                          {fulfillmentLabel(selectedOrder.fulfillment_status, t)}
                         </span>
                       </div>
                       <div className="rounded-2xl bg-gray-50 p-4">
-                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">Votre total</p>
+                        <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.yourTotal')}</p>
                         <p className="mt-2 text-lg font-black text-gray-900">{formatMoney(selectedOrder.store_total ?? selectedOrder.total, selectedOrder.currency || 'TND')}</p>
                       </div>
                     </div>
@@ -2583,11 +2588,11 @@ export default function OrdersPage() {
 
                     <div className="rounded-2xl border border-gray-100 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-sm font-black text-gray-900">Timeline commande</h3>
-                        <span className="rounded-full bg-gray-50 px-3 py-1 text-xs font-bold text-gray-500">{buildOrderTimeline(selectedOrder).filter((step) => step.state === 'done').length}/{buildOrderTimeline(selectedOrder).length} étapes</span>
+                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.orderTimeline')}</h3>
+                        <span className="rounded-full bg-gray-50 px-3 py-1 text-xs font-bold text-gray-500">{t('dashboardPages.orders.timelineProgress', { done: buildOrderTimeline(selectedOrder, t).filter((step) => step.state === 'done').length, total: buildOrderTimeline(selectedOrder, t).length })}</span>
                       </div>
                       <div className="mt-5 space-y-4">
-                        {buildOrderTimeline(selectedOrder).map((step, index, steps) => (
+                        {buildOrderTimeline(selectedOrder, t).map((step, index, steps) => (
                           <div key={`${step.label}-${index}`} className="relative flex gap-4">
                             {index < steps.length - 1 && <div className="absolute left-[18px] top-9 h-full w-px bg-gray-100" />}
                             <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
@@ -2610,7 +2615,7 @@ export default function OrdersPage() {
                             <div className="min-w-0 pb-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-sm font-black text-gray-900">{step.label}</p>
-                                <span className="text-xs font-semibold text-gray-400">{formatDateTime(step.date)}</span>
+                                <span className="text-xs font-semibold text-gray-400">{formatDateTime(step.date, locale)}</span>
                               </div>
                               <p className="mt-1 text-sm font-semibold text-gray-500">{step.description}</p>
                             </div>
@@ -2622,7 +2627,7 @@ export default function OrdersPage() {
                     <div className="rounded-2xl border border-gray-100 bg-white p-4">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">Articles de votre boutique</h3>
+                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.storeItems')}</h3>
                       </div>
                       <div className="mt-4 space-y-3">
                         {(selectedOrder.items || []).length > 0 ? (
@@ -2639,9 +2644,9 @@ export default function OrdersPage() {
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-black text-gray-900">{item.product_title || 'Produit'}</p>
+                                <p className="truncate text-sm font-black text-gray-900">{item.product_title || t('dashboardPages.orders.product')}</p>
                                 <p className="mt-1 text-xs font-semibold text-gray-500">
-                                  Qté {toNumber(item.quantity)} · {formatMoney(item.unit_price, selectedOrder.currency || 'TND')}
+                                  {t('dashboardPages.orders.quantity')} {toNumber(item.quantity)} · {formatMoney(item.unit_price, selectedOrder.currency || 'TND')}
                                   {item.variant_sku ? ` · SKU ${item.variant_sku}` : ''}
                                 </p>
                               </div>
@@ -2649,7 +2654,7 @@ export default function OrdersPage() {
                             </div>
                           ))
                         ) : (
-                          <p className="rounded-2xl bg-gray-50 p-4 text-sm font-semibold text-gray-500">Détail des articles indisponible.</p>
+                          <p className="rounded-2xl bg-gray-50 p-4 text-sm font-semibold text-gray-500">{t('dashboardPages.orders.itemsDetailUnavailable')}</p>
                         )}
                       </div>
                     </div>
@@ -2658,15 +2663,15 @@ export default function OrdersPage() {
                       <div className="rounded-2xl border border-gray-100 bg-white p-4">
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4 text-[#B91C1C]" />
-                          <h3 className="text-sm font-black text-gray-900">Client</h3>
+                          <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.customer')}</h3>
                         </div>
                         <div className="mt-3 space-y-2 text-sm">
-                          <p className="font-bold text-gray-900">{customerName(selectedOrder)}</p>
-                          <p className="inline-flex items-center gap-2 text-gray-600"><Mail className="h-3.5 w-3.5" />{selectedOrder.customer_email || 'Email non disponible'}</p>
-                          <p className="inline-flex items-center gap-2 text-gray-600"><Phone className="h-3.5 w-3.5" />{selectedOrder.customer_phone || 'Téléphone non disponible'}</p>
+                          <p className="font-bold text-gray-900">{customerName(selectedOrder, t)}</p>
+                          <p className="inline-flex items-center gap-2 text-gray-600"><Mail className="h-3.5 w-3.5" />{selectedOrder.customer_email || t('dashboardPages.orders.emailUnavailable')}</p>
+                          <p className="inline-flex items-center gap-2 text-gray-600"><Phone className="h-3.5 w-3.5" />{selectedOrder.customer_phone || t('dashboardPages.orders.phoneUnavailable')}</p>
                           <div className="mt-4 grid grid-cols-3 gap-2">
                             <div className="rounded-xl bg-gray-50 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400">Commandes</p>
+                              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.orders')}</p>
                               <p className="mt-1 text-sm font-black text-gray-900">{toNumber(selectedOrder.customer_order_count)}</p>
                             </div>
                             <div className="rounded-xl bg-gray-50 p-3">
@@ -2674,8 +2679,8 @@ export default function OrdersPage() {
                               <p className="mt-1 text-sm font-black text-gray-900">{formatMoney(selectedOrder.customer_lifetime_value ?? 0, selectedOrder.currency || 'TND')}</p>
                             </div>
                             <div className="rounded-xl bg-gray-50 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400">Dernière</p>
-                              <p className="mt-1 text-xs font-black text-gray-900">{formatDateTime(selectedOrder.customer_last_order_at)}</p>
+                              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.lastOrder')}</p>
+                              <p className="mt-1 text-xs font-black text-gray-900">{formatDateTime(selectedOrder.customer_last_order_at, locale)}</p>
                             </div>
                           </div>
                         </div>
@@ -2683,7 +2688,7 @@ export default function OrdersPage() {
                       <div className="rounded-2xl border border-gray-100 bg-white p-4">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-[#B91C1C]" />
-                          <h3 className="text-sm font-black text-gray-900">Adresse livraison</h3>
+                          <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.deliveryAddress')}</h3>
                         </div>
                         {selectedOrder.shipping_address ? (
                           <div className="mt-3 space-y-1 text-sm font-semibold text-gray-600">
@@ -2695,7 +2700,7 @@ export default function OrdersPage() {
                             {selectedOrder.shipping_address.phone && <p>{selectedOrder.shipping_address.phone}</p>}
                           </div>
                         ) : (
-                          <p className="mt-3 text-sm font-semibold text-gray-500">Pas d’adresse requise.</p>
+                          <p className="mt-3 text-sm font-semibold text-gray-500">{t('dashboardPages.orders.noAddressRequired')}.</p>
                         )}
                       </div>
                     </div>
@@ -2705,32 +2710,32 @@ export default function OrdersPage() {
                     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">Paiement</h3>
+                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.paymentStatus')}</h3>
                       </div>
                       <div className="mt-3 space-y-2 text-sm">
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Méthode</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.method')}</span>
                           <span className="font-bold text-gray-900">{selectedOrder.payment_gateway?.replace('_', ' ') || '—'}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Statut</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${paymentStatusColor(selectedOrder.payment_status)}`}>{paymentStatusLabel(selectedOrder.payment_status)}</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.status')}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${paymentStatusColor(selectedOrder.payment_status)}`}>{paymentStatusLabel(selectedOrder.payment_status, t)}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Référence</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.reference')}</span>
                           <span className="truncate font-bold text-gray-900">{selectedOrder.payment_reference || '—'}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Sous-total boutique</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.storeSubtotal')}</span>
                           <span className="font-bold text-gray-900">{formatMoney(selectedOrder.store_subtotal ?? selectedOrder.subtotal, selectedOrder.currency || 'TND')}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Livraison boutique</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.storeShipping')}</span>
                           <span className="font-bold text-gray-900">{formatMoney(selectedOrder.store_shipping_total ?? selectedOrder.shipping_total, selectedOrder.currency || 'TND')}</span>
                         </div>
                         <div className="border-t border-gray-200 pt-2">
                           <div className="flex justify-between gap-4">
-                            <span className="font-black text-gray-700">Total boutique</span>
+                            <span className="font-black text-gray-700">{t('dashboardPages.orders.storeTotal')}</span>
                             <span className="font-black text-gray-900">{formatMoney(selectedOrder.store_total ?? selectedOrder.total, selectedOrder.currency || 'TND')}</span>
                           </div>
                         </div>
@@ -2740,15 +2745,15 @@ export default function OrdersPage() {
                     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                       <div className="flex items-center gap-2">
                         <ReceiptText className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">Remboursements</h3>
+                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.refunds')}</h3>
                       </div>
                       <div className="mt-3 space-y-2 text-sm">
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Déjà demandé/traité</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.refundRequestedProcessed')}</span>
                           <span className="font-bold text-gray-900">{formatMoney(refundRequestedTotal(selectedOrder), selectedOrder.currency || 'TND')}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">Reste remboursable</span>
+                          <span className="text-gray-500">{t('dashboardPages.orders.refundableRemaining')}</span>
                           <span className="font-black text-gray-900">{formatMoney(refundableRemaining(selectedOrder), selectedOrder.currency || 'TND')}</span>
                         </div>
                       </div>
@@ -2759,7 +2764,7 @@ export default function OrdersPage() {
                         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <CreditCard className="h-4 w-4" />
-                        Demander un remboursement
+                        {t('dashboardPages.orders.requestRefund')}
                       </button>
                       {(selectedOrder.refunds || []).length > 0 && (
                         <div className="mt-4 space-y-2">
@@ -2768,10 +2773,10 @@ export default function OrdersPage() {
                               <div className="flex items-start justify-between gap-3">
                                 <div>
                                   <p className="font-black text-gray-900">{formatMoney(refund.amount, refund.currency || selectedOrder.currency || 'TND')}</p>
-                                  <p className="mt-1 text-xs font-semibold text-gray-500">{refundReasonLabel(refund.reason_code)} · {formatDateTime(refund.created_at)}</p>
+                                  <p className="mt-1 text-xs font-semibold text-gray-500">{refundReasonLabel(refund.reason_code, t)} · {formatDateTime(refund.created_at, locale)}</p>
                                 </div>
                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-black ${refundStatusColor(refund.status)}`}>
-                                  {refundStatusLabel(refund.status)}
+                                  {refundStatusLabel(refund.status, t)}
                                 </span>
                               </div>
                               {refund.reason && <p className="mt-2 text-xs font-semibold text-gray-500">{refund.reason}</p>}
@@ -2784,11 +2789,11 @@ export default function OrdersPage() {
                     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                       <div className="flex items-center gap-2">
                         <Truck className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">Expédition</h3>
+                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.shipment')}</h3>
                       </div>
                       <div className="mt-3 space-y-2 text-sm">
-                        <p className="font-bold text-gray-900">{fulfillmentLabel(selectedOrder.fulfillment_status)}</p>
-                        <p className="text-gray-600">Transporteur: {selectedOrder.carrier || '—'}</p>
+                        <p className="font-bold text-gray-900">{fulfillmentLabel(selectedOrder.fulfillment_status, t)}</p>
+                        <p className="text-gray-600">{t('dashboardPages.orders.carrier')}: {selectedOrder.carrier || '—'}</p>
                         {selectedOrder.tracking_number ? (
                           getTrackingUrl(selectedOrder.carrier, selectedOrder.tracking_number) ? (
                             <a
@@ -2797,17 +2802,17 @@ export default function OrdersPage() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 font-bold text-amber-700 hover:text-amber-800"
                             >
-                              Tracking: {selectedOrder.tracking_number}
+                              {t('dashboardPages.orders.tracking')}: {selectedOrder.tracking_number}
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>
                           ) : (
-                            <p className="text-gray-600">Tracking: {selectedOrder.tracking_number}</p>
+                            <p className="text-gray-600">{t('dashboardPages.orders.tracking')}: {selectedOrder.tracking_number}</p>
                           )
                         ) : (
-                          <p className="text-gray-600">Tracking: —</p>
+                          <p className="text-gray-600">{t('dashboardPages.orders.tracking')}: —</p>
                         )}
-                        {selectedOrder.shipped_at && <p className="text-gray-600">Expédiée le {formatDateTime(selectedOrder.shipped_at)}</p>}
-                        {selectedOrder.delivered_at && <p className="text-gray-600">Livrée le {formatDateTime(selectedOrder.delivered_at)}</p>}
+                        {selectedOrder.shipped_at && <p className="text-gray-600">{t('dashboardPages.orders.shippedOn', { date: formatDateTime(selectedOrder.shipped_at, locale) })}</p>}
+                        {selectedOrder.delivered_at && <p className="text-gray-600">{t('dashboardPages.orders.deliveredOn', { date: formatDateTime(selectedOrder.delivered_at, locale) })}</p>}
                       </div>
                       {(selectedOrder.shipments || []).length > 0 && (
                         <div className="mt-4 space-y-2">
@@ -2817,20 +2822,20 @@ export default function OrdersPage() {
                                 <div>
                                   <p className="font-black text-gray-900">{shipmentCarrierLabel(shipment.provider)}</p>
                                   <p className="mt-1 font-mono text-xs font-bold text-gray-500">{shipment.tracking_number}</p>
-                                  {shipment.estimated_delivery && <p className="mt-1 text-xs font-semibold text-gray-500">ETA {formatDateTime(shipment.estimated_delivery)}</p>}
+                                  {shipment.estimated_delivery && <p className="mt-1 text-xs font-semibold text-gray-500">ETA {formatDateTime(shipment.estimated_delivery, locale)}</p>}
                                 </div>
                                 <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-black text-purple-700">{shipment.status}</span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const opened = openShipmentLabelDocument(selectedOrder, shipment, marketplaceName);
-                                  if (!opened) setError('Impossible d’ouvrir l’étiquette.');
+                                  const opened = openShipmentLabelDocument(selectedOrder, shipment, marketplaceName, t, locale);
+                                  if (!opened) setError(t('dashboardPages.orders.errorCannotOpenLabelShort'));
                                 }}
                                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100"
                               >
                                 <ReceiptText className="h-3.5 w-3.5" />
-                                {shipment.label_url ? 'Ouvrir PDF transporteur' : 'Imprimer étiquette'}
+                                {shipment.label_url ? t('dashboardPages.orders.openCarrierPdf') : t('dashboardPages.orders.printLabel')}
                               </button>
                             </div>
                           ))}
@@ -2838,13 +2843,13 @@ export default function OrdersPage() {
                       )}
                       {(selectedOrder.delivery_proofs || []).length > 0 && (
                         <div className="mt-4 space-y-2">
-                          <p className="text-xs font-black uppercase tracking-wide text-gray-400">Preuves de livraison</p>
+                          <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.deliveryProofs')}</p>
                           {selectedOrder.delivery_proofs?.map((proof) => (
                             <div key={proof.id} className="rounded-2xl bg-white p-3 text-sm">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <p className="font-black text-gray-900">{proof.received_by || 'Réception confirmée'}</p>
-                                  <p className="mt-1 text-xs font-semibold text-gray-500">{formatDateTime(proof.created_at)}</p>
+                                  <p className="font-black text-gray-900">{proof.received_by || t('dashboardPages.orders.receptionConfirmed')}</p>
+                                  <p className="mt-1 text-xs font-semibold text-gray-500">{formatDateTime(proof.created_at, locale)}</p>
                                 </div>
                                 {proof.proof_url && (
                                   <button
@@ -2852,7 +2857,7 @@ export default function OrdersPage() {
                                     onClick={() => void openDeliveryProofFile(proof.proof_url)}
                                     className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs font-black text-gray-700 hover:bg-gray-200"
                                   >
-                                    Voir
+                                    {t('dashboardPages.orders.view')}
                                     <ExternalLink className="h-3 w-3" />
                                   </button>
                                 )}
@@ -2871,7 +2876,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
                           >
                             {generatingLabelId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />}
-                            {latestShipment(selectedOrder) ? 'Ouvrir étiquette' : 'Générer étiquette'}
+                            {latestShipment(selectedOrder) ? t('dashboardPages.orders.openLabel') : t('dashboardPages.orders.generateLabel')}
                           </button>
                         )}
                         {canFulfill(selectedOrder) && (
@@ -2881,7 +2886,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]"
                           >
                             <Truck className="h-4 w-4" />
-                            Marquer expédiée
+                            {t('dashboardPages.orders.markShipped')}
                           </button>
                         )}
                         {canMarkDelivered(selectedOrder) && (
@@ -2892,7 +2897,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-60"
                           >
                             {submittingDeliveryProofId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Marquer livrée
+                            {t('dashboardPages.orders.markDelivered')}
                           </button>
                         )}
                         {canCancelSellerFulfillment(selectedOrder) && (
@@ -2903,7 +2908,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black text-red-600 transition hover:bg-red-50 disabled:opacity-60"
                           >
                             {statusActionId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                            Annuler cette expédition
+                            {t('dashboardPages.orders.cancelThisShipment')}
                           </button>
                         )}
                       </div>
@@ -2913,16 +2918,16 @@ export default function OrdersPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <StickyNote className="h-4 w-4 text-amber-700" />
-                          <h3 className="text-sm font-black text-amber-950">Note interne vendeur</h3>
+                          <h3 className="text-sm font-black text-amber-950">{t('dashboardPages.orders.sellerNoteTitle')}</h3>
                         </div>
                         {selectedOrder.seller_note?.updated_at && (
                           <span className="text-[11px] font-bold text-amber-700">
-                            Modifiée {formatDateTime(selectedOrder.seller_note.updated_at)}
+                            {t('dashboardPages.orders.modifiedOn', { date: formatDateTime(selectedOrder.seller_note.updated_at, locale) })}
                           </span>
                         )}
                       </div>
                       <p className="mt-2 text-xs font-semibold text-amber-800/80">
-                        Visible uniquement par votre équipe boutique. Le client et les autres vendeurs ne la voient pas.
+                        {t('dashboardPages.orders.sellerNoteDesc')}
                       </p>
                       <textarea
                         value={sellerNote}
@@ -2932,7 +2937,7 @@ export default function OrdersPage() {
                         }}
                         rows={5}
                         maxLength={5000}
-                        placeholder="Ex: Client préfère livraison matin, vérifier emballage fragile, appeler avant expédition..."
+                        placeholder={t('dashboardPages.orders.sellerNotePlaceholder')}
                         className="mt-4 w-full resize-none rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-200/40"
                       />
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -2945,7 +2950,7 @@ export default function OrdersPage() {
                           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-60"
                         >
                           {savingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          Sauvegarder note
+                          {t('dashboardPages.orders.saveNote')}
                         </button>
                       </div>
                     </div>
@@ -2953,7 +2958,7 @@ export default function OrdersPage() {
                     <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
                       <div className="flex items-center gap-2">
                         <ReceiptText className="h-4 w-4 text-amber-700" />
-                        <h3 className="text-sm font-black text-amber-900">Actions vendeur</h3>
+                        <h3 className="text-sm font-black text-amber-900">{t('dashboardPages.orders.sellerActions')}</h3>
                       </div>
                       <div className="mt-4 space-y-2">
                         <button
@@ -2963,7 +2968,7 @@ export default function OrdersPage() {
                           className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
                         >
                           {startingChatId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
-                          Message client
+                          {t('dashboardPages.orders.messageCustomer')}
                         </button>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <button
@@ -2973,7 +2978,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-600 px-4 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-50"
                           >
                             <Printer className="h-4 w-4" />
-                            Facture
+                            {t('dashboardPages.orders.invoice')}
                           </button>
                           <button
                             type="button"
@@ -2982,7 +2987,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                           >
                             <ReceiptText className="h-4 w-4" />
-                            Bon livraison
+                            {t('dashboardPages.orders.deliverySlip')}
                           </button>
                         </div>
                       </div>
@@ -3000,7 +3005,7 @@ export default function OrdersPage() {
           <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">Demande de remboursement</h2>
+                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.refundRequestTitle')}</h2>
                 <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{refundOrderTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
@@ -3015,16 +3020,16 @@ export default function OrdersPage() {
             <div className="space-y-4">
               <div className="grid gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-red-700">Total boutique</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-red-700">{t('dashboardPages.orders.storeTotal')}</p>
                   <p className="mt-1 font-black text-red-950">{formatMoney(refundOrderTarget.store_total ?? refundOrderTarget.total, refundOrderTarget.currency || 'TND')}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-red-700">Reste remboursable</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-red-700">{t('dashboardPages.orders.refundableRemaining')}</p>
                   <p className="mt-1 font-black text-red-950">{formatMoney(refundableRemaining(refundOrderTarget), refundOrderTarget.currency || 'TND')}</p>
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Montant</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.amount')}</label>
                 <input
                   type="number"
                   min="0"
@@ -3037,7 +3042,7 @@ export default function OrdersPage() {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Motif</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.reason')}</label>
                 <select
                   value={refundReasonCode}
                   onChange={(event) => setRefundReasonCode(event.target.value)}
@@ -3045,24 +3050,24 @@ export default function OrdersPage() {
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
                 >
                   {REFUND_REASON_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                    <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Note interne</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.internalNote')}</label>
                 <textarea
                   value={refundReason}
                   onChange={(event) => setRefundReason(event.target.value)}
                   disabled={refundingOrderId === refundOrderTarget.id}
                   rows={4}
                   maxLength={1000}
-                  placeholder="Expliquez le contexte du remboursement..."
+                  placeholder={t('dashboardPages.orders.refundNotePlaceholder')}
                   className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
                 />
               </div>
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Cette action crée une demande/trace de remboursement côté vendeur. Le traitement passerelle réel reste à confirmer via le workflow paiement/admin.
+                {t('dashboardPages.orders.refundDisclaimer')}
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
@@ -3071,7 +3076,7 @@ export default function OrdersPage() {
                   disabled={refundingOrderId === refundOrderTarget.id}
                   className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Annuler
+                  {t('dashboardPages.common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -3080,7 +3085,7 @@ export default function OrdersPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:opacity-60"
                 >
                   {refundingOrderId === refundOrderTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                  Enregistrer la demande
+                  {t('dashboardPages.orders.saveRequest')}
                 </button>
               </div>
             </div>
@@ -3093,7 +3098,7 @@ export default function OrdersPage() {
           <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">Preuve de livraison</h2>
+                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.deliveryProofTitle')}</h2>
                 <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{deliveryProofTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
@@ -3107,23 +3112,23 @@ export default function OrdersPage() {
             </div>
             <div className="space-y-4">
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Ajoutez une photo/PDF de remise si disponible, puis confirmez la livraison. La preuve est stockée en accès privé vendeur.
+                {t('dashboardPages.orders.deliveryProofDesc')}
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Reçu par</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.receivedBy')}</label>
                 <input
                   value={deliveryProofReceivedBy}
                   onChange={(event) => setDeliveryProofReceivedBy(event.target.value)}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
-                  placeholder="Nom du destinataire ou réceptionnaire"
+                  placeholder={t('dashboardPages.orders.receivedByPlaceholder')}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Fichier preuve</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.proofFile')}</label>
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:bg-red-50/40">
                   <Upload className="h-4 w-4" />
-                  {deliveryProofFile ? deliveryProofFile.name : 'Choisir une image ou PDF'}
+                  {deliveryProofFile ? deliveryProofFile.name : t('dashboardPages.orders.chooseImageOrPdf')}
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -3132,17 +3137,17 @@ export default function OrdersPage() {
                     className="hidden"
                   />
                 </label>
-                <p className="mt-1 text-xs font-semibold text-gray-400">Optionnel · JPG, PNG, WebP ou PDF · max 10 MB</p>
+                <p className="mt-1 text-xs font-semibold text-gray-400">{t('dashboardPages.orders.proofFileHint')}</p>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Note livraison</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.deliveryNote')}</label>
                 <textarea
                   value={deliveryProofNote}
                   onChange={(event) => setDeliveryProofNote(event.target.value)}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
                   rows={4}
                   maxLength={1000}
-                  placeholder="Ex: remis au gardien, client absent mais colis déposé selon accord..."
+                  placeholder={t('dashboardPages.orders.deliveryNotePlaceholder')}
                   className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
                 />
               </div>
@@ -3153,7 +3158,7 @@ export default function OrdersPage() {
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
                   className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Annuler
+                  {t('dashboardPages.common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -3162,7 +3167,7 @@ export default function OrdersPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-60"
                 >
                   {submittingDeliveryProofId === deliveryProofTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  Confirmer livraison
+                  {t('dashboardPages.orders.confirmDelivery')}
                 </button>
               </div>
             </div>
@@ -3175,9 +3180,9 @@ export default function OrdersPage() {
           <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="flex items-start justify-between border-b border-gray-100 bg-gray-50/70 p-6">
               <div>
-                <h2 className="text-lg font-black text-gray-900">Expédition groupée</h2>
+                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.bulkFulfillmentTitle')}</h2>
                 <p className="mt-1 text-sm font-semibold text-gray-500">
-                  {bulkFulfillmentTargets.length} commande{bulkFulfillmentTargets.length > 1 ? 's' : ''} prête{bulkFulfillmentTargets.length > 1 ? 's' : ''} à expédier.
+                  {t('dashboardPages.orders.bulkFulfillmentReady', { count: bulkFulfillmentTargets.length })}
                 </p>
               </div>
               <button
@@ -3194,18 +3199,18 @@ export default function OrdersPage() {
             </div>
             <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6">
               <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-amber-700">Appliquer un transporteur à toutes les commandes</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-amber-700">{t('dashboardPages.orders.applyCarrierToAll')}</label>
                 <select
                   onChange={(event) => applyCarrierToBulkFulfillment(event.target.value)}
                   defaultValue=""
                   disabled={bulkFulfilling}
                   className="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-200/40 disabled:opacity-50"
                 >
-                  <option value="">Sélectionner</option>
+                  <option value="">{t('dashboardPages.orders.select')}</option>
                   {CARRIER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
-                  <option value="Autre">Autre / manuel</option>
+                  <option value="Autre">{t('dashboardPages.orders.otherManual')}</option>
                 </select>
               </div>
               <div className="space-y-3">
@@ -3216,33 +3221,33 @@ export default function OrdersPage() {
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <p className="font-mono text-xs font-black text-gray-500">#{order.id.slice(-8).toUpperCase()}</p>
-                          <p className="mt-1 text-sm font-black text-gray-900">{customerName(order)}</p>
+                          <p className="mt-1 text-sm font-black text-gray-900">{customerName(order, t)}</p>
                         </div>
                         <span className="text-sm font-black text-gray-900">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div>
-                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">Transporteur</label>
+                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.carrier')}</label>
                           <select
                             value={draft.carrier}
                             onChange={(event) => updateBulkFulfillmentDraft(order.id, 'carrier', event.target.value)}
                             disabled={bulkFulfilling}
                             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-[#B91C1C] disabled:opacity-50"
                           >
-                            <option value="">Sélectionner</option>
+                            <option value="">{t('dashboardPages.orders.select')}</option>
                             {CARRIER_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
-                            <option value="Autre">Autre / manuel</option>
+                            <option value="Autre">{t('dashboardPages.orders.otherManual')}</option>
                           </select>
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">Numéro de suivi</label>
+                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.trackingNumber')}</label>
                           <input
                             value={draft.trackingNumber}
                             onChange={(event) => updateBulkFulfillmentDraft(order.id, 'trackingNumber', event.target.value)}
                             disabled={bulkFulfilling}
-                            placeholder="Tracking number"
+                            placeholder={t('dashboardPages.orders.trackingNumberPlaceholder')}
                             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-[#B91C1C] disabled:opacity-50"
                           />
                           {getTrackingUrl(draft.carrier, draft.trackingNumber) && (
@@ -3252,7 +3257,7 @@ export default function OrdersPage() {
                               rel="noopener noreferrer"
                               className="mt-1.5 inline-flex items-center gap-1 text-xs font-black text-amber-700 hover:text-amber-800"
                             >
-                              Prévisualiser
+                              {t('dashboardPages.orders.preview')}
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           )}
@@ -3273,7 +3278,7 @@ export default function OrdersPage() {
                 disabled={bulkFulfilling}
                 className="rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
               >
-                Annuler
+                {t('dashboardPages.common.cancel')}
               </button>
               <button
                 type="button"
@@ -3282,7 +3287,7 @@ export default function OrdersPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
               >
                 {bulkFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
-                Confirmer {bulkFulfillmentTargets.length} expédition{bulkFulfillmentTargets.length > 1 ? 's' : ''}
+                {t('dashboardPages.orders.confirmShipments', { count: bulkFulfillmentTargets.length })}
               </button>
             </div>
           </div>
@@ -3294,7 +3299,7 @@ export default function OrdersPage() {
           <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">Marquer comme expédiée</h2>
+                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.markAsShipped')}</h2>
                 <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{fulfillOrderTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
@@ -3307,25 +3312,25 @@ export default function OrdersPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Transporteur</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.carrier')}</label>
                 <select
                   value={carrier}
                   onChange={(event) => setCarrier(event.target.value)}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
                 >
-                  <option value="">Sélectionner un transporteur</option>
+                  <option value="">{t('dashboardPages.orders.selectCarrier')}</option>
                   {CARRIER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
-                  <option value="Autre">Autre / manuel</option>
+                  <option value="Autre">{t('dashboardPages.orders.otherManual')}</option>
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">Numéro de suivi</label>
+                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.trackingNumber')}</label>
                 <input
                   value={trackingNumber}
                   onChange={(event) => setTrackingNumber(event.target.value)}
-                  placeholder="Tracking number"
+                  placeholder={t('dashboardPages.orders.trackingNumberPlaceholder')}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
                 />
                 {getTrackingUrl(carrier, trackingNumber) && (
@@ -3335,13 +3340,13 @@ export default function OrdersPage() {
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-1 text-xs font-black text-amber-700 hover:text-amber-800"
                   >
-                    Prévisualiser le lien de suivi
+                    {t('dashboardPages.orders.previewTrackingLink')}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
               </div>
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Cette action expédie la partie de commande liée à votre boutique. Si toutes les boutiques ont expédié, la commande passera en statut expédié.
+                {t('dashboardPages.orders.fulfillDisclaimer')}
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
@@ -3349,7 +3354,7 @@ export default function OrdersPage() {
                   onClick={() => setFulfillOrderTarget(null)}
                   className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50"
                 >
-                  Annuler
+                  {t('dashboardPages.common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -3358,7 +3363,7 @@ export default function OrdersPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
                 >
                   {fulfillingId === fulfillOrderTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
-                  Confirmer l’expédition
+                  {t('dashboardPages.orders.confirmShipment')}
                 </button>
               </div>
             </div>

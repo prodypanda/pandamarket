@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface WalletData {
   balance: number | string | null;
@@ -39,6 +40,7 @@ function formatPrice(price: unknown): string {
 }
 
 export default function WalletPage() {
+  const { t, locale } = useLocale();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,12 +72,12 @@ export default function WalletPage() {
         setWallet(w);
         setPayoutMode(w.payout_mode);
       } else {
-        setLoadError(await getErrorMessage(res, 'Erreur lors du chargement du wallet'));
+        setLoadError(await getErrorMessage(res, t('dashboardPages.wallet.loadError')));
       }
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Erreur réseau');
+      setLoadError(err instanceof Error ? err.message : t('dashboardPages.wallet.networkError'));
     }
-  }, []);
+  }, [t]);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -86,12 +88,14 @@ export default function WalletPage() {
         const data = await res.json();
         setTransactions(data.data || []);
       } else {
-        setLoadError(await getErrorMessage(res, 'Erreur lors du chargement des transactions'));
+        setLoadError(
+          await getErrorMessage(res, t('dashboardPages.wallet.loadTransactionsError')),
+        );
       }
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Erreur réseau');
+      setLoadError(err instanceof Error ? err.message : t('dashboardPages.wallet.networkError'));
     }
-  }, [txPage]);
+  }, [txPage, t]);
 
   useEffect(() => {
     Promise.all([fetchWallet(), fetchTransactions()]).finally(() => setLoading(false));
@@ -102,7 +106,7 @@ export default function WalletPage() {
     setWithdrawSuccess('');
     const amount = parseFloat(withdrawAmount);
     if (isNaN(amount) || amount < 20) {
-      setWithdrawError('Le montant minimum de retrait est de 20 TND');
+      setWithdrawError(t('dashboardPages.wallet.minWithdrawError'));
       return;
     }
     setWithdrawing(true);
@@ -114,17 +118,17 @@ export default function WalletPage() {
         body: JSON.stringify({ amount, notes: withdrawNotes || undefined }),
       });
       if (res.ok) {
-        setWithdrawSuccess('Demande de retrait envoyée avec succès');
+        setWithdrawSuccess(t('dashboardPages.wallet.withdrawRequestSuccess'));
         setWithdrawAmount('');
         setWithdrawNotes('');
         fetchWallet();
         fetchTransactions();
       } else {
         const data = await res.json();
-        setWithdrawError(data.error?.message || 'Erreur lors du retrait');
+        setWithdrawError(data.error?.message || t('dashboardPages.wallet.withdrawRequestError'));
       }
     } catch {
-      setWithdrawError('Erreur réseau');
+      setWithdrawError(t('dashboardPages.wallet.networkError'));
     } finally {
       setWithdrawing(false);
     }
@@ -143,12 +147,12 @@ export default function WalletPage() {
       });
       if (res.ok) {
         setPayoutMode(mode);
-        setWithdrawSuccess('Mode de versement mis à jour');
+        setWithdrawSuccess(t('dashboardPages.wallet.payoutModeUpdated'));
       } else {
-        setWithdrawError(await getErrorMessage(res, 'Erreur lors du changement de mode'));
+        setWithdrawError(await getErrorMessage(res, t('dashboardPages.wallet.payoutModeError')));
       }
     } catch (err) {
-      setWithdrawError(err instanceof Error ? err.message : 'Erreur réseau');
+      setWithdrawError(err instanceof Error ? err.message : t('dashboardPages.wallet.networkError'));
     } finally {
       setSavingMode(false);
     }
@@ -157,7 +161,7 @@ export default function WalletPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon Wallet</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.wallet.title')}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
@@ -172,7 +176,7 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Mon Wallet</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.wallet.title')}</h1>
 
       {loadError && (
         <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
@@ -185,24 +189,32 @@ export default function WalletPage() {
         <div className="bg-gradient-to-br from-[#B91C1C] to-[#991B1B] rounded-xl p-6 text-white">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="w-5 h-5 opacity-80" />
-            <span className="text-sm font-medium opacity-80">Disponible</span>
+            <span className="text-sm font-medium opacity-80">
+              {t('dashboardPages.wallet.available')}
+            </span>
           </div>
           <p className="text-3xl font-extrabold">{formatPrice(wallet?.balance || 0)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm font-medium text-gray-500">En attente</span>
+            <span className="text-sm font-medium text-gray-500">
+              {t('dashboardPages.wallet.pending')}
+            </span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {formatPrice(wallet?.pending_balance || 0)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">Libéré après la période de rétention</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {t('dashboardPages.wallet.releasedAfterRetention')}
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-2">
             <ArrowDownLeft className="w-5 h-5 text-[#B91C1C]" />
-            <span className="text-sm font-medium text-gray-500">Total gagné</span>
+            <span className="text-sm font-medium text-gray-500">
+              {t('dashboardPages.wallet.totalEarned')}
+            </span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {formatPrice(wallet?.total_earned || 0)}
@@ -211,7 +223,9 @@ export default function WalletPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-2">
             <ArrowUpRight className="w-5 h-5 text-red-500" />
-            <span className="text-sm font-medium text-gray-500">Total retiré</span>
+            <span className="text-sm font-medium text-gray-500">
+              {t('dashboardPages.wallet.totalWithdrawn')}
+            </span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {formatPrice(wallet?.total_withdrawn || 0)}
@@ -222,7 +236,7 @@ export default function WalletPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Payout Mode */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Mode de versement</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">{t('wallet.payoutMode')}</h2>
           <div className="space-y-3">
             {(['on_demand', 'automatic'] as const).map((mode) => (
               <label
@@ -243,12 +257,14 @@ export default function WalletPage() {
                 />
                 <div>
                   <p className="font-medium text-gray-900 text-sm">
-                    {mode === 'on_demand' ? 'Manuel' : 'Automatique'}
+                    {mode === 'on_demand'
+                      ? t('dashboardPages.wallet.manual')
+                      : t('wallet.automatic')}
                   </p>
                   <p className="text-xs text-gray-500">
                     {mode === 'on_demand'
-                      ? 'Demandez vos retraits manuellement'
-                      : 'Versement automatique chaque semaine'}
+                      ? t('dashboardPages.wallet.manualDescription')
+                      : t('dashboardPages.wallet.automaticDescription')}
                   </p>
                 </div>
               </label>
@@ -258,7 +274,9 @@ export default function WalletPage() {
 
         {/* Withdraw Form */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Demander un retrait</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">
+            {t('dashboardPages.wallet.withdrawTitle')}
+          </h2>
           {withdrawError && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{withdrawError}</div>
           )}
@@ -269,24 +287,28 @@ export default function WalletPage() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Montant (TND)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('dashboardPages.wallet.amountLabel')}
+              </label>
               <input
                 type="number"
                 min="20"
                 step="0.001"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                placeholder="Min. 20 TND"
+                placeholder={t('dashboardPages.wallet.amountPlaceholder')}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optionnel)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('dashboardPages.wallet.notesLabel')}
+              </label>
               <input
                 type="text"
                 value={withdrawNotes}
                 onChange={(e) => setWithdrawNotes(e.target.value)}
-                placeholder="Référence, commentaire..."
+                placeholder={t('dashboardPages.wallet.notesPlaceholder')}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
               />
             </div>
@@ -296,7 +318,9 @@ export default function WalletPage() {
             disabled={withdrawing}
             className="mt-4 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
           >
-            {withdrawing ? 'Envoi...' : 'Demander le retrait'}
+            {withdrawing
+              ? t('dashboardPages.wallet.sending')
+              : t('dashboardPages.wallet.requestWithdraw')}
           </button>
         </div>
       </div>
@@ -304,7 +328,9 @@ export default function WalletPage() {
       {/* Transaction History */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Historique des transactions</h2>
+          <h2 className="font-semibold text-gray-900">
+            {t('dashboardPages.wallet.transactionHistory')}
+          </h2>
           <button
             onClick={() => fetchTransactions()}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -316,18 +342,18 @@ export default function WalletPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Type</th>
-                <th className="px-6 py-3">Montant</th>
-                <th className="px-6 py-3">Statut</th>
-                <th className="px-6 py-3">Référence</th>
+                <th className="px-6 py-3">{t('dashboardPages.wallet.date')}</th>
+                <th className="px-6 py-3">{t('dashboardPages.wallet.type')}</th>
+                <th className="px-6 py-3">{t('dashboardPages.wallet.amount')}</th>
+                <th className="px-6 py-3">{t('dashboardPages.common.status')}</th>
+                <th className="px-6 py-3">{t('dashboardPages.wallet.reference')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {transactions.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
-                    Aucune transaction
+                    {t('dashboardPages.wallet.noTransactions')}
                   </td>
                 </tr>
               ) : (
@@ -336,7 +362,9 @@ export default function WalletPage() {
                   return (
                     <tr key={tx.id} className="hover:bg-gray-50">
                       <td className="px-6 py-3 text-sm text-gray-700">
-                        {new Date(tx.created_at).toLocaleDateString('fr-TN')}
+                        {new Date(tx.created_at).toLocaleDateString(
+                          locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN',
+                        )}
                       </td>
                       <td className="px-6 py-3 text-sm text-gray-700 capitalize">{tx.type}</td>
                       <td
@@ -375,15 +403,17 @@ export default function WalletPage() {
             disabled={txPage === 1}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
           >
-            <ChevronLeft className="w-4 h-4" /> Précédent
+            <ChevronLeft className="w-4 h-4" /> {t('dashboardPages.common.previous')}
           </button>
-          <span className="text-sm text-gray-500">Page {txPage}</span>
+          <span className="text-sm text-gray-500">
+            {t('dashboardPages.wallet.page', { page: txPage })}
+          </span>
           <button
             onClick={() => setTxPage((p) => p + 1)}
             disabled={transactions.length < 20}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
           >
-            Suivant <ChevronRight className="w-4 h-4" />
+            {t('dashboardPages.common.next')} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

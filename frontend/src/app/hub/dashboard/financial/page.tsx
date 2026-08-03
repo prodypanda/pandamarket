@@ -22,6 +22,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 type PayoutMode = 'on_demand' | 'automatic';
 type FinancialTab = 'overview' | 'wallet' | 'payments' | 'accounting';
@@ -136,9 +137,9 @@ function formatMoney(value: unknown, currency = 'TND') {
   return `${toNumber(value).toFixed(3)} ${currency}`;
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value?: string | null, localeStr = 'fr-TN') {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('fr-TN', {
+  return new Date(value).toLocaleDateString(localeStr, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -181,6 +182,8 @@ function normalizeAccountingProfile(value: unknown): AccountingProfile {
 }
 
 export default function FinancialPage() {
+  const { t, locale } = useLocale();
+  const localeStr = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const [activeTab, setActiveTab] = useState<FinancialTab>('overview');
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -221,13 +224,13 @@ export default function FinancialPage() {
     const buckets = new Map<string, number>();
     capturedOrders.forEach((order) => {
       const date = new Date(order.created_at);
-      const key = date.toLocaleDateString('fr-TN', { month: 'short', day: '2-digit' });
+      const key = date.toLocaleDateString(localeStr, { month: 'short', day: '2-digit' });
       buckets.set(key, (buckets.get(key) || 0) + toNumber(order.store_total || order.total));
     });
     const rows = Array.from(buckets.entries()).slice(-12).map(([label, total]) => ({ label, total }));
     const max = Math.max(...rows.map((row) => row.total), 1);
     return rows.map((row) => ({ ...row, percentage: Math.max(6, Math.round((row.total / max) * 100)) }));
-  }, [capturedOrders]);
+  }, [capturedOrders, localeStr]);
 
   const accountingCompletion = useMemo(() => {
     const required: Array<keyof AccountingProfile> = ['legal_name', 'tax_identifier', 'billing_address', 'accounting_email', 'bank_name', 'bank_account_holder'];
@@ -251,14 +254,14 @@ export default function FinancialPage() {
 
   const fetchWallet = useCallback(async () => {
     const res = await fetchWithCsrf('/api/pd/wallet/me', { credentials: 'include' });
-    if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to load wallet'));
+    if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorLoadWallet')));
     const data = await res.json();
     setWallet(data.wallet || null);
   }, []);
 
   const fetchTransactions = useCallback(async () => {
     const res = await fetchWithCsrf(`/api/pd/wallet/me/transactions?page=${txPage}&limit=20`, { credentials: 'include' });
-    if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to load wallet transactions'));
+    if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorLoadTransactions')));
     const data = await res.json();
     setTransactions(Array.isArray(data.data) ? data.data : []);
     setTxMeta(data.meta || { page: txPage, total_pages: 1, total: 0 });
@@ -269,7 +272,7 @@ export default function FinancialPage() {
     dateFrom.setDate(dateFrom.getDate() - 90);
     const dateFromStr = dateFrom.toISOString().slice(0, 10);
     const res = await fetchWithCsrf(`/api/pd/orders/store?limit=100&date_from=${dateFromStr}`, { credentials: 'include' });
-    if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to load sales data'));
+    if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorLoadSales')));
     const data = await res.json();
     setOrders(Array.isArray(data.data) ? data.data : []);
     setOrderSummary(data.meta?.summary || null);
@@ -280,7 +283,7 @@ export default function FinancialPage() {
       fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' }),
       fetchWithCsrf('/api/pd/subscriptions/current', { credentials: 'include' }),
     ]);
-    if (!storeRes.ok) throw new Error(await getErrorMessage(storeRes, 'Unable to load store settings'));
+    if (!storeRes.ok) throw new Error(await getErrorMessage(storeRes, t('dashboardPages.financial.errorLoadStore')));
     const storeData = await storeRes.json();
     const nextStore = storeData.store || null;
     setStore(nextStore);
@@ -296,7 +299,7 @@ export default function FinancialPage() {
     try {
       await Promise.all([fetchWallet(), fetchTransactions(), fetchOrders(), fetchStore()]);
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Unable to refresh financial data', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.financial.errorRefresh'), true);
     } finally {
       setRefreshing(false);
     }
@@ -304,7 +307,7 @@ export default function FinancialPage() {
 
   useEffect(() => {
     Promise.all([fetchWallet(), fetchTransactions(), fetchOrders(), fetchStore()])
-      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load financial data'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('dashboardPages.financial.errorLoadFinancial')))
       .finally(() => setLoading(false));
   }, [fetchOrders, fetchStore, fetchTransactions, fetchWallet]);
 
@@ -317,12 +320,12 @@ export default function FinancialPage() {
         credentials: 'include',
         body: JSON.stringify({ payout_mode: mode }),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to update payout mode'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorUpdatePayoutMode')));
       const data = await res.json();
       setWallet(data.wallet || null);
-      showFeedback('Payout mode updated.');
+      showFeedback(t('dashboardPages.financial.successPayoutModeUpdated'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Unable to update payout mode', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.financial.errorUpdatePayoutMode'), true);
     } finally {
       setSavingMode(false);
     }
@@ -331,7 +334,7 @@ export default function FinancialPage() {
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!Number.isFinite(amount) || amount < 20) {
-      showFeedback('Minimum withdrawal amount is 20 TND.', true);
+      showFeedback(t('dashboardPages.financial.errorMinWithdrawal'), true);
       return;
     }
     setWithdrawing(true);
@@ -342,15 +345,15 @@ export default function FinancialPage() {
         credentials: 'include',
         body: JSON.stringify({ amount, notes: withdrawNotes.trim() || undefined }),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to request withdrawal'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorRequestWithdrawal')));
       const data = await res.json();
       setWallet(data.wallet || null);
       setWithdrawAmount('');
       setWithdrawNotes('');
-      showFeedback('Withdrawal request sent.');
+      showFeedback(t('dashboardPages.financial.successWithdrawalSent'));
       void refreshAll();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Unable to request withdrawal', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.financial.errorRequestWithdrawal'), true);
     } finally {
       setWithdrawing(false);
     }
@@ -359,7 +362,7 @@ export default function FinancialPage() {
   const handlePaymentSave = async () => {
     const body = Object.fromEntries(Object.entries(paymentForm).filter(([, value]) => value.trim()));
     if (!Object.keys(body).length) {
-      showFeedback('Fill at least one payment credential before saving.', true);
+      showFeedback(t('dashboardPages.financial.errorFillPaymentCredential'), true);
       return;
     }
     setSavingPayment(true);
@@ -370,12 +373,12 @@ export default function FinancialPage() {
         credentials: 'include',
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to save payment credentials'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorSavePayment')));
       setPaymentForm({ flouci_app_token: '', flouci_app_secret: '', konnect_api_key: '', konnect_receiver_wallet: '' });
-      showFeedback('Payment credentials saved and encrypted.');
+      showFeedback(t('dashboardPages.financial.successPaymentSaved'));
       void fetchStore();
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Unable to save payment credentials', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.financial.errorSavePayment'), true);
     } finally {
       setSavingPayment(false);
     }
@@ -390,12 +393,12 @@ export default function FinancialPage() {
         credentials: 'include',
         body: JSON.stringify({ settings: { accounting_profile: accountingForm } }),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Unable to save accounting profile'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.financial.errorSaveAccounting')));
       const data = await res.json();
       setStore(data.store || null);
-      showFeedback('Accounting profile saved.');
+      showFeedback(t('dashboardPages.financial.successAccountingSaved'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Unable to save accounting profile', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.financial.errorSaveAccounting'), true);
     } finally {
       setSavingAccounting(false);
     }
@@ -403,7 +406,7 @@ export default function FinancialPage() {
 
   const exportOrders = () => {
     downloadCsv('seller-orders-accounting.csv', [
-      ['Order ID', 'Date', 'Payment status', 'Gateway', 'Subtotal', 'Shipping', 'Total', 'Customer'],
+      [t('dashboardPages.financial.csvOrderId'), t('dashboardPages.common.date'), t('dashboardPages.financial.csvPaymentStatus'), t('dashboardPages.financial.csvGateway'), t('dashboardPages.financial.csvSubtotal'), t('dashboardPages.financial.csvShipping'), t('dashboardPages.financial.csvTotal'), t('dashboardPages.financial.csvCustomer')],
       ...orders.map((order) => [
         order.id,
         order.created_at,
@@ -419,7 +422,7 @@ export default function FinancialPage() {
 
   const exportTransactions = () => {
     downloadCsv('seller-wallet-transactions.csv', [
-      ['Transaction ID', 'Date', 'Type', 'Amount', 'Balance after', 'Order ID', 'Description'],
+      [t('dashboardPages.financial.csvTransactionId'), t('dashboardPages.common.date'), t('dashboardPages.financial.type'), t('dashboardPages.financial.amount'), t('dashboardPages.financial.csvBalanceAfter'), t('dashboardPages.financial.csvOrderId'), t('dashboardPages.financial.csvDescription')],
       ...transactions.map((tx) => [tx.id, tx.created_at, tx.type, toNumber(tx.amount), toNumber(tx.balance_after), tx.order_id || '', tx.description || '']),
     ]);
   };
@@ -440,17 +443,17 @@ export default function FinancialPage() {
   }
 
   const tabs: Array<{ id: FinancialTab; label: string; icon: typeof Wallet }> = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'wallet', label: 'Wallet & payouts', icon: Wallet },
-    { id: 'payments', label: 'Payment providers', icon: CreditCard },
-    { id: 'accounting', label: 'Comptabilité', icon: ReceiptText },
+    { id: 'overview', label: t('dashboardPages.financial.tabOverview'), icon: BarChart3 },
+    { id: 'wallet', label: t('dashboardPages.financial.tabWallet'), icon: Wallet },
+    { id: 'payments', label: t('dashboardPages.financial.tabPayments'), icon: CreditCard },
+    { id: 'accounting', label: t('dashboardPages.financial.tabAccounting'), icon: ReceiptText },
   ];
 
   const kpis = [
-    { label: 'Available wallet', value: formatMoney(wallet?.balance, currency), icon: Wallet, tone: 'bg-gradient-to-br from-[#3B0D0D] to-[#B91C1C] text-white' },
-    { label: 'Pending release', value: formatMoney(wallet?.pending_balance, currency), icon: Banknote, tone: 'bg-white text-gray-950' },
-    { label: '30d revenue', value: formatMoney(orderSummary?.revenue_30d, currency), icon: ArrowDownLeft, tone: 'bg-white text-gray-950' },
-    { label: 'Withdrawn total', value: formatMoney(wallet?.total_withdrawn, currency), icon: ArrowUpRight, tone: 'bg-white text-gray-950' },
+    { label: t('dashboardPages.financial.availableBalance'), value: formatMoney(wallet?.balance, currency), icon: Wallet, tone: 'bg-gradient-to-br from-[#3B0D0D] to-[#B91C1C] text-white' },
+    { label: t('dashboardPages.financial.pendingBalance'), value: formatMoney(wallet?.pending_balance, currency), icon: Banknote, tone: 'bg-white text-gray-950' },
+    { label: t('dashboardPages.financial.kpi30dRevenue'), value: formatMoney(orderSummary?.revenue_30d, currency), icon: ArrowDownLeft, tone: 'bg-white text-gray-950' },
+    { label: t('dashboardPages.financial.kpiWithdrawnTotal'), value: formatMoney(wallet?.total_withdrawn, currency), icon: ArrowUpRight, tone: 'bg-white text-gray-950' },
   ];
 
   return (
@@ -462,11 +465,11 @@ export default function FinancialPage() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-amber-100">
               <ReceiptText className="h-3.5 w-3.5" />
-              Seller finance center
+              {t('dashboardPages.financial.sellerFinanceCenter')}
             </span>
-            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Financial & Accounting</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">{t('dashboardPages.financial.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-amber-50/80">
-              Manage wallet funds, payouts, payment credentials, accounting identity, tax details, exports, and sales finance information in one place.
+              {t('dashboardPages.financial.subtitle')}
             </p>
           </div>
           <button
@@ -476,7 +479,7 @@ export default function FinancialPage() {
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('dashboardPages.financial.refresh')}
           </button>
         </div>
       </section>
@@ -531,12 +534,12 @@ export default function FinancialPage() {
           <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-black text-gray-950">Revenue performance</h2>
-                <p className="mt-1 text-sm font-semibold text-gray-500">Captured sales over the last 90 days.</p>
+                <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.financial.revenuePerformance')}</h2>
+                <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.financial.revenuePerformanceDesc')}</p>
               </div>
               <button type="button" onClick={exportOrders} className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-black text-gray-700 hover:bg-gray-50">
                 <Download className="h-4 w-4" />
-                Export orders
+                {t('dashboardPages.financial.exportOrders')}
               </button>
             </div>
             <div className="mt-6 flex h-72 items-end gap-2 rounded-3xl bg-white p-4 ring-1 ring-gray-100">
@@ -546,18 +549,18 @@ export default function FinancialPage() {
                   <span className="text-[10px] font-bold text-gray-400">{bar.label}</span>
                 </div>
               )) : (
-                <div className="flex flex-1 items-center justify-center text-sm font-bold text-gray-400">No captured revenue yet.</div>
+                <div className="flex flex-1 items-center justify-center text-sm font-bold text-gray-400">{t('dashboardPages.financial.noCapturedRevenue')}</div>
               )}
             </div>
           </section>
 
           <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
-            <h2 className="text-lg font-black text-gray-950">Accounting readiness</h2>
-            <p className="mt-1 text-sm font-semibold text-gray-500">Complete your legal and accounting information for clean records.</p>
+            <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.financial.accountingReadiness')}</h2>
+            <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.financial.accountingReadinessDesc')}</p>
             <div className="mt-6 rounded-3xl border border-amber-100 bg-amber-50 p-5">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Profile completion</p>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{t('dashboardPages.financial.profileCompletion')}</p>
                   <p className="mt-2 text-4xl font-black text-[#7F1D1D]">{accountingCompletion}%</p>
                 </div>
                 <ShieldCheck className="h-10 w-10 text-[#B91C1C]" />
@@ -568,19 +571,19 @@ export default function FinancialPage() {
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">Captured orders</p>
+                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.financial.capturedOrders')}</p>
                 <p className="mt-1 text-2xl font-black text-gray-950">{orderSummary?.captured_orders || 0}</p>
               </div>
               <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">Average order</p>
+                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.financial.averageOrder')}</p>
                 <p className="mt-1 text-2xl font-black text-gray-950">{formatMoney(orderSummary?.average_order_value, currency)}</p>
               </div>
               <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">Today</p>
+                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.financial.today')}</p>
                 <p className="mt-1 text-2xl font-black text-gray-950">{formatMoney(orderSummary?.revenue_today, currency)}</p>
               </div>
               <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">7 days</p>
+                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.financial.sevenDays')}</p>
                 <p className="mt-1 text-2xl font-black text-gray-950">{formatMoney(orderSummary?.revenue_7d, currency)}</p>
               </div>
             </div>
@@ -591,8 +594,8 @@ export default function FinancialPage() {
       {activeTab === 'wallet' && (
         <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
-            <h2 className="text-lg font-black text-gray-950">Payout settings</h2>
-            <p className="mt-1 text-sm font-semibold text-gray-500">Choose how you want to request or receive available wallet funds.</p>
+            <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.financial.payoutSettings')}</h2>
+            <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.financial.payoutSettingsDesc')}</p>
             <div className="mt-5 space-y-3">
               {(['on_demand', 'automatic'] as const).map((mode) => (
                 <button
@@ -602,15 +605,15 @@ export default function FinancialPage() {
                   disabled={savingMode}
                   className={`w-full rounded-2xl border p-4 text-left transition ${wallet?.payout_mode === mode ? 'border-[#B91C1C] bg-red-50 text-[#7F1D1D]' : 'border-gray-100 bg-gray-50 text-gray-700 hover:bg-white'}`}
                 >
-                  <span className="block text-sm font-black">{mode === 'on_demand' ? 'Manual payout requests' : 'Automatic payout mode'}</span>
+                  <span className="block text-sm font-black">{mode === 'on_demand' ? t('dashboardPages.financial.manualPayout') : t('dashboardPages.financial.automaticPayout')}</span>
                   <span className="mt-1 block text-xs font-semibold opacity-70">
-                    {mode === 'on_demand' ? 'Request withdrawals when you decide.' : 'Prepare wallet for automatic payout processing.'}
+                    {mode === 'on_demand' ? t('dashboardPages.financial.manualPayoutDesc') : t('dashboardPages.financial.automaticPayoutDesc')}
                   </span>
                 </button>
               ))}
             </div>
             <div className="mt-6 rounded-3xl border border-gray-100 bg-gray-50 p-5">
-              <h3 className="font-black text-gray-950">Request withdrawal</h3>
+              <h3 className="font-black text-gray-950">{t('dashboardPages.financial.requestWithdrawal')}</h3>
               <div className="mt-4 space-y-3">
                 <input
                   type="number"
@@ -618,13 +621,13 @@ export default function FinancialPage() {
                   step="0.001"
                   value={withdrawAmount}
                   onChange={(event) => setWithdrawAmount(event.target.value)}
-                  placeholder="Amount, min. 20 TND"
+                  placeholder={t('dashboardPages.financial.amountPlaceholder')}
                   className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                 />
                 <input
                   value={withdrawNotes}
                   onChange={(event) => setWithdrawNotes(event.target.value)}
-                  placeholder="Notes or bank reference"
+                  placeholder={t('dashboardPages.financial.notesPlaceholder')}
                   className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
                 />
                 <button
@@ -634,7 +637,7 @@ export default function FinancialPage() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
                 >
                   {withdrawing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
-                  Request payout
+                  {t('dashboardPages.financial.requestPayout')}
                 </button>
               </div>
             </div>
@@ -643,22 +646,22 @@ export default function FinancialPage() {
           <section className="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-xl shadow-slate-900/5">
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
               <div>
-                <h2 className="text-lg font-black text-gray-950">Wallet ledger</h2>
-                <p className="text-sm font-semibold text-gray-500">All wallet credits, payouts, refunds, and add-on purchases.</p>
+                <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.financial.walletLedger')}</h2>
+                <p className="text-sm font-semibold text-gray-500">{t('dashboardPages.financial.walletLedgerDesc')}</p>
               </div>
               <button type="button" onClick={exportTransactions} className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-black text-gray-700 hover:bg-gray-50">
                 <Download className="h-4 w-4" />
-                CSV
+                {t('dashboardPages.financial.csv')}
               </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs font-black uppercase tracking-wider text-gray-400">
                   <tr>
-                    <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Type</th>
-                    <th className="px-6 py-3">Amount</th>
-                    <th className="px-6 py-3">Reference</th>
+                    <th className="px-6 py-3">{t('dashboardPages.common.date')}</th>
+                    <th className="px-6 py-3">{t('dashboardPages.financial.type')}</th>
+                    <th className="px-6 py-3">{t('dashboardPages.financial.amount')}</th>
+                    <th className="px-6 py-3">{t('dashboardPages.financial.reference')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -666,7 +669,7 @@ export default function FinancialPage() {
                     const amount = toNumber(tx.amount);
                     return (
                       <tr key={tx.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-3 font-semibold text-gray-600">{formatDate(tx.created_at)}</td>
+                        <td className="px-6 py-3 font-semibold text-gray-600">{formatDate(tx.created_at, localeStr)}</td>
                         <td className="px-6 py-3 font-bold capitalize text-gray-900">{tx.type.replaceAll('_', ' ')}</td>
                         <td className={`px-6 py-3 font-black ${amount >= 0 ? 'text-green-700' : 'text-red-700'}`}>{amount >= 0 ? '+' : ''}{formatMoney(amount, currency)}</td>
                         <td className="px-6 py-3 text-gray-500">{tx.order_id || tx.reference || tx.id.slice(-8)}</td>
@@ -674,18 +677,18 @@ export default function FinancialPage() {
                     );
                   })}
                   {transactions.length === 0 && (
-                    <tr><td colSpan={4} className="px-6 py-12 text-center font-bold text-gray-400">No wallet transactions yet.</td></tr>
+                    <tr><td colSpan={4} className="px-6 py-12 text-center font-bold text-gray-400">{t('dashboardPages.financial.noWalletTransactions')}</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
             <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
               <button type="button" onClick={() => setTxPage((page) => Math.max(1, page - 1))} disabled={txPage === 1} className="inline-flex items-center gap-1 text-sm font-bold text-gray-500 disabled:opacity-40">
-                <ChevronLeft className="h-4 w-4" /> Previous
+                <ChevronLeft className="h-4 w-4" /> {t('dashboardPages.financial.previous')}
               </button>
-              <span className="text-sm font-bold text-gray-500">Page {txMeta.page || txPage} / {txMeta.total_pages || 1}</span>
+              <span className="text-sm font-bold text-gray-500">{t('dashboardPages.financial.page')} {txMeta.page || txPage} / {txMeta.total_pages || 1}</span>
               <button type="button" onClick={() => setTxPage((page) => page + 1)} disabled={txPage >= (txMeta.total_pages || 1)} className="inline-flex items-center gap-1 text-sm font-bold text-gray-500 disabled:opacity-40">
-                Next <ChevronRight className="h-4 w-4" />
+                {t('dashboardPages.financial.next')} <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </section>
@@ -696,36 +699,36 @@ export default function FinancialPage() {
         <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="flex items-center gap-2 text-lg font-black text-gray-950"><CreditCard className="h-5 w-5 text-[#B91C1C]" /> Payment provider credentials</h2>
-              <p className="mt-1 text-sm font-semibold text-gray-500">Configure Flouci or Konnect credentials for direct payments. Secrets are encrypted server-side.</p>
+              <h2 className="flex items-center gap-2 text-lg font-black text-gray-950"><CreditCard className="h-5 w-5 text-[#B91C1C]" /> {t('dashboardPages.financial.paymentProviderCredentials')}</h2>
+              <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.financial.paymentProviderDesc')}</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${paymentConfigured ? 'bg-green-50 text-green-700 ring-green-100' : 'bg-amber-50 text-amber-700 ring-amber-100'}`}>
-              {paymentConfigured ? 'Credentials saved' : 'Not configured'}
+              {paymentConfigured ? t('dashboardPages.financial.credentialsSaved') : t('dashboardPages.financial.notConfigured')}
             </span>
           </div>
           {!directPaymentEligible ? (
             <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-bold text-amber-800">
-              Direct payment configuration requires a plan that includes direct payments. Upgrade your subscription to enable provider credentials.
+              {t('dashboardPages.financial.directPaymentRequired')}
             </div>
           ) : (
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
               <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5">
-                <h3 className="font-black text-gray-950">Flouci</h3>
+                <h3 className="font-black text-gray-950">{t('dashboardPages.financial.flouci')}</h3>
                 <div className="mt-4 space-y-3">
-                  <input type="password" value={paymentForm.flouci_app_token} onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_token: event.target.value }))} placeholder="Flouci app token" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
-                  <input type="password" value={paymentForm.flouci_app_secret} onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_secret: event.target.value }))} placeholder="Flouci app secret" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
+                  <input type="password" value={paymentForm.flouci_app_token} onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_token: event.target.value }))} placeholder={t('dashboardPages.financial.flouciAppToken')} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
+                  <input type="password" value={paymentForm.flouci_app_secret} onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_secret: event.target.value }))} placeholder={t('dashboardPages.financial.flouciAppSecret')} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
                 </div>
               </div>
               <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5">
-                <h3 className="font-black text-gray-950">Konnect</h3>
+                <h3 className="font-black text-gray-950">{t('dashboardPages.financial.konnect')}</h3>
                 <div className="mt-4 space-y-3">
-                  <input type="password" value={paymentForm.konnect_api_key} onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_api_key: event.target.value }))} placeholder="Konnect API key" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
-                  <input value={paymentForm.konnect_receiver_wallet} onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_receiver_wallet: event.target.value }))} placeholder="Konnect receiver wallet" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
+                  <input type="password" value={paymentForm.konnect_api_key} onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_api_key: event.target.value }))} placeholder={t('dashboardPages.financial.konnectApiKey')} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
+                  <input value={paymentForm.konnect_receiver_wallet} onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_receiver_wallet: event.target.value }))} placeholder={t('dashboardPages.financial.konnectReceiverWallet')} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" />
                 </div>
               </div>
               <button type="button" onClick={() => void handlePaymentSave()} disabled={savingPayment} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50 lg:col-span-2">
                 {savingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save encrypted payment credentials
+                {t('dashboardPages.financial.savePaymentCredentials')}
               </button>
             </div>
           )}
@@ -736,41 +739,41 @@ export default function FinancialPage() {
         <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="flex items-center gap-2 text-lg font-black text-gray-950"><Landmark className="h-5 w-5 text-[#B91C1C]" /> Accounting profile</h2>
-              <p className="mt-1 text-sm font-semibold text-gray-500">Store legal, tax, invoice, and bank information for accounting records and exports.</p>
+              <h2 className="flex items-center gap-2 text-lg font-black text-gray-950"><Landmark className="h-5 w-5 text-[#B91C1C]" /> {t('dashboardPages.financial.accountingProfile')}</h2>
+              <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.financial.accountingProfileDesc')}</p>
             </div>
             <button type="button" onClick={() => void handleAccountingSave()} disabled={savingAccounting} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50">
               {savingAccounting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save accounting profile
+              {t('dashboardPages.financial.saveAccountingProfile')}
             </button>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="space-y-1 text-sm font-bold text-gray-700">Legal company name<input value={accountingForm.legal_name} onChange={(event) => updateAccounting('legal_name', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Tax identifier / Matricule fiscal<input value={accountingForm.tax_identifier} onChange={(event) => updateAccounting('tax_identifier', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Business registration<input value={accountingForm.business_registration} onChange={(event) => updateAccounting('business_registration', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Accounting email<input type="email" value={accountingForm.accounting_email} onChange={(event) => updateAccounting('accounting_email', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">VAT status<select value={accountingForm.vat_status} onChange={(event) => updateAccounting('vat_status', event.target.value as AccountingProfile['vat_status'])} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"><option value="not_registered">Not registered</option><option value="registered">Registered</option><option value="exempt">Exempt</option></select></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">VAT rate %<input value={accountingForm.vat_rate} onChange={(event) => updateAccounting('vat_rate', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Invoice prefix<input value={accountingForm.invoice_prefix} onChange={(event) => updateAccounting('invoice_prefix', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Next invoice number<input value={accountingForm.next_invoice_number} onChange={(event) => updateAccounting('next_invoice_number', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Fiscal year start<input value={accountingForm.fiscal_year_start} onChange={(event) => updateAccounting('fiscal_year_start', event.target.value)} placeholder="01-01" className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Bank name<input value={accountingForm.bank_name} onChange={(event) => updateAccounting('bank_name', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">Bank account holder<input value={accountingForm.bank_account_holder} onChange={(event) => updateAccounting('bank_account_holder', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700">RIB<input value={accountingForm.bank_rib} onChange={(event) => updateAccounting('bank_rib', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">IBAN<input value={accountingForm.bank_iban} onChange={(event) => updateAccounting('bank_iban', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">Billing address<textarea rows={3} value={accountingForm.billing_address} onChange={(event) => updateAccounting('billing_address', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
-            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">Invoice footer<textarea rows={3} value={accountingForm.invoice_footer} onChange={(event) => updateAccounting('invoice_footer', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.legalCompanyName')}<input value={accountingForm.legal_name} onChange={(event) => updateAccounting('legal_name', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.taxIdentifier')}<input value={accountingForm.tax_identifier} onChange={(event) => updateAccounting('tax_identifier', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.businessRegistration')}<input value={accountingForm.business_registration} onChange={(event) => updateAccounting('business_registration', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.accountingEmail')}<input type="email" value={accountingForm.accounting_email} onChange={(event) => updateAccounting('accounting_email', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.vatStatus')}<select value={accountingForm.vat_status} onChange={(event) => updateAccounting('vat_status', event.target.value as AccountingProfile['vat_status'])} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"><option value="not_registered">{t('dashboardPages.financial.vatNotRegistered')}</option><option value="registered">{t('dashboardPages.financial.vatRegistered')}</option><option value="exempt">{t('dashboardPages.financial.vatExempt')}</option></select></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.vatRate')}<input value={accountingForm.vat_rate} onChange={(event) => updateAccounting('vat_rate', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.invoicePrefix')}<input value={accountingForm.invoice_prefix} onChange={(event) => updateAccounting('invoice_prefix', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.nextInvoiceNumber')}<input value={accountingForm.next_invoice_number} onChange={(event) => updateAccounting('next_invoice_number', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.fiscalYearStart')}<input value={accountingForm.fiscal_year_start} onChange={(event) => updateAccounting('fiscal_year_start', event.target.value)} placeholder="01-01" className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.bankName')}<input value={accountingForm.bank_name} onChange={(event) => updateAccounting('bank_name', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.bankAccountHolder')}<input value={accountingForm.bank_account_holder} onChange={(event) => updateAccounting('bank_account_holder', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700">{t('dashboardPages.financial.rib')}<input value={accountingForm.bank_rib} onChange={(event) => updateAccounting('bank_rib', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">{t('dashboardPages.financial.iban')}<input value={accountingForm.bank_iban} onChange={(event) => updateAccounting('bank_iban', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">{t('dashboardPages.financial.billingAddress')}<textarea rows={3} value={accountingForm.billing_address} onChange={(event) => updateAccounting('billing_address', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
+            <label className="space-y-1 text-sm font-bold text-gray-700 md:col-span-2">{t('dashboardPages.financial.invoiceFooter')}<textarea rows={3} value={accountingForm.invoice_footer} onChange={(event) => updateAccounting('invoice_footer', event.target.value)} className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10" /></label>
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             <button type="button" onClick={exportOrders} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3 text-sm font-black text-gray-700 hover:bg-white">
               <FileText className="h-4 w-4 text-[#B91C1C]" />
-              Export sales accounting CSV
+              {t('dashboardPages.financial.exportSalesCsv')}
             </button>
             <button type="button" onClick={exportTransactions} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3 text-sm font-black text-gray-700 hover:bg-white">
               <Download className="h-4 w-4 text-[#B91C1C]" />
-              Export wallet ledger CSV
+              {t('dashboardPages.financial.exportWalletCsv')}
             </button>
           </div>
         </section>

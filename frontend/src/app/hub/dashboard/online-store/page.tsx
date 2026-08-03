@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { getStorefrontUrl } from '@/lib/store-hosts';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface StoreData {
   id: string;
@@ -37,6 +38,7 @@ interface StoreData {
 }
 
 export default function OnlineStoreOverviewPage() {
+  const { t } = useLocale();
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -115,52 +117,52 @@ export default function OnlineStoreOverviewPage() {
 
   const quickLinks = [
     {
-      title: 'Thèmes & Style',
-      desc: 'Choisissez parmi 20 thèmes et personnalisez les couleurs',
+      title: t('dashboardPages.themes.title'),
+      desc: t('dashboardPages.themes.subtitle'),
       href: '/hub/dashboard/online-store/themes',
       icon: Palette,
-      badge: store?.theme_id ? `Actif: ${store.theme_id}` : undefined,
+      badge: store?.theme_id ? `${t('dashboardPages.themes.active')}: ${store.theme_id}` : undefined,
     },
     {
-      title: 'Personnalisation du thème',
-      desc: 'Mise en page, polices, bannières et éléments visuels',
+      title: t('dashboardPages.customize.title'),
+      desc: t('dashboardPages.customize.subtitle'),
       href: '/hub/dashboard/online-store/customize',
       icon: Layout,
     },
     {
-      title: 'Menus & Navigation',
-      desc: 'En-tête, pied de page, drawer mobile et menus personnalisés',
+      title: t('storefrontNav.title'),
+      desc: t('storefrontNav.subtitle'),
       href: '/hub/dashboard/online-store/navigation',
       icon: NavIcon,
     },
     {
-      title: 'Page Builder',
-      desc: 'Créez des pages personnalisées, FAQ, À propos et landing pages',
+      title: t('dashboardPages.pageBuilder.title'),
+      desc: t('dashboardPages.pageBuilder.title'),
       href: '/hub/dashboard/page-builder',
       icon: FileText,
     },
     {
-      title: 'Noms de domaine',
-      desc: 'Sous-domaine gratuit et domaine personnalisé (.tn, .com)',
+      title: t('dashboardPages.domains.title'),
+      desc: t('dashboardPages.domains.subtitle'),
       href: '/hub/dashboard/online-store/domains',
       icon: Globe,
       badge: store?.custom_domain || `${store?.subdomain}.garbage.team`,
     },
     {
-      title: 'SEO & Référencement',
-      desc: 'Méta-titres, descriptions, balises OpenGraph et robots.txt',
+      title: t('dashboardPages.seo.title'),
+      desc: t('dashboardPages.seo.subtitle'),
       href: '/hub/dashboard/online-store/seo',
       icon: Search,
     },
     {
-      title: 'Intégrations & Scripts',
-      desc: 'Google Analytics, Meta Pixel, TikTok Pixel et scripts custom',
+      title: t('dashboardPages.integrations.title'),
+      desc: t('dashboardPages.integrations.subtitle'),
       href: '/hub/dashboard/online-store/integrations',
       icon: Code2,
     },
     {
-      title: 'Clients Storefront',
-      desc: 'Consultez les comptes acheteurs et l\'historique des commandes',
+      title: t('dashboardPages.customers.title'),
+      desc: t('dashboardPages.customers.subtitle'),
       href: '/hub/dashboard/online-store/customers',
       icon: Users,
     },
@@ -176,10 +178,10 @@ export default function OnlineStoreOverviewPage() {
               <span className="rounded-xl bg-[#B91C1C]/10 p-2 text-[#B91C1C]">
                 <Globe className="h-5 w-5" />
               </span>
-              <h1 className="text-2xl font-bold text-slate-900">Boutique en ligne</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.onlineStore.title')}</h1>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              Gérez l&apos;apparence, les menus, le domaine et la publication de votre vitrine.
+              {t('dashboardPages.onlineStore.title')}
             </p>
           </div>
 
@@ -191,7 +193,7 @@ export default function OnlineStoreOverviewPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-[#B91C1C] hover:text-[#B91C1C] transition shadow-sm"
             >
               <Eye className="h-4 w-4" />
-              <span>Aperçu boutique</span>
+              <span>{t('dashboardPages.onlineStore.visit')}</span>
               <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
             </a>
 
@@ -208,12 +210,12 @@ export default function OnlineStoreOverviewPage() {
               {isPublished ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>En ligne (Publiée)</span>
+                  <span>{t('dashboardPages.onlineStore.published')}</span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="h-4 w-4" />
-                  <span>Publier la boutique</span>
+                  <span>{t('dashboardPages.onlineStore.publish')}</span>
                 </>
               )}
             </button>

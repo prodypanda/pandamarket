@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../lib/onboarding';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface WalletData {
   balance?: number | string | null;
@@ -84,34 +85,30 @@ function getOrderTotal(order: Order): number {
   return toNumber(order.total_amount ?? order.total);
 }
 
-const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  pending: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'En attente' },
-  processing: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'En cours' },
-  payment_required: { bg: 'bg-red-50', text: 'text-red-700', label: 'Paiement requis' },
-  fulfilled: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Expédié' },
-  delivered: { bg: 'bg-green-50', text: 'text-green-700', label: 'Livré' },
-  cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Annulé' },
-  refunded: { bg: 'bg-violet-50', text: 'text-violet-700', label: 'Remboursé' },
+const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  pending: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  processing: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  payment_required: { bg: 'bg-red-50', text: 'text-red-700' },
+  fulfilled: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  delivered: { bg: 'bg-green-50', text: 'text-green-700' },
+  cancelled: { bg: 'bg-gray-100', text: 'text-gray-600' },
+  refunded: { bg: 'bg-violet-50', text: 'text-violet-700' },
 };
 
-const STORE_STATUS_BADGES: Record<string, { label: string; className: string; dotClassName: string }> = {
+const STORE_STATUS_BADGES: Record<string, { className: string; dotClassName: string }> = {
   verified: {
-    label: 'Live',
     className: 'bg-emerald-500/20 text-emerald-200',
     dotClassName: 'bg-emerald-300',
   },
   maintenance: {
-    label: 'Maintenance',
     className: 'bg-amber-500/20 text-amber-200',
     dotClassName: 'bg-amber-300',
   },
   unverified: {
-    label: 'Pending verification',
     className: 'bg-slate-500/30 text-slate-200',
     dotClassName: 'bg-slate-300',
   },
   suspended: {
-    label: 'Suspended',
     className: 'bg-red-500/20 text-red-200',
     dotClassName: 'bg-red-300',
   },
@@ -170,6 +167,31 @@ export default function DashboardOverview() {
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
   const [loading, setLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const { t, locale } = useLocale();
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+
+  const orderStatusLabel = (status: string): string => {
+    const map: Record<string, string> = {
+      pending: t('dashboardPages.overview.orderStatusPending'),
+      processing: t('dashboardPages.overview.orderStatusProcessing'),
+      payment_required: t('dashboardPages.overview.orderStatusPaymentRequired'),
+      fulfilled: t('dashboardPages.overview.orderStatusFulfilled'),
+      delivered: t('dashboardPages.overview.orderStatusDelivered'),
+      cancelled: t('dashboardPages.overview.orderStatusCancelled'),
+      refunded: t('dashboardPages.overview.orderStatusRefunded'),
+    };
+    return map[status] ?? status;
+  };
+
+  const storeStatusLabel = (status: string): string => {
+    const map: Record<string, string> = {
+      verified: t('dashboardPages.overview.storeStatusVerified'),
+      maintenance: t('dashboardPages.overview.storeStatusMaintenance'),
+      unverified: t('dashboardPages.overview.storeStatusUnverified'),
+      suspended: t('dashboardPages.overview.storeStatusSuspended'),
+    };
+    return map[status] ?? status;
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -263,32 +285,32 @@ export default function DashboardOverview() {
   );
   const setupSteps = [
     {
-      label: 'Store basics',
-      description: 'Name, subdomain, logos, colors',
+      label: t('dashboardPages.overview.setupStoreBasics'),
+      description: t('dashboardPages.overview.setupStoreBasicsDesc'),
       completed: storeBasicsCompleted,
       href: '/hub/dashboard/onboarding',
     },
     {
-      label: 'Theme selected',
-      description: 'Storefront design',
+      label: t('dashboardPages.overview.setupTheme'),
+      description: t('dashboardPages.overview.setupThemeDesc'),
       completed: Boolean(onboardingState.theme?.completed || store?.theme_id),
       href: '/hub/dashboard/onboarding#theme',
     },
     {
-      label: 'KYC approved',
-      description: 'Verification status',
+      label: t('dashboardPages.overview.setupKyc'),
+      description: t('dashboardPages.overview.setupKycDesc'),
       completed: Boolean(verification?.status === 'approved' || store?.is_verified),
       href: '/hub/dashboard/onboarding#kyc',
     },
     {
-      label: 'First product',
-      description: 'Catalog is ready',
+      label: t('dashboardPages.overview.setupFirstProduct'),
+      description: t('dashboardPages.overview.setupFirstProductDesc'),
       completed: productCount > 0,
       href: '/hub/dashboard/onboarding#first-product',
     },
     {
-      label: 'Payment configured',
-      description: 'Direct payments',
+      label: t('dashboardPages.overview.setupPayment'),
+      description: t('dashboardPages.overview.setupPaymentDesc'),
       completed: Boolean(store?.payment_config),
       href: '/hub/dashboard/payment-config',
     },
@@ -299,30 +321,30 @@ export default function DashboardOverview() {
 
   const stats = [
     {
-      name: 'Total Revenue',
+      name: t('dashboardPages.overview.totalRevenue'),
       value: loading ? '—' : formatPrice(wallet?.total_earned),
-      hint: `${formatPrice(totalRevenue30d)} in last 30 days`,
+      hint: t('dashboardPages.overview.revenueLast30Days', { amount: formatPrice(totalRevenue30d) }),
       icon: DollarSign,
       gradient: 'from-amber-500 to-teal-600',
     },
     {
-      name: 'Active Products',
+      name: t('dashboardPages.overview.activeProducts'),
       value: loading ? '—' : String(productCount),
-      hint: productCount > 0 ? 'Catalog available' : 'Add your first listing',
+      hint: productCount > 0 ? t('dashboardPages.overview.catalogAvailable') : t('dashboardPages.overview.addFirstListing'),
       icon: Package,
       gradient: 'from-blue-500 to-indigo-600',
     },
     {
-      name: 'Total Orders',
+      name: t('dashboardPages.overview.totalOrders'),
       value: loading ? '—' : String(orderCount),
-      hint: `${totalOrders30d} in last 30 days`,
+      hint: t('dashboardPages.overview.ordersLast30Days', { count: totalOrders30d }),
       icon: ShoppingCart,
       gradient: 'from-violet-500 to-purple-600',
     },
     {
-      name: 'Available Balance',
+      name: t('dashboardPages.overview.availableBalance'),
       value: loading ? '—' : formatPrice(wallet?.balance),
-      hint: `${formatPrice(wallet?.pending_balance)} pending`,
+      hint: t('dashboardPages.overview.pendingBalance', { amount: formatPrice(wallet?.pending_balance) }),
       icon: Wallet,
       gradient: 'from-amber-500 to-orange-600',
     },
@@ -339,19 +361,19 @@ export default function DashboardOverview() {
                 type="button"
                 onClick={dismissWelcomeModal}
                 className="absolute right-5 top-5 rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
-                aria-label="Fermer le message de bienvenue"
+                aria-label={t('dashboardPages.overview.closeWelcomeAria')}
               >
                 <X className="h-4 w-4" />
               </button>
               <div className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C]/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#B91C1C]">
                 <Store className="h-4 w-4" />
-                Bienvenue vendeur
+                {t('dashboardPages.overview.welcomeSeller')}
               </div>
               <h2 id="seller-welcome-title" className="mt-4 text-3xl font-black tracking-tight text-gray-900">
-                Lancez {store?.name || 'votre boutique'} en quelques étapes
+                {t('dashboardPages.overview.launchStepsTitle', { name: store?.name || t('dashboardPages.overview.yourStore') })}
               </h2>
               <p className="mt-3 text-sm font-semibold leading-6 text-gray-500">
-                Votre espace vendeur est prêt. Suivez cette checklist pour préparer votre vitrine, publier vos premiers produits, configurer les paiements et passer votre boutique en ligne.
+                {t('dashboardPages.overview.welcomeBody')}
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {setupSteps.map((step, index) => (
@@ -372,9 +394,9 @@ export default function DashboardOverview() {
                 ))}
               </div>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-bold text-gray-400">Retrouvez ces étapes dans la carte Launch readiness du dashboard.</p>
+                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.overview.welcomeFooter')}</p>
                 <button type="button" onClick={dismissWelcomeModal} className="inline-flex items-center justify-center rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]">
-                  Commencer
+                  {t('dashboardPages.overview.getStarted')}
                 </button>
               </div>
             </div>
@@ -400,27 +422,27 @@ export default function DashboardOverview() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
                 <Store className="h-4 w-4" />
-                Seller command center
+                {t('dashboardPages.overview.sellerCommandCenter')}
                 {storeStatusBadge && (
                   <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${storeStatusBadge.className}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${storeStatusBadge.dotClassName} ${store?.status === 'verified' ? 'animate-pulse' : ''}`} />
-                    {storeStatusBadge.label}
+                    {storeStatusLabel(store?.status ?? '')}
                   </span>
                 )}
               </div>
-              <h1 className="mt-3 text-3xl font-black tracking-tight">{store?.name || 'Overview'}</h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-amber-50/70">Track store readiness, sales, orders, wallet balance, and next actions.</p>
+              <h1 className="mt-3 text-3xl font-black tracking-tight">{store?.name || t('dashboardPages.overview.title')}</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-amber-50/70">{t('dashboardPages.overview.heroSubtitle')}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/hub/dashboard/ads" className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-amber-600 shadow-sm">
-              PandaMarket Ads <Megaphone className="h-4 w-4" />
+              {t('dashboardPages.overview.pandaAds')} <Megaphone className="h-4 w-4" />
             </Link>
             <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-amber-50">
-              View storefront <ExternalLink className="h-4 w-4" />
+              {t('dashboardPages.overview.viewStore')} <ExternalLink className="h-4 w-4" />
             </Link>
             <Link href="/hub/dashboard/products" className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#991B1B]">
-              Add product <Plus className="h-4 w-4" />
+              {t('dashboardPages.overview.addProduct')} <Plus className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -429,11 +451,11 @@ export default function DashboardOverview() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: 'Products', icon: Package, href: '/hub/dashboard/products', color: 'text-blue-600 bg-blue-50' },
-          { label: 'Orders', icon: ShoppingCart, href: '/hub/dashboard/orders', color: 'text-violet-600 bg-violet-50' },
-          { label: 'PandaMarket Ads', icon: Megaphone, href: '/hub/dashboard/ads', color: 'text-amber-600 bg-amber-50' },
-          { label: 'Analytics', icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-emerald-600 bg-emerald-50' },
-          { label: 'Settings', icon: Settings, href: '/hub/dashboard/settings', color: 'text-gray-600 bg-gray-100' },
+          { label: t('dashboardPages.overview.quickProducts'), icon: Package, href: '/hub/dashboard/products', color: 'text-blue-600 bg-blue-50' },
+          { label: t('dashboardPages.overview.quickOrders'), icon: ShoppingCart, href: '/hub/dashboard/orders', color: 'text-violet-600 bg-violet-50' },
+          { label: t('dashboardPages.overview.quickAds'), icon: Megaphone, href: '/hub/dashboard/ads', color: 'text-amber-600 bg-amber-50' },
+          { label: t('dashboardPages.overview.quickAnalytics'), icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-emerald-600 bg-emerald-50' },
+          { label: t('dashboardPages.overview.quickSettings'), icon: Settings, href: '/hub/dashboard/settings', color: 'text-gray-600 bg-gray-100' },
         ].map((action) => (
           <Link key={action.label} href={action.href} className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
             <div className={`rounded-xl p-2.5 ${action.color} transition-transform group-hover:scale-110`}>
@@ -473,12 +495,12 @@ export default function DashboardOverview() {
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-black text-gray-900">Launch readiness</h3>
-              <p className="mt-1 text-sm font-semibold text-gray-500">{completedSetupSteps} of {setupSteps.length} steps completed</p>
+              <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.launchReadiness')}</h3>
+              <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.overview.stepsCompleted', { done: completedSetupSteps, total: setupSteps.length })}</p>
             </div>
             <div className="text-right">
               <p className={`text-3xl font-black ${setupPercent === 100 ? 'text-[#B91C1C]' : 'text-amber-500'}`}>{setupPercent}%</p>
-              <p className="text-xs font-black uppercase tracking-wide text-gray-400">{setupPercent === 100 ? '🎉 Ready!' : 'In progress'}</p>
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">{setupPercent === 100 ? t('dashboardPages.overview.ready') : t('dashboardPages.overview.inProgress')}</p>
             </div>
           </div>
           <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-gray-100">
@@ -500,28 +522,28 @@ export default function DashboardOverview() {
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-black text-gray-900">Store health</h3>
+          <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.storeHealth')}</h3>
           <div className="mt-5 space-y-3">
             <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><ShieldCheck className="h-4 w-4 text-gray-400" /> Verification</span>
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><ShieldCheck className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.verification')}</span>
               <span className={`rounded-full px-3 py-1 text-xs font-black ${verification?.status === 'approved' || store?.is_verified ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'}`}>
-                {verification?.status === 'approved' || store?.is_verified ? 'Approved' : verification?.status || 'Not submitted'}
+                {verification?.status === 'approved' || store?.is_verified ? t('dashboardPages.overview.approved') : verification?.status || t('dashboardPages.overview.notSubmitted')}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><CreditCard className="h-4 w-4 text-gray-400" /> Payments</span>
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><CreditCard className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.payments')}</span>
               <span className={`rounded-full px-3 py-1 text-xs font-black ${store?.payment_config ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>
-                {store?.payment_config ? 'Configured' : 'Marketplace default'}
+                {store?.payment_config ? t('dashboardPages.overview.configured') : t('dashboardPages.overview.marketplaceDefault')}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><Settings className="h-4 w-4 text-gray-400" /> Store status</span>
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">{store?.status || 'active'}</span>
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><Settings className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.storeStatus')}</span>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">{store?.status ? storeStatusLabel(store.status) : t('dashboardPages.common.active')}</span>
             </div>
             {completedSetupSteps < setupSteps.length && (
               <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
                 <AlertCircle className="mb-2 h-4 w-4" />
-                Finish the remaining setup steps to improve buyer trust and conversion.
+                {t('dashboardPages.overview.finishSetupHint')}
               </div>
             )}
           </div>
@@ -533,8 +555,8 @@ export default function DashboardOverview() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-black text-gray-900">Sales (30 days)</h3>
-              <p className="mt-0.5 text-xs text-gray-400">{totalOrders30d} orders • {formatPrice(totalRevenue30d)}</p>
+              <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.sales30Days')}</h3>
+              <p className="mt-0.5 text-xs text-gray-400">{t('dashboardPages.overview.ordersAndRevenue', { count: totalOrders30d, revenue: formatPrice(totalRevenue30d) })}</p>
             </div>
             <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-bold text-[#B91C1C]">
               <TrendingUp className="h-4 w-4" />
@@ -557,7 +579,7 @@ export default function DashboardOverview() {
                     <div
                       key={day.date}
                       className="flex h-full flex-1 items-end group relative"
-                      title={`${day.date}: ${formatPrice(day.total)} (${day.count} orders)`}
+                      title={t('dashboardPages.overview.chartBarTitle', { date: day.date, amount: formatPrice(day.total), count: day.count })}
                     >
                       <div
                         className={`w-full rounded-t-sm transition-all duration-300 ${
@@ -570,9 +592,9 @@ export default function DashboardOverview() {
                       {/* Tooltip on hover */}
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                         <div className="bg-gray-900 text-white text-xs rounded-xl px-3 py-2 whitespace-nowrap shadow-xl">
-                          <p className="font-bold">{new Date(day.date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</p>
+                          <p className="font-bold">{new Date(day.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</p>
                           <p className="text-[#B91C1C] font-black">{formatPrice(day.total)}</p>
-                          <p className="text-gray-400">{day.count} order{day.count !== 1 ? 's' : ''}</p>
+                          <p className="text-gray-400">{t('dashboardPages.overview.ordersCount', { count: day.count })}</p>
                         </div>
                       </div>
                     </div>
@@ -581,9 +603,9 @@ export default function DashboardOverview() {
               </div>
               {/* X-axis labels */}
               <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
-                <span>{salesData[0] && new Date(salesData[0].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
-                <span>{salesData[14] && new Date(salesData[14].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' })}</span>
-                <span>Today</span>
+                <span>{salesData[0] && new Date(salesData[0].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
+                <span>{salesData[14] && new Date(salesData[14].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
+                <span>{t('dashboardPages.overview.today')}</span>
               </div>
             </>
           )}
@@ -592,8 +614,8 @@ export default function DashboardOverview() {
         {/* Recent Orders */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-gray-900">Recent Orders</h3>
-            <Link href="/hub/dashboard/orders" className="text-xs font-bold text-[#B91C1C] hover:underline">View all →</Link>
+            <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.recentOrders')}</h3>
+            <Link href="/hub/dashboard/orders" className="text-xs font-bold text-[#B91C1C] hover:underline">{t('dashboardPages.overview.viewAll')} →</Link>
           </div>
           {loading ? (
             <div className="space-y-4">
@@ -610,7 +632,7 @@ export default function DashboardOverview() {
           ) : recentOrders.length > 0 ? (
             <ul className="space-y-3">
               {recentOrders.map((order) => {
-                const statusInfo = ORDER_STATUS_COLORS[order.status] || { bg: 'bg-gray-100', text: 'text-gray-600', label: order.status };
+                const statusInfo = ORDER_STATUS_COLORS[order.status] || { bg: 'bg-gray-100', text: 'text-gray-600' };
                 return (
                   <li key={order.id}>
                     <Link href={`/hub/dashboard/orders/${order.id}`} className="flex items-center justify-between rounded-xl p-3 transition-all hover:bg-gray-50 group">
@@ -620,16 +642,16 @@ export default function DashboardOverview() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-[#B91C1C] transition-colors">
-                            {order.customer_email || 'Customer'}
+                            {order.customer_email || t('dashboardPages.overview.customer')}
                           </p>
                           <p className="text-[11px] text-gray-400">
-                            {new Date(order.created_at).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {new Date(order.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusInfo.bg} ${statusInfo.text}`}>
-                          {statusInfo.label}
+                          {orderStatusLabel(order.status)}
                         </span>
                         <span className="text-sm font-black text-gray-900">{formatPrice(getOrderTotal(order))}</span>
                       </div>
@@ -641,8 +663,8 @@ export default function DashboardOverview() {
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <ShoppingCart className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm font-semibold text-gray-400">No orders yet</p>
-              <p className="mt-1 text-xs text-gray-300">Orders will appear here when customers purchase</p>
+              <p className="text-sm font-semibold text-gray-400">{t('dashboardPages.overview.noOrders')}</p>
+              <p className="mt-1 text-xs text-gray-300">{t('dashboardPages.overview.noOrdersHint')}</p>
             </div>
           )}
         </div>
