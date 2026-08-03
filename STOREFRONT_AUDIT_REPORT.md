@@ -429,3 +429,109 @@ Same fix applied to admin stores page.
 | 2 | `98e83db` | 5 P0/P1 bugs (View Storefront redirect, domain fallback, footer blocks UI) |
 | 3 | `576d2fe`-`0f5aa7a` | 4 P0/P1 bugs (wallet retention, ReferenceSelector, mega menu, partial i18n) |
 | 4 | `82ea167`-`5f3a93d` | 2 P0 bugs (ReferenceSelector cache fix, complete dashboard i18n) |
+| 5 | `26c7c03`-`da2a87f` | Render deploy failures, Redis timeout, wallet retention, View Storefront URL |
+| 6 | `ee5f42a`-`9842864` | select-store i18n/domain, ReferenceSelector i18n, settings/online-store i18n, ThemeCustomizer i18n |
+
+---
+
+## Round 6 Issues Found & Fixed (commits `ee5f42a`–`9842864`)
+
+### P1-9: select-store Page — Missing i18n Keys + Wrong Domain + Wrong Link
+**Files:** `frontend/src/app/hub/dashboard/select-store/page.tsx`, `frontend/src/i18n/messages/{fr,en,ar}.json`
+
+**Bugs:**
+1. Domain suffix hardcoded as `.pandamarket` instead of using `getMarketplaceDomain()` (shows `atelier-medina.pandamarket` instead of `atelier-medina.garbage.team`)
+2. "View Store" link pointed to `/store/${subdomain}` (marketplace path) instead of the actual storefront URL
+3. 15+ nested i18n keys completely missing from all 3 languages:
+   - `selectStore.status.*` (verified, unverified, pending, suspended, rejected, active)
+   - `selectStore.sellerType.*` (retailer, wholesaler, hybrid, dropshipper, manufacturer)
+   - `selectStore.plan.*` (free, regular, agency, pro, golden, platinum, starter, business, premium)
+
+**Fix:**
+- Replaced `.pandamarket` with `getMarketplaceDomain()` (from `store-hosts.ts`)
+- Replaced `/store/${subdomain}` link with `getStorefrontUrl()` helper
+- Added all 15+ missing nested i18n keys to fr/en/ar
+
+### P1-10: webhooks.events — String Corruption + Missing Event Keys
+**Files:** `frontend/src/app/hub/dashboard/webhooks/page.tsx`, i18n JSON files
+
+**Bug:** The `dashboardPages.webhooks.events` key was a STRING (`"Événements"`) but the code accessed it as an OBJECT (`events.${event.key}.label`). This caused:
+- Line 245: `t('dashboardPages.webhooks.events')` worked (returned "Événements")
+- Lines 264/267: `t('dashboardPages.webhooks.events.orderPlaced.label')` returned raw key string
+
+**Fix:**
+- Renamed the string label to `eventsLabel` (new key)
+- Replaced `events` with an object containing 7 event types (orderPlaced, orderFulfilled, orderCancelled, paymentCaptured, productCreated, productPublished, stockLow), each with `label` and `desc` sub-keys
+- Updated line 245 to use `eventsLabel` instead of `events`
+
+### P1-11: ReferenceSelector — Hardcoded French + Missing key Prop
+**Files:** `frontend/src/components/dashboard/ReferenceSelector.tsx`, `frontend/src/app/hub/dashboard/online-store/navigation/page.tsx`
+
+**Bugs:**
+1. All UI text hardcoded in French (placeholders, empty labels, loading text, "Sélectionner…")
+2. `key` prop was on the wrapping `<div>`, not directly on `<ReferenceSelector>` — React might not remount correctly in all cases
+
+**Fix:**
+- Added `useLocale()` to ReferenceSelector
+- Replaced all hardcoded French with `t()` calls (10 new i18n keys)
+- Added `key={item.type}` directly on `<ReferenceSelector>` component
+
+### P1-12: Additional Missing i18n Keys
+**Files:** i18n JSON files (fr/en/ar)
+
+**Bugs:** Multiple dynamic `t()` calls referenced keys that didn't exist:
+- `reportDetail.statuses.*` (open, investigating, awaiting_buyer, awaiting_seller, resolved, dismissed + 4 extra)
+- `subscription.gateway.*` (flouci, konnect, paypal, manual_mandat, cod — each with .name and .desc)
+- `ai.copyFields.*` (seo_title, seo_description, hero_title, cta)
+
+**Fix:** Added all missing keys with fr/en/ar translations.
+
+### P1-13: Settings Page — 30+ Hardcoded French Strings
+**File:** `frontend/src/app/hub/dashboard/settings/page.tsx`
+
+**Bug:** Error messages, feedback messages, button labels, tab labels, and placeholders were all hardcoded in French:
+- `'Erreur réseau'` (10+ occurrences)
+- `'Domaine ajouté ! Configuration DNS disponible ci-dessous.'`
+- `'Boutique mise hors-ligne (mode maintenance).'`
+- `'Ajouter le domaine'`, `'Confirmer l'achat'`, `'Sauvegarder'`, etc.
+
+**Fix:** Replaced all 30+ hardcoded strings with `t()` calls. Added 33 new i18n keys.
+
+### P1-14: Online-Store Page — 4 Hardcoded French Strings
+**File:** `frontend/src/app/hub/dashboard/online-store/page.tsx`
+
+**Fix:** Replaced maintenance mode, published, error, and network error messages with `t()` calls.
+
+### P1-15: ThemeCustomizer + UnsavedChangesBanner — Hardcoded French
+**Files:** `frontend/src/components/dashboard/ThemeCustomizer.tsx`, `frontend/src/components/dashboard/UnsavedChangesBanner.tsx`
+
+**Fix:** Added `useLocale()` to both components. Replaced save/saving/saved/cancel/unsavedChanges strings with `t()` calls using `common.*` namespace.
+
+### P1-16: Domain Suffix in create-store + PageBuilderEditor
+**Files:** `frontend/src/app/hub/dashboard/create-store/page.tsx`, `frontend/src/components/page-builder/PageBuilderEditor.tsx`
+
+**Bug:** Both showed `.pandamarket` as the domain suffix instead of using the configurable domain.
+
+**Fix:** Replaced with `getMarketplaceDomain()` from `store-hosts.ts`.
+
+### Round 6 Validation
+- Frontend type-check: ✅ pass (all commits)
+- Vercel deploy: ✅ READY (commit `9842864`)
+- Render deploy: ✅ LIVE (commit `9842864`)
+- Total new i18n keys added: 85+ across fr/en/ar
+- All seller dashboard pages now have `useLocale()` ✅
+- No remaining `.pandamarket` domain references in source code ✅
+
+---
+
+## Remaining Known Issues (Not Yet Fixed)
+
+1. **Storefront component i18n**: Storefront-facing components (AddToCartButton, CatalogControls, ProductDescription, ReviewSection, etc.) use a different locale pattern (server-side props, not `useLocale()`). These have ~39 hardcoded French strings. Fixing requires either adding `LocaleProvider` to the storefront layout or converting each component to accept a `locale` prop.
+
+2. **StorefrontHeader hardcoded aria-labels**: `'Fermer le menu'` / `'Ouvrir le menu'` in aria-labels (2 strings).
+
+3. **Admin settings page** (`(admin)/settings/page.tsx`): Uses `renderTextInput('key', 'Hardcoded English Label', 'placeholder')` pattern — labels are hardcoded English, not `t()` calls. This is the super admin dashboard, not the seller dashboard.
+
+4. **109 tables with RLS disabled**: Security advisory — do NOT auto-enable RLS without policies.
+
+5. **Mega menu**: Already functional — StorefrontHeader renders mega menu when a header menu item has 6+ children. The navigation page supports adding child items via `addChildToTree()`. The user may need guidance on how to use this feature.
