@@ -1351,7 +1351,29 @@
       "uploadReceiptStep1": "1. رفع صورة / PDF الإيصال",
       "orUrlStep2": "أو 2. رابط / URL الإثبات",
       "uploading": "جارٍ الرفع...",
-      "sending": "جارٍ الإرسال..."
+      "sending": "جارٍ الإرسال...",
+      "gateway": {
+        "flouci": {
+          "name": "Flouci",
+          "desc": "دفع إلكتروني عبر Flouci."
+        },
+        "konnect": {
+          "name": "Konnect",
+          "desc": "دفع إلكتروني عبر Konnect."
+        },
+        "paypal": {
+          "name": "PayPal",
+          "desc": "دفع دولي عبر PayPal."
+        },
+        "manual_mandat": {
+          "name": "Mandat Minute",
+          "desc": "حوالة بريدية تونسية."
+        },
+        "cod": {
+          "name": "الدفع عند الاستلام",
+          "desc": "يدفع العميل عند استلام الطلب."
+        }
+      }
     },
     "support": {
       "title": "تذاكر الدعم",
@@ -1743,7 +1765,22 @@
       "defaultBodyAttachments": "تمت إضافة المرفقات.",
       "errorSendFailed": "فشل إرسال الرد",
       "feedbackResponseSent": "تم إرسال الرد إلى السوق.",
-      "feedbackSendFailed": "فشل الإرسال"
+      "feedbackSendFailed": "فشل الإرسال",
+      "statuses": {
+        "open": "مفتوح",
+        "investigating": "قيد التحقيق",
+        "awaiting_buyer": "بانتظار المشتري",
+        "awaiting_seller": "بانتظار البائع",
+        "resolved": "تم حله",
+        "dismissed": "مرفوض",
+        "pending": "قيد الانتظار",
+        "approved": "موافق عليه",
+        "rejected": "مرفوض",
+        "closed": "مغلق",
+        "in_progress": "قيد التنفيذ",
+        "reviewing": "قيد المراجعة",
+        "resolved_status": "تم حله"
+      }
     },
     "selectStore": {
       "badge": "محدد المتجر",
@@ -1760,7 +1797,34 @@
       "viewStore": "عرض المتجر",
       "createAnother": "إنشاء متجر آخر",
       "errorLoadStores": "فشل تحميل المتاجر",
-      "errorSelectStore": "فشل تحديد المتجر"
+      "errorSelectStore": "فشل تحديد المتجر",
+      "status": {
+        "verified": "موثقة",
+        "unverified": "غير موثقة",
+        "pending": "قيد الانتظار",
+        "suspended": "معلقة",
+        "rejected": "مرفوضة",
+        "active": "نشطة"
+      },
+      "sellerType": {
+        "retailer": "تاجر تجزئة",
+        "wholesaler": "تاجر جملة",
+        "wholesale": "جملة",
+        "hybrid": "هجين",
+        "dropshipper": "دروب شيبير",
+        "manufacturer": "مُصنّع"
+      },
+      "plan": {
+        "free": "مجاني",
+        "starter": "ستارتر",
+        "regular": "عادي",
+        "business": "أعمال",
+        "agency": "وكالة",
+        "pro": "احترافي",
+        "premium": "بريميوم",
+        "golden": "ذهبي",
+        "platinum": "بلاتيني"
+      }
     },
     "paymentMethod": {
       "title": "تحديث وسيلة الدفع",
@@ -1787,7 +1851,6 @@
       "signingSecretDesc": "انسخ هذا السر الآن. يُعرض مرة واحدة فقط ويُستخدم للتحقق من X-PD-Signature.",
       "newWebhook": "خطاط ويب جديد",
       "endpointUrl": "عنوان الـ endpoint",
-      "events": "الأحداث",
       "createWebhook": "إنشاء خطاط الويب",
       "cancel": "إلغاء",
       "noWebhooks": "لا توجد خطاطات ويب مكوّنة",
@@ -1821,7 +1884,38 @@
       "eventProductPublishedLabel": "تم نشر المنتج",
       "eventProductPublishedDesc": "عند نشر منتج",
       "eventStockLowLabel": "مخزون منخفض",
-      "eventStockLowDesc": "عند انخفاض مخزون المنتج تحت الحد الأدنى"
+      "eventStockLowDesc": "عند انخفاض مخزون المنتج تحت الحد الأدنى",
+      "eventsLabel": "الأحداث",
+      "events": {
+        "orderPlaced": {
+          "label": "طلب جديد",
+          "desc": "يُطلق عندما يضع العميل طلباً."
+        },
+        "orderFulfilled": {
+          "label": "طلب مكتمل",
+          "desc": "يُطلق عند شحن/تسليم الطلب."
+        },
+        "orderCancelled": {
+          "label": "طلب ملغى",
+          "desc": "يُطلق عند إلغاء الطلب."
+        },
+        "paymentCaptured": {
+          "label": "تم التقاط الدفع",
+          "desc": "يُطلق عند تأكيد الدفع."
+        },
+        "productCreated": {
+          "label": "منتج منشأ",
+          "desc": "يُطلق عند إضافة منتج جديد."
+        },
+        "productPublished": {
+          "label": "منتج منشور",
+          "desc": "يُطلق عند نشر المنتج."
+        },
+        "stockLow": {
+          "label": "مخزون منخفض",
+          "desc": "يُطلق عند انخفاض مخزون المنتج."
+        }
+      }
     },
     "ai": {
       "title": "أدوات الذكاء الاصطناعي",
@@ -1912,7 +2006,13 @@
       "statusQueued": "في الانتظار",
       "statusProcessing": "قيد المعالجة",
       "statusCompleted": "مكتمل",
-      "statusFailed": "فشل"
+      "statusFailed": "فشل",
+      "copyFields": {
+        "seo_title": "عنوان SEO",
+        "seo_description": "وصف SEO",
+        "hero_title": "عنوان البطل",
+        "cta": "دعوة لاتخاذ إجراء"
+      }
     }
   },
   "wallet": {

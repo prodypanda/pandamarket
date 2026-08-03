@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { normalizePublicAssetUrl } from '@/lib/public-assets';
+import { getMarketplaceDomain } from '@/lib/store-hosts';
 import 'grapesjs/dist/css/grapes.min.css';
 /**
  * PageBuilderEditor — GrapesJS integration for PandaMarket vendor dashboard.
@@ -3508,7 +3509,7 @@ export function PageBuilderEditor({
                 <div className="p-3">
                   <p className="truncate text-xs font-bold text-[#1A1A2E]">{pageSettings.seo_title || initialData?.title || 'Titre de page'}</p>
                   <p className="mt-1 line-clamp-2 text-[11px] text-[#7C7468]">{pageSettings.seo_description || 'Description SEO affichée dans les partages sociaux.'}</p>
-                  <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-wider text-[#8A6F3D]">{storeHost || 'boutique'}.pandamarket</p>
+                  <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-wider text-[#8A6F3D]">{storeHost || 'boutique'}.{getMarketplaceDomain()}</p>
                 </div>
               </div>
             </details>

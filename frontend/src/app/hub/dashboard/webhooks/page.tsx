@@ -242,7 +242,7 @@ export default function WebhooksPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('dashboardPages.webhooks.events')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('dashboardPages.webhooks.eventsLabel')}</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {AVAILABLE_EVENTS.map((event) => (
                 <label

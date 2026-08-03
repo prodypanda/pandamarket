@@ -1351,7 +1351,29 @@
       "uploadReceiptStep1": "1. Upload receipt image / PDF",
       "orUrlStep2": "OR 2. Link / URL of the proof",
       "uploading": "Uploading...",
-      "sending": "Sending..."
+      "sending": "Sending...",
+      "gateway": {
+        "flouci": {
+          "name": "Flouci",
+          "desc": "Online payment via Flouci."
+        },
+        "konnect": {
+          "name": "Konnect",
+          "desc": "Online payment via Konnect."
+        },
+        "paypal": {
+          "name": "PayPal",
+          "desc": "International payment via PayPal."
+        },
+        "manual_mandat": {
+          "name": "Mandat Minute",
+          "desc": "Tunisian postal money order transfer."
+        },
+        "cod": {
+          "name": "Cash on Delivery",
+          "desc": "Customer pays upon receiving the order."
+        }
+      }
     },
     "support": {
       "title": "Support tickets",
@@ -1743,7 +1765,22 @@
       "defaultBodyAttachments": "Attachments added.",
       "errorSendFailed": "Failed to send response",
       "feedbackResponseSent": "Response sent to marketplace.",
-      "feedbackSendFailed": "Send failed"
+      "feedbackSendFailed": "Send failed",
+      "statuses": {
+        "open": "Open",
+        "investigating": "Investigating",
+        "awaiting_buyer": "Awaiting Buyer",
+        "awaiting_seller": "Awaiting Seller",
+        "resolved": "Resolved",
+        "dismissed": "Dismissed",
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "closed": "Closed",
+        "in_progress": "In Progress",
+        "reviewing": "Reviewing",
+        "resolved_status": "Resolved"
+      }
     },
     "selectStore": {
       "badge": "Store selector",
@@ -1760,7 +1797,34 @@
       "viewStore": "View store",
       "createAnother": "Create another store",
       "errorLoadStores": "Failed to load stores",
-      "errorSelectStore": "Failed to select store"
+      "errorSelectStore": "Failed to select store",
+      "status": {
+        "verified": "Verified",
+        "unverified": "Unverified",
+        "pending": "Pending",
+        "suspended": "Suspended",
+        "rejected": "Rejected",
+        "active": "Active"
+      },
+      "sellerType": {
+        "retailer": "Retailer",
+        "wholesaler": "Wholesaler",
+        "wholesale": "Wholesale",
+        "hybrid": "Hybrid",
+        "dropshipper": "Dropshipper",
+        "manufacturer": "Manufacturer"
+      },
+      "plan": {
+        "free": "Free",
+        "starter": "Starter",
+        "regular": "Regular",
+        "business": "Business",
+        "agency": "Agency",
+        "pro": "Pro",
+        "premium": "Premium",
+        "golden": "Golden",
+        "platinum": "Platinum"
+      }
     },
     "paymentMethod": {
       "title": "Payment Method Update",
@@ -1787,7 +1851,6 @@
       "signingSecretDesc": "Copy this secret now. It is shown only once and is used to verify X-PD-Signature.",
       "newWebhook": "New Webhook",
       "endpointUrl": "Endpoint URL",
-      "events": "Events",
       "createWebhook": "Create Webhook",
       "cancel": "Cancel",
       "noWebhooks": "No webhooks configured",
@@ -1821,7 +1884,38 @@
       "eventProductPublishedLabel": "Product Published",
       "eventProductPublishedDesc": "When a product is published",
       "eventStockLowLabel": "Stock Low",
-      "eventStockLowDesc": "When product stock falls below threshold"
+      "eventStockLowDesc": "When product stock falls below threshold",
+      "eventsLabel": "Events",
+      "events": {
+        "orderPlaced": {
+          "label": "Order Placed",
+          "desc": "Triggered when a customer places an order."
+        },
+        "orderFulfilled": {
+          "label": "Order Fulfilled",
+          "desc": "Triggered when the order is shipped/delivered."
+        },
+        "orderCancelled": {
+          "label": "Order Cancelled",
+          "desc": "Triggered when an order is cancelled."
+        },
+        "paymentCaptured": {
+          "label": "Payment Captured",
+          "desc": "Triggered when a payment is confirmed."
+        },
+        "productCreated": {
+          "label": "Product Created",
+          "desc": "Triggered when a new product is added."
+        },
+        "productPublished": {
+          "label": "Product Published",
+          "desc": "Triggered when a product goes live."
+        },
+        "stockLow": {
+          "label": "Low Stock",
+          "desc": "Triggered when a product stock is low."
+        }
+      }
     },
     "ai": {
       "title": "AI Tools",
@@ -1912,7 +2006,13 @@
       "statusQueued": "Queued",
       "statusProcessing": "Processing",
       "statusCompleted": "Completed",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "copyFields": {
+        "seo_title": "SEO Title",
+        "seo_description": "SEO Description",
+        "hero_title": "Hero Title",
+        "cta": "Call to Action"
+      }
     }
   },
   "wallet": {

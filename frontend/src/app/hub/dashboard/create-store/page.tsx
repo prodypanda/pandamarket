@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, Store } from 'lucide-react';
 import { getSellerTypeOptions, type SellerTypeValue } from '@/lib/seller-type';
 import { useLocale } from '../../../../contexts/LocaleContext';
+import { getMarketplaceDomain } from '@/lib/store-hosts';
 
 function slugify(value: string) {
   return value
@@ -145,7 +146,7 @@ export default function CreateStorePage() {
                 placeholder="my-second-store"
                 required
               />
-              <span className="border-l border-gray-200 px-4 py-3 text-sm font-black text-gray-400">.pandamarket</span>
+              <span className="border-l border-gray-200 px-4 py-3 text-sm font-black text-gray-400">.{getMarketplaceDomain()}</span>
             </div>
           </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, Plus, Store, ExternalLink, ReceiptText } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { getMarketplaceDomain, getStorefrontUrl } from '@/lib/store-hosts';
 
 interface SellerStore {
   id: string;
@@ -142,7 +143,7 @@ export default function SelectStorePage() {
                   )}
                 </div>
                 <h2 className="mt-4 text-xl font-black text-gray-900">{store.name}</h2>
-                <p className="mt-1 text-sm font-semibold text-gray-500">{store.subdomain ? `${store.subdomain}.pandamarket` : store.custom_domain || t('dashboardPages.selectStore.storefrontFallback')}</p>
+                <p className="mt-1 text-sm font-semibold text-gray-500">{store.custom_domain ? store.custom_domain : store.subdomain ? `${store.subdomain}.${getMarketplaceDomain()}` : t('dashboardPages.selectStore.storefrontFallback')}</p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs font-black capitalize">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{t(`dashboardPages.selectStore.status.${store.status || 'unverified'}`)}</span>
                   <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700">{t(`dashboardPages.selectStore.sellerType.${store.seller_type || 'retailer'}`)}</span>
@@ -158,9 +159,11 @@ export default function SelectStorePage() {
                     {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                     {t('dashboardPages.selectStore.manage')}
                   </button>
-                  {store.subdomain && (
+                  {(store.subdomain || store.custom_domain) && (
                     <Link
-                      href={`/store/${encodeURIComponent(store.subdomain)}`}
+                      href={getStorefrontUrl({ subdomain: store.subdomain, customDomain: store.custom_domain })}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-700 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
                     >
                       <ExternalLink className="h-4 w-4" />

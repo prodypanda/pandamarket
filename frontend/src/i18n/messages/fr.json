@@ -1351,7 +1351,29 @@
       "uploadReceiptStep1": "1. Téléverser l'image / PDF du reçu",
       "orUrlStep2": "OU 2. Lien / URL du justificatif",
       "uploading": "Téléversement...",
-      "sending": "Envoi..."
+      "sending": "Envoi...",
+      "gateway": {
+        "flouci": {
+          "name": "Flouci",
+          "desc": "Paiement en ligne via Flouci."
+        },
+        "konnect": {
+          "name": "Konnect",
+          "desc": "Paiement en ligne via Konnect."
+        },
+        "paypal": {
+          "name": "PayPal",
+          "desc": "Paiement international via PayPal."
+        },
+        "manual_mandat": {
+          "name": "Mandat Minute",
+          "desc": "Virement par mandat postal tunisien."
+        },
+        "cod": {
+          "name": "Paiement à la livraison",
+          "desc": "Le client paie à la réception de la commande."
+        }
+      }
     },
     "support": {
       "title": "Tickets de support",
@@ -1743,7 +1765,22 @@
       "defaultBodyAttachments": "Pièces jointes ajoutées.",
       "errorSendFailed": "Échec de l'envoi de la réponse",
       "feedbackResponseSent": "Réponse envoyée à la marketplace.",
-      "feedbackSendFailed": "Échec de l'envoi"
+      "feedbackSendFailed": "Échec de l'envoi",
+      "statuses": {
+        "open": "Ouvert",
+        "investigating": "En cours d’enquête",
+        "awaiting_buyer": "En attente acheteur",
+        "awaiting_seller": "En attente vendeur",
+        "resolved": "Résolu",
+        "dismissed": "Classé",
+        "pending": "En attente",
+        "approved": "Approuvé",
+        "rejected": "Rejeté",
+        "closed": "Fermé",
+        "in_progress": "En cours",
+        "reviewing": "En cours de révision",
+        "resolved_status": "Résolu"
+      }
     },
     "selectStore": {
       "badge": "Sélecteur de boutique",
@@ -1760,7 +1797,34 @@
       "viewStore": "Voir la boutique",
       "createAnother": "Créer une autre boutique",
       "errorLoadStores": "Échec du chargement des boutiques",
-      "errorSelectStore": "Échec de la sélection de la boutique"
+      "errorSelectStore": "Échec de la sélection de la boutique",
+      "status": {
+        "verified": "Vérifiée",
+        "unverified": "Non vérifiée",
+        "pending": "En attente",
+        "suspended": "Suspendue",
+        "rejected": "Rejetée",
+        "active": "Active"
+      },
+      "sellerType": {
+        "retailer": "Détaillant",
+        "wholesaler": "Grossiste",
+        "wholesale": "Grossiste",
+        "hybrid": "Hybride",
+        "dropshipper": "Dropshipper",
+        "manufacturer": "Fabricant"
+      },
+      "plan": {
+        "free": "Gratuit",
+        "starter": "Starter",
+        "regular": "Régulier",
+        "business": "Business",
+        "agency": "Agence",
+        "pro": "Pro",
+        "premium": "Premium",
+        "golden": "Golden",
+        "platinum": "Platinum"
+      }
     },
     "paymentMethod": {
       "title": "Mise à jour du Moyen de Paiement",
@@ -1787,7 +1851,6 @@
       "signingSecretDesc": "Copiez ce secret maintenant. Il n'est affiché qu'une seule fois et sert à vérifier X-PD-Signature.",
       "newWebhook": "Nouveau webhook",
       "endpointUrl": "URL de l'endpoint",
-      "events": "Événements",
       "createWebhook": "Créer le webhook",
       "cancel": "Annuler",
       "noWebhooks": "Aucun webhook configuré",
@@ -1821,7 +1884,38 @@
       "eventProductPublishedLabel": "Produit publié",
       "eventProductPublishedDesc": "Lorsqu'un produit est publié",
       "eventStockLowLabel": "Stock faible",
-      "eventStockLowDesc": "Lorsque le stock d'un produit descend sous le seuil"
+      "eventStockLowDesc": "Lorsque le stock d'un produit descend sous le seuil",
+      "eventsLabel": "Événements",
+      "events": {
+        "orderPlaced": {
+          "label": "Commande passée",
+          "desc": "Déclenché lorsqu'un client passe une commande."
+        },
+        "orderFulfilled": {
+          "label": "Commande honorée",
+          "desc": "Déclenché lorsque la commande est expédiée/livrée."
+        },
+        "orderCancelled": {
+          "label": "Commande annulée",
+          "desc": "Déclenché lorsqu’une commande est annulée."
+        },
+        "paymentCaptured": {
+          "label": "Paiement capturé",
+          "desc": "Déclenché lorsqu’un paiement est confirmé."
+        },
+        "productCreated": {
+          "label": "Produit créé",
+          "desc": "Déclenché lorsqu’un nouveau produit est ajouté."
+        },
+        "productPublished": {
+          "label": "Produit publié",
+          "desc": "Déclenché lorsqu’un produit est mis en ligne."
+        },
+        "stockLow": {
+          "label": "Stock faible",
+          "desc": "Déclenché lorsque le stock d’un produit est bas."
+        }
+      }
     },
     "ai": {
       "title": "Outils IA",
@@ -1912,7 +2006,13 @@
       "statusQueued": "En attente",
       "statusProcessing": "En cours",
       "statusCompleted": "Terminé",
-      "statusFailed": "Échoué"
+      "statusFailed": "Échoué",
+      "copyFields": {
+        "seo_title": "Titre SEO",
+        "seo_description": "Description SEO",
+        "hero_title": "Titre Hero",
+        "cta": "Appel à l’action"
+      }
     }
   },
   "wallet": {
