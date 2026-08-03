@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import { fetchWithCsrf } from '@/lib/api';
 import { Check, Copy, ExternalLink, ImageIcon, Loader2, Search, UploadCloud, X } from 'lucide-react';
 import Link from 'next/link';
@@ -45,6 +46,8 @@ function formatBytes(value: number) {
 }
 
 export default function SellerMediaPage() {
+  const { t, locale } = useLocale();
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -73,15 +76,15 @@ export default function SellerMediaPage() {
     setError('');
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me/media?limit=100', { credentials: 'include' });
-      if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load media'));
+      if (!res.ok) throw new Error(await getErrorMessage(res, t('dashboardPages.media.errorLoadMedia')));
       const data = await res.json();
       setMediaItems(data.data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load media');
+      setError(err instanceof Error ? err.message : t('dashboardPages.media.errorLoadMedia'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchMediaItems();
@@ -104,8 +107,8 @@ export default function SellerMediaPage() {
     setError('');
     try {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) throw new Error('Please upload a JPG, PNG, or WebP image.');
-      if (file.size > 10 * 1024 * 1024) throw new Error('Image must be smaller than 10 MB.');
+      if (!allowedTypes.includes(file.type)) throw new Error(t('dashboardPages.media.errorInvalidType'));
+      if (file.size > 10 * 1024 * 1024) throw new Error(t('dashboardPages.media.errorTooLarge'));
 
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
         method: 'POST',
@@ -113,21 +116,21 @@ export default function SellerMediaPage() {
         credentials: 'include',
         body: JSON.stringify({ filename: file.name, content_type: file.type, file_size: file.size, purpose: 'product_image' }),
       });
-      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Failed to prepare upload'));
+      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, t('dashboardPages.media.errorPrepareUpload')));
       const data = await presignRes.json();
-      if (!data.upload_url || !data.public_url) throw new Error('Upload URL was not returned by the server.');
+      if (!data.upload_url || !data.public_url) throw new Error(t('dashboardPages.media.errorNoUploadUrl'));
 
       const uploadRes = await fetch(data.upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
       });
-      if (!uploadRes.ok) throw new Error('Image upload failed.');
+      if (!uploadRes.ok) throw new Error(t('dashboardPages.media.errorUploadFailed'));
 
       await fetchMediaItems();
-      showFeedback('Image uploaded to your media library.');
+      showFeedback(t('dashboardPages.media.successUploaded'));
     } catch (err) {
-      showFeedback(err instanceof Error ? err.message : 'Image upload failed', true);
+      showFeedback(err instanceof Error ? err.message : t('dashboardPages.media.errorUploadFailed'), true);
     } finally {
       setUploading(false);
     }
@@ -137,12 +140,14 @@ export default function SellerMediaPage() {
     try {
       await navigator.clipboard.writeText(url);
       setCopiedUrl(url);
-      showFeedback('Media URL copied.');
+      showFeedback(t('dashboardPages.media.successUrlCopied'));
       window.setTimeout(() => setCopiedUrl(''), 1500);
     } catch {
-      showFeedback('Could not copy URL automatically.', true);
+      showFeedback(t('dashboardPages.media.errorCopyFailed'), true);
     }
   };
+
+  void dateLocale;
 
   return (
     <div className="space-y-6">
@@ -151,16 +156,16 @@ export default function SellerMediaPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
               <ImageIcon className="h-4 w-4" />
-              Store media library
+              {t('dashboardPages.media.storeMediaLibrary')}
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight">Media</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight">{t('dashboardPages.media.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-50/80">
-              Upload and reuse store images for products, categories, logos, marketplace headers, and storefront content.
+              {t('dashboardPages.media.description')}
             </p>
           </div>
           <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-amber-50">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-            {uploading ? 'Uploading...' : 'Upload image'}
+            {uploading ? t('dashboardPages.media.uploading') : t('dashboardPages.media.uploadImage')}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -180,15 +185,15 @@ export default function SellerMediaPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-gray-400">Total media</p>
+          <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.totalMedia')}</p>
           <p className="mt-2 text-3xl font-black text-gray-900">{mediaItems.length}</p>
         </div>
         <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-gray-400">Product images</p>
+          <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.productImages')}</p>
           <p className="mt-2 text-3xl font-black text-gray-900">{productLinkedCount}</p>
         </div>
         <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-gray-400">Standalone assets</p>
+          <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.standaloneAssets')}</p>
           <p className="mt-2 text-3xl font-black text-gray-900">{standaloneCount}</p>
         </div>
       </div>
@@ -199,7 +204,7 @@ export default function SellerMediaPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search images by product, filename, or URL"
+            placeholder={t('dashboardPages.media.searchPlaceholder')}
             className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
           />
         </div>
@@ -212,8 +217,8 @@ export default function SellerMediaPage() {
       ) : filteredItems.length === 0 ? (
         <div className="rounded-[2rem] border border-dashed border-gray-200 bg-white px-6 py-16 text-center text-gray-500">
           <ImageIcon className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-          <p className="font-bold">No media found.</p>
-          <p className="mt-1 text-sm">Upload your first image or clear the current search.</p>
+          <p className="font-bold">{t('dashboardPages.media.noMedia')}</p>
+          <p className="mt-1 text-sm">{t('dashboardPages.media.noMediaSubtitle')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
@@ -241,7 +246,7 @@ export default function SellerMediaPage() {
                     className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-200"
                   >
                     {copiedUrl === item.url ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    Copy
+                    {t('dashboardPages.media.copy')}
                   </button>
                   <Link
                     href={item.url}
@@ -262,7 +267,7 @@ export default function SellerMediaPage() {
           <div className="w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
-                <h2 className="text-lg font-black text-gray-900">Media details</h2>
+                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.media.mediaDetails')}</h2>
                 <p className="text-xs font-semibold text-gray-500">{filenameFromUrl(selectedItem.url)}</p>
               </div>
               <button type="button" onClick={() => setSelectedItem(null)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
@@ -280,15 +285,15 @@ export default function SellerMediaPage() {
               </div>
               <div className="space-y-4 p-6">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">Title</p>
-                  <p className="mt-1 break-words text-sm font-bold text-gray-900">{selectedItem.product_title || 'Standalone asset'}</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.titleLabel')}</p>
+                  <p className="mt-1 break-words text-sm font-bold text-gray-900">{selectedItem.product_title || t('dashboardPages.media.standaloneAsset')}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">URL</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.url')}</p>
                   <p className="mt-1 break-all rounded-2xl bg-gray-50 p-3 text-xs font-semibold text-gray-600">{selectedItem.url}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">Size</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.media.size')}</p>
                   <p className="mt-1 text-sm font-bold text-gray-900">{formatBytes(0)}</p>
                 </div>
                 <button
@@ -297,7 +302,7 @@ export default function SellerMediaPage() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]"
                 >
                   <Copy className="h-4 w-4" />
-                  Copy media URL
+                  {t('dashboardPages.media.copyMediaUrl')}
                 </button>
                 <Link
                   href={selectedItem.url}
@@ -305,7 +310,7 @@ export default function SellerMediaPage() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-700 transition hover:bg-gray-50"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Open original
+                  {t('dashboardPages.media.openOriginal')}
                 </Link>
               </div>
             </div>

@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, Suspense, ChangeEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useLocale } from '@/contexts/LocaleContext';
 import {
   Crown,
   Check,
@@ -62,18 +63,18 @@ function formatPrice(price: number): string {
   return `${price.toFixed(0)} TND`;
 }
 
-const PLAN_DISPLAY: Record<string, { name: string; color: string }> = {
-  free: { name: 'Free', color: 'bg-gray-100 text-gray-700' },
-  starter: { name: 'Starter', color: 'bg-blue-100 text-blue-700' },
-  regular: { name: 'Regular', color: 'bg-indigo-100 text-indigo-700' },
-  agency: { name: 'Agency', color: 'bg-purple-100 text-purple-700' },
-  pro: { name: 'Pro', color: 'bg-[#B91C1C]/10 text-[#B91C1C]' },
-  golden: { name: 'Golden', color: 'bg-yellow-100 text-yellow-700' },
-  platinum: { name: 'Platinum', color: 'bg-gray-900 text-white' },
-};
-
 function SubscriptionContent() {
+  const { t, locale } = useLocale();
   const searchParams = useSearchParams();
+  const localeCode = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+  const planName = useCallback(
+    (planId: string) => {
+      const key = `subscription.plans.${planId}`;
+      const translated = t(key);
+      return translated === key ? planId : translated;
+    },
+    [t]
+  );
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
   const [allPlans, setAllPlans] = useState<PlanLimits[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,12 +108,12 @@ function SubscriptionContent() {
         const data = await res.json();
         setCurrentPlan(data);
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement du plan actuel'));
+        setError(await getErrorMessage(res, t('dashboardPages.subscription.errorLoadingCurrent')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.subscription.errorNetwork'));
     }
-  }, [getErrorMessage]);
+  }, [getErrorMessage, t]);
 
   const fetchAllPlans = useCallback(async () => {
     try {
@@ -121,12 +122,12 @@ function SubscriptionContent() {
         const data = await res.json();
         setAllPlans(data.plans || []);
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement des plans'));
+        setError(await getErrorMessage(res, t('dashboardPages.subscription.errorLoadingPlans')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.subscription.errorNetwork'));
     }
-  }, [getErrorMessage]);
+  }, [getErrorMessage, t]);
 
   // Handle return from payment gateway redirect
   useEffect(() => {
@@ -135,7 +136,7 @@ function SubscriptionContent() {
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
-      setError('Le paiement de votre abonnement a échoué ou a été annulé.');
+      setError(t('dashboardPages.subscription.paymentFailedOrCancelled'));
     } else if (successParam === 'true' && intentIdParam) {
       async function settlePayment() {
         try {
@@ -146,18 +147,18 @@ function SubscriptionContent() {
             body: JSON.stringify({ intent_id: intentIdParam }),
           });
           if (res.ok) {
-            setSuccess('🎉 Paiement confirmé ! Votre nouvel abonnement est maintenant actif.');
+            setSuccess(t('dashboardPages.subscription.paymentConfirmed'));
             await fetchCurrentPlan();
           } else {
-            setError(await getErrorMessage(res, 'Vérification du paiement en cours...'));
+            setError(await getErrorMessage(res, t('dashboardPages.subscription.verifyingPayment')));
           }
         } catch {
-          setError('Erreur lors de la confirmation du paiement');
+          setError(t('dashboardPages.subscription.errorConfirmingPayment'));
         }
       }
       settlePayment();
     }
-  }, [searchParams, fetchCurrentPlan, getErrorMessage]);
+  }, [searchParams, fetchCurrentPlan, getErrorMessage, t]);
 
   useEffect(() => {
     Promise.all([fetchCurrentPlan(), fetchAllPlans()]).finally(() => setLoading(false));
@@ -178,7 +179,7 @@ function SubscriptionContent() {
     });
     if (!presignRes.ok) {
       const errData = await presignRes.json().catch(() => ({}));
-      throw new Error(errData.error?.message || 'Échec de la préparation du téléversement du justificatif');
+      throw new Error(errData.error?.message || t('dashboardPages.subscription.errorPreparingUpload'));
     }
     const presignData = await presignRes.json();
     const uploadRes = await fetch(presignData.upload_url, {
@@ -186,7 +187,7 @@ function SubscriptionContent() {
       headers: { 'Content-Type': contentType },
       body: file,
     });
-    if (!uploadRes.ok) throw new Error('Échec de la transmission du justificatif sur le serveur');
+    if (!uploadRes.ok) throw new Error(t('dashboardPages.subscription.errorUploadingProof'));
     return presignData.public_url || presignData.file_key;
   };
 
@@ -212,11 +213,11 @@ function SubscriptionContent() {
           body: JSON.stringify({ plan: selectedPlanForPayment.plan_id }),
         });
         if (res.ok) {
-          setSuccess('Plan Gratuit activé avec succès !');
+          setSuccess(t('dashboardPages.subscription.freePlanActivated'));
           setSelectedPlanForPayment(null);
           await fetchCurrentPlan();
         } else {
-          setError(await getErrorMessage(res, 'Erreur lors de l\'activation du plan'));
+          setError(await getErrorMessage(res, t('dashboardPages.subscription.errorActivatingPlan')));
         }
         setChanging(false);
         return;
@@ -244,14 +245,14 @@ function SubscriptionContent() {
       if (res.ok) {
         const data = await res.json();
         if (data.free) {
-          setSuccess('Abonnement activé !');
+          setSuccess(t('dashboardPages.subscription.subscriptionActivated'));
           setSelectedPlanForPayment(null);
           await fetchCurrentPlan();
         } else if (data.pending_review || data.pending_proof) {
           setSuccess(
             data.pending_review
-              ? '🎉 Commande d\'abonnement enregistrée et reçu de paiement transmis ! Notre équipe d\'administration va la valider sous peu.'
-              : '📌 Commande d\'abonnement enregistrée ! Vous pouvez effectuer le virement puis transmettre le reçu par email (billing@pandamarket.tn) ou via cette page.'
+              ? t('dashboardPages.subscription.orderRecordedReview')
+              : t('dashboardPages.subscription.orderRecordedProof')
           );
           setSelectedPlanForPayment(null);
           setProofFile(null);
@@ -260,13 +261,13 @@ function SubscriptionContent() {
         } else if (data.checkout_url) {
           window.location.href = data.checkout_url;
         } else {
-          setError('Impossible d\'obtenir le lien de paiement');
+          setError(t('dashboardPages.subscription.errorNoCheckoutUrl'));
         }
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de l\'initialisation du paiement'));
+        setError(await getErrorMessage(res, t('dashboardPages.subscription.errorInitiatingPayment')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.subscription.errorNetwork'));
     } finally {
       setChanging(false);
       setUploading(false);
@@ -288,7 +289,7 @@ function SubscriptionContent() {
       }
 
       if (!finalUrl) {
-        setError('Veuillez sélectionner un fichier ou indiquer un lien.');
+        setError(t('dashboardPages.subscription.errorNoFileOrUrl'));
         setChanging(false);
         return;
       }
@@ -304,16 +305,16 @@ function SubscriptionContent() {
       });
 
       if (res.ok) {
-        setSuccess('🎉 Reçu de paiement transmis avec succès ! En attente de validation administrative.');
+        setSuccess(t('dashboardPages.subscription.proofSubmitted'));
         setUploadModalIntent(null);
         setProofFile(null);
         setMandatProofUrl('');
         await fetchCurrentPlan();
       } else {
-        setError(await getErrorMessage(res, 'Échec de la transmission du reçu'));
+        setError(await getErrorMessage(res, t('dashboardPages.subscription.errorSubmittingProof')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.subscription.errorNetwork'));
     } finally {
       setChanging(false);
       setUploading(false);
@@ -329,7 +330,7 @@ function SubscriptionContent() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Abonnement</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.subscription.title')}</h1>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
@@ -348,7 +349,7 @@ function SubscriptionContent() {
   const pendingIntents = currentPlan?.pending_intents || [];
 
   const handleCancelIntent = async (intentId: string) => {
-    if (!confirm('Voulez-vous vraiment annuler cette commande d\'abonnement non payée ?')) return;
+    if (!confirm(t('dashboardPages.subscription.confirmCancelIntent'))) return;
     setError('');
     setSuccess('');
     try {
@@ -359,19 +360,19 @@ function SubscriptionContent() {
         body: JSON.stringify({ intent_id: intentId }),
       });
       if (res.ok) {
-        setSuccess('Commande d\'abonnement annulée avec succès.');
+        setSuccess(t('dashboardPages.subscription.intentCancelled'));
         await fetchCurrentPlan();
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de l\'annulation de la commande'));
+        setError(await getErrorMessage(res, t('dashboardPages.subscription.errorCancellingIntent')));
       }
     } catch {
-      setError('Erreur réseau');
+      setError(t('dashboardPages.subscription.errorNetwork'));
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Abonnement & Formules</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.subscription.heading')}</h1>
 
       {/* Feedback */}
       {success && (
@@ -390,9 +391,9 @@ function SubscriptionContent() {
           <div className="flex items-center gap-3">
             <Clock className="w-6 h-6 text-amber-600 flex-shrink-0" />
             <div>
-              <h3 className="font-bold text-amber-900 text-base">Commande d&apos;abonnement en attente de paiement</h3>
+              <h3 className="font-bold text-amber-900 text-base">{t('dashboardPages.subscription.pendingOrderTitle')}</h3>
               <p className="text-xs text-amber-800 mt-0.5">
-                Vous avez {pendingIntents.length} commande(s) d&apos;abonnement enregistrée(s). Vous pouvez transmettre le reçu de virement ou annuler la commande à tout moment.
+                {t('dashboardPages.subscription.pendingOrderDesc', { count: pendingIntents.length })}
               </p>
             </div>
           </div>
@@ -401,24 +402,24 @@ function SubscriptionContent() {
             {pendingIntents.map((intent) => (
               <div key={intent.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-xl border border-amber-200 gap-3 text-xs">
                 <div>
-                  <span className="font-bold text-slate-900">Plan : {intent.target_plan.toUpperCase()}</span>
+                  <span className="font-bold text-slate-900">{t('dashboardPages.subscription.planLabel')}: {intent.target_plan.toUpperCase()}</span>
                   <span className="text-slate-500 mx-2">•</span>
                   <span className="font-black text-[#B91C1C]">{Number(intent.amount).toFixed(0)} TND</span>
                   <span className="text-slate-500 mx-2">•</span>
-                  <span className="text-slate-600">Statut : {intent.status === 'pending_review' ? '📑 En attente de validation' : '📌 En attente du reçu'}</span>
+                  <span className="text-slate-600">{t('dashboardPages.subscription.statusLabel')}: {intent.status === 'pending_review' ? t('dashboardPages.subscription.statusPendingReview') : t('dashboardPages.subscription.statusPendingProof')}</span>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto">
                   <button
                     onClick={() => handleCancelIntent(intent.id)}
                     className="px-3 py-1.5 border border-slate-200 text-slate-700 font-bold rounded-lg text-xs hover:bg-slate-100"
                   >
-                    Annuler la commande
+                    {t('dashboardPages.subscription.cancelOrder')}
                   </button>
                   <button
                     onClick={() => setUploadModalIntent(intent)}
                     className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg text-xs hover:bg-amber-700 flex items-center gap-1 shadow-sm"
                   >
-                    <Upload className="w-3.5 h-3.5" /> Transmettre le Reçu
+                    <Upload className="w-3.5 h-3.5" /> {t('dashboardPages.subscription.submitReceipt')}
                   </button>
                 </div>
               </div>
@@ -432,37 +433,37 @@ function SubscriptionContent() {
         <div className="bg-gradient-to-r from-[#B91C1C] to-[#991B1B] rounded-2xl p-6 text-white shadow-xl shadow-[#B91C1C]/15">
           <div className="flex items-center gap-3 mb-3">
             <Crown className="w-6 h-6 text-yellow-300" />
-            <h2 className="text-lg font-bold">Plan actuel de votre boutique</h2>
+            <h2 className="text-lg font-bold">{t('dashboardPages.subscription.currentPlanTitle')}</h2>
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full bg-white px-4 py-1.5 text-sm font-black text-[#B91C1C] shadow-sm">
-              {PLAN_DISPLAY[currentPlan.plan]?.name || currentPlan.plan}
+              {planName(currentPlan.plan)}
             </span>
             {currentPlan.expires_at && (
               <span className="text-sm font-medium opacity-90">
-                Expire le {new Date(currentPlan.expires_at).toLocaleDateString('fr-TN')}
+                {t('subscription.expiresOn', { date: new Date(currentPlan.expires_at).toLocaleDateString(localeCode) })}
               </span>
             )}
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">Produits</p>
+              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">{t('dashboardPages.subscription.productsLabel')}</p>
               <p className="font-extrabold text-base">
-                {currentPlan.limits.max_products === -1 ? 'Illimités' : currentPlan.limits.max_products}
+                {currentPlan.limits.max_products === -1 ? t('subscription.features.productsUnlimited') : currentPlan.limits.max_products}
               </p>
             </div>
             <div>
-              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">Images / Produit</p>
+              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">{t('dashboardPages.subscription.imagesPerProductLabel')}</p>
               <p className="font-extrabold text-base">{currentPlan.limits.max_images_per_product}</p>
             </div>
             <div>
-              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">Commission</p>
+              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">{t('dashboardPages.subscription.commissionLabel')}</p>
               <p className="font-extrabold text-base">{currentPlan.limits.commission_rate}%</p>
             </div>
             <div>
-              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">Pages Builder</p>
+              <p className="opacity-75 text-xs font-bold uppercase tracking-wider">{t('dashboardPages.subscription.pageBuilderLabel')}</p>
               <p className="font-extrabold text-base">
-                {currentPlan.limits.max_page_builder_pages === -1 ? 'Illimitées' : currentPlan.limits.max_page_builder_pages}
+                {currentPlan.limits.max_page_builder_pages === -1 ? t('dashboardPages.subscription.unlimitedPages') : currentPlan.limits.max_page_builder_pages}
               </p>
             </div>
           </div>
@@ -473,7 +474,6 @@ function SubscriptionContent() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {allPlans.map((plan) => {
           const isCurrent = currentPlan?.plan === plan.plan_id;
-          const display = PLAN_DISPLAY[plan.plan_id] || { name: plan.plan_id, color: 'bg-gray-100 text-gray-700' };
           const isPro = plan.plan_id === 'pro';
 
           return (
@@ -491,48 +491,48 @@ function SubscriptionContent() {
                 {isPro && !isCurrent && (
                   <div className="flex items-center gap-1 text-xs font-bold text-[#B91C1C] mb-2">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Populaire B2B
+                    {t('dashboardPages.subscription.popularB2B')}
                   </div>
                 )}
                 {isCurrent && (
-                  <div className="text-xs font-bold text-[#B91C1C] mb-2">✓ Plan actuel</div>
+                  <div className="text-xs font-bold text-[#B91C1C] mb-2">{t('dashboardPages.subscription.currentPlanBadge')}</div>
                 )}
 
-                <h3 className="font-bold text-gray-900 text-xl">{display.name}</h3>
+                <h3 className="font-bold text-gray-900 text-xl">{planName(plan.plan_id)}</h3>
                 <p className="text-2xl font-extrabold text-gray-900 mt-1">
-                  {plan.yearly_price === 0 ? 'Gratuit' : `${formatPrice(plan.yearly_price)}/an`}
+                  {plan.yearly_price === 0 ? t('subscription.plans.free') : `${formatPrice(plan.yearly_price)}/${t('dashboardPages.subscription.perYear')}`}
                 </p>
 
                 <div className="mt-4 space-y-2.5 text-sm">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" />
-                    <span>{plan.max_products === -1 ? 'Produits illimités' : `${plan.max_products} produits`}</span>
+                    <span>{plan.max_products === -1 ? t('subscription.features.productsUnlimited') : t('subscription.features.products', { count: plan.max_products })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" />
-                    <span>{plan.max_images_per_product} images / produit</span>
+                    <span>{t('subscription.features.images', { count: plan.max_images_per_product })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" />
-                    <span>{plan.commission_rate}% commission</span>
+                    <span>{t('subscription.features.commission', { rate: plan.commission_rate })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {plan.has_custom_domain ? <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" /> : <X className="w-4 h-4 text-gray-300 flex-shrink-0" />}
-                    <span className={!plan.has_custom_domain ? 'text-gray-400' : ''}>Domaine personnalisé</span>
+                    <span className={!plan.has_custom_domain ? 'text-gray-400' : ''}>{t('subscription.features.customDomain')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {plan.has_page_builder ? <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" /> : <X className="w-4 h-4 text-gray-300 flex-shrink-0" />}
                     <span className={!plan.has_page_builder ? 'text-gray-400' : ''}>
-                      {plan.has_page_builder ? (plan.max_page_builder_pages === -1 ? 'Pages builder illimitées' : `${plan.max_page_builder_pages} pages builder`) : 'Page Builder'}
+                      {plan.has_page_builder ? (plan.max_page_builder_pages === -1 ? t('dashboardPages.subscription.unlimitedPages') : t('dashboardPages.subscription.pageBuilderPages', { count: plan.max_page_builder_pages })) : t('subscription.features.pageBuilder')}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {plan.has_ai_seo ? <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" /> : <X className="w-4 h-4 text-gray-300 flex-shrink-0" />}
-                    <span className={!plan.has_ai_seo ? 'text-gray-400' : ''}>IA SEO & Optimisation</span>
+                    <span className={!plan.has_ai_seo ? 'text-gray-400' : ''}>{t('dashboardPages.subscription.aiSeo')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {plan.has_direct_payment ? <Check className="w-4 h-4 text-[#B91C1C] flex-shrink-0" /> : <X className="w-4 h-4 text-gray-300 flex-shrink-0" />}
-                    <span className={!plan.has_direct_payment ? 'text-gray-400' : ''}>Paiement direct (Ses clefs API)</span>
+                    <span className={!plan.has_direct_payment ? 'text-gray-400' : ''}>{t('subscription.features.directPayment')}</span>
                   </div>
                 </div>
               </div>
@@ -540,7 +540,7 @@ function SubscriptionContent() {
               <div className="mt-6">
                 {isCurrent ? (
                   <button disabled className="w-full py-3 bg-gray-100 text-gray-500 font-bold rounded-xl text-sm cursor-not-allowed">
-                    Plan actif
+                    {t('dashboardPages.subscription.planActive')}
                   </button>
                 ) : (
                   <button
@@ -553,11 +553,11 @@ function SubscriptionContent() {
                   >
                     {isUpgrade(plan.plan_id) ? (
                       <span className="flex items-center justify-center gap-1.5">
-                        <ArrowUp className="w-4 h-4" /> Commander & Upgrader
+                        <ArrowUp className="w-4 h-4" /> {t('dashboardPages.subscription.orderAndUpgrade')}
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-1.5">
-                        <ArrowDown className="w-4 h-4" /> Basculer vers ce plan
+                        <ArrowDown className="w-4 h-4" /> {t('dashboardPages.subscription.switchToPlan')}
                       </span>
                     )}
                   </button>
@@ -575,10 +575,10 @@ function SubscriptionContent() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
-                  Souscrire au plan {PLAN_DISPLAY[selectedPlanForPayment.plan_id]?.name || selectedPlanForPayment.plan_id}
+                  {t('dashboardPages.subscription.subscribeToPlan', { plan: planName(selectedPlanForPayment.plan_id) })}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Montant : <span className="font-black text-gray-900">{selectedPlanForPayment.yearly_price === 0 ? 'Gratuit' : `${formatPrice(selectedPlanForPayment.yearly_price)} / an`}</span>
+                  {t('dashboardPages.subscription.amountLabel')}: <span className="font-black text-gray-900">{selectedPlanForPayment.yearly_price === 0 ? t('subscription.plans.free') : `${formatPrice(selectedPlanForPayment.yearly_price)} / ${t('dashboardPages.subscription.perYear')}`}</span>
                 </p>
               </div>
               <button
@@ -592,20 +592,20 @@ function SubscriptionContent() {
             {selectedPlanForPayment.yearly_price === 0 || selectedPlanForPayment.plan_id === 'free' ? (
               <div className="py-4 text-center space-y-3">
                 <p className="text-sm text-gray-600">
-                  Le plan Gratuit n&apos;exige aucun paiement. Votre boutique fonctionnera avec la formule de commission de base.
+                  {t('dashboardPages.subscription.freePlanNoPayment')}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-gray-500">Choisir le mode de paiement</h4>
+                <h4 className="text-xs font-black uppercase tracking-wider text-gray-500">{t('dashboardPages.subscription.choosePaymentMethod')}</h4>
                 
                 <div className="space-y-2.5">
                   {[
-                    { id: 'flouci', name: 'Flouci (Carte bancaire & Wallet)', icon: CreditCard, desc: 'Paiement instantané en TND par carte bancaire ou Flouci' },
-                    { id: 'konnect', name: 'Konnect (Cartes bancaires)', icon: CreditCard, desc: 'Paiement sécurisé via le réseau Konnect' },
-                    { id: 'paypal', name: 'PayPal (International Cards)', icon: CreditCard, desc: 'Paiement international sécurisé via PayPal' },
-                    { id: 'manual_mandat', name: 'Mandat Minute / Virement Bancaire', icon: Banknote, desc: 'Effectuer le virement puis transmettre le reçu (Upload ou Email)' },
-                    { id: 'cod', name: 'Paiement sur facture / COD', icon: Truck, desc: 'Activer sous réserve de confirmation commerciale' },
+                    { id: 'flouci', icon: CreditCard },
+                    { id: 'konnect', icon: CreditCard },
+                    { id: 'paypal', icon: CreditCard },
+                    { id: 'manual_mandat', icon: Banknote },
+                    { id: 'cod', icon: Truck },
                   ].map((g) => (
                     <div
                       key={g.id}
@@ -618,8 +618,8 @@ function SubscriptionContent() {
                     >
                       <g.icon className={`w-5 h-5 mt-0.5 mr-3 ${selectedGateway === g.id ? 'text-[#B91C1C]' : 'text-gray-400'}`} />
                       <div>
-                        <p className="font-bold text-sm text-gray-900">{g.name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{g.desc}</p>
+                        <p className="font-bold text-sm text-gray-900">{t(`dashboardPages.subscription.gateway.${g.id}.name`)}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{t(`dashboardPages.subscription.gateway.${g.id}.desc`)}</p>
                       </div>
                     </div>
                   ))}
@@ -630,17 +630,17 @@ function SubscriptionContent() {
                   <div className="space-y-4 pt-2 rounded-2xl bg-amber-50/60 p-4 border border-amber-200">
                     <div className="space-y-1 text-xs text-amber-900">
                       <p className="font-bold text-amber-950 flex items-center gap-1">
-                        <Building className="w-4 h-4 text-amber-700" /> Instructions pour le virement / Mandat Minute :
+                        <Building className="w-4 h-4 text-amber-700" /> {t('dashboardPages.subscription.mandatInstructionsTitle')}
                       </p>
-                      <p>• Bénéficiaire : <strong>PandaMarket SARL</strong></p>
-                      <p>• Identifiant / CIN : <strong>01234567</strong> (Tunis)</p>
-                      <p>• RIB Bancaire (STB) : <strong>10 000 0000000000000 00</strong></p>
-                      <p>• Email d&apos;envoi du reçu : <strong className="underline text-amber-950">billing@pandamarket.tn</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatBeneficiary')}: <strong>PandaMarket SARL</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatIdLabel')}: <strong>01234567</strong> ({t('dashboardPages.subscription.mandatCity')})</p>
+                      <p>• {t('dashboardPages.subscription.mandatRibLabel')}: <strong>10 000 0000000000000 00</strong></p>
+                      <p>• {t('dashboardPages.subscription.mandatEmailLabel')}: <strong className="underline text-amber-950">billing@pandamarket.tn</strong></p>
                     </div>
 
                     <div className="space-y-2 border-t border-amber-200 pt-3">
                       <label className="block text-xs font-bold text-slate-800">
-                        📁 Téléverser le reçu / Relevé de paiement (Optionnel lors de la commande)
+                        {t('dashboardPages.subscription.uploadReceiptOptional')}
                       </label>
                       <input
                         type="file"
@@ -650,11 +650,11 @@ function SubscriptionContent() {
                       />
                       {proofFile && (
                         <p className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Fichier sélectionné : {proofFile.name}
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {t('dashboardPages.subscription.fileSelected', { name: proofFile.name })}
                         </p>
                       )}
                       <p className="text-[11px] text-slate-500">
-                        Vous pouvez soumettre la commande dès maintenant et transmettre votre reçu ultérieurement sur cette page ou par email.
+                        {t('dashboardPages.subscription.submitLaterHint')}
                       </p>
                     </div>
                   </div>
@@ -667,14 +667,14 @@ function SubscriptionContent() {
                 onClick={() => setSelectedPlanForPayment(null)}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-200"
               >
-                Annuler
+                {t('dashboardPages.common.cancel')}
               </button>
               <button
                 onClick={handleInitiatePayment}
                 disabled={changing || uploading}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-sm hover:bg-[#991B1B] disabled:opacity-50"
               >
-                {uploading ? 'Téléversement du reçu...' : changing ? 'Traitement...' : selectedPlanForPayment.yearly_price === 0 ? 'Activer le plan' : selectedGateway === 'manual_mandat' ? 'Passer la commande Mandat' : 'Payer & Activer'}
+                {uploading ? t('dashboardPages.subscription.uploadingReceipt') : changing ? t('dashboardPages.subscription.processing') : selectedPlanForPayment.yearly_price === 0 ? t('dashboardPages.subscription.activatePlan') : selectedGateway === 'manual_mandat' ? t('dashboardPages.subscription.placeMandatOrder') : t('dashboardPages.subscription.payAndActivate')}
               </button>
             </div>
           </div>
@@ -688,10 +688,10 @@ function SubscriptionContent() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  Transmettre le reçu de paiement
+                  {t('dashboardPages.subscription.submitPaymentReceipt')}
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Commande #{uploadModalIntent.id.slice(-8)} — Plan {uploadModalIntent.target_plan.toUpperCase()}
+                  {t('dashboardPages.subscription.orderWithPlan', { ref: uploadModalIntent.id.slice(-8), plan: uploadModalIntent.target_plan.toUpperCase() })}
                 </p>
               </div>
               <button
@@ -704,12 +704,12 @@ function SubscriptionContent() {
 
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-900 space-y-1">
-                <p className="font-bold">📩 Envoi par Email disponible :</p>
-                <p>Vous pouvez également envoyer votre preuve de virement à <strong className="underline">billing@pandamarket.tn</strong> en précisant la référence <strong>#{uploadModalIntent.id.slice(-8)}</strong>.</p>
+                <p className="font-bold">{t('dashboardPages.subscription.emailAvailable')}</p>
+                <p>{t('dashboardPages.subscription.emailProofHint', { ref: uploadModalIntent.id.slice(-8) })}</p>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">1. Téléverser l&apos;image / PDF du reçu</label>
+                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.subscription.uploadReceiptStep1')}</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
@@ -719,7 +719,7 @@ function SubscriptionContent() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">OU 2. Lien / URL du justificatif</label>
+                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.subscription.orUrlStep2')}</label>
                 <input
                   type="url"
                   value={mandatProofUrl}
@@ -735,14 +735,14 @@ function SubscriptionContent() {
                 onClick={() => setUploadModalIntent(null)}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200"
               >
-                Annuler
+                {t('dashboardPages.common.cancel')}
               </button>
               <button
                 onClick={handleUploadProofForPendingIntent}
                 disabled={changing || uploading}
                 className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-xl text-xs hover:bg-[#991B1B] disabled:opacity-50"
               >
-                {uploading ? 'Téléversement...' : changing ? 'Envoi...' : 'Soumettre le Reçu'}
+                {uploading ? t('dashboardPages.subscription.uploading') : changing ? t('dashboardPages.subscription.sending') : t('dashboardPages.subscription.submitReceipt')}
               </button>
             </div>
           </div>
@@ -753,8 +753,9 @@ function SubscriptionContent() {
 }
 
 export default function SubscriptionPage() {
+  const { t } = useLocale();
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">{t('dashboardPages.common.loading')}</div>}>
       <SubscriptionContent />
     </Suspense>
   );

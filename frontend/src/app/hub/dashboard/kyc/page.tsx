@@ -4,6 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { updateOnboardingStep } from '@/lib/onboarding';
 import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, XCircle, Upload, Clock, FileText, AlertCircle } from 'lucide-react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface Verification {
   id: string;
@@ -32,6 +33,7 @@ function getKycMetadata(verification: Verification) {
 }
 
 export default function KycPage() {
+  const { t, locale } = useLocale();
   const [verification, setVerification] = useState<Verification | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -79,10 +81,10 @@ export default function KycPage() {
     setError('');
     try {
       if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
-        throw new Error('Format de fichier invalide. Utilisez JPG, PNG ou PDF.');
+        throw new Error(t('dashboardPages.kyc.errorInvalidFormat'));
       }
       if (file.size > 10 * 1024 * 1024) {
-        throw new Error('Le fichier doit être inférieur à 10 MB.');
+        throw new Error(t('dashboardPages.kyc.errorFileTooLarge'));
       }
 
       // Get presigned URL
@@ -98,12 +100,12 @@ export default function KycPage() {
         }),
       });
       if (!presignRes.ok) {
-        throw new Error('Failed to get upload URL');
+        throw new Error(t('dashboardPages.kyc.errorPresignFailed'));
       }
       const { upload_url, file_key } = await presignRes.json();
 
       if (!upload_url || !file_key) {
-        throw new Error('Upload URL was not returned by the server.');
+        throw new Error(t('dashboardPages.kyc.errorNoUploadUrl'));
       }
 
       // Upload to presigned URL
@@ -113,12 +115,14 @@ export default function KycPage() {
         body: file,
       });
       if (!uploadRes.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error(t('dashboardPages.kyc.errorUploadFailed'));
       }
 
       setUrl(file_key);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'upload du fichier');
+      setError(
+        err instanceof Error ? err.message : t('dashboardPages.kyc.errorUploadGeneric'),
+      );
     } finally {
       setUploading(false);
     }
@@ -129,7 +133,7 @@ export default function KycPage() {
     setSuccess('');
 
     if (!rcDocUrl || !cinDocUrl || !phone) {
-      setError('Tous les champs sont requis');
+      setError(t('dashboardPages.kyc.errorAllFieldsRequired'));
       return;
     }
 
@@ -153,22 +157,24 @@ export default function KycPage() {
           completed: nextVerification.status === 'approved',
           metadata: getKycMetadata(nextVerification),
         }).catch(() => undefined);
-        setSuccess('Documents soumis avec succès ! Nous les examinerons sous 48h.');
+        setSuccess(t('dashboardPages.kyc.submitSuccess'));
       } else {
         const data = await res.json();
-        setError(data.error?.message || 'Erreur lors de la soumission');
+        setError(data.error?.message || t('dashboardPages.kyc.errorSubmitFailed'));
       }
     } catch {
-      setError('Erreur réseau');
+      setError(t('dashboardPages.kyc.errorNetwork'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Vérification de Compte</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('kyc.title')}</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-8">
           <div className="animate-pulse space-y-4">
             <div className="h-6 bg-gray-100 rounded w-1/3" />
@@ -184,18 +190,18 @@ export default function KycPage() {
   if (verification?.status === 'approved') {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Vérification de Compte</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('kyc.title')}</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-[#B91C1C]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-[#B91C1C]" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Compte Vérifié ✓</h2>
-          <p className="text-gray-500 mb-4">
-            Votre compte a été vérifié avec succès. Vos produits sont publiés instantanément.
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('kyc.status.approved')}</h2>
+          <p className="text-gray-500 mb-4">{t('dashboardPages.kyc.approvedDescription')}</p>
           {verification.reviewed_at && (
             <p className="text-sm text-gray-400">
-              Approuvé le {new Date(verification.reviewed_at).toLocaleDateString('fr-TN')}
+              {t('dashboardPages.kyc.approvedOn', {
+                date: new Date(verification.reviewed_at).toLocaleDateString(dateLocale),
+              })}
             </p>
           )}
         </div>
@@ -207,33 +213,37 @@ export default function KycPage() {
   if (verification?.status === 'pending') {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Vérification de Compte</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('kyc.title')}</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock className="w-8 h-8 text-yellow-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">En cours de vérification</h2>
-          <p className="text-gray-500 mb-4">
-            Vos documents ont été soumis et sont en cours d&apos;examen. Notre équipe vous contactera sous 48h.
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {t('dashboardPages.kyc.inReviewTitle')}
+          </h2>
+          <p className="text-gray-500 mb-4">{t('dashboardPages.kyc.inReviewDescription')}</p>
           <p className="text-sm text-gray-400">
-            Soumis le {new Date(verification.created_at).toLocaleDateString('fr-TN')}
+            {t('dashboardPages.kyc.submittedOn', {
+              date: new Date(verification.created_at).toLocaleDateString(dateLocale),
+            })}
           </p>
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs font-semibold text-gray-500 mb-1">Registre de Commerce</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">{t('kyc.step1')}</p>
               <p className="text-sm text-[#B91C1C] flex items-center gap-1">
-                <FileText className="w-4 h-4" /> Uploadé
+                <FileText className="w-4 h-4" /> {t('kyc.uploaded')}
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs font-semibold text-gray-500 mb-1">Carte d&apos;Identité</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">{t('kyc.step2')}</p>
               <p className="text-sm text-[#B91C1C] flex items-center gap-1">
-                <FileText className="w-4 h-4" /> Uploadé
+                <FileText className="w-4 h-4" /> {t('kyc.uploaded')}
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs font-semibold text-gray-500 mb-1">Téléphone</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">
+                {t('dashboardPages.kyc.phone')}
+              </p>
               <p className="text-sm text-gray-700">{verification.phone_number}</p>
             </div>
           </div>
@@ -245,15 +255,16 @@ export default function KycPage() {
   // Rejected or not submitted
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Vérification de Compte</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('kyc.title')}</h1>
 
       {verification?.status === 'rejected' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
           <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-red-800">Vérification rejetée</p>
+            <p className="font-semibold text-red-800">{t('dashboardPages.kyc.rejectedTitle')}</p>
             <p className="text-sm text-red-700 mt-1">
-              {verification.rejection_reason || 'Veuillez resoumettre vos documents.'}
+              {verification.rejection_reason ||
+                t('dashboardPages.kyc.resubmitPrompt')}
             </p>
           </div>
         </div>
@@ -265,10 +276,8 @@ export default function KycPage() {
             <Shield className="w-5 h-5 text-[#B91C1C]" />
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">Complétez votre vérification</h2>
-            <p className="text-sm text-gray-500">
-              Pour publier vos produits instantanément, soumettez vos documents.
-            </p>
+            <h2 className="font-bold text-gray-900">{t('dashboardPages.kyc.completeTitle')}</h2>
+            <p className="text-sm text-gray-500">{t('kyc.instructions')}</p>
           </div>
         </div>
 
@@ -289,24 +298,28 @@ export default function KycPage() {
           {/* RC Document */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              1. Registre de Commerce (RC)
+              {t('dashboardPages.kyc.step1Label', { number: 1 })}
             </label>
             {rcDocUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
                 <FileText className="w-5 h-5 text-[#B91C1C]" />
-                <span className="text-sm text-[#B91C1C] font-medium">Document uploadé</span>
+                <span className="text-sm text-[#B91C1C] font-medium">
+                  {t('dashboardPages.kyc.documentUploaded')}
+                </span>
                 <button
                   onClick={() => setRcDocUrl('')}
                   className="ml-auto text-xs text-gray-500 hover:text-gray-700"
                 >
-                  Changer
+                  {t('dashboardPages.kyc.change')}
                 </button>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#B91C1C] transition-colors">
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
-                  {uploadingRc ? 'Upload en cours...' : 'Cliquez pour uploader votre RC'}
+                  {uploadingRc
+                    ? t('dashboardPages.common.loading')
+                    : t('dashboardPages.kyc.uploadRcPrompt')}
                 </span>
                 <input
                   type="file"
@@ -325,24 +338,28 @@ export default function KycPage() {
           {/* CIN Document */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              2. Carte d&apos;Identité Nationale (CIN)
+              {t('dashboardPages.kyc.step2Label', { number: 2 })}
             </label>
             {cinDocUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
                 <FileText className="w-5 h-5 text-[#B91C1C]" />
-                <span className="text-sm text-[#B91C1C] font-medium">Document uploadé</span>
+                <span className="text-sm text-[#B91C1C] font-medium">
+                  {t('dashboardPages.kyc.documentUploaded')}
+                </span>
                 <button
                   onClick={() => setCinDocUrl('')}
                   className="ml-auto text-xs text-gray-500 hover:text-gray-700"
                 >
-                  Changer
+                  {t('dashboardPages.kyc.change')}
                 </button>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#B91C1C] transition-colors">
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
-                  {uploadingCin ? 'Upload en cours...' : 'Cliquez pour uploader votre CIN'}
+                  {uploadingCin
+                    ? t('dashboardPages.common.loading')
+                    : t('dashboardPages.kyc.uploadCinPrompt')}
                 </span>
                 <input
                   type="file"
@@ -361,18 +378,16 @@ export default function KycPage() {
           {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              3. Numéro de téléphone
+              {t('dashboardPages.kyc.step3Label', { number: 3 })}
             </label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+216 XX XXX XXX"
+              placeholder={t('dashboardPages.kyc.phonePlaceholder')}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Notre équipe vous contactera pour vérification téléphonique.
-            </p>
+            <p className="text-xs text-gray-400 mt-1">{t('kyc.step3Desc')}</p>
           </div>
 
           <button
@@ -380,7 +395,7 @@ export default function KycPage() {
             disabled={submitting || !rcDocUrl || !cinDocUrl || !phone}
             className="w-full py-3 bg-[#B91C1C] text-white font-semibold rounded-xl hover:bg-[#991B1B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Envoi en cours...' : 'Soumettre pour vérification'}
+            {submitting ? t('dashboardPages.kyc.submitting') : t('kyc.submit')}
           </button>
         </div>
       </div>

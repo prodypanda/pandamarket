@@ -36,6 +36,7 @@ import { TemplatePicker } from '../../../../components/page-builder/TemplatePick
 import type { PageTemplate, TemplateBranding } from '../../../../components/page-builder/templates';
 import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { pageBuilderDashboardStatsLabels } from '@/lib/page-builder-dashboard-stats';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface StorePage {
   id: string;
@@ -144,21 +145,23 @@ export default function PageBuilderDashboard() {
   const [pageBuilderLimits, setPageBuilderLimits] = useState<PageBuilderLimits | null>(null);
   const [editorInitialNotice, setEditorInitialNotice] = useState('');
 
+  const { t, locale } = useLocale();
+
   const existingSlugs = useMemo(() => new Set(pages.map((page) => page.slug)), [pages]);
   const maintenancePage = useMemo(() => pages.find((page) => page.slug === MAINTENANCE_PAGE_SLUG) || null, [pages]);
   const slugValidationMessage = useMemo(() => {
     if (!newPageSlug.trim()) return '';
     if (!PAGE_SLUG_PATTERN.test(newPageSlug)) {
-      return 'Le slug doit contenir 2 à 100 caractères, commencer et finir par une lettre ou un chiffre.';
+      return t('dashboardPages.pageBuilder.slugInvalid');
     }
     if (existingSlugs.has(newPageSlug)) {
-      return `Le slug "${newPageSlug}" est déjà utilisé par une autre page.`;
+      return t('dashboardPages.pageBuilder.slugTaken', { slug: newPageSlug });
     }
     return '';
-  }, [existingSlugs, newPageSlug]);
+  }, [existingSlugs, newPageSlug, t]);
   const createSlugError = slugFieldError || slugValidationMessage;
   const pageLimit = pageBuilderLimits?.max_page_builder_pages ?? 20;
-  const pageLimitLabel = pageLimit === -1 ? 'Illimité' : pageLimit.toLocaleString('fr-TN');
+  const pageLimitLabel = pageLimit === -1 ? t('dashboardPages.pageBuilder.unlimited') : pageLimit.toLocaleString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN');
   const hasReachedPageLimit = pageLimit !== -1 && pages.length >= pageLimit;
   const slugSuggestions = useMemo(() => {
     const baseSlug = slugify(newPageSlug || newPageTitle) || 'page';
@@ -191,7 +194,7 @@ export default function PageBuilderDashboard() {
         return;
       }
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement des pages'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorLoadingPages')));
         return;
       }
       const data = await res.json();
@@ -200,11 +203,11 @@ export default function PageBuilderDashboard() {
       setHasAccess(true);
     } catch (err) {
       setHasAccess(true);
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.networkError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchPages();
@@ -230,15 +233,15 @@ export default function PageBuilderDashboard() {
     const normalizedSlug = slugify(newPageSlug);
     if (!newPageTitle.trim() || !normalizedSlug) return;
     if (hasReachedPageLimit) {
-      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      setError(t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel }));
       return;
     }
     if (!PAGE_SLUG_PATTERN.test(normalizedSlug)) {
-      setSlugFieldError('Le slug doit contenir 2 à 100 caractères, commencer et finir par une lettre ou un chiffre.');
+      setSlugFieldError(t('dashboardPages.pageBuilder.slugInvalid'));
       return;
     }
     if (existingSlugs.has(normalizedSlug)) {
-      setSlugFieldError(`Le slug "${normalizedSlug}" est déjà utilisé par une autre page.`);
+      setSlugFieldError(t('dashboardPages.pageBuilder.slugTaken', { slug: normalizedSlug }));
       return;
     }
     setError('');
@@ -259,7 +262,7 @@ export default function PageBuilderDashboard() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null) as ApiErrorPayload | null;
-        const message = data?.error?.message || data?.message || `Erreur lors de la création (${res.status})`;
+        const message = data?.error?.message || data?.message || t('dashboardPages.pageBuilder.errorCreating', { status: res.status });
         if (res.status === 409 && data?.error?.details?.field === 'slug') {
           setSlugFieldError(message);
         }
@@ -273,14 +276,14 @@ export default function PageBuilderDashboard() {
       setSlugFieldError('');
       setTemplateHtml('');
       setTemplateCss('');
-      setEditorInitialNotice(createdFromTemplate ? 'Template loaded. Customize sections, SEO, then publish.' : '');
+      setEditorInitialNotice(createdFromTemplate ? t('dashboardPages.pageBuilder.templateLoadedNotice') : '');
       // Open editor immediately for the new page
       setEditingPage(data.page);
       setView('editor');
-      setSuccess('Page créée avec succès.');
+      setSuccess(t('dashboardPages.pageBuilder.pageCreatedSuccess'));
       fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.networkError'));
     } finally {
       setCreating(false);
     }
@@ -288,7 +291,7 @@ export default function PageBuilderDashboard() {
 
   const openCreateModal = () => {
     if (hasReachedPageLimit) {
-      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      setError(t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel }));
       return;
     }
     setTemplateHtml('');
@@ -297,7 +300,7 @@ export default function PageBuilderDashboard() {
   };
 
   const handleDeletePage = async (page: StorePage) => {
-    if (!confirm('Supprimer cette page ? Cette action est irréversible.')) return;
+    if (!confirm(t('dashboardPages.pageBuilder.confirmDelete'))) return;
     setError('');
     setSuccess('');
     try {
@@ -308,18 +311,18 @@ export default function PageBuilderDashboard() {
       if (res.ok) {
         setPages((prev) => prev.filter((p) => p.id !== page.id));
         await revalidatePageBuilderCache({ storeId: store?.id, slug: page.slug, homepage: page.is_homepage });
-        setSuccess('Page supprimée.');
+        setSuccess(t('dashboardPages.pageBuilder.pageDeleted'));
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de la suppression'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorDeleting')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorDeleting'));
     }
   };
 
   const handleDuplicatePage = async (pageId: string) => {
     if (hasReachedPageLimit) {
-      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      setError(t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel }));
       return;
     }
     setError('');
@@ -330,13 +333,13 @@ export default function PageBuilderDashboard() {
         credentials: 'include',
       });
       if (res.ok) {
-        setSuccess('Page dupliquée.');
+        setSuccess(t('dashboardPages.pageBuilder.pageDuplicated'));
         fetchPages();
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de la duplication'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorDuplicating')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la duplication');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorDuplicating'));
     }
   };
 
@@ -355,12 +358,12 @@ export default function PageBuilderDashboard() {
           prev.map((p) => (p.id === page.id ? { ...p, is_published: !p.is_published } : p)),
         );
         await revalidatePageBuilderCache({ storeId: store?.id, slug: page.slug, homepage: page.is_homepage });
-        setSuccess(!page.is_published ? 'Page publiée.' : 'Page dépubliée.');
+        setSuccess(!page.is_published ? t('dashboardPages.pageBuilder.pagePublished') : t('dashboardPages.pageBuilder.pageUnpublished'));
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorUpdating')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorGeneric'));
     }
   };
 
@@ -382,12 +385,12 @@ export default function PageBuilderDashboard() {
           })),
         );
         await revalidatePageBuilderCache({ storeId: store?.id, slug: page.slug, homepage: true });
-        setSuccess(!page.is_homepage ? 'Page définie comme accueil.' : 'Page retirée de l’accueil.');
+        setSuccess(!page.is_homepage ? t('dashboardPages.pageBuilder.setAsHomepageSuccess') : t('dashboardPages.pageBuilder.removedFromHomepage'));
       } else {
-        setError(await getErrorMessage(res, 'Erreur lors de la mise à jour'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorUpdating')));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorGeneric'));
     }
   };
 
@@ -398,7 +401,7 @@ export default function PageBuilderDashboard() {
         credentials: 'include',
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors du chargement de la page'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorLoadingPage')));
         return;
       }
       const data = await res.json();
@@ -406,7 +409,7 @@ export default function PageBuilderDashboard() {
       setEditingPage(data.page);
       setView('editor');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement de la page');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorLoadingPage'));
     }
   };
 
@@ -416,7 +419,7 @@ export default function PageBuilderDashboard() {
       return;
     }
     if (hasReachedPageLimit) {
-      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      setError(t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel }));
       return;
     }
     setError('');
@@ -428,7 +431,7 @@ export default function PageBuilderDashboard() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          title: 'Page maintenance',
+          title: t('dashboardPages.pageBuilder.maintenancePageName'),
           slug: MAINTENANCE_PAGE_SLUG,
           html: MAINTENANCE_PAGE_TEMPLATE_HTML,
           css: MAINTENANCE_PAGE_TEMPLATE_CSS,
@@ -438,17 +441,17 @@ export default function PageBuilderDashboard() {
         }),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, 'Erreur lors de la création de la page maintenance'));
+        setError(await getErrorMessage(res, t('dashboardPages.pageBuilder.errorCreatingMaintenance')));
         return;
       }
       const data = await res.json();
-      setEditorInitialNotice('Page maintenance créée. Personnalisez-la, puis publiez-la pour remplacer la page maintenance standard.');
+      setEditorInitialNotice(t('dashboardPages.pageBuilder.maintenanceCreatedNotice'));
       setEditingPage(data.page);
       setView('editor');
-      setSuccess('Page maintenance créée.');
+      setSuccess(t('dashboardPages.pageBuilder.maintenanceCreated'));
       fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création de la page maintenance');
+      setError(err instanceof Error ? err.message : t('dashboardPages.pageBuilder.errorCreatingMaintenance'));
     } finally {
       setCreating(false);
     }
@@ -467,7 +470,7 @@ export default function PageBuilderDashboard() {
   const handleTemplateSelect = (template: PageTemplate) => {
     if (hasReachedPageLimit) {
       setShowTemplatePicker(false);
-      setError(`Limite de ${pageLimitLabel} pages atteinte pour votre plan.`);
+      setError(t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel }));
       return;
     }
     setShowTemplatePicker(false);
@@ -523,10 +526,10 @@ export default function PageBuilderDashboard() {
   if (loading) {
     return (
       <div className="space-y-6 text-[#1A1A2E]">
-        <h1 className="text-2xl font-bold text-[#1A1A2E]">Page Builder</h1>
+        <h1 className="text-2xl font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.title')}</h1>
         <div className="rounded-2xl border border-[#E4D8C6] bg-[#FBF8F1] p-12 text-center shadow-sm">
           <Loader2 className="w-8 h-8 text-[#B91C1C] animate-spin mx-auto" />
-          <p className="text-sm text-[#7C7468] mt-3">Chargement...</p>
+          <p className="text-sm text-[#7C7468] mt-3">{t('dashboardPages.pageBuilder.loading')}</p>
         </div>
       </div>
     );
@@ -537,24 +540,23 @@ export default function PageBuilderDashboard() {
   if (hasAccess === false) {
     return (
       <div className="space-y-6 text-[#1A1A2E]">
-        <h1 className="text-2xl font-bold text-[#1A1A2E]">Page Builder</h1>
+        <h1 className="text-2xl font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.title')}</h1>
         <div className="rounded-2xl border border-[#E4D8C6] bg-[#FBF8F1] p-12 text-center shadow-sm">
           <div className="w-16 h-16 bg-[#F4EDE2] rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="w-8 h-8 text-[#8A6F3D]" />
           </div>
           <h2 className="text-xl font-bold text-[#1A1A2E] mb-2">
-            Fonctionnalité Premium
+            {t('dashboardPages.pageBuilder.premiumFeature')}
           </h2>
           <p className="text-[#7C7468] mb-6 max-w-md mx-auto">
-            Le Page Builder Drag &amp; Drop est disponible à partir du plan <strong>Regular</strong>.
-            Créez des pages personnalisées sans coder pour votre boutique.
+            {t('dashboardPages.pageBuilder.premiumDescription', { plan: 'Regular' })}
           </p>
           <a
             href="/hub/dashboard/subscription"
             className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 font-semibold text-white shadow-sm shadow-amber-900/10 transition-colors hover:bg-[#991B1B]"
           >
             <Crown className="w-5 h-5" />
-            Upgrader mon plan
+            {t('dashboardPages.pageBuilder.upgradeMyPlan')}
           </a>
         </div>
       </div>
@@ -567,10 +569,10 @@ export default function PageBuilderDashboard() {
     <div className="space-y-6 text-[#1A1A2E]">
       <div className="mb-2 flex items-center justify-between rounded-3xl border border-[#E4D8C6] bg-[#FBF8F1] p-5 shadow-sm">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">Studio pages</p>
-          <h1 className="mt-1 text-2xl font-bold text-[#1A1A2E]">Page Builder</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.eyebrow')}</p>
+          <h1 className="mt-1 text-2xl font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.title')}</h1>
           <p className="text-sm text-[#7C7468] mt-1">
-            Créez et personnalisez les pages de votre boutique avec l&apos;éditeur visuel.
+            {t('dashboardPages.pageBuilder.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -580,7 +582,7 @@ export default function PageBuilderDashboard() {
             className="flex items-center gap-2 rounded-full border border-[#D6B779] bg-white px-4 py-2.5 font-semibold text-[#8A6F3D] shadow-sm transition-colors hover:bg-[#FFF8E8] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <LayoutTemplate className="w-4 h-4" />
-            Depuis un template
+            {t('dashboardPages.pageBuilder.fromTemplate')}
           </button>
           <button
             onClick={() => openCreateModal()}
@@ -588,7 +590,7 @@ export default function PageBuilderDashboard() {
             className="flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-2.5 font-semibold text-white shadow-sm shadow-amber-900/10 transition-colors hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
-            Page vierge
+            {t('dashboardPages.pageBuilder.blankPage')}
           </button>
         </div>
       </div>
@@ -600,18 +602,18 @@ export default function PageBuilderDashboard() {
               <Construction className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">Page spéciale</p>
-              <h2 className="mt-1 text-lg font-black text-[#1A1A2E]">Page maintenance de la boutique</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.specialPage')}</p>
+              <h2 className="mt-1 text-lg font-black text-[#1A1A2E]">{t('dashboardPages.pageBuilder.maintenanceStoreTitle')}</h2>
               <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[#7C7468]">
-                Créez une page Page Builder avec le slug réservé <span className="font-bold text-[#1A1A2E]">/maintenance</span>. Quand votre boutique passe en maintenance, cette page publiée remplace automatiquement l’écran standard.
+                {t('dashboardPages.pageBuilder.maintenanceDescriptionBefore')}{' '}<span className="font-bold text-[#1A1A2E]">/maintenance</span>{' '}{t('dashboardPages.pageBuilder.maintenanceDescriptionAfter')}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <span className="rounded-full border border-[#E4D8C6] bg-white px-3 py-1 text-xs font-bold text-[#7C7468]">
-                  {maintenancePage ? 'Configurée' : 'Non configurée'}
+                  {maintenancePage ? t('dashboardPages.pageBuilder.configured') : t('dashboardPages.pageBuilder.notConfigured')}
                 </span>
                 {maintenancePage && (
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${maintenancePage.is_published ? 'bg-amber-100 text-amber-800' : 'bg-[#F4EDE2] text-[#7C7468]'}`}>
-                    {maintenancePage.is_published ? 'Publiée' : 'Brouillon'}
+                    {maintenancePage.is_published ? t('dashboardPages.pageBuilder.published') : t('dashboardPages.pageBuilder.draft')}
                   </span>
                 )}
               </div>
@@ -625,7 +627,7 @@ export default function PageBuilderDashboard() {
               className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-amber-900/10 transition-colors hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-              {maintenancePage ? 'Éditer la page' : 'Créer la page'}
+              {maintenancePage ? t('dashboardPages.pageBuilder.editThePage') : t('dashboardPages.pageBuilder.createThePage')}
             </button>
             {maintenancePage?.is_published && store?.subdomain && (
               <a
@@ -635,7 +637,7 @@ export default function PageBuilderDashboard() {
                 className="inline-flex items-center gap-2 rounded-full border border-[#D6B779] bg-white px-4 py-2.5 text-sm font-bold text-[#8A6F3D] shadow-sm transition-colors hover:bg-[#FFF8E8]"
               >
                 <ExternalLink className="h-4 w-4" />
-                Voir la page
+                {t('dashboardPages.pageBuilder.viewPage')}
               </a>
             )}
           </div>
@@ -658,27 +660,27 @@ export default function PageBuilderDashboard() {
           <div className={`inline-flex w-fit rounded-full border px-3 py-1 text-sm font-semibold shadow-sm ${
             hasReachedPageLimit ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-[#E4D8C6] bg-white text-[#7C7468]'
           }`}>
-            {pages.length} / {pageLimitLabel} pages
+            {t('dashboardPages.pageBuilder.pagesCount', { current: pages.length, limit: pageLimitLabel })}
           </div>
           {hasReachedPageLimit && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <p className="text-xs font-medium text-amber-700">
-                Limite atteinte pour votre plan actuel. Supprimez une page ou upgradez votre abonnement.
+                {t('dashboardPages.pageBuilder.limitReachedDesc')}
               </p>
               <a
                 href="/hub/dashboard/subscription"
                 className="inline-flex items-center gap-1 rounded-full bg-[#B91C1C] px-3 py-1 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#991B1B]"
               >
                 <Crown className="h-3 w-3" />
-                Upgrade plan
+                {t('dashboardPages.pageBuilder.upgradePlan')}
               </a>
             </div>
           )}
         </div>
         <div className="flex w-fit items-center rounded-full border border-[#E4D8C6] bg-[#F4EDE2] p-0.5 shadow-inner">
           {[
-            { value: 'grid' as const, label: 'Grille', icon: Grid3X3 },
-            { value: 'list' as const, label: 'Liste', icon: List },
+            { value: 'grid' as const, label: t('dashboardPages.pageBuilder.gridLayout'), icon: Grid3X3 },
+            { value: 'list' as const, label: t('dashboardPages.pageBuilder.listLayout'), icon: List },
           ].map((option) => {
             const Icon = option.icon;
             const isActive = pagesLayout === option.value;
@@ -706,11 +708,10 @@ export default function PageBuilderDashboard() {
             <LayoutTemplate className="w-8 h-8 text-[#8A6F3D]" />
           </div>
           <h2 className="text-lg font-bold text-[#1A1A2E] mb-2">
-            Aucune page personnalisée
+            {t('dashboardPages.pageBuilder.noPages')}
           </h2>
           <p className="text-[#7C7468] mb-6 max-w-md mx-auto">
-            Créez votre première page avec l&apos;éditeur Drag &amp; Drop.
-            Choisissez parmi 20 templates prêts à l&apos;emploi ou partez de zéro.
+            {t('dashboardPages.pageBuilder.noPagesDesc')}
           </p>
           <div className="flex items-center gap-3 justify-center">
             <button
@@ -719,7 +720,7 @@ export default function PageBuilderDashboard() {
               className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 font-semibold text-white shadow-sm shadow-amber-900/10 transition-colors hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LayoutTemplate className="w-5 h-5" />
-              Choisir un template
+              {t('dashboardPages.pageBuilder.chooseTemplate')}
             </button>
             <button
               onClick={() => openCreateModal()}
@@ -727,7 +728,7 @@ export default function PageBuilderDashboard() {
               className="inline-flex items-center gap-2 rounded-full border border-[#D6B779] bg-white px-6 py-3 font-semibold text-[#8A6F3D] shadow-sm transition-colors hover:bg-[#FFF8E8] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="w-5 h-5" />
-              Page vierge
+              {t('dashboardPages.pageBuilder.blankPage')}
             </button>
           </div>
         </div>
@@ -752,14 +753,14 @@ export default function PageBuilderDashboard() {
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8A6F3D]">Page créée</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8A6F3D]">{t('dashboardPages.pageBuilder.pageCreatedBadge')}</p>
                       <p className="truncate text-sm font-bold text-[#1A1A2E]">{page.title}</p>
                     </div>
                   </div>
                   <div className="flex flex-shrink-0 flex-wrap justify-end gap-1">
                     {page.is_homepage && (
                       <span className="px-2 py-0.5 bg-[#EEF3FF] text-[#3153B7] text-xs font-semibold rounded-full flex items-center gap-1">
-                        <Home className="w-3 h-3" /> Accueil
+                        <Home className="w-3 h-3" /> {t('dashboardPages.pageBuilder.homepage')}
                       </span>
                     )}
                     <span
@@ -769,7 +770,7 @@ export default function PageBuilderDashboard() {
                           : 'bg-[#F4EDE2] text-[#7C7468]'
                       }`}
                     >
-                      {page.is_published ? 'Publié' : 'Brouillon'}
+                      {page.is_published ? t('dashboardPages.pageBuilder.published') : t('dashboardPages.pageBuilder.draft')}
                     </span>
                   </div>
                 </div>
@@ -783,7 +784,7 @@ export default function PageBuilderDashboard() {
                     <>
                       <span className="text-xs text-[#D6B779]">·</span>
                       <p className="whitespace-nowrap text-xs text-[#7C7468]">
-                        {new Date(page.updated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(page.updated_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </>
                   )}
@@ -793,7 +794,7 @@ export default function PageBuilderDashboard() {
                   <div className={`flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#7C7468] ${pagesLayout === 'grid' ? 'mb-3' : 'mb-3 sm:mb-0'}`}>
                     <span className="inline-flex items-center gap-1 rounded-full border border-[#E4D8C6] bg-[#FBF8F1] px-2 py-1">
                       <BarChart3 className="h-3 w-3 text-[#8A6F3D]" />
-                      30j
+                      {t('dashboardPages.pageBuilder.last30Days')}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full border border-[#E4D8C6] bg-white px-2 py-1">
                       <Eye className="h-3 w-3 text-[#B91C1C]" />
@@ -814,12 +815,12 @@ export default function PageBuilderDashboard() {
                     className="flex items-center gap-1 rounded-full bg-[#B91C1C]/10 px-3 py-1.5 text-xs font-bold text-[#B91C1C] transition-colors hover:bg-[#B91C1C]/20"
                   >
                     <Pencil className="w-3 h-3" />
-                    Éditer
+                    {t('dashboardPages.pageBuilder.edit')}
                   </button>
                   <button
                     onClick={() => handleTogglePublish(page)}
                     className="p-1.5 text-[#7C7468] transition-colors hover:text-[#1A1A2E]"
-                    title={page.is_published ? 'Dépublier' : 'Publier'}
+                    title={page.is_published ? t('dashboardPages.pageBuilder.unpublish') : t('dashboardPages.pageBuilder.publish')}
                   >
                     {page.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -828,7 +829,7 @@ export default function PageBuilderDashboard() {
                     className={`p-1.5 transition-colors ${
                       page.is_homepage ? 'text-[#3153B7]' : 'text-[#7C7468] hover:text-[#1A1A2E]'
                     }`}
-                    title={page.is_homepage ? 'Retirer comme accueil' : 'Définir comme accueil'}
+                    title={page.is_homepage ? t('dashboardPages.pageBuilder.removeAsHomepage') : t('dashboardPages.pageBuilder.setAsHomepage')}
                   >
                     <Home className="w-4 h-4" />
                   </button>
@@ -836,7 +837,7 @@ export default function PageBuilderDashboard() {
                     onClick={() => handleDuplicatePage(page.id)}
                     disabled={hasReachedPageLimit}
                     className="p-1.5 text-[#7C7468] transition-colors hover:text-[#1A1A2E] disabled:cursor-not-allowed disabled:opacity-40"
-                    title="Dupliquer"
+                    title={t('dashboardPages.pageBuilder.duplicate')}
                   >
                     <Copy className="w-4 h-4" />
                   </button>
@@ -846,7 +847,7 @@ export default function PageBuilderDashboard() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1.5 text-[#7C7468] transition-colors hover:text-[#1A1A2E]"
-                      title="Voir la page sur la boutique"
+                      title={t('dashboardPages.pageBuilder.viewPageOnStore')}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
@@ -855,7 +856,7 @@ export default function PageBuilderDashboard() {
                   <button
                     onClick={() => handleDeletePage(page)}
                     className="p-1.5 text-[#7C7468] transition-colors hover:text-red-500"
-                    title="Supprimer"
+                    title={t('dashboardPages.pageBuilder.delete')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -871,42 +872,42 @@ export default function PageBuilderDashboard() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl border border-[#E4D8C6] bg-[#FBF8F1] p-6 mx-4 shadow-2xl">
-            <h2 className="mb-4 text-lg font-bold text-[#1A1A2E]">Nouvelle page</h2>
+            <h2 className="mb-4 text-lg font-bold text-[#1A1A2E]">{t('dashboardPages.pageBuilder.addPage')}</h2>
             {templateHtml && (
               <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#B91C1C]/20 bg-[#B91C1C]/10 px-3 py-2">
                 <LayoutTemplate className="w-4 h-4 text-[#B91C1C] flex-shrink-0" />
-                <p className="text-sm text-[#B91C1C] font-medium">Template pré-rempli. Vous pourrez le personnaliser dans l&apos;éditeur.</p>
+                <p className="text-sm text-[#B91C1C] font-medium">{t('dashboardPages.pageBuilder.templatePrefilled')}</p>
               </div>
             )}
             {hasReachedPageLimit && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-                <p>Limite de {pageLimitLabel} pages atteinte pour votre plan.</p>
+                <p>{t('dashboardPages.pageBuilder.pageLimitReached', { limit: pageLimitLabel })}</p>
                 <a
                   href="/hub/dashboard/subscription"
                   className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#B91C1C] px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-[#991B1B]"
                 >
                   <Crown className="h-3 w-3" />
-                  Upgrade plan
+                  {t('dashboardPages.pageBuilder.upgradePlan')}
                 </a>
               </div>
             )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-[#6B6258] mb-1">
-                  Titre de la page
+                  {t('dashboardPages.pageBuilder.pageTitle')}
                 </label>
                 <input
                   type="text"
                   value={newPageTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Ex: À propos, Promotions d'été..."
+                  placeholder={t('dashboardPages.pageBuilder.titlePlaceholder')}
                   className="w-full rounded-xl border border-[#E4D8C6] bg-white px-4 py-2.5 text-[#1A1A2E] outline-none transition-colors focus:border-[#D6B779] focus:ring-2 focus:ring-[#D6B779]/20"
                   autoFocus
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#6B6258] mb-1">
-                  Slug (URL)
+                  {t('dashboardPages.pageBuilder.slug')}
                 </label>
                 <div className="flex items-center">
                   <span className="text-sm text-[#8A6F3D] mr-1">/</span>
@@ -917,7 +918,7 @@ export default function PageBuilderDashboard() {
                       setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
                       setSlugFieldError('');
                     }}
-                    placeholder="a-propos"
+                    placeholder={t('dashboardPages.pageBuilder.slugPlaceholder')}
                     aria-invalid={Boolean(createSlugError)}
                     className={`w-full rounded-xl border bg-white px-4 py-2.5 text-[#1A1A2E] outline-none transition-colors focus:ring-2 ${
                       createSlugError
@@ -941,7 +942,7 @@ export default function PageBuilderDashboard() {
                             }}
                             className="rounded-full border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
                           >
-                            Utiliser /{suggestion}
+                            {t('dashboardPages.pageBuilder.useSlug', { slug: suggestion })}
                           </button>
                         ))}
                       </div>
@@ -949,7 +950,7 @@ export default function PageBuilderDashboard() {
                   </div>
                 ) : (
                   <p className="text-xs text-[#7C7468] mt-1">
-                    Lettres minuscules, chiffres et tirets uniquement.
+                    {t('dashboardPages.pageBuilder.slugHelp')}
                   </p>
                 )}
               </div>
@@ -966,7 +967,7 @@ export default function PageBuilderDashboard() {
                 }}
                 className="rounded-full px-4 py-2 text-sm font-semibold text-[#6B6258] transition-colors hover:bg-[#F4EDE2]"
               >
-                Annuler
+                {t('dashboardPages.pageBuilder.cancel')}
               </button>
               <button
                 onClick={handleCreatePage}
@@ -978,7 +979,7 @@ export default function PageBuilderDashboard() {
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                {creating ? 'Création...' : 'Créer et éditer'}
+                {creating ? t('dashboardPages.pageBuilder.creating') : t('dashboardPages.pageBuilder.createAndEdit')}
               </button>
             </div>
           </div>
