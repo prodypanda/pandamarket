@@ -17,7 +17,9 @@ function validWebhookSignature(req:Request,gateway:PaymentGateway){
   if(typeof header!=='string'||!header)return false;
   const secret=isFlouci?config.flouci.appSecret:config.konnect.apiKey;
   if(!secret)return false;
-  const expected=crypto.createHmac('sha256',secret).update(JSON.stringify(req.body)).digest('hex');
+  const raw=(req as any).rawBody as Buffer|undefined;
+  const payload=raw?raw.toString('utf8'):JSON.stringify(req.body);
+  const expected=crypto.createHmac('sha256',secret).update(payload).digest('hex');
   try{const supplied=Buffer.from(header,'hex'),wanted=Buffer.from(expected,'hex');return supplied.length===wanted.length&&crypto.timingSafeEqual(supplied,wanted)}catch{return false}
 }
 const deliveryQuerySchema = z.object({ placement: z.string().min(2).max(100), limit: z.coerce.number().int().min(1).max(12).default(4), locale:z.enum(['all','fr','en','ar']).default('all'), category:z.string().trim().max(120).optional(), device:z.enum(['all','mobile','desktop']).default('all'), audience:z.enum(['all','new','returning']).default('all') });

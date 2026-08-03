@@ -44,7 +44,8 @@ function verifyFlouciSignature(req: Request): boolean {
     logger.warn('Flouci webhook missing signature header');
     return false;
   }
-  const payload = JSON.stringify(req.body);
+  const raw = (req as any).rawBody as Buffer | undefined;
+  const payload = raw ? raw.toString('utf8') : JSON.stringify(req.body);
   const expected = crypto
     .createHmac('sha256', config.flouci.appSecret)
     .update(payload)
@@ -69,7 +70,8 @@ function verifyKonnectSignature(req: Request): boolean {
     logger.warn('Konnect webhook missing signature header');
     return false;
   }
-  const payload = JSON.stringify(req.body);
+  const raw = (req as any).rawBody as Buffer | undefined;
+  const payload = raw ? raw.toString('utf8') : JSON.stringify(req.body);
   const expected = crypto
     .createHmac('sha256', config.konnect.apiKey)
     .update(payload)

@@ -70,9 +70,11 @@ function asList(name: string, fallback: string[] = []): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+const envFallback = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+
 export const config = {
   // App
-  env: optional('PD_NODE_ENV', 'development') as 'development' | 'production' | 'test',
+  env: optional('PD_NODE_ENV', envFallback) as 'development' | 'production' | 'test',
   port: asInt('PD_PORT', 9000),
   logLevel: optional('PD_LOG_LEVEL', 'info'),
   hubDomain: optional('PD_HUB_DOMAIN', 'pandamarket.local')!,
@@ -175,6 +177,36 @@ export const config = {
   defaultRetentionDays: asInt('PD_DEFAULT_RETENTION_DAYS', 7),
   defaultCurrency: optional('PD_DEFAULT_CURRENCY', 'TND')!,
   minWithdrawalTnd: asInt('PD_MIN_WITHDRAWAL_TND', 20),
+  autoPayoutsEnabled: asBool('PD_PAYOUTS_AUTO_ENABLED', false),
 } as const;
+
+if (config.env === 'production') {
+  const criticalSecrets: Array<{ name: string; devDefault: string }> = [
+    { name: 'PD_JWT_SECRET', devDefault: 'dev_jwt_secret_change_in_production' },
+    { name: 'PD_COOKIE_SECRET', devDefault: 'dev_cookie_secret_change_in_production' },
+    {
+      name: 'PD_ENCRYPTION_KEY',
+      devDefault: '0000000000000000000000000000000000000000000000000000000000000000',
+    },
+  ];
+  for (const { name, devDefault } of criticalSecrets) {
+    const provided = readSecretFile(name) ?? process.env[name];
+    if (!provided || provided === devDefault) {
+      // Fail fast: booting with known dev defaults would allow JWT/cookie forgery
+      // and decryption of vendor payment configs.
+      throw new Error(
+        `[config] Refusing to start in production: ${name} is missing or set to the insecure development default. Set the environment variable (or ${name}_FILE) to a strong secret.`,
+      );
+    }
+  }
+  const warnIfDefault = (name: string, value: string, devDefault: string) => {
+    if (value === devDefault) {
+      console.warn(`[config] WARNING: ${name} is using the public sandbox default in production.`);
+    }
+  };
+  warnIfDefault('PD_FLOUCI_APP_TOKEN', config.flouci.appToken, 'sandbox_token');
+  warnIfDefault('PD_FLOUCI_APP_SECRET', config.flouci.appSecret, 'sandbox_secret');
+  warnIfDefault('PD_KONNECT_API_KEY', config.konnect.apiKey, 'sandbox_key');
+}
 
 export type AppConfig = typeof config;

@@ -419,6 +419,22 @@
         "desc": "تضمين خريطة جوجل لمتجرك"
       },
       "mapEmbedPlaceholder": "رابط تضمين خريطة جوجل (مثل: https://www.google.com/maps/embed?...)"
+    },
+    "referenceSelector": {
+      "selectPlaceholder": "اختر…",
+      "loading": "جارٍ التحميل…",
+      "searchPlaceholder": {
+        "page": "ابحث عن صفحة…",
+        "product": "ابحث عن منتج…",
+        "category": "ابحث عن فئة…",
+        "collection": "ابحث عن مجموعة…"
+      },
+      "emptyLabel": {
+        "page": "لا توجد صفحة",
+        "product": "لا يوجد منتج",
+        "category": "لا توجد فئة",
+        "collection": "لا توجد مجموعة (استخدم الفئات)"
+      }
     }
   },
   "dashboardPages": {

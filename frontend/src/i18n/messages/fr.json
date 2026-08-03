@@ -419,6 +419,22 @@
         "desc": "Embed Google Maps de votre boutique"
       },
       "mapEmbedPlaceholder": "URL embed Google Maps (ex: https://www.google.com/maps/embed?...)"
+    },
+    "referenceSelector": {
+      "selectPlaceholder": "Sélectionner…",
+      "loading": "Chargement…",
+      "searchPlaceholder": {
+        "page": "Rechercher une page…",
+        "product": "Rechercher un produit…",
+        "category": "Rechercher une catégorie…",
+        "collection": "Rechercher une collection…"
+      },
+      "emptyLabel": {
+        "page": "Aucune page trouvée",
+        "product": "Aucun produit trouvé",
+        "category": "Aucune catégorie trouvée",
+        "collection": "Aucune collection trouvée (utilisez les catégories)"
+      }
     }
   },
   "dashboardPages": {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { Search, ChevronDown, X, Loader2 } from 'lucide-react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 type ReferenceType = 'page' | 'product' | 'category' | 'collection';
 
@@ -26,18 +27,19 @@ const ENDPOINTS: Partial<Record<ReferenceType, string>> = {
   // collection: null,
 };
 
-const PLACEHOLDERS: Record<ReferenceType, string> = {
-  page: 'Rechercher une page…',
-  product: 'Rechercher un produit…',
-  category: 'Rechercher une catégorie…',
-  collection: 'Rechercher une collection…',
+// i18n key prefixes for labels — resolved via t() at render time
+const PLACEHOLDER_KEYS: Record<ReferenceType, string> = {
+  page: 'storefrontNav.referenceSelector.searchPlaceholder.page',
+  product: 'storefrontNav.referenceSelector.searchPlaceholder.product',
+  category: 'storefrontNav.referenceSelector.searchPlaceholder.category',
+  collection: 'storefrontNav.referenceSelector.searchPlaceholder.collection',
 };
 
-const EMPTY_LABELS: Record<ReferenceType, string> = {
-  page: 'Aucune page trouvée',
-  product: 'Aucun produit trouvé',
-  category: 'Aucune catégorie trouvée',
-  collection: 'Aucune collection trouvée (utilisez les catégories)',
+const EMPTY_LABEL_KEYS: Record<ReferenceType, string> = {
+  page: 'storefrontNav.referenceSelector.emptyLabel.page',
+  product: 'storefrontNav.referenceSelector.emptyLabel.product',
+  category: 'storefrontNav.referenceSelector.emptyLabel.category',
+  collection: 'storefrontNav.referenceSelector.emptyLabel.collection',
 };
 
 function extractLabel(row: Record<string, unknown>, type: ReferenceType): string {
@@ -49,6 +51,7 @@ function extractLabel(row: Record<string, unknown>, type: ReferenceType): string
 }
 
 export function ReferenceSelector({ type, value, onChange, className }: ReferenceSelectorProps) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -123,7 +126,7 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
         className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
       >
         <span className={selectedLabel ? 'truncate' : 'text-slate-400'}>
-          {selectedLabel || `Sélectionner…`}
+          {selectedLabel || t('storefrontNav.referenceSelector.selectPlaceholder')}
         </span>
         <div className="flex items-center gap-1">
           {value && (
@@ -159,7 +162,7 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={PLACEHOLDERS[type]}
+              placeholder={t(PLACEHOLDER_KEYS[type])}
               autoFocus
               className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
             />
@@ -168,11 +171,11 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
             {loading ? (
               <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-slate-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Chargement…
+                {t('storefrontNav.referenceSelector.loading')}
               </div>
             ) : filtered.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-slate-400">
-                {EMPTY_LABELS[type]}
+                {t(EMPTY_LABEL_KEYS[type])}
               </div>
             ) : (
               filtered.map((opt) => (

@@ -166,7 +166,15 @@ async function bootstrap() {
   );
 
   // Parsers
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        // Preserve the raw request body so webhook HMAC verification can be
+        // computed over the exact bytes the provider signed.
+        (req as any).rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(config.cookieSecret));
 

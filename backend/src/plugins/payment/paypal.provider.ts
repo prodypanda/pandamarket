@@ -210,8 +210,8 @@ export class PayPalProvider implements PaymentProvider {
     try {
       const creds = await this.getCredentials();
       if (!creds.webhookId) {
-        logger.warn('PayPal Webhook ID is not configured — skipping signature check in dev mode');
-        return true;
+        logger.error('PayPal Webhook ID is not configured — rejecting webhook signature verification (fail-closed)');
+        return false;
       }
       const accessToken = await this.getAccessToken(creds.clientId, creds.clientSecret, creds.baseUrl);
 

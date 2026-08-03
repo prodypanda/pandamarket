@@ -4628,24 +4628,6 @@ router.post(
   }),
 );
 
-router.post(
-  '/subscription-orders/stripe-webhook',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.handleStripeSubscriptionWebhook(req.body);
-    res.status(200).json(result);
-  }),
-);
-
-router.post(
-  '/subscription-orders/paypal-webhook',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { subscriptionPaymentService } = await import('../services/subscription-payment.service');
-    const result = await subscriptionPaymentService.handlePayPalSubscriptionWebhook(req.body);
-    res.status(200).json(result);
-  }),
-);
-
 router.get(
   '/subscription-orders/gl-export',
   requireAuth,

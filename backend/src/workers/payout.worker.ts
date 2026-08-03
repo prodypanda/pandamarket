@@ -8,6 +8,10 @@
  * Real bank transfers are out of scope for the MVP — the wallet is
  * debited and a `payout_completed` event is emitted, which can be
  * picked up later by an integration with the bank provider.
+ *
+ * Auto payouts are gated behind `PD_PAYOUTS_AUTO_ENABLED` until a real
+ * bank transfer integration exists, so wallets are never debited without
+ * an actual transfer being initiated.
  */
 
 import { Worker, Job } from 'bullmq';
@@ -68,6 +72,10 @@ async function handleRelease(): Promise<void> {
 }
 
 async function handleAutoPayout(): Promise<void> {
+  if (!config.autoPayoutsEnabled) {
+    logger.info('Auto payouts disabled (PD_PAYOUTS_AUTO_ENABLED not set) — skipping. Real bank transfer integration pending.');
+    return;
+  }
   const { rows } = await query<{
     store_id: string;
     balance: string;

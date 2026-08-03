@@ -511,8 +511,9 @@ export default function NavigationManagerPage() {
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
                         {item.type !== 'custom_url' && (
-                          <div className="w-full sm:w-1/3" key={item.type}>
+                          <div className="w-full sm:w-1/3">
                             <ReferenceSelector
+                              key={item.type}
                               type={item.type as 'page' | 'product' | 'category' | 'collection'}
                               value={item.reference_id || ''}
                               onChange={(id) => handleUpdateItem(loc.key, item.id, 'reference_id', id)}
