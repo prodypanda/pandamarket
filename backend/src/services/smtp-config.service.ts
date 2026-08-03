@@ -19,6 +19,8 @@ import * as net from 'node:net';
 // Types
 // ----------------------------------------------------------------
 
+export type EmailTransportMode = 'smtp' | 'brevo_api';
+
 export interface SmtpConfig {
   smtp_host: string;
   smtp_port: number;
@@ -28,6 +30,8 @@ export interface SmtpConfig {
   smtp_from_name: string;
   smtp_from_email: string;
   smtp_enabled: boolean;
+  email_transport: EmailTransportMode; // 'smtp' = classic SMTP, 'brevo_api' = Brevo HTTP API
+  brevo_api_key: string; // decrypted for internal use, never returned to client
 }
 
 export interface SmtpConfigPublic {
@@ -39,6 +43,8 @@ export interface SmtpConfigPublic {
   smtp_from_name: string;
   smtp_from_email: string;
   smtp_enabled: boolean;
+  email_transport: EmailTransportMode;
+  brevo_api_key_set: boolean; // indicates whether a Brevo API key is configured
 }
 
 const SMTP_KEYS = [
@@ -50,9 +56,14 @@ const SMTP_KEYS = [
   'smtp_from_name',
   'smtp_from_email',
   'smtp_enabled',
+  'email_transport',
+  'brevo_api_key',
 ] as const;
 
 const SMTP_PASS_KEY = 'smtp_pass';
+const BREVO_API_KEY_KEY = 'brevo_api_key';
+
+const BREVO_API_BASE = 'https://api.brevo.com';
 
 /**
  * Probe raw TCP reachability of the SMTP server from this host, trying each
@@ -114,6 +125,9 @@ class SmtpConfigService {
 
     const map = new Map(rows.map((r) => [r.key, r.value]));
 
+    const transportMode: EmailTransportMode =
+      map.get('email_transport') === 'brevo_api' ? 'brevo_api' : 'smtp';
+
     // If host is not set, consider config as not configured
     const host = map.get('smtp_host');
     if (!host) return null;
@@ -129,6 +143,17 @@ class SmtpConfigService {
       }
     }
 
+    let brevoApiKey = '';
+    const encryptedBrevoKey = map.get(BREVO_API_KEY_KEY);
+    if (encryptedBrevoKey) {
+      try {
+        brevoApiKey = decrypt(encryptedBrevoKey);
+      } catch (err) {
+        logger.error({ err }, 'Failed to decrypt Brevo API key — config may be corrupted');
+        brevoApiKey = '';
+      }
+    }
+
     return {
       smtp_host: host,
       smtp_port: parseInt(map.get('smtp_port') ?? '587', 10),
@@ -138,6 +163,8 @@ class SmtpConfigService {
       smtp_from_name: map.get('smtp_from_name') ?? 'PandaMarket',
       smtp_from_email: map.get('smtp_from_email') ?? 'noreply@pandamarket.tn',
       smtp_enabled: map.get('smtp_enabled') === 'true',
+      email_transport: transportMode,
+      brevo_api_key: brevoApiKey,
     };
   }
 
@@ -158,6 +185,8 @@ class SmtpConfigService {
         smtp_from_name: 'PandaMarket',
         smtp_from_email: 'noreply@pandamarket.tn',
         smtp_enabled: false,
+        email_transport: 'smtp',
+        brevo_api_key_set: false,
       };
     }
 
@@ -170,6 +199,8 @@ class SmtpConfigService {
       smtp_from_name: config.smtp_from_name,
       smtp_from_email: config.smtp_from_email,
       smtp_enabled: config.smtp_enabled,
+      email_transport: config.email_transport,
+      brevo_api_key_set: config.brevo_api_key.length > 0,
     };
   }
 
@@ -188,6 +219,8 @@ class SmtpConfigService {
       smtp_from_name: string;
       smtp_from_email: string;
       smtp_enabled: boolean;
+      email_transport?: EmailTransportMode;
+      brevo_api_key?: string; // empty = keep existing
     },
     adminId: string,
   ): Promise<void> {
@@ -209,12 +242,18 @@ class SmtpConfigService {
       ['smtp_from_name', input.smtp_from_name],
       ['smtp_from_email', input.smtp_from_email],
       ['smtp_enabled', String(input.smtp_enabled)],
+      ['email_transport', input.email_transport === 'brevo_api' ? 'brevo_api' : 'smtp'],
     ];
 
     // Handle password: only update if a new value is provided
     if (input.smtp_pass !== undefined && input.smtp_pass !== '') {
       const encryptedPass = encrypt(input.smtp_pass);
       entries.push([SMTP_PASS_KEY, encryptedPass]);
+    }
+
+    // Handle Brevo API key: only update if a new value is provided
+    if (input.brevo_api_key !== undefined && input.brevo_api_key !== '') {
+      entries.push([BREVO_API_KEY_KEY, encrypt(input.brevo_api_key.trim())]);
     }
 
     for (const [key, value] of entries) {
@@ -227,7 +266,7 @@ class SmtpConfigService {
     }
 
     logger.info(
-      { admin_id: adminId, keys: entries.map(([k]) => k).filter((k) => k !== SMTP_PASS_KEY) },
+      { admin_id: adminId, keys: entries.map(([k]) => k).filter((k) => k !== SMTP_PASS_KEY && k !== BREVO_API_KEY_KEY) },
       'SMTP configuration updated',
     );
   }
@@ -239,16 +278,28 @@ class SmtpConfigService {
    */
   async testConnection(
     overrides?: {
-      smtp_host: string;
-      smtp_port: number;
-      smtp_user: string;
+      smtp_host?: string;
+      smtp_port?: number;
+      smtp_user?: string;
       smtp_pass?: string;
-      smtp_secure: boolean;
-      smtp_from_name: string;
-      smtp_from_email: string;
+      smtp_secure?: boolean;
+      smtp_from_name?: string;
+      smtp_from_email?: string;
+      email_transport?: EmailTransportMode;
+      brevo_api_key?: string;
     },
     recipientEmail?: string,
   ): Promise<{ success: boolean; message: string }> {
+    // Resolve transport mode: explicit override > saved config > SMTP.
+    let mode: EmailTransportMode | undefined = overrides?.email_transport;
+    if (!mode) {
+      const savedForMode = await this.getConfig();
+      mode = savedForMode?.email_transport ?? 'smtp';
+    }
+    if (mode === 'brevo_api') {
+      return this.testBrevoApi(overrides, recipientEmail);
+    }
+
     let host: string;
     let port: number;
     let user: string;
@@ -257,13 +308,13 @@ class SmtpConfigService {
     let fromName: string;
     let fromEmail: string;
 
-    if (overrides) {
+    if (overrides && overrides.smtp_host) {
       host = overrides.smtp_host;
-      port = overrides.smtp_port;
-      user = overrides.smtp_user;
-      secure = overrides.smtp_secure;
-      fromName = overrides.smtp_from_name;
-      fromEmail = overrides.smtp_from_email;
+      port = overrides.smtp_port ?? 587;
+      user = overrides.smtp_user ?? '';
+      secure = overrides.smtp_secure ?? false;
+      fromName = overrides.smtp_from_name ?? 'PandaMarket';
+      fromEmail = overrides.smtp_from_email ?? '';
 
       // If password not provided in overrides, try to get from saved config
       if (!overrides.smtp_pass || overrides.smtp_pass === '') {
@@ -382,6 +433,107 @@ class SmtpConfigService {
       return { success: false, message: `SMTP connection failed: ${errorMessage}.${hint}` };
     } finally {
       transporter.close();
+    }
+  }
+
+  /**
+   * Test the Brevo HTTP API transport (works where SMTP ports are blocked,
+   * e.g. Render free instances block outbound 25/465/587).
+   * Step 1: validate the API key against GET /v3/account.
+   * Step 2: optionally send a test email via POST /v3/smtp/email.
+   */
+  private async testBrevoApi(
+    overrides?: { brevo_api_key?: string; smtp_from_name?: string; smtp_from_email?: string },
+    recipientEmail?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    let apiKey = (overrides?.brevo_api_key || '').trim();
+    if (!apiKey) {
+      apiKey = (await this.getConfig())?.brevo_api_key ?? '';
+    }
+    if (!apiKey) {
+      return { success: false, message: 'Brevo API key is required. Get one from Brevo → SMTP & API → API Keys.' };
+    }
+
+    // Step 1 — validate the API key
+    try {
+      const res = await fetch(`${BREVO_API_BASE}/v3/account`, {
+        headers: { 'api-key': apiKey, Accept: 'application/json' },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null;
+        const detail = body?.message || `HTTP ${res.status}`;
+        logger.warn({ status: res.status }, 'Brevo API key rejected');
+        return { success: false, message: `Brevo rejected the API key: ${detail}` };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: msg }, 'Brevo API unreachable');
+      return { success: false, message: `Could not reach the Brevo API: ${msg}` };
+    }
+
+    if (!recipientEmail) {
+      return { success: true, message: 'Brevo API key verified successfully. Add a recipient email to test sending.' };
+    }
+
+    // Step 2 — send a real test email
+    const saved = await this.getConfig();
+    const fromName = overrides?.smtp_from_name || saved?.smtp_from_name || 'PandaMarket';
+    const fromEmail = overrides?.smtp_from_email || saved?.smtp_from_email || '';
+    if (!fromEmail) {
+      return { success: false, message: 'A sender email address is required to send the test email.' };
+    }
+
+    try {
+      const sendRes = await fetch(`${BREVO_API_BASE}/v3/smtp/email`, {
+        method: 'POST',
+        headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: recipientEmail }],
+          subject: '✅ PandaMarket Email Test — Connection Successful',
+          htmlContent: `
+            <div style="font-family:Inter,-apple-system,Helvetica,Arial,sans-serif;max-width:500px;margin:0 auto;padding:32px;">
+              <div style="background:#1A1A2E;padding:20px;border-radius:12px 12px 0 0;color:#fff;">
+                <span style="font-size:20px;font-weight:700;">🐼 PandaMarket</span>
+              </div>
+              <div style="background:#fff;padding:24px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:#16C784;margin-top:0;">Email Test Successful ✅</h2>
+                <p style="color:#374151;">Your Brevo API configuration is working correctly.</p>
+                <table style="width:100%;font-size:14px;color:#6B7280;margin-top:16px;">
+                  <tr><td style="padding:4px 0;"><strong>Transport:</strong></td><td>Brevo HTTP API</td></tr>
+                  <tr><td style="padding:4px 0;"><strong>From:</strong></td><td>${fromName} &lt;${fromEmail}&gt;</td></tr>
+                </table>
+                <p style="color:#9CA3AF;font-size:12px;margin-top:16px;">This is a test email sent from the PandaMarket admin panel.</p>
+              </div>
+            </div>
+          `,
+          textContent: `PandaMarket Email Test Successful. Transport: Brevo HTTP API. From: ${fromName} <${fromEmail}>`,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      if (!sendRes.ok) {
+        const body = (await sendRes.json().catch(() => null)) as { message?: string } | null;
+        const detail = body?.message || `HTTP ${sendRes.status}`;
+        const senderHint = /sender|domain/i.test(detail)
+          ? ' Verify the sender/domain in Brevo (Senders & Domains) before testing again.'
+          : '';
+        logger.warn({ status: sendRes.status, detail }, 'Brevo test email send failed');
+        return {
+          success: false,
+          message: `Brevo API key is valid but sending failed: ${detail}.${senderHint}`,
+        };
+      }
+
+      return {
+        success: true,
+        message: `Brevo API verified and test email sent to ${recipientEmail}`,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: msg }, 'Brevo test email send failed');
+      return { success: false, message: `Brevo send failed: ${msg}` };
     }
   }
 }

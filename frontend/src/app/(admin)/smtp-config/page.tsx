@@ -25,6 +25,8 @@ interface SmtpConfigPublic {
   smtp_from_name: string;
   smtp_from_email: string;
   smtp_enabled: boolean;
+  email_transport: 'smtp' | 'brevo_api';
+  brevo_api_key_set: boolean;
 }
 
 interface SmtpFormData {
@@ -36,6 +38,8 @@ interface SmtpFormData {
   smtp_from_name: string;
   smtp_from_email: string;
   smtp_enabled: boolean;
+  email_transport: 'smtp' | 'brevo_api';
+  brevo_api_key: string;
 }
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'error';
@@ -62,6 +66,8 @@ const DEFAULT_FORM: SmtpFormData = {
   smtp_from_name: 'PandaMarket',
   smtp_from_email: 'noreply@pandamarket.tn',
   smtp_enabled: false,
+  email_transport: 'smtp',
+  brevo_api_key: '',
 };
 
 export default function AdminSmtpConfigPage() {
@@ -75,6 +81,7 @@ export default function AdminSmtpConfigPage() {
   const [testMessage, setTestMessage] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('custom');
+  const [brevoApiKeySet, setBrevoApiKeySet] = useState(false);
   const [error, setError] = useState('');
 
   const loadConfig = useCallback(async () => {
@@ -93,8 +100,11 @@ export default function AdminSmtpConfigPage() {
           smtp_from_name: data.smtp_from_name,
           smtp_from_email: data.smtp_from_email,
           smtp_enabled: data.smtp_enabled,
+          email_transport: data.email_transport || 'smtp',
+          brevo_api_key: '', // never returned from server
         });
         setExistingPassSet(data.smtp_pass_set);
+        setBrevoApiKeySet(!!data.brevo_api_key_set);
 
         // Detect preset from host
         const matchedPreset = Object.entries(PROVIDER_PRESETS).find(
@@ -131,7 +141,12 @@ export default function AdminSmtpConfigPage() {
   }
 
   async function handleSave() {
-    if (!form.smtp_host && form.smtp_enabled) {
+    if (form.email_transport === 'brevo_api') {
+      if (form.smtp_enabled && !form.brevo_api_key && !brevoApiKeySet) {
+        setError('A Brevo API key is required when email is enabled with the Brevo transport');
+        return;
+      }
+    } else if (!form.smtp_host && form.smtp_enabled) {
       setError('SMTP host is required when email is enabled');
       return;
     }
@@ -150,6 +165,10 @@ export default function AdminSmtpConfigPage() {
         if (form.smtp_pass) {
           setExistingPassSet(true);
           setForm((prev) => ({ ...prev, smtp_pass: '' }));
+        }
+        if (form.brevo_api_key) {
+          setBrevoApiKeySet(true);
+          setForm((prev) => ({ ...prev, brevo_api_key: '' }));
         }
         setTimeout(() => setSaved(false), 3000);
       } else {
@@ -173,7 +192,13 @@ export default function AdminSmtpConfigPage() {
       const payload: Record<string, unknown> = {};
 
       // Send current form values so the test uses unsaved config
-      if (form.smtp_host) {
+      if (form.email_transport === 'brevo_api') {
+        payload.email_transport = 'brevo_api';
+        payload.brevo_api_key = form.brevo_api_key || undefined;
+        payload.smtp_from_name = form.smtp_from_name;
+        payload.smtp_from_email = form.smtp_from_email;
+      } else if (form.smtp_host) {
+        payload.email_transport = 'smtp';
         payload.smtp_host = form.smtp_host;
         payload.smtp_port = form.smtp_port;
         payload.smtp_user = form.smtp_user;
@@ -293,6 +318,49 @@ export default function AdminSmtpConfigPage() {
         </div>
       </section>
 
+      {/* Delivery Method */}
+      <section className="bg-white rounded-xl border border-gray-100 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Delivery Method</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          How transactional emails leave the server. The HTTP API works everywhere — including
+          hosts that block SMTP ports (Render free instances block 25/465/587).
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            onClick={() => updateField('email_transport', 'brevo_api')}
+            className={`text-left px-4 py-3 rounded-lg border transition-all ${
+              form.email_transport === 'brevo_api'
+                ? 'border-[#B91C1C] bg-[#B91C1C]/5'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${form.email_transport === 'brevo_api' ? 'text-[#B91C1C]' : 'text-gray-800'}`}>
+              Brevo HTTP API <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-[#B91C1C]">Recommended</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Sends over HTTPS (port 443). Free tier: 300 emails/day. Works on Render free.
+            </p>
+          </button>
+          <button
+            onClick={() => updateField('email_transport', 'smtp')}
+            className={`text-left px-4 py-3 rounded-lg border transition-all ${
+              form.email_transport === 'smtp'
+                ? 'border-[#B91C1C] bg-[#B91C1C]/5'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${form.email_transport === 'smtp' ? 'text-[#B91C1C]' : 'text-gray-800'}`}>
+              Classic SMTP server
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Connects to ports 25/465/587. Blocked on Render free instances.
+            </p>
+          </button>
+        </div>
+      </section>
+
+      {form.email_transport === 'smtp' && (
+        <>
       {/* Provider Preset */}
       <section className="bg-white rounded-xl border border-gray-100 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Email Provider</h3>
@@ -407,6 +475,49 @@ export default function AdminSmtpConfigPage() {
           </div>
         </div>
       </section>
+        </>
+      )}
+
+      {form.email_transport === 'brevo_api' && (
+        <section className="bg-white rounded-xl border border-gray-100 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Server className="h-5 w-5 text-gray-400" />
+            <h3 className="text-lg font-semibold text-gray-900">Brevo API Settings</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Brevo API Key (v3)
+                {brevoApiKeySet && !form.brevo_api_key && (
+                  <span className="ml-2 text-xs text-[#B91C1C] font-normal">
+                    ✓ API key is set (leave empty to keep current)
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.brevo_api_key}
+                  onChange={(e) => updateField('brevo_api_key', e.target.value)}
+                  placeholder={brevoApiKeySet ? '••••••••••••' : 'xkeysib-…'}
+                  className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Create a key in Brevo → SMTP &amp; API → API Keys (scope: send emails). Then verify
+                your sender domain under Senders &amp; Domains so mail from your address is accepted.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Sender Identity */}
       <section className="bg-white rounded-xl border border-gray-100 p-6">
@@ -466,7 +577,12 @@ export default function AdminSmtpConfigPage() {
           </div>
           <button
             onClick={handleTest}
-            disabled={testStatus === 'testing' || !form.smtp_host}
+            disabled={
+              testStatus === 'testing'
+              || (form.email_transport === 'brevo_api'
+                ? !form.brevo_api_key && !brevoApiKeySet
+                : !form.smtp_host)
+            }
             className="flex items-center gap-2 px-5 py-2 bg-[#1A1A2E] text-white rounded-lg text-sm font-medium hover:bg-[#25253D] transition-all active:scale-[0.98] disabled:opacity-50 whitespace-nowrap"
           >
             {testStatus === 'testing' ? (

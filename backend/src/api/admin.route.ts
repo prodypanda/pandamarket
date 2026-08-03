@@ -3211,6 +3211,8 @@ const smtpConfigSchema = z.object({
   smtp_from_name: z.string().min(1).max(200).default('PandaMarket'),
   smtp_from_email: z.string().email().max(255).default('noreply@pandamarket.tn'),
   smtp_enabled: z.boolean().default(false),
+  email_transport: z.enum(['smtp', 'brevo_api']).default('smtp'),
+  brevo_api_key: z.string().max(500).optional().default(''), // empty = keep existing
 });
 
 /**
@@ -3249,6 +3251,8 @@ const smtpTestSchema = z.object({
   smtp_from_name: z.string().max(200).optional(),
   smtp_from_email: z.string().email().max(255).optional(),
   recipient_email: z.string().email().max(255).optional(),
+  email_transport: z.enum(['smtp', 'brevo_api']).optional(),
+  brevo_api_key: z.string().max(500).optional(),
 });
 
 /**
@@ -3262,8 +3266,11 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { recipient_email, ...overrides } = req.body;
 
-    // If overrides have a host, use them; otherwise test saved config
-    const hasOverrides = overrides.smtp_host && overrides.smtp_host.length > 0;
+    // Use overrides when an SMTP host is provided or when testing the Brevo API transport;
+    // otherwise test the saved config.
+    const hasOverrides =
+      (overrides.smtp_host && overrides.smtp_host.length > 0)
+      || overrides.email_transport === 'brevo_api';
 
     const result = await smtpConfigService.testConnection(
       hasOverrides
@@ -3275,6 +3282,8 @@ router.post(
             smtp_secure: overrides.smtp_secure ?? false,
             smtp_from_name: overrides.smtp_from_name ?? 'PandaMarket',
             smtp_from_email: overrides.smtp_from_email ?? 'noreply@pandamarket.tn',
+            email_transport: overrides.email_transport,
+            brevo_api_key: overrides.brevo_api_key,
           }
         : undefined,
       recipient_email,

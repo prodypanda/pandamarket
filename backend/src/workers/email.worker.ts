@@ -472,6 +472,71 @@ const consoleTransport = new ConsoleTransport();
 const disabledTransport = new DisabledTransport();
 const smtpTransport = new SmtpTransport();
 
+/**
+ * Brevo HTTP API transport — sends transactional email over HTTPS (port 443)
+ * instead of SMTP. Use this when the host blocks outbound SMTP ports
+ * (e.g. Render free instances block 25/465/587).
+ */
+class BrevoApiTransport implements MailTransport {
+  private apiKey = '';
+  private senderName = 'PandaMarket';
+  private senderEmail = '';
+  private configHash = '';
+  private lastConfigCheck = 0;
+  private readonly CONFIG_TTL_MS = 60_000;
+
+  private async ensure(): Promise<void> {
+    const now = Date.now();
+    const shouldRefresh = now - this.lastConfigCheck > this.CONFIG_TTL_MS;
+
+    const { smtpConfigService } = await import('../services/smtp-config.service');
+    const dbConfig = await smtpConfigService.getConfig();
+    if (
+      !dbConfig
+      || !dbConfig.smtp_enabled
+      || dbConfig.email_transport !== 'brevo_api'
+      || !dbConfig.brevo_api_key
+    ) {
+      throw new Error('no_smtp_config');
+    }
+
+    const hash = `brevo:${dbConfig.brevo_api_key.slice(0, 8)}:${dbConfig.smtp_from_email}`;
+    if (hash === this.configHash && !shouldRefresh) return;
+
+    this.apiKey = dbConfig.brevo_api_key;
+    this.senderName = dbConfig.smtp_from_name || 'PandaMarket';
+    this.senderEmail = dbConfig.smtp_from_email;
+    this.configHash = hash;
+    this.lastConfigCheck = now;
+    logger.info({ sender: this.senderEmail }, 'Brevo API transport (re)configured');
+  }
+
+  async send(opts: { to: string; from: string; subject: string; html: string; text: string }) {
+    await this.ensure();
+    if (!this.senderEmail) throw new Error('Brevo sender email not configured');
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': this.apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        sender: { name: this.senderName, email: this.senderEmail },
+        to: [{ email: opts.to }],
+        subject: opts.subject,
+        htmlContent: opts.html,
+        textContent: opts.text,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(`Brevo API error ${res.status}: ${body?.message || res.statusText}`);
+    }
+  }
+}
+
+const brevoApiTransport = new BrevoApiTransport();
+
 async function pickTransport(): Promise<MailTransport> {
   try {
     const { platformConfigService } = await import('../services/platform-config.service');
@@ -483,10 +548,13 @@ async function pickTransport(): Promise<MailTransport> {
     logger.debug({ err: err instanceof Error ? err.message : String(err) }, 'Could not load platform email notification setting');
   }
 
-  // Check if SMTP is configured (DB or env)
+  // Check email transport config (DB): Brevo API first, then SMTP, then env.
   try {
     const { smtpConfigService } = await import('../services/smtp-config.service');
     const dbConfig = await smtpConfigService.getConfig();
+    if (dbConfig && dbConfig.smtp_enabled && dbConfig.email_transport === 'brevo_api' && dbConfig.brevo_api_key) {
+      return brevoApiTransport;
+    }
     if (dbConfig && dbConfig.smtp_enabled && dbConfig.smtp_host) {
       return smtpTransport;
     }
