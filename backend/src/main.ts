@@ -71,18 +71,27 @@ async function bootstrap() {
   await initSentry();
   logMetricsStatus();
 
-  // Validate DB and Redis connection
+  // Validate DB connection (fatal — server can't run without DB)
   try {
     const dbPool = getPool();
     const client = await dbPool.connect();
     client.release();
     logger.info('Database connected successfully.');
+  } catch (err) {
+    logger.error({ err }, 'Failed to connect to database.');
+    process.exit(1);
+  }
 
-    await getRedis().ping();
+  // Validate Redis connection (non-fatal — server runs without workers/queues)
+  try {
+    const pingPromise = getRedis().ping();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Redis ping timeout (5s)')), 5_000),
+    );
+    await Promise.race([pingPromise, timeoutPromise]);
     logger.info('Redis connected successfully.');
   } catch (err) {
-    logger.error({ err }, 'Failed to connect to backend dependencies.');
-    process.exit(1);
+    logger.warn({ err }, 'Redis unavailable — background workers and queues will be disabled. Server will continue without them.');
   }
 
   const app = express();
@@ -453,14 +462,11 @@ async function bootstrap() {
       });
       logger.info('🤖 All 6 background workers successfully started in-process.');
 
-      // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot)
-      try {
-        await scheduleRecurringPayoutJobs();
-        await scheduleRecurringSubscriptionJobs();
-        logger.info('⏰ Recurring BullMQ jobs scheduled (payout release every 15min, subscription daily).');
-      } catch (err) {
-        logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.');
-      }
+      // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
+      // Non-blocking: don't let Redis queue scheduling hang the bootstrap.
+      void Promise.all([scheduleRecurringPayoutJobs(), scheduleRecurringSubscriptionJobs()])
+        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout release every 15min, subscription daily).'))
+        .catch((err) => logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.'));
     } catch (err) {
       logger.error({ err }, 'Failed to start background workers in-process.');
     }
