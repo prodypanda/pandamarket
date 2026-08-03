@@ -366,6 +366,59 @@
         "legal": "Mentions légales",
         "map": "Carte Google Maps"
       }
+    },
+    "blockTitlePlaceholder": "Titre du bloc (ex: À propos, Liens utiles, Contact...)",
+    "emptyFooter": "Aucun bloc de footer. Le footer affichera un contenu par défaut. Cliquez sur « Ajouter un bloc » pour personnaliser.",
+    "footerBlocksDesc": "Colonnes affichées en bas de chaque page de la boutique",
+    "footerBlock": {
+      "text": {
+        "label": "Texte libre",
+        "desc": "Paragraphe de texte arbitraire"
+      },
+      "textPlaceholder": "Saisissez le texte de ce bloc...",
+      "menu": {
+        "label": "Menu de liens",
+        "desc": "Liste de liens vers des pages/produits"
+      },
+      "linkLabel": "Intitulé du lien",
+      "linkUrlPlaceholder": "URL (ex: /pages/contact)",
+      "addLink": "Ajouter un lien",
+      "contact": {
+        "label": "Contact",
+        "desc": "Email, téléphone et adresse"
+      },
+      "contactEmailPlaceholder": "Email (ex: contact@ma-boutique.tn)",
+      "contactPhonePlaceholder": "Téléphone",
+      "contactAddressPlaceholder": "Adresse",
+      "social": {
+        "label": "Réseaux sociaux",
+        "desc": "Icônes vers vos profils sociaux"
+      },
+      "newsletter": {
+        "label": "Newsletter",
+        "desc": "Formulaire d'inscription email"
+      },
+      "newsletterTitlePlaceholder": "Titre du formulaire (ex: Inscrivez-vous à la newsletter)",
+      "newsletterButtonPlaceholder": "Texte du bouton (ex: S'inscrire)",
+      "newsletterEmailPlaceholder": "Placeholder du champ email",
+      "payment_badges": {
+        "label": "Badges de paiement",
+        "desc": "Logos des méthodes de paiement"
+      },
+      "paymentBadgesDesc": "Les badges de paiement (Flouci, Konnect, Mandat Minute, Espèces à la livraison) sont affichés automatiquement. Aucune configuration supplémentaire nécessaire.",
+      "paymentBadgesNotePlaceholder": "Note optionnelle sous les badges",
+      "legal": {
+        "label": "Mentions légales",
+        "desc": "Liens vers CGV, confidentialité, etc."
+      },
+      "legalCgvPlaceholder": "URL des CGV (ex: /pages/cgv)",
+      "legalPrivacyPlaceholder": "URL Politique de confidentialité",
+      "legalRefundPlaceholder": "URL Politique de remboursement",
+      "map": {
+        "label": "Carte Google Maps",
+        "desc": "Embed Google Maps de votre boutique"
+      },
+      "mapEmbedPlaceholder": "URL embed Google Maps (ex: https://www.google.com/maps/embed?...)"
     }
   },
   "dashboardPages": {

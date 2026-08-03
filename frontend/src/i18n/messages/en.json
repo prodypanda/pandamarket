@@ -366,6 +366,59 @@
         "legal": "Legal notices",
         "map": "Google Maps embed"
       }
+    },
+    "blockTitlePlaceholder": "Block title (e.g. About, Useful links, Contact...)",
+    "emptyFooter": "No footer blocks. The footer will show default content. Click \"Add block\" to customize.",
+    "footerBlocksDesc": "Columns shown at the bottom of every storefront page",
+    "footerBlock": {
+      "text": {
+        "label": "Free text",
+        "desc": "Arbitrary text paragraph"
+      },
+      "textPlaceholder": "Enter the text for this block...",
+      "menu": {
+        "label": "Link menu",
+        "desc": "List of links to pages/products"
+      },
+      "linkLabel": "Link label",
+      "linkUrlPlaceholder": "URL (e.g. /pages/contact)",
+      "addLink": "Add link",
+      "contact": {
+        "label": "Contact",
+        "desc": "Email, phone and address"
+      },
+      "contactEmailPlaceholder": "Email (e.g. contact@my-shop.tn)",
+      "contactPhonePlaceholder": "Phone",
+      "contactAddressPlaceholder": "Address",
+      "social": {
+        "label": "Social media",
+        "desc": "Icons linking to your social profiles"
+      },
+      "newsletter": {
+        "label": "Newsletter",
+        "desc": "Email signup form"
+      },
+      "newsletterTitlePlaceholder": "Form title (e.g. Subscribe to our newsletter)",
+      "newsletterButtonPlaceholder": "Button text (e.g. Subscribe)",
+      "newsletterEmailPlaceholder": "Email field placeholder",
+      "payment_badges": {
+        "label": "Payment badges",
+        "desc": "Payment method logos"
+      },
+      "paymentBadgesDesc": "Payment badges (Flouci, Konnect, Mandat Minute, Cash on delivery) are shown automatically. No additional configuration needed.",
+      "paymentBadgesNotePlaceholder": "Optional note below the badges",
+      "legal": {
+        "label": "Legal notices",
+        "desc": "Links to Terms, Privacy, etc."
+      },
+      "legalCgvPlaceholder": "Terms URL (e.g. /pages/terms)",
+      "legalPrivacyPlaceholder": "Privacy Policy URL",
+      "legalRefundPlaceholder": "Refund Policy URL",
+      "map": {
+        "label": "Google Maps",
+        "desc": "Embed Google Maps of your store"
+      },
+      "mapEmbedPlaceholder": "Google Maps embed URL (e.g. https://www.google.com/maps/embed?...)"
     }
   },
   "dashboardPages": {
@@ -2592,7 +2645,8 @@
       "continueBtn": "Continue",
       "createDraftBtn": "Create Draft",
       "creatingBtn": "Creating..."
-    }
+    },
+    "uploadProofBtn": "Choose receipt photo"
   },
   "analytics": {
     "title": "Superadmin Platform Analytics Engine",

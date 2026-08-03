@@ -275,7 +275,13 @@ export default function DashboardOverview() {
   const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
   const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
   const totalOrders30d = useMemo(() => salesData.reduce((s, d) => s + d.count, 0), [salesData]);
-  const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}` : '/hub';
+  // Build the storefront URL: custom domain → subdomain.garbage.team → hub fallback
+  const platformDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '');
+  const storefrontHref = store?.custom_domain
+    ? `https://${store.custom_domain}`
+    : store?.subdomain
+      ? `https://${encodeURIComponent(store.subdomain)}.${platformDomain}`
+      : '/hub';
   const storeHasLogo = Boolean(store?.settings?.logo_url || store?.settings?.logo_light_url || store?.settings?.logo_dark_url);
   const storeHasCustomColors = Boolean(
     store?.settings?.themeCustomization?.colorPresetId || Object.values(store?.settings?.themeCustomization?.customColors || {}).some(Boolean),

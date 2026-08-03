@@ -553,7 +553,9 @@ function AdminStoresContent() {
                 ? request.requested_type
                 : null;
             const currentSellerType: SellerTypeValue = isSellerTypeValue(vendor.seller_type) ? vendor.seller_type : 'retailer';
-            const storefrontHref = `/store/${encodeURIComponent(vendor.subdomain)}`;
+            const storefrontHref = vendor.custom_domain
+              ? `https://${vendor.custom_domain}`
+              : `https://${encodeURIComponent(vendor.subdomain)}.${(process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '')}`;
             const planKey = vendor.subscription_plan?.toLowerCase() || 'free';
             const statusKey = vendor.status?.toLowerCase() || 'unverified';
             const kycKey = vendor.kyc_status || 'missing';

@@ -366,6 +366,59 @@
         "legal": "الإشعارات القانونية",
         "map": "خريطة جوجل"
       }
+    },
+    "blockTitlePlaceholder": "عنوان الكتلة (مثل: حول، روابط مفيدة، اتصال...)",
+    "emptyFooter": "لا توجد كتل تذييل. سيظهر التذييل محتوى افتراضيا. انقر على «إضافة كتلة» للتخصيص.",
+    "footerBlocksDesc": "أعمدة تظهر في أسفل كل صفحة من المتجر",
+    "footerBlock": {
+      "text": {
+        "label": "نص حر",
+        "desc": "فقرة نصية تعسفية"
+      },
+      "textPlaceholder": "أدخل نص هذه الكتلة...",
+      "menu": {
+        "label": "قائمة روابط",
+        "desc": "قائمة روابط نحو الصفحات/المنتجات"
+      },
+      "linkLabel": "تسمية الرابط",
+      "linkUrlPlaceholder": "الرابط (مثل: /pages/contact)",
+      "addLink": "إضافة رابط",
+      "contact": {
+        "label": "اتصال",
+        "desc": "البريد الإلكتروني والهاتف والعنوان"
+      },
+      "contactEmailPlaceholder": "البريد الإلكتروني (مثل: contact@my-shop.tn)",
+      "contactPhonePlaceholder": "الهاتف",
+      "contactAddressPlaceholder": "العنوان",
+      "social": {
+        "label": "وسائل التواصل الاجتماعي",
+        "desc": "أيقونات نحو ملفاتك الاجتماعية"
+      },
+      "newsletter": {
+        "label": "النشرة الإخبارية",
+        "desc": "نموذج اشتراك بالبريد الإلكتروني"
+      },
+      "newsletterTitlePlaceholder": "عنوان النموذج (مثل: اشترك في نشرتنا الإخبارية)",
+      "newsletterButtonPlaceholder": "نص الزر (مثل: اشترك)",
+      "newsletterEmailPlaceholder": "حقل البريد الإلكتروني",
+      "payment_badges": {
+        "label": "شارات الدفع",
+        "desc": "شعارات طرق الدفع"
+      },
+      "paymentBadgesDesc": "تظهر شارات الدفع (Flouci، Konnect، التفويض، الدفع عند الاستلام) تلقائياً. لا حاجة لتكوين إضافي.",
+      "paymentBadgesNotePlaceholder": "ملاحظة اختيارية أسفل الشارات",
+      "legal": {
+        "label": "إشعارات قانونية",
+        "desc": "روابط نحو الشروط، الخصوصية، إلخ."
+      },
+      "legalCgvPlaceholder": "رابط الشروط (مثل: /pages/terms)",
+      "legalPrivacyPlaceholder": "رابط سياسة الخصوصية",
+      "legalRefundPlaceholder": "رابط سياسة الاسترداد",
+      "map": {
+        "label": "خريطة جوجل",
+        "desc": "تضمين خريطة جوجل لمتجرك"
+      },
+      "mapEmbedPlaceholder": "رابط تضمين خريطة جوجل (مثل: https://www.google.com/maps/embed?...)"
     }
   },
   "dashboardPages": {

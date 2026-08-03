@@ -58,15 +58,16 @@ interface FooterBlock {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const FOOTER_BLOCK_TYPES: { value: FooterBlockType; label: string; desc: string }[] = [
-  { value: 'text', label: 'Texte libre', desc: 'Paragraphe de texte arbitraire' },
-  { value: 'menu', label: 'Menu de liens', desc: 'Liste de liens vers des pages/produits' },
-  { value: 'contact', label: 'Contact', desc: 'Email, téléphone et adresse' },
-  { value: 'social', label: 'Réseaux sociaux', desc: 'Icônes vers vos profils sociaux' },
-  { value: 'newsletter', label: 'Newsletter', desc: 'Formulaire d\'inscription email' },
-  { value: 'payment_badges', label: 'Badges de paiement', desc: 'Logos des méthodes de paiement' },
-  { value: 'legal', label: 'Mentions légales', desc: 'Liens vers CGV, confidentialité, etc.' },
-  { value: 'map', label: 'Carte Google Maps', desc: 'Embed Google Maps de votre boutique' },
+// Footer block types — labels resolved at render time via t() for i18n
+const FOOTER_BLOCK_TYPES: { value: FooterBlockType; labelKey: string; descKey: string }[] = [
+  { value: 'text', labelKey: 'storefrontNav.footerBlock.text.label', descKey: 'storefrontNav.footerBlock.text.desc' },
+  { value: 'menu', labelKey: 'storefrontNav.footerBlock.menu.label', descKey: 'storefrontNav.footerBlock.menu.desc' },
+  { value: 'contact', labelKey: 'storefrontNav.footerBlock.contact.label', descKey: 'storefrontNav.footerBlock.contact.desc' },
+  { value: 'social', labelKey: 'storefrontNav.footerBlock.social.label', descKey: 'storefrontNav.footerBlock.social.desc' },
+  { value: 'newsletter', labelKey: 'storefrontNav.footerBlock.newsletter.label', descKey: 'storefrontNav.footerBlock.newsletter.desc' },
+  { value: 'payment_badges', labelKey: 'storefrontNav.footerBlock.payment_badges.label', descKey: 'storefrontNav.footerBlock.payment_badges.desc' },
+  { value: 'legal', labelKey: 'storefrontNav.footerBlock.legal.label', descKey: 'storefrontNav.footerBlock.legal.desc' },
+  { value: 'map', labelKey: 'storefrontNav.footerBlock.map.label', descKey: 'storefrontNav.footerBlock.map.desc' },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────
@@ -228,10 +229,13 @@ export default function NavigationManagerPage() {
     setMenus((prev) =>
       prev.map((m) => {
         if (m.location !== location) return m;
-        return {
-          ...m,
-          items: updateItemInTree(m.items, itemId, field, value),
-        };
+        // When the type changes, also clear the reference_id so stale
+        // references (e.g. a page ID when switching to product) don't persist.
+        const items =
+          field === 'type'
+            ? updateItemInTree(updateItemInTree(m.items, itemId, 'reference_id', ''), itemId, 'type', value)
+            : updateItemInTree(m.items, itemId, field, value);
+        return { ...m, items };
       }),
     );
     setIsDirty(true);
@@ -507,7 +511,7 @@ export default function NavigationManagerPage() {
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C] sm:w-1/2"
                         />
                         {item.type !== 'custom_url' && (
-                          <div className="w-full sm:w-1/3">
+                          <div className="w-full sm:w-1/3" key={item.type}>
                             <ReferenceSelector
                               type={item.type as 'page' | 'product' | 'category' | 'collection'}
                               value={item.reference_id || ''}
@@ -521,7 +525,7 @@ export default function NavigationManagerPage() {
                           <button
                             type="button"
                             onClick={() => handleAddChildItem(loc.key, item.id)}
-                            title="Ajouter un sous-lien (mega menu)"
+                            title={t('storefrontNav.addChild')}
                             className="rounded-xl p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
                           >
                             <Plus className="h-4 w-4" />
@@ -557,14 +561,14 @@ export default function NavigationManagerPage() {
                                 type="text"
                                 value={child.localized_label}
                                 onChange={(e) => handleUpdateItem(loc.key, child.id, 'localized_label', e.target.value)}
-                                placeholder="Intitulé"
+                                placeholder={t('storefrontNav.labelPlaceholder')}
                                 className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-[#B91C1C] focus:outline-none"
                               />
                               <input
                                 type="text"
                                 value={child.url}
                                 onChange={(e) => handleUpdateItem(loc.key, child.id, 'url', e.target.value)}
-                                placeholder="/chemin"
+                                placeholder={t('storefrontNav.urlPlaceholder')}
                                 className="w-32 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-[#B91C1C] focus:outline-none"
                               />
                               <button
@@ -600,9 +604,9 @@ export default function NavigationManagerPage() {
                 <PanelBottom className="h-4 w-4" />
               </span>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Blocs du Footer</h2>
+                <h2 className="text-base font-bold text-slate-900">{t('storefrontNav.footerBlocks')}</h2>
                 <p className="text-xs text-slate-500">
-                  Colonnes affichées en bas de chaque page de la boutique
+                  {t('storefrontNav.footerBlocksDesc')}
                 </p>
               </div>
             </div>
@@ -613,7 +617,7 @@ export default function NavigationManagerPage() {
             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C] transition"
           >
             <Plus className="h-3.5 w-3.5" />
-            Ajouter un bloc
+            {t('storefrontNav.addBlock')}
           </button>
         </div>
 
@@ -649,7 +653,7 @@ export default function NavigationManagerPage() {
                   >
                     {FOOTER_BLOCK_TYPES.map((bt) => (
                       <option key={bt.value} value={bt.value}>
-                        {bt.label}
+                        {t(bt.labelKey)}
                       </option>
                     ))}
                   </select>
@@ -657,7 +661,7 @@ export default function NavigationManagerPage() {
                     type="text"
                     value={block.title}
                     onChange={(e) => handleUpdateBlock(block.id, 'title', e.target.value)}
-                    placeholder="Titre du bloc (ex: À propos, Liens utiles, Contact...)"
+                    placeholder={t('storefrontNav.blockTitlePlaceholder')}
                     className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
                   />
                   <button
@@ -679,7 +683,7 @@ export default function NavigationManagerPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">
-            Aucun bloc de footer. Le footer affichera un contenu par défaut. Cliquez sur &quot;Ajouter un bloc&quot; pour personnaliser.
+            {t('storefrontNav.emptyFooter')}
           </div>
         )}
       </div>
@@ -703,6 +707,7 @@ function FooterBlockContentEditor({
   block: FooterBlock;
   onUpdateContent: (key: string, value: unknown) => void;
 }) {
+  const { t } = useLocale();
   const inputClass =
     'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]';
 
@@ -714,7 +719,7 @@ function FooterBlockContentEditor({
         <textarea
           value={String(content.text || content.body || '')}
           onChange={(e) => onUpdateContent('text', e.target.value)}
-          placeholder="Saisissez le texte de ce bloc..."
+          placeholder={t('storefrontNav.footerBlock.textPlaceholder')}
           rows={3}
           className={inputClass}
         />
@@ -734,7 +739,7 @@ function FooterBlockContentEditor({
                   newLinks[idx] = { ...newLinks[idx], label: e.target.value };
                   onUpdateContent('links', newLinks);
                 }}
-                placeholder="Intitulé du lien"
+                placeholder={t('storefrontNav.footerBlock.linkLabel')}
                 className={`${inputClass} flex-1`}
               />
               <input
@@ -745,7 +750,7 @@ function FooterBlockContentEditor({
                   newLinks[idx] = { ...newLinks[idx], url: e.target.value };
                   onUpdateContent('links', newLinks);
                 }}
-                placeholder="URL (ex: /pages/contact)"
+                placeholder={t('storefrontNav.footerBlock.linkUrlPlaceholder')}
                 className={`${inputClass} flex-1`}
               />
               <button
@@ -766,7 +771,7 @@ function FooterBlockContentEditor({
             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
           >
             <Plus className="h-3 w-3" />
-            Ajouter un lien
+            {t('storefrontNav.footerBlock.addLink')}
           </button>
         </div>
       );
@@ -779,21 +784,21 @@ function FooterBlockContentEditor({
             type="email"
             value={String(content.email || '')}
             onChange={(e) => onUpdateContent('email', e.target.value)}
-            placeholder="Email (ex: contact@ma-boutique.tn)"
+            placeholder={t('storefrontNav.footerBlock.contactEmailPlaceholder')}
             className={inputClass}
           />
           <input
             type="tel"
             value={String(content.phone || '')}
             onChange={(e) => onUpdateContent('phone', e.target.value)}
-            placeholder="Téléphone"
+            placeholder={t('storefrontNav.footerBlock.contactPhonePlaceholder')}
             className={inputClass}
           />
           <input
             type="text"
             value={String(content.address || '')}
             onChange={(e) => onUpdateContent('address', e.target.value)}
-            placeholder="Adresse"
+            placeholder={t('storefrontNav.footerBlock.contactAddressPlaceholder')}
             className={inputClass}
           />
         </div>
@@ -822,21 +827,21 @@ function FooterBlockContentEditor({
             type="text"
             value={String(content.title || '')}
             onChange={(e) => onUpdateContent('title', e.target.value)}
-            placeholder="Titre du formulaire (ex: Inscrivez-vous à la newsletter)"
+            placeholder={t('storefrontNav.footerBlock.newsletterTitlePlaceholder')}
             className={inputClass}
           />
           <input
             type="text"
             value={String(content.button_label || '')}
             onChange={(e) => onUpdateContent('button_label', e.target.value)}
-            placeholder="Texte du bouton (ex: S'inscrire)"
+            placeholder={t('storefrontNav.footerBlock.newsletterButtonPlaceholder')}
             className={inputClass}
           />
           <input
             type="text"
             value={String(content.placeholder || '')}
             onChange={(e) => onUpdateContent('placeholder', e.target.value)}
-            placeholder="Placeholder du champ email"
+            placeholder={t('storefrontNav.footerBlock.newsletterEmailPlaceholder')}
             className={inputClass}
           />
         </div>
@@ -846,14 +851,13 @@ function FooterBlockContentEditor({
       return (
         <div className="space-y-2">
           <p className="text-xs text-slate-500">
-            Les badges de paiement (Flouci, Konnect, Mandat Minute, Espèces à la livraison) sont affichés
-            automatiquement. Aucune configuration supplémentaire nécessaire.
+            {t('storefrontNav.footerBlock.paymentBadgesDesc')}
           </p>
           <input
             type="text"
             value={String(content.note || '')}
             onChange={(e) => onUpdateContent('note', e.target.value)}
-            placeholder="Note optionnelle sous les badges"
+            placeholder={t('storefrontNav.footerBlock.paymentBadgesNotePlaceholder')}
             className={inputClass}
           />
         </div>
@@ -866,21 +870,21 @@ function FooterBlockContentEditor({
             type="text"
             value={String(content.cgv_url || '')}
             onChange={(e) => onUpdateContent('cgv_url', e.target.value)}
-            placeholder="URL des CGV (ex: /pages/cgv)"
+            placeholder={t('storefrontNav.footerBlock.legalCgvPlaceholder')}
             className={inputClass}
           />
           <input
             type="text"
             value={String(content.privacy_url || '')}
             onChange={(e) => onUpdateContent('privacy_url', e.target.value)}
-            placeholder="URL Politique de confidentialité"
+            placeholder={t('storefrontNav.footerBlock.legalPrivacyPlaceholder')}
             className={inputClass}
           />
           <input
             type="text"
             value={String(content.refund_url || '')}
             onChange={(e) => onUpdateContent('refund_url', e.target.value)}
-            placeholder="URL Politique de remboursement"
+            placeholder={t('storefrontNav.footerBlock.legalRefundPlaceholder')}
             className={inputClass}
           />
         </div>
@@ -892,7 +896,7 @@ function FooterBlockContentEditor({
           type="text"
           value={String(content.map_embed_url || '')}
           onChange={(e) => onUpdateContent('map_embed_url', e.target.value)}
-          placeholder="URL embed Google Maps (ex: https://www.google.com/maps/embed?...)"
+          placeholder={t('storefrontNav.footerBlock.mapEmbedPlaceholder')}
           className={inputClass}
         />
       );
