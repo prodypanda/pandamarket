@@ -95,7 +95,7 @@ export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     // Short timeout so builds don't hang when the backend is slow/cold-starting.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${backendUrl}/api/pd/marketplace/settings`, {

@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=1000`, {
@@ -62,7 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${backendUrl}/api/pd/categories`, {

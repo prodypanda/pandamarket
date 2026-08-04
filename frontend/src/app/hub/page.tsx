@@ -96,7 +96,7 @@ async function getTrendingProducts(sortBy?: string): Promise<Product[]> {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const params = new URLSearchParams({ page: '1', limit: '16', sort: resolveCatalogSort(sortBy) });
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
@@ -118,7 +118,7 @@ async function getMarketplaceCategories(locale: string = 'fr'): Promise<Marketpl
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${backendUrl}/api/pd/categories?locale=${encodeURIComponent(locale)}`, {

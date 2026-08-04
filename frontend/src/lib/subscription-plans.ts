@@ -166,7 +166,7 @@ export async function fetchEnabledSubscriptionPlans(baseUrl = ''): Promise<Displ
   try {
     // Short timeout so builds don't hang when the backend is slow/cold-starting.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       res = await fetch(`${baseUrl}/api/pd/subscriptions/plans`, { credentials: 'include', signal: controller.signal });
