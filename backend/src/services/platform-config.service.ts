@@ -643,6 +643,15 @@ function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
 }
 
 class PlatformConfigService {
+  // In-process cache so a down/slow Redis doesn't add its timeout penalty to
+  // every single request. Kept short; Redis (when healthy) remains primary.
+  private memoryCache: { settings: PlatformSettings; expiresAt: number } | null = null;
+  private static readonly MEMORY_CACHE_TTL_MS = 30_000;
+
+  private remember(settings: PlatformSettings) {
+    this.memoryCache = { settings, expiresAt: Date.now() + PlatformConfigService.MEMORY_CACHE_TTL_MS };
+  }
+
   private async readCachedSettings(): Promise<PlatformSettings | null> {
     try {
       const cached = await withRedisTimeout(getRedis().get(PLATFORM_CONFIG_CACHE_KEY));
@@ -663,6 +672,8 @@ class PlatformConfigService {
   }
 
   private async invalidateCache(updatedKeys: PlatformSettingKey[]) {
+    // Always drop the in-process copy so updates are visible immediately.
+    this.memoryCache = null;
     try {
       const redis = getRedis();
       await withRedisTimeout(redis.del(PLATFORM_CONFIG_CACHE_KEY));
@@ -678,8 +689,15 @@ class PlatformConfigService {
   }
 
   async getSettings(): Promise<PlatformSettings> {
+    if (this.memoryCache && this.memoryCache.expiresAt > Date.now()) {
+      return this.memoryCache.settings;
+    }
+
     const cachedSettings = await this.readCachedSettings();
-    if (cachedSettings) return cachedSettings;
+    if (cachedSettings) {
+      this.remember(cachedSettings);
+      return cachedSettings;
+    }
 
     const { rows } = await query<{ key: string; value: string }>(
       `SELECT key, value FROM pd_platform_config WHERE key = ANY($1::text[]) ORDER BY key`,
@@ -692,6 +710,7 @@ class PlatformConfigService {
         settings[row.key] = coerceSettingValue(row.key, row.value);
       }
     }
+    this.remember(settings);
     await this.writeCachedSettings(settings);
     return settings;
   }
