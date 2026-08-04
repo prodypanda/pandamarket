@@ -32,7 +32,7 @@ export async function closeRedis(): Promise<void> {
  * forever because `maxRetriesPerRequest: null` is required by BullMQ) rejects
  * quickly instead of wedging the caller. Use for all non-BullMQ Redis access.
  */
-export function withRedisTimeout<T>(promise: Promise<T>, ms = 1500): Promise<T> {
+export function withRedisTimeout<T>(promise: Promise<T>, ms = 500): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Redis operation timed out after ${ms}ms`)), ms);
     promise

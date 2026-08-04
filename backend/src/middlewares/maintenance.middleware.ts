@@ -6,8 +6,9 @@ const CACHE_KEY = 'pd:maintenance:config';
 const CACHE_TTL_SECONDS = 15;
 // Redis is configured with maxRetriesPerRequest: null (required by BullMQ), so
 // commands can hang indefinitely when the connection is flaky. Bound every Redis
-// call here so a degraded Redis never blocks the request pipeline.
-const REDIS_OP_TIMEOUT_MS = 1500;
+// call here so a degraded Redis never blocks the request pipeline. Kept tight
+// (500ms) because while Redis is fully down each timeout is pure latency.
+const REDIS_OP_TIMEOUT_MS = 500;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -49,11 +50,12 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
 };
 
 // In-process cache. With Redis down, every getMaintenanceConfig() otherwise
-// paid two 1.5s Redis timeouts plus a DB query (~4s) on EVERY request, since
-// this middleware runs on all non-bypassed routes. Keep the TTL short so
-// toggling maintenance mode still propagates quickly.
+// paid two Redis timeouts plus a DB query on EVERY request, since this
+// middleware runs on all non-bypassed routes. Admin maintenance updates call
+// invalidateMaintenanceCache() which clears this, so a longer TTL is safe and
+// keeps the dead-Redis reload penalty to at most once a minute.
 let maintenanceMemoryCache: { config: MaintenanceConfig; expiresAt: number } | null = null;
-const MAINTENANCE_MEMORY_TTL_MS = 15_000;
+const MAINTENANCE_MEMORY_TTL_MS = 60_000;
 
 function rememberMaintenanceConfig(config: MaintenanceConfig) {
   maintenanceMemoryCache = { config, expiresAt: Date.now() + MAINTENANCE_MEMORY_TTL_MS };
