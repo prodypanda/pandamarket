@@ -576,3 +576,31 @@ Redis is currently unreachable (`PING` times out). Because ioredis uses `maxRetr
 
 ### Cleanup
 Temporary `/debug/diag` connectivity endpoint was added to isolate the pool/Redis hang, then removed once the root causes were confirmed.
+
+---
+
+## Round 8 — Performance hardening while Redis is down (commits `71252e2`–`2f369d6`)
+
+After restoring availability, pages still loaded slowly and the hub showed no products. Diagnosis (via a DB `updated_at` probe on the default category) proved the in-memory categories cache **was** hitting, yet requests still took ~4s. The real bottleneck: `maintenanceMiddleware` runs on every non-bypassed route, and with Redis down `getMaintenanceConfig()` paid **two Redis timeouts + a DB query on every request**.
+
+### Fixes
+1. **In-memory platform settings cache (30s)** — `platform-config.service.ts`. Kills the dead-Redis round-trip on the hottest read.
+2. **In-memory marketplace categories cache (60s)** — `category.service.ts`. Avoids the expensive self-join + per-category product `COUNT` (+ the `ensureMarketplaceDefault` upsert) on every call. Invalidated on create/update/reorder/delete.
+3. **In-memory maintenance config cache (60s)** — `maintenance.middleware.ts`. The biggest win; previously ~4s on *every* request. Admin maintenance toggles still invalidate it immediately.
+4. **Tightened Redis timeouts 1.5s → 500ms** — `redis.ts` `withRedisTimeout` default and maintenance middleware. While Redis is fully down, each timeout is pure latency; 500ms is ample for simple get/set.
+5. **Raised build-time backend fetch timeouts 6s → 12s** — hub home/settings/sitemap/plans, so SSR no longer caches empty results (this was why the hub showed **no products**).
+
+### Measured results (warm)
+| Endpoint | Before | After |
+|---|---|---|
+| `/api/pd/marketplace/settings` | ~4s | ~0.37s |
+| `/api/pd/categories` | ~4.5s | ~0.5s |
+| `/api/pd/products/public` | ~7s | ~0.65s |
+| `garbage.team/hub` | 504 / no products | 200, ~3.4s, 12 products rendered |
+
+### Security note
+During diagnostics, two temporary files containing secrets (`dbcfg.json`, `render_env.json` — DB URL, JWT/cookie secrets, S3 keys) were **accidentally committed** (commit `fdab001`) and removed in the next commit (`35de004`). They remain in git history. **Rotate these credentials:** Supabase DB password, `PD_JWT_SECRET`, `PD_COOKIE_SECRET`, `PD_ENCRYPTION_KEY`, and the S3 access/secret keys.
+
+### Still required (manual)
+- **Fix/replace the Redis instance** (`pandamarket-redis`) so caching and BullMQ background workers (email, payouts, subscriptions, webhooks, search) resume. Until then the app runs in DB-fallback mode and the first request after each cache expiry / cold start is slower.
+- Consider a paid Render plan to eliminate free-tier cold starts.
