@@ -604,3 +604,17 @@ During diagnostics, two temporary files containing secrets (`dbcfg.json`, `rende
 ### Still required (manual)
 - **Fix/replace the Redis instance** (`pandamarket-redis`) so caching and BullMQ background workers (email, payouts, subscriptions, webhooks, search) resume. Until then the app runs in DB-fallback mode and the first request after each cache expiry / cold start is slower.
 - Consider a paid Render plan to eliminate free-tier cold starts.
+
+---
+
+## Round 9 — Redis replaced and confirmed healthy (commit `…` + env change)
+
+The original `pandamarket-redis` (`red-d9d7jce1a83c73ei761g`) was faulted: Render reported it "available" but it refused connections (`PING` timed out, ioredis stuck in `reconnecting`) on both `redis://` and `rediss://`. The connection string was not the problem — the instance was.
+
+**Fix:** deleted the faulted Key Value instance and provisioned a fresh free-tier one, `pandamarket-redis` (`red-d9okf2ad0e5s73bploj0`, oregon), then pointed `PD_REDIS_URL` at it and redeployed.
+
+**Verified live:** `/debug/redis` returned `PONG` in 2ms (client `ready`); `/ready` now reports `postgres: ok (145ms)` and `redis: ok (1ms)`. Categories dropped 2.28s→0.48s warm now that the cache is Redis-backed. `meilisearch`/`s3` show error/degraded in `/ready` — those services aren't provisioned and are optional.
+
+With Redis healthy, BullMQ background workers (email, payout release every 15min, subscription jobs, webhook delivery, search indexing) resume, and all caches use Redis instead of the DB-fallback path.
+
+The temporary `/debug/redis` probe was removed after confirmation.
