@@ -347,6 +347,25 @@ async function bootstrap() {
     });
   });
 
+  // TEMPORARY Redis connectivity probe (removed once Redis is confirmed healthy).
+  app.get('/debug/redis', async (_req, res) => {
+    const { getRedis } = await import('./db/redis');
+    const redis = getRedis();
+    const t0 = Date.now();
+    try {
+      const reply = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('ping timeout 6s')), 6000);
+        redis
+          .ping()
+          .then((r) => { clearTimeout(timer); resolve(r); })
+          .catch((e) => { clearTimeout(timer); reject(e); });
+      });
+      res.json({ status: 'ok', reply, ms: Date.now() - t0, clientStatus: redis.status });
+    } catch (e) {
+      res.json({ status: 'error', err: (e as Error).message, ms: Date.now() - t0, clientStatus: redis.status });
+    }
+  });
+
   // Sentry error handler (must be before custom error handler)
   app.use(sentryErrorHandler());
 
