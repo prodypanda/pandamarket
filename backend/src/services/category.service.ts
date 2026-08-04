@@ -99,6 +99,17 @@ export interface StorefrontCategoryRow {
 }
 
 export class CategoryService {
+  // In-process cache for the public marketplace category list. The underlying
+  // query is expensive (self-join + per-category published-product COUNT) and
+  // marketplace categories change rarely, so a short TTL avoids hammering the
+  // DB on every hub/storefront render.
+  private marketplaceCategoriesCache: { rows: MarketplaceCategoryRow[]; expiresAt: number } | null = null;
+  private static readonly MARKETPLACE_CATEGORIES_TTL_MS = 60_000;
+
+  invalidateMarketplaceCategoriesCache() {
+    this.marketplaceCategoriesCache = null;
+  }
+
   async ensureMarketplaceDefault(client?: PoolClient): Promise<MarketplaceCategoryRow> {
     if (client) {
       await client.query(
@@ -220,23 +231,31 @@ export class CategoryService {
   }
 
   async listPublicMarketplaceCategories(options: { tree?: boolean; locale?: string } = {}): Promise<MarketplaceCategoryRow[]> {
-    await this.ensureMarketplaceDefault();
-    const { rows } = await query<MarketplaceCategoryRow>(
-      `SELECT c.*,
-              parent.name AS parent_name,
-              parent.name_fr AS parent_name_fr,
-              parent.name_ar AS parent_name_ar,
-              parent.name_en AS parent_name_en,
-              parent.slug AS parent_slug,
-              COUNT(p.id)::text AS product_count
-       FROM pd_marketplace_category c
-       LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
-       LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
-       WHERE c.is_active = true AND (c.show_in_megamenu IS NULL OR c.show_in_megamenu = true)
-       GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
-       ORDER BY c.position ASC, c.name ASC`,
-    );
-    const resolvedRows = rows.map((r) => resolveCategoryLocale(r, options.locale));
+    let rawRows: MarketplaceCategoryRow[] | null = null;
+    if (this.marketplaceCategoriesCache && this.marketplaceCategoriesCache.expiresAt > Date.now()) {
+      rawRows = this.marketplaceCategoriesCache.rows;
+    }
+    if (!rawRows) {
+      await this.ensureMarketplaceDefault();
+      const { rows } = await query<MarketplaceCategoryRow>(
+        `SELECT c.*,
+                parent.name AS parent_name,
+                parent.name_fr AS parent_name_fr,
+                parent.name_ar AS parent_name_ar,
+                parent.name_en AS parent_name_en,
+                parent.slug AS parent_slug,
+                COUNT(p.id)::text AS product_count
+         FROM pd_marketplace_category c
+         LEFT JOIN pd_marketplace_category parent ON parent.id = c.parent_id
+         LEFT JOIN pd_product p ON p.marketplace_category_id = c.id AND p.status = 'published'
+         WHERE c.is_active = true AND (c.show_in_megamenu IS NULL OR c.show_in_megamenu = true)
+         GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
+         ORDER BY c.position ASC, c.name ASC`,
+      );
+      rawRows = rows;
+      this.marketplaceCategoriesCache = { rows, expiresAt: Date.now() + CategoryService.MARKETPLACE_CATEGORIES_TTL_MS };
+    }
+    const resolvedRows = rawRows.map((r) => resolveCategoryLocale(r, options.locale));
     if (options.tree) {
       return this.buildTree(resolvedRows);
     }
@@ -355,6 +374,7 @@ export class CategoryService {
         input.show_in_megamenu ?? true,
       ],
     );
+    this.invalidateMarketplaceCategoriesCache();
     if (
       input.short_description !== undefined ||
       input.long_description !== undefined ||
@@ -506,6 +526,7 @@ export class CategoryService {
       `UPDATE pd_marketplace_category SET ${fields.join(', ')} WHERE id = $1 RETURNING *`,
       values,
     );
+    this.invalidateMarketplaceCategoriesCache();
     return rows[0];
   }
 
@@ -528,6 +549,7 @@ export class CategoryService {
         );
       }
     }
+    this.invalidateMarketplaceCategoriesCache();
   }
 
   async getMarketplaceCategory(id: string): Promise<MarketplaceCategoryRow> {
@@ -555,7 +577,7 @@ export class CategoryService {
   }
 
   async deleteMarketplaceCategory(id: string, confirm = false): Promise<{ reassigned_products: number }> {
-    return transaction(async (client) => {
+    const result = await transaction(async (client) => {
       const category = await this.getMarketplaceCategoryInTx(client, id);
       if (category.is_default) {
         throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Default marketplace category cannot be deleted');
@@ -581,6 +603,8 @@ export class CategoryService {
       await client.query('DELETE FROM pd_marketplace_category WHERE id = $1', [id]);
       return { reassigned_products: productCount };
     });
+    this.invalidateMarketplaceCategoriesCache();
+    return result;
   }
 
   async listStorefrontCategories(storeId: string): Promise<StorefrontCategoryRow[]> {
