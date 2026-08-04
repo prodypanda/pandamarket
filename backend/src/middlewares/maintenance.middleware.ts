@@ -48,10 +48,29 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
   maintenance_block_storefronts: false,
 };
 
+// In-process cache. With Redis down, every getMaintenanceConfig() otherwise
+// paid two 1.5s Redis timeouts plus a DB query (~4s) on EVERY request, since
+// this middleware runs on all non-bypassed routes. Keep the TTL short so
+// toggling maintenance mode still propagates quickly.
+let maintenanceMemoryCache: { config: MaintenanceConfig; expiresAt: number } | null = null;
+const MAINTENANCE_MEMORY_TTL_MS = 15_000;
+
+function rememberMaintenanceConfig(config: MaintenanceConfig) {
+  maintenanceMemoryCache = { config, expiresAt: Date.now() + MAINTENANCE_MEMORY_TTL_MS };
+}
+
 async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
+  if (maintenanceMemoryCache && maintenanceMemoryCache.expiresAt > Date.now()) {
+    return maintenanceMemoryCache.config;
+  }
+
   try {
     const cached = await withTimeout(getRedis().get(CACHE_KEY), REDIS_OP_TIMEOUT_MS);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      const config = JSON.parse(cached) as MaintenanceConfig;
+      rememberMaintenanceConfig(config);
+      return config;
+    }
   } catch {
     // Redis unavailable/slow — fall through to DB
   }
@@ -67,6 +86,7 @@ async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
     else if (row.key === 'maintenance_block_storefronts') config.maintenance_block_storefronts = row.value === 'true';
     else if (row.key in config) (config as unknown as Record<string, string | boolean>)[row.key] = row.value;
   }
+  rememberMaintenanceConfig(config);
 
   try {
     await withTimeout(getRedis().setex(CACHE_KEY, CACHE_TTL_SECONDS, JSON.stringify(config)), REDIS_OP_TIMEOUT_MS);
@@ -166,8 +186,10 @@ export function maintenanceMiddleware() {
 }
 
 export function invalidateMaintenanceCache() {
+  // Drop the in-process copy so the change is visible immediately.
+  maintenanceMemoryCache = null;
   try {
-    getRedis().del(CACHE_KEY);
+    void withTimeout(getRedis().del(CACHE_KEY), REDIS_OP_TIMEOUT_MS).catch(() => {});
   } catch {
     // Ignore
   }
