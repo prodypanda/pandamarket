@@ -292,6 +292,7 @@ export function CatalogControls({
                 </div>
                 <button
                   type="button"
+                  aria-label="Fermer les filtres"
                   onClick={() => setMobileDrawerOpen(false)}
                   className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
                 >
