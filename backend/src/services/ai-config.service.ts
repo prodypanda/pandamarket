@@ -432,6 +432,165 @@ export class AiConfigService {
 
     return attempts;
   }
+
+  // ----------------------------------------------------------------
+  // Multi-Engine Purpose Routing & Prompt Templates
+  // ----------------------------------------------------------------
+
+  async listPurposeRouting() {
+    const { rows } = await query<{
+      purpose: string;
+      provider_config_id: string | null;
+      provider_label: string | null;
+      provider: string | null;
+      model: string | null;
+      updated_at: Date;
+    }>(
+      `SELECT r.purpose, r.provider_config_id, c.label AS provider_label, c.provider, c.model, r.updated_at
+       FROM pd_ai_purpose_routing r
+       LEFT JOIN pd_ai_provider_config c ON r.provider_config_id = c.id
+       ORDER BY r.purpose ASC`,
+    );
+
+    const defaultPurposes = ['text_summarization', 'content_generation', 'image_studio'];
+    const map = new Map(rows.map((r) => [r.purpose, r]));
+
+    return defaultPurposes.map((purpose) => {
+      const existing = map.get(purpose);
+      return {
+        purpose,
+        provider_config_id: existing?.provider_config_id || null,
+        provider_label: existing?.provider_label || 'Default Priority Stack',
+        provider: existing?.provider || null,
+        model: existing?.model || null,
+        updated_at: existing?.updated_at ? existing.updated_at.toISOString() : new Date().toISOString(),
+      };
+    });
+  }
+
+  async setPurposeRouting(purpose: string, providerConfigId: string | null) {
+    const validPurposes = ['text_summarization', 'content_generation', 'image_studio'];
+    if (!validPurposes.includes(purpose)) {
+      throw new PdValidationError(`Invalid AI purpose: ${purpose}`);
+    }
+
+    if (providerConfigId) {
+      const { rows } = await query('SELECT id FROM pd_ai_provider_config WHERE id = $1', [providerConfigId]);
+      if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'AI provider not found');
+    }
+
+    await query(
+      `INSERT INTO pd_ai_purpose_routing (id, purpose, provider_config_id, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (purpose) DO UPDATE
+       SET provider_config_id = EXCLUDED.provider_config_id,
+           updated_at = NOW()`,
+      [pdId('aipurp'), purpose, providerConfigId],
+    );
+
+    return this.listPurposeRouting();
+  }
+
+  async listPromptTemplates() {
+    const { rows } = await query<{
+      prompt_key: string;
+      title: string;
+      description: string | null;
+      system_prompt: string;
+      default_prompt: string;
+      updated_at: Date;
+    }>('SELECT * FROM pd_ai_prompt_templates ORDER BY prompt_key ASC');
+
+    return rows.map((r) => ({
+      prompt_key: r.prompt_key,
+      title: r.title,
+      description: r.description,
+      system_prompt: r.system_prompt,
+      default_prompt: r.default_prompt,
+      updated_at: r.updated_at.toISOString(),
+    }));
+  }
+
+  async getPromptTemplate(key: string) {
+    const { rows } = await query<{
+      prompt_key: string;
+      title: string;
+      description: string | null;
+      system_prompt: string;
+      default_prompt: string;
+      updated_at: Date;
+    }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, `Prompt template not found: ${key}`);
+    }
+
+    return {
+      prompt_key: rows[0].prompt_key,
+      title: rows[0].title,
+      description: rows[0].description,
+      system_prompt: rows[0].system_prompt,
+      default_prompt: rows[0].default_prompt,
+      updated_at: rows[0].updated_at.toISOString(),
+    };
+  }
+
+  async updatePromptTemplate(key: string, input: { system_prompt?: string; default_prompt?: string }) {
+    const { rows } = await query(
+      `UPDATE pd_ai_prompt_templates
+       SET system_prompt = COALESCE($2, system_prompt),
+           default_prompt = COALESCE($3, default_prompt),
+           updated_at = NOW()
+       WHERE prompt_key = $1
+       RETURNING *`,
+      [key, input.system_prompt || null, input.default_prompt || null],
+    );
+
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, `Prompt template not found: ${key}`);
+    }
+
+    return this.getPromptTemplate(key);
+  }
+
+  async generateTextForPurpose(purpose: 'text_summarization' | 'content_generation' | 'image_studio', prompt: string, storeId?: string): Promise<TextGenerationResult> {
+    const routingRes = await query<{ provider_config_id: string | null }>(
+      'SELECT provider_config_id FROM pd_ai_purpose_routing WHERE purpose = $1',
+      [purpose],
+    );
+
+    const routedProviderId = routingRes.rows[0]?.provider_config_id;
+    if (routedProviderId) {
+      const { rows } = await query<ProviderRow>(
+        'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
+        [routedProviderId],
+      );
+
+      if (rows[0] && rows[0].api_key_encrypted) {
+        try {
+          const text = await generateWithProvider({
+            provider: rows[0].provider,
+            model: rows[0].model,
+            base_url: rows[0].base_url,
+            api_key: decrypt(rows[0].api_key_encrypted),
+            prompt,
+          });
+          if (text.trim()) {
+            return {
+              text,
+              provider: rows[0].provider,
+              provider_label: `${rows[0].label} (${purpose})`,
+              source: 'platform',
+            };
+          }
+        } catch (err) {
+          logger.warn({ purpose, provider: rows[0].provider, err }, 'Purpose-routed AI provider failed, falling back to priority stack');
+        }
+      }
+    }
+
+    return this.generateText(prompt, storeId);
+  }
 }
 
 export const aiConfigService = new AiConfigService();

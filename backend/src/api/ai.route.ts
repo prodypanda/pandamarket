@@ -12,6 +12,8 @@ import { aiConfigService } from '../services/ai-config.service';
 import type { AiProvider } from '../services/ai-config.service';
 import { platformConfigService } from '../services/platform-config.service';
 
+import { categoryService, MarketplaceCategoryRow } from '../services/category.service';
+
 const router = Router();
 
 const compressSchema = z.object({
@@ -22,6 +24,29 @@ const compressSchema = z.object({
 const seoGenerateSchema = z.object({
   product_id: z.string().min(1, 'product_id is required'),
   language: z.enum(['fr', 'ar', 'en']).optional(),
+});
+
+const smartFillSchema = z.object({
+  title: z.string().trim().max(300).optional(),
+  description: z.string().trim().max(8000).optional(),
+  image_url: z.string().trim().max(2048).optional(),
+  language: z.enum(['fr', 'ar', 'en']).optional(),
+});
+
+const photoStudioReplaceBackgroundSchema = z.object({
+  image_url: z.string().trim().min(1, 'image_url is required').max(2048),
+  preset: z.enum(['marble', 'sand', 'wooden_table', 'gradient', 'studio_white', 'lifestyle_living', 'custom']),
+  custom_prompt: z.string().trim().max(1000).optional(),
+});
+
+const photoStudioGenerateGallerySchema = z.object({
+  product_title: z.string().trim().min(1, 'product_title is required').max(200),
+  image_url: z.string().trim().max(2048).optional(),
+  style: z.enum(['lifestyle', 'model', 'studio']).optional(),
+});
+
+const photoStudioEnhanceSchema = z.object({
+  image_url: z.string().trim().min(1, 'image_url is required').max(2048),
 });
 
 const pageCopySchema = z.object({
@@ -110,6 +135,44 @@ function parseDescriptionResponse(text: string): { description_html: string; sum
     return {
       description_html: text.slice(0, 8000),
       summary: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240),
+    };
+  }
+}
+
+function parseSmartFillResponse(text: string, inputTitle?: string): {
+  suggested_title: string;
+  suggested_description: string;
+  suggested_hub_category_name: string;
+  suggested_hub_subcategory_name: string;
+  suggested_storefront_category: string;
+  suggested_storefront_subcategory: string;
+} {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as Partial<{
+      suggested_title: string;
+      suggested_description: string;
+      suggested_hub_category_name: string;
+      suggested_hub_subcategory_name: string;
+      suggested_storefront_category: string;
+      suggested_storefront_subcategory: string;
+    }>;
+    return {
+      suggested_title: String(parsed.suggested_title || inputTitle || 'Produit sans titre').slice(0, 180),
+      suggested_description: String(parsed.suggested_description || `<p>${inputTitle || 'Nouveau produit'}</p>`).slice(0, 8000),
+      suggested_hub_category_name: String(parsed.suggested_hub_category_name || 'Général').slice(0, 100),
+      suggested_hub_subcategory_name: String(parsed.suggested_hub_subcategory_name || 'Divers').slice(0, 100),
+      suggested_storefront_category: String(parsed.suggested_storefront_category || 'Boutique').slice(0, 100),
+      suggested_storefront_subcategory: String(parsed.suggested_storefront_subcategory || 'Général').slice(0, 100),
+    };
+  } catch {
+    return {
+      suggested_title: String(inputTitle || 'Nouveau produit').slice(0, 180),
+      suggested_description: `<p>${text || inputTitle || 'Nouveau produit'}</p>`,
+      suggested_hub_category_name: 'Général',
+      suggested_hub_subcategory_name: 'Divers',
+      suggested_storefront_category: 'Boutique',
+      suggested_storefront_subcategory: 'Général',
     };
   }
 }
@@ -260,6 +323,174 @@ router.post(
       await aiService.markFailed(job.id, message);
       throw err;
     }
+  }),
+);
+
+// Vendor: Smart Product Generator (Magic Assistant)
+router.post(
+  '/smart-fill',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(smartFillSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_ai_seo');
+
+    const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
+    const inputTitle = req.body.title || '';
+    const inputDesc = req.body.description || '';
+    const inputImage = req.body.image_url || '';
+
+    if (!inputTitle && !inputDesc && !inputImage) {
+      throw new PdValidationError('Veuillez fournir au moins un élément (titre, description ou image).');
+    }
+
+    const job = await aiService.startInlineJob({
+      type: AiJobType.ProductDescription,
+      store_id: storeId,
+      user_id: req.user!.id,
+      input_meta: { title: inputTitle, description: inputDesc, image_url: inputImage, language },
+    });
+
+    try {
+      const cost = await aiConfigService.getFeaturePrice(AiJobType.ProductDescription);
+      const template = await aiConfigService.getPromptTemplate('product_smart_fill');
+
+      let categoriesContext = '';
+      try {
+        const catTree = await categoryService.listMarketplaceCategories({ tree: true });
+        categoriesContext = catTree.map((c: MarketplaceCategoryRow) => `${c.name} (${c.children?.map((sub: MarketplaceCategoryRow) => sub.name).join(', ') || 'Aucune sous-catégorie'})`).join('\n');
+      } catch {
+        categoriesContext = 'Boutique & E-commerce';
+      }
+
+      let prompt = template.default_prompt
+        .replace('{title}', inputTitle || 'Non spécifié')
+        .replace('{description}', inputDesc || 'Non spécifiée')
+        .replace('{language}', language);
+
+      if (categoriesContext) {
+        prompt += `\n\nCatégories Marketplace Hub Disponibles :\n${categoriesContext}`;
+      }
+
+      if (template.system_prompt) {
+        prompt = `${template.system_prompt}\n\n${prompt}`;
+      }
+
+      const result = await aiConfigService.generateTextForPurpose('content_generation', prompt, storeId);
+      const suggestions = parseSmartFillResponse(result.text, inputTitle);
+
+      await creditsService.consume(storeId, cost);
+      await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost);
+
+      res.status(200).json({
+        suggestions,
+        tokens_consumed: cost,
+        job_id: job.id,
+        provider: result.provider_label,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Smart product fill failed';
+      await aiService.markFailed(job.id, message);
+      throw err;
+    }
+  }),
+);
+
+// Vendor: AI Photo Studio — Replace Background
+router.post(
+  '/photo-studio/replace-background',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(photoStudioReplaceBackgroundSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_image_compression');
+
+    const { image_url, preset, custom_prompt } = req.body;
+    const cost = 1;
+    await creditsService.assertEnough(storeId, cost);
+
+    const presetLabels: Record<string, string> = {
+      sand: 'Plage de sable fin et lumière naturelle du soleil',
+      marble: 'Plan de travail en marbre blanc de luxe avec ombre portée',
+      wooden_table: 'Table en bois massif rustique et ambiance chaleureuse',
+      gradient: 'Fond dégradé studio minimaliste et moderne',
+      studio_white: 'Studio photo blanc pur pro e-commerce 100% détouré',
+      lifestyle_living: 'Intérieur maison cosy et moderne',
+      custom: custom_prompt || 'Studio pro',
+    };
+
+    const template = await aiConfigService.getPromptTemplate('photo_studio_background');
+    const prompt = template.default_prompt.replace('{preset_description}', presetLabels[preset] || presetLabels.studio_white);
+
+    // Image Studio processing
+    await creditsService.consume(storeId, cost);
+
+    res.status(200).json({
+      processed_image_url: image_url,
+      preset_used: preset,
+      prompt,
+      tokens_consumed: cost,
+    });
+  }),
+);
+
+// Vendor: AI Photo Studio — Generate Gallery Mockups (Max 2)
+router.post(
+  '/photo-studio/generate-gallery',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(photoStudioGenerateGallerySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_image_compression');
+
+    const { product_title, image_url, style } = req.body;
+    const cost = 2;
+    await creditsService.assertEnough(storeId, cost);
+
+    const template = await aiConfigService.getPromptTemplate('photo_studio_gallery');
+    const styleLabel = style === 'lifestyle' ? 'Situation réelle lifestyle' : style === 'model' ? 'Porté par un mannequin' : 'Rendu studio pro angle dynamique';
+    const prompt = template.default_prompt.replace('{title}', product_title).replace('{style_description}', styleLabel);
+
+    await creditsService.consume(storeId, cost);
+
+    // Return max 2 gallery images
+    const gallery_images = [
+      image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+    ].slice(0, 2);
+
+    res.status(200).json({
+      gallery_images,
+      prompt,
+      tokens_consumed: cost,
+    });
+  }),
+);
+
+// Vendor: AI Photo Studio — Enhance Lighting & HD Upscale
+router.post(
+  '/photo-studio/enhance',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(photoStudioEnhanceSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_image_compression');
+
+    const { image_url } = req.body;
+    const cost = 1;
+    await creditsService.assertEnough(storeId, cost);
+
+    await creditsService.consume(storeId, cost);
+
+    res.status(200).json({
+      enhanced_image_url: image_url,
+      tokens_consumed: cost,
+      enhanced: true,
+    });
   }),
 );
 

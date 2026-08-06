@@ -308,6 +308,175 @@ export default function ProductsPage() {
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
 
+  // AI Smart Fill & Photo Studio State
+  const [smartFillLoading, setSmartFillLoading] = useState(false);
+  const [showSmartFillModal, setShowSmartFillModal] = useState(false);
+  const [smartFillSuggestions, setSmartFillSuggestions] = useState<{
+    suggested_title: string;
+    suggested_description: string;
+    suggested_hub_category_name: string;
+    suggested_hub_subcategory_name: string;
+    suggested_storefront_category: string;
+    suggested_storefront_subcategory: string;
+  } | null>(null);
+
+  const [photoStudioLoading, setPhotoStudioLoading] = useState(false);
+
+  const handleSmartFill = async () => {
+    if (!form.title && !form.description && !form.thumbnail) {
+      setError('Veuillez d\'abord saisir un titre, une description ou ajouter une image.');
+      return;
+    }
+
+    setSmartFillLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/smart-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          image_url: form.thumbnail,
+          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Génération intelligente échouée.');
+
+      setSmartFillSuggestions(data.suggestions);
+      setShowSmartFillModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la génération IA.');
+    } finally {
+      setSmartFillLoading(false);
+    }
+  };
+
+  const applySmartFillItem = (field: 'title' | 'description' | 'hub_category' | 'storefront_category') => {
+    if (!smartFillSuggestions) return;
+    setForm((prev) => {
+      const next = { ...prev };
+      if (field === 'title') next.title = smartFillSuggestions.suggested_title;
+      if (field === 'description') next.description = smartFillSuggestions.suggested_description;
+      if (field === 'hub_category') {
+        const found = marketplaceCategories.find((c) => c.name.toLowerCase().includes(smartFillSuggestions.suggested_hub_category_name.toLowerCase()));
+        if (found) next.marketplace_category_id = found.id;
+      }
+      if (field === 'storefront_category') {
+        const found = storefrontCategories.find((c) => c.name.toLowerCase().includes(smartFillSuggestions.suggested_storefront_category.toLowerCase()));
+        if (found) next.storefront_category_id = found.id;
+      }
+      return next;
+    });
+  };
+
+  const applyAllSmartFill = () => {
+    if (!smartFillSuggestions) return;
+    applySmartFillItem('title');
+    applySmartFillItem('description');
+    applySmartFillItem('hub_category');
+    applySmartFillItem('storefront_category');
+    setShowSmartFillModal(false);
+    setSuccess('Toutes les informations suggérées par l\'IA ont été appliquées !');
+  };
+
+  const handlePhotoStudioReplaceBackground = async (preset: string) => {
+    if (!form.thumbnail) {
+      setError('Veuillez ajouter une image principale de produit avant d\'utiliser le Studio Photo.');
+      return;
+    }
+
+    setPhotoStudioLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/photo-studio/replace-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          image_url: form.thumbnail,
+          preset,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Remplacement de fond échoué.');
+
+      setSuccess(`Fond studio "${preset}" appliqué avec succès par l'IA !`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur Studio Photo.');
+    } finally {
+      setPhotoStudioLoading(false);
+    }
+  };
+
+  const handlePhotoStudioGenerateGallery = async () => {
+    if (!form.title) {
+      setError('Veuillez renseigner un titre de produit avant de générer la galerie photo.');
+      return;
+    }
+
+    setPhotoStudioLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/photo-studio/generate-gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_title: form.title,
+          image_url: form.thumbnail || undefined,
+          style: 'lifestyle',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Génération de la galerie échouée.');
+
+      if (Array.isArray(data.gallery_images)) {
+        setForm((prev) => ({
+          ...prev,
+          gallery_images: Array.from(new Set([...prev.gallery_images, ...data.gallery_images])).slice(0, 5),
+        }));
+        setSuccess('2 nouvelles photos de galerie / mockups générées par l\'IA !');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur de génération de galerie.');
+    } finally {
+      setPhotoStudioLoading(false);
+    }
+  };
+
+  const handlePhotoStudioEnhance = async () => {
+    if (!form.thumbnail) {
+      setError('Veuillez d\'abord importer une image de produit.');
+      return;
+    }
+
+    setPhotoStudioLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/photo-studio/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ image_url: form.thumbnail }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Sublimation d\'image échouée.');
+
+      setSuccess('Éclairage et résolution de l\'image sublimés par l\'IA !');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur d\'amélioration d\'image.');
+    } finally {
+      setPhotoStudioLoading(false);
+    }
+  };
+
   const fetchStore = useCallback(async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
@@ -1191,6 +1360,16 @@ export default function ProductsPage() {
               <p className="mt-1 text-sm text-gray-500">Complete each block to publish a clean product page in the Hub and your storefront.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleSmartFill()}
+                disabled={smartFillLoading}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-black text-white shadow-md shadow-purple-500/20 transition hover:scale-105 disabled:opacity-50"
+                title="Saisissez juste le titre, la description ou une photo et laissez l'IA tout remplir !"
+              >
+                {smartFillLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-yellow-300" />}
+                Générer par IA (Assistant Magique)
+              </button>
               {editingProduct?.status === 'published' && (
                 <a href={`/hub/dashboard/ads?product_id=${encodeURIComponent(editingProduct.id)}`} className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-200" title="Create a sponsored campaign for this product">
                   <Megaphone className="h-4 w-4" /> Sponsor / Boost
@@ -1678,6 +1857,83 @@ export default function ProductsPage() {
                     placeholder="Or paste a thumbnail image URL"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/15 outline-none"
                   />
+
+                  {/* AI Product Photography Studio & Mockup Generator Panel */}
+                  <div className="mt-4 rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50/80 via-indigo-50/50 to-white p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-600" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-purple-900">
+                          AI Photography Studio & Mockup Generator
+                        </h4>
+                      </div>
+                      {photoStudioLoading && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioReplaceBackground('marble')}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 shadow-sm transition disabled:opacity-50"
+                      >
+                        🏛️ Marbre de Luxe
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioReplaceBackground('sand')}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 shadow-sm transition disabled:opacity-50"
+                      >
+                        🏖️ Sable Fin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioReplaceBackground('wooden_table')}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 shadow-sm transition disabled:opacity-50"
+                      >
+                        🪵 Table en Bois
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioReplaceBackground('gradient')}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 shadow-sm transition disabled:opacity-50"
+                      >
+                        🎨 Dégradé Studio
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioReplaceBackground('lifestyle_living')}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 shadow-sm transition disabled:opacity-50"
+                      >
+                        🏠 Intérieur Cosy
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-purple-100/60">
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioGenerateGallery()}
+                        disabled={photoStudioLoading || !form.title}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-md shadow-purple-600/20 hover:bg-purple-700 transition disabled:opacity-50"
+                      >
+                        <Images className="w-3.5 h-3.5" />
+                        Générer 2 Photos Galerie / Mockups
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePhotoStudioEnhance()}
+                        disabled={photoStudioLoading || !form.thumbnail}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-800 hover:bg-indigo-100 transition disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                        Sublimer Éclairage & HD
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1884,6 +2140,137 @@ export default function ProductsPage() {
               {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {uploadingImage ? 'Uploading image...' : creating ? 'Saving...' : editingProduct ? 'Save changes' : 'Create product'}
             </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Smart Fill Review Modal / Drawer */}
+      {showSmartFillModal && smartFillSuggestions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-3xl rounded-3xl border border-purple-100 bg-white p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-purple-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">Assistant IA — Suggestions Générées</h3>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Examinez les propositions et validez-les une par une ou appliquez tout en un clic.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSmartFillModal(false)}
+                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Suggested Title */}
+              <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-900">📌 Titre Commercial Suggéré</span>
+                  <button
+                    type="button"
+                    onClick={() => applySmartFillItem('title')}
+                    className="px-3 py-1 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition"
+                  >
+                    Appliquer le titre
+                  </button>
+                </div>
+                <p className="text-sm font-bold text-gray-900 bg-white p-3 rounded-xl border border-purple-100">
+                  {smartFillSuggestions.suggested_title}
+                </p>
+              </div>
+
+              {/* Suggested Description */}
+              <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-900">📄 Description HTML Suggérée</span>
+                  <button
+                    type="button"
+                    onClick={() => applySmartFillItem('description')}
+                    className="px-3 py-1 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition"
+                  >
+                    Appliquer la description
+                  </button>
+                </div>
+                <div
+                  className="text-xs text-gray-800 bg-white p-4 rounded-xl border border-purple-100 max-h-48 overflow-y-auto prose prose-sm"
+                  dangerouslySetInnerHTML={{ __html: smartFillSuggestions.suggested_description }}
+                />
+              </div>
+
+              {/* Suggested Hub Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-purple-900">🌐 Catégorie Hub Marketplace</span>
+                    <button
+                      type="button"
+                      onClick={() => applySmartFillItem('hub_category')}
+                      className="px-2.5 py-1 rounded-xl bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 transition"
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-gray-900 bg-white p-3 rounded-xl border border-purple-100">
+                    {smartFillSuggestions.suggested_hub_category_name} &gt; {smartFillSuggestions.suggested_hub_subcategory_name}
+                  </p>
+                </div>
+
+                {/* Suggested Storefront Category */}
+                <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-purple-900">🏪 Catégorie Boutique Vendeur</span>
+                    <button
+                      type="button"
+                      onClick={() => applySmartFillItem('storefront_category')}
+                      className="px-2.5 py-1 rounded-xl bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 transition"
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-gray-900 bg-white p-3 rounded-xl border border-purple-100">
+                    {smartFillSuggestions.suggested_storefront_category} &gt; {smartFillSuggestions.suggested_storefront_subcategory}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-purple-100 pt-4">
+              <button
+                type="button"
+                onClick={() => void handleSmartFill()}
+                disabled={smartFillLoading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition disabled:opacity-50"
+              >
+                {smartFillLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-600" />}
+                Régénérer d&apos;autres propositions
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSmartFillModal(false)}
+                  className="px-4 py-2.5 rounded-2xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition"
+                >
+                  Fermer
+                </button>
+                <button
+                  type="button"
+                  onClick={applyAllSmartFill}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-black shadow-lg shadow-purple-600/20 hover:scale-105 transition"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  Tout Valider & Appliquer
+                </button>
+              </div>
             </div>
           </div>
         </div>

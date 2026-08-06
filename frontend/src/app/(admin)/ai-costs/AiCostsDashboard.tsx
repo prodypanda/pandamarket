@@ -177,6 +177,15 @@ export default function AiCostsDashboard() {
   const [providerForm, setProviderForm] = useState({ ...emptyProviderForm });
   const [savingConfig, setSavingConfig] = useState(false);
 
+  // Multi-Engine Purpose Routing & Prompt Templates State
+  const [purposeRouting, setPurposeRouting] = useState<Array<{ purpose: string; provider_config_id: string | null; provider_label: string; model: string | null }>>([]);
+  const [promptTemplates, setPromptTemplates] = useState<Array<{ prompt_key: string; title: string; description: string | null; system_prompt: string; default_prompt: string }>>([]);
+  const [selectedPromptKey, setSelectedPromptKey] = useState<string>('product_smart_fill');
+  const [editingSystemPrompt, setEditingSystemPrompt] = useState<string>('');
+  const [editingDefaultPrompt, setEditingDefaultPrompt] = useState<string>('');
+  const [savingPrompt, setSavingPrompt] = useState<boolean>(false);
+  const [promptMessage, setPromptMessage] = useState<string>('');
+
   const maxDailyTokens = useMemo(
     () => Math.max(...stats.daily_usage.map((day) => day.tokens), 1),
     [stats.daily_usage],
@@ -190,7 +199,35 @@ export default function AiCostsDashboard() {
     if (!res.ok) throw new Error(data.error?.message || 'Impossible de charger la configuration IA');
     setProviders(Array.isArray(data.providers) ? data.providers : []);
     setPricing(Array.isArray(data.pricing) ? data.pricing : []);
-  }, []);
+
+    // Fetch Purpose Routing
+    try {
+      const routeRes = await fetchWithCsrf('/api/pd/admin/ai/purpose-routing', { credentials: 'include' });
+      const routeData = await routeRes.json().catch(() => ({}));
+      if (routeRes.ok && Array.isArray(routeData.routing)) {
+        setPurposeRouting(routeData.routing);
+      }
+    } catch {
+      // optional fallback
+    }
+
+    // Fetch Prompt Templates
+    try {
+      const promptRes = await fetchWithCsrf('/api/pd/admin/ai/prompts', { credentials: 'include' });
+      const promptData = await promptRes.json().catch(() => ({}));
+      if (promptRes.ok && Array.isArray(promptData.templates)) {
+        setPromptTemplates(promptData.templates);
+        const current = promptData.templates.find((t: any) => t.prompt_key === selectedPromptKey) || promptData.templates[0];
+        if (current) {
+          setSelectedPromptKey(current.prompt_key);
+          setEditingSystemPrompt(current.system_prompt || '');
+          setEditingDefaultPrompt(current.default_prompt || '');
+        }
+      }
+    } catch {
+      // optional fallback
+    }
+  }, [selectedPromptKey]);
 
   const fetchStats = useCallback(async (background = false) => {
     if (background) setRefreshing(true);
@@ -295,6 +332,59 @@ export default function AiCostsDashboard() {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
       setSavingConfig(false);
+    }
+  };
+
+  const updatePurposeRouting = async (purpose: string, providerConfigId: string | null) => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/ai/purpose-routing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purpose, provider_config_id: providerConfigId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.routing)) {
+        setPurposeRouting(data.routing);
+        setConfigMessage(`Routage mis à jour pour le module "${purpose}".`);
+      }
+    } catch {
+      setError('Erreur lors de la mise à jour du routage IA par usage.');
+    }
+  };
+
+  const handleSelectPrompt = (key: string) => {
+    setSelectedPromptKey(key);
+    const target = promptTemplates.find((t) => t.prompt_key === key);
+    if (target) {
+      setEditingSystemPrompt(target.system_prompt || '');
+      setEditingDefaultPrompt(target.default_prompt || '');
+      setPromptMessage('');
+    }
+  };
+
+  const savePromptTemplate = async () => {
+    setSavingPrompt(true);
+    setPromptMessage('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/ai/prompts/${selectedPromptKey}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_prompt: editingSystemPrompt,
+          default_prompt: editingDefaultPrompt,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.template) {
+        setPromptTemplates((prev) => prev.map((t) => (t.prompt_key === selectedPromptKey ? data.template : t)));
+        setPromptMessage('Prompt système enregistré avec succès !');
+      } else {
+        throw new Error(data.error?.message || 'Erreur d\'enregistrement');
+      }
+    } catch (err) {
+      setPromptMessage(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setSavingPrompt(false);
     }
   };
 
@@ -511,14 +601,138 @@ export default function AiCostsDashboard() {
           <button
             type="button"
             onClick={() => void savePricing()}
-            disabled={savingConfig || pricing.length === 0}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+            disabled={savingConfig}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white hover:bg-[#991B1B] disabled:opacity-50"
           >
-            {savingConfig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save prices
+            <Save className="h-4 w-4" />
+            Enregistrer Tarification Tokens
           </button>
         </section>
       </div>
+
+      {/* Multi-Engine Purpose Routing Manager */}
+      <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-black text-gray-950">Routage Multi-Moteurs IA par Usage</h2>
+            <p className="mt-1 text-sm font-semibold text-gray-500">
+              Attribuez un moteur d&apos;IA spécifique (OpenAI, Gemini, Claude, Custom) à chaque type de tâche e-commerce.
+            </p>
+          </div>
+          <Sparkles className="h-6 w-6 text-[#B91C1C]" />
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[
+            { key: 'text_summarization', label: '📝 Résumé & Analyse de Texte', desc: 'Modèle rapide pour analyser les descriptions brutes et extraire les informations.' },
+            { key: 'content_generation', label: '✍️ Génération de Contenu & Produits', desc: 'Modèle avancé pour rédiger les titres commerciaux et fiches produit HTML.' },
+            { key: 'image_studio', label: '🎨 Studio Photo & Mockups E-commerce', desc: 'Moteur visuel pour le détourage, décors studio et génération de mockups.' },
+          ].map((item) => {
+            const currentRoute = purposeRouting.find((r) => r.purpose === item.key);
+            return (
+              <div key={item.key} className="rounded-2xl border border-gray-100 bg-gray-50 p-5 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-black text-sm text-gray-900">{item.label}</h3>
+                  <p className="mt-1 text-xs text-gray-500 font-medium leading-relaxed">{item.desc}</p>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-[11px] font-black uppercase text-gray-400 mb-1.5">Moteur Assigné</label>
+                  <select
+                    value={currentRoute?.provider_config_id || ''}
+                    onChange={(e) => void updatePurposeRouting(item.key, e.target.value || null)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-900 outline-none focus:border-[#B91C1C]"
+                  >
+                    <option value="">Pile de Priorité Défaut</option>
+                    {providers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} ({providerLabels[p.provider]} - {p.model})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* System Prompts & Initial Templates Manager */}
+      <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-black text-gray-950">Gestionnaire des Prompts Système & Modèles Initiaux</h2>
+            <p className="mt-1 text-sm font-semibold text-gray-500">
+              Personnalisez les prompts de référence envoyés aux modèles d&apos;IA pour ajuster le ton, le format et les règles métier.
+            </p>
+          </div>
+          <FileText className="h-6 w-6 text-[#B91C1C]" />
+        </div>
+
+        {promptMessage && (
+          <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+            {promptMessage}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+          {promptTemplates.map((tpl) => (
+            <button
+              key={tpl.prompt_key}
+              type="button"
+              onClick={() => handleSelectPrompt(tpl.prompt_key)}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                selectedPromptKey === tpl.prompt_key
+                  ? 'bg-[#B91C1C] text-white shadow-md shadow-[#B91C1C]/20'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {tpl.title}
+            </button>
+          ))}
+        </div>
+
+        {selectedPromptKey && (
+          <div className="mt-5 space-y-4">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-gray-600 mb-1">
+                Prompt Système / Persona de l&apos;IA (System Prompt)
+              </label>
+              <textarea
+                rows={3}
+                value={editingSystemPrompt}
+                onChange={(e) => setEditingSystemPrompt(e.target.value)}
+                placeholder="Rôle et consignes de comportement pour l'IA..."
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 outline-none focus:bg-white focus:border-[#B91C1C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-gray-600 mb-1">
+                Template de Prompt d&apos;Exécution (Default Prompt)
+              </label>
+              <textarea
+                rows={7}
+                value={editingDefaultPrompt}
+                onChange={(e) => setEditingDefaultPrompt(e.target.value)}
+                placeholder="Instructions détaillées avec variables {title}, {description}, {language}..."
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 outline-none focus:bg-white focus:border-[#B91C1C]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => void savePromptTemplate()}
+                disabled={savingPrompt}
+                className="flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-6 py-3 text-xs font-black text-white hover:bg-[#991B1B] disabled:opacity-50"
+              >
+                {savingPrompt ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Enregistrer le Prompt Système
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {statCards.map((card) => (

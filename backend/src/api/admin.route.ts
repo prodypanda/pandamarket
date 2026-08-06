@@ -5401,4 +5401,65 @@ router.get(
   }),
 );
 
+// Admin: AI Multi-Engine Purpose Routing
+router.get(
+  '/ai/purpose-routing',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { aiConfigService } = await import('../services/ai-config.service');
+    const routing = await aiConfigService.listPurposeRouting();
+    res.status(200).json({ routing });
+  }),
+);
+
+router.put(
+  '/ai/purpose-routing',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { aiConfigService } = await import('../services/ai-config.service');
+    const { purpose, provider_config_id } = req.body;
+    const routing = await aiConfigService.setPurposeRouting(purpose, provider_config_id || null);
+    res.status(200).json({ routing });
+  }),
+);
+
+// Admin: AI Prompt Templates Manager
+router.get(
+  '/ai/prompts',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { aiConfigService } = await import('../services/ai-config.service');
+    const templates = await aiConfigService.listPromptTemplates();
+    res.status(200).json({ templates });
+  }),
+);
+
+router.get(
+  '/ai/prompts/:key',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { aiConfigService } = await import('../services/ai-config.service');
+    const template = await aiConfigService.getPromptTemplate(req.params.key);
+    res.status(200).json({ template });
+  }),
+);
+
+router.put(
+  '/ai/prompts/:key',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { aiConfigService } = await import('../services/ai-config.service');
+    const template = await aiConfigService.updatePromptTemplate(req.params.key, {
+      system_prompt: req.body.system_prompt,
+      default_prompt: req.body.default_prompt,
+    });
+    res.status(200).json({ template });
+  }),
+);
+
 export default router;
