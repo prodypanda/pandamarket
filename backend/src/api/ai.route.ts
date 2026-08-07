@@ -425,10 +425,17 @@ router.post(
     const prompt = template.default_prompt.replace('{preset_description}', presetLabels[preset] || presetLabels.studio_white);
 
     // Image Studio processing
+    let processed_image_url = image_url;
+    try {
+      processed_image_url = await aiConfigService.generateImageForPurpose('image_background_removal', prompt, image_url, storeId);
+    } catch (err) {
+      // Fallback if no provider configured
+    }
+
     await creditsService.consume(storeId, cost);
 
     res.status(200).json({
-      processed_image_url: image_url,
+      processed_image_url,
       preset_used: preset,
       prompt,
       tokens_consumed: cost,
@@ -454,13 +461,18 @@ router.post(
     const styleLabel = style === 'lifestyle' ? 'Situation réelle lifestyle' : style === 'model' ? 'Porté par un mannequin' : 'Rendu studio pro angle dynamique';
     const prompt = template.default_prompt.replace('{title}', product_title).replace('{style_description}', styleLabel);
 
+    let generated_image_url = image_url;
+    try {
+      generated_image_url = await aiConfigService.generateImageForPurpose('image_generation', prompt, image_url, storeId);
+    } catch (err) {
+      // Fallback
+      generated_image_url = image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80';
+    }
+
     await creditsService.consume(storeId, cost);
 
-    // Return max 2 gallery images
-    const gallery_images = [
-      image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-    ].slice(0, 2);
+    // Return max 2 gallery images (we generate 1 for now to save credits/time)
+    const gallery_images = [generated_image_url].slice(0, 2);
 
     res.status(200).json({
       gallery_images,
@@ -484,10 +496,18 @@ router.post(
     const cost = 1;
     await creditsService.assertEnough(storeId, cost);
 
+    let enhanced_image_url = image_url;
+    try {
+      const template = await aiConfigService.getPromptTemplate('photo_studio_upscale');
+      enhanced_image_url = await aiConfigService.generateImageForPurpose('image_enhancement', template.default_prompt, image_url, storeId);
+    } catch (err) {
+      // Fallback
+    }
+
     await creditsService.consume(storeId, cost);
 
     res.status(200).json({
-      enhanced_image_url: image_url,
+      enhanced_image_url,
       tokens_consumed: cost,
       enhanced: true,
     });

@@ -71,7 +71,7 @@ interface AiStats {
   }[];
 }
 
-type AiProvider = 'gemini' | 'openai' | 'claude' | 'custom';
+type AiProvider = 'gemini' | 'openai' | 'claude' | 'custom' | 'replicate';
 type AiJobType = 'image_compression' | 'seo_generation' | 'page_copy' | 'product_description';
 
 interface AiProviderConfig {
@@ -128,6 +128,7 @@ const providerLabels: Record<AiProvider, string> = {
   openai: 'OpenAI',
   claude: 'Claude',
   custom: 'Custom',
+  replicate: 'Replicate',
 };
 
 const emptyProviderForm = {
@@ -624,9 +625,12 @@ export default function AiCostsDashboard() {
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
-            { key: 'text_summarization', label: '📝 Résumé & Analyse de Texte', desc: 'Modèle rapide pour analyser les descriptions brutes et extraire les informations.' },
-            { key: 'content_generation', label: '✍️ Génération de Contenu & Produits', desc: 'Modèle avancé pour rédiger les titres commerciaux et fiches produit HTML.' },
-            { key: 'image_studio', label: '🎨 Studio Photo & Mockups E-commerce', desc: 'Moteur visuel pour le détourage, décors studio et génération de mockups.' },
+            { key: 'text_summarization', label: '📝 Résumé & Analyse', desc: 'Analyse rapide des descriptions brutes.' },
+            { key: 'content_generation', label: '✍️ Génération de Contenu', desc: 'Rédaction des titres et fiches produit HTML.' },
+            { key: 'image_generation', label: '🎨 Génération d\'Images', desc: 'Mockups et décors studio IA.' },
+            { key: 'image_upscaling', label: '🔍 Upscaling HD', desc: 'Amélioration de la netteté et résolution.' },
+            { key: 'image_enhancement', label: '✨ Amélioration Photo', desc: 'Balance des couleurs et éclairage.' },
+            { key: 'image_background_removal', label: '✂️ Détourage', desc: 'Suppression automatique du fond.' },
           ].map((item) => {
             const currentRoute = purposeRouting.find((r) => r.purpose === item.key);
             return (
