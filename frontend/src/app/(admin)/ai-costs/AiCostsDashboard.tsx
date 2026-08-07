@@ -178,12 +178,50 @@ export default function AiCostsDashboard() {
   const [providerForm, setProviderForm] = useState({ ...emptyProviderForm });
   const [savingConfig, setSavingConfig] = useState(false);
 
+const DEFAULT_PROMPT_TEMPLATES = [
+  {
+    prompt_key: 'product_smart_fill',
+    title: 'Générateur Intelligent de Fiche Produit',
+    description: 'Génère le titre commercial, description HTML et catégories.',
+    system_prompt: 'Vous êtes un expert e-commerce mondial spécialisé dans le merchandising produit.',
+    default_prompt: 'Données du produit d\'entrée :\nTitre: {title}\nDescription: {description}',
+  },
+  {
+    prompt_key: 'photo_studio_background',
+    title: 'Studio Photo & Remplacement de Fond',
+    description: 'Détoure le produit et l\'intègre dans un décor studio.',
+    system_prompt: 'Vous êtes un photographe studio produit professionnel.',
+    default_prompt: 'Créez un rendu professionnel pour le produit en remplaçant le fond par : {preset_description}.',
+  },
+  {
+    prompt_key: 'photo_studio_gallery',
+    title: 'Générateur de Mockups & Galerie Produit',
+    description: 'Génère des images additionnelles de mise en situation.',
+    system_prompt: 'Vous êtes un directeur artistique e-commerce.',
+    default_prompt: 'Générez une photo de galerie professionnelle pour le produit "{title}". Style : {style_description}.',
+  },
+  {
+    prompt_key: 'photo_studio_upscale',
+    title: "Sublimateur d'Éclairage & Haute Définition",
+    description: 'Améliore la netteté, les couleurs et l\'éclairage.',
+    system_prompt: 'Vous êtes un retoucheur photo professionnel e-commerce.',
+    default_prompt: 'Sublimez cette photo produit : améliorez la netteté, équilibrez les ombres et dynamisez les couleurs.',
+  },
+  {
+    prompt_key: 'page_copy',
+    title: 'Générateur de Rédaction de Page Landing',
+    description: 'Rédige des accroches et titres pour les pages.',
+    system_prompt: 'Vous êtes un concepteur-rédacteur e-commerce.',
+    default_prompt: 'Générer du texte court et percutant pour la page {page_title}.',
+  },
+];
+
   // Multi-Engine Purpose Routing & Prompt Templates State
   const [purposeRouting, setPurposeRouting] = useState<Array<{ purpose: string; provider_config_id: string | null; provider_label: string; model: string | null }>>([]);
-  const [promptTemplates, setPromptTemplates] = useState<Array<{ prompt_key: string; title: string; description: string | null; system_prompt: string; default_prompt: string }>>([]);
+  const [promptTemplates, setPromptTemplates] = useState<Array<{ prompt_key: string; title: string; description: string | null; system_prompt: string; default_prompt: string }>>(DEFAULT_PROMPT_TEMPLATES);
   const [selectedPromptKey, setSelectedPromptKey] = useState<string>('product_smart_fill');
-  const [editingSystemPrompt, setEditingSystemPrompt] = useState<string>('');
-  const [editingDefaultPrompt, setEditingDefaultPrompt] = useState<string>('');
+  const [editingSystemPrompt, setEditingSystemPrompt] = useState<string>(DEFAULT_PROMPT_TEMPLATES[0].system_prompt);
+  const [editingDefaultPrompt, setEditingDefaultPrompt] = useState<string>(DEFAULT_PROMPT_TEMPLATES[0].default_prompt);
   const [savingPrompt, setSavingPrompt] = useState<boolean>(false);
   const [promptMessage, setPromptMessage] = useState<string>('');
 
