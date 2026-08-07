@@ -312,7 +312,27 @@ router.post(
     });
     try {
       const cost = await aiConfigService.getFeaturePrice(AiJobType.ProductDescription);
-      const prompt = `You are an e-commerce product copywriter. Enhance the product description in ${langName}. Return ONLY JSON: { "description_html": string, "summary": string }. Use safe HTML tags only: p, strong, em, ul, li, h3. Tone: ${tone}. Product title: ${req.body.title}. Category: ${req.body.category || 'none'}. Attributes: ${attributes}. Current description: ${req.body.current_description || 'none'}. Make it persuasive, accurate, and not exaggerated.`;
+      const prompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
+
+Consignes de format et de style :
+- Langue : ${langName}
+- Tonalité : ${tone} (adoptez un ton professionnel, crédible, séduisant sans exagération mensongère)
+- Produit : ${req.body.title}
+- Catégorie : ${req.body.category || 'Non spécifiée'}
+- Attributs et spécifications : ${attributes}
+- Description brute actuelle : ${req.body.current_description || 'Aucune'}
+
+Structure HTML obligatoire :
+- Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
+- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
+- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
+- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
+  "summary": "Résumé percutant en une phrase pour la vitrine"
+}`;
       const result = await aiConfigService.generateText(prompt, storeId);
       const description = parseDescriptionResponse(result.text);
       await creditsService.consume(storeId, cost);

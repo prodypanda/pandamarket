@@ -182,37 +182,97 @@ const DEFAULT_PROMPT_TEMPLATES = [
   {
     prompt_key: 'product_smart_fill',
     title: 'Générateur Intelligent de Fiche Produit',
-    description: 'Génère le titre commercial, description HTML et catégories.',
-    system_prompt: 'Vous êtes un expert e-commerce mondial spécialisé dans le merchandising produit.',
-    default_prompt: 'Données du produit d\'entrée :\nTitre: {title}\nDescription: {description}',
+    description: 'Génère le titre commercial, description HTML enrichie, atouts clés et catégorisation complète Hub & Boutique.',
+    system_prompt: `Vous êtes l'Assistant IA Expert en E-commerce et Merchandising de PandaMarket. Votre mission est de concevoir des fiches produits d'un niveau d'excellence digne des plus grands sites e-commerce mondiaux. Vous maîtrisez le SEO, la psychologie d'achat, le copywriting persuasif et la structuration sémantique HTML. Vous devez transformer les informations brutes fournies (titre, mots-clés, brouillon ou image) en une fiche produit complète, captivante, précise et parfaitement catégorisée.`,
+    default_prompt: `Analysez attentivement les données fournies et générez une fiche produit complète, vendeuse et prête à publier.
+
+Données du produit d'entrée :
+- Titre / Mots-clés : {title}
+- Description brute : {description}
+- Langue ciblée : {language}
+
+Consignes strictes de rédaction :
+1. Titre commercial : Vendeur, clair, optimisé pour la recherche, mentionnant les atouts majeurs (max 100 caractères).
+2. Description HTML : Riche, séduisante et bien structurée (max 3000 caractères). Utilisez EXCLUSIVEMENT les balises <h3>, <p>, <strong>, <em>, <ul>, <li>. Structure recommandée :
+   - Accroche percutante et bénéfice principal
+   - Caractéristiques et points forts sous forme de liste à puces (<ul><li>...</li></ul>)
+   - Conseils d'utilisation ou détails techniques
+   - Réassurance qualité / satisfaction client
+3. Catégorisation intelligente : Associez le produit à la catégorie et sous-catégorie les plus pertinentes du PandaMarket Hub, ainsi qu'aux catégories recommandées pour la vitrine de la boutique.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS AUCUN TEXTE AUTOUR, SELON CE FORMAT :
+{
+  "suggested_title": "Titre commercial attractif et optimisé",
+  "suggested_description": "<p>Description HTML structurée avec <h3>, <strong>, <ul> et <li>...</p>",
+  "suggested_hub_category_name": "Catégorie principale du Hub",
+  "suggested_hub_subcategory_name": "Sous-catégorie du Hub",
+  "suggested_storefront_category": "Catégorie vitrine boutique",
+  "suggested_storefront_subcategory": "Sous-catégorie vitrine boutique"
+}`,
   },
   {
     prompt_key: 'photo_studio_background',
     title: 'Studio Photo & Remplacement de Fond',
-    description: 'Détoure le produit et l\'intègre dans un décor studio.',
-    system_prompt: 'Vous êtes un photographe studio produit professionnel.',
-    default_prompt: 'Créez un rendu professionnel pour le produit en remplaçant le fond par : {preset_description}.',
+    description: 'Détoure le produit avec précision et l\'intègre dans un décor studio haut de gamme avec ombres réalistes.',
+    system_prompt: `Vous êtes un photographe studio produit et directeur de la photographie commerciale pour catalogues de luxe. Vous êtes spécialisé dans la mise en scène produit en haute définition, la gestion de l'éclairage de studio, le détourage ultra-précis et le rendu photoréaliste.`,
+    default_prompt: `Photographie commerciale de produit haute définition avec détourage impeccable et intégration harmonieuse dans le décor suivant : {preset_description}.
+
+Directives artistiques et techniques :
+- Détourage précis sans artefact de contour ni halo
+- Éclairage studio diffus et naturel (Softbox & Ring light), éliminant les reflets agressifs
+- Ombres portées douces et réalistes respectant la perspective et le plan de pose
+- Profondeur de champ équilibrée mettant en valeur la matière et les détails du produit
+- Rendu 8k UHD net, propre, sans compression, optimisé pour conversion e-commerce`,
   },
   {
     prompt_key: 'photo_studio_gallery',
     title: 'Générateur de Mockups & Galerie Produit',
-    description: 'Génère des images additionnelles de mise en situation.',
-    system_prompt: 'Vous êtes un directeur artistique e-commerce.',
-    default_prompt: 'Générez une photo de galerie professionnelle pour le produit "{title}". Style : {style_description}.',
+    description: 'Génère des visuels publicitaires lifestyle et des mockups de mise en situation réelle pour booster l\'engagement.',
+    system_prompt: `Vous êtes un directeur artistique e-commerce et photographe publicitaire spécialisé dans les visuels lifestyle et les mockups de mise en situation réelle.`,
+    default_prompt: `Créez une prise de vue lifestyle publicitaire et authentique pour le produit "{title}".
+
+Style visuel : {style_description}.
+
+Directives de composition :
+- Cadrage dynamique en situation réelle d'usage (lifestyle authentique ou studio moderne)
+- Lumière ambiante naturelle et esthétique mettant en valeur le produit comme élément central
+- Présentation haut de gamme renforçant le désir d'achat et la perception de valeur
+- Résolution 4K ultra-nette, textures riches et fidélité absolue au produit`,
   },
   {
     prompt_key: 'photo_studio_upscale',
     title: "Sublimateur d'Éclairage & Haute Définition",
-    description: 'Améliore la netteté, les couleurs et l\'éclairage.',
-    system_prompt: 'Vous êtes un retoucheur photo professionnel e-commerce.',
-    default_prompt: 'Sublimez cette photo produit : améliorez la netteté, équilibrez les ombres et dynamisez les couleurs.',
+    description: 'Améliore la netteté, calibre la balance des blancs, sublime les textures et réhausse la lumière globale.',
+    system_prompt: `Vous êtes un maître retoucheur numérique et étalonneur colorimétrique e-commerce spécialisé dans l'optimisation HD et la sublimation d'images produit.`,
+    default_prompt: `Amélioration et restauration HD de la photographie du produit :
+- Amplification de la netteté et micro-contrastes sur les textures et matériaux
+- Équilibrage précis de la balance des blancs et réhaussement de la dynamique lumineuse
+- Débruitage propre sans effet de lissage excessif
+- Couleurs vibrantes, naturelles et fidèles à la réalité
+- Rendu final cristal-net de qualité professionnelle 4K UHD`,
   },
   {
     prompt_key: 'page_copy',
     title: 'Générateur de Rédaction de Page Landing',
-    description: 'Rédige des accroches et titres pour les pages.',
-    system_prompt: 'Vous êtes un concepteur-rédacteur e-commerce.',
-    default_prompt: 'Générer du texte court et percutant pour la page {page_title}.',
+    description: 'Rédige des accroches percutantes, des titres accrocheurs et des méta-données SEO optimisées pour les pages.',
+    system_prompt: `Vous êtes un concepteur-rédacteur (Copywriter) et stratège SEO d'élite pour marques D2C et marketplaces e-commerce. Votre objectif est de concevoir des textes percutants, mémorables et orientés conversion.`,
+    default_prompt: `Rédigez le contenu rédactionnel et SEO pour la page de boutique : {page_title}.
+
+Langue ciblée : {language}.
+
+Directives :
+- Titre SEO : percutant, riche en mots-clés stratégiques (50-60 caractères max).
+- Meta-description SEO : incitative au clic avec proposition de valeur claire (140-155 caractères max).
+- Titre Hero de la page : accroche forte et inspirante pour capter l'attention instantanément.
+- Bouton d'action (CTA) : engageant et incitatif.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "seo_title": "Titre SEO optimisé",
+  "seo_description": "Meta description persuasive",
+  "hero_title": "Titre principal accrocheur",
+  "cta": "Texte du bouton d'action"
+}`,
   },
 ];
 
