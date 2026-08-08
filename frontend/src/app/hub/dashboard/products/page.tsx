@@ -48,6 +48,7 @@ import {
   Shield,
   ShoppingBag,
   Sliders,
+  SlidersHorizontal,
   Sparkles,
   Tag,
   Tags,
@@ -58,6 +59,9 @@ import {
   X,
   XCircle,
   Zap,
+  ZoomIn,
+  ArrowLeftRight,
+  Crop,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../../../contexts/LocaleContext';
@@ -516,6 +520,12 @@ export default function ProductsPage() {
     suggested_storefront_subcategory: string;
   } | null>(null);
   const [photoStudioLoading, setPhotoStudioLoading] = useState(false);
+  const [rawOriginalImage, setRawOriginalImage] = useState<string>('');
+  const [processedStudioImage, setProcessedStudioImage] = useState<string>('');
+  const [studioSliderPos, setStudioSliderPos] = useState<number>(50);
+  const [studioAspectRatio, setStudioAspectRatio] = useState<'1:1' | '4:5' | '16:9' | '3:4'>('1:1');
+  const [studioZoomEnabled, setStudioZoomEnabled] = useState<boolean>(false);
+  const [studioHistory, setStudioHistory] = useState<Array<{ id: string; presetName: string; imageUrl: string; timestamp: string }>>([]);
 
   // -----------------------------------------------------------------------
   // KEYBOARD SHORTCUTS
@@ -895,6 +905,11 @@ export default function ProductsPage() {
       return;
     }
 
+    const currentBase = rawOriginalImage || form.thumbnail;
+    if (!rawOriginalImage) {
+      setRawOriginalImage(currentBase);
+    }
+
     setPhotoStudioLoading(true);
     setError('');
     try {
@@ -903,7 +918,7 @@ export default function ProductsPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          image_url: form.thumbnail,
+          image_url: currentBase,
           preset,
         }),
       });
@@ -911,7 +926,22 @@ export default function ProductsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Remplacement de fond échoué.');
 
-      setSuccess(`Fond studio "${preset}" appliqué avec succès par l'IA !`);
+      const nextImageUrl = data.processed_image_url || currentBase;
+      setProcessedStudioImage(nextImageUrl);
+      setStudioSliderPos(50);
+
+      const presetMeta = STUDIO_PRESETS.find((p) => p.id === preset);
+      setStudioHistory((prev) => [
+        {
+          id: String(Date.now()),
+          presetName: presetMeta ? `${presetMeta.icon} ${presetMeta.name}` : `Studio ${preset}`,
+          imageUrl: nextImageUrl,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+        ...prev.slice(0, 7),
+      ]);
+
+      setSuccess(`Fond studio "${preset}" appliqué avec succès par l'IA ! Inspectez le résultat avec le comparateur avant/après.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur Studio Photo.');
     } finally {
@@ -962,6 +992,11 @@ export default function ProductsPage() {
       return;
     }
 
+    const currentBase = rawOriginalImage || form.thumbnail;
+    if (!rawOriginalImage) {
+      setRawOriginalImage(currentBase);
+    }
+
     setPhotoStudioLoading(true);
     setError('');
     try {
@@ -969,11 +1004,25 @@ export default function ProductsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ image_url: form.thumbnail }),
+        body: JSON.stringify({ image_url: currentBase }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || "Sublimation d'image échouée.");
+
+      const nextImageUrl = data.enhanced_image_url || currentBase;
+      setProcessedStudioImage(nextImageUrl);
+      setStudioSliderPos(50);
+
+      setStudioHistory((prev) => [
+        {
+          id: String(Date.now()),
+          presetName: '✨ Sublimation 4K UHD',
+          imageUrl: nextImageUrl,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+        ...prev.slice(0, 7),
+      ]);
 
       setSuccess("Éclairage, balance des blancs et résolution 4K sublimés par l'IA !");
     } catch (err) {
@@ -981,6 +1030,16 @@ export default function ProductsPage() {
     } finally {
       setPhotoStudioLoading(false);
     }
+  };
+
+  const handleDownloadImage = (url: string, filename = 'produit-studio-4k.webp') => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleEnhanceDescription = async () => {
@@ -1077,6 +1136,11 @@ export default function ProductsPage() {
     setShowDrawer(false);
     setDrawerTab('general');
     setSelectedVariantIndexes(new Set());
+    setRawOriginalImage('');
+    setProcessedStudioImage('');
+    setStudioSliderPos(50);
+    setStudioZoomEnabled(false);
+    setStudioHistory([]);
     setSuccess('');
     setError('');
   };
@@ -1084,7 +1148,13 @@ export default function ProductsPage() {
   const startEdit = (product: Product) => {
     const thumbnailImage = product.images?.find((image) => image.is_thumbnail);
     const wholesalePricing = product.metadata?.wholesale_pricing;
+    const initialThumb = thumbnailImage?.url || product.thumbnail || '';
     setEditingProduct(product);
+    setRawOriginalImage(initialThumb);
+    setProcessedStudioImage(initialThumb);
+    setStudioSliderPos(50);
+    setStudioZoomEnabled(false);
+    setStudioHistory([]);
     setForm({
       type: product.type || 'physical',
       title: product.title,
@@ -1095,7 +1165,7 @@ export default function ProductsPage() {
       storefront_category_id: product.storefront_category_id || '',
       inventory_quantity: String(product.inventory_quantity ?? 0),
       description: product.description || '',
-      thumbnail: thumbnailImage?.url || product.thumbnail || '',
+      thumbnail: initialThumb,
       gallery_images: (product.images || []).filter((image) => !image.is_thumbnail).map((image) => image.url),
       seo_title: product.seo_title || '',
       seo_description: product.seo_description || '',
@@ -1182,6 +1252,10 @@ export default function ProductsPage() {
     try {
       const publicUrl = await uploadProductFile(file);
       setForm((current) => ({ ...current, thumbnail: publicUrl }));
+      setRawOriginalImage(publicUrl);
+      setProcessedStudioImage(publicUrl);
+      setStudioSliderPos(50);
+      setStudioHistory([]);
       await fetchMediaItems();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de téléversement d'image");
@@ -2719,7 +2793,7 @@ export default function ProductsPage() {
                   <div className="space-y-6 animate-in fade-in duration-150">
                     {/* Main Thumbnail Section */}
                     <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                           <h4 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
                             Image Principale / Vignette Produit
@@ -2750,7 +2824,7 @@ export default function ProductsPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                           {form.thumbnail ? (
                             <img src={form.thumbnail} alt="Vignette" className="h-full w-full object-cover" />
                           ) : (
@@ -2763,6 +2837,226 @@ export default function ProductsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* INTERACTIVE COMPARISON SLIDER & ASPECT RATIOS */}
+                    {form.thumbnail && (
+                      <div className="p-5 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-gradient-to-b from-purple-50/40 to-slate-50/50 dark:from-purple-950/20 dark:to-slate-900 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-100 dark:border-slate-800 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                              <Crop className="w-4 h-4" />
+                            </span>
+                            <div>
+                              <h4 className="text-xs font-black uppercase text-purple-900 dark:text-purple-300">
+                                Comparateur Avant / Après & Cadrage Ratios
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                Glissez le curseur central pour inspecter le détourage et les reflets du fond IA
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Aspect Ratio Selector */}
+                          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                            {[
+                              { id: '1:1', label: '1:1 Carré', desc: 'Marketplace' },
+                              { id: '4:5', label: '4:5 Portrait', desc: 'Story & Social' },
+                              { id: '16:9', label: '16:9 Bannière', desc: 'Vitrine Web' },
+                              { id: '3:4', label: '3:4 Fiche', desc: 'Catalogue' },
+                            ].map((ratio) => (
+                              <button
+                                key={ratio.id}
+                                type="button"
+                                onClick={() => setStudioAspectRatio(ratio.id as any)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                  studioAspectRatio === ratio.id
+                                    ? 'bg-purple-600 text-white shadow-sm'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                }`}
+                                title={ratio.desc}
+                              >
+                                {ratio.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* COMPARISON CANVAS / SLIDER */}
+                        <div className="relative py-2 flex flex-col items-center">
+                          <div
+                            onPointerDown={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                              setStudioSliderPos(pct);
+                            }}
+                            onPointerMove={(e) => {
+                              if (e.buttons === 1) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                                setStudioSliderPos(pct);
+                              }
+                            }}
+                            className={`relative select-none overflow-hidden rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-slate-950 shadow-2xl cursor-ew-resize transition-all duration-300 ${
+                              studioAspectRatio === '4:5'
+                                ? 'aspect-[4/5] w-full max-w-sm'
+                                : studioAspectRatio === '16:9'
+                                ? 'aspect-video w-full max-w-2xl'
+                                : studioAspectRatio === '3:4'
+                                ? 'aspect-[3/4] w-full max-w-sm'
+                                : 'aspect-square w-full max-w-md'
+                            }`}
+                          >
+                            {/* Background Layer: Processed Studio AI Image */}
+                            <img
+                              src={processedStudioImage || form.thumbnail}
+                              alt="Studio Après"
+                              className={`absolute inset-0 h-full w-full object-cover transition-transform duration-200 ${
+                                studioZoomEnabled ? 'scale-150 origin-center' : 'scale-100'
+                              }`}
+                            />
+
+                            {/* Foreground Layer: Raw Original Image (Clipped by sliderPos) */}
+                            <div
+                              className="absolute inset-0 overflow-hidden border-r-2 border-white/90"
+                              style={{ width: `${studioSliderPos}%` }}
+                            >
+                              <img
+                                src={rawOriginalImage || form.thumbnail}
+                                alt="Original Avant"
+                                className={`absolute inset-0 h-full w-full object-cover max-w-none transition-transform duration-200 ${
+                                  studioZoomEnabled ? 'scale-150 origin-center' : 'scale-100'
+                                }`}
+                                style={{ width: '100%', height: '100%' }}
+                              />
+                            </div>
+
+                            {/* Draggable Divider Handle */}
+                            <div
+                              className="absolute top-0 bottom-0 pointer-events-none z-20"
+                              style={{ left: `${studioSliderPos}%` }}
+                            >
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-8 w-8 rounded-full bg-white text-slate-900 shadow-xl flex items-center justify-center border-2 border-purple-600">
+                                <ArrowLeftRight className="w-4 h-4 text-purple-700" />
+                              </div>
+                            </div>
+
+                            {/* Floating Badges */}
+                            <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-wider shadow">
+                              ◀ AVANT (Photo Brute)
+                            </div>
+                            <div className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg bg-purple-900/80 backdrop-blur-md text-[10px] font-black text-yellow-300 uppercase tracking-wider shadow flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-yellow-300" />
+                              APRÈS (Studio IA 4K) ▶
+                            </div>
+
+                            {/* Live Percentage Indicator */}
+                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-mono text-white/90">
+                              {Math.round(studioSliderPos)}% / {100 - Math.round(studioSliderPos)}%
+                            </div>
+                          </div>
+
+                          {/* Slider Action Toolbar */}
+                          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setStudioZoomEnabled((curr) => !curr)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                                studioZoomEnabled
+                                  ? 'bg-purple-600 text-white border-purple-600'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                              <span>{studioZoomEnabled ? 'Zoom 200% Actif' : 'Loupe 200%'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (processedStudioImage) {
+                                  setForm((c) => ({ ...c, thumbnail: processedStudioImage }));
+                                  setSuccess('Image studio appliquée comme vignette principale !');
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 shadow-md shadow-purple-500/20"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Appliquer comme Vignette</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (processedStudioImage) {
+                                  setForm((c) => ({ ...c, gallery_images: [...c.gallery_images, processedStudioImage] }));
+                                  setSuccess('Photo studio ajoutée à la galerie !');
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Ajouter à la Galerie</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadImage(processedStudioImage || form.thumbnail)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                              title="Télécharger l'image studio en haute définition"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Télécharger HD</span>
+                            </button>
+
+                            {rawOriginalImage && rawOriginalImage !== processedStudioImage && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setProcessedStudioImage(rawOriginalImage);
+                                  setForm((c) => ({ ...c, thumbnail: rawOriginalImage }));
+                                  setSuccess("Image d'origine rétablie.");
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Rétablir Original</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Studio History Variations Carousel */}
+                        {studioHistory.length > 0 && (
+                          <div className="pt-3 border-t border-purple-100 dark:border-slate-800 space-y-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                              Historique des décors générés ({studioHistory.length}) :
+                            </span>
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                              {studioHistory.map((item) => (
+                                <div
+                                  key={item.id}
+                                  onClick={() => {
+                                    setProcessedStudioImage(item.imageUrl);
+                                    setStudioSliderPos(50);
+                                  }}
+                                  className={`flex-shrink-0 cursor-pointer p-1.5 rounded-xl border transition-all flex items-center gap-2 ${
+                                    processedStudioImage === item.imageUrl
+                                      ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 ring-2 ring-purple-500/20'
+                                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400'
+                                  }`}
+                                >
+                                  <img src={item.imageUrl} alt={item.presetName} className="h-10 w-10 rounded-lg object-cover" />
+                                  <div className="text-[11px] pr-1">
+                                    <p className="font-bold text-slate-800 dark:text-slate-200">{item.presetName}</p>
+                                    <p className="text-[9px] text-slate-400">{item.timestamp}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* AI Photo Studio Presets */}
                     <div className="p-5 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-4">
