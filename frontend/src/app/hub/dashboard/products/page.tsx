@@ -41,11 +41,13 @@ import {
   Package,
   Plus,
   RefreshCw,
+  RotateCcw,
   Save,
   Search,
   Settings2,
   Shield,
   ShoppingBag,
+  Sliders,
   Sparkles,
   Tag,
   Tags,
@@ -110,6 +112,14 @@ interface ProductVariantForm {
   inventory_quantity: string;
   option_name: string;
   option_value: string;
+  options?: Record<string, string>;
+}
+
+interface OptionDimension {
+  id: string;
+  name: string;
+  values: string[];
+  inputValue?: string;
 }
 
 interface Product {
@@ -236,6 +246,15 @@ const STUDIO_PRESETS = [
   { id: 'luxe_dark', name: 'Studio Dark Luxe', icon: '🌑', desc: 'Fond sombre feutré avec néons subtils' },
 ];
 
+const OPTION_PRESETS = [
+  { name: 'Tailles Vêtements', optionName: 'Taille', icon: '👕', values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+  { name: 'Pointures Chaussures', optionName: 'Pointure', icon: '👟', values: ['38', '39', '40', '41', '42', '43', '44', '45'] },
+  { name: 'Couleurs Mode', optionName: 'Couleur', icon: '🎨', values: ['Noir', 'Blanc', 'Bleu marine', 'Gris', 'Rouge', 'Beige', 'Vert'] },
+  { name: 'Contenance Flacon', optionName: 'Contenance', icon: '🧴', values: ['30ml', '50ml', '100ml', '250ml', '500ml', '1L'] },
+  { name: 'Capacité Stockage', optionName: 'Capacité', icon: '💾', values: ['64 Go', '128 Go', '256 Go', '512 Go', '1 To'] },
+  { name: 'Poids / Conditionnement', optionName: 'Poids', icon: '⚖️', values: ['250g', '500g', '1kg', '2.5kg', '5kg'] },
+];
+
 function formatPrice(price: string | number) {
   const amount = Number(price);
   return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
@@ -280,8 +299,8 @@ function parseWholesalePriceTiers(tiers: WholesalePriceTierForm[]): WholesalePri
 function parseProductVariants(variants: ProductVariantForm[]) {
   return variants
     .map((variant) => {
-      const options: Record<string, string> = {};
-      if (variant.option_name.trim() && variant.option_value.trim()) {
+      const options: Record<string, string> = { ...(variant.options || {}) };
+      if (variant.option_name?.trim() && variant.option_value?.trim()) {
         options[variant.option_name.trim()] = variant.option_value.trim();
       }
       return {
@@ -293,7 +312,25 @@ function parseProductVariants(variants: ProductVariantForm[]) {
         options,
       };
     })
-    .filter((variant) => variant.title || variant.sku || Object.keys(variant.options).length > 0);
+    .filter((variant) => variant.title || variant.sku || Object.keys(variant.options || {}).length > 0);
+}
+
+function generateCartesianCombinations(dimensions: OptionDimension[]): Array<Record<string, string>> {
+  const activeDims = dimensions.filter((d) => d.name.trim() && d.values.length > 0);
+  if (activeDims.length === 0) return [];
+
+  return activeDims.reduce<Array<Record<string, string>>>(
+    (acc, dim) => {
+      const results: Array<Record<string, string>> = [];
+      for (const current of acc) {
+        for (const val of dim.values) {
+          results.push({ ...current, [dim.name.trim()]: val.trim() });
+        }
+      }
+      return results;
+    },
+    [{}]
+  );
 }
 
 function getStatusBadge(status: string) {
@@ -373,6 +410,21 @@ export default function ProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showLivePreview, setShowLivePreview] = useState(true);
 
+  // 1-Click Variant Matrix Generator State
+  const [showMatrixModal, setShowMatrixModal] = useState(false);
+  const [matrixDimensions, setMatrixDimensions] = useState<OptionDimension[]>([
+    { id: '1', name: 'Taille', values: ['S', 'M', 'L'], inputValue: '' },
+    { id: '2', name: 'Couleur', values: ['Noir', 'Blanc'], inputValue: '' },
+  ]);
+  const [matrixDefaultPrice, setMatrixDefaultPrice] = useState('');
+  const [matrixDefaultStock, setMatrixDefaultStock] = useState('5');
+  const [matrixSkuPrefix, setMatrixSkuPrefix] = useState('');
+  const [selectedVariantIndexes, setSelectedVariantIndexes] = useState<Set<number>>(new Set());
+
+  // Batch Variant Editing in Tab 2
+  const [batchVariantPrice, setBatchVariantPrice] = useState('');
+  const [batchVariantStock, setBatchVariantStock] = useState('');
+
   // Filters & Search
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -426,7 +478,8 @@ export default function ProductsPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showSmartFillModal) setShowSmartFillModal(false);
+        if (showMatrixModal) setShowMatrixModal(false);
+        else if (showSmartFillModal) setShowSmartFillModal(false);
         else if (showMediaPicker) setShowMediaPicker(false);
         else if (showDrawer) resetForm();
       }
@@ -439,7 +492,7 @@ export default function ProductsPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDrawer, showSmartFillModal, showMediaPicker, form, editingProduct]);
+  }, [showDrawer, showMatrixModal, showSmartFillModal, showMediaPicker, form, editingProduct]);
 
   // -----------------------------------------------------------------------
   // DATA FETCHING
@@ -579,6 +632,132 @@ export default function ProductsPage() {
       return true;
     });
   }, [products, search, statusFilter, typeFilter, categoryFilter]);
+
+  // -----------------------------------------------------------------------
+  // 1-CLICK VARIANT MATRIX GENERATION ENGINE
+  // -----------------------------------------------------------------------
+
+  const matrixCombinationsCount = useMemo(() => {
+    const activeDims = matrixDimensions.filter((d) => d.name.trim() && d.values.length > 0);
+    if (activeDims.length === 0) return 0;
+    return activeDims.reduce((acc, dim) => acc * dim.values.length, 1);
+  }, [matrixDimensions]);
+
+  const handleApplyMatrixGenerator = () => {
+    const combinations = generateCartesianCombinations(matrixDimensions);
+    if (combinations.length === 0) {
+      setError('Veuillez ajouter au moins une option avec des valeurs valides.');
+      return;
+    }
+
+    const baseTitle = form.title.trim() || 'Produit';
+    const baseRef = matrixSkuPrefix.trim() || form.product_reference.trim() || normalizePermalink(baseTitle).slice(0, 8).toUpperCase();
+    const defaultPrice = matrixDefaultPrice.trim() || form.price || '0.000';
+    const defaultStock = matrixDefaultStock.trim() || '5';
+
+    const newVariants: ProductVariantForm[] = combinations.map((combo) => {
+      const optionEntries = Object.entries(combo);
+      const firstEntry = optionEntries[0] || ['Option', 'Valeur'];
+      const subTitle = optionEntries.map(([_, v]) => v).join(' / ');
+      const skuSuffix = optionEntries.map(([_, v]) => normalizePermalink(v).toUpperCase()).join('-');
+      const sku = `${baseRef}-${skuSuffix}`;
+
+      return {
+        sku,
+        title: `${baseTitle} - ${subTitle}`,
+        price: defaultPrice,
+        inventory_quantity: defaultStock,
+        option_name: firstEntry[0],
+        option_value: firstEntry[1],
+        options: combo,
+      };
+    });
+
+    setForm((curr) => ({
+      ...curr,
+      variants: [...curr.variants, ...newVariants],
+    }));
+
+    setShowMatrixModal(false);
+    setSuccess(`🎉 ${newVariants.length} déclinaisons générées automatiquement avec succès !`);
+  };
+
+  const handleApplyOptionPreset = (preset: (typeof OPTION_PRESETS)[0]) => {
+    setMatrixDimensions((prev) => {
+      const existingIdx = prev.findIndex((d) => d.name.toLowerCase() === preset.optionName.toLowerCase());
+      if (existingIdx >= 0) {
+        return prev.map((d, i) => (i === existingIdx ? { ...d, values: Array.from(new Set([...d.values, ...preset.values])) } : d));
+      }
+      return [...prev, { id: String(Date.now()), name: preset.optionName, values: [...preset.values], inputValue: '' }];
+    });
+  };
+
+  const handleAddValueToDimension = (dimIndex: number, rawValue: string) => {
+    const val = rawValue.trim();
+    if (!val) return;
+    setMatrixDimensions((prev) =>
+      prev.map((dim, idx) => {
+        if (idx !== dimIndex) return dim;
+        if (dim.values.includes(val)) return { ...dim, inputValue: '' };
+        return { ...dim, values: [...dim.values, val], inputValue: '' };
+      })
+    );
+  };
+
+  const handleRemoveValueFromDimension = (dimIndex: number, valueIndex: number) => {
+    setMatrixDimensions((prev) =>
+      prev.map((dim, idx) => {
+        if (idx !== dimIndex) return dim;
+        return { ...dim, values: dim.values.filter((_, vi) => vi !== valueIndex) };
+      })
+    );
+  };
+
+  // Batch Variant Table Actions in Drawer
+  const handleSelectAllVariants = () => {
+    if (selectedVariantIndexes.size === form.variants.length) {
+      setSelectedVariantIndexes(new Set());
+    } else {
+      setSelectedVariantIndexes(new Set(form.variants.map((_, i) => i)));
+    }
+  };
+
+  const handleToggleSelectVariant = (index: number) => {
+    setSelectedVariantIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handleApplyBatchVariantPrice = () => {
+    if (!batchVariantPrice || selectedVariantIndexes.size === 0) return;
+    setForm((curr) => ({
+      ...curr,
+      variants: curr.variants.map((v, i) => (selectedVariantIndexes.has(i) ? { ...v, price: batchVariantPrice } : v)),
+    }));
+    setSuccess(`Prix appliqué à ${selectedVariantIndexes.size} variante(s).`);
+  };
+
+  const handleApplyBatchVariantStock = () => {
+    if (!batchVariantStock || selectedVariantIndexes.size === 0) return;
+    setForm((curr) => ({
+      ...curr,
+      variants: curr.variants.map((v, i) => (selectedVariantIndexes.has(i) ? { ...v, inventory_quantity: batchVariantStock } : v)),
+    }));
+    setSuccess(`Stock appliqué à ${selectedVariantIndexes.size} variante(s).`);
+  };
+
+  const handleDeleteSelectedVariants = () => {
+    if (selectedVariantIndexes.size === 0) return;
+    setForm((curr) => ({
+      ...curr,
+      variants: curr.variants.filter((_, i) => !selectedVariantIndexes.has(i)),
+    }));
+    setSelectedVariantIndexes(new Set());
+    setSuccess('Variantes sélectionnées supprimées.');
+  };
 
   // -----------------------------------------------------------------------
   // AI SMART FILL & PHOTO STUDIO HANDLERS
@@ -786,7 +965,7 @@ export default function ProductsPage() {
   };
 
   // -----------------------------------------------------------------------
-  // BULK ACTIONS
+  // BULK ACTIONS FOR PRODUCTS
   // -----------------------------------------------------------------------
   const toggleSelectAll = () => {
     if (selectedIds.size === visibleProducts.length) {
@@ -836,6 +1015,7 @@ export default function ProductsPage() {
     setEditingProduct(null);
     setShowDrawer(false);
     setDrawerTab('general');
+    setSelectedVariantIndexes(new Set());
     setSuccess('');
     setError('');
   };
@@ -884,10 +1064,12 @@ export default function ProductsPage() {
           inventory_quantity: String(variant.inventory_quantity ?? 0),
           option_name: firstOption?.[0] || '',
           option_value: firstOption?.[1] || '',
+          options: variant.options || {},
         };
       }),
       status: product.status,
     });
+    setMatrixDefaultPrice(String(product.price));
     setDrawerTab('general');
     setShowDrawer(true);
   };
@@ -1164,7 +1346,7 @@ export default function ProductsPage() {
                 Gestion des Produits & Studio IA
               </h1>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Gérez votre inventaire, enrichissez vos fiches avec l&apos;IA et sublimez vos photos studio en 1 clic.
+                Gérez votre inventaire, configurez vos déclinaisons SKU et sublimez vos photos studio en 1 clic.
               </p>
             </div>
           </div>
@@ -1750,7 +1932,7 @@ export default function ProductsPage() {
             <div className="flex items-center gap-1 overflow-x-auto px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 no-scrollbar">
               {[
                 { id: 'general', label: '1. Fiche & Type', icon: Package, done: Boolean(form.title) },
-                { id: 'pricing', label: '2. Prix & Stock', icon: Coins, done: Boolean(form.price) },
+                { id: 'pricing', label: '2. Prix & Variantes', icon: Coins, done: Boolean(form.price) },
                 { id: 'taxonomy', label: '3. Catégories', icon: Tag, done: Boolean(form.marketplace_category_id || form.storefront_category_id) },
                 { id: 'description', label: '4. Description HTML', icon: FileText, done: Boolean(form.description) },
                 { id: 'media', label: '5. Studio Photo IA', icon: ImageIcon, done: Boolean(form.thumbnail) },
@@ -1860,9 +2042,10 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                {/* TAB 2: PRICING & STOCK & VARIANTS */}
+                {/* TAB 2: PRICING, WHOLESALE & 1-CLICK VARIANT MATRIX */}
                 {drawerTab === 'pricing' && (
-                  <div className="space-y-5 animate-in fade-in duration-150">
+                  <div className="space-y-6 animate-in fade-in duration-150">
+                    {/* Base Pricing & Inventory */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1881,7 +2064,7 @@ export default function ProductsPage() {
 
                       <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Quantité en Stock Initial
+                          Quantité en Stock Global
                         </label>
                         <input
                           type="number"
@@ -1967,94 +2150,328 @@ export default function ProductsPage() {
                       </div>
                     )}
 
-                    {/* Product Variants Table */}
-                    <div className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
-                          🎨 Variantes de Déclinaison (Taille, Couleur, Format)
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((c) => ({
-                              ...c,
-                              variants: [
-                                ...c.variants,
-                                {
-                                  sku: '',
-                                  title: '',
-                                  price: c.price || '0',
-                                  inventory_quantity: '5',
-                                  option_name: 'Taille',
-                                  option_value: 'M',
-                                },
-                              ],
-                            }))
-                          }
-                          className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-300"
-                        >
-                          + Ajouter une variante
-                        </button>
+                    {/* ========================================================================= */}
+                    {/* 1-CLICK PRODUCT VARIANT MATRIX SECTION */}
+                    {/* ========================================================================= */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm space-y-4 p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-[#B91C1C]">
+                              <Sliders className="w-4 h-4" />
+                            </span>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                              Matrice de Déclinaisons & Variantes SKU
+                            </h4>
+                          </div>
+                          <p className="mt-0.5 text-xs text-slate-400 font-medium">
+                            Générez instantanément toutes les combinaisons de tailles, couleurs, pointures et formats en 1 clic.
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMatrixDefaultPrice(form.price || '0.000');
+                              setShowMatrixModal(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-[#B91C1C] text-white text-xs font-black shadow-md shadow-red-500/20 hover:scale-105 transition-all"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                            <span>Générateur Matriciel 1-Clic</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((c) => ({
+                                ...c,
+                                variants: [
+                                  ...c.variants,
+                                  {
+                                    sku: '',
+                                    title: `${c.title || 'Produit'} - Variante`,
+                                    price: c.price || '0.000',
+                                    inventory_quantity: '5',
+                                    option_name: 'Taille',
+                                    option_value: 'M',
+                                    options: { Taille: 'M' },
+                                  },
+                                ],
+                              }))
+                            }
+                            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                          >
+                            + Ligne Simple
+                          </button>
+                        </div>
                       </div>
 
+                      {/* Mass Actions Bar when variants are selected */}
                       {form.variants.length > 0 && (
-                        <div className="space-y-2">
-                          {form.variants.map((variant, idx) => (
-                            <div key={idx} className="grid grid-cols-5 gap-2 items-center text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs">
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-300">
                               <input
-                                type="text"
-                                placeholder="Titre variante (ex: Noir / L)"
-                                value={variant.title}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setForm((c) => ({
-                                    ...c,
-                                    variants: c.variants.map((v, i) => (i === idx ? { ...v, title: val } : v)),
-                                  }));
-                                }}
-                                className="col-span-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white"
+                                type="checkbox"
+                                checked={selectedVariantIndexes.size === form.variants.length && form.variants.length > 0}
+                                onChange={handleSelectAllVariants}
+                                className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
                               />
-                              <input
-                                type="number"
-                                step="0.001"
-                                placeholder="Prix"
-                                value={variant.price}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setForm((c) => ({
-                                    ...c,
-                                    variants: c.variants.map((v, i) => (i === idx ? { ...v, price: val } : v)),
-                                  }));
-                                }}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white"
-                              />
-                              <input
-                                type="number"
-                                placeholder="Stock"
-                                value={variant.inventory_quantity}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setForm((c) => ({
-                                    ...c,
-                                    variants: c.variants.map((v, i) => (i === idx ? { ...v, inventory_quantity: val } : v)),
-                                  }));
-                                }}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white"
-                              />
+                              <span>
+                                {selectedVariantIndexes.size > 0
+                                  ? `${selectedVariantIndexes.size} / ${form.variants.length} sélectionnée(s)`
+                                  : 'Tout sélectionner'}
+                              </span>
+                            </label>
+                          </div>
+
+                          {selectedVariantIndexes.size > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Batch Price */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  placeholder="Prix groupé TND"
+                                  value={batchVariantPrice}
+                                  onChange={(e) => setBatchVariantPrice(e.target.value)}
+                                  className="w-28 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleApplyBatchVariantPrice}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[11px] hover:bg-black"
+                                >
+                                  Appliquer Prix
+                                </button>
+                              </div>
+
+                              {/* Batch Stock */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  placeholder="Stock groupé"
+                                  value={batchVariantStock}
+                                  onChange={(e) => setBatchVariantStock(e.target.value)}
+                                  className="w-24 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleApplyBatchVariantStock}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[11px] hover:bg-black"
+                                >
+                                  Appliquer Stock
+                                </button>
+                              </div>
+
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setForm((c) => ({
-                                    ...c,
-                                    variants: c.variants.filter((_, i) => i !== idx),
-                                  }))
-                                }
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded justify-self-end"
+                                onClick={handleDeleteSelectedVariants}
+                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                                title="Supprimer la sélection"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                          ))}
+                          )}
+                        </div>
+                      )}
+
+                      {/* Variant Matrix Table */}
+                      {form.variants.length === 0 ? (
+                        <div className="py-10 text-center text-xs text-slate-400 space-y-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                          <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                          <p className="font-bold text-slate-600 dark:text-slate-400">Aucune variante configurée pour ce produit.</p>
+                          <p>Cliquez sur "Générateur Matriciel 1-Clic" pour combiner vos options ou ajoutez une ligne simple.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 text-slate-400 font-bold uppercase text-[10px]">
+                                <th className="py-2.5 pl-3 pr-2 w-8">#</th>
+                                <th className="py-2.5 px-3">Déclinaison & Attributs</th>
+                                <th className="py-2.5 px-3">Code SKU</th>
+                                <th className="py-2.5 px-3 w-32">Prix Unitaire</th>
+                                <th className="py-2.5 px-3 w-28">Stock Dispo</th>
+                                <th className="py-2.5 pr-3 text-right w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                              {form.variants.map((variant, idx) => {
+                                const isSelected = selectedVariantIndexes.has(idx);
+                                const optionTags = Object.entries(variant.options || {});
+
+                                return (
+                                  <tr
+                                    key={idx}
+                                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${
+                                      isSelected ? 'bg-red-50/20 dark:bg-red-950/20' : ''
+                                    }`}
+                                  >
+                                    <td className="py-2.5 pl-3 pr-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => handleToggleSelectVariant(idx)}
+                                        className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                                      />
+                                    </td>
+
+                                    {/* Variant Name & Attribute Badges */}
+                                    <td className="py-2.5 px-3">
+                                      <div className="space-y-1">
+                                        <input
+                                          type="text"
+                                          value={variant.title}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setForm((c) => ({
+                                              ...c,
+                                              variants: c.variants.map((v, i) => (i === idx ? { ...v, title: val } : v)),
+                                            }));
+                                          }}
+                                          className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                        />
+                                        {optionTags.length > 0 && (
+                                          <div className="flex flex-wrap items-center gap-1">
+                                            {optionTags.map(([optName, optVal]) => (
+                                              <span
+                                                key={optName}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                                              >
+                                                <strong>{optName}:</strong> {optVal}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+
+                                    {/* SKU */}
+                                    <td className="py-2.5 px-3">
+                                      <input
+                                        type="text"
+                                        value={variant.sku}
+                                        onChange={(e) => {
+                                          const val = e.target.value.toUpperCase();
+                                          setForm((c) => ({
+                                            ...c,
+                                            variants: c.variants.map((v, i) => (i === idx ? { ...v, sku: val } : v)),
+                                          }));
+                                        }}
+                                        placeholder="SKU-AUTO"
+                                        className="w-full px-2.5 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                                      />
+                                    </td>
+
+                                    {/* Price */}
+                                    <td className="py-2.5 px-3">
+                                      <input
+                                        type="number"
+                                        step="0.001"
+                                        value={variant.price}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setForm((c) => ({
+                                            ...c,
+                                            variants: c.variants.map((v, i) => (i === idx ? { ...v, price: val } : v)),
+                                          }));
+                                        }}
+                                        className="w-full px-2.5 py-1 text-xs font-black rounded-lg border border-slate-200 bg-white"
+                                      />
+                                    </td>
+
+                                    {/* Stock with increment/decrement */}
+                                    <td className="py-2.5 px-3">
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const currStock = Number(variant.inventory_quantity || 0);
+                                            const nextStock = Math.max(0, currStock - 1);
+                                            setForm((c) => ({
+                                              ...c,
+                                              variants: c.variants.map((v, i) =>
+                                                i === idx ? { ...v, inventory_quantity: String(nextStock) } : v
+                                              ),
+                                            }));
+                                          }}
+                                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                                        >
+                                          -
+                                        </button>
+                                        <input
+                                          type="number"
+                                          value={variant.inventory_quantity}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setForm((c) => ({
+                                              ...c,
+                                              variants: c.variants.map((v, i) => (i === idx ? { ...v, inventory_quantity: val } : v)),
+                                            }));
+                                          }}
+                                          className="w-14 text-center px-1.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const currStock = Number(variant.inventory_quantity || 0);
+                                            setForm((c) => ({
+                                              ...c,
+                                              variants: c.variants.map((v, i) =>
+                                                i === idx ? { ...v, inventory_quantity: String(currStock + 1) } : v
+                                              ),
+                                            }));
+                                          }}
+                                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </td>
+
+                                    {/* Action Delete */}
+                                    <td className="py-2.5 pr-3 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setForm((c) => ({
+                                            ...c,
+                                            variants: c.variants.filter((_, i) => i !== idx),
+                                          }))
+                                        }
+                                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                        title="Supprimer cette déclinaison"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* Cumulative Variant Statistics Summary */}
+                      {form.variants.length > 0 && (
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-500 font-semibold">
+                          <span>
+                            📊 <strong>{form.variants.length}</strong> déclinaisons configurées · Stock cumulé :{' '}
+                            <strong>{form.variants.reduce((acc, v) => acc + (Number(v.inventory_quantity) || 0), 0)}</strong> unités
+                          </span>
+                          <span>
+                            Valeur d&apos;inventaire :{' '}
+                            <strong>
+                              {formatPrice(
+                                form.variants.reduce((acc, v) => acc + (Number(v.price) || 0) * (Number(v.inventory_quantity) || 0), 0)
+                              )}
+                            </strong>
+                          </span>
                         </div>
                       )}
                     </div>
@@ -2561,7 +2978,228 @@ export default function ProductsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 6. AI SMART FILL REVIEW MODAL */}
+      {/* 6. 1-CLICK VARIANT MATRIX GENERATOR MODAL */}
+      {/* ========================================================================= */}
+      {showMatrixModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-3xl rounded-3xl border border-red-200 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-red-600 to-[#B91C1C] text-white shadow-md shadow-red-500/20">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Générateur Matriciel de Déclinaisons 1-Clic
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Configurez vos attributs et laissez le moteur combiner automatiquement tous les SKU, prix et stocks.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMatrixModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Option Presets Chips */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Puces d&apos;options prédéfinies rapides :
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {OPTION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => handleApplyOptionPreset(preset)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-red-400 hover:bg-red-50/40 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all"
+                  >
+                    <span>{preset.icon}</span>
+                    <span>{preset.name}</span>
+                    <Plus className="w-3 h-3 text-slate-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Option Dimensions List */}
+            <div className="space-y-4">
+              {matrixDimensions.map((dim, dimIdx) => (
+                <div
+                  key={dim.id}
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-black">
+                        {dimIdx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={dim.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMatrixDimensions((prev) =>
+                            prev.map((d, i) => (i === dimIdx ? { ...d, name: val } : d))
+                          );
+                        }}
+                        placeholder="Nom de l'option (ex: Taille, Couleur)"
+                        className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMatrixDimensions((prev) => prev.filter((_, i) => i !== dimIdx))}
+                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Tag Values Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {dim.values.map((val, valIdx) => (
+                      <span
+                        key={valIdx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-sm"
+                      >
+                        <span>{val}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveValueFromDimension(dimIdx, valIdx)}
+                          className="p-0.5 hover:text-red-600 rounded"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+
+                    {/* Add Value Input */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={dim.inputValue || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMatrixDimensions((prev) =>
+                            prev.map((d, i) => (i === dimIdx ? { ...d, inputValue: val } : d))
+                          );
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddValueToDimension(dimIdx, dim.inputValue || '');
+                          }
+                        }}
+                        placeholder="+ Ajouter valeur (Entrée)"
+                        className="w-36 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddValueToDimension(dimIdx, dim.inputValue || '')}
+                        className="px-2 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMatrixDimensions((prev) => [
+                    ...prev,
+                    { id: String(Date.now()), name: '', values: [], inputValue: '' },
+                  ])
+                }
+                className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                + Ajouter une dimension d&apos;option supplémentaire
+              </button>
+            </div>
+
+            {/* Matrix Initial Parameters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Prix Unitaire par Défaut
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={matrixDefaultPrice}
+                  onChange={(e) => setMatrixDefaultPrice(e.target.value)}
+                  placeholder={form.price || '0.000'}
+                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Stock Initial par Déclinaison
+                </label>
+                <input
+                  type="number"
+                  value={matrixDefaultStock}
+                  onChange={(e) => setMatrixDefaultStock(e.target.value)}
+                  placeholder="5"
+                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Préfixe SKU Personnalisé
+                </label>
+                <input
+                  type="text"
+                  value={matrixSkuPrefix}
+                  onChange={(e) => setMatrixSkuPrefix(e.target.value.toUpperCase())}
+                  placeholder={form.product_reference || 'PROD-2026'}
+                  className="w-full px-3 py-1.5 font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Footer Summary & Generate CTA */}
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                <span>Combinaisons calculées : </span>
+                <strong className="text-slate-900 dark:text-white text-sm">{matrixCombinationsCount} déclinaisons</strong>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMatrixModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyMatrixGenerator}
+                  disabled={matrixCombinationsCount === 0}
+                  className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-red-600 to-[#B91C1C] text-white text-xs font-black shadow-md shadow-red-500/20 hover:scale-105 disabled:opacity-50 transition-all"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  <span>Générer {matrixCombinationsCount} Déclinaisons en 1-Clic</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 7. AI SMART FILL REVIEW MODAL */}
       {/* ========================================================================= */}
       {showSmartFillModal && smartFillSuggestions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
@@ -2686,7 +3324,7 @@ export default function ProductsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 7. MEDIA PICKER MODAL */}
+      {/* 8. MEDIA PICKER MODAL */}
       {/* ========================================================================= */}
       {showMediaPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
