@@ -278,6 +278,8 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 
   // Multi-Engine Purpose Routing & Prompt Templates State
   const [purposeRouting, setPurposeRouting] = useState<Array<{ purpose: string; provider_config_id: string | null; provider_label: string; model: string | null }>>([]);
+  const [savingPurposeKey, setSavingPurposeKey] = useState<string | null>(null);
+  const [savedPurposeKeys, setSavedPurposeKeys] = useState<Record<string, boolean>>({});
   const [promptTemplates, setPromptTemplates] = useState<Array<{ prompt_key: string; title: string; description: string | null; system_prompt: string; default_prompt: string }>>(DEFAULT_PROMPT_TEMPLATES);
   const [selectedPromptKey, setSelectedPromptKey] = useState<string>('product_smart_fill');
   const [editingSystemPrompt, setEditingSystemPrompt] = useState<string>(DEFAULT_PROMPT_TEMPLATES[0].system_prompt);
@@ -435,6 +437,26 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
   };
 
   const updatePurposeRouting = async (purpose: string, providerConfigId: string | null) => {
+    // 1. Optimistic state update so select never snaps back to default
+    const targetProvider = providers.find((p) => p.id === providerConfigId);
+    setPurposeRouting((prev) => {
+      const idx = prev.findIndex((r) => r.purpose === purpose);
+      const updatedItem = {
+        purpose,
+        provider_config_id: providerConfigId,
+        provider_label: targetProvider ? `${targetProvider.label} (${providerLabels[targetProvider.provider]} - ${targetProvider.model})` : 'Pile de Priorité Défaut',
+        model: targetProvider?.model || null,
+      };
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updatedItem };
+        return next;
+      }
+      return [...prev, updatedItem];
+    });
+
+    setSavingPurposeKey(purpose);
+    setError('');
     try {
       const res = await fetchWithCsrf('/api/pd/admin/ai/purpose-routing', {
         method: 'PUT',
@@ -444,10 +466,19 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.routing)) {
         setPurposeRouting(data.routing);
-        setConfigMessage(`Routage mis à jour pour le module "${purpose}".`);
+        setSavedPurposeKeys((prev) => ({ ...prev, [purpose]: true }));
+        setConfigMessage(`Routage mis à jour avec succès pour le module "${purpose}".`);
+        setTimeout(() => {
+          setSavedPurposeKeys((prev) => ({ ...prev, [purpose]: false }));
+        }, 3000);
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la mise à jour');
       }
-    } catch {
-      setError('Erreur lors de la mise à jour du routage IA par usage.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du routage IA par usage.');
+      await fetchConfig();
+    } finally {
+      setSavingPurposeKey(null);
     }
   };
 
@@ -711,17 +742,22 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 
       {/* Multi-Engine Purpose Routing Manager */}
       <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black text-gray-950">Routage Multi-Moteurs IA par Usage</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-black text-gray-950">Routage Multi-Moteurs IA par Usage</h2>
+              <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-black text-[#B91C1C]">
+                {purposeRouting.filter((r) => r.provider_config_id).length} Moteurs Spécifiques Assignés
+              </span>
+            </div>
             <p className="mt-1 text-sm font-semibold text-gray-500">
               Attribuez un moteur d&apos;IA spécifique (OpenAI, Gemini, Claude, Custom) à chaque type de tâche e-commerce.
             </p>
           </div>
-          <Sparkles className="h-6 w-6 text-[#B91C1C]" />
+          <Sparkles className="h-6 w-6 text-[#B91C1C] flex-shrink-0" />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             { key: 'text_summarization', label: '📝 Résumé & Analyse', desc: 'Analyse rapide des descriptions brutes.' },
             { key: 'content_generation', label: '✍️ Génération de Contenu', desc: 'Rédaction des titres et fiches produit HTML.' },
@@ -731,18 +767,48 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
             { key: 'image_background_removal', label: '✂️ Détourage', desc: 'Suppression automatique du fond.' },
           ].map((item) => {
             const currentRoute = purposeRouting.find((r) => r.purpose === item.key);
+            const isSaving = savingPurposeKey === item.key;
+            const isSaved = savedPurposeKeys[item.key];
+            const activeProvider = providers.find((p) => p.id === currentRoute?.provider_config_id);
+
             return (
-              <div key={item.key} className="rounded-2xl border border-gray-100 bg-gray-50 p-5 flex flex-col justify-between">
+              <div key={item.key} className="rounded-2xl border border-gray-100 bg-gray-50 p-5 flex flex-col justify-between transition-all hover:border-gray-200">
                 <div>
-                  <h3 className="font-black text-sm text-gray-900">{item.label}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-black text-sm text-gray-900">{item.label}</h3>
+                    {isSaving && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Enregistrement...
+                      </span>
+                    )}
+                    {isSaved && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <Check className="w-3 h-3 text-emerald-600" /> Enregistré
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-gray-500 font-medium leading-relaxed">{item.desc}</p>
                 </div>
-                <div className="mt-4">
-                  <label className="block text-[11px] font-black uppercase text-gray-400 mb-1.5">Moteur Assigné</label>
+
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <label className="font-black uppercase text-gray-400">Moteur Assigné</label>
+                    {activeProvider ? (
+                      <span className="font-bold text-[10px] text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                        {activeProvider.label}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-[10px] text-gray-500 bg-gray-200/60 px-1.5 py-0.5 rounded">
+                        Pile Défaut
+                      </span>
+                    )}
+                  </div>
+
                   <select
                     value={currentRoute?.provider_config_id || ''}
+                    disabled={isSaving}
                     onChange={(e) => void updatePurposeRouting(item.key, e.target.value || null)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-900 outline-none focus:border-[#B91C1C]"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-900 outline-none focus:border-[#B91C1C] disabled:opacity-50"
                   >
                     <option value="">Pile de Priorité Défaut</option>
                     {providers.map((p) => (
@@ -751,6 +817,20 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
                       </option>
                     ))}
                   </select>
+
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => void updatePurposeRouting(item.key, currentRoute?.provider_config_id || null)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-1.5 text-[11px] font-black text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-[#B91C1C]" />
+                    ) : (
+                      <Save className="w-3 h-3 text-[#B91C1C]" />
+                    )}
+                    <span>{isSaved ? 'Enregistré avec succès !' : 'Enregistrer ce routage'}</span>
+                  </button>
                 </div>
               </div>
             );
