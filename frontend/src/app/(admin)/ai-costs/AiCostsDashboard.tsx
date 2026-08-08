@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Check,
   Clock3,
   Coins,
   Cpu,
