@@ -246,13 +246,56 @@ const STUDIO_PRESETS = [
   { id: 'luxe_dark', name: 'Studio Dark Luxe', icon: '🌑', desc: 'Fond sombre feutré avec néons subtils' },
 ];
 
-const OPTION_PRESETS = [
-  { name: 'Tailles Vêtements', optionName: 'Taille', icon: '👕', values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
-  { name: 'Pointures Chaussures', optionName: 'Pointure', icon: '👟', values: ['38', '39', '40', '41', '42', '43', '44', '45'] },
-  { name: 'Couleurs Mode', optionName: 'Couleur', icon: '🎨', values: ['Noir', 'Blanc', 'Bleu marine', 'Gris', 'Rouge', 'Beige', 'Vert'] },
-  { name: 'Contenance Flacon', optionName: 'Contenance', icon: '🧴', values: ['30ml', '50ml', '100ml', '250ml', '500ml', '1L'] },
-  { name: 'Capacité Stockage', optionName: 'Capacité', icon: '💾', values: ['64 Go', '128 Go', '256 Go', '512 Go', '1 To'] },
-  { name: 'Poids / Conditionnement', optionName: 'Poids', icon: '⚖️', values: ['250g', '500g', '1kg', '2.5kg', '5kg'] },
+export interface OptionPreset {
+  id: string;
+  category: 'fashion' | 'beauty' | 'tech' | 'home' | 'food' | 'jewelry';
+  categoryLabel: string;
+  name: string;
+  optionName: string;
+  icon: string;
+  values: string[];
+}
+
+const OPTION_PRESETS: OptionPreset[] = [
+  // 1. MODE & HABILLEMENT (Fashion)
+  { id: 'size_adult', category: 'fashion', categoryLabel: '👗 Mode', name: 'Tailles Adultes (XS-3XL)', optionName: 'Taille', icon: '👕', values: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'] },
+  { id: 'size_kids', category: 'fashion', categoryLabel: '👗 Mode', name: 'Tailles Enfants & Bébés', optionName: 'Taille', icon: '👶', values: ['0-3m', '3-6m', '6-12m', '1-2 ans', '3-4 ans', '5-6 ans'] },
+  { id: 'shoes_adult', category: 'fashion', categoryLabel: '👗 Mode', name: 'Pointures Chaussures (36-46)', optionName: 'Pointure', icon: '👟', values: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'] },
+  { id: 'colors_essential', category: 'fashion', categoryLabel: '👗 Mode', name: 'Couleurs Essentielles', optionName: 'Couleur', icon: '🎨', values: ['Noir', 'Blanc', 'Bleu Marine', 'Gris Anthracite', 'Beige Sable', 'Bordeaux', 'Kaki', 'Camel'] },
+  { id: 'colors_pastel', category: 'fashion', categoryLabel: '👗 Mode', name: 'Couleurs Pastel & Tendances', optionName: 'Couleur', icon: '🌸', values: ['Rose Poudré', 'Vert Sauge', 'Bleu Ciel', 'Lilas', 'Terracotta', 'Moutarde'] },
+  { id: 'textile_materials', category: 'fashion', categoryLabel: '👗 Mode', name: 'Matières & Textiles', optionName: 'Matière', icon: '🧵', values: ['100% Coton', 'Lin Naturel', 'Soie Sauvage', 'Cuir Véritable', 'Laine Mérinos', 'Denim'] },
+  { id: 'clothing_fit', category: 'fashion', categoryLabel: '👗 Mode', name: 'Coupes & Silhouettes', optionName: 'Coupe', icon: '👔', values: ['Slim Fit', 'Regular Fit', 'Oversize', 'Coupe Droite', 'Ajusté'] },
+
+  // 2. BEAUTÉ, PARFUMS & SOINS (Beauty)
+  { id: 'perfume_volume', category: 'beauty', categoryLabel: '💄 Beauté', name: 'Flacons & Parfums (ml)', optionName: 'Contenance', icon: '🧴', values: ['15ml', '30ml', '50ml', '100ml', '200ml'] },
+  { id: 'foundation_shades', category: 'beauty', categoryLabel: '💄 Beauté', name: 'Teintes Teint & Poudres', optionName: 'Teinte', icon: '💄', values: ['01 Ivoire Clair', '02 Beige Naturel', '03 Doré Sable', '04 Miel Chaud', '05 Caramel', '06 Ébène'] },
+  { id: 'fragrances_notes', category: 'beauty', categoryLabel: '💄 Beauté', name: 'Notes & Fragrances', optionName: 'Fragrance', icon: '✨', values: ["Fleur d'Oranger", 'Vanille Bourbon', 'Jasmin Oriental', 'Oud Boisé', 'Musc Blanc', 'Ambre'] },
+  { id: 'skin_types', category: 'beauty', categoryLabel: '💄 Beauté', name: 'Types de Peau & Formules', optionName: 'Type de Peau', icon: '🧪', values: ['Peau Normale', 'Peau Sèche', 'Peau Grasse', 'Peau Mixte', 'Peau Sensible'] },
+
+  // 3. HIGH-TECH, MOBILES & INFORMATIQUE (Tech)
+  { id: 'storage_capacity', category: 'tech', categoryLabel: '💻 Tech', name: 'Stockage Mémoire (Go/To)', optionName: 'Capacité', icon: '💾', values: ['64 Go', '128 Go', '256 Go', '512 Go', '1 To', '2 To'] },
+  { id: 'ram_memory', category: 'tech', categoryLabel: '💻 Tech', name: 'Mémoire Vive RAM', optionName: 'RAM', icon: '⚡', values: ['8 Go', '16 Go', '32 Go', '64 Go'] },
+  { id: 'screen_diagonal', category: 'tech', categoryLabel: '💻 Tech', name: "Diagonale d'Écran", optionName: 'Écran', icon: '🖥️', values: ['13.3"', '14"', '15.6"', '16"', '24"', '27"', '32"', '55"', '65"'] },
+  { id: 'tech_connectors', category: 'tech', categoryLabel: '💻 Tech', name: 'Connectique & Interfaces', optionName: 'Connectivité', icon: '🔌', values: ['USB-C', 'Lightning', 'Sans-fil Bluetooth', 'HDMI 2.1', 'Wi-Fi 6E'] },
+  { id: 'tech_colors', category: 'tech', categoryLabel: '💻 Tech', name: 'Finitions Métallisées Tech', optionName: 'Finition', icon: '📱', values: ['Gris Sidéral', 'Argent Titane', 'Noir Minuit', 'Or Stellaire', 'Bleu Abysse'] },
+
+  // 4. MAISON, MOBILIER & DÉCO (Home)
+  { id: 'bedding_dimensions', category: 'home', categoryLabel: '🏡 Maison', name: 'Dimensions Matelas & Lits', optionName: 'Dimension', icon: '🛏️', values: ['90x190 cm (1 Place)', '140x190 cm (Standard)', '160x200 cm (Queen)', '180x200 cm (King)', '200x200 cm'] },
+  { id: 'sofa_seats', category: 'home', categoryLabel: '🏡 Maison', name: 'Configuration Canapés & Salons', optionName: 'Configuration', icon: '🛋️', values: ['Fauteuil 1 Place', 'Canapé 2 Places', 'Canapé 3 Places', 'Angle Gauche', 'Angle Droit'] },
+  { id: 'furniture_materials', category: 'home', categoryLabel: '🏡 Maison', name: 'Finitions Bois, Marbre & Métal', optionName: 'Finition', icon: '🪵', values: ['Chêne Naturel', 'Noyer Foncé', 'Marbre Blanc', 'Marbre Noir', 'Laiton Brossé', 'Acier Noir Mat'] },
+  { id: 'lighting_temp', category: 'home', categoryLabel: '🏡 Maison', name: 'Température de Lumière', optionName: 'Éclairage', icon: '💡', values: ['Blanc Chaud 2700K', 'Blanc Neutre 4000K', 'Blanc Froid 6500K', 'RGB Ambiance'] },
+
+  // 5. TERROIR, ÉPICERIE FINE & SAVEURS (Food)
+  { id: 'food_weights', category: 'food', categoryLabel: '🍯 Terroir', name: 'Conditionnement Poids (g/kg)', optionName: 'Poids', icon: '⚖️', values: ['100g', '250g', '500g', '1 kg', '2.5 kg', '5 kg', '10 kg'] },
+  { id: 'oil_bottles', category: 'food', categoryLabel: '🍯 Terroir', name: 'Bouteilles & Bidons Huile/Vinaigre', optionName: 'Volume', icon: '🫒', values: ['250ml', '500ml', '750ml', '1 Litre', 'Bidon 3L', 'Bidon 5L'] },
+  { id: 'coffee_grind', category: 'food', categoryLabel: '🍯 Terroir', name: 'Mouture Café & Infusion', optionName: 'Mouture', icon: '☕', values: ['En Grains', 'Moulu Espresso', 'Moulu Filtre', 'Dosettes ESE', 'Capsules Compatibles'] },
+  { id: 'olive_varieties', category: 'food', categoryLabel: '🍯 Terroir', name: "Variétés Huile d'Olive Tunisienne", optionName: 'Variété', icon: '🌿', values: ['Chétoui Extra Vierge', 'Sahli Douce', 'Bio Certifiée', 'Aromatisée Romarin'] },
+  { id: 'honey_varieties', category: 'food', categoryLabel: '🍯 Terroir', name: 'Miels Artisanaux de Tunisie', optionName: 'Variété', icon: '🍯', values: ['Miel de Thym', "Miel d'Eucalyptus", 'Miel Toutes Fleurs', "Miel d'Oranger", 'Miel de Forêt'] },
+
+  // 6. BIJOUX, MONTRES & ACCESSOIRES (Jewelry)
+  { id: 'ring_sizes', category: 'jewelry', categoryLabel: '💍 Bijoux', name: 'Tailles Bagues & Alliances', optionName: 'Tour de Doigt', icon: '💍', values: ['Taille 48', 'Taille 50', 'Taille 52', 'Taille 54', 'Taille 56', 'Taille 58', 'Taille 60', 'Taille 62'] },
+  { id: 'precious_metals', category: 'jewelry', categoryLabel: '💍 Bijoux', name: 'Métaux Précieux & Placages', optionName: 'Métal', icon: '👑', values: ['Argent 925', 'Or Jaune 18K', 'Or Blanc 18K', 'Or Rose 18K', 'Plaqué Or 3 Microns', 'Acier Inoxydable 316L'] },
+  { id: 'necklace_lengths', category: 'jewelry', categoryLabel: '💍 Bijoux', name: 'Longueur Chaînes & Colliers', optionName: 'Longueur', icon: '💎', values: ['40 cm (Ras-de-cou)', '45 cm (Princesse)', '50 cm (Sautoir court)', '60 cm (Sautoir long)'] },
 ];
 
 function formatPrice(price: string | number) {
@@ -420,6 +463,8 @@ export default function ProductsPage() {
   const [matrixDefaultStock, setMatrixDefaultStock] = useState('5');
   const [matrixSkuPrefix, setMatrixSkuPrefix] = useState('');
   const [selectedVariantIndexes, setSelectedVariantIndexes] = useState<Set<number>>(new Set());
+  const [presetCategoryFilter, setPresetCategoryFilter] = useState<string>('all');
+  const [presetSearch, setPresetSearch] = useState<string>('');
 
   // Batch Variant Editing in Tab 2
   const [batchVariantPrice, setBatchVariantPrice] = useState('');
@@ -642,6 +687,22 @@ export default function ProductsPage() {
     if (activeDims.length === 0) return 0;
     return activeDims.reduce((acc, dim) => acc * dim.values.length, 1);
   }, [matrixDimensions]);
+
+  const filteredPresets = useMemo(() => {
+    return OPTION_PRESETS.filter((preset) => {
+      if (presetCategoryFilter !== 'all' && preset.category !== presetCategoryFilter) {
+        return false;
+      }
+      if (presetSearch.trim()) {
+        const term = presetSearch.toLowerCase();
+        const matchName = preset.name.toLowerCase().includes(term);
+        const matchOpt = preset.optionName.toLowerCase().includes(term);
+        const matchVal = preset.values.some((v) => v.toLowerCase().includes(term));
+        if (!matchName && !matchOpt && !matchVal) return false;
+      }
+      return true;
+    });
+  }, [presetCategoryFilter, presetSearch]);
 
   const handleApplyMatrixGenerator = () => {
     const combinations = generateCartesianCombinations(matrixDimensions);
@@ -3006,25 +3067,84 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Quick Option Presets Chips */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                Puces d&apos;options prédéfinies rapides :
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {OPTION_PRESETS.map((preset) => (
+            {/* Quick Option Presets Palette with Category Tabs & Search */}
+            <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  🎯 Puces d&apos;Options Prédéfinies Instantanées ({filteredPresets.length} disponibles) :
+                </span>
+
+                {/* Preset Search Input */}
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={presetSearch}
+                    onChange={(e) => setPresetSearch(e.target.value)}
+                    placeholder="Filtrer (ex: matelas, or, ram)..."
+                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none focus:border-red-500"
+                  />
+                  {presetSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPresetSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                {[
+                  { id: 'all', label: `✨ Tous (${OPTION_PRESETS.length})` },
+                  { id: 'fashion', label: '👗 Mode & Vêtements' },
+                  { id: 'beauty', label: '💄 Beauté & Parfums' },
+                  { id: 'tech', label: '💻 High-Tech' },
+                  { id: 'home', label: '🏡 Maison & Déco' },
+                  { id: 'food', label: '🍯 Terroir & Saveurs' },
+                  { id: 'jewelry', label: '💍 Bijouterie' },
+                ].map((cat) => (
                   <button
-                    key={preset.name}
+                    key={cat.id}
                     type="button"
-                    onClick={() => handleApplyOptionPreset(preset)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-red-400 hover:bg-red-50/40 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all"
+                    onClick={() => setPresetCategoryFilter(cat.id)}
+                    className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-all text-[11px] ${
+                      presetCategoryFilter === cat.id
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                    }`}
                   >
-                    <span>{preset.icon}</span>
-                    <span>{preset.name}</span>
-                    <Plus className="w-3 h-3 text-slate-400" />
+                    {cat.label}
                   </button>
                 ))}
               </div>
+
+              {/* Filtered Preset Chips Grid */}
+              {filteredPresets.length === 0 ? (
+                <p className="text-xs text-slate-400 py-3 text-center italic">
+                  Aucun preset ne correspond à votre recherche &quot;{presetSearch}&quot;.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                  {filteredPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleApplyOptionPreset(preset)}
+                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-red-400 hover:bg-red-50/40 dark:hover:bg-red-950/20 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      title={`Ajouter ${preset.name} (${preset.values.join(', ')})`}
+                    >
+                      <span className="text-sm">{preset.icon}</span>
+                      <span>{preset.name}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">({preset.values.length})</span>
+                      <Plus className="w-3 h-3 text-slate-400 group-hover:text-red-600 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Option Dimensions List */}
