@@ -50,6 +50,7 @@ import analyticsRouter from './api/analytics.route';
 import emailTemplateRouter from './api/email-template.route';
 import supportRouter from './api/support.route';
 import adsRouter from './api/ads.route';
+import cartRouter from './api/cart.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -260,6 +261,7 @@ async function bootstrap() {
   apiRouter.use('/email-templates', emailTemplateRouter);
   apiRouter.use('/support', supportRouter);
   apiRouter.use('/ads', adsRouter);
+  apiRouter.use('/cart', cartRouter);
 
   app.use('/api/pd', apiRouter);
 

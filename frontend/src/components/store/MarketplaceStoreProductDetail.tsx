@@ -10,6 +10,7 @@ import { SellerHoverCard } from '../product/SellerHoverCard';
 import { ContactSellerButton } from '../chat/ContactSellerButton';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
+import { WhatsAppDirectOrderButton } from './WhatsAppDirectOrderButton';
 import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
 import { getMarketplaceStoreProductHref, type MarketplaceStoreData, type MarketplaceStoreProduct } from './MarketplaceStorefront';
 import { getWholesalePricingFromMetadata } from '../../lib/cart-utils';
@@ -242,24 +243,33 @@ export function MarketplaceStoreProductDetail({
               </div>
             )}
 
-            <div className={`flex items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
-              <AddToCartButton
-                product_id={product.id}
-                title={product.title}
-                slug={product.slug}
-                category={product.category}
-                marketplace_category_slug={product.marketplace_category_slug}
+            <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
+              <div className="flex-1">
+                <AddToCartButton
+                  product_id={product.id}
+                  title={product.title}
+                  slug={product.slug}
+                  category={product.category}
+                  marketplace_category_slug={product.marketplace_category_slug}
+                  price={toNumber(product.price)}
+                  seller_type={sellerType}
+                  wholesale_pricing={wholesalePricing}
+                  store_id={store.id}
+                  store_name={store.name}
+                  store_subdomain={store.subdomain}
+                  product_type={product.type}
+                  image_url={mainImage || null}
+                  maxQuantity={product.inventory_quantity}
+                />
+              </div>
+              <WhatsAppDirectOrderButton
+                storeName={store.name}
+                storePhone={typeof store.settings?.phone === 'string' ? store.settings.phone : null}
+                productTitle={product.title}
                 price={toNumber(product.price)}
-                seller_type={sellerType}
-                wholesale_pricing={wholesalePricing}
-                store_id={store.id}
-                store_name={store.name}
-                store_subdomain={store.subdomain}
-                product_type={product.type}
-                image_url={mainImage || null}
-                maxQuantity={product.inventory_quantity}
+                currency="DT"
               />
-              <button className="rounded-xl border border-gray-300 bg-white p-3 transition-colors hover:bg-gray-50">
+              <button className="rounded-xl border border-gray-300 bg-white p-3 transition-colors hover:bg-gray-50 flex items-center justify-center">
                 <Heart className="h-5 w-5 text-gray-600" />
               </button>
             </div>
