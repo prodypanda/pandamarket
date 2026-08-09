@@ -11,6 +11,7 @@
     "migrate": "tsx src/migrations/run.ts",
     "migrate:rollback": "tsx src/migrations/rollback.ts",
     "seed": "tsx data/seed.ts",
+    "seed:medina": "tsx data/seed-atelier-medina-catalog.ts",
     "worker:ai": "tsx src/workers/ai-runner.ts",
     "worker:email": "tsx src/workers/email-runner.ts",
     "lint": "eslint \"src/**/*.ts\"",
