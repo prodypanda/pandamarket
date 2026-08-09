@@ -216,6 +216,7 @@ export interface PublicStoreRow {
   settings: Record<string, unknown>;
   shipping_mode: ShippingMode;
   created_at: Date;
+  product_count?: number;
 }
 
 export class StoreService {
@@ -417,6 +418,17 @@ export class StoreService {
       [storeId],
     );
     return rows[0] ?? { seller_score: '0', review_count: '0' };
+  }
+
+  async getProductCount(storeId: string): Promise<number> {
+    const { rows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM pd_product
+       WHERE store_id = $1
+         AND status = 'published'`,
+      [storeId],
+    );
+    return parseInt(rows[0]?.count || '0', 10);
   }
 
   async getBySubdomain(subdomain: string): Promise<StoreRow | null> {

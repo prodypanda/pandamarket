@@ -204,7 +204,11 @@ function publicStorefrontSettings(settings: StoreRow['settings'] | null | undefi
   };
 }
 
-function publicStorefrontStore(store: StoreRow | import('../services/store.service').PublicStoreRow, score?: { seller_score: string; review_count: string }) {
+function publicStorefrontStore(
+  store: StoreRow | import('../services/store.service').PublicStoreRow,
+  score?: { seller_score: string; review_count: string },
+  productCount?: number,
+) {
   return {
     id: store.id,
     name: store.name,
@@ -217,6 +221,7 @@ function publicStorefrontStore(store: StoreRow | import('../services/store.servi
     shipping_mode: store.shipping_mode,
     created_at: store.created_at,
     settings: publicStorefrontSettings(store.settings),
+    product_count: productCount ?? (store as any).product_count ?? null,
     ...(score ? {
       seller_score: score.seller_score,
       seller_review_count: score.review_count,
@@ -317,9 +322,12 @@ router.get(
       res.status(404).json({ error: { message: 'Store not found for host' } });
       return;
     }
-    const score = await storeService.getSellerScore(store.id);
+    const [score, productCount] = await Promise.all([
+      storeService.getSellerScore(store.id),
+      storeService.getProductCount(store.id),
+    ]);
     res.status(200).json({
-      store: publicStorefrontStore(store, score),
+      store: publicStorefrontStore(store, score, productCount),
     });
   }),
 );
@@ -608,8 +616,11 @@ router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const store = await storeService.getPublicById(req.params.id);
-    const score = await storeService.getSellerScore(store.id);
-    res.status(200).json({ store: publicStorefrontStore(store, score) });
+    const [score, productCount] = await Promise.all([
+      storeService.getSellerScore(store.id),
+      storeService.getProductCount(store.id),
+    ]);
+    res.status(200).json({ store: publicStorefrontStore(store, score, productCount) });
   }),
 );
 

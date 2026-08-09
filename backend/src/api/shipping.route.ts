@@ -1,10 +1,12 @@
 /**
- * Shipping API routes.
+ * Shipping API routes — Unified Local Tunisian Logistics Aggregator.
  *
- * POST /api/pd/shipping/rates       — Calculate shipping rates
- * POST /api/pd/shipping/shipments   — Create a shipment (generate AWB)
+ * GET  /api/pd/shipping/carriers       — List active Tunisian carriers & 24 governorates
+ * POST /api/pd/shipping/smart-quotes   — Smart multi-carrier routing (Best Rate & Fastest)
+ * POST /api/pd/shipping/rates          — Calculate shipping rates (compatibility)
+ * POST /api/pd/shipping/shipments      — Create a shipment (generate unified AWB)
  * GET  /api/pd/shipping/track/:trackingNumber — Track a shipment
- * POST /api/pd/shipping/pickup      — Request a pickup
+ * POST /api/pd/shipping/pickup         — Request courier pickup
  */
 
 import { Router } from 'express';
@@ -44,19 +46,20 @@ const addressSchema = z.preprocess((value) => {
   country: z.string().default('TN'),
 }));
 
+const smartQuotesSchema = z.object({
+  origin_city: z.string().default('Tunis'),
+  destination: addressSchema,
+  weight_kg: z.number().positive().max(100).default(1),
+  cod_amount: z.number().nonnegative().optional(),
+});
+
 const calculateRatesSchema = z.object({
-  origin_city: z.string().min(1),
+  origin_city: z.string().min(1).default('Tunis'),
   origin_country: z.string().default('TN'),
   destination: addressSchema,
   weight_kg: z.number().positive().max(100),
-  dimensions: z
-    .object({
-      length_cm: z.number().positive(),
-      width_cm: z.number().positive(),
-      height_cm: z.number().positive(),
-    })
-    .optional(),
-  provider: z.enum(['aramex', 'laposte', 'platform', 'auto']).default('auto'),
+  cod_amount: z.number().nonnegative().optional(),
+  provider: z.enum(['aramex', 'laposte_rapid', 'first_delivery', 'runex', 'fleex', 'own_fleet', 'platform', 'auto'] as any).default('auto'),
 });
 
 const createShipmentSchema = z.object({
@@ -82,7 +85,7 @@ const createShipmentSchema = z.object({
       }),
     )
     .min(1),
-  provider: z.enum(['aramex', 'laposte']).optional(),
+  provider: z.enum(['aramex', 'laposte_rapid', 'first_delivery', 'runex', 'fleex', 'own_fleet'] as any).optional(),
   cod_amount: z.number().nonnegative().optional(),
 });
 
@@ -99,11 +102,33 @@ const pickupSchema = z.object({
 // =====================================================
 
 /**
- * POST /shipping/rates — Calculate shipping rates
+ * GET /shipping/carriers — List active Tunisian carriers & 24 governorates
+ */
+router.get(
+  '/carriers',
+  asyncHandler(async (_req, res) => {
+    const data = shippingService.getCarriersAndGovernorates();
+    res.json({ data });
+  }),
+);
+
+/**
+ * POST /shipping/smart-quotes — Smart multi-carrier comparison (Best Rate & Fastest)
+ */
+router.post(
+  '/smart-quotes',
+  validate(smartQuotesSchema),
+  asyncHandler(async (req, res) => {
+    const data = await shippingService.calculateSmartQuotes(req.body);
+    res.json({ data });
+  }),
+);
+
+/**
+ * POST /shipping/rates — Calculate shipping rates (compatibility)
  */
 router.post(
   '/rates',
-  requireAuth,
   validate(calculateRatesSchema),
   asyncHandler(async (req, res) => {
     const rates = await shippingService.calculateRates(req.body);
@@ -112,7 +137,7 @@ router.post(
 );
 
 /**
- * POST /shipping/shipments — Create a shipment (AWB)
+ * POST /shipping/shipments — Create a unified shipment (AWB)
  */
 router.post(
   '/shipments',
@@ -130,11 +155,10 @@ router.post(
 );
 
 /**
- * GET /shipping/track/:trackingNumber — Track a shipment
+ * GET /shipping/track/:trackingNumber — Track a shipment with checkpoints
  */
 router.get(
   '/track/:trackingNumber',
-  requireAuth,
   asyncHandler(async (req, res) => {
     const info = await shippingService.track(req.params.trackingNumber);
     res.json({ data: info });
@@ -142,7 +166,7 @@ router.get(
 );
 
 /**
- * POST /shipping/pickup — Request a pickup
+ * POST /shipping/pickup — Request a courier pickup
  */
 router.post(
   '/pickup',

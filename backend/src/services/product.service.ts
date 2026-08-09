@@ -107,6 +107,7 @@ export interface ProductRow {
   max_downloads: number | null;
   download_count: number | null;
   download_expires_hours: number | null;
+
   digital_file_key: string | null;
   digital_file_name: string | null;
   digital_file_content_type: string | null;
@@ -143,6 +144,12 @@ export interface PublicProductRow {
   store_name?: string;
   store_subdomain?: string;
   store_custom_domain?: string | null;
+  store_is_verified?: boolean | null;
+  store_seller_type?: string | null;
+  store_status?: string | null;
+  store_settings?: Record<string, unknown> | null;
+  store_created_at?: Date | string | null;
+  store_product_count?: number | string | null;
   price: string;
   in_stock: boolean;
   stock_status: 'in_stock' | 'out_of_stock';
@@ -202,6 +209,13 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     weight_grams: row.weight_grams ?? null,
     store_name: row.store_name,
     store_subdomain: row.store_subdomain,
+    store_custom_domain: row.store_custom_domain ?? null,
+    store_is_verified: row.store_is_verified ?? null,
+    store_seller_type: row.store_seller_type ?? null,
+    store_status: row.store_status ?? null,
+    store_settings: row.store_settings ?? null,
+    store_created_at: row.store_created_at ?? null,
+    store_product_count: row.store_product_count !== undefined && row.store_product_count !== null ? Number(row.store_product_count) : null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

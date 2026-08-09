@@ -87,6 +87,14 @@ describe('Public Store and Product Projections (GAP-P0-002)', () => {
         fields: [],
       });
 
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ count: '10' }],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
+      });
+
       const res = await request(app).get('/api/pd/stores/store_123');
 
       expect(res.status).toBe(200);
@@ -137,6 +145,14 @@ describe('Public Store and Product Projections (GAP-P0-002)', () => {
 
       mockedQuery.mockResolvedValueOnce({
         rows: [{ seller_score: '5.0', review_count: '2' }],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
+      });
+
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ count: '10' }],
         rowCount: 1,
         command: 'SELECT',
         oid: 0,

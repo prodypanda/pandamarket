@@ -26,6 +26,7 @@ interface SellerHoverCardProps {
   createdAt?: string | null;
   productCount?: string | number | null;
   settings?: unknown;
+  storeId?: string | null;
   accentColor?: string;
 }
 
@@ -45,7 +46,7 @@ function getSellerSettings(settings?: unknown): SellerSettings {
   if (!settings || typeof settings !== 'object') return {};
   const record = settings as Record<string, unknown>;
   return {
-    logo_url: asString(record.logo_url),
+    logo_url: asString(record.logo_url) || asString(record.logo_light_url) || asString(record.logo_dark_url),
     store_description: asString(record.store_description),
     description: asString(record.description),
     address: asString(record.address),

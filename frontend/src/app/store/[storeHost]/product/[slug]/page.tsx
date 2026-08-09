@@ -87,6 +87,7 @@ interface StoreData {
   seller_type?: string | null;
   status?: string;
   created_at?: string;
+  product_count?: number | string | null;
 }
 
 async function getStoreByHost(host: string): Promise<StoreData | null> {
@@ -352,6 +353,7 @@ export default async function StoreProductPage({
                 sellerType={store.seller_type}
                 status={store.status}
                 createdAt={store.created_at}
+                productCount={product.store_product_count ?? store.product_count}
                 settings={store.settings}
                 accentColor={primaryColor}
               />
