@@ -567,6 +567,10 @@ export default function ProductsPage() {
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
 
+  // SEO Live Scoring & Multi-Platform Snippet State
+  const [seoPreviewTab, setSeoPreviewTab] = useState<'google' | 'whatsapp' | 'facebook' | 'twitter'>('google');
+  const [seoAiGenerating, setSeoAiGenerating] = useState(false);
+
   // Extended Bulk Actions & CSV Export State
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [bulkPriceMode, setBulkPriceMode] = useState<'percent' | 'fixed'>('percent');
@@ -1370,6 +1374,195 @@ export default function ProductsPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  // -----------------------------------------------------------------------
+  // SEO LIVE SCORING ENGINE & MULTI-PLATFORM PREVIEW
+  // -----------------------------------------------------------------------
+  const getSeoAnalysis = () => {
+    const effectiveTitle = (form.seo_title || form.title || '').trim();
+    const effectiveDesc = (form.seo_description || form.description?.replace(/<[^>]+>/g, '') || '').trim();
+    const tagsArray = (form.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
+    const cleanContent = (form.description || '').replace(/<[^>]+>/g, '').trim();
+
+    let score = 0;
+
+    // 1. Title Score (25 pts max)
+    let titleStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let titleMsg = '';
+    if (effectiveTitle.length >= 40 && effectiveTitle.length <= 65) {
+      score += 25;
+      titleStatus = 'pass';
+      titleMsg = 'Longueur parfaite pour Google (40 - 65 car.)';
+    } else if (effectiveTitle.length >= 20 && effectiveTitle.length < 40) {
+      score += 15;
+      titleStatus = 'warn';
+      titleMsg = 'Un peu court : visez entre 40 et 65 caractères';
+    } else if (effectiveTitle.length > 65 && effectiveTitle.length <= 80) {
+      score += 15;
+      titleStatus = 'warn';
+      titleMsg = 'Un peu long : risque d’être tronqué sur smartphone';
+    } else if (effectiveTitle.length > 0) {
+      score += 5;
+      titleStatus = 'fail';
+      titleMsg = effectiveTitle.length < 20 ? 'Titre trop court (<20 car.)' : 'Titre trop long (>80 car.)';
+    } else {
+      titleMsg = 'Titre SEO manquant';
+    }
+
+    // 2. Description Score (25 pts max)
+    let descStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let descMsg = '';
+    if (effectiveDesc.length >= 120 && effectiveDesc.length <= 165) {
+      score += 25;
+      descStatus = 'pass';
+      descMsg = 'Taille idéale pour le snippet Google (120 - 165 car.)';
+    } else if (effectiveDesc.length >= 60 && effectiveDesc.length < 120) {
+      score += 15;
+      descStatus = 'warn';
+      descMsg = 'Description un peu courte (recommandé : 120 - 165 car.)';
+    } else if (effectiveDesc.length > 165 && effectiveDesc.length <= 200) {
+      score += 15;
+      descStatus = 'warn';
+      descMsg = 'Description longue : Google n’affichera que les 160 premiers caractères';
+    } else if (effectiveDesc.length > 0) {
+      score += 5;
+      descStatus = 'fail';
+      descMsg = effectiveDesc.length < 60 ? 'Méta-description trop courte (<60 car.)' : 'Méta-description excessive (>200 car.)';
+    } else {
+      descMsg = 'Méta-description manquante';
+    }
+
+    // 3. Tags & Keywords (15 pts max)
+    let tagsStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let tagsMsg = '';
+    if (tagsArray.length >= 3) {
+      score += 15;
+      tagsStatus = 'pass';
+      tagsMsg = `${tagsArray.length} mots-clés pertinents configurés`;
+    } else if (tagsArray.length >= 1) {
+      score += 8;
+      tagsStatus = 'warn';
+      tagsMsg = `${tagsArray.length} mot-clé : ajoutez au moins 3 tags cibles`;
+    } else {
+      tagsMsg = 'Aucun tag de recherche e-commerce';
+    }
+
+    // 4. Thumbnail & Social Image (15 pts max)
+    let imageStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let imageMsg = '';
+    if (form.thumbnail) {
+      score += 15;
+      imageStatus = 'pass';
+      imageMsg = 'Visuel de couverture présent (OpenGraph & Google Images)';
+    } else {
+      imageMsg = 'Photo principale manquante pour les partages sociaux';
+    }
+
+    // 5. URL Slug (10 pts max)
+    let slugStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let slugMsg = '';
+    if (form.slug && form.slug.length >= 3) {
+      score += 10;
+      slugStatus = 'pass';
+      slugMsg = `URL propre : /${form.slug}`;
+    } else {
+      slugMsg = 'Slug URL non défini';
+    }
+
+    // 6. Detailed Body Content (10 pts max)
+    let contentStatus: 'pass' | 'warn' | 'fail' = 'fail';
+    let contentMsg = '';
+    if (cleanContent.length >= 100) {
+      score += 10;
+      contentStatus = 'pass';
+      contentMsg = 'Description détaillée complète (>100 caractères)';
+    } else if (cleanContent.length >= 30) {
+      score += 5;
+      contentStatus = 'warn';
+      contentMsg = 'Description produit succincte';
+    } else {
+      contentMsg = 'Description produit vide ou trop courte';
+    }
+
+    let grade: 'excellent' | 'good' | 'poor' = 'poor';
+    let gradeLabel = 'Référencement Insuffisant';
+    let gradeColor = 'text-red-600 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800';
+
+    if (score >= 85) {
+      grade = 'excellent';
+      gradeLabel = 'SEO Optimal (Prêt pour Google)';
+      gradeColor = 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
+    } else if (score >= 60) {
+      grade = 'good';
+      gradeLabel = 'Bon Référencement (Améliorations possibles)';
+      gradeColor = 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
+    }
+
+    return {
+      score,
+      grade,
+      gradeLabel,
+      gradeColor,
+      titleLength: effectiveTitle.length,
+      descLength: effectiveDesc.length,
+      tagsCount: tagsArray.length,
+      checks: {
+        title: { status: titleStatus, message: titleMsg, count: effectiveTitle.length, max: 60 },
+        description: { status: descStatus, message: descMsg, count: effectiveDesc.length, max: 160 },
+        tags: { status: tagsStatus, message: tagsMsg, count: tagsArray.length },
+        image: { status: imageStatus, message: imageMsg },
+        slug: { status: slugStatus, message: slugMsg },
+        content: { status: contentStatus, message: contentMsg },
+      },
+    };
+  };
+
+  const handleGenerateSeoWithAi = async () => {
+    const rawTitle = form.title.trim();
+    if (!rawTitle && !form.description) {
+      setError('Veuillez d’abord renseigner un titre ou une description de produit.');
+      return;
+    }
+
+    setSeoAiGenerating(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/smart-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          image_url: form.thumbnail,
+          language: smartFillLanguage,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Génération SEO échouée.');
+
+      const sug = data.suggestions;
+      setForm((curr) => ({
+        ...curr,
+        seo_title: sug.suggested_seo_title || curr.seo_title || `${rawTitle} | PandaMarket Tunisie`.slice(0, 60),
+        seo_description:
+          sug.suggested_seo_description ||
+          curr.seo_description ||
+          `Achetez ${rawTitle} au meilleur prix en Tunisie sur PandaMarket. Qualité garantie, livraison rapide et paiement sécurisé.`.slice(0, 160),
+        tags:
+          Array.isArray(sug.suggested_tags) && sug.suggested_tags.length > 0
+            ? sug.suggested_tags.join(', ')
+            : curr.tags,
+      }));
+
+      setSuccess('✨ Méta-titre, description et mots-clés SEO optimisés avec succès par l’IA !');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la génération SEO par l’IA.');
+    } finally {
+      setSeoAiGenerating(false);
+    }
   };
 
   // -----------------------------------------------------------------------
@@ -3867,78 +4060,405 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                {/* TAB 6: SEO & SEARCH */}
-                {drawerTab === 'seo' && (
-                  <div className="space-y-5 animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
-                          Optimisation pour les Moteurs de Recherche (SEO)
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-medium">Balises méta et mots-clés de recherche</p>
+                {/* TAB 6: SEO & SEARCH (LIVE SCORING & MULTI-PLATFORM SNIPPET PREVIEW) */}
+                {drawerTab === 'seo' && (() => {
+                  const seo = getSeoAnalysis();
+                  const effectiveTitle = form.seo_title || form.title || 'Titre du Produit sur PandaMarket Tunisie';
+                  const effectiveDesc =
+                    form.seo_description ||
+                    form.description?.replace(/<[^>]+>/g, '').slice(0, 160) ||
+                    'Découvrez ce produit d’exception sur PandaMarket Tunisie. Qualité certifiée, paiement sécurisé et livraison rapide dans toute la Tunisie.';
+                  const productUrl = `pandamarket.tn/store/boutique/${form.slug || 'mon-produit'}`;
+
+                  return (
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      {/* Top Header & AI 1-Click Optimize Button */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-200 dark:border-purple-900/50">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 text-white shadow-md shadow-purple-500/20">
+                            <GlobeIcon className="w-6 h-6 text-yellow-300" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                              <span>Optimisation Référencement Naturel (SEO) & Social</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${seo.gradeColor}`}>
+                                Score : {seo.score} / 100
+                              </span>
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                              Maximisez votre visibilité sur Google, Facebook et WhatsApp pour attirer du trafic organique gratuit.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void handleGenerateSeoWithAi()}
+                          disabled={seoAiGenerating || (!form.title && !form.description)}
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white font-black text-xs shadow-md shadow-purple-600/25 hover:scale-105 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
+                        >
+                          {seoAiGenerating ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Optimisation IA en cours...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+                              <span>✨ Optimiser le SEO par l'IA</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const title = form.title.trim();
-                          if (!title) return;
-                          const cat = marketplaceCategories.find((c) => c.id === form.marketplace_category_id)?.name;
-                          setForm((c) => ({
-                            ...c,
-                            seo_title: `${title}${cat ? ` | ${cat}` : ''}`.slice(0, 60),
-                            seo_description: `Découvrez ${title} sur PandaMarket. Qualité certifiée et livraison rapide.`.slice(0, 160),
-                          }));
-                          setSuccess('Méta-données SEO générées !');
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200"
-                      >
-                        <Wand2 className="w-3.5 h-3.5 text-indigo-600" />
-                        Générer SEO
-                      </button>
+
+                      {/* Dynamic Score Gauge & Audit Checklist */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Gauge Card */}
+                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col items-center justify-center text-center space-y-3">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            Jauge de Performance SEO
+                          </span>
+                          <div className="relative flex items-center justify-center">
+                            <div className="w-24 h-24 rounded-full border-8 border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                              <span className="text-2xl font-black text-slate-900 dark:text-white">
+                                {seo.score}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className={`px-3 py-1 rounded-xl text-xs font-black border ${seo.gradeColor}`}>
+                            {seo.gradeLabel}
+                          </div>
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-500 ${
+                                seo.score >= 85
+                                  ? 'bg-emerald-500'
+                                  : seo.score >= 60
+                                  ? 'bg-amber-500'
+                                  : 'bg-red-500'
+                              }`}
+                              style={{ width: `${seo.score}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* SEO Audit Checklist (2 cols on lg) */}
+                        <div className="lg:col-span-2 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                            📋 Diagnostic en Temps Réel & Recommandations :
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {/* Title check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.title.status === 'pass' ? '✅' : seo.checks.title.status === 'warn' ? '⚠️' : '❌'}
+                              </span>
+                              <div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <strong className="text-slate-900 dark:text-white">Titre SEO Google</strong>
+                                  <span className="font-mono text-[10px] text-slate-400 font-bold">{seo.checks.title.count}/60</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.title.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Meta desc check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.description.status === 'pass' ? '✅' : seo.checks.description.status === 'warn' ? '⚠️' : '❌'}
+                              </span>
+                              <div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <strong className="text-slate-900 dark:text-white">Méta-Description</strong>
+                                  <span className="font-mono text-[10px] text-slate-400 font-bold">{seo.checks.description.count}/160</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.description.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Tags check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.tags.status === 'pass' ? '✅' : seo.checks.tags.status === 'warn' ? '⚠️' : '❌'}
+                              </span>
+                              <div>
+                                <strong className="text-slate-900 dark:text-white">Mots-Clés E-commerce</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.tags.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Image check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.image.status === 'pass' ? '✅' : '❌'}
+                              </span>
+                              <div>
+                                <strong className="text-slate-900 dark:text-white">Image de Couverture Sociale</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.image.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Slug check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.slug.status === 'pass' ? '✅' : '❌'}
+                              </span>
+                              <div>
+                                <strong className="text-slate-900 dark:text-white">Permalien / Slug URL</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.slug.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Content check */}
+                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-sm">
+                                {seo.checks.content.status === 'pass' ? '✅' : seo.checks.content.status === 'warn' ? '⚠️' : '❌'}
+                              </span>
+                              <div>
+                                <strong className="text-slate-900 dark:text-white">Richesse de Description</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.content.message}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Editable Form Inputs */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Title Input */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Titre SEO (Meta Title) - Balise &lt;title&gt; :
+                            </label>
+                            <span
+                              className={`font-mono text-[11px] font-bold ${
+                                seo.checks.title.count > 65
+                                  ? 'text-red-500'
+                                  : seo.checks.title.count >= 40
+                                  ? 'text-emerald-600'
+                                  : 'text-amber-500'
+                              }`}
+                            >
+                              {seo.checks.title.count} / 60 caractères
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={form.seo_title}
+                            onChange={(e) => setForm((c) => ({ ...c, seo_title: e.target.value }))}
+                            placeholder={form.title || 'Ex: Montre Automatique Homme Cuir Luxe | PandaMarket'}
+                            className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600"
+                          />
+                          <p className="text-[10px] text-slate-400">
+                            Conseil : Placez les mots-clés principaux en premier, suivis du nom de votre boutique.
+                          </p>
+                        </div>
+
+                        {/* Tags Input */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Mots-Clés E-commerce & Recherche :
+                            </label>
+                            <span className="font-mono text-[11px] font-bold text-purple-600">
+                              {seo.tagsCount} tag(s)
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={form.tags}
+                            onChange={(e) => setForm((c) => ({ ...c, tags: e.target.value }))}
+                            placeholder="running, baskets homme, respirant, sport, italie"
+                            className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600"
+                          />
+                          <p className="text-[10px] text-slate-400">
+                            Séparez les mots-clés par des virgules pour faciliter la recherche client.
+                          </p>
+                        </div>
+
+                        {/* Meta Description Input */}
+                        <div className="lg:col-span-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Méta-Description SEO (Affichée sous le titre dans les résultats Google) :
+                            </label>
+                            <span
+                              className={`font-mono text-[11px] font-bold ${
+                                seo.checks.description.count > 165
+                                  ? 'text-red-500'
+                                  : seo.checks.description.count >= 120
+                                  ? 'text-emerald-600'
+                                  : 'text-amber-500'
+                              }`}
+                            >
+                              {seo.checks.description.count} / 160 caractères
+                            </span>
+                          </div>
+                          <textarea
+                            rows={3}
+                            value={form.seo_description}
+                            onChange={(e) => setForm((c) => ({ ...c, seo_description: e.target.value }))}
+                            placeholder="Rédigez un résumé attrayant incitant les clients à cliquer sur votre lien dans les résultats Google..."
+                            className="w-full p-3.5 text-xs font-medium rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Multi-Platform Snippet Previews */}
+                      <div className="p-5 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-4 h-4 text-purple-600" />
+                            <h5 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                              Aperçus Réalistes en Direct :
+                            </h5>
+                          </div>
+
+                          {/* Preview Platform Tabs */}
+                          <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            {[
+                              { id: 'google', label: '🔍 Google Search' },
+                              { id: 'whatsapp', label: '📱 WhatsApp' },
+                              { id: 'facebook', label: '📘 Facebook' },
+                              { id: 'twitter', label: '🐦 X / Twitter' },
+                            ].map((tab) => (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setSeoPreviewTab(tab.id as any)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                  seoPreviewTab === tab.id
+                                    ? 'bg-purple-600 text-white shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                                }`}
+                              >
+                                {tab.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 1. Google SERP Preview Card */}
+                        {seoPreviewTab === 'google' && (
+                          <div className="p-5 rounded-2xl bg-white dark:bg-[#202124] border border-slate-200 dark:border-[#3c4043] shadow-xs space-y-2 max-w-2xl font-sans">
+                            {/* Breadcrumbs */}
+                            <div className="flex items-center gap-2 text-xs">
+                              <div className="w-6 h-6 rounded-full bg-red-600 text-white font-black flex items-center justify-center text-[10px]">
+                                P
+                              </div>
+                              <div className="truncate">
+                                <span className="font-bold text-[#202124] dark:text-[#dadce0] text-xs">PandaMarket</span>
+                                <span className="text-[#5f6368] dark:text-[#9aa0a6] text-[11px] block truncate">
+                                  https://{productUrl}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Google Title Link */}
+                            <h3 className="text-base sm:text-lg text-[#1a0dab] dark:text-[#8ab4f8] hover:underline font-medium cursor-pointer leading-snug">
+                              {effectiveTitle}
+                            </h3>
+
+                            {/* Price & Rating Badge */}
+                            <div className="flex items-center gap-2 text-xs text-[#70757a] dark:text-[#9aa0a6]">
+                              <span className="text-amber-500 font-bold">★★★★★ 4.9 (24 avis)</span>
+                              <span>·</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {formatPrice(form.price || '0')}
+                              </span>
+                              <span>·</span>
+                              <span className="text-emerald-600 font-bold">En stock</span>
+                            </div>
+
+                            {/* Snippet Description */}
+                            <p className="text-xs text-[#4d5156] dark:text-[#bdc1c6] leading-relaxed line-clamp-2">
+                              {effectiveDesc}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 2. WhatsApp Preview Card */}
+                        {seoPreviewTab === 'whatsapp' && (
+                          <div className="p-4 rounded-2xl bg-[#0b141a] max-w-md shadow-lg">
+                            <div className="p-3 rounded-xl bg-[#202c33] text-white space-y-2 border-l-4 border-[#00a884]">
+                              {form.thumbnail ? (
+                                <div className="h-40 w-full rounded-lg overflow-hidden bg-slate-800 relative">
+                                  <img
+                                    src={form.thumbnail}
+                                    alt={effectiveTitle}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="h-32 w-full rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-xs">
+                                  Pas d'image de couverture
+                                </div>
+                              )}
+                              <h4 className="font-bold text-xs text-white line-clamp-1">{effectiveTitle}</h4>
+                              <p className="text-[11px] text-[#8696a0] line-clamp-2">{effectiveDesc}</p>
+                              <span className="text-[10px] text-[#00a884] font-mono block">pandamarket.tn</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. Facebook / OpenGraph Preview Card */}
+                        {seoPreviewTab === 'facebook' && (
+                          <div className="max-w-lg rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+                            {form.thumbnail ? (
+                              <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                                <img
+                                  src={form.thumbnail}
+                                  alt={effectiveTitle}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs">
+                                Ajouter une photo de couverture pour le partage Facebook (1200x630px)
+                              </div>
+                            )}
+                            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                                PANDAMARKET.TN
+                              </span>
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                                {effectiveTitle}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                                {effectiveDesc}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 4. Twitter / X Card Preview */}
+                        {seoPreviewTab === 'twitter' && (
+                          <div className="max-w-md rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-black shadow-md">
+                            {form.thumbnail && (
+                              <div className="h-44 w-full relative overflow-hidden bg-slate-900">
+                                <img
+                                  src={form.thumbnail}
+                                  alt={effectiveTitle}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <div className="p-3 space-y-1">
+                              <span className="text-[10px] text-slate-500">pandamarket.tn</span>
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                                {effectiveTitle}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                                {effectiveDesc}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Titre SEO (Balise Meta Title) - Max 60 caractères
-                        </label>
-                        <input
-                          type="text"
-                          value={form.seo_title}
-                          onChange={(e) => setForm((c) => ({ ...c, seo_title: e.target.value }))}
-                          placeholder="Ex: Montre Homme Automatique Luxe | Horlogerie PandaMarket"
-                          className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-200 bg-white"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Description SEO (Meta Description) - Max 160 caractères
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={form.seo_description}
-                          onChange={(e) => setForm((c) => ({ ...c, seo_description: e.target.value }))}
-                          placeholder="Texte accrocheur incitant au clic dans les résultats Google..."
-                          className="w-full p-3 text-xs font-medium rounded-xl border border-slate-200 bg-white"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Mots-Clés & Tags de Recherche (Séparés par des virgules)
-                        </label>
-                        <input
-                          type="text"
-                          value={form.tags}
-                          onChange={(e) => setForm((c) => ({ ...c, tags: e.target.value }))}
-                          placeholder="montre, automatique, cuir, luxe, suisse"
-                          className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-200 bg-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* TAB 7: DIGITAL DELIVERABLES */}
                 {drawerTab === 'digital' && (
