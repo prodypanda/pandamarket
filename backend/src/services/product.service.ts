@@ -152,6 +152,7 @@ export interface PublicProductRow {
   seo_description: string | null;
   tags: string[];
   attributes: ProductAttribute[];
+  metadata?: Record<string, unknown> | null;
   images?: Array<{
     id: string;
     url: string;
@@ -196,6 +197,8 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     },
     tags: row.tags ?? [],
     attributes: row.attributes ?? [],
+    metadata: row.metadata ?? {},
+    wholesale_pricing: (row.metadata?.wholesale_pricing as any) ?? null,
     weight_grams: row.weight_grams ?? null,
     store_name: row.store_name,
     store_subdomain: row.store_subdomain,
@@ -247,7 +250,7 @@ function normalizeLicenseKeys(keys?: string[]): string[] {
   return Array.from(new Set((keys ?? []).map((key) => key.trim()).filter(Boolean)));
 }
 
-function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
+export function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
   return sellerType === SellerType.Wholesaler || sellerType === SellerType.Hybrid;
 }
 
@@ -299,30 +302,24 @@ function buildWholesalePricingMetadata(input: {
   store_seller_type?: SellerType;
   wholesale_min_quantity?: number | null;
   wholesale_price_tiers?: WholesalePriceTier[];
-}, required: boolean): { enabled: boolean; min_quantity: number; price_tiers: WholesalePriceTier[] } | undefined {
-  const hasWholesalePayload = input.wholesale_min_quantity !== undefined || input.wholesale_price_tiers !== undefined;
-  if (!isWholesaleCapableSeller(input.store_seller_type)) {
-    if (hasWholesalePayload) {
-      throw new PdValidationError('Wholesale pricing is only available for wholesaler or hybrid sellers');
-    }
-    return undefined;
-  }
-  if (!required && !hasWholesalePayload) {
-    return undefined;
-  }
+}, required = false): { enabled: boolean; min_quantity: number; price_tiers: WholesalePriceTier[] } | undefined {
+  const hasMinQty = input.wholesale_min_quantity !== undefined && input.wholesale_min_quantity !== null;
+  const hasTiers = Array.isArray(input.wholesale_price_tiers) && input.wholesale_price_tiers.length > 0;
 
-  const minQuantity = Number(input.wholesale_min_quantity);
-  if (!Number.isInteger(minQuantity) || minQuantity < 2) {
-    throw new PdValidationError('Wholesale minimum quantity must be at least 2');
+  if (!hasMinQty && !hasTiers) {
+    return undefined;
   }
 
   const priceTiers = normalizeWholesalePriceTiers(input.wholesale_price_tiers);
   if (priceTiers.length === 0) {
-    throw new PdValidationError('At least one wholesale price tier is required');
+    if (required) {
+      throw new PdValidationError('At least one wholesale price tier is required');
+    }
+    return undefined;
   }
-  if (priceTiers.some((tier) => tier.min_quantity < minQuantity)) {
-    throw new PdValidationError('Wholesale price tiers must start at or above the minimum wholesale quantity');
-  }
+
+  const rawMin = Number(input.wholesale_min_quantity);
+  const minQuantity = Number.isInteger(rawMin) && rawMin >= 2 ? rawMin : (priceTiers[0]?.min_quantity ?? 2);
 
   return { enabled: true, min_quantity: minQuantity, price_tiers: priceTiers };
 }
@@ -383,7 +380,7 @@ export class ProductService {
       throw new PdValidationError('Serial products require at least one license key before publishing');
     }
 
-    const wholesalePricing = buildWholesalePricingMetadata(input, isWholesaleCapableSeller(input.store_seller_type));
+    const wholesalePricing = buildWholesalePricingMetadata(input, false);
     const metadata = { ...(input.metadata || {}), ...(wholesalePricing ? { wholesale_pricing: wholesalePricing } : {}) };
     const variants = normalizeProductVariants(input.variants);
 
@@ -593,9 +590,11 @@ export class ProductService {
         const mergedMeta = { ...(patch.metadata || {}), wholesale_pricing: wholesalePricing };
         fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
         values.push(JSON.stringify(mergedMeta));
-      } else if (patch.metadata && Object.keys(patch.metadata).length > 0) {
-        fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
-        values.push(JSON.stringify(patch.metadata));
+      } else {
+        const cleanMeta = { ...(patch.metadata || {}) };
+        delete (cleanMeta as any).wholesale_pricing;
+        fields.push(`metadata = (COALESCE(metadata, '{}'::jsonb) - 'wholesale_pricing') || $${++i}::jsonb`);
+        values.push(JSON.stringify(cleanMeta));
       }
     } else if (patch.metadata && Object.keys(patch.metadata).length > 0) {
       fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
@@ -637,7 +636,7 @@ export class ProductService {
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
-              p.created_at, p.updated_at,
+              p.metadata, p.created_at, p.updated_at,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
@@ -692,7 +691,7 @@ export class ProductService {
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
-              p.created_at, p.updated_at,
+              p.metadata, p.created_at, p.updated_at,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
@@ -899,7 +898,7 @@ export class ProductService {
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
-              p.created_at, p.updated_at,
+              p.metadata, p.created_at, p.updated_at,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
@@ -1038,7 +1037,7 @@ export class ProductService {
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
-              p.created_at, p.updated_at,
+              p.metadata, p.created_at, p.updated_at,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,

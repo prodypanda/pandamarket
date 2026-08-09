@@ -164,6 +164,40 @@ export function ProductVariantSelector({
         </div>
       )}
 
+      {/* B2B Wholesale Pricing Volume Tiers */}
+      {product.wholesale_pricing?.enabled && Array.isArray(product.wholesale_pricing?.price_tiers) && product.wholesale_pricing.price_tiers.length > 0 && (
+        <div className="space-y-2 rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-300">
+            <span>📦</span>
+            <span>Tarifs Dégressifs B2B / Volume</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {product.wholesale_pricing.price_tiers.map((tier: { min_quantity: number; unit_price: number }, idx: number) => {
+              const baseP = activePrice || product.price;
+              const discountPct = baseP > 0 && tier.unit_price > 0 ? Math.round(((baseP - tier.unit_price) / baseP) * 100) : 0;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-amber-200/60 bg-white p-2.5 dark:border-amber-900/60 dark:bg-slate-900 shadow-xs"
+                >
+                  <p className="text-[11px] font-bold text-slate-500">Dès {tier.min_quantity} unités</p>
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      {Number(tier.unit_price).toFixed(3)} TND
+                    </span>
+                    {discountPct > 0 && (
+                      <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                        -{discountPct}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Add to Cart & Wishlist Actions */}
       <div className="flex items-center gap-3">
         <AddToCartButton
@@ -173,6 +207,7 @@ export function ProductVariantSelector({
             variant_id: selectedVariant?.id,
             variant: selectedVariant?.title,
             inventory_quantity: selectedVariant ? selectedVariant.inventory_quantity : product.inventory_quantity,
+            wholesale_pricing: product.wholesale_pricing,
           }}
           primaryColor={primaryColor}
           disabled={hasVariants && !selectedVariant}

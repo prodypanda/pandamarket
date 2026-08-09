@@ -261,9 +261,7 @@ export default async function StoreProductPage({
   const reviewCount = ratingData?.review_count ?? 0;
   const isPhysicalProduct = product.type === 'physical' || !product.type;
   const sellerType = product.store_seller_type ?? store.seller_type;
-  const wholesalePricing = sellerType === 'wholesaler' || sellerType === 'hybrid'
-    ? getWholesalePricingFromMetadata(product.metadata)
-    : null;
+  const wholesalePricing = getWholesalePricingFromMetadata(product.metadata);
 
   const productImages = (product.images || []).map((img) => ({
     id: img.id,
