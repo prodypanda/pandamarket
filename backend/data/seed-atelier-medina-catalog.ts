@@ -1458,6 +1458,786 @@ const PRODUCTS: ProductDef[] = [
       },
     ],
   },
+  // ----------------------------------------------------
+  // Batch 2: Expansion Catalog (26 New Products)
+  // ----------------------------------------------------
+  {
+    title: 'Vase Amphore Rustique en Terre Cuite de Guellala (Djerba)',
+    product_reference: 'MED-POT-006',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 68.0,
+    inventory_quantity: 20,
+    weight_grams: 1500,
+    thumbnail: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Amphore décorative traditionnelle façonnée dans les célèbres poteries souterraines de <em>Guellala</em> à Djerba. Argile blanche naturelle poreuse et poignées torsadées artisanales.</p>
+    `,
+    tags: ['amphore', 'guellala', 'djerba', 'terre cuite', 'vase', 'artisanat'],
+    attributes: [
+      { name: 'Matière', value: 'Argile naturelle de Guellala' },
+      { name: 'Hauteur', value: '35 cm' },
+      { name: 'Origine', value: 'Guellala, Djerba, Tunisie' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Vase amphore rustique en terre cuite',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Coffret de 6 Verres à Thé Tunisien Soufflés Bouche et Peints Main',
+    product_reference: 'MED-POT-007',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 48.0,
+    inventory_quantity: 35,
+    weight_grams: 900,
+    thumbnail: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Coffret de 6 verres à thé à la menthe soufflés à la bouche avec dorures et motifs floraux peints à la main. Verre résistant aux boissons chaudes.</p>
+    `,
+    tags: ['verres à thé', 'thé à la menthe', 'verre soufflé', 'art de la table'],
+    attributes: [
+      { name: 'Matière', value: 'Verre soufflé artisanal & Dorure' },
+      { name: 'Nombre de pièces', value: '6 verres' },
+      { name: 'Contenance', value: '160 ml par verre' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Coffret de verres à thé peints à la main',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Bougeoir "Menara" Traditionnel en Céramique Émaillée Nabeul',
+    product_reference: 'MED-POT-008',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 34.0,
+    inventory_quantity: 40,
+    weight_grams: 600,
+    thumbnail: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Bougeoir traditionnel à anse <em>Menara</em> émaillé aux couleurs vives de la Méditerranée. Idéal pour créer une ambiance tamisée chaleureuse sur une terrasse ou un buffet.</p>
+    `,
+    tags: ['bougeoir', 'menara', 'nabeul', 'céramique', 'lumière'],
+    attributes: [
+      { name: 'Matière', value: 'Céramique émaillée' },
+      { name: 'Dimensions', value: '18 cm x 12 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bougeoir traditionnel en céramique',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Service Huilier & Vinaigrier Artisanal en Céramique Peinte Main',
+    product_reference: 'MED-POT-009',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 55.0,
+    inventory_quantity: 25,
+    weight_grams: 950,
+    thumbnail: 'https://images.unsplash.com/photo-1584990347449-389f4171804f?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Duo de bouteilles de table avec becs verseurs métalliques anti-goutte et bouchons en liège. Décorées de branches d'olivier stylisées peintes à la main.</p>
+    `,
+    tags: ['huilier', 'vinaigrier', 'service de table', 'nabeul', 'céramique'],
+    attributes: [
+      { name: 'Matière', value: 'Céramique & Bec verseur inox' },
+      { name: 'Contenance', value: '2 x 350 ml' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1584990347449-389f4171804f?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Duo huilier et vinaigrier artisanal',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Tapis Berbère Boucherouite Coloré Recyclé Tissé Main 100x160cm',
+    product_reference: 'MED-TEX-005',
+    marketplace_category_id: 'cat_market_textiles',
+    storefront_category_slug: 'tapis-tissages-berberes',
+    price: 190.0,
+    inventory_quantity: 8,
+    weight_grams: 2600,
+    thumbnail: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Tapis <em>Boucherouite</em> écologiquement responsable tissé à la main par les femmes artisanes à partir de chutes de tissus nobles recyclés (coton, laine et velours). Motifs abstraits éclatants.</p>
+    `,
+    tags: ['tapis boucherouite', 'tapis recyclé', 'fait main', 'berbère', 'bohème'],
+    attributes: [
+      { name: 'Matière', value: 'Textiles recyclés & Coton' },
+      { name: 'Dimensions', value: '100 cm x 160 cm' },
+      { name: 'Style', value: 'Bohème Chic / Abstrait' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Tapis berbère boucherouite coloré',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Lot de 2 Housses de Coussin Berbères en Laine & Broderies Sabra 45x45cm',
+    product_reference: 'MED-TEX-006',
+    marketplace_category_id: 'cat_sub_textiles_bedding',
+    storefront_category_slug: 'tapis-tissages-berberes',
+    price: 62.0,
+    inventory_quantity: 30,
+    weight_grams: 500,
+    thumbnail: 'https://images.unsplash.com/photo-1579656381226-5fc0f0100c3b?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Housses de coussins tissées en laine et brodées avec de la soie végétale de cactus (<em>Sabra</em>). Fermeture éclair invisible au dos.</p>
+    `,
+    tags: ['housses de coussin', 'coussins berbères', 'sabra', 'déco salon'],
+    attributes: [
+      { name: 'Dimensions', value: '45 cm x 45 cm' },
+      { name: 'Matière', value: 'Laine & Soie végétale Sabra' },
+      { name: 'Lot', value: '2 housses' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1579656381226-5fc0f0100c3b?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Lot de 2 housses de coussin berbères',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Fouta XXL Familiale 200x200cm Tissage Jacquard Motif Palmettes',
+    product_reference: 'MED-TEX-007',
+    marketplace_category_id: 'cat_market_textiles',
+    storefront_category_slug: 'linge-foutas-traditionnelles',
+    price: 58.0,
+    inventory_quantity: 40,
+    weight_grams: 700,
+    thumbnail: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Fouta géante carrée de 2m x 2m idéale pour les pique-niques en famille ou les journées à la plage. Tissage jacquard raffiné 100% coton.</p>
+    `,
+    tags: ['fouta xxl', 'fouta géante', 'plage', 'jacquard', 'coton'],
+    attributes: [
+      { name: 'Dimensions', value: '200 cm x 200 cm' },
+      { name: 'Matière', value: '100% Coton peigné' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Fouta géante XXL familiale',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Serviettes d\'Invités en Pur Lin Tunisien Brodées Main (Lot de 4)',
+    product_reference: 'MED-TEX-008',
+    marketplace_category_id: 'cat_sub_textiles_bedding',
+    storefront_category_slug: 'linge-foutas-traditionnelles',
+    price: 38.0,
+    inventory_quantity: 45,
+    weight_grams: 300,
+    thumbnail: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Ensemble de 4 serviettes d'invités en pur lin lavé avec bordure ajourée à l'ancienne (<em>Chbika</em>). Douces, absorbantes et très élégantes.</p>
+    `,
+    tags: ['serviettes d\'invités', 'lin', 'chbika', 'linge de maison'],
+    attributes: [
+      { name: 'Matière', value: '100% Pur Lin lavé' },
+      { name: 'Dimensions', value: '30 cm x 50 cm par pièce' },
+      { name: 'Contenu', value: 'Lot de 4 serviettes' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Lot de serviettes d\'invités en lin brodé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Ceinture Homme en Cuir Pleine Fleur Tannage Végétal Boucle Laiton Massif',
+    product_reference: 'MED-LEA-005',
+    marketplace_category_id: 'cat_sub_men_acc',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 55.0,
+    inventory_quantity: 50,
+    weight_grams: 200,
+    thumbnail: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Ceinture indémodable découpée dans une bande de cuir sellier pleine fleur de 3.5 cm de largeur. Boucle en laiton massif nickelé ou vieilli.</p>
+    `,
+    tags: ['ceinture cuir', 'cuir pleine fleur', 'homme', 'laiton massif', 'kairouan'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir de collet pleine fleur 3.8 mm d\'épaisseur' },
+      { name: 'Largeur', value: '3.5 cm' },
+      { name: 'Boucle', value: 'Laiton massif garanti anti-allergique' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Ceinture en cuir pleine fleur avec boucle en laiton',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-LEA-005-95',
+        title: 'Longueur 95 cm - Marron Marbré',
+        price: 55.0,
+        inventory_quantity: 15,
+        options: { size: '95 cm', color: 'Marron Marbré' },
+      },
+      {
+        sku: 'MED-LEA-005-105',
+        title: 'Longueur 105 cm - Marron Marbré',
+        price: 55.0,
+        inventory_quantity: 20,
+        options: { size: '105 cm', color: 'Marron Marbré' },
+      },
+      {
+        sku: 'MED-LEA-005-115',
+        title: 'Longueur 115 cm - Noir Ébène',
+        price: 55.0,
+        inventory_quantity: 15,
+        options: { size: '115 cm', color: 'Noir Ébène' },
+      },
+    ],
+  },
+  {
+    title: 'Trousse de Toilette / Vanity en Cuir Gras et Toile Kairouan',
+    product_reference: 'MED-LEA-006',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 72.0,
+    inventory_quantity: 30,
+    weight_grams: 350,
+    thumbnail: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Trousse de toilette spacieuse et élégante, intérieur imperméabilisé lavable et poignée latérale en cuir pour un transport aisé.</p>
+    `,
+    tags: ['trousse de toilette', 'vanity', 'cuir gras', 'voyage', 'kairouan'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir gras de vachette & Doublure étanche' },
+      { name: 'Dimensions', value: '25 cm x 14 cm x 12 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Trousse de toilette en cuir gras',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sac Banane en Cuir Vintage Camel Fait-Main',
+    product_reference: 'MED-LEA-007',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 95.0,
+    inventory_quantity: 25,
+    weight_grams: 300,
+    thumbnail: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>L'accessoire tendance et pratique par excellence. Porté en bandoulière sur la poitrine ou à la taille. Deux poches zippées YKK sécurisées.</p>
+    `,
+    tags: ['sac banane', 'cuir camel', 'vintage', 'crossbody', 'mode'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir souple pleine fleur tannage végétal' },
+      { name: 'Sangle', value: 'Cuir et toile ajustable de 80 à 120 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sac banane en cuir vintage camel',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sacoche Porte-Documents / Ordinateur Portable 15" en Cuir de Vachette',
+    product_reference: 'MED-LEA-008',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 260.0,
+    inventory_quantity: 12,
+    weight_grams: 1300,
+    thumbnail: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Sacoche professionnelle haut de gamme compartimentée pour ordinateur 15.6", documents A4, tablette et stylos. Bandoulière en cuir amovible.</p>
+    `,
+    tags: ['sacoche ordinateur', 'porte-documents', 'cuir professionnel', 'homme'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir de vachette pleine fleur' },
+      { name: 'Compatibilité', value: 'Ordinateur portable jusqu\'à 15.6 pouces' },
+      { name: 'Dimensions', value: '40 cm x 29 cm x 8 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sacoche d\'ordinateur en cuir de vachette',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sandales Nu-Pieds en Cuir Naturel Tressé Main Femme',
+    product_reference: 'MED-SHOE-003',
+    marketplace_category_id: 'cat_market_women_shoes',
+    storefront_category_slug: 'chaussures-babouches-artisanales',
+    price: 68.0,
+    inventory_quantity: 28,
+    weight_grams: 350,
+    thumbnail: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Sandales d'été légères et confortables avec lanières en cuir tressé artisanalement. Semelle en cuir et semelle d'usure en caoutchouc souple.</p>
+    `,
+    tags: ['sandales', 'nu-pieds', 'cuir tressé', 'femme', 'mode été'],
+    attributes: [
+      { name: 'Matière', value: '100% Cuir naturel tressé' },
+      { name: 'Fermeture', value: 'Boucle cheville réglable' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sandales en cuir tressé pour femme',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-SHOE-003-38',
+        title: 'Taille 38 - Cuir Naturel',
+        price: 68.0,
+        inventory_quantity: 10,
+        options: { size: '38' },
+      },
+      {
+        sku: 'MED-SHOE-003-39',
+        title: 'Taille 39 - Cuir Naturel',
+        price: 68.0,
+        inventory_quantity: 10,
+        options: { size: '39' },
+      },
+      {
+        sku: 'MED-SHOE-003-40',
+        title: 'Taille 40 - Cuir Naturel',
+        price: 68.0,
+        inventory_quantity: 8,
+        options: { size: '40' },
+      },
+    ],
+  },
+  {
+    title: 'Jebba Tunisienne d\'Été en Lin & Coton Brodé "Djerbi" Homme',
+    product_reference: 'MED-CLO-005',
+    marketplace_category_id: 'cat_market_men_tops',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 180.0,
+    inventory_quantity: 15,
+    weight_grams: 600,
+    thumbnail: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Jebba d'été ultra-légère et respirante en mélange lin et coton. Broderies sobres inspirées du tissage traditionnel de l'île de Djerba.</p>
+    `,
+    tags: ['jebba d\'été', 'lin', 'djerbi', 'homme', 'traditionnel'],
+    attributes: [
+      { name: 'Tissu', value: '55% Lin, 45% Coton peigné' },
+      { name: 'Origine', value: 'Djerba / Tunis' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Jebba d\'été en lin et coton',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-CLO-005-M',
+        title: 'Taille M - Blanc Écru',
+        price: 180.0,
+        inventory_quantity: 5,
+        options: { size: 'M' },
+      },
+      {
+        sku: 'MED-CLO-005-L',
+        title: 'Taille L - Blanc Écru',
+        price: 180.0,
+        inventory_quantity: 6,
+        options: { size: 'L' },
+      },
+      {
+        sku: 'MED-CLO-005-XL',
+        title: 'Taille XL - Blanc Écru',
+        price: 180.0,
+        inventory_quantity: 4,
+        options: { size: 'XL' },
+      },
+    ],
+  },
+  {
+    title: 'Burnous Traditionnel Tunisien en Pure Laine Douce Blanche avec Capuche',
+    product_reference: 'MED-CLO-006',
+    marketplace_category_id: 'cat_sub_men_outerwear',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 390.0,
+    inventory_quantity: 8,
+    weight_grams: 1800,
+    thumbnail: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Manteau traditionnel en drap de laine vierge blanche pure tissé à la main. Capuche pointue brodée au fil de soie avec pompon traditionnel. Vêtement noble porté lors des grandes célébrations et mariages.</p>
+    `,
+    tags: ['burnous', 'laine vierge', 'manteau traditionnel', 'mariage tunisien', 'prestige'],
+    attributes: [
+      { name: 'Matière', value: '100% Pure Laine Vierge foulée' },
+      { name: 'Finitions', value: 'Bordures tressées au fil de soie Harir' },
+      { name: 'Taille', value: 'Taille unique ajustable' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Burnous traditionnel tunisien en laine blanche',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Écharpe Châle en Soie & Laine Tissée Main Médina',
+    product_reference: 'MED-CLO-007',
+    marketplace_category_id: 'cat_sub_fashion_acc',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 75.0,
+    inventory_quantity: 30,
+    weight_grams: 150,
+    thumbnail: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Étole fluide et douce tissée à la main sur métier artisanal. Motifs subtils en dégradé de couleurs naturelles.</p>
+    `,
+    tags: ['écharpe', 'châle', 'soie et laine', 'accessoire mode', 'médina'],
+    attributes: [
+      { name: 'Dimensions', value: '70 cm x 200 cm' },
+      { name: 'Composition', value: '50% Soie naturelle, 50% Laine mérinos' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Écharpe châle en soie et laine',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Assortiment Prestige de Pâtisseries Tunisiennes Artisanales (Baklawa, Kaak Warka, Mlabes) 500g',
+    product_reference: 'MED-FOOD-007',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 48.0,
+    inventory_quantity: 50,
+    weight_grams: 650,
+    thumbnail: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Coffret dégustation de pâtisseries tunisiennes fines confectionnées au beurre pur et amandes douces : Baklawa aux noisettes et amandes, Kaak Warka parfumé à l'eau d'églantier (<em>Nesri</em> de Zaghouan), et Mlabes de Sfax glacé au sucre fin.</p>
+    `,
+    tags: ['pâtisserie tunisienne', 'baklawa', 'kaak warka', 'mlabes', 'amandes', 'sfax'],
+    attributes: [
+      { name: 'Poids net', value: '500g (Environ 24 pièces)' },
+      { name: 'Ingrédients', value: 'Amandes, Noisettes, Miel pur, Eau d\'églantier, Beurre clarifié' },
+      { name: 'Conservation', value: 'À conserver dans un endroit sec à l\'abri de la chaleur' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Assortiment de pâtisseries tunisiennes fines',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Confiture Artisanale de Figues de Djebba AOP & Éclats de Noix 350g',
+    product_reference: 'MED-FOOD-008',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 14.5,
+    inventory_quantity: 60,
+    weight_grams: 550,
+    thumbnail: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Préparée avec les figues violettes de <em>Djebba</em> bénéficiant de l'Appellation d'Origine Protégée (AOP). Cuite au chaudron de cuivre avec des éclats de noix croquantes et une touche de citron frais.</p>
+    `,
+    tags: ['confiture', 'figues de djebba', 'aop', 'terroir tunisien', 'bio'],
+    attributes: [
+      { name: 'Poids net', value: '350g' },
+      { name: 'Teneur en fruits', value: '65g de fruits pour 100g' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pot de confiture artisanale de figues de Djebba',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Bsissa Traditionnelle Complète aux Céréales & Noisettes Torréfiées 500g',
+    product_reference: 'MED-FOOD-009',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 16.0,
+    inventory_quantity: 70,
+    weight_grams: 550,
+    thumbnail: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Mélange énergétique ancestral tunisien de blé dur torréfié, pois chiches, graines de sésame, noisettes grillées, anis et coriandre moulus. Se déguste mélangé avec de l'huile d'olive et du miel ou dilué en boisson fortifiante.</p>
+    `,
+    tags: ['bsissa', 'céréales', 'petit déjeuner sain', 'terroir tunisie', 'énergie'],
+    attributes: [
+      { name: 'Poids net', value: '500g' },
+      { name: 'Ingrédients', value: 'Blé dur, Pois chiches, Noisettes, Sésame, Anis vert, Coriandre' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sachet de Bsissa traditionnelle aux noisettes',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sirop Artisanal d\'Orgeat & Amandes Douces Médina 500ml',
+    product_reference: 'MED-FOOD-010',
+    marketplace_category_id: 'cat_market_beverages',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 19.5,
+    inventory_quantity: 45,
+    weight_grams: 700,
+    thumbnail: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Véritable sirop d'orgeat traditionnel préparé par macération et émulsion d'amandes douces et amères blanchies avec de l'eau de fleur d'oranger.</p>
+    `,
+    tags: ['sirop orgeat', 'rozata', 'amandes', 'boisson traditionnelle', 'médina'],
+    attributes: [
+      { name: 'Volume', value: '500 ml' },
+      { name: 'Ingrédients', value: 'Extrait pur d\'amandes, Sucre de canne, Eau de fleur d\'oranger' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bouteille de sirop artisanal d\'orgeat',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Eau Florale de Géranium Bourbon (Atrchia) Distillée à Zaghouan 500ml',
+    product_reference: 'MED-FOOD-011',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 18.5,
+    inventory_quantity: 50,
+    weight_grams: 700,
+    thumbnail: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>L'<em>Atrchia</em> est l'hydrolat emblématique tunisien obtenu par distillation des feuilles fraîches de Pelargonium odoratissimum sur les flancs du Djebel Zaghouan. Indispensable pour sublimer le thé, le café blanc et la crème pâtissière tunisienne.</p>
+    `,
+    tags: ['atrchia', 'géranium', 'zaghouan', 'hydrolat', 'parfum pâtisserie'],
+    attributes: [
+      { name: 'Volume', value: '500 ml' },
+      { name: 'Origine', value: 'Zaghouan, Tunisie' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bouteille d\'Atrchia eau de géranium de Zaghouan',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Crème Visage Régénérante à l\'Huile de Figue de Barbarie & Beurre de Karité 50ml',
+    product_reference: 'MED-BEA-006',
+    marketplace_category_id: 'cat_market_skincare',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 54.0,
+    inventory_quantity: 40,
+    weight_grams: 120,
+    thumbnail: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Crème onctueuse riche en antioxydants naturels, formulée à base d'huile pure de pépins de figue de barbarie bio et de beurre de karité brut. Hydrate en profondeur, raffermit les traits et protège contre les agressions extérieures.</p>
+    `,
+    tags: ['crème visage', 'figue de barbarie', 'karité', 'soin bio', 'anti-rides'],
+    attributes: [
+      { name: 'Volume', value: '50 ml (Pot en verre dépoli)' },
+      { name: 'Texture', value: 'Crème soyeuse pénétration rapide' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pot de crème visage à l\'huile de figue de barbarie',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Huile de Massage Relaxante à la Fleur d\'Oranger & Amande Douce 100ml',
+    product_reference: 'MED-BEA-007',
+    marketplace_category_id: 'cat_market_skincare',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 32.0,
+    inventory_quantity: 50,
+    weight_grams: 200,
+    thumbnail: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Huile soyeuse pour le corps associant les propriétés adoucissantes de l'huile d'amande douce vierge aux effluves apaisants de l'huile essentielle de néroli (fleur d'oranger). Dénoue les tensions et laisse la peau satinée.</p>
+    `,
+    tags: ['huile de massage', 'néroli', 'amande douce', 'relaxant', 'spa'],
+    attributes: [
+      { name: 'Contenance', value: '100 ml' },
+      { name: 'Formule', value: '100% Ingrédients d\'origine naturelle' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Flacon d\'huile de massage relaxante',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Shampoing Solide Artisanal au Ghassoul & Huile de Nigelle Bio 100g',
+    product_reference: 'MED-BEA-008',
+    marketplace_category_id: 'cat_market_skincare',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 14.0,
+    inventory_quantity: 80,
+    weight_grams: 110,
+    thumbnail: 'https://images.unsplash.com/photo-1607006314144-8c8868846174?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Shampoing écologique zéro déchet formulé avec l'argile purifiante Ghassoul et l'huile fortifiante de nigelle (habba sawda). Assainit le cuir chevelu et apporte volume et brillance aux cheveux.</p>
+    `,
+    tags: ['shampoing solide', 'ghassoul', 'nigelle', 'zéro déchet', 'bio'],
+    attributes: [
+      { name: 'Poids net', value: '100g (Équivaut à 2 bouteilles de shampoing liquide)' },
+      { name: 'Types de cheveux', value: 'Tous types de cheveux, en particulier normaux à gras' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1607006314144-8c8868846174?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pain de shampoing solide artisanal au ghassoul',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Porte-Encens & Bakhour Traditionnel "Mabkhara" en Cuivre Martelé et Émail',
+    product_reference: 'MED-DEC-003',
+    marketplace_category_id: 'cat_sub_home_decor',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 48.0,
+    inventory_quantity: 35,
+    weight_grams: 650,
+    thumbnail: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Brûleur d'encens et de bakhour traditionnel <em>Mabkhara</em> en laiton et cuivre orné d'émaux colorés. Couvercle ajouré permettant une diffusion harmonieuse et sécurisée des volutes parfumées.</p>
+    `,
+    tags: ['mabkhara', 'porte-encens', 'bakhour', 'cuivre', 'oriental', 'ambiance'],
+    attributes: [
+      { name: 'Matière', value: 'Cuivre martelé et Laiton émaillé' },
+      { name: 'Hauteur', value: '22 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Porte-encens Mabkhara traditionnel en cuivre',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Bague Touareg / Berbère en Argent 925 avec Pierre d\'Onyx Noir Ciselée Main',
+    product_reference: 'MED-JEW-003',
+    marketplace_category_id: 'cat_sub_fine_jewelry',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 85.0,
+    inventory_quantity: 25,
+    weight_grams: 15,
+    thumbnail: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Chevalière artisanale berbère en argent massif 925 gravée de symboles géométriques traditionnels et sertie d'une pierre naturelle d'Onyx noir polie.</p>
+    `,
+    tags: ['bague berbère', 'touareg', 'argent 925', 'onyx noir', 'chevalière'],
+    attributes: [
+      { name: 'Matière', value: 'Argent massif 925/1000 poinçonné' },
+      { name: 'Pierre', value: 'Onyx noir naturel' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bague berbère en argent 925 et onyx noir',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-JEW-003-54',
+        title: 'Taille 54 (Ø 17.2 mm)',
+        price: 85.0,
+        inventory_quantity: 8,
+        options: { size: '54' },
+      },
+      {
+        sku: 'MED-JEW-003-56',
+        title: 'Taille 56 (Ø 17.8 mm)',
+        price: 85.0,
+        inventory_quantity: 9,
+        options: { size: '56' },
+      },
+      {
+        sku: 'MED-JEW-003-58',
+        title: 'Taille 58 (Ø 18.5 mm)',
+        price: 85.0,
+        inventory_quantity: 8,
+        options: { size: '58' },
+      },
+    ],
+  },
 ];
 
 async function seedAtelierMedinaCatalog() {
