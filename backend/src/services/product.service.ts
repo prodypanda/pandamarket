@@ -669,6 +669,7 @@ export class ProductService {
              'price', pv.price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
+             'inventory_quantity', pv.inventory_quantity,
              'options', pv.options
            )
            ORDER BY pv.created_at ASC
@@ -723,6 +724,7 @@ export class ProductService {
              'price', pv.price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
+             'inventory_quantity', pv.inventory_quantity,
              'options', pv.options
            )
            ORDER BY pv.created_at ASC
@@ -931,6 +933,7 @@ export class ProductService {
              'price', pv.price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
+             'inventory_quantity', pv.inventory_quantity,
              'options', pv.options
            )
            ORDER BY pv.created_at ASC
@@ -1069,6 +1072,7 @@ export class ProductService {
              'price', pv.price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
+             'inventory_quantity', pv.inventory_quantity,
              'options', pv.options
            )
            ORDER BY pv.created_at ASC
