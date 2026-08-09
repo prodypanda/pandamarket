@@ -121,6 +121,7 @@ export interface PublicProductVariantRow {
   price: string;
   sku: string | null;
   in_stock: boolean;
+  inventory_quantity: number;
   options: Record<string, string>;
 }
 
@@ -182,6 +183,7 @@ export function formatPublicProductResponse(row: PublicProductRow) {
       price: Number(v.price),
       sku: v.sku ?? null,
       in_stock: Boolean(v.in_stock),
+      inventory_quantity: Number(v.inventory_quantity),
       options: v.options ?? {},
     })),
     availability: {

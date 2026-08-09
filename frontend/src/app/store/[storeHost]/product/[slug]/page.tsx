@@ -46,6 +46,7 @@ interface Product {
     price: number;
     sku?: string | null;
     in_stock: boolean;
+    inventory_quantity: number;
     options?: Record<string, string>;
   }>;
   store_id: string;

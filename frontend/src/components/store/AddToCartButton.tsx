@@ -25,9 +25,12 @@ interface AddToCartButtonProps {
     inventory_quantity?: number;
   };
   primaryColor: string;
+  disabled?: boolean;
+  buttonText?: string;
+  onDisabledClick?: () => void;
 }
 
-export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps) {
+export function AddToCartButton({ product, primaryColor, disabled = false, buttonText, onDisabledClick }: AddToCartButtonProps) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
   const minimumQuantity = getMinimumQuantityForSeller(product.seller_type, product.wholesale_pricing);
@@ -40,6 +43,10 @@ export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps)
   const isOutOfStock = stockLimit !== undefined && stockLimit < minimumQuantity;
 
   const handleAddToCart = () => {
+    if (disabled) {
+      if (onDisabledClick) onDisabledClick();
+      return;
+    }
     if (isOutOfStock) return;
 
     addToCart({
@@ -98,8 +105,8 @@ export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps)
       <button
         onClick={handleAddToCart}
         className="flex flex-1 items-center justify-center gap-2 rounded-xl px-6 py-3 font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-        style={{ backgroundColor: isOutOfStock ? '#D1D5DB' : added ? '#10B981' : primaryColor }}
-        disabled={isOutOfStock}
+        style={{ backgroundColor: (isOutOfStock || disabled) ? '#D1D5DB' : added ? '#10B981' : primaryColor }}
+        disabled={isOutOfStock || disabled}
       >
         {added ? (
           <>
@@ -109,7 +116,7 @@ export function AddToCartButton({ product, primaryColor }: AddToCartButtonProps)
         ) : (
           <>
             <ShoppingCart className="w-5 h-5" />
-            {isOutOfStock ? 'Rupture de stock' : 'Ajouter au panier'}
+            {buttonText ? buttonText : (isOutOfStock ? 'Rupture de stock' : 'Ajouter au panier')}
           </>
         )}
       </button>

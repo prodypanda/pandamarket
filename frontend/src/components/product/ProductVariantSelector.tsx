@@ -10,6 +10,7 @@ export interface VariantOption {
   price: number;
   sku?: string | null;
   in_stock: boolean;
+  inventory_quantity: number;
   options?: Record<string, string>;
 }
 
@@ -171,9 +172,16 @@ export function ProductVariantSelector({
             price: activePrice,
             variant_id: selectedVariant?.id,
             variant: selectedVariant?.title,
-            inventory_quantity: selectedVariant ? (selectedVariant.in_stock ? 10 : 0) : product.inventory_quantity,
+            inventory_quantity: selectedVariant ? selectedVariant.inventory_quantity : product.inventory_quantity,
           }}
           primaryColor={primaryColor}
+          disabled={hasVariants && !selectedVariant}
+          buttonText={hasVariants && !selectedVariant ? 'Sélectionnez une option' : undefined}
+          onDisabledClick={() => {
+            if (hasVariants && !selectedVariant) {
+              setValidationError('Veuillez sélectionner toutes les options requises');
+            }
+          }}
         />
 
         <button
