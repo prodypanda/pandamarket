@@ -79,6 +79,32 @@ const deliveryProofSchema = z.object({
   note: z.string().trim().max(1000).optional(),
 }).default({});
 
+
+const codVerifySchema = z.object({
+  status: z.enum(['pending', 'confirmed', 'rejected', 'unreachable', 'otp_verified']),
+  call_attempts_delta: z.number().int().min(0).max(10).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+const codOtpVerifySchema = z.object({
+  code: z.string().trim().min(4).max(10),
+});
+
+const orderRtoSchema = z.object({
+  reason_code: z.enum(['client_refused', 'unreachable', 'wrong_address', 'fake_order', 'delayed_delivery', 'damaged_in_transit', 'customer_cancelled']),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+const courierSettlementSchema = z.object({
+  carrier: z.string().min(1).max(64),
+  tracking_number: z.string().max(128).optional(),
+  collected_amount: z.coerce.number().min(0),
+  courier_fee: z.coerce.number().min(0),
+  status: z.enum(['pending', 'settled', 'disputed']).optional(),
+  settlement_reference: z.string().max(128).optional(),
+  notes: z.string().max(1000).optional(),
+});
+
 const storeOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(20),
@@ -399,6 +425,98 @@ router.put(
     // Whole-order cancellation for buyer or platform admin
     await orderService.cancel(req.params.id, req.body.reason);
     res.status(200).json({ success: true, message: 'Order cancelled' });
+  }),
+);
+
+
+// Vendor: COD Risk & Pre-Validation Status
+router.post(
+  '/store/:id/cod-verify',
+  requireStore,
+  validate(codVerifySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const verification = await orderService.updateCodVerification({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      status: req.body.status,
+      callAttemptsDelta: req.body.call_attempts_delta,
+      notes: req.body.notes,
+      verifiedBy: req.user!.id,
+    });
+    res.status(200).json({ verification });
+  }),
+);
+
+// Vendor: Send COD OTP Code
+router.post(
+  '/store/:id/cod-otp/send',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await orderService.sendCodOtp(req.params.id, req.user!.store_id!);
+    res.status(200).json(result);
+  }),
+);
+
+// Vendor: Verify COD OTP Code
+router.post(
+  '/store/:id/cod-otp/verify',
+  requireStore,
+  validate(codOtpVerifySchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const verification = await orderService.verifyCodOtp(req.params.id, req.user!.store_id!, req.body.code);
+    res.status(200).json({ verification });
+  }),
+);
+
+// Vendor: Mark Order Fulfillment as RTO (Return to Origin)
+router.post(
+  '/store/:id/rto',
+  requireStore,
+  validate(orderRtoSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await orderService.markStoreFulfillmentRto({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      reasonCode: req.body.reason_code,
+      notes: req.body.notes,
+    });
+    res.status(200).json({ success: true, message: 'Order marked as RTO and stock returned' });
+  }),
+);
+
+// Vendor: Courier Settlement Ledger list & summary
+router.get(
+  '/store-settlements',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 50;
+    const carrier = req.query.carrier as string | undefined;
+    const status = req.query.status as string | undefined;
+
+    const result = await orderService.listCourierSettlements(req.user!.store_id!, { page, limit, carrier, status });
+    res.status(200).json(result);
+  }),
+);
+
+// Vendor: Create or update Courier Settlement record
+router.post(
+  '/store/:id/settlement',
+  requireStore,
+  validate(courierSettlementSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const settlement = await orderService.upsertCourierSettlement({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      carrier: req.body.carrier,
+      trackingNumber: req.body.tracking_number,
+      collectedAmount: req.body.collected_amount,
+      courierFee: req.body.courier_fee,
+      status: req.body.status,
+      settlementReference: req.body.settlement_reference,
+      notes: req.body.notes,
+    });
+    res.status(200).json({ settlement });
   }),
 );
 

@@ -85,6 +85,11 @@ export interface StoreOrderRow extends OrderRow {
   customer_order_count?: string;
   customer_lifetime_value?: string;
   customer_last_order_at?: Date | null;
+  rto_reason_code?: string | null;
+  rto_notes?: string | null;
+  rto_at?: Date | null;
+  cod_status?: string | null;
+  cod_risk_score?: number | null;
 }
 
 export interface StoreOrderNoteRow {
@@ -143,12 +148,55 @@ export interface StoreDeliveryProofRow {
   created_at: Date;
 }
 
+export interface CodVerificationRow {
+  id: string;
+  order_id: string;
+  store_id: string;
+  status: 'pending' | 'confirmed' | 'rejected' | 'unreachable' | 'otp_verified';
+  call_attempts: number;
+  last_call_at: Date | null;
+  otp_code?: string | null;
+  otp_sent_at: Date | null;
+  otp_verified_at: Date | null;
+  risk_score: number;
+  risk_factors: Array<{ name: string; impact: 'positive' | 'negative' | 'neutral'; description: string }>;
+  notes: string | null;
+  verified_by: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CourierSettlementRow {
+  id: string;
+  store_id: string;
+  order_id: string;
+  carrier: string;
+  tracking_number: string | null;
+  collected_amount: string;
+  courier_fee: string;
+  net_payout: string;
+  status: 'pending' | 'settled' | 'disputed';
+  settled_at: Date | null;
+  settlement_reference: string | null;
+  notes: string | null;
+  created_at: Date;
+  updated_at: Date;
+  customer_name?: string;
+  customer_phone?: string;
+  delivery_date?: Date | null;
+}
+
 export interface StoreOrderDetailRow extends StoreOrderRow {
   items: unknown[];
   seller_note: StoreOrderNoteRow | null;
   refunds: StoreOrderRefundRow[];
   shipments: StoreOrderShipmentRow[];
   delivery_proofs: StoreDeliveryProofRow[];
+  rto_reason_code?: string | null;
+  rto_notes?: string | null;
+  rto_at?: Date | null;
+  cod_verification?: CodVerificationRow | null;
+  courier_settlement?: CourierSettlementRow | null;
 }
 
 export interface StoreOrderSummary {
@@ -587,6 +635,11 @@ export class OrderService {
               COALESCE(store_totals.store_subtotal, 0)::text AS store_subtotal,
               COALESCE(f.shipping_total, 0)::text AS store_shipping_total,
               (COALESCE(store_totals.store_subtotal, 0) + COALESCE(f.shipping_total, 0))::text AS store_total,
+              f.rto_reason_code,
+              f.rto_notes,
+              f.rto_at,
+              cv.status AS cod_status,
+              cv.risk_score AS cod_risk_score,
               f.id AS fulfillment_id,
               f.status AS fulfillment_status,
               f.carrier,
@@ -1134,6 +1187,7 @@ export class OrderService {
        LEFT JOIN pd_user u ON u.id = o.customer_id
        LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
        LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $1
+       LEFT JOIN pd_cod_verification cv ON cv.order_id = o.id AND cv.store_id = $1
        LEFT JOIN LATERAL (
          SELECT COUNT(*) AS open_report_count
          FROM pd_reports r
@@ -1656,6 +1710,405 @@ export class OrderService {
     }
     return rows[0];
   }
+
+  // -----------------------------------------------------------------------
+  // COD RISK SCORING & PRE-VALIDATION ENGINE
+  // -----------------------------------------------------------------------
+  calculateCodRisk(params: {
+    phone?: string | null;
+    address?: IAddress | null;
+    total: number;
+    customerOrderCount?: number;
+    customerLifetimeValue?: number;
+    paymentGateway?: string;
+  }): { riskScore: number; riskLevel: 'low' | 'medium' | 'high'; factors: Array<{ name: string; impact: 'positive' | 'negative' | 'neutral'; description: string }> } {
+    let trustPoints = 50;
+    const factors: Array<{ name: string; impact: 'positive' | 'negative' | 'neutral'; description: string }> = [];
+
+    // 1. Phone number validation (Tunisian mobile formats 2x, 4x, 5x, 7x, 9x)
+    const rawPhone = (params.phone || params.address?.phone || '').replace(/\s+/g, '');
+    const tnPhoneRegex = /^(?:(\+216|00216)?)?(2|3|4|5|7|9)\d{7}$/;
+    if (!rawPhone) {
+      trustPoints -= 35;
+      factors.push({ name: 'Numéro de téléphone absent', impact: 'negative', description: 'Aucun numéro de téléphone fourni pour la livraison' });
+    } else if (tnPhoneRegex.test(rawPhone)) {
+      trustPoints += 25;
+      factors.push({ name: 'Numéro Tunisien Valide', impact: 'positive', description: `Format mobile valide (${rawPhone})` });
+    } else if (/^\d{8}$/.test(rawPhone)) {
+      trustPoints += 15;
+      factors.push({ name: 'Numéro 8 chiffres', impact: 'positive', description: 'Format standard 8 chiffres' });
+    } else {
+      trustPoints -= 25;
+      factors.push({ name: 'Numéro Suspect / Invalide', impact: 'negative', description: 'Le format du numéro ne correspond pas aux préfixes tunisiens' });
+    }
+
+    // 2. Address completeness
+    const addr = params.address;
+    const line1 = addr?.address_line_1 || '';
+    const city = addr?.city || '';
+    const postalCode = addr?.postal_code || '';
+
+    if (line1.length >= 10 && city.length >= 2) {
+      trustPoints += 20;
+      factors.push({ name: 'Adresse Détaillée', impact: 'positive', description: 'Rue et ville complètes' });
+    } else if (line1.length > 0) {
+      trustPoints += 5;
+      factors.push({ name: 'Adresse Partielle', impact: 'neutral', description: 'Adresse courte ou peu détaillée' });
+    } else {
+      trustPoints -= 20;
+      factors.push({ name: 'Adresse Manquante', impact: 'negative', description: 'Adresse postale non renseignée' });
+    }
+
+    if (postalCode && /^\d{4}$/.test(postalCode.trim())) {
+      trustPoints += 10;
+      factors.push({ name: 'Code Postal Conforme', impact: 'positive', description: `Code postal 4 chiffres (${postalCode})` });
+    }
+
+    // 3. Buyer order history & reliability
+    const orderCount = params.customerOrderCount || 0;
+    if (orderCount >= 3) {
+      trustPoints += 30;
+      factors.push({ name: 'Client Fidèle & Régulier', impact: 'positive', description: `${orderCount} commandes passées avec succès` });
+    } else if (orderCount === 1 || orderCount === 2) {
+      trustPoints += 15;
+      factors.push({ name: 'Client Récurrent', impact: 'positive', description: 'Historique d\'achat positif' });
+    } else {
+      factors.push({ name: 'Nouveau Client', impact: 'neutral', description: 'Première commande sur la boutique' });
+    }
+
+    // 4. Order value threshold for COD
+    if (params.total > 300) {
+      trustPoints -= 20;
+      factors.push({ name: 'Panier COD Élevé', impact: 'negative', description: `Montant supérieur à 300 TND (${params.total.toFixed(3)} TND)` });
+    } else if (params.total > 150) {
+      trustPoints -= 10;
+      factors.push({ name: 'Panier COD Moyen-Haut', impact: 'neutral', description: `Montant entre 150 et 300 TND (${params.total.toFixed(3)} TND)` });
+    } else {
+      trustPoints += 10;
+      factors.push({ name: 'Panier COD Standard', impact: 'positive', description: 'Montant dans la moyenne standard' });
+    }
+
+    // Clamp score
+    const riskScore = Math.max(0, Math.min(100, 100 - trustPoints));
+    let riskLevel: 'low' | 'medium' | 'high' = 'low';
+    if (riskScore > 60) riskLevel = 'high';
+    else if (riskScore > 25) riskLevel = 'medium';
+
+    return { riskScore, riskLevel, factors };
+  }
+
+  async getOrCreateCodVerification(orderId: string, storeId: string): Promise<CodVerificationRow> {
+    const { rows } = await query<CodVerificationRow>(
+      `SELECT * FROM pd_cod_verification WHERE order_id = $1 AND store_id = $2`,
+      [orderId, storeId],
+    );
+    if (rows[0]) return rows[0];
+
+    // Compute automatic risk score from order data
+    const orderDetail = await this.getStoreOrderDetail(orderId, storeId);
+    const riskAnalysis = this.calculateCodRisk({
+      phone: orderDetail.customer_phone,
+      address: orderDetail.shipping_address,
+      total: parseFloat(orderDetail.store_total) || 0,
+      customerOrderCount: parseInt(orderDetail.customer_order_count || '0', 10),
+      customerLifetimeValue: parseFloat(orderDetail.customer_lifetime_value || '0'),
+      paymentGateway: orderDetail.payment_gateway,
+    });
+
+    const newId = pdId('codv');
+    const { rows: created } = await query<CodVerificationRow>(
+      `INSERT INTO pd_cod_verification
+        (id, order_id, store_id, status, risk_score, risk_factors, created_at, updated_at)
+       VALUES ($1, $2, $3, 'pending', $4, $5, NOW(), NOW())
+       RETURNING *`,
+      [newId, orderId, storeId, riskAnalysis.riskScore, JSON.stringify(riskAnalysis.factors)],
+    );
+    return created[0];
+  }
+
+  async updateCodVerification(params: {
+    orderId: string;
+    storeId: string;
+    status: 'pending' | 'confirmed' | 'rejected' | 'unreachable' | 'otp_verified';
+    callAttemptsDelta?: number;
+    notes?: string;
+    verifiedBy?: string;
+  }): Promise<CodVerificationRow> {
+    const existing = await this.getOrCreateCodVerification(params.orderId, params.storeId);
+    const callAttempts = existing.call_attempts + (params.callAttemptsDelta || 0);
+
+    const { rows } = await query<CodVerificationRow>(
+      `UPDATE pd_cod_verification
+       SET status = $3,
+           call_attempts = $4,
+           last_call_at = CASE WHEN $5::boolean THEN NOW() ELSE last_call_at END,
+           notes = COALESCE($6, notes),
+           verified_by = COALESCE($7, verified_by),
+           updated_at = NOW()
+       WHERE order_id = $1 AND store_id = $2
+       RETURNING *`,
+      [
+        params.orderId,
+        params.storeId,
+        params.status,
+        callAttempts,
+        Boolean(params.callAttemptsDelta && params.callAttemptsDelta > 0),
+        params.notes ?? null,
+        params.verifiedBy ?? null,
+      ],
+    );
+    return rows[0];
+  }
+
+  async sendCodOtp(orderId: string, storeId: string): Promise<{ success: boolean; message: string }> {
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.getOrCreateCodVerification(orderId, storeId);
+
+    await query(
+      `UPDATE pd_cod_verification
+       SET otp_code = $3,
+           otp_sent_at = NOW(),
+           updated_at = NOW()
+       WHERE order_id = $1 AND store_id = $2`,
+      [orderId, storeId, otpCode],
+    );
+
+    logger.info({ order_id: orderId, otp_code: otpCode }, 'Generated COD verification OTP');
+    return { success: true, message: `Code OTP de vérification généré : ${otpCode}` };
+  }
+
+  async verifyCodOtp(orderId: string, storeId: string, code: string): Promise<CodVerificationRow> {
+    const { rows } = await query<CodVerificationRow>(
+      `SELECT * FROM pd_cod_verification WHERE order_id = $1 AND store_id = $2`,
+      [orderId, storeId],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Vérification COD introuvable');
+
+    if (rows[0].otp_code !== code.trim()) {
+      throw new PdValidationError('Code OTP invalide');
+    }
+
+    const { rows: updated } = await query<CodVerificationRow>(
+      `UPDATE pd_cod_verification
+       SET status = 'otp_verified',
+           otp_verified_at = NOW(),
+           risk_score = 0,
+           updated_at = NOW()
+       WHERE order_id = $1 AND store_id = $2
+       RETURNING *`,
+      [orderId, storeId],
+    );
+    return updated[0];
+  }
+
+  // -----------------------------------------------------------------------
+  // RTO (RETURN TO ORIGIN) MANAGEMENT & REASON CODES
+  // -----------------------------------------------------------------------
+  async markStoreFulfillmentRto(params: {
+    orderId: string;
+    storeId: string;
+    reasonCode: 'client_refused' | 'unreachable' | 'wrong_address' | 'fake_order' | 'delayed_delivery' | 'damaged_in_transit' | 'customer_cancelled';
+    notes?: string;
+  }): Promise<void> {
+    await transaction(async (c) => {
+      // 1. Update fulfillment status
+      await c.query(
+        `UPDATE pd_fulfillment
+         SET status = 'cancelled',
+             rto_reason_code = $3,
+             rto_notes = $4,
+             rto_at = NOW(),
+             updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2`,
+        [params.orderId, params.storeId, params.reasonCode, params.notes || null],
+      );
+
+      // 2. Update shipment if exists
+      await c.query(
+        `UPDATE pd_shipment
+         SET status = 'returned',
+             updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2`,
+        [params.orderId, params.storeId],
+      );
+
+      // 3. Mark COD verification as rejected/unreachable
+      await c.query(
+        `INSERT INTO pd_cod_verification (id, order_id, store_id, status, notes, updated_at)
+         VALUES ($1, $2, $3, 'rejected', $4, NOW())
+         ON CONFLICT (order_id, store_id) DO UPDATE
+         SET status = 'rejected',
+             notes = COALESCE($4, pd_cod_verification.notes),
+             updated_at = NOW()`,
+        [pdId('codv'), params.orderId, params.storeId, `RTO: ${params.reasonCode} - ${params.notes || ''}`],
+      );
+
+      // 4. Restock inventory
+      const { rows: items } = await c.query<{ product_id: string; variant_id: string | null; quantity: number }>(
+        `SELECT product_id, variant_id, quantity FROM pd_order_item WHERE order_id = $1 AND store_id = $2`,
+        [params.orderId, params.storeId],
+      );
+      for (const item of items) {
+        await c.query(`UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.product_id, item.quantity]);
+        if (item.variant_id) {
+          await c.query(`UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.variant_id, item.quantity]);
+        }
+      }
+    });
+
+    logger.info({ order_id: params.orderId, store_id: params.storeId, reason: params.reasonCode }, 'Marked fulfillment as RTO and restocked');
+  }
+
+  // -----------------------------------------------------------------------
+  // COURIER SETTLEMENT LEDGER
+  // -----------------------------------------------------------------------
+  async listCourierSettlements(
+    storeId: string,
+    opts: { page?: number; limit?: number; carrier?: string; status?: string } = {},
+  ): Promise<{
+    settlements: CourierSettlementRow[];
+    summary: {
+      total_collected: number;
+      total_courier_fees: number;
+      total_net_payout: number;
+      pending_payout: number;
+      settled_payout: number;
+      settled_count: number;
+      pending_count: number;
+    };
+    total: number;
+  }> {
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, opts.limit || 50);
+    const offset = (page - 1) * limit;
+
+    const params: unknown[] = [storeId];
+    let where = 'WHERE cs.store_id = $1';
+
+    if (opts.carrier && opts.carrier !== 'all') {
+      params.push(opts.carrier);
+      where += ` AND cs.carrier = $${params.length}`;
+    }
+    if (opts.status && opts.status !== 'all') {
+      params.push(opts.status);
+      where += ` AND cs.status = $${params.length}`;
+    }
+
+    const { rows: settlements } = await query<CourierSettlementRow>(
+      `SELECT cs.*,
+              COALESCE(u.first_name || ' ' || u.last_name, sc.first_name || ' ' || sc.last_name, 'Client') AS customer_name,
+              COALESCE(u.phone, sc.phone, o.shipping_address->>'phone', '') AS customer_phone,
+              f.delivered_at AS delivery_date
+       FROM pd_courier_settlement cs
+       JOIN pd_order o ON o.id = cs.order_id
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       LEFT JOIN pd_fulfillment f ON f.order_id = cs.order_id AND f.store_id = cs.store_id
+       ${where}
+       ORDER BY cs.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    );
+
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_courier_settlement cs ${where}`,
+      params,
+    );
+
+    const { rows: summaryRows } = await query<{
+      total_collected: string;
+      total_courier_fees: string;
+      total_net_payout: string;
+      pending_payout: string;
+      settled_payout: string;
+      settled_count: string;
+      pending_count: string;
+    }>(
+      `SELECT
+         COALESCE(SUM(collected_amount), 0)::text AS total_collected,
+         COALESCE(SUM(courier_fee), 0)::text AS total_courier_fees,
+         COALESCE(SUM(net_payout), 0)::text AS total_net_payout,
+         COALESCE(SUM(CASE WHEN status = 'pending' THEN net_payout ELSE 0 END), 0)::text AS pending_payout,
+         COALESCE(SUM(CASE WHEN status = 'settled' THEN net_payout ELSE 0 END), 0)::text AS settled_payout,
+         COUNT(CASE WHEN status = 'settled' THEN 1 END)::text AS settled_count,
+         COUNT(CASE WHEN status = 'pending' THEN 1 END)::text AS pending_count
+       FROM pd_courier_settlement
+       WHERE store_id = $1`,
+      [storeId],
+    );
+
+    const sum = summaryRows[0] || {
+      total_collected: '0',
+      total_courier_fees: '0',
+      total_net_payout: '0',
+      pending_payout: '0',
+      settled_payout: '0',
+      settled_count: '0',
+      pending_count: '0',
+    };
+
+    return {
+      settlements,
+      total: parseInt(countRows[0]?.count || '0', 10),
+      summary: {
+        total_collected: parseFloat(sum.total_collected) || 0,
+        total_courier_fees: parseFloat(sum.total_courier_fees) || 0,
+        total_net_payout: parseFloat(sum.total_net_payout) || 0,
+        pending_payout: parseFloat(sum.pending_payout) || 0,
+        settled_payout: parseFloat(sum.settled_payout) || 0,
+        settled_count: parseInt(sum.settled_count, 10) || 0,
+        pending_count: parseInt(sum.pending_count, 10) || 0,
+      },
+    };
+  }
+
+  async upsertCourierSettlement(params: {
+    orderId: string;
+    storeId: string;
+    carrier: string;
+    trackingNumber?: string;
+    collectedAmount: number;
+    courierFee: number;
+    status?: 'pending' | 'settled' | 'disputed';
+    settlementReference?: string;
+    notes?: string;
+  }): Promise<CourierSettlementRow> {
+    const netPayout = Math.max(0, params.collectedAmount - params.courierFee);
+    const id = pdId('cstl');
+
+    const { rows } = await query<CourierSettlementRow>(
+      `INSERT INTO pd_courier_settlement
+        (id, store_id, order_id, carrier, tracking_number, collected_amount, courier_fee, net_payout, status, settled_at, settlement_reference, notes, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'pending'), CASE WHEN $9 = 'settled' THEN NOW() ELSE NULL END, $10, $11, NOW(), NOW())
+       ON CONFLICT (order_id, store_id) DO UPDATE
+       SET carrier = EXCLUDED.carrier,
+           tracking_number = COALESCE(EXCLUDED.tracking_number, pd_courier_settlement.tracking_number),
+           collected_amount = EXCLUDED.collected_amount,
+           courier_fee = EXCLUDED.courier_fee,
+           net_payout = EXCLUDED.net_payout,
+           status = COALESCE($9, pd_courier_settlement.status),
+           settled_at = CASE WHEN $9 = 'settled' THEN NOW() ELSE pd_courier_settlement.settled_at END,
+           settlement_reference = COALESCE(EXCLUDED.settlement_reference, pd_courier_settlement.settlement_reference),
+           notes = COALESCE(EXCLUDED.notes, pd_courier_settlement.notes),
+           updated_at = NOW()
+       RETURNING *`,
+      [
+        id,
+        params.storeId,
+        params.orderId,
+        params.carrier,
+        params.trackingNumber || null,
+        params.collectedAmount,
+        params.courierFee,
+        netPayout,
+        params.status || 'pending',
+        params.settlementReference || null,
+        params.notes || null,
+      ],
+    );
+    return rows[0];
+  }
+
 }
 
 export const orderService = new OrderService();

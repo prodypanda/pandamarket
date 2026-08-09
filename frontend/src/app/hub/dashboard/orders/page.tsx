@@ -4,7 +4,46 @@ import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload } from 'lucide-react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, ShieldCheck, AlertTriangle, PhoneCall, Check, FileSpreadsheet, RotateCcw, Building2, DollarSign } from 'lucide-react';
+
+export type OrdersMainTab = 'all_orders' | 'cod_radar' | 'rto_returns' | 'courier_settlements';
+
+export interface CodVerification {
+  id: string;
+  order_id: string;
+  store_id: string;
+  status: 'pending' | 'confirmed' | 'rejected' | 'unreachable' | 'otp_verified';
+  call_attempts: number;
+  last_call_at: string | null;
+  otp_sent_at?: string | null;
+  otp_verified_at?: string | null;
+  risk_score: number;
+  risk_factors: Array<{ name: string; impact: 'positive' | 'negative' | 'neutral'; description: string }>;
+  notes: string | null;
+  verified_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourierSettlement {
+  id: string;
+  store_id: string;
+  order_id: string;
+  carrier: string;
+  tracking_number: string | null;
+  collected_amount: string | number;
+  courier_fee: string | number;
+  net_payout: string | number;
+  status: 'pending' | 'settled' | 'disputed';
+  settled_at: string | null;
+  settlement_reference: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_name?: string;
+  customer_phone?: string;
+  delivery_date?: string | null;
+}
 
 interface Order {
   id: string;
@@ -46,6 +85,13 @@ interface Order {
   refunds?: SellerOrderRefund[];
   shipments?: SellerOrderShipment[];
   delivery_proofs?: SellerDeliveryProof[];
+  rto_reason_code?: string | null;
+  rto_notes?: string | null;
+  rto_at?: string | null;
+  cod_status?: string | null;
+  cod_risk_score?: number | null;
+  cod_verification?: CodVerification | null;
+  courier_settlement?: CourierSettlement | null;
 }
 
 interface ShippingAddress {
@@ -1272,6 +1318,45 @@ export default function OrdersPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [noteFeedback, setNoteFeedback] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
+  // Advanced COD, RTO & Settlement Tab Navigation
+  const [mainTab, setMainTab] = useState<OrdersMainTab>('all_orders');
+
+  // COD Pre-Validation & OTP State
+  const [codOtpInput, setCodOtpInput] = useState('');
+  const [sendingCodOtp, setSendingCodOtp] = useState(false);
+  const [verifyingCodOtp, setVerifyingCodOtp] = useState(false);
+  const [updatingCodStatus, setUpdatingCodStatus] = useState(false);
+  const [codFeedback, setCodFeedback] = useState('');
+
+  // RTO Return Action Modal State
+  const [rtoOrderTarget, setRtoOrderTarget] = useState<Order | null>(null);
+  const [rtoReasonCode, setRtoReasonCode] = useState<'client_refused' | 'unreachable' | 'wrong_address' | 'fake_order' | 'delayed_delivery' | 'damaged_in_transit' | 'customer_cancelled'>('client_refused');
+  const [rtoNotes, setRtoNotes] = useState('');
+  const [submittingRto, setSubmittingRto] = useState(false);
+
+  // Courier Settlement Ledger State
+  const [settlements, setSettlements] = useState<CourierSettlement[]>([]);
+  const [settlementsLoading, setSettlementsLoading] = useState(false);
+  const [settlementsSummary, setSettlementsSummary] = useState({
+    total_collected: 0,
+    total_courier_fees: 0,
+    total_net_payout: 0,
+    pending_payout: 0,
+    settled_payout: 0,
+    settled_count: 0,
+    pending_count: 0,
+  });
+  const [settlementCarrierFilter, setSettlementCarrierFilter] = useState('all');
+  const [settlementStatusFilter, setSettlementStatusFilter] = useState('all');
+  const [reconcileOrderTarget, setReconcileOrderTarget] = useState<Order | null>(null);
+  const [reconcileCarrier, setReconcileCarrier] = useState('aramex');
+  const [reconcileCollectedAmount, setReconcileCollectedAmount] = useState('');
+  const [reconcileCourierFee, setReconcileCourierFee] = useState('7.000');
+  const [reconcileRef, setReconcileRef] = useState('');
+  const [reconcileStatus, setReconcileStatus] = useState<'pending' | 'settled' | 'disputed'>('settled');
+  const [reconcileNotes, setReconcileNotes] = useState('');
+  const [savingSettlement, setSavingSettlement] = useState(false);
+
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -1995,6 +2080,195 @@ export default function OrdersPage() {
     }
   };
 
+  
+  // COD Risk & Pre-Validation Handlers
+  const handleUpdateCodStatus = async (orderId: string, status: 'pending' | 'confirmed' | 'rejected' | 'unreachable' | 'otp_verified', callAttemptsDelta: number = 0, customNotes?: string) => {
+    setUpdatingCodStatus(true);
+    setCodFeedback('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${orderId}/cod-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status,
+          call_attempts_delta: callAttemptsDelta,
+          notes: customNotes,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error?.message || 'Erreur lors de la mise à jour COD');
+      
+      setCodFeedback(status === 'confirmed' ? 'Commande confirmée avec succès !' : `Statut COD mis à jour : ${status}`);
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, cod_verification: data.verification, cod_status: data.verification.status });
+      }
+      await fetchOrders();
+    } catch (err) {
+      setCodFeedback(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setUpdatingCodStatus(false);
+    }
+  };
+
+  const handleSendCodOtp = async (orderId: string) => {
+    setSendingCodOtp(true);
+    setCodFeedback('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${orderId}/cod-otp/send`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error?.message || 'Erreur envoi OTP');
+      setCodFeedback(data.message || 'Code OTP SMS envoyé au client.');
+    } catch (err) {
+      setCodFeedback(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setSendingCodOtp(false);
+    }
+  };
+
+  const handleVerifyCodOtp = async (orderId: string) => {
+    if (!codOtpInput.trim()) return;
+    setVerifyingCodOtp(true);
+    setCodFeedback('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${orderId}/cod-otp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: codOtpInput.trim() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error?.message || 'Code OTP incorrect');
+      setCodFeedback('Code OTP vérifié avec succès ! Commande 100% sécurisée.');
+      setCodOtpInput('');
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, cod_verification: data.verification, cod_status: 'otp_verified', cod_risk_score: 0 });
+      }
+      await fetchOrders();
+    } catch (err) {
+      setCodFeedback(err instanceof Error ? err.message : 'Code OTP invalide');
+    } finally {
+      setVerifyingCodOtp(false);
+    }
+  };
+
+  const handleSubmitRto = async () => {
+    if (!rtoOrderTarget) return;
+    setSubmittingRto(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${rtoOrderTarget.id}/rto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          reason_code: rtoReasonCode,
+          notes: rtoNotes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message || 'Erreur enregistrement retour RTO');
+      }
+      setRtoOrderTarget(null);
+      setRtoNotes('');
+      await fetchOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setSubmittingRto(false);
+    }
+  };
+
+  const fetchSettlements = useCallback(async () => {
+    setSettlementsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (settlementCarrierFilter !== 'all') params.set('carrier', settlementCarrierFilter);
+      if (settlementStatusFilter !== 'all') params.set('status', settlementStatusFilter);
+
+      const res = await fetchWithCsrf(`/api/pd/orders/store-settlements?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSettlements(data.settlements || []);
+        setSettlementsSummary(data.summary || {
+          total_collected: 0,
+          total_courier_fees: 0,
+          total_net_payout: 0,
+          pending_payout: 0,
+          settled_payout: 0,
+          settled_count: 0,
+          pending_count: 0,
+        });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSettlementsLoading(false);
+    }
+  }, [settlementCarrierFilter, settlementStatusFilter]);
+
+  useEffect(() => {
+    if (mainTab === 'courier_settlements') {
+      fetchSettlements();
+    }
+  }, [mainTab, fetchSettlements]);
+
+  const handleSaveCourierSettlement = async () => {
+    if (!reconcileOrderTarget) return;
+    setSavingSettlement(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${reconcileOrderTarget.id}/settlement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          carrier: reconcileCarrier,
+          tracking_number: reconcileOrderTarget.tracking_number || undefined,
+          collected_amount: parseFloat(reconcileCollectedAmount) || 0,
+          courier_fee: parseFloat(reconcileCourierFee) || 0,
+          status: reconcileStatus,
+          settlement_reference: reconcileRef.trim() || undefined,
+          notes: reconcileNotes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message || 'Erreur enregistrement rapprochement');
+      }
+      setReconcileOrderTarget(null);
+      setReconcileRef('');
+      setReconcileNotes('');
+      await fetchOrders();
+      if (mainTab === 'courier_settlements') {
+        await fetchSettlements();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setSavingSettlement(false);
+    }
+  };
+
+  const getRtoLabel = (code?: string | null) => {
+    switch (code) {
+      case 'client_refused': return 'Client a refusé à la livraison';
+      case 'unreachable': return 'Client injoignable (3 tentatives)';
+      case 'wrong_address': return 'Adresse erronée / introuvable';
+      case 'fake_order': return 'Fausse commande / Numéro faux';
+      case 'delayed_delivery': return 'Retard livraison / Refus';
+      case 'damaged_in_transit': return 'Colis endommagé';
+      case 'customer_cancelled': return 'Annulation tardive acheteur';
+      default: return code || 'Retour Expéditeur';
+    }
+  };
+
   const summary = meta.summary;
   const activeFilterValues = [
     search,
@@ -2048,6 +2322,79 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* NAVIGATION TABS (All Orders, COD Risk Radar, RTO Returns, Courier Settlements) */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+        <button
+          type="button"
+          onClick={() => setMainTab('all_orders')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+            mainTab === 'all_orders'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Package className="w-4 h-4 text-blue-600" />
+          <span>Toutes les Commandes</span>
+          <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 font-bold">
+            {meta.total || orders.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMainTab('cod_radar')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+            mainTab === 'cod_radar'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4 text-amber-500" />
+          <span>🛡️ Radar Anti-Fraude COD & Pré-Validation</span>
+          {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length > 0 && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold animate-pulse">
+              {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length} à valider
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMainTab('rto_returns')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+            mainTab === 'rto_returns'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4 text-rose-500" />
+          <span>🔄 Analyse des Retours (RTO)</span>
+          {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length > 0 && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
+              {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length} retours
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMainTab('courier_settlements')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+            mainTab === 'courier_settlements'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <DollarSign className="w-4 h-4 text-emerald-600" />
+          <span>💰 Rapprochement Transporteurs</span>
+          {settlementsSummary.pending_payout > 0 && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+              {formatMoney(settlementsSummary.pending_payout)} dû
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         {[
@@ -2073,7 +2420,9 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* TAB 1: ALL ORDERS STANDARD VIEW */}
+      {mainTab === 'all_orders' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Toolbar */}
         <div className="space-y-4 border-b border-gray-100 bg-gray-50/30 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -2512,6 +2861,527 @@ export default function OrdersPage() {
         )}
       </div>
 
+      
+      )}
+
+      {/* TAB 2: COD RISK RADAR & PRE-VALIDATION CALL CENTER */}
+      {mainTab === 'cod_radar' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* COD Stats Header */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Commandes COD</span>
+              <p className="text-2xl font-black text-slate-900 dark:text-white">
+                {orders.filter(o => o.payment_gateway === 'cod').length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Paiement à la livraison</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">En Attente de Confirmation</span>
+              <p className="text-2xl font-black text-amber-600">
+                {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Appel téléphonique requis</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Confirmées & OTP Sécurisées</span>
+              <p className="text-2xl font-black text-emerald-600">
+                {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'confirmed' || o.cod_status === 'otp_verified')).length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Prêtes pour expédition</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Rejetées / Frauduleuses</span>
+              <p className="text-2xl font-black text-rose-600">
+                {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'rejected' || o.cod_status === 'unreachable')).length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Stock protégé</p>
+            </div>
+          </div>
+
+          {/* COD Orders Action Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  <span>File de Pré-Validation des Commandes COD</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Appelez vos clients ou envoyez un message WhatsApp en 1 clic pour valider la livraison avant l&apos;envoi transporteur.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                  <tr>
+                    <th className="px-4 py-3.5">Commande</th>
+                    <th className="px-4 py-3.5">Client & Contact</th>
+                    <th className="px-4 py-3.5">Montant COD</th>
+                    <th className="px-4 py-3.5">Score de Risque</th>
+                    <th className="px-4 py-3.5">Statut de Validation</th>
+                    <th className="px-4 py-3.5 text-right">Actions Rapides</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {orders.filter(o => o.payment_gateway === 'cod').length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-400">
+                        Aucune commande avec paiement à la livraison (COD) pour le moment.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.filter(o => o.payment_gateway === 'cod').map((order) => {
+                      const phone = order.customer_phone || order.shipping_address?.phone || '';
+                      const customerName = `${order.customer_first_name || order.shipping_address?.first_name || ''} ${order.customer_last_name || order.shipping_address?.last_name || ''}`.trim() || 'Client';
+                      const cleanPhone = phone.replace(/\D+/g, '');
+                      const waPhone = cleanPhone.startsWith('216') ? cleanPhone : `216${cleanPhone}`;
+                      const waText = encodeURIComponent(`Bonjour ${customerName}, nous confirmons votre commande PandaMarket #${order.id.slice(-8).toUpperCase()} de montant ${formatMoney(order.store_total || order.total)} pour livraison à ${order.shipping_address?.city || 'votre adresse'}. Confirmez-vous l'envoi ? Merci !`);
+
+                      const riskScore = order.cod_risk_score ?? (order.cod_status === 'otp_verified' || order.cod_status === 'confirmed' ? 0 : 35);
+                      const isHighRisk = riskScore > 60;
+                      const isModerateRisk = riskScore > 25 && riskScore <= 60;
+
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedOrder(order); }}
+                              className="font-black text-slate-900 dark:text-white font-mono hover:text-[#B91C1C]"
+                            >
+                              #{order.id.slice(-8).toUpperCase()}
+                            </button>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : 'fr-TN')}
+                            </p>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-slate-900 dark:text-white">{customerName}</p>
+                            <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              {phone || <span className="italic text-red-500">Non renseigné</span>}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate max-w-[180px]">
+                              {order.shipping_address?.city}, {order.shipping_address?.address_line_1}
+                            </p>
+                          </td>
+
+                          <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono text-sm">
+                            {formatMoney(order.store_total || order.total)}
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
+                                isHighRisk
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                  : isModerateRisk
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              }`}>
+                                {isHighRisk ? '🔴 Risque Élevé' : isModerateRisk ? '🟡 Risque Modéré' : '🟢 Faible Risque'} ({riskScore}%)
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              order.cod_status === 'confirmed' || order.cod_status === 'otp_verified'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : order.cod_status === 'rejected' || order.cod_status === 'unreachable'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            }`}>
+                              {order.cod_status === 'confirmed' ? '✅ Confirmée par Appel' :
+                               order.cod_status === 'otp_verified' ? '🔐 Vérifiée par OTP' :
+                               order.cod_status === 'unreachable' ? '📵 Client Injoignable' :
+                               order.cod_status === 'rejected' ? '❌ Refusée / Rejetée' :
+                               '⏳ En Attente d’Appel'}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Direct Phone Call Button */}
+                              {phone && (
+                                <a
+                                  href={`tel:${cleanPhone}`}
+                                  onClick={() => handleUpdateCodStatus(order.id, 'pending', 1, 'Tentative d’appel sortant')}
+                                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 transition-colors shadow-xs"
+                                  title="Appeler le client"
+                                >
+                                  <PhoneCall className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Direct WhatsApp Confirmation Link */}
+                              {phone && (
+                                <a
+                                  href={`https://wa.me/${waPhone}?text=${waText}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs"
+                                  title="Envoyer confirmation WhatsApp"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Confirm Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCodStatus(order.id, 'confirmed', 0, 'Confirmé manuellement par le vendeur')}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-xs flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Confirmer</span>
+                              </button>
+
+                              {/* Reject Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCodStatus(order.id, 'rejected', 0, 'Rejeté par le vendeur pour risque élevé')}
+                                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                                title="Rejeter / Annuler"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: RTO RETURNS ANALYTICS & REASON CODES */}
+      {mainTab === 'rto_returns' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* RTO Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Taux de Retour Global (RTO)</span>
+              <p className="text-2xl font-black text-rose-600">
+                {orders.length > 0
+                  ? ((orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length / orders.length) * 100).toFixed(1)
+                  : '0.0'}%
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Objectif cible &lt; 5.0%</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">Colis Retournés</span>
+              <p className="text-2xl font-black text-slate-900 dark:text-white">
+                {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Marchandise réintégrée au stock</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">Valeur Marchandise Sauvée</span>
+              <p className="text-2xl font-black text-emerald-600 font-mono">
+                {formatMoney(
+                  orders
+                    .filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled')
+                    .reduce((acc, o) => acc + (parseFloat(o.store_total || o.total) || 0), 0)
+                )}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Stock récupéré</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Coûts de Livraison Perdus</span>
+              <p className="text-2xl font-black text-rose-500 font-mono">
+                {formatMoney(
+                  orders
+                    .filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled')
+                    .reduce((acc, o) => acc + (parseFloat(o.store_shipping_total || o.shipping_total) || 7.000), 0)
+                )}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Frais transporteurs non récupérables</p>
+            </div>
+          </div>
+
+          {/* RTO Reason Breakdown Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-rose-500" />
+                <span>Journal des Commandes RTO & Motifs de Non-Livraison</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Suivez précisément les causes de retours de vos transporteurs pour optimiser la qualification des adresses.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                  <tr>
+                    <th className="px-4 py-3.5">Commande</th>
+                    <th className="px-4 py-3.5">Client</th>
+                    <th className="px-4 py-3.5">Transporteur</th>
+                    <th className="px-4 py-3.5">Motif du Retour (RTO)</th>
+                    <th className="px-4 py-3.5">Montant</th>
+                    <th className="px-4 py-3.5">Date Retour</th>
+                    <th className="px-4 py-3.5 text-right">Détails</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
+                        Excellent ! Aucun retour RTO enregistré.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').map((order) => (
+                      <tr key={order.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3.5">
+                          <span className="font-black text-slate-900 dark:text-white font-mono">
+                            #{order.id.slice(-8).toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <p className="font-bold text-slate-900 dark:text-white">
+                            {order.customer_first_name || order.shipping_address?.first_name} {order.customer_last_name || order.shipping_address?.last_name}
+                          </p>
+                          <p className="text-[10px] text-slate-400">{order.shipping_address?.city}</p>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
+                            {order.carrier || 'Aramex'}
+                          </span>
+                          {order.tracking_number && (
+                            <p className="text-[10px] font-mono text-slate-400">{order.tracking_number}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                            {getRtoLabel(order.rto_reason_code)}
+                          </span>
+                          {order.rto_notes && (
+                            <p className="text-[10px] text-slate-500 italic mt-0.5">{order.rto_notes}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono">
+                          {formatMoney(order.store_total || order.total)}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-500 text-[11px]">
+                          {order.rto_at ? new Date(order.rto_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : 'fr-TN') : new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : 'fr-TN')}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedOrder(order); }}
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+                          >
+                            Voir Fiche
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: COURIER SETTLEMENT LEDGER */}
+      {mainTab === 'courier_settlements' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Settlement KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Encaissé par Transporteurs</span>
+              <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {formatMoney(settlementsSummary.total_collected)}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Montant brut collecté auprès des clients</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">Frais de Livraison Déduits</span>
+              <p className="text-2xl font-black text-rose-600 font-mono">
+                -{formatMoney(settlementsSummary.total_courier_fees)}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Facturation transporteurs</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 bg-amber-50/20 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">En Attente de Virement</span>
+              <p className="text-2xl font-black text-amber-600 font-mono">
+                {formatMoney(settlementsSummary.pending_payout)}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">{settlementsSummary.pending_count} bordereaux en cours</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 shadow-sm space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Net Reversé au Vendeur</span>
+              <p className="text-2xl font-black text-emerald-600 font-mono">
+                {formatMoney(settlementsSummary.settled_payout)}
+              </p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{settlementsSummary.settled_count} règlements clôturés</p>
+            </div>
+          </div>
+
+          {/* Settlements Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                  <span>Bordereau de Rapprochement des Encaissements</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Contrôlez les montants reversés par chaque transporteur et pointez vos virements bancaires.
+                </p>
+              </div>
+
+              {/* Filters */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={settlementCarrierFilter}
+                  onChange={(e) => setSettlementCarrierFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                >
+                  <option value="all">Tous les Transporteurs</option>
+                  <option value="aramex">Aramex</option>
+                  <option value="laposte">La Poste Tunisienne</option>
+                  <option value="first_delivery">First Delivery</option>
+                  <option value="livri">Livri</option>
+                  <option value="own_fleet">Flotte Propre</option>
+                </select>
+
+                <select
+                  value={settlementStatusFilter}
+                  onChange={(e) => setSettlementStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                >
+                  <option value="all">Tous les Statuts</option>
+                  <option value="pending">En Attente de Virement</option>
+                  <option value="settled">Reversé / Rapproché</option>
+                  <option value="disputed">Écart / Litige</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                  <tr>
+                    <th className="px-4 py-3.5">Commande</th>
+                    <th className="px-4 py-3.5">Transporteur</th>
+                    <th className="px-4 py-3.5">Encaissé Client</th>
+                    <th className="px-4 py-3.5">Frais Livraison</th>
+                    <th className="px-4 py-3.5">Net à Reverser</th>
+                    <th className="px-4 py-3.5">Statut Règlement</th>
+                    <th className="px-4 py-3.5 text-right">Rapprochement</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {settlements.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
+                        {settlementsLoading ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                            <span>Chargement des encaissements transporteurs...</span>
+                          </div>
+                        ) : (
+                          <span>Aucun bordereau d&apos;encaissement trouvé. Les règlements s&apos;affichent dès qu&apos;une commande COD est livrée.</span>
+                        )}
+                      </td>
+                    </tr>
+                  ) : (
+                    settlements.map((st) => (
+                      <tr key={st.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3.5">
+                          <span className="font-black text-slate-900 dark:text-white font-mono">
+                            #{st.order_id.slice(-8).toUpperCase()}
+                          </span>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{st.customer_name || 'Client'}</p>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className="font-bold uppercase text-[11px] text-slate-800 dark:text-slate-200">
+                            {st.carrier}
+                          </span>
+                          {st.tracking_number && (
+                            <p className="text-[10px] font-mono text-slate-400">{st.tracking_number}</p>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono">
+                          {formatMoney(st.collected_amount)}
+                        </td>
+
+                        <td className="px-4 py-3.5 font-black text-rose-500 font-mono">
+                          -{formatMoney(st.courier_fee)}
+                        </td>
+
+                        <td className="px-4 py-3.5 font-black text-emerald-600 font-mono text-sm">
+                          +{formatMoney(st.net_payout)}
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black ${
+                            st.status === 'settled'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : st.status === 'disputed'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {st.status === 'settled' ? '✅ Reversé / Rapproché' : st.status === 'disputed' ? '⚠️ Écart / Litige' : '⏳ En Attente de Virement'}
+                          </span>
+                          {st.settlement_reference && (
+                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">Réf: {st.settlement_reference}</p>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const matchOrder = orders.find(o => o.id === st.order_id);
+                              if (matchOrder) {
+                                setReconcileOrderTarget(matchOrder);
+                                setReconcileCarrier(st.carrier);
+                                setReconcileCollectedAmount(String(st.collected_amount));
+                                setReconcileCourierFee(String(st.courier_fee));
+                                setReconcileRef(st.settlement_reference || '');
+                                setReconcileStatus(st.status);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs hover:bg-slate-800 transition-colors"
+                          >
+                            Pointeur
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -2707,6 +3577,152 @@ export default function OrdersPage() {
                   </div>
 
                   <div className="space-y-4">
+                    {/* COD RISK SCORING & PRE-VALIDATION CARD IN DRAWER */}
+                    {selectedOrder.payment_gateway === 'cod' && (() => {
+                      const phone = selectedOrder.customer_phone || selectedOrder.shipping_address?.phone || '';
+                      const customerName = `${selectedOrder.customer_first_name || selectedOrder.shipping_address?.first_name || ''} ${selectedOrder.customer_last_name || selectedOrder.shipping_address?.last_name || ''}`.trim() || 'Client';
+                      const cleanPhone = phone.replace(/\D+/g, '');
+                      const waPhone = cleanPhone.startsWith('216') ? cleanPhone : `216${cleanPhone}`;
+                      const waText = encodeURIComponent(`Bonjour ${customerName}, nous confirmons votre commande PandaMarket #${selectedOrder.id.slice(-8).toUpperCase()} de montant ${formatMoney(selectedOrder.store_total || selectedOrder.total)} pour livraison à ${selectedOrder.shipping_address?.city || 'votre adresse'}. Confirmez-vous l'envoi ? Merci !`);
+
+                      const riskScore = selectedOrder.cod_risk_score ?? (selectedOrder.cod_status === 'otp_verified' || selectedOrder.cod_status === 'confirmed' ? 0 : 35);
+                      const isHighRisk = riskScore > 60;
+                      const isModerateRisk = riskScore > 25 && riskScore <= 60;
+
+                      return (
+                        <div className="rounded-3xl border border-amber-200 dark:border-amber-900/60 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-slate-900/5 dark:bg-slate-900 p-5 space-y-4 shadow-sm">
+                          <div className="flex items-center justify-between border-b border-amber-200/60 dark:border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                              <ShieldAlert className="w-5 h-5 text-amber-600" />
+                              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                Diagnostic Risque COD & Pré-Validation
+                              </h3>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                              isHighRisk
+                                ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                : isModerateRisk
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            }`}>
+                              {isHighRisk ? '🔴 Risque Élevé' : isModerateRisk ? '🟡 Risque Modéré' : '🟢 Faible Risque'} ({riskScore}%)
+                            </span>
+                          </div>
+
+                          {/* Risk Factors Breakdown */}
+                          <div className="space-y-1.5 text-xs">
+                            <span className="text-[10px] font-black uppercase text-slate-400">Facteurs Analysés :</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                                <p className="font-bold text-slate-700 dark:text-slate-200">📱 Téléphone Client</p>
+                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{phone || 'Non renseigné'}</p>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                                <p className="font-bold text-slate-700 dark:text-slate-200">📍 Complétude Adresse</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{selectedOrder.shipping_address?.city || 'Ville inconnue'}</p>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                                <p className="font-bold text-slate-700 dark:text-slate-200">🛍️ Commandes Antérieures</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5">{selectedOrder.customer_order_count || '1'} commande(s)</p>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                                <p className="font-bold text-slate-700 dark:text-slate-200">💵 Montant Panier COD</p>
+                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{formatMoney(selectedOrder.store_total || selectedOrder.total)}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Pre-Validation Actions */}
+                          <div className="space-y-2 pt-2 border-t border-amber-200/60 dark:border-slate-800">
+                            <span className="text-[10px] font-black uppercase text-slate-400">Actions de Confirmation Téléphonique :</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              {phone && (
+                                <a
+                                  href={`tel:${cleanPhone}`}
+                                  onClick={() => handleUpdateCodStatus(selectedOrder.id, 'pending', 1, 'Tentative d’appel')}
+                                  className="flex items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-800 dark:text-slate-200 hover:bg-slate-50 shadow-xs"
+                                >
+                                  <PhoneCall className="w-4 h-4 text-emerald-600" />
+                                  <span>Appeler le Client</span>
+                                </a>
+                              )}
+
+                              {phone && (
+                                <a
+                                  href={`https://wa.me/${waPhone}?text=${waText}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 shadow-xs"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  <span>WhatsApp 1-Clic</span>
+                                </a>
+                              )}
+                            </div>
+
+                            {/* SMS OTP Section */}
+                            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Validation par Code SMS OTP :</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendCodOtp(selectedOrder.id)}
+                                  disabled={sendingCodOtp}
+                                  className="text-[10px] font-black text-amber-600 hover:underline disabled:opacity-50"
+                                >
+                                  {sendingCodOtp ? 'Envoi...' : 'Envoyer Code OTP'}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={codOtpInput}
+                                  onChange={(e) => setCodOtpInput(e.target.value)}
+                                  placeholder="Entrez le code à 6 chiffres"
+                                  className="flex-1 px-3 py-1.5 text-xs font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleVerifyCodOtp(selectedOrder.id)}
+                                  disabled={verifyingCodOtp || !codOtpInput.trim()}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black hover:opacity-90 disabled:opacity-40"
+                                >
+                                  {verifyingCodOtp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Valider OTP'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {codFeedback && (
+                              <p className="text-xs font-bold text-amber-700 dark:text-amber-400">{codFeedback}</p>
+                            )}
+
+                            {/* Manual Confirm & Reject Buttons */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCodStatus(selectedOrder.id, 'confirmed', 0, 'Confirmé')}
+                                disabled={updatingCodStatus}
+                                className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 transition-colors shadow-xs flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Confirmer pour Expédition</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCodStatus(selectedOrder.id, 'rejected', 0, 'Rejeté')}
+                                disabled={updatingCodStatus}
+                                className="px-3 py-2 rounded-xl border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors"
+                              >
+                                Refuser
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    
                     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4 text-[#B91C1C]" />
@@ -2900,6 +3916,36 @@ export default function OrdersPage() {
                             {t('dashboardPages.orders.markDelivered')}
                           </button>
                         )}
+                        
+                        {/* RTO Return Action Button */}
+                        {selectedOrder.fulfillment_status === 'shipped' && (
+                          <button
+                            type="button"
+                            onClick={() => setRtoOrderTarget(selectedOrder)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 transition hover:bg-rose-100"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Signaler Retour Colis (RTO)</span>
+                          </button>
+                        )}
+
+                        {/* Courier Settlement Button */}
+                        {selectedOrder.fulfillment_status === 'delivered' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReconcileOrderTarget(selectedOrder);
+                              setReconcileCarrier(selectedOrder.carrier || 'aramex');
+                              setReconcileCollectedAmount(selectedOrder.store_total || selectedOrder.total);
+                              setReconcileCourierFee(selectedOrder.store_shipping_total || '7.000');
+                            }}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                            <span>Rapprocher Encaissement Transporteur</span>
+                          </button>
+                        )}
+
                         {canCancelSellerFulfillment(selectedOrder) && (
                           <button
                             type="button"
