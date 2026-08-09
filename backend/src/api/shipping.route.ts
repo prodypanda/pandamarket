@@ -113,6 +113,33 @@ router.get(
 );
 
 /**
+ * GET /shipping/smart-quotes — Calculate quotes via GET query params (stateless, safe for browser & SSR)
+ */
+router.get(
+  '/smart-quotes',
+  asyncHandler(async (req, res) => {
+    const origin_city = (req.query.origin_city as string) || 'Tunis';
+    const destination_city = (req.query.destination_city as string) || (req.query.city as string) || 'Tunis';
+    const destination_state = (req.query.destination_state as string) || (req.query.state as string) || destination_city;
+    const weight_kg = parseFloat(req.query.weight_kg as string) || 1;
+    const cod_amount = parseFloat(req.query.cod_amount as string) || 0;
+
+    const data = await shippingService.calculateSmartQuotes({
+      origin_city,
+      destination: {
+        address_line_1: 'Adresse Client',
+        city: destination_city,
+        country: 'TN',
+        ...({ state: destination_state } as any),
+      },
+      weight_kg,
+      cod_amount,
+    });
+    res.json({ data });
+  }),
+);
+
+/**
  * POST /shipping/smart-quotes — Smart multi-carrier comparison (Best Rate & Fastest)
  */
 router.post(

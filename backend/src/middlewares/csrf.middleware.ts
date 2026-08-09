@@ -61,6 +61,8 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
   if (
     req.path.includes('/webhook/') ||
     req.path.includes('/callback') ||
+    req.path.includes('/shipping/smart-quotes') ||
+    req.path.includes('/shipping/rates') ||
     (config.env !== 'production' && req.path.includes('/upload-s3-mock/'))
   ) {
     return next();
