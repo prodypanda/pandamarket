@@ -62,6 +62,35 @@ const addProductImageSchema = z.object({
   is_thumbnail: z.boolean().optional(),
 });
 
+const batchProductSchema = z.object({
+  product_ids: z.array(z.string().min(1)).min(1, 'At least one product ID is required').max(500),
+  action: z.discriminatedUnion('type', [
+    z.object({
+      type: z.literal('set_status'),
+      status: z.enum(['draft', 'published', 'archived']),
+    }),
+    z.object({
+      type: z.literal('adjust_price'),
+      mode: z.enum(['percent', 'fixed']),
+      value: z.number(),
+      round_to_nearest_nine: z.boolean().optional(),
+    }),
+    z.object({
+      type: z.literal('set_category'),
+      marketplace_category_id: z.string().nullable().optional(),
+      storefront_category_id: z.string().nullable().optional(),
+    }),
+    z.object({
+      type: z.literal('adjust_inventory'),
+      mode: z.enum(['set', 'delta']),
+      value: z.number(),
+    }),
+    z.object({
+      type: z.literal('delete'),
+    }),
+  ]),
+});
+
 function assertDigitalFileOwnership(payload: { digital_file_key?: string | null }, storeId: string) {
   if (payload.digital_file_key && !payload.digital_file_key.startsWith(`digital/${storeId}/`)) {
     throw new PdValidationError('Digital file does not belong to this store');
@@ -254,6 +283,17 @@ router.post(
     }
 
     res.status(200).json({ success: true, ...results });
+  }),
+);
+
+// Vendor: Batch product operations (bulk status, price adjust, category assign, stock update, delete)
+router.post(
+  '/batch',
+  requireStore,
+  validate(batchProductSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await productService.batchUpdate(req.user!.store_id!, req.body);
+    res.status(200).json(result);
   }),
 );
 

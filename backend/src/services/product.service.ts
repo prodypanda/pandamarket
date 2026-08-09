@@ -207,6 +207,36 @@ export function formatPublicProductResponse(row: PublicProductRow) {
   };
 }
 
+export type BatchProductAction =
+  | { type: 'set_status'; status: ProductStatus }
+  | {
+      type: 'adjust_price';
+      mode: 'percent' | 'fixed';
+      value: number;
+      round_to_nearest_nine?: boolean;
+    }
+  | {
+      type: 'set_category';
+      marketplace_category_id?: string | null;
+      storefront_category_id?: string | null;
+    }
+  | {
+      type: 'adjust_inventory';
+      mode: 'set' | 'delta';
+      value: number;
+    }
+  | { type: 'delete' };
+
+export interface BatchProductUpdateInput {
+  product_ids: string[];
+  action: BatchProductAction;
+}
+
+export interface BatchProductUpdateResult {
+  affected_count: number;
+  message: string;
+}
+
 export interface CreateProductInput {
   store_id: string;
   store_plan: string;
@@ -740,6 +770,140 @@ export class ProductService {
   }
   async archive(id: string): Promise<void> {
     await query(`UPDATE pd_product SET status = 'archived' WHERE id = $1`, [id]);
+  }
+
+  async batchUpdate(storeId: string, input: BatchProductUpdateInput): Promise<BatchProductUpdateResult> {
+    const productIds = Array.from(new Set((input.product_ids || []).map((id) => String(id).trim()))).filter(Boolean);
+    if (productIds.length === 0) {
+      throw new PdValidationError('No products specified for batch operation');
+    }
+
+    // Verify ownership of all specified products
+    const { rows: ownedRows } = await query<{ id: string; price: string; inventory_quantity: number }>(
+      'SELECT id, price, inventory_quantity FROM pd_product WHERE store_id = $1 AND id = ANY($2::text[])',
+      [storeId, productIds],
+    );
+
+    if (ownedRows.length === 0) {
+      throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'None of the specified products belong to your store');
+    }
+
+    const ownedIds = ownedRows.map((r) => r.id);
+    const action = input.action;
+
+    switch (action.type) {
+      case 'set_status': {
+        await query(
+          'UPDATE pd_product SET status = $1, updated_at = NOW() WHERE store_id = $2 AND id = ANY($3::text[])',
+          [action.status, storeId, ownedIds],
+        );
+        return {
+          affected_count: ownedIds.length,
+          message: `${ownedIds.length} produit(s) mis à jour en statut "${action.status}".`,
+        };
+      }
+
+      case 'adjust_price': {
+        const val = Number(action.value);
+        if (!Number.isFinite(val)) {
+          throw new PdValidationError('Invalid price adjustment value');
+        }
+
+        await transaction(async (client) => {
+          for (const row of ownedRows) {
+            const oldPrice = parseFloat(row.price) || 0;
+            let newPrice = oldPrice;
+            if (action.mode === 'percent') {
+              newPrice = oldPrice * (1 + val / 100);
+            } else {
+              newPrice = oldPrice + val;
+            }
+
+            newPrice = Math.max(0.001, newPrice);
+            if (action.round_to_nearest_nine) {
+              newPrice = Math.max(0.9, Math.floor(newPrice) + 0.9);
+            }
+
+            await client.query(
+              'UPDATE pd_product SET price = $1, updated_at = NOW() WHERE id = $2',
+              [newPrice.toFixed(3), row.id],
+            );
+          }
+        });
+
+        return {
+          affected_count: ownedIds.length,
+          message: `Prix ajusté pour ${ownedIds.length} produit(s).`,
+        };
+      }
+
+      case 'set_category': {
+        const fields: string[] = ['updated_at = NOW()'];
+        const values: unknown[] = [storeId, ownedIds];
+        let i = 2;
+
+        if (action.marketplace_category_id !== undefined) {
+          fields.push(`marketplace_category_id = ${++i}`);
+          values.push(action.marketplace_category_id);
+        }
+        if (action.storefront_category_id !== undefined) {
+          fields.push(`storefront_category_id = ${++i}`);
+          values.push(action.storefront_category_id);
+        }
+
+        if (fields.length > 1) {
+          await query(
+            `UPDATE pd_product SET ${fields.join(', ')} WHERE store_id = $1 AND id = ANY($2::text[])`,
+            values,
+          );
+        }
+
+        return {
+          affected_count: ownedIds.length,
+          message: `Catégories assignées à ${ownedIds.length} produit(s).`,
+        };
+      }
+
+      case 'adjust_inventory': {
+        const val = Number(action.value);
+        if (!Number.isFinite(val)) {
+          throw new PdValidationError('Invalid inventory value');
+        }
+
+        if (action.mode === 'set') {
+          const qty = Math.max(0, Math.floor(val));
+          await query(
+            'UPDATE pd_product SET inventory_quantity = $1, updated_at = NOW() WHERE store_id = $2 AND id = ANY($3::text[])',
+            [qty, storeId, ownedIds],
+          );
+        } else {
+          const delta = Math.floor(val);
+          await query(
+            'UPDATE pd_product SET inventory_quantity = GREATEST(0, inventory_quantity + $1), updated_at = NOW() WHERE store_id = $2 AND id = ANY($3::text[])',
+            [delta, storeId, ownedIds],
+          );
+        }
+
+        return {
+          affected_count: ownedIds.length,
+          message: `Stock mis à jour pour ${ownedIds.length} produit(s).`,
+        };
+      }
+
+      case 'delete': {
+        await query(
+          'DELETE FROM pd_product WHERE store_id = $1 AND id = ANY($2::text[])',
+          [storeId, ownedIds],
+        );
+        return {
+          affected_count: ownedIds.length,
+          message: `${ownedIds.length} produit(s) supprimé(s) définitivement.`,
+        };
+      }
+
+      default:
+        throw new PdValidationError('Unknown batch action type');
+    }
   }
 
   async delete(id: string): Promise<void> {

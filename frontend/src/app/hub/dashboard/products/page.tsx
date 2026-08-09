@@ -567,6 +567,23 @@ export default function ProductsPage() {
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
 
+  // Extended Bulk Actions & CSV Export State
+  const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [bulkPriceMode, setBulkPriceMode] = useState<'percent' | 'fixed'>('percent');
+  const [bulkPriceValue, setBulkPriceValue] = useState('-15');
+  const [bulkPriceRoundToNine, setBulkPriceRoundToNine] = useState(false);
+
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [bulkMarketplaceCategoryId, setBulkMarketplaceCategoryId] = useState('');
+  const [bulkStorefrontCategoryId, setBulkStorefrontCategoryId] = useState('');
+
+  const [showBulkStockModal, setShowBulkStockModal] = useState(false);
+  const [bulkStockMode, setBulkStockMode] = useState<'set' | 'delta'>('set');
+  const [bulkStockValue, setBulkStockValue] = useState('20');
+
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
   // AI Smart Fill & Photo Studio (Assistant Magique IA)
   interface SmartFillExtractionResult {
     suggested_title: string;
@@ -1355,26 +1372,120 @@ export default function ProductsPage() {
     });
   };
 
-  const handleBulkStatusChange = async (newStatus: string) => {
+  // -----------------------------------------------------------------------
+  // CATALOGUE CSV / EXCEL EXPORT
+  // -----------------------------------------------------------------------
+  const handleExportCSV = (scope: 'all' | 'filtered' | 'selected' = 'filtered') => {
+    let targetList: Product[] = [];
+    if (scope === 'selected') {
+      targetList = products.filter((p) => selectedIds.has(p.id));
+    } else if (scope === 'filtered') {
+      targetList = visibleProducts;
+    } else {
+      targetList = products;
+    }
+
+    if (targetList.length === 0) {
+      setError('Aucun produit à exporter.');
+      return;
+    }
+
+    const headers = [
+      'ID Produit',
+      'Titre du Produit',
+      'Type',
+      'Prix (TND)',
+      'Stock',
+      'Statut',
+      'Catégorie Marketplace',
+      'Catégorie Vitrine',
+      'Tags',
+      'Nb Variantes',
+      'Nb Images',
+      'Date Création',
+    ];
+
+    const escapeCSV = (val: unknown) => {
+      const str = String(val ?? '').replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = targetList.map((p) => [
+      escapeCSV(p.id),
+      escapeCSV(p.title),
+      escapeCSV(p.type),
+      escapeCSV(Number(p.price || 0).toFixed(3)),
+      escapeCSV(p.inventory_quantity),
+      escapeCSV(p.status === 'published' ? 'Publié' : p.status === 'draft' ? 'Brouillon' : 'Archivé'),
+      escapeCSV(p.marketplace_category_name || ''),
+      escapeCSV(p.storefront_category_name || ''),
+      escapeCSV(Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || '')),
+      escapeCSV(Array.isArray(p.variants) ? p.variants.length : 0),
+      escapeCSV(Array.isArray(p.images) ? p.images.length : 0),
+      escapeCSV((p as any).created_at ? new Date((p as any).created_at).toISOString().slice(0, 10) : ''),
+    ]);
+
+    // Add UTF-8 BOM so Excel opens accents cleanly
+    const csvContent =
+      '\uFEFF' +
+      [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `catalogue-pandamarket-${scope}-${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccess(`Export CSV généré avec succès (${targetList.length} produit(s)).`);
+  };
+
+  // -----------------------------------------------------------------------
+  // EXTENDED BULK OPERATIONS HANDLER
+  // -----------------------------------------------------------------------
+  const executeBatchAction = async (
+    action:
+      | { type: 'set_status'; status: 'published' | 'draft' | 'archived' }
+      | { type: 'adjust_price'; mode: 'percent' | 'fixed'; value: number; round_to_nearest_nine?: boolean }
+      | { type: 'set_category'; marketplace_category_id?: string | null; storefront_category_id?: string | null }
+      | { type: 'adjust_inventory'; mode: 'set' | 'delta'; value: number }
+      | { type: 'delete' },
+  ) => {
     if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
     setError('');
     try {
-      await Promise.all(
-        Array.from(selectedIds).map((id) =>
-          fetchWithCsrf(`/api/pd/stores/me/products/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ status: newStatus }),
-          }),
-        ),
-      );
+      const res = await fetchWithCsrf('/api/pd/stores/me/products/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_ids: Array.from(selectedIds),
+          action,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Erreur lors de l’action groupée.');
+
+      setSuccess(data.message || 'Action groupée appliquée avec succès.');
       setSelectedIds(new Set());
+      setShowBulkPriceModal(false);
+      setShowBulkCategoryModal(false);
+      setShowBulkStockModal(false);
+      setShowBulkDeleteModal(false);
       await fetchProducts();
-      setSuccess(`${selectedIds.size} produits mis à jour en statut "${newStatus}".`);
-    } catch {
-      setError('Échec de la mise à jour groupée');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec de l’action groupée.');
+    } finally {
+      setBulkActionLoading(false);
     }
+  };
+  const handleBulkStatusChange = async (newStatus: 'published' | 'draft' | 'archived') => {
+    await executeBatchAction({ type: 'set_status', status: newStatus });
   };
 
   // -----------------------------------------------------------------------
@@ -1808,6 +1919,21 @@ export default function ProductsPage() {
               <Plus className="h-4 w-4" />
               Nouveau Produit
             </button>
+            <button
+              type="button"
+              onClick={() => handleExportCSV(selectedIds.size > 0 ? 'selected' : 'filtered')}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all"
+              title="Exporter le catalogue en fichier CSV pour Excel"
+            >
+              <Download className="h-4 w-4 text-emerald-600" />
+              <span>Export CSV</span>
+              {selectedIds.size > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-black">
+                  ({selectedIds.size})
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => void fetchProducts()}
@@ -2259,31 +2385,106 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* 4. FLOATING BULK ACTIONS BAR */}
+      {/* 4. EXTENDED FLOATING BULK ACTIONS BAR */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-950 text-white shadow-2xl border border-slate-800 animate-in slide-in-from-bottom-5 duration-200">
-          <span className="text-xs font-bold text-slate-300">
-            <strong className="text-white">{selectedIds.size}</strong> sélectionné(s)
-          </span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center gap-2 sm:gap-2.5 px-4 sm:px-6 py-3 rounded-2xl bg-slate-950/95 text-white shadow-2xl border border-slate-800 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-200 max-w-[95vw]">
+          <div className="flex items-center gap-2 pr-2 border-r border-slate-800">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white font-black text-xs">
+              {selectedIds.size}
+            </span>
+            <span className="text-xs font-bold text-slate-300 hidden sm:inline">sélectionné(s)</span>
+          </div>
+
+          {/* Status Actions */}
+          <button
+            type="button"
+            onClick={() => void handleBulkStatusChange('published')}
+            disabled={bulkActionLoading}
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+            title="Publier tous les produits sélectionnés"
+          >
+            🟢 Publier
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleBulkStatusChange('draft')}
+            disabled={bulkActionLoading}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+            title="Passer en brouillon"
+          >
+            ⚪ Brouillon
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleBulkStatusChange('archived')}
+            disabled={bulkActionLoading}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all hidden md:inline-block"
+            title="Archiver"
+          >
+            📦 Archiver
+          </button>
+
+          <div className="h-4 w-px bg-slate-800 hidden sm:block" />
+
+          {/* Extended Operations */}
+          <button
+            type="button"
+            onClick={() => setShowBulkPriceModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-700/60 hover:bg-purple-800 text-purple-200 text-xs font-bold transition-all flex items-center gap-1.5"
+            title="Ajuster les prix en pourcentage ou montant fixe (ex: soldes)"
+          >
+            <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <span>Ajuster Prix</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBulkCategoryModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-indigo-900/60 border border-indigo-700/60 hover:bg-indigo-800 text-indigo-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden lg:flex"
+            title="Assigner une catégorie Marketplace ou Vitrine à la sélection"
+          >
+            <Tag className="w-3.5 h-3.5 text-indigo-300" />
+            <span>Catégories</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBulkStockModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-blue-900/60 border border-blue-700/60 hover:bg-blue-800 text-blue-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden md:flex"
+            title="Mettre à jour le stock en masse"
+          >
+            <Layers className="w-3.5 h-3.5 text-blue-300" />
+            <span>Stock</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleExportCSV('selected')}
+            className="px-3 py-1.5 rounded-xl bg-emerald-900/60 border border-emerald-700/60 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden sm:flex"
+            title="Exporter les produits sélectionnés en CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Delete Action */}
+          <button
+            type="button"
+            onClick={() => setShowBulkDeleteModal(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-red-950/80 border border-red-800/80 hover:bg-red-900 text-red-300 text-xs font-bold transition-all flex items-center gap-1"
+            title="Supprimer définitivement les produits sélectionnés"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+            <span className="hidden sm:inline">Supprimer</span>
+          </button>
+
           <div className="h-4 w-px bg-slate-800" />
-          <button
-            type="button"
-            onClick={() => handleBulkStatusChange('published')}
-            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold transition-colors"
-          >
-            Publier
-          </button>
-          <button
-            type="button"
-            onClick={() => handleBulkStatusChange('draft')}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold transition-colors"
-          >
-            Brouillon
-          </button>
+
+          {/* Deselect All */}
           <button
             type="button"
             onClick={() => setSelectedIds(new Set())}
-            className="p-1.5 text-slate-400 hover:text-white"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             title="Désélectionner tout"
           >
             <X className="w-4 h-4" />
@@ -4789,6 +4990,429 @@ export default function ProductsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* 9. BULK PRICE ADJUSTMENT MODAL */}
+      {/* ========================================================================= */}
+      {showBulkPriceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-3xl border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-purple-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
+                  <Coins className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Ajustement Groupé des Prix (Soldes & Tarifs)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Appliquer une modification de prix sur <strong>{selectedIds.size}</strong> produit(s) sélectionné(s)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkPriceModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Adjustment Type Selector */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setBulkPriceMode('percent')}
+                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                  bulkPriceMode === 'percent'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                Pourcentage (%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkPriceMode('fixed')}
+                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                  bulkPriceMode === 'fixed'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                Montant Fixe (TND)
+              </button>
+            </div>
+
+            {/* Preset Strategy Chips */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                ⚡ Préréglages Rapides :
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: '-10% Soldes', mode: 'percent', val: '-10' },
+                  { label: '-20% Soldes', mode: 'percent', val: '-20' },
+                  { label: '-30% Déstockage', mode: 'percent', val: '-30' },
+                  { label: '-50% Flash', mode: 'percent', val: '-50' },
+                  { label: '+10% Inflation', mode: 'percent', val: '10' },
+                  { label: '+5.000 DT', mode: 'fixed', val: '5' },
+                  { label: '-5.000 DT', mode: 'fixed', val: '-5' },
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setBulkPriceMode(chip.mode as any);
+                      setBulkPriceValue(chip.val);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 hover:border-purple-300"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Value Input */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Valeur d'ajustement ({bulkPriceMode === 'percent' ? '%' : 'TND'}) :
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step={bulkPriceMode === 'percent' ? '1' : '0.100'}
+                  value={bulkPriceValue}
+                  onChange={(e) => setBulkPriceValue(e.target.value)}
+                  placeholder={bulkPriceMode === 'percent' ? '-20' : '-5.000'}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-purple-600"
+                />
+                <span className="absolute right-3.5 top-3 text-xs font-black text-slate-400">
+                  {bulkPriceMode === 'percent' ? '%' : 'TND'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Utilisez un nombre négatif (ex: <code>-20</code>) pour réduire les prix, ou positif (ex: <code>10</code>) pour les augmenter.
+              </p>
+            </div>
+
+            {/* Smart Rounding Checkbox */}
+            <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={bulkPriceRoundToNine}
+                onChange={(e) => setBulkPriceRoundToNine(e.target.checked)}
+                className="rounded text-purple-600 focus:ring-purple-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200">Arrondir au 0.900 le plus proche</span>
+                <p className="text-[11px] text-slate-400">Ex: 19.450 DT deviendra 19.900 DT pour un effet psychologique de prix.</p>
+              </div>
+            </label>
+
+            {/* Live Simulation Preview */}
+            <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2">
+              <span className="text-[10px] font-black uppercase text-purple-900 dark:text-purple-300">
+                Aperçu de la simulation (sur les 3 premiers articles) :
+              </span>
+              <div className="space-y-1.5 text-xs">
+                {products
+                  .filter((p) => selectedIds.has(p.id))
+                  .slice(0, 3)
+                  .map((p) => {
+                    const oldP = parseFloat(String(p.price)) || 0;
+                    const val = parseFloat(bulkPriceValue) || 0;
+                    let nextP = bulkPriceMode === 'percent' ? oldP * (1 + val / 100) : oldP + val;
+                    nextP = Math.max(0.001, nextP);
+                    if (bulkPriceRoundToNine) {
+                      nextP = Math.max(0.9, Math.floor(nextP) + 0.9);
+                    }
+                    const isReduction = nextP < oldP;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
+                          {p.title}
+                        </span>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span className="text-slate-400 line-through text-[11px]">{formatPrice(String(p.price))}</span>
+                          <span className="text-slate-400">→</span>
+                          <span className={`font-black ${isReduction ? 'text-emerald-600 dark:text-emerald-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                            {formatPrice(nextP.toString())}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 border-t border-purple-100 dark:border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkPriceModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void executeBatchAction({
+                    type: 'adjust_price',
+                    mode: bulkPriceMode,
+                    value: parseFloat(bulkPriceValue) || 0,
+                    round_to_nearest_nine: bulkPriceRoundToNine,
+                  })
+                }
+                disabled={bulkActionLoading || !bulkPriceValue}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs shadow-md shadow-purple-600/20 hover:scale-105 disabled:opacity-50 transition-all"
+              >
+                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
+                Appliquer à {selectedIds.size} produit(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 10. BULK CATEGORY ASSIGNMENT MODAL */}
+      {/* ========================================================================= */}
+      {showBulkCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-indigo-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
+                  <Tag className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Assignation Groupée de Catégorie
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Déplacer <strong>{selectedIds.size}</strong> produit(s) dans une nouvelle catégorie
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkCategoryModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  🌐 Catégorie Marketplace Hub :
+                </label>
+                <select
+                  value={bulkMarketplaceCategoryId}
+                  onChange={(e) => setBulkMarketplaceCategoryId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold outline-none focus:border-indigo-600"
+                >
+                  <option value="">-- Conserver la catégorie Hub actuelle --</option>
+                  {marketplaceCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  🏪 Catégorie Vitrine Boutique :
+                </label>
+                <select
+                  value={bulkStorefrontCategoryId}
+                  onChange={(e) => setBulkStorefrontCategoryId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold outline-none focus:border-indigo-600"
+                >
+                  <option value="">-- Conserver la catégorie Vitrine actuelle --</option>
+                  {storefrontCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-indigo-100 dark:border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkCategoryModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void executeBatchAction({
+                    type: 'set_category',
+                    marketplace_category_id: bulkMarketplaceCategoryId || undefined,
+                    storefront_category_id: bulkStorefrontCategoryId || undefined,
+                  })
+                }
+                disabled={bulkActionLoading || (!bulkMarketplaceCategoryId && !bulkStorefrontCategoryId)}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all"
+              >
+                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
+                Assigner aux {selectedIds.size} produit(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 11. BULK STOCK ADJUSTMENT MODAL */}
+      {/* ========================================================================= */}
+      {showBulkStockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-blue-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
+                  <Layers className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Mise à Jour Groupée du Stock
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Ajuster l'inventaire de <strong>{selectedIds.size}</strong> produit(s)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkStockModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setBulkStockMode('set')}
+                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                  bulkStockMode === 'set'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                Stock Fixe Commun
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkStockMode('delta')}
+                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                  bulkStockMode === 'delta'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                Ajouter / Retirer (+/-)
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                {bulkStockMode === 'set' ? 'Quantité en stock à fixer :' : 'Quantité à ajouter ou déduire (+/-) :'}
+              </label>
+              <input
+                type="number"
+                value={bulkStockValue}
+                onChange={(e) => setBulkStockValue(e.target.value)}
+                placeholder={bulkStockMode === 'set' ? '20' : '+10 ou -5'}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-blue-100 dark:border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkStockModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void executeBatchAction({
+                    type: 'adjust_inventory',
+                    mode: bulkStockMode,
+                    value: parseInt(bulkStockValue, 10) || 0,
+                  })
+                }
+                disabled={bulkActionLoading || !bulkStockValue}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/20 disabled:opacity-50 transition-all"
+              >
+                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
+                Mettre à jour le stock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 12. BULK DELETE CONFIRMATION MODAL */}
+      {/* ========================================================================= */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-red-200 dark:border-red-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Suppression Groupée Définitive
+                </h3>
+                <p className="text-xs text-red-600 dark:text-red-400 font-bold">
+                  Attention : Cette opération est irréversible !
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer définitivement <strong>{selectedIds.size}</strong> produit(s) ? Leurs variantes, images et historiques associés seront également effacés.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeBatchAction({ type: 'delete' })}
+                disabled={bulkActionLoading}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md shadow-red-600/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
+              >
+                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>Confirmer la suppression ({selectedIds.size})</span>
+              </button>
             </div>
           </div>
         </div>
