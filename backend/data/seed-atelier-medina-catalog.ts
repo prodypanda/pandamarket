@@ -2238,6 +2238,928 @@ const PRODUCTS: ProductDef[] = [
       },
     ],
   },
+  // ----------------------------------------------------
+  // Batch 3: Flagship Expansion (32 New Products - Total 100)
+  // ----------------------------------------------------
+  {
+    title: 'Service à Tajine Individuel avec Coupelle & Couvercle Pointu Émaillé Nabeul (Set de 4)',
+    product_reference: 'MED-POT-010',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 76.0,
+    inventory_quantity: 25,
+    weight_grams: 1800,
+    thumbnail: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Ensemble de 4 mini-tajines individuels de présentation en céramique de Nabeul peints à la main. Idéals pour servir entrées chaudes, mézés, fruits secs ou sauces d'accompagnement sur votre table de fête.</p>
+    `,
+    tags: ['mini tajines', 'tajines individuels', 'céramique nabeul', 'art de la table', 'service apéro'],
+    attributes: [
+      { name: 'Matière', value: 'Terre cuite émaillée' },
+      { name: 'Contenu', value: '4 coupelles + 4 couvercles pointus' },
+      { name: 'Diamètre', value: '12 cm par unité' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Service de mini tajines individuels en céramique',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Pichet Carafe d\'Eau Artisanale en Grès Émaillé Traditionnel Nabeul 1.5L',
+    product_reference: 'MED-POT-011',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 42.0,
+    inventory_quantity: 30,
+    weight_grams: 1100,
+    thumbnail: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pichet à eau artisanal au col resserré gardant l'eau fraîche naturellement grâce aux propriétés thermiques de la terre cuite et du grès émaillé. Anse généreuse et bec verseur anti-goutte.</p>
+    `,
+    tags: ['pichet', 'carafe', 'grès émaillé', 'nabeul', 'eau fraîche'],
+    attributes: [
+      { name: 'Contenance', value: '1.5 Litre' },
+      { name: 'Hauteur', value: '26 cm' },
+      { name: 'Matière', value: 'Grès émaillé sans plomb' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pichet à eau artisanal en grès émaillé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Plat Ovale à Poisson Décoré Motifs Marins Méditerranée 45cm',
+    product_reference: 'MED-POT-012',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 88.0,
+    inventory_quantity: 15,
+    weight_grams: 1600,
+    thumbnail: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Grand plat de service ovale en céramique fine orné de poissons méditerranéens stylisés peints à la main dans des tons bleu indigo, turquoise et ocre. Idéal pour présenter vos poissons grillés et fruits de mer.</p>
+    `,
+    tags: ['plat ovale', 'plat poisson', 'céramique méditerranéenne', 'nabeul'],
+    attributes: [
+      { name: 'Dimensions', value: '45 cm x 28 cm' },
+      { name: 'Matière', value: 'Céramique émaillée' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Plat ovale à poisson en céramique',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Coquetiers Artisanaux Peints à la Main avec Sellette Assortie (Lot de 4)',
+    product_reference: 'MED-POT-013',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 26.0,
+    inventory_quantity: 40,
+    weight_grams: 450,
+    thumbnail: 'https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Lot de 4 coquetiers en céramique peinte accompagnés d'un petit ramequin à sel de mer. Apporte une touche colorée et ensoleillée à votre table de petit déjeuner.</p>
+    `,
+    tags: ['coquetiers', 'petit déjeuner', 'céramique nabeul', 'fait main'],
+    attributes: [
+      { name: 'Contenu', value: '4 coquetiers + 1 mini coupelle à sel' },
+      { name: 'Matière', value: 'Céramique émaillée' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Coquetiers en céramique artisanale peinte',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Saladier Géant en Céramique Décorée Arabesques Jaune Safran & Bleu Ø 35cm',
+    product_reference: 'MED-POT-014',
+    marketplace_category_id: 'cat_market_pottery',
+    storefront_category_slug: 'poterie-ceramique-artisanale',
+    price: 78.0,
+    inventory_quantity: 20,
+    weight_grams: 1700,
+    thumbnail: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Saladier généreux pour vos salades tunisiennes méchouia, omek houria ou salades fraîches d'été. Motifs arabesques safran et bleu cobalt peints au pinceau fin.</p>
+    `,
+    tags: ['saladier', 'salade méchouia', 'céramique', 'artisanat tunisien'],
+    attributes: [
+      { name: 'Diamètre', value: '35 cm' },
+      { name: 'Profondeur', value: '11 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Saladier en céramique décorée main',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Tapis Berbère Beni Ouarain Moelleux en Laine Vierge Naturelle 140x200cm',
+    product_reference: 'MED-TEX-009',
+    marketplace_category_id: 'cat_market_textiles',
+    storefront_category_slug: 'tapis-tissages-berberes',
+    price: 340.0,
+    inventory_quantity: 6,
+    weight_grams: 4500,
+    thumbnail: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Tapis berbère épais à poils longs en pure laine vierge écrue non teintée. Toucher d'une douceur exceptionnelle et motifs losanges noirs minimalistes.</p>
+    `,
+    tags: ['tapis beni ouarain', 'laine vierge', 'tapis moelleux', 'berbère', 'déco scandinave'],
+    attributes: [
+      { name: 'Matière', value: '100% Pure Laine Vierge épaisse' },
+      { name: 'Dimensions', value: '140 cm x 200 cm' },
+      { name: 'Épaisseur', value: '25 mm de velours doux' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Tapis berbère Beni Ouarain en laine naturelle',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Chemin de Table Tissé Main aux Motifs Traditionnels en Lin et Coton 45x160cm',
+    product_reference: 'MED-TEX-010',
+    marketplace_category_id: 'cat_sub_textiles_bedding',
+    storefront_category_slug: 'linge-foutas-traditionnelles',
+    price: 35.0,
+    inventory_quantity: 35,
+    weight_grams: 280,
+    thumbnail: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Chemin de table élégant tissé sur métier manuel associant fil de lin naturel et coton peigné avec pompons soyeux aux extrémités.</p>
+    `,
+    tags: ['chemin de table', 'lin', 'tissage main', 'linge de table'],
+    attributes: [
+      { name: 'Dimensions', value: '45 cm x 160 cm' },
+      { name: 'Composition', value: '60% Lin, 40% Coton' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Chemin de table en lin et coton tissé main',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Fouta Doublée Éponge Velours Ultra Absorbante pour Spa & Bain 100x180cm',
+    product_reference: 'MED-TEX-011',
+    marketplace_category_id: 'cat_market_textiles',
+    storefront_category_slug: 'linge-foutas-traditionnelles',
+    price: 39.0,
+    inventory_quantity: 50,
+    weight_grams: 550,
+    thumbnail: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Le meilleur des deux mondes : une face en tissage traditionnel plat nid d'abeille et une face doublée en éponge bouclette douce et ultra-absorbante.</p>
+    `,
+    tags: ['fouta doublée éponge', 'drap de bain', 'spa', 'hammam', 'coton'],
+    attributes: [
+      { name: 'Matière', value: '100% Coton peigné (Doublure éponge bouclette 420g/m²)' },
+      { name: 'Dimensions', value: '100 cm x 180 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Fouta doublée éponge pour spa et bain',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-TEX-011-BLU',
+        title: 'Bleu Ciel & Éponge Blanche',
+        price: 39.0,
+        inventory_quantity: 25,
+        options: { color: 'Bleu Ciel' },
+      },
+      {
+        sku: 'MED-TEX-011-ROS',
+        title: 'Rose Poudré & Éponge Blanche',
+        price: 39.0,
+        inventory_quantity: 25,
+        options: { color: 'Rose Poudré' },
+      },
+    ],
+  },
+  {
+    title: 'Peignoir Kimono en Coton Peigné Tissé Façon Fouta Tunisienne',
+    product_reference: 'MED-TEX-012',
+    marketplace_category_id: 'cat_sub_women_tops',
+    storefront_category_slug: 'linge-foutas-traditionnelles',
+    price: 85.0,
+    inventory_quantity: 25,
+    weight_grams: 600,
+    thumbnail: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Peignoir coupe kimono léger et élégant confectionné en tissu de fouta tunisienne 100% coton. Ceinture à nouer et poches plaquées.</p>
+    `,
+    tags: ['peignoir kimono', 'fouta', 'bain', 'homewear', 'coton'],
+    attributes: [
+      { name: 'Matière', value: '100% Coton peigné tissé' },
+      { name: 'Coupe', value: 'Kimono unisexe avec ceinture' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Peignoir kimono en coton façon fouta',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-TEX-012-SM',
+        title: 'Taille S/M - Bleu Méditerranée',
+        price: 85.0,
+        inventory_quantity: 12,
+        options: { size: 'S/M' },
+      },
+      {
+        sku: 'MED-TEX-012-LXL',
+        title: 'Taille L/XL - Bleu Méditerranée',
+        price: 85.0,
+        inventory_quantity: 13,
+        options: { size: 'L/XL' },
+      },
+    ],
+  },
+  {
+    title: 'Panier Couffin Artisanal en Jonc Naturel Tressé avec Anses en Cuir Kairouan',
+    product_reference: 'MED-TEX-013',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'tapis-tissages-berberes',
+    price: 45.0,
+    inventory_quantity: 40,
+    weight_grams: 500,
+    thumbnail: 'https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>L'authentique couffin tunisien (<em>Gouffa</em>) tressé à la main en fibres végétales de palmier et jonc. Anses en cuir véritable rivetées pour une excellente solidité au marché ou à la plage.</p>
+    `,
+    tags: ['couffin', 'gouffa', 'panier tressé', 'jonc naturel', 'plage', 'marché'],
+    attributes: [
+      { name: 'Matière', value: 'Fibres de palmier & Cuir véritable de Kairouan' },
+      { name: 'Dimensions', value: '45 cm x 30 cm x 25 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Couffin en jonc naturel tressé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Grand Sac Polochon Sport & Voyage en Cuir et Toile Canvas Kairouan 40L',
+    product_reference: 'MED-LEA-009',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 210.0,
+    inventory_quantity: 15,
+    weight_grams: 1400,
+    thumbnail: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Sac cylindrique polochon idéal pour la salle de sport ou les escapades week-end. Corps en toile canvas de coton épais imperméabilisé et empiècements en cuir de buffle pleine fleur.</p>
+    `,
+    tags: ['sac polochon', 'sac sport cuir', 'canvas et cuir', 'voyage', 'kairouan'],
+    attributes: [
+      { name: 'Matière', value: 'Toile Canvas 16oz & Cuir de buffle gras' },
+      { name: 'Volume', value: '40 Litres' },
+      { name: 'Dimensions', value: '50 cm x 28 cm x 28 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sac polochon en toile et cuir',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Porte-Chéquiers & Portefeuille Longue Femme en Cuir Gravé Floral',
+    product_reference: 'MED-LEA-010',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 68.0,
+    inventory_quantity: 30,
+    weight_grams: 220,
+    thumbnail: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Compagnon portefeuille tout-en-un pour femme en cuir véritable embossé main de motifs floraux andalous. Nombreux fentes pour cartes, monnaie zippée et porte-chéquier.</p>
+    `,
+    tags: ['compagnon', 'portefeuille femme', 'porte-chéquier', 'cuir gravé'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir de vachette souple' },
+      { name: 'Dimensions', value: '20 cm x 11 cm x 2.5 cm' },
+      { name: 'Capacité', value: '12 cartes, monnaie, billets et chéquier' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Portefeuille tout-en-un pour femme en cuir',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Étui à Passeport & Papiers de Voyage en Cuir Pleine Fleur avec Khomsa Embossée',
+    product_reference: 'MED-LEA-011',
+    marketplace_category_id: 'cat_sub_men_acc',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 32.0,
+    inventory_quantity: 60,
+    weight_grams: 90,
+    thumbnail: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Protège-passeport de luxe en cuir tannage végétal orné d'une Khomsa embossée à chaud. Emplacements pour billets d'avion et cartes d'embarquement.</p>
+    `,
+    tags: ['protège passeport', 'étui voyage', 'cuir', 'khomsa', 'cadeau'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir pleine fleur tannage végétal' },
+      { name: 'Dimensions', value: '14 cm x 10 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Étui à passeport en cuir pleine fleur',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Pochette Soirée Minimaliste en Cuir Doré Miroir avec Chaînette Amovible',
+    product_reference: 'MED-LEA-012',
+    marketplace_category_id: 'cat_sub_bags_luggage',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 92.0,
+    inventory_quantity: 20,
+    weight_grams: 250,
+    thumbnail: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pochette de cérémonie scintillante en cuir véritable métallisé doré. Porté main élégant ou bandoulière fine en mailles gourmettes dorées.</p>
+    `,
+    tags: ['pochette soirée', 'sac doré', 'cérémonie', 'mariage', 'cuir métallisé'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir de chèvre métallisé or' },
+      { name: 'Chaînette', value: 'Métal doré inoxydable 110 cm amovible' },
+      { name: 'Dimensions', value: '22 cm x 14 cm x 4 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pochette de soirée en cuir doré',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sous-Mains de Bureau & Tapis de Souris en Cuir Sellier Kairouan',
+    product_reference: 'MED-LEA-013',
+    marketplace_category_id: 'cat_sub_home_decor',
+    storefront_category_slug: 'maroquinerie-cuir-pleine-fleur',
+    price: 75.0,
+    inventory_quantity: 25,
+    weight_grams: 600,
+    thumbnail: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Duo sous-main et tapis de souris ergonomique en cuir sellier épais brun havane avec coutures sellier beiges. Apporte élégance et confort à votre espace de travail.</p>
+    `,
+    tags: ['sous-main', 'tapis de souris cuir', 'bureau', 'cuir sellier', 'luxe'],
+    attributes: [
+      { name: 'Matière', value: 'Cuir sellier pleine fleur 2.5 mm d\'épaisseur' },
+      { name: 'Dimensions sous-main', value: '60 cm x 40 cm' },
+      { name: 'Dimensions tapis souris', value: '22 cm x 18 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sous-main de bureau en cuir sellier',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Collier "Skhab" Traditionnel Tunisien aux Perles Ambrées Parfumées & Pendentif Orfèvre',
+    product_reference: 'MED-JEW-004',
+    marketplace_category_id: 'cat_sub_fine_jewelry',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 175.0,
+    inventory_quantity: 15,
+    weight_grams: 60,
+    thumbnail: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Joyau du patrimoine tunisien, le <strong>Collier Skhab</strong> est composé de perles façonnées artisanalement à base de pâte ambrée aux clous de girofle, musc et eau de rose qui dégagent une fragrance subtile et captivante au contact de la chaleur de la peau.</p>
+    `,
+    tags: ['skhab', 'collier traditionnel', 'ambre parfumé', 'bijou tunisien', 'mariage'],
+    attributes: [
+      { name: 'Matière', value: 'Pâte de Skhab parfumée & Argent massif ciselé' },
+      { name: 'Longueur', value: '55 cm ajustable' },
+      { name: 'Parfum', value: 'Ambre, Musc et Clou de girofle naturel' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Collier Skhab traditionnel tunisien',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Boucles d\'Oreilles Andalouses Ciselées en Argent 925 "Khlal" Berbère',
+    product_reference: 'MED-JEW-005',
+    marketplace_category_id: 'cat_sub_fine_jewelry',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 68.0,
+    inventory_quantity: 30,
+    weight_grams: 18,
+    thumbnail: 'https://images.unsplash.com/photo-1611591475837-1e5f88412674?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pendants d'oreilles filigranés en argent 925 reprenant la forme triangulaire sacrée de la fibule berbère (<em>Khlal</em>). Finition polie brillante avec fermoirs crochets sécurisés.</p>
+    `,
+    tags: ['boucles d\'oreilles', 'argent 925', 'fibule berbère', 'khlal', 'filigrane'],
+    attributes: [
+      { name: 'Métal', value: 'Argent massif 925/1000' },
+      { name: 'Hauteur', value: '4.5 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1611591475837-1e5f88412674?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Boucles d\'oreilles en argent 925 ciselé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Gilet Traditionnel "Farmla" Femme en Velours Brodé Fil d\'Or',
+    product_reference: 'MED-CLO-008',
+    marketplace_category_id: 'cat_sub_women_tops',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 145.0,
+    inventory_quantity: 20,
+    weight_grams: 400,
+    thumbnail: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>La <strong>Farmla</strong> est le gilet sans manches emblématique de la garde-robe tunisienne. Réalisé en velours de soie doux et rehaussé de somptueuses broderies dorées au fil métallique sur le devant et l'encolure.</p>
+    `,
+    tags: ['farmla', 'gilet traditionnel', 'velours', 'broderie or', 'femme'],
+    attributes: [
+      { name: 'Matière', value: 'Velours de soie & Doublure satin' },
+      { name: 'Broderie', value: 'Fil d\'or Korbelle' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Gilet Farmla en velours brodé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-CLO-008-38',
+        title: 'Taille 38 - Velours Noir & Or',
+        price: 145.0,
+        inventory_quantity: 7,
+        options: { size: '38' },
+      },
+      {
+        sku: 'MED-CLO-008-40',
+        title: 'Taille 40 - Velours Noir & Or',
+        price: 145.0,
+        inventory_quantity: 8,
+        options: { size: '40' },
+      },
+      {
+        sku: 'MED-CLO-008-42',
+        title: 'Taille 42 - Velours Noir & Or',
+        price: 145.0,
+        inventory_quantity: 5,
+        options: { size: '42' },
+      },
+    ],
+  },
+  {
+    title: 'Sarouel Moderne Évasé en Lin Pur Lavé Beige Naturel',
+    product_reference: 'MED-CLO-009',
+    marketplace_category_id: 'cat_sub_women_bottoms',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 89.0,
+    inventory_quantity: 25,
+    weight_grams: 350,
+    thumbnail: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pantalon sarouel contemporain revisité avec une coupe fluide palazzo. Taille élastiquée smockée et poches italiennes. Tissu en lin pur respirant.</p>
+    `,
+    tags: ['sarouel', 'pantalon lin', 'mode bohème', 'lin naturel', 'été'],
+    attributes: [
+      { name: 'Matière', value: '100% Pur Lin lavé respirant' },
+      { name: 'Coupe', value: 'Taille haute élastiquée et jambes larges' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Sarouel moderne en pur lin lavé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'MED-CLO-009-S',
+        title: 'Taille S - Beige Naturel',
+        price: 89.0,
+        inventory_quantity: 8,
+        options: { size: 'S' },
+      },
+      {
+        sku: 'MED-CLO-009-M',
+        title: 'Taille M - Beige Naturel',
+        price: 89.0,
+        inventory_quantity: 10,
+        options: { size: 'M' },
+      },
+      {
+        sku: 'MED-CLO-009-L',
+        title: 'Taille L - Beige Naturel',
+        price: 89.0,
+        inventory_quantity: 7,
+        options: { size: 'L' },
+      },
+    ],
+  },
+  {
+    title: 'Chapeau Capeline Estivale en Feuilles de Palmier Tressées Main avec Ruban Lin',
+    product_reference: 'MED-CLO-010',
+    marketplace_category_id: 'cat_sub_fashion_acc',
+    storefront_category_slug: 'mode-vetements-traditionnels',
+    price: 36.0,
+    inventory_quantity: 40,
+    weight_grams: 180,
+    thumbnail: 'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Chapeau de soleil à large bord tressé à la main dans les oasis du Sud tunisien en fibres de palmier doum. Orné d'un ruban en lin noué.</p>
+    `,
+    tags: ['chapeau de paille', 'capeline', 'palmier', 'été', 'protection solaire'],
+    attributes: [
+      { name: 'Matière', value: 'Fibres naturelles de palmier doum' },
+      { name: 'Largeur du bord', value: '12 cm' },
+      { name: 'Taille', value: 'Taille unique 57 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Chapeau capeline estivale en palmier tressé',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Huile d\'Olive Vierge Extra Infusée au Piment Rouge & Romarin Sauvage 250ml',
+    product_reference: 'MED-FOOD-012',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 16.5,
+    inventory_quantity: 60,
+    weight_grams: 450,
+    thumbnail: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Huile d'olive extra vierge de première pression à froid macérée artisanalement avec des piments rouges Baklouti séchés et du romarin sauvage de montagne. Idéale pour pizzas, grillades et pâtes.</p>
+    `,
+    tags: ['huile pimentée', 'huile aromatisée', 'romarin', 'terroir tunisie'],
+    attributes: [
+      { name: 'Contenance', value: '250 ml (Bouteille en verre avec verseur)' },
+      { name: 'Ingrédients', value: 'Huile d\'olive extra vierge 97%, Piments rouges 2%, Romarin sauvage 1%' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bouteille d\'huile d\'olive infusée au piment',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Assortiment Épices Rares Tunisiennes (Tabil Artisanal, Cumin de Mahdia, Carvi, Paprika Fumé) 4x80g',
+    product_reference: 'MED-FOOD-013',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 29.0,
+    inventory_quantity: 55,
+    weight_grams: 500,
+    thumbnail: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Coffret d'épices tunisiennes pures sélectionnées et moulues sur meule de pierre : Tabil traditionnel au carvi et ail séché, Cumin vert de Mahdia, Carvi sauvage et Paprika fumé.</p>
+    `,
+    tags: ['épices tunisiennes', 'tabil', 'cumin', 'carvi', 'paprika', 'coffret épices'],
+    attributes: [
+      { name: 'Poids net', value: '4 pots en verre de 80g (320g au total)' },
+      { name: 'Origine', value: 'Mahdia / Zaghouan, Tunisie' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Coffret d\'épices tunisiennes artisanales',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sirop de Grenade Sauvage de Testour (Grenadine Artisanale Bio) 500ml',
+    product_reference: 'MED-FOOD-014',
+    marketplace_category_id: 'cat_market_beverages',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 17.0,
+    inventory_quantity: 40,
+    weight_grams: 700,
+    thumbnail: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Véritable sirop de grenadine pur jus préparé avec les grenades ruby renommées de la vallée de <em>Testour</em>. Sans colorant ni arôme artificiel.</p>
+    `,
+    tags: ['sirop de grenade', 'grenadine artisanale', 'testour', 'bio', 'boisson'],
+    attributes: [
+      { name: 'Contenance', value: '500 ml' },
+      { name: 'Teneur en fruits', value: '100% Pur jus de grenade pressé & Sucre de canne' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bouteille de sirop de grenade artisanale',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Câpres Sauvages de l\'Île de Zembra au Sel Marin 200g',
+    product_reference: 'MED-FOOD-015',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 12.5,
+    inventory_quantity: 70,
+    weight_grams: 350,
+    thumbnail: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Câpres sauvages cueillies à la main sur les falaises maritimes protégées de l'archipel de Zembra. Conservées dans le sel marin brut pour préserver leur croquant et saveur iodée puissante.</p>
+    `,
+    tags: ['câpres', 'zembra', 'terroir méditerranée', 'sel marin', 'condiment'],
+    attributes: [
+      { name: 'Poids net égoutté', value: '200g' },
+      { name: 'Conservation', value: 'Au sel marin naturel' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bocal de câpres sauvages au sel marin',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Pâte à Tartiner Noisettes de Tabarka & Chocolat Noir Artisanal 220g',
+    product_reference: 'MED-FOOD-016',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 18.0,
+    inventory_quantity: 50,
+    weight_grams: 400,
+    thumbnail: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pâte à tartiner gourmande et saine contenant 55% de noisettes torréfiées des forêts de <em>Tabarka</em> et du cacao pur. Sans huile de palme ni additifs.</p>
+    `,
+    tags: ['pâte à tartiner', 'noisettes tabarka', 'chocolat noir', 'sans huile de palme', 'gourmand'],
+    attributes: [
+      { name: 'Poids net', value: '220g' },
+      { name: 'Teneur en noisettes', value: '55% Noisettes tunisiennes torréfiées' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pot de pâte à tartiner aux noisettes de Tabarka',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Fleur de Sel de Guérande & Salines de Sahline aux Écorces de Citron Beldi 150g',
+    product_reference: 'MED-FOOD-017',
+    marketplace_category_id: 'cat_market_tunisian_local',
+    storefront_category_slug: 'epicerie-fine-terroir-tunisien',
+    price: 11.5,
+    inventory_quantity: 80,
+    weight_grams: 250,
+    thumbnail: 'https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Cristaux de fleur de sel récoltés à la surface des salines côtières de <em>Sahline</em> (Monastir), mélangés avec des zestes de citrons Beldi séchés au soleil et du poivre rose.</p>
+    `,
+    tags: ['fleur de sel', 'sahline', 'citron beldi', 'assaisonnement', 'terroir'],
+    attributes: [
+      { name: 'Poids net', value: '150g (Pot en verre avec cuillère en bois)' },
+      { name: 'Origine', value: 'Salines de Sahline, Tunisie' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pot de fleur de sel aux écorces de citron beldi',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Sérum Capillaire Fortifiant à l\'Huile de Roquette, Ricin & Romarin Bio 50ml',
+    product_reference: 'MED-BEA-009',
+    marketplace_category_id: 'cat_market_skincare',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 28.0,
+    inventory_quantity: 50,
+    weight_grams: 150,
+    thumbnail: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Sérum naturel stimulant la pousse et prévenant la chute des cheveux. Synergie d'huile de graines de roquette (<em>Jirjir</em>), huile de ricin première pression et huile essentielle de romarin à cinéole.</p>
+    `,
+    tags: ['sérum cheveux', 'huile de roquette', 'anti-chute', 'ricin', 'romarin', 'bio'],
+    attributes: [
+      { name: 'Volume', value: '50 ml (Pipette compte-gouttes)' },
+      { name: 'Formule', value: '100% Huiles végétales et essentielles pures' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1608248597359-00f72365a6e8?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Flacon sérum capillaire fortifiant',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Savon Gommant à la Poudre d\'Écorce d\'Orange Amère & Miel 150g',
+    product_reference: 'MED-BEA-010',
+    marketplace_category_id: 'cat_market_skincare',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 12.0,
+    inventory_quantity: 90,
+    weight_grams: 160,
+    thumbnail: 'https://images.unsplash.com/photo-1607006314144-8c8868846174?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Savon exfoliant naturel saponifié à froid à l'huile d'olive de Tunisie, enrichi en poudre fine d'écorces d'oranges amères de Nabeul et en miel de fleurs d'oranger.</p>
+    `,
+    tags: ['savon gommant', 'orange amère', 'miel', 'exfoliant naturel', 'nabeul'],
+    attributes: [
+      { name: 'Poids net', value: '150g' },
+      { name: 'Saponification', value: 'À froid pour préserver les principes actifs' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1607006314144-8c8868846174?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Pain de savon gommant à l\'orange amère',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Bougie Végétale Parfumée Cire de Soja & Huile Essentielle de Jasmin de Sidi Bou Saïd 220g',
+    product_reference: 'MED-BEA-011',
+    marketplace_category_id: 'cat_market_perfumes',
+    storefront_category_slug: 'soins-naturels-bien-etre',
+    price: 38.0,
+    inventory_quantity: 40,
+    weight_grams: 450,
+    thumbnail: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Bougie artisanale coulée à la main en cire de soja 100% végétale sans paraffine. Mèche en bois de pin crépitant et parfum envoûtant de jasmin blanc royal du Machmoum tunisien.</p>
+    `,
+    tags: ['bougie parfumée', 'jasmin', 'sidi bou said', 'cire de soja', 'mèche bois'],
+    attributes: [
+      { name: 'Poids net', value: '220g (Durée de combustion : ~45 heures)' },
+      { name: 'Pot', value: 'Céramique blanche réutilisable' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Bougie parfumée au jasmin en pot céramique',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Coupe à Fruits Sculptée dans une Racine de Bois d\'Olivier Brut Ø 30cm',
+    product_reference: 'MED-OLI-003',
+    marketplace_category_id: 'cat_market_kitchen',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 95.0,
+    inventory_quantity: 15,
+    weight_grams: 2200,
+    thumbnail: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Pièce maîtresse de décoration sculptée directement dans la racine massive d'un olivier centenaire de Sfax. Les bords naturels et le veinage marbré spectaculaire en font une œuvre d'art brute unique.</p>
+    `,
+    tags: ['coupe à fruits', 'bois d\'olivier', 'racine d\'olivier', 'sculpture bois', 'déco'],
+    attributes: [
+      { name: 'Diamètre', value: '30 cm environ (forme naturelle libre)' },
+      { name: 'Matière', value: 'Bois d\'olivier massif centenaire' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Coupe à fruits en bois d\'olivier sculpté',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Ensemble Couverts à Salade Artisanal en Bois d\'Olivier Massif (Cuillère & Fourchette)',
+    product_reference: 'MED-OLI-004',
+    marketplace_category_id: 'cat_market_kitchen',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 29.0,
+    inventory_quantity: 60,
+    weight_grams: 200,
+    thumbnail: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Duo de couverts à salade sculptés et poncés à la main en bois d'olivier. Doux au toucher, résistants et n'abîment pas vos plats et saladiers.</p>
+    `,
+    tags: ['couverts à salade', 'bois d\'olivier', 'ustensiles cuisine', 'écologique'],
+    attributes: [
+      { name: 'Contenu', value: '1 cuillère + 1 fourchette de service' },
+      { name: 'Longueur', value: '30 cm' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Couverts à salade en bois d\'olivier',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
+  {
+    title: 'Tableau Mosaïque Romaine Artisanale Reproduction Méduse de Sousse 25x25cm',
+    product_reference: 'MED-DEC-004',
+    marketplace_category_id: 'cat_sub_home_decor',
+    storefront_category_slug: 'objets-art-bois-olivier-bijoux',
+    price: 145.0,
+    inventory_quantity: 10,
+    weight_grams: 1800,
+    thumbnail: 'https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=800&q=80',
+    description: `
+      <p>Tableau mural en véritable mosaïque romaine assemblée pierre par pierre par les artisans mosaïstes d'El Jem. Reproduction fidèle des pavements antiques du musée de Sousse.</p>
+    `,
+    tags: ['mosaïque romaine', 'el jem', 'tableau pierre', 'histoire', 'artisanat d\'art'],
+    attributes: [
+      { name: 'Matière', value: 'Tesselles de marbre et pierres naturelles taillées main' },
+      { name: 'Dimensions', value: '25 cm x 25 cm (Cadre en bois massif inclus)' },
+    ],
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=800&q=80',
+        alt_text: 'Tableau mosaïque romaine artisanale',
+        position: 0,
+        is_thumbnail: true,
+      },
+    ],
+  },
 ];
 
 async function seedAtelierMedinaCatalog() {
