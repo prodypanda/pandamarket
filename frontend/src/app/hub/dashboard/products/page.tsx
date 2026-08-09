@@ -940,11 +940,57 @@ export default function ProductsPage() {
   // AI SMART FILL & PHOTO STUDIO HANDLERS
   // -----------------------------------------------------------------------
 
-  const handleOpenSmartFillModal = () => {
+  const handleOpenPromptLibreModal = () => {
+    setSmartFillMode('prompt');
     if (!freePromptText && (form.title || form.description)) {
       setFreePromptText([form.title, form.description.replace(/<[^>]+>/g, ' ')].filter(Boolean).join(' - '));
     }
     setShowSmartFillModal(true);
+  };
+
+  const handleAutoRefillFromCurrentFields = async () => {
+    if (!form.title && !form.description && !form.thumbnail) {
+      setError("Veuillez saisir au moins un champ (titre, description ou image) dans votre fiche pour que l'IA puisse auto-compléter le reste.");
+      return;
+    }
+
+    setSmartFillMode('current');
+    setSmartFillLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/smart-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          image_url: form.thumbnail,
+          language: smartFillLanguage,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Auto-complétion intelligente échouée.');
+
+      setSmartFillSuggestions(data.suggestions);
+      setSmartFillActiveTab('preview');
+      setSelectedFieldsToApply({
+        title: !form.title && Boolean(data.suggestions.suggested_title),
+        description: !form.description && Boolean(data.suggestions.suggested_description),
+        price: !form.price && Boolean(data.suggestions.suggested_price),
+        categories: (!form.marketplace_category_id || !form.storefront_category_id) && Boolean(data.suggestions.suggested_hub_category_name || data.suggestions.suggested_storefront_category),
+        tags: !form.tags && Boolean(data.suggestions.suggested_tags?.length),
+        attributes: form.attributes.length === 0 && Boolean(data.suggestions.suggested_attributes?.length),
+        variants: form.variants.length === 0 && Boolean(data.suggestions.suggested_variants?.length),
+        seo: (!form.seo_title || !form.seo_description) && Boolean(data.suggestions.suggested_seo_title || data.suggestions.suggested_seo_description),
+      });
+      setShowSmartFillModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de l’auto-complétion IA.');
+    } finally {
+      setSmartFillLoading(false);
+    }
   };
 
   const handleSmartFill = async (overridePrompt?: string) => {
@@ -1742,13 +1788,13 @@ export default function ProductsPage() {
               onClick={() => {
                 resetForm();
                 setShowDrawer(true);
-                handleOpenSmartFillModal();
+                handleOpenPromptLibreModal();
               }}
               className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 px-3.5 py-2.5 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
               title="Créer une fiche produit complète en 15 secondes via un prompt libre ou message WhatsApp"
             >
               <Sparkles className="h-4 w-4 text-yellow-300 animate-pulse" />
-              <span>Assistant Magique IA</span>
+              <span>🪄 Assistant Magique (Prompt Libre)</span>
             </button>
 
             <button
@@ -2279,15 +2325,36 @@ export default function ProductsPage() {
                   <Eye className="w-3.5 h-3.5 inline mr-1" />
                   Aperçu Live
                 </button>
+                {/* Old/Classic AI Button: Refills remaining fields from whatever is currently entered */}
                 <button
                   type="button"
-                  onClick={handleOpenSmartFillModal}
+                  onClick={handleAutoRefillFromCurrentFields}
+                  disabled={smartFillLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/80 transition-all disabled:opacity-50"
+                  title="Auto-complète le reste de la fiche à partir du titre, description ou photo déjà saisis"
+                >
+                  {smartFillLoading && smartFillMode === 'current' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                  <span>⚡ Auto-Complétion IA</span>
+                </button>
+
+                {/* New AI Button: Opens the Free Prompt / WhatsApp / Supplier Note Mode */}
+                <button
+                  type="button"
+                  onClick={handleOpenPromptLibreModal}
                   disabled={smartFillLoading}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-105 transition-all disabled:opacity-50"
-                  title="L'IA analyse vos mots-clés et remplit automatiquement le titre, la description et la catégorisation !"
+                  title="Ouvre l'Assistant Magique en mode prompt libre / message WhatsApp fournisseur"
                 >
-                  {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-yellow-300" />}
-                  <span>Assistant Magique IA</span>
+                  {smartFillLoading && smartFillMode === 'prompt' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                  )}
+                  <span>🪄 Assistant Magique (Prompt Libre)</span>
                 </button>
                 <button
                   type="button"
