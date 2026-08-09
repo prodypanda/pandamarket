@@ -24,6 +24,7 @@ const { mockRedis } = vi.hoisted(() => ({
 }));
 vi.mock('../db/redis', () => ({
   getRedis: vi.fn(() => mockRedis),
+  withRedisTimeout: vi.fn(async (promise: Promise<unknown>) => promise),
 }));
 
 vi.mock('../utils/crypto', () => ({
