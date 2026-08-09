@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { AddToCartButton } from '../store/AddToCartButton';
+import { WhatsAppDirectOrderButton } from '../store/WhatsAppDirectOrderButton';
 import { Heart, Check, AlertCircle } from 'lucide-react';
 
 export interface VariantOption {
@@ -198,32 +199,42 @@ export function ProductVariantSelector({
         </div>
       )}
 
-      {/* Add to Cart & Wishlist Actions */}
-      <div className="flex items-center gap-3">
-        <AddToCartButton
-          product={{
-            ...product,
-            price: activePrice,
-            variant_id: selectedVariant?.id,
-            variant: selectedVariant?.title,
-            inventory_quantity: selectedVariant ? selectedVariant.inventory_quantity : product.inventory_quantity,
-            wholesale_pricing: product.wholesale_pricing,
-          }}
-          primaryColor={primaryColor}
-          disabled={hasVariants && !selectedVariant}
-          buttonText={hasVariants && !selectedVariant ? 'Sélectionnez une option' : undefined}
-          onDisabledClick={() => {
-            if (hasVariants && !selectedVariant) {
-              setValidationError('Veuillez sélectionner toutes les options requises');
-            }
-          }}
+      {/* Add to Cart, WhatsApp Direct & Wishlist Actions */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex-1">
+          <AddToCartButton
+            product={{
+              ...product,
+              price: activePrice,
+              variant_id: selectedVariant?.id,
+              variant: selectedVariant?.title,
+              inventory_quantity: selectedVariant ? selectedVariant.inventory_quantity : product.inventory_quantity,
+              wholesale_pricing: product.wholesale_pricing,
+            }}
+            primaryColor={primaryColor}
+            disabled={hasVariants && !selectedVariant}
+            buttonText={hasVariants && !selectedVariant ? 'Sélectionnez une option' : undefined}
+            onDisabledClick={() => {
+              if (hasVariants && !selectedVariant) {
+                setValidationError('Veuillez sélectionner toutes les options requises');
+              }
+            }}
+          />
+        </div>
+
+        <WhatsAppDirectOrderButton
+          storeName={product.store_name}
+          productTitle={product.title}
+          price={activePrice}
+          variantTitle={selectedVariant?.title}
+          currency="DT"
         />
 
         <button
           type="button"
           onClick={() => setWishlistActive((prev) => !prev)}
           aria-label={wishlistActive ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          className={`flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 transition-colors ${
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-300 transition-colors ${
             wishlistActive ? 'bg-red-50 text-red-500 border-red-200' : 'bg-white text-slate-600 hover:bg-slate-50'
           }`}
         >

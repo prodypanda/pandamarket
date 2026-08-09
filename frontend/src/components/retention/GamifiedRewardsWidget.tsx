@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Gift,
   Sparkles,
@@ -8,26 +8,33 @@ import {
   CheckCircle2,
   Phone,
   Mail,
-  ShieldCheck,
   RotateCw,
   Ticket,
-  Percent,
   Truck,
-  Flame,
-  ArrowRight,
   Copy,
   Check,
+  Zap,
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { fetchWithCsrf } from '../../lib/api';
 
-const PRIZES = [
-  { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎟️', color: '#EF4444', desc: '5.000 DT de remise immédiate sur votre panier' },
-  { label: 'Livraison 0 DT', code: 'LIVRAISON_ZERO', disc: 7.0, icon: '🚚', color: '#10B981', desc: 'Frais de livraison 100% offerts' },
-  { label: '-10% Panier', code: 'PANDA10', disc: 10, icon: '🔥', color: '#F59E0B', desc: '10% de réduction immédiate sur toute votre commande' },
-  { label: '15 DT Cadeau', code: 'SUPER15', disc: 15.0, icon: '🎁', color: '#8B5CF6', desc: '15.000 DT de réduction dès 80 DT d’achat' },
-  { label: '-5% Fidélité', code: 'FIDELITE5', disc: 5, icon: '⭐', color: '#3B82F6', desc: '5% de réduction exclusive client' },
-  { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎟️', color: '#EC4899', desc: '5.000 DT de remise immédiate' },
+interface PrizeItem {
+  label: string;
+  code: string;
+  disc: number;
+  icon: string;
+  color: string;
+  textColor: string;
+  desc: string;
+}
+
+const PRIZES: PrizeItem[] = [
+  { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎟️', color: '#EF4444', textColor: '#FFFFFF', desc: '5.000 DT de remise immédiate sur votre commande' },
+  { label: 'Livraison 0 DT', code: 'LIVRAISON_ZERO', disc: 7.0, icon: '🚚', color: '#10B981', textColor: '#FFFFFF', desc: 'Frais de livraison 100% offerts' },
+  { label: '-10% Panier', code: 'PANDA10', disc: 10, icon: '🔥', color: '#F59E0B', textColor: '#FFFFFF', desc: '10% de réduction immédiate sur tous les articles' },
+  { label: '15 DT Cadeau', code: 'SUPER15', disc: 15.0, icon: '🎁', color: '#8B5CF6', textColor: '#FFFFFF', desc: '15.000 DT de réduction dès 80 DT d’achat' },
+  { label: '-5% Fidélité', code: 'FIDELITE5', disc: 5, icon: '⭐', color: '#3B82F6', textColor: '#FFFFFF', desc: '5% de réduction exclusive pour vous' },
+  { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎉', color: '#EC4899', textColor: '#FFFFFF', desc: '5.000 DT de remise immédiate' },
 ];
 
 const STORAGE_SPIN_KEY = 'pd_last_spin_time';
@@ -39,61 +46,53 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(true);
-  const [hasPlayedToday, setHasPlayedToday] = useState(false);
 
   // Wheel State
   const [isSpinning, setIsSpinning] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
-  const [wonPrize, setWonPrize] = useState<typeof PRIZES[0] | null>(null);
+  const [wonPrize, setWonPrize] = useState<PrizeItem | null>(null);
+  const [claimed, setClaimed] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [appliedFeedback, setAppliedFeedback] = useState('');
+  const [feedback, setFeedback] = useState('');
 
-  // Scratch Canvas State
+  // Scratch State
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [scratchedPct, setScratchedPct] = useState(0);
-
-  // Check 24h cooldown
-  useEffect(() => {
-    try {
-      const last = localStorage.getItem(STORAGE_SPIN_KEY);
-      if (last) {
-        const diffHours = (Date.now() - parseInt(last, 10)) / (1000 * 3600);
-        if (diffHours < 24) {
-          setHasPlayedToday(true);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
+  const isDrawingRef = useRef(false);
+  const [scratchRevealed, setScratchRevealed] = useState(false);
 
   // Initialize Scratch Canvas
+  const initScratchCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = 320;
+    canvas.height = 150;
+
+    const grad = ctx.createLinearGradient(0, 0, 320, 150);
+    grad.addColorStop(0, '#94A3B8');
+    grad.addColorStop(0.5, '#CBD5E1');
+    grad.addColorStop(1, '#64748B');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 320, 150);
+
+    // Decorative text
+    ctx.fillStyle = '#1E293B';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🪙 Grattez avec la souris ou au doigt 🪙', 160, 80);
+    setScratchRevealed(false);
+  }, []);
+
   useEffect(() => {
-    if (gameMode === 'scratch' && canvasRef.current && isOpen && !wonPrize) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      canvas.width = 300;
-      canvas.height = 140;
-
-      // Draw shiny silver/gold scratch surface
-      const grad = ctx.createLinearGradient(0, 0, 300, 140);
-      grad.addColorStop(0, '#CBD5E1');
-      grad.addColorStop(0.5, '#E2E8F0');
-      grad.addColorStop(1, '#94A3B8');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 300, 140);
-
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✨ Grattez ici avec la souris / doigt ✨', 150, 75);
+    if (gameMode === 'scratch' && isOpen && !wonPrize) {
+      setTimeout(initScratchCanvas, 50);
     }
-  }, [gameMode, isOpen, wonPrize]);
+  }, [gameMode, isOpen, wonPrize, initScratchCanvas]);
 
-  const handleScratch = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!consent || !phone.trim() || wonPrize) return;
+  const handleScratchMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (wonPrize || scratchRevealed) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -103,51 +102,65 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
 
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
 
-    setScratchedPct((prev) => {
-      const next = prev + 5;
-      if (next >= 40 && !wonPrize) {
-        // Trigger win
-        const prize = PRIZES[0]; // 5 DT
-        handleCompleteWin(prize, 'scratch_card');
-      }
-      return next;
-    });
+    // After scratching, reveal prize
+    if (!scratchRevealed) {
+      setScratchRevealed(true);
+      const prize = PRIZES[0]; // 5 DT
+      setTimeout(() => {
+        setWonPrize(prize);
+      }, 700);
+    }
   };
 
-  const handleSpinWheel = async () => {
-    if (isSpinning || wonPrize || !phone.trim() || !consent) return;
+  const handleSpinWheel = () => {
+    if (isSpinning || wonPrize) return;
     setIsSpinning(true);
+    setFeedback('');
 
-    // Pick random prize (weighted towards 5 DT / 10%)
+    // Pick random prize
     const selectedIdx = Math.floor(Math.random() * PRIZES.length);
     const prize = PRIZES[selectedIdx];
 
-    // Calculate rotation: 5 full spins (1800 deg) + offset to slice
+    // 6 slices: 60 deg each. Pointer at top (0 deg).
+    // Target slice center: (selectedIdx * 60 + 30) deg.
+    // 5 full rotations (1800 deg)
+    const currentBase = Math.floor(wheelRotation / 360) * 360;
     const sliceAngle = 360 / PRIZES.length;
-    const targetAngle = 1800 + (360 - selectedIdx * sliceAngle - sliceAngle / 2);
+    const targetAngle = currentBase + 1800 + (360 - (selectedIdx * sliceAngle + sliceAngle / 2));
 
     setWheelRotation(targetAngle);
 
     setTimeout(() => {
       setIsSpinning(false);
-      handleCompleteWin(prize, 'spin_wheel');
-    }, 4500);
+      setWonPrize(prize);
+    }, 4000);
   };
 
-  const handleCompleteWin = async (prize: typeof PRIZES[0], type: 'spin_wheel' | 'scratch_card') => {
-    setWonPrize(prize);
-    localStorage.setItem(STORAGE_SPIN_KEY, Date.now().toString());
-    setHasPlayedToday(true);
+  const handleClaimReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wonPrize) return;
 
-    // Send lead to backend
+    // Apply coupon to cart
+    const res = applyCoupon(wonPrize.code);
+    setClaimed(true);
+
+    if (res.success) {
+      setFeedback('🎉 Code promo activé dans votre panier avec succès !');
+    } else {
+      setFeedback(res.message);
+    }
+
+    // Save lead to backend
     try {
       await fetchWithCsrf('/api/pd/cart/gamified-spin', {
         method: 'POST',
@@ -155,27 +168,17 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
         credentials: 'include',
         body: JSON.stringify({
           store_id: storeId || undefined,
-          phone: phone.trim(),
+          phone: phone.trim() || '21600000000',
           email: email.trim() || undefined,
           consent_given: consent,
-          game_type: type,
-          prize_won: prize.label,
-          coupon_code: prize.code,
-          discount_value: prize.disc,
+          game_type: gameMode === 'wheel' ? 'spin_wheel' : 'scratch_card',
+          prize_won: wonPrize.label,
+          coupon_code: wonPrize.code,
+          discount_value: wonPrize.disc,
         }),
       });
     } catch {
       // ignore
-    }
-  };
-
-  const handleApplyToCart = () => {
-    if (!wonPrize) return;
-    const res = applyCoupon(wonPrize.code);
-    if (res.success) {
-      setAppliedFeedback('✅ Code promo activé dans votre panier !');
-    } else {
-      setAppliedFeedback(res.message);
     }
   };
 
@@ -186,34 +189,44 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleResetGame = () => {
+    setWonPrize(null);
+    setClaimed(false);
+    setFeedback('');
+    setScratchRevealed(false);
+    if (gameMode === 'scratch') {
+      setTimeout(initScratchCanvas, 50);
+    }
+  };
+
   return (
     <>
-      {/* Floating Trigger Button on Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-40">
+      {/* Floating Trigger Badge */}
+      <div className="fixed bottom-6 right-6 z-50">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#B91C1C] via-red-600 to-amber-600 px-4 py-3 text-white font-black text-xs shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-red-500/30"
+          className="group relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#B91C1C] via-red-600 to-amber-600 px-5 py-3.5 text-white font-black text-xs shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-red-500/40 active:scale-95"
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 animate-bounce">
             <Gift className="h-4 w-4" />
           </span>
-          <span className="hidden sm:inline tracking-wide uppercase text-[11px]">
-            🎁 Gagnez jusqu&apos;à 15 DT !
+          <span className="tracking-wide uppercase text-[11px] font-black">
+            🎁 Gagnez vos Réductions !
           </span>
-          <span className="inline sm:hidden font-bold">Cadeaux</span>
         </button>
       </div>
 
       {/* Main Interactive Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 animate-in zoom-in-95 duration-200">
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+              className="absolute top-5 right-5 p-2.5 rounded-full bg-slate-100 text-slate-400 hover:text-slate-900 transition"
+              title="Fermer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -224,20 +237,20 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                 <Sparkles className="w-3.5 h-3.5" />
                 Cadeaux & Réductions PandaMarket
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              <h2 className="text-2xl font-black text-slate-900">
                 Tentez Votre Chance & Gagnez !
               </h2>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Tournez la roue ou grattez pour débloquer votre code promo immédiat sur vos achats.
+                Tournez la roue ou grattez la carte pour remporter un bon de réduction immédiat.
               </p>
             </div>
 
-            {/* Mode Switcher */}
+            {/* Mode Selector */}
             {!wonPrize && (
-              <div className="flex items-center justify-center gap-2 p-1 rounded-2xl bg-slate-100 max-w-xs mx-auto border border-slate-200">
+              <div className="flex items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-100 max-w-xs mx-auto border border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setGameMode('wheel')}
+                  onClick={() => { setGameMode('wheel'); handleResetGame(); }}
                   className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
                     gameMode === 'wheel' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
@@ -246,7 +259,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGameMode('scratch')}
+                  onClick={() => { setGameMode('scratch'); handleResetGame(); }}
                   className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
                     gameMode === 'scratch' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
@@ -256,193 +269,229 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
               </div>
             )}
 
-            {/* Active Game Display */}
+            {/* Game Screen */}
             {!wonPrize ? (
               <div className="space-y-6">
-                {/* 1. Spin Wheel Mode */}
+                {/* 1. Vector SVG Spin Wheel */}
                 {gameMode === 'wheel' && (
                   <div className="relative flex flex-col items-center justify-center py-2">
-                    {/* Pointer */}
-                    <div className="absolute top-0 z-10 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[24px] border-t-slate-900 drop-shadow-md" />
+                    {/* Top Pointer */}
+                    <div className="absolute top-0 z-20 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[26px] border-t-slate-900 drop-shadow-lg" />
 
-                    {/* Wheel Canvas / SVG */}
-                    <div
-                      className="relative w-64 h-64 rounded-full border-4 border-slate-900 shadow-xl overflow-hidden transition-all duration-[4500ms] ease-out flex items-center justify-center"
-                      style={{
-                        transform: `rotate(${wheelRotation}deg)`,
-                      }}
-                    >
-                      {PRIZES.map((p, idx) => {
-                        const angle = (360 / PRIZES.length) * idx;
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute top-0 left-0 w-full h-full"
-                            style={{
-                              transform: `rotate(${angle}deg)`,
-                              clipPath: 'polygon(50% 50%, 21% 0%, 79% 0%)',
-                              backgroundColor: p.color,
-                            }}
-                          >
-                            <span
-                              className="absolute top-4 left-1/2 -translate-x-1/2 text-white font-black text-[11px] tracking-tight whitespace-nowrap drop-shadow-sm"
-                              style={{ transform: 'translateX(-50%) rotate(0deg)' }}
-                            >
-                              {p.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {/* Center Hub */}
-                      <div className="absolute w-12 h-12 rounded-full bg-slate-900 border-4 border-white shadow-md flex items-center justify-center text-white font-black text-xs">
-                        🎁
-                      </div>
+                    {/* SVG Wheel */}
+                    <div className="relative w-64 h-64 flex items-center justify-center">
+                      <svg
+                        viewBox="0 0 300 300"
+                        className="w-full h-full rounded-full shadow-2xl border-4 border-slate-900 transition-all duration-[4000ms] ease-out"
+                        style={{
+                          transform: `rotate(${wheelRotation}deg)`,
+                          transformOrigin: 'center center',
+                        }}
+                      >
+                        {PRIZES.map((prize, idx) => {
+                          const anglePerSlice = 360 / PRIZES.length;
+                          const startAngle = (idx * anglePerSlice - 90) * (Math.PI / 180);
+                          const endAngle = ((idx + 1) * anglePerSlice - 90) * (Math.PI / 180);
+
+                          const x1 = 150 + 150 * Math.cos(startAngle);
+                          const y1 = 150 + 150 * Math.sin(startAngle);
+                          const x2 = 150 + 150 * Math.cos(endAngle);
+                          const y2 = 150 + 150 * Math.sin(endAngle);
+
+                          const pathData = `M 150 150 L ${x1} ${y1} A 150 150 0 0 1 ${x2} ${y2} Z`;
+
+                          // Text position
+                          const midAngle = ((idx + 0.5) * anglePerSlice - 90) * (Math.PI / 180);
+                          const textX = 150 + 95 * Math.cos(midAngle);
+                          const textY = 150 + 95 * Math.sin(midAngle);
+                          const textRot = (idx + 0.5) * anglePerSlice;
+
+                          return (
+                            <g key={idx}>
+                              <path d={pathData} fill={prize.color} stroke="#FFFFFF" strokeWidth="2" />
+                              <text
+                                x={textX}
+                                y={textY}
+                                fill={prize.textColor}
+                                fontSize="12"
+                                fontWeight="900"
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                transform={`rotate(${textRot}, ${textX}, ${textY})`}
+                              >
+                                {prize.label}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Center Hub */}
+                        <circle cx="150" cy="150" r="28" fill="#0F172A" stroke="#FFFFFF" strokeWidth="3" />
+                        <text x="150" y="154" fill="#FFFFFF" fontSize="16" textAnchor="middle" fontWeight="bold">
+                          🎁
+                        </text>
+                      </svg>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSpinWheel}
+                      disabled={isSpinning}
+                      className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-[#B91C1C] via-red-600 to-amber-600 text-white font-black text-sm hover:opacity-95 transition shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 active:scale-98"
+                    >
+                      {isSpinning ? (
+                        <>
+                          <RotateCw className="w-4 h-4 animate-spin" />
+                          <span>La roue tourne... Bonne chance !</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>Tourner la Roue Gratuitement !</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
 
-                {/* 2. Scratch Card Mode */}
+                {/* 2. Interactive Scratch Card */}
                 {gameMode === 'scratch' && (
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="relative rounded-2xl overflow-hidden border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-center">
-                      <div className="space-y-1">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="relative w-80 h-36 rounded-3xl overflow-hidden border-2 border-dashed border-amber-400 bg-amber-50 shadow-inner flex items-center justify-center">
+                      {/* Underneath Reward */}
+                      <div className="text-center space-y-1 p-3">
                         <span className="text-2xl">🎉</span>
-                        <p className="font-black text-amber-900 text-sm">FÉLICITATIONS !</p>
-                        <p className="font-mono font-black text-xl text-[#B91C1C]">CHANCE5DT</p>
-                        <p className="text-[11px] text-amber-800">5.000 DT de remise immédiate</p>
+                        <p className="font-black text-amber-950 text-xs uppercase">Billet Gagnant !</p>
+                        <p className="font-mono font-black text-2xl text-[#B91C1C]">CHANCE5DT</p>
+                        <p className="text-[11px] font-bold text-amber-800">5.000 DT de réduction immédiate</p>
                       </div>
 
                       {/* Scratch Canvas Overlay */}
                       <canvas
                         ref={canvasRef}
-                        onMouseMove={handleScratch}
-                        onTouchMove={handleScratch}
-                        className="absolute inset-0 cursor-crosshair touch-none"
+                        onMouseMove={handleScratchMove}
+                        onTouchMove={handleScratchMove}
+                        className="absolute inset-0 cursor-crosshair touch-none w-full h-full"
                       />
                     </div>
+
+                    <p className="text-[11px] text-slate-500 font-semibold text-center">
+                      Faites glisser votre souris ou votre doigt sur le rectangle gris pour gratter.
+                    </p>
                   </div>
-                )}
-
-                {/* Player Identification & PDP Consent Form */}
-                <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-slate-600">
-                        📱 Téléphone Tunisien *
-                      </label>
-                      <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
-                        <span className="text-slate-400 font-bold">+216</span>
-                        <input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                          placeholder="98 123 456"
-                          className="w-full font-mono font-bold text-slate-800 outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-slate-600">
-                        ✉️ Email (Optionnel)
-                      </label>
-                      <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="client@domaine.tn"
-                          className="w-full text-slate-800 outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tunisian PDP Explicit Consent */}
-                  <label className="flex items-start gap-2 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
-                    />
-                    <span className="text-[10px] text-slate-500 leading-tight">
-                      J&apos;accepte de recevoir des codes de réduction et offres personnalisées par SMS / WhatsApp (Loi tunisienne sur la protection des données).
-                    </span>
-                  </label>
-                </div>
-
-                {/* Action Trigger Button */}
-                {gameMode === 'wheel' && (
-                  <button
-                    type="button"
-                    onClick={handleSpinWheel}
-                    disabled={isSpinning || !phone.trim() || phone.length < 8 || !consent}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#B91C1C] to-amber-600 text-white font-black text-sm hover:opacity-95 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSpinning ? (
-                      <>
-                        <RotateCw className="w-4 h-4 animate-spin" />
-                        <span>La roue tourne... Bonne chance !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Tourner la Roue Gratuitement !</span>
-                      </>
-                    )}
-                  </button>
                 )}
               </div>
             ) : (
-              /* Win Reward Display */
-              <div className="text-center space-y-5 animate-in zoom-in-95 duration-300">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-3xl shadow-inner">
-                  {wonPrize.icon}
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-black uppercase text-emerald-600">Félicitations ! Vous avez gagné :</span>
+              /* Reward Won Screen & Lead Capture Form */
+              <div className="space-y-5 animate-in zoom-in-95 duration-200">
+                <div className="text-center space-y-2">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-3xl shadow-inner animate-bounce">
+                    {wonPrize.icon}
+                  </div>
+                  <span className="text-xs font-black uppercase text-emerald-600">Gagné ! Félicitations</span>
                   <h3 className="text-2xl font-black text-slate-900">{wonPrize.label}</h3>
                   <p className="text-xs text-slate-500">{wonPrize.desc}</p>
                 </div>
 
-                {/* Coupon Code Card */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 max-w-sm mx-auto">
+                {/* Promo Code Box */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
                   <div>
-                    <span className="text-[9px] font-black uppercase text-slate-400">Votre Code Promo :</span>
-                    <p className="font-mono font-black text-lg text-[#B91C1C]">{wonPrize.code}</p>
+                    <span className="text-[9px] font-black uppercase text-slate-400">Code promo exclusif :</span>
+                    <p className="font-mono font-black text-xl text-[#B91C1C]">{wonPrize.code}</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1"
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5"
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copied ? 'Copié !' : 'Copier'}</span>
                   </button>
                 </div>
 
-                {appliedFeedback ? (
-                  <p className="text-xs font-bold text-emerald-600 animate-in fade-in">{appliedFeedback}</p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleApplyToCart}
-                    className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-black text-sm hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Appliquer Directement à Mon Panier</span>
-                  </button>
-                )}
+                {/* Claim / Activate Form */}
+                {!claimed ? (
+                  <form onSubmit={handleClaimReward} className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <p className="text-xs font-bold text-slate-800">
+                      Entrez vos coordonnées pour recevoir votre bon et l&apos;activer immédiatement :
+                    </p>
 
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 underline"
-                >
-                  Continuer mes achats
-                </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-black uppercase text-slate-600">
+                          📱 Mobile (Tunisie)
+                        </label>
+                        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                          <span className="text-slate-400 font-bold">+216</span>
+                          <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            placeholder="98 123 456"
+                            className="w-full font-mono font-bold text-slate-800 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-black uppercase text-slate-600">
+                          ✉️ Email
+                        </label>
+                        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="client@domaine.tn"
+                            className="w-full text-slate-800 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <label className="flex items-start gap-2 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={consent}
+                        onChange={(e) => setConsent(e.target.checked)}
+                        className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                      />
+                      <span className="text-[10px] text-slate-500 leading-tight">
+                        J&apos;accepte de recevoir des offres par SMS / WhatsApp (Loi tunisienne PDP).
+                      </span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black text-sm hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Activer & Appliquer à Mon Panier</span>
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-3 text-center">
+                    <p className="text-xs font-bold text-emerald-600 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                      {feedback || '✅ Votre réduction est active !'}
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800"
+                      >
+                        Voir mon Panier
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetGame}
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+                      >
+                        Rejouer
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

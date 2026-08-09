@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { paymentService } from '../services/payment.service';
 import { mandatService } from '../services/mandat.service';
 import { orderService } from '../services/order.service';
-import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '../middlewares';
+import { asyncHandler, requireAuth, optionalAuth, requireStorefrontCustomer, validate } from '../middlewares';
 import { PaymentGateway, MandatUploader, UserRole } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -95,24 +95,29 @@ function verifyKonnectSignature(req: Request): boolean {
 // Initialize Payment Link
 router.post(
   '/init',
-  requireAuth,
+  optionalAuth,
   validate(initPaymentSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { order_id, gateway, return_origin } = req.body;
     const order = await orderService.getById(order_id);
 
-    // Verify order belongs to user
-    if (order.customer_id !== req.user!.id) {
+    // Verify order belongs to user if user is authenticated and order has customer_id
+    if (order.customer_id && req.user?.id && order.customer_id !== req.user.id) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
     }
 
     // Fetch the customer's email for the payment provider
-    const { rows: userRows } = await dbQuery<{ email: string }>(
-      'SELECT email FROM pd_user WHERE id = $1',
-      [req.user!.id],
-    );
-    const customerEmail = userRows[0]?.email ?? '';
+    let customerEmail = '';
+    if (req.user?.id) {
+      const { rows: userRows } = await dbQuery<{ email: string }>(
+        'SELECT email FROM pd_user WHERE id = $1',
+        [req.user.id],
+      );
+      customerEmail = userRows[0]?.email ?? '';
+    } else {
+      customerEmail = (order.shipping_address as any)?.email || 'guest@pandamarket.tn';
+    }
 
     const result = await paymentService.initPayment(
       order,

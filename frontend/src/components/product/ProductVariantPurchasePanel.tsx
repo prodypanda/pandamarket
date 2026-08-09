@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, PackageCheck } from 'lucide-react';
 import { AddToCartButton } from '../hub/AddToCartButton';
+import { WhatsAppDirectOrderButton } from '../store/WhatsAppDirectOrderButton';
 import type { WholesalePricing } from '../../lib/cart-utils';
 
 interface ProductVariant {
@@ -104,24 +105,33 @@ export function ProductVariantPurchasePanel({
         </div>
       )}
 
-      <div className={`flex items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
-        <AddToCartButton
-          product_id={productId}
-          title={title}
-          slug={slug}
-          category={category}
-          marketplace_category_slug={marketplaceCategorySlug}
+      <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
+        <div className="flex-1">
+          <AddToCartButton
+            product_id={productId}
+            title={title}
+            slug={slug}
+            category={category}
+            marketplace_category_slug={marketplaceCategorySlug}
+            price={price}
+            seller_type={sellerType}
+            wholesale_pricing={wholesalePricing}
+            store_id={storeId}
+            store_name={storeName}
+            store_subdomain={storeSubdomain}
+            product_type={productType}
+            image_url={imageUrl}
+            variant_id={selectedVariant?.id}
+            variant={variantLabel}
+            maxQuantity={maxQuantity}
+          />
+        </div>
+        <WhatsAppDirectOrderButton
+          storeName={storeName}
+          productTitle={title}
           price={price}
-          seller_type={sellerType}
-          wholesale_pricing={wholesalePricing}
-          store_id={storeId}
-          store_name={storeName}
-          store_subdomain={storeSubdomain}
-          product_type={productType}
-          image_url={imageUrl}
-          variant_id={selectedVariant?.id}
-          variant={variantLabel}
-          maxQuantity={maxQuantity}
+          variantTitle={variantLabel}
+          currency="DT"
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { orderService } from '../services/order.service';
-import { asyncHandler, validate, requireAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
+import { asyncHandler, validate, requireAuth, optionalAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
 import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
 
 const router = Router();
@@ -125,7 +125,7 @@ const storeOrdersQuerySchema = z.object({
 // Customer: Create order (checkout)
 router.post(
   '/checkout',
-  requireAuth,
+  optionalAuth,
   validate(checkoutSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const idempotencyKey = (
@@ -142,7 +142,7 @@ router.post(
     }
 
     const order = await orderService.checkout({
-      customer_id: req.user!.id,
+      customer_id: req.user?.id || null,
       idempotency_key: idempotencyKey,
       ...req.body,
     });
