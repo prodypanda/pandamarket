@@ -205,6 +205,7 @@ interface ProductForm {
   license_keys: string;
   wholesale_min_quantity: string;
   wholesale_price_tiers: WholesalePriceTierForm[];
+  cost_price: string;
   variants: ProductVariantForm[];
   status: string;
 }
@@ -237,6 +238,7 @@ const emptyForm: ProductForm = {
   license_keys: '',
   wholesale_min_quantity: '2',
   wholesale_price_tiers: [{ min_quantity: '2', unit_price: '' }],
+  cost_price: '',
   variants: [],
   status: 'published',
 };
@@ -248,6 +250,60 @@ const STUDIO_PRESETS = [
   { id: 'sable', name: 'Sable du Désert', icon: '🏖️', desc: 'Texture minérale chaude de style lifestyle' },
   { id: 'nature', name: 'Nature & Végétal', icon: '🌿', desc: 'Atmosphère fraîche avec feuilles et lumière douce' },
   { id: 'luxe_dark', name: 'Studio Dark Luxe', icon: '🌑', desc: 'Fond sombre feutré avec néons subtils' },
+];
+
+export interface WholesalePreset {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+  tiers: Array<{ min_quantity: string; discountPct: number }>;
+}
+
+const WHOLESALE_PRESETS: WholesalePreset[] = [
+  {
+    id: 'retailers',
+    name: 'Boutiques & Détaillants',
+    desc: '-15% dès 10 pcs, -25% dès 50 pcs',
+    icon: '🏢',
+    tiers: [
+      { min_quantity: '10', discountPct: 15 },
+      { min_quantity: '50', discountPct: 25 },
+    ],
+  },
+  {
+    id: 'distributors',
+    name: 'Grands Comptes & Distributeurs',
+    desc: '-25% dès 50 pcs, -40% dès 200 pcs, -50% dès 500 pcs',
+    icon: '🚚',
+    tiers: [
+      { min_quantity: '50', discountPct: 25 },
+      { min_quantity: '200', discountPct: 40 },
+      { min_quantity: '500', discountPct: 50 },
+    ],
+  },
+  {
+    id: 'linear',
+    name: 'Dégressif Linéaire 4 Paliers',
+    desc: '-5%, -10%, -15%, -20% par paliers',
+    icon: '📈',
+    tiers: [
+      { min_quantity: '5', discountPct: 5 },
+      { min_quantity: '15', discountPct: 10 },
+      { min_quantity: '30', discountPct: 15 },
+      { min_quantity: '50', discountPct: 20 },
+    ],
+  },
+  {
+    id: 'aggressive',
+    name: 'Déstockage & Volume Massif',
+    desc: '-30% dès 20 pcs, -55% dès 100 pcs',
+    icon: '⚡',
+    tiers: [
+      { min_quantity: '20', discountPct: 30 },
+      { min_quantity: '100', discountPct: 55 },
+    ],
+  },
 ];
 
 export interface OptionPreset {
@@ -784,6 +840,30 @@ export default function ProductsPage() {
     );
   };
 
+  // Wholesale Preset Strategy Handler
+  const handleApplyWholesalePreset = (preset: WholesalePreset) => {
+    const basePrice = parseFloat(form.price);
+    if (!basePrice || isNaN(basePrice) || basePrice <= 0) {
+      setError('Veuillez d’abord renseigner un prix unitaire de détail public valide (ex: 50.000 TND).');
+      return;
+    }
+
+    const calculatedTiers = preset.tiers.map((t) => {
+      const discountedPrice = Math.max(0.001, basePrice * (1 - t.discountPct / 100));
+      return {
+        min_quantity: t.min_quantity,
+        unit_price: discountedPrice.toFixed(3),
+      };
+    });
+
+    setForm((curr) => ({
+      ...curr,
+      wholesale_min_quantity: calculatedTiers[0]?.min_quantity || '2',
+      wholesale_price_tiers: calculatedTiers,
+    }));
+    setSuccess(`Stratégie de prix de gros "${preset.name}" appliquée avec succès !`);
+  };
+
   // Batch Variant Table Actions in Drawer
   const handleSelectAllVariants = () => {
     if (selectedVariantIndexes.size === form.variants.length) {
@@ -1185,6 +1265,7 @@ export default function ProductsPage() {
             unit_price: String(tier.unit_price),
           }))
         : [{ min_quantity: String(wholesalePricing?.min_quantity ?? 2), unit_price: '' }],
+      cost_price: String(product.metadata?.cost_price || ''),
       variants: (product.variants || []).map((variant) => {
         const firstOption = Object.entries(variant.options || {})[0];
         return {
@@ -1387,6 +1468,10 @@ export default function ProductsPage() {
           license_keys: form.type === 'serial' ? licenseKeys : undefined,
           wholesale_min_quantity: isWholesaleSeller ? wholesaleMinQuantity : undefined,
           wholesale_price_tiers: isWholesaleSeller ? wholesalePriceTiers : undefined,
+          metadata: {
+            ...(editingProduct?.metadata || {}),
+            cost_price: form.cost_price ? parseFloat(form.cost_price) : undefined,
+          },
           variants,
           status: form.status,
         }),
@@ -2212,75 +2297,301 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
-                    {/* Wholesale Pricing Tiers */}
+                    {/* Wholesale Pricing Tiers & Dynamic Margin Calculator */}
                     {isWholesaleSeller && (
-                      <div className="p-5 rounded-2xl border border-amber-200/80 bg-amber-50/30 dark:bg-amber-950/20 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black uppercase text-amber-900 dark:text-amber-300">
-                            📦 Paliers de Prix de Gros (B2B Wholesale)
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((c) => ({
-                                ...c,
-                                wholesale_price_tiers: [...c.wholesale_price_tiers, { min_quantity: '10', unit_price: '' }],
-                              }))
-                            }
-                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200"
-                          >
-                            + Ajouter un palier
-                          </button>
+                      <div className="p-5 rounded-2xl border border-amber-300 dark:border-amber-900/60 bg-gradient-to-b from-amber-50/60 to-white dark:from-amber-950/20 dark:to-slate-900 space-y-4 shadow-sm">
+                        {/* Section Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/80 dark:border-amber-900/50 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-black text-lg">
+                              📦
+                            </span>
+                            <div>
+                              <h4 className="text-xs font-black uppercase text-amber-900 dark:text-amber-300 tracking-wider">
+                                Calculateur de Remise Dynamique B2B Wholesale & Marges
+                              </h4>
+                              <p className="text-[11px] text-amber-700/80 dark:text-amber-400 font-medium">
+                                Définissez vos remises dégressives par volume avec simulation de marge et protection des prix
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((c) => ({
+                                  ...c,
+                                  wholesale_price_tiers: [
+                                    ...c.wholesale_price_tiers,
+                                    { min_quantity: String((c.wholesale_price_tiers.length + 1) * 10), unit_price: '' },
+                                  ],
+                                }))
+                              }
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-black rounded-xl bg-amber-600 text-white hover:bg-amber-700 shadow-sm shadow-amber-500/20 transition-all"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Ajouter un Palier</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          {form.wholesale_price_tiers.map((tier, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                              <input
-                                type="number"
-                                placeholder="Qté min"
-                                value={tier.min_quantity}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setForm((c) => ({
-                                    ...c,
-                                    wholesale_price_tiers: c.wholesale_price_tiers.map((t, i) =>
-                                      i === idx ? { ...t, min_quantity: val } : t,
-                                    ),
-                                  }));
-                                }}
-                                className="w-28 px-3 py-1.5 text-xs font-bold rounded-lg border border-amber-200 bg-white"
-                              />
-                              <span className="text-xs text-slate-400">unités &rarr;</span>
+
+                        {/* Cost Price & Retail Margin Header Bar */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-amber-100/40 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Prix Public de Détail (Base) :
+                            </span>
+                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                              {parseFloat(form.price) > 0 ? `${parseFloat(form.price).toFixed(3)} TND` : <span className="text-slate-400 text-xs italic">Non défini</span>}
+                            </p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Coût de Revient / Achat (Optionnel) :
+                            </label>
+                            <div className="relative">
                               <input
                                 type="number"
                                 step="0.001"
-                                placeholder="Prix unitaire TND"
-                                value={tier.unit_price}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setForm((c) => ({
-                                    ...c,
-                                    wholesale_price_tiers: c.wholesale_price_tiers.map((t, i) =>
-                                      i === idx ? { ...t, unit_price: val } : t,
-                                    ),
-                                  }));
-                                }}
-                                className="flex-1 px-3 py-1.5 text-xs font-bold rounded-lg border border-amber-200 bg-white"
+                                min="0"
+                                value={form.cost_price}
+                                onChange={(e) => setForm((c) => ({ ...c, cost_price: e.target.value }))}
+                                placeholder="Ex: 12.500"
+                                className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-amber-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-amber-500"
                               />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((c) => ({
-                                    ...c,
-                                    wholesale_price_tiers: c.wholesale_price_tiers.filter((_, i) => i !== idx),
-                                  }))
-                                }
-                                className="p-1 text-red-500 hover:bg-red-50 rounded"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
                             </div>
-                          ))}
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Marge Brute au Détail :
+                            </span>
+                            {(() => {
+                              const retail = parseFloat(form.price) || 0;
+                              const cost = parseFloat(form.cost_price) || 0;
+                              if (retail > 0 && cost > 0) {
+                                const marginTnd = retail - cost;
+                                const marginPct = (marginTnd / retail) * 100;
+                                return (
+                                  <p className={`text-xs font-black ${marginTnd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
+                                    +{marginTnd.toFixed(3)} TND ({marginPct.toFixed(1)}%)
+                                  </p>
+                                );
+                              }
+                              return <p className="text-xs text-slate-400 font-medium">Saisissez prix & coût pour calculer</p>;
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Quick Wholesale Strategy Presets */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-900/80 dark:text-amber-400">
+                            ⚡ Stratégies & Courbes de Dégressivité en 1 Clic :
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                            {WHOLESALE_PRESETS.map((preset) => (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => handleApplyWholesalePreset(preset)}
+                                className="p-2.5 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-white dark:bg-slate-800 text-left hover:border-amber-500 hover:shadow-md transition-all group"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-base">{preset.icon}</span>
+                                  <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-amber-600 transition-colors">
+                                    {preset.name}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">{preset.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tiers List with In-Depth Real-Time Analytics & Margin Feedback */}
+                        <div className="space-y-3 pt-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                            Paliers Actifs ({form.wholesale_price_tiers.length}) :
+                          </span>
+
+                          {form.wholesale_price_tiers.map((tier, idx) => {
+                            const minQty = parseFloat(tier.min_quantity) || 0;
+                            const unitPrice = parseFloat(tier.unit_price) || 0;
+                            const basePrice = parseFloat(form.price) || 0;
+                            const costPrice = parseFloat(form.cost_price) || 0;
+
+                            const discountPct = basePrice > 0 && unitPrice > 0 ? ((basePrice - unitPrice) / basePrice) * 100 : 0;
+                            const buyerSavingsPerUnit = basePrice > 0 && unitPrice > 0 ? Math.max(0, basePrice - unitPrice) : 0;
+                            const minBatchValue = minQty * unitPrice;
+                            const netMarginTnd = costPrice > 0 && unitPrice > 0 ? unitPrice - costPrice : 0;
+                            const netMarginPct = costPrice > 0 && unitPrice > 0 ? (netMarginTnd / unitPrice) * 100 : 0;
+                            const batchNetProfit = netMarginTnd * minQty;
+
+                            // Incoherence checks
+                            const isHigherThanRetail = unitPrice >= basePrice && basePrice > 0 && unitPrice > 0;
+                            const prevUnitPrice = idx > 0 ? parseFloat(form.wholesale_price_tiers[idx - 1].unit_price) || 0 : 0;
+                            const isHigherThanPrev = prevUnitPrice > 0 && unitPrice >= prevUnitPrice;
+                            const isLossMaking = costPrice > 0 && unitPrice > 0 && unitPrice < costPrice;
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                                  isHigherThanRetail || isHigherThanPrev || isLossMaking
+                                    ? 'border-red-300 bg-red-50/40 dark:border-red-900/60 dark:bg-red-950/20'
+                                    : 'border-amber-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                                }`}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="h-6 w-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                      Palier Volume {idx + 1}
+                                    </span>
+                                  </div>
+
+                                  {/* Discount / Incoherence Badges */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {discountPct > 0 && !isHigherThanRetail && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                        🔥 -{discountPct.toFixed(1)}% remise B2B
+                                      </span>
+                                    )}
+                                    {isHigherThanRetail && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-red-100 text-red-700 flex items-center gap-1">
+                                        <AlertTriangle className="w-3 h-3" /> Prix ≥ Détail ({basePrice.toFixed(3)} TND)
+                                      </span>
+                                    )}
+                                    {isHigherThanPrev && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3" /> Non dégressif (Palier {idx}: {prevUnitPrice.toFixed(3)} TND)
+                                      </span>
+                                    )}
+                                    {isLossMaking && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-red-600 text-white flex items-center gap-1">
+                                        🚨 Vente à perte (Coût: {costPrice.toFixed(3)} TND)
+                                      </span>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setForm((c) => ({
+                                          ...c,
+                                          wholesale_price_tiers: c.wholesale_price_tiers.filter((_, i) => i !== idx),
+                                        }))
+                                      }
+                                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition-colors ml-auto"
+                                      title="Supprimer ce palier"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Input Row */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                      Quantité Minimale Commandée :
+                                    </label>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        min="2"
+                                        placeholder="Ex: 10"
+                                        value={tier.min_quantity}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setForm((c) => ({
+                                            ...c,
+                                            wholesale_price_tiers: c.wholesale_price_tiers.map((t, i) =>
+                                              i === idx ? { ...t, min_quantity: val } : t,
+                                            ),
+                                          }));
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-bold">
+                                        unités
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                      Prix Unitaire Grossiste B2B :
+                                    </label>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        step="0.001"
+                                        min="0"
+                                        placeholder="Ex: 15.000"
+                                        value={tier.unit_price}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setForm((c) => ({
+                                            ...c,
+                                            wholesale_price_tiers: c.wholesale_price_tiers.map((t, i) =>
+                                              i === idx ? { ...t, unit_price: val } : t,
+                                            ),
+                                          }));
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-bold">
+                                        TND / unité
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Dynamic Telemetry & Margin Results Bar */}
+                                {unitPrice > 0 && minQty > 0 && (
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700 text-xs">
+                                    <div className="space-y-0.5">
+                                      <p className="text-[10px] text-slate-400 font-semibold">Panier Min. Lot :</p>
+                                      <p className="font-black text-slate-900 dark:text-white">{minBatchValue.toFixed(3)} TND</p>
+                                    </div>
+
+                                    <div className="space-y-0.5">
+                                      <p className="text-[10px] text-slate-400 font-semibold">Économie Acheteur :</p>
+                                      <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                                        {buyerSavingsPerUnit > 0 ? `-${buyerSavingsPerUnit.toFixed(3)} TND/u` : '0 TND'}
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-0.5">
+                                      <p className="text-[10px] text-slate-400 font-semibold">Marge Unitaire :</p>
+                                      {costPrice > 0 ? (
+                                        <p className={`font-black ${netMarginTnd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
+                                          {netMarginTnd > 0 ? `+${netMarginTnd.toFixed(3)}` : netMarginTnd.toFixed(3)} TND ({netMarginPct.toFixed(1)}%)
+                                        </p>
+                                      ) : (
+                                        <p className="text-slate-400 italic text-[11px]">—</p>
+                                      )}
+                                    </div>
+
+                                    <div className="space-y-0.5">
+                                      <p className="text-[10px] text-slate-400 font-semibold">Gain Net / Commande Lot :</p>
+                                      {costPrice > 0 ? (
+                                        <p className={`font-black ${batchNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
+                                          +{batchNetProfit.toFixed(3)} TND
+                                        </p>
+                                      ) : (
+                                        <p className="text-slate-400 italic text-[11px]">—</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -2915,18 +3226,17 @@ export default function ProductsPage() {
                               }`}
                             />
 
-                            {/* Foreground Layer: Raw Original Image (Clipped by sliderPos) */}
+                            {/* Foreground Layer: Raw Original Image (Pixel-perfect clipping without resizing) */}
                             <div
-                              className="absolute inset-0 overflow-hidden border-r-2 border-white/90"
-                              style={{ width: `${studioSliderPos}%` }}
+                              className="absolute inset-0 overflow-hidden"
+                              style={{ clipPath: `inset(0 ${100 - studioSliderPos}% 0 0)` }}
                             >
                               <img
                                 src={rawOriginalImage || form.thumbnail}
                                 alt="Original Avant"
-                                className={`absolute inset-0 h-full w-full object-cover max-w-none transition-transform duration-200 ${
+                                className={`absolute inset-0 h-full w-full object-cover transition-transform duration-200 ${
                                   studioZoomEnabled ? 'scale-150 origin-center' : 'scale-100'
                                 }`}
-                                style={{ width: '100%', height: '100%' }}
                               />
                             </div>
 
