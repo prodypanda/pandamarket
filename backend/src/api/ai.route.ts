@@ -27,8 +27,10 @@ const seoGenerateSchema = z.object({
 });
 
 const smartFillSchema = z.object({
+  prompt: z.string().trim().max(10000).optional(),
+  raw_input: z.string().trim().max(10000).optional(),
   title: z.string().trim().max(300).optional(),
-  description: z.string().trim().max(8000).optional(),
+  description: z.string().trim().max(10000).optional(),
   image_url: z.string().trim().max(2048).optional(),
   language: z.enum(['fr', 'ar', 'en']).optional(),
 });
@@ -139,40 +141,147 @@ function parseDescriptionResponse(text: string): { description_html: string; sum
   }
 }
 
-function parseSmartFillResponse(text: string, inputTitle?: string): {
+export interface SmartFillProductResult {
   suggested_title: string;
   suggested_description: string;
+  suggested_price: number | null;
   suggested_hub_category_name: string;
   suggested_hub_subcategory_name: string;
   suggested_storefront_category: string;
   suggested_storefront_subcategory: string;
-} {
+  suggested_tags: string[];
+  suggested_attributes: Array<{ name: string; value: string }>;
+  suggested_variants: Array<{ name: string; values: string[] }>;
+  suggested_seo_title: string;
+  suggested_seo_description: string;
+}
+
+function extractPriceHeuristic(text: string): number | null {
+  const match = text.match(/(?:prix\s*[:=]?\s*)?(\d+(?:[.,]\d+)?)\s*(?:dt|tnd|dinar|dinars|dtnt)\b/i) ||
+                text.match(/(?:prix\s*[:=]\s*)(\d+(?:[.,]\d+)?)/i);
+  if (match && match[1]) {
+    const num = parseFloat(match[1].replace(',', '.'));
+    if (Number.isFinite(num) && num > 0) return num;
+  }
+  return null;
+}
+
+function extractVariantsHeuristic(text: string): Array<{ name: string; values: string[] }> {
+  const variants: Array<{ name: string; values: string[] }> = [];
+  
+  // Range of sizes: "taille 40 à 45" or "pointures 36 à 41"
+  const rangeMatch = text.match(/(?:taille|pointure|pointures|tailles)\s*(?:de)?\s*(\d{2})\s*(?:à|a|-|to)\s*(\d{2})/i);
+  if (rangeMatch && rangeMatch[1] && rangeMatch[2]) {
+    const start = parseInt(rangeMatch[1], 10);
+    const end = parseInt(rangeMatch[2], 10);
+    if (start > 0 && end >= start && end - start <= 15) {
+      const values: string[] = [];
+      for (let s = start; s <= end; s++) values.push(String(s));
+      variants.push({ name: 'Pointure', values });
+    }
+  } else {
+    // List of sizes: "tailles: S, M, L, XL"
+    const sizeListMatch = text.match(/(?:tailles?|sizes?)\s*[:=]?\s*([SMLXL2-4]+(?:\s*[,/\-]\s*[SMLXL2-4]+)+)/i);
+    if (sizeListMatch && sizeListMatch[1]) {
+      const values = sizeListMatch[1].split(/[,/\-]/).map((v) => v.trim()).filter(Boolean);
+      if (values.length > 0) variants.push({ name: 'Taille', values });
+    }
+  }
+
+  // Colors: "couleurs: noir, blanc, rouge"
+  const colorMatch = text.match(/(?:couleurs?|colors?)\s*[:=]?\s*([a-zA-ZÀ-ÿ]+(?:\s*[,/\-]\s*[a-zA-ZÀ-ÿ]+)+)/i);
+  if (colorMatch && colorMatch[1]) {
+    const values = colorMatch[1].split(/[,/\-]/).map((v) => v.trim()).filter((v) => v.length >= 2);
+    if (values.length > 0) variants.push({ name: 'Couleur', values });
+  }
+
+  return variants;
+}
+
+function parseSmartFillResponse(text: string, rawInputText?: string): SmartFillProductResult {
+  const heuristicPrice = extractPriceHeuristic(rawInputText || text);
+  const heuristicVariants = extractVariantsHeuristic(rawInputText || text);
+
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as Partial<{
       suggested_title: string;
       suggested_description: string;
+      suggested_price: number | string | null;
       suggested_hub_category_name: string;
       suggested_hub_subcategory_name: string;
       suggested_storefront_category: string;
       suggested_storefront_subcategory: string;
+      suggested_tags: string[] | string;
+      suggested_attributes: Array<{ name: string; value: string }>;
+      suggested_variants: Array<{ name: string; values: string[] }>;
+      suggested_seo_title: string;
+      suggested_seo_description: string;
     }>;
+
+    const parsedPrice = parsed.suggested_price !== undefined && parsed.suggested_price !== null
+      ? parseFloat(String(parsed.suggested_price))
+      : null;
+    const finalPrice = Number.isFinite(parsedPrice) && parsedPrice! > 0 ? parsedPrice : heuristicPrice;
+
+    // Normalizing tags
+    let tags: string[] = [];
+    if (Array.isArray(parsed.suggested_tags)) {
+      tags = parsed.suggested_tags.map((t) => String(t).trim()).filter(Boolean);
+    } else if (typeof parsed.suggested_tags === 'string') {
+      tags = parsed.suggested_tags.split(',').map((t) => t.trim()).filter(Boolean);
+    }
+
+    // Normalizing attributes
+    let attributes: Array<{ name: string; value: string }> = [];
+    if (Array.isArray(parsed.suggested_attributes)) {
+      attributes = parsed.suggested_attributes
+        .filter((a) => a && typeof a === 'object' && a.name && a.value)
+        .map((a) => ({ name: String(a.name).trim(), value: String(a.value).trim() }));
+    }
+
+    // Normalizing variants
+    let variants: Array<{ name: string; values: string[] }> = [];
+    if (Array.isArray(parsed.suggested_variants) && parsed.suggested_variants.length > 0) {
+      variants = parsed.suggested_variants
+        .filter((v) => v && typeof v === 'object' && v.name && Array.isArray(v.values) && v.values.length > 0)
+        .map((v) => ({ name: String(v.name).trim(), values: v.values.map(String).filter(Boolean) }));
+    }
+    if (variants.length === 0 && heuristicVariants.length > 0) {
+      variants = heuristicVariants;
+    }
+
+    const title = String(parsed.suggested_title || rawInputText?.slice(0, 80) || 'Produit sans titre').slice(0, 180);
+
     return {
-      suggested_title: String(parsed.suggested_title || inputTitle || 'Produit sans titre').slice(0, 180),
-      suggested_description: String(parsed.suggested_description || `<p>${inputTitle || 'Nouveau produit'}</p>`).slice(0, 8000),
+      suggested_title: title,
+      suggested_description: String(parsed.suggested_description || `<p>${title}</p>`).slice(0, 8000),
+      suggested_price: finalPrice,
       suggested_hub_category_name: String(parsed.suggested_hub_category_name || 'Général').slice(0, 100),
       suggested_hub_subcategory_name: String(parsed.suggested_hub_subcategory_name || 'Divers').slice(0, 100),
       suggested_storefront_category: String(parsed.suggested_storefront_category || 'Boutique').slice(0, 100),
       suggested_storefront_subcategory: String(parsed.suggested_storefront_subcategory || 'Général').slice(0, 100),
+      suggested_tags: tags.slice(0, 15),
+      suggested_attributes: attributes.slice(0, 10),
+      suggested_variants: variants.slice(0, 3),
+      suggested_seo_title: String(parsed.suggested_seo_title || `${title} | Meilleur Prix Tunisie`).slice(0, 70),
+      suggested_seo_description: String(parsed.suggested_seo_description || `Découvrez ${title} au meilleur prix sur PandaMarket Tunisie. Livraison rapide et qualité garantie.`).slice(0, 160),
     };
   } catch {
+    const title = String(rawInputText?.slice(0, 80) || 'Nouveau produit').slice(0, 180);
     return {
-      suggested_title: String(inputTitle || 'Nouveau produit').slice(0, 180),
-      suggested_description: `<p>${text || inputTitle || 'Nouveau produit'}</p>`,
+      suggested_title: title,
+      suggested_description: `<p>${text || title}</p>`,
+      suggested_price: heuristicPrice,
       suggested_hub_category_name: 'Général',
       suggested_hub_subcategory_name: 'Divers',
       suggested_storefront_category: 'Boutique',
       suggested_storefront_subcategory: 'Général',
+      suggested_tags: ['nouveau', 'e-commerce', 'tunisie'],
+      suggested_attributes: [],
+      suggested_variants: heuristicVariants,
+      suggested_seo_title: `${title} | Acheter en Tunisie`,
+      suggested_seo_description: `Achetez ${title} avec livraison rapide partout en Tunisie sur PandaMarket.`,
     };
   }
 }
@@ -357,48 +466,73 @@ router.post(
     await assertAiFeature(storeId, 'has_ai_seo');
 
     const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
+    const inputPrompt = req.body.prompt || req.body.raw_input || '';
     const inputTitle = req.body.title || '';
     const inputDesc = req.body.description || '';
     const inputImage = req.body.image_url || '';
 
-    if (!inputTitle && !inputDesc && !inputImage) {
-      throw new PdValidationError('Veuillez fournir au moins un élément (titre, description ou image).');
+    const effectiveRawInput = inputPrompt || [inputTitle, inputDesc].filter(Boolean).join(' - ');
+
+    if (!effectiveRawInput && !inputImage) {
+      throw new PdValidationError('Veuillez fournir une description brute, un prompt libre, un titre ou une image.');
     }
 
     const job = await aiService.startInlineJob({
       type: AiJobType.ProductDescription,
       store_id: storeId,
       user_id: req.user!.id,
-      input_meta: { title: inputTitle, description: inputDesc, image_url: inputImage, language },
+      input_meta: { prompt: inputPrompt, title: inputTitle, description: inputDesc, image_url: inputImage, language },
     });
 
     try {
       const cost = await aiConfigService.getFeaturePrice(AiJobType.ProductDescription);
-      const template = await aiConfigService.getPromptTemplate('product_smart_fill');
-
       let categoriesContext = '';
       try {
         const catTree = await categoryService.listMarketplaceCategories({ tree: true });
-        categoriesContext = catTree.map((c: MarketplaceCategoryRow) => `${c.name} (${c.children?.map((sub: MarketplaceCategoryRow) => sub.name).join(', ') || 'Aucune sous-catégorie'})`).join('\n');
+        categoriesContext = catTree.map((c: MarketplaceCategoryRow) => `${c.name} (${c.children?.map((sub: MarketplaceCategoryRow) => sub.name).join(', ') || 'Général'})`).join('\n');
       } catch {
-        categoriesContext = 'Boutique & E-commerce';
+        categoriesContext = 'Mode, Électronique, Maison, Beauté, Sport, Artisanat';
       }
 
-      let prompt = template.default_prompt
-        .replace('{title}', inputTitle || 'Non spécifié')
-        .replace('{description}', inputDesc || 'Non spécifiée')
-        .replace('{language}', language);
+      const systemPrompt = `Vous êtes l'Assistant IA Expert en E-commerce et Merchandising de PandaMarket Tunisie.
+Votre mission : transformer n'importe quel texte brut, message WhatsApp de fournisseur, note rapide ou fiche produit en une fiche catalogue e-commerce parfaite, séduisante et complète.
+Vous devez identifier : le titre commercial vendeur, la description HTML structurée (<p>, <strong>, <ul>, <li>, <h3>), le prix en Dinars Tunisiens (TND), les catégories adaptées, les caractéristiques techniques clés (matière, origine, usage...), les déclinaisons/variantes (tailles, couleurs...) et les balises SEO.`;
 
-      if (categoriesContext) {
-        prompt += `\n\nCatégories Marketplace Hub Disponibles :\n${categoriesContext}`;
-      }
+      const userPrompt = `Analysez attentivement ce texte brut / message fournisseur et générez la fiche produit e-commerce complète en langue: ${language}.
 
-      if (template.system_prompt) {
-        prompt = `${template.system_prompt}\n\n${prompt}`;
-      }
+Texte brut / Prompt vendeur :
+"${effectiveRawInput || 'Produit e-commerce à créer'}"
+
+${inputImage ? `Image fournie: ${inputImage}\n` : ''}
+
+Catégories Marketplace Hub disponibles :
+${categoriesContext}
+
+RÉPONDEZ STRICTEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
+{
+  "suggested_title": "Titre commercial accrocheur et professionnel",
+  "suggested_description": "<p>Introduction captivante...</p><h3>Points Forts</h3><ul><li>Avantage 1</li><li>Avantage 2</li></ul><h3>Caractéristiques</h3><ul><li>Spécification 1</li></ul>",
+  "suggested_price": 120.0,
+  "suggested_hub_category_name": "Nom d'une catégorie du Hub ci-dessus",
+  "suggested_hub_subcategory_name": "Nom d'une sous-catégorie",
+  "suggested_storefront_category": "Nom recommandé pour la vitrine du vendeur",
+  "suggested_storefront_subcategory": "Sous-catégorie vitrine",
+  "suggested_tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "suggested_attributes": [
+    { "name": "Matière", "value": "Ex: Coton / Cuir / Synthétique" },
+    { "name": "Origine", "value": "Ex: Tunisie / Italie / Import" }
+  ],
+  "suggested_variants": [
+    { "name": "Pointure", "values": ["40", "41", "42", "43", "44", "45"] }
+  ],
+  "suggested_seo_title": "Titre SEO optimisé (50-60 car.)",
+  "suggested_seo_description": "Méta description SEO vendeuse (130-160 car.)"
+}`;
+
+      const prompt = `${systemPrompt}\n\n${userPrompt}`;
 
       const result = await aiConfigService.generateTextForPurpose('content_generation', prompt, storeId);
-      const suggestions = parseSmartFillResponse(result.text, inputTitle);
+      const suggestions = parseSmartFillResponse(result.text, effectiveRawInput);
 
       await creditsService.consume(storeId, cost);
       await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost);

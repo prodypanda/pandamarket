@@ -567,17 +567,39 @@ export default function ProductsPage() {
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
 
-  // AI Smart Fill & Photo Studio
-  const [smartFillLoading, setSmartFillLoading] = useState(false);
-  const [showSmartFillModal, setShowSmartFillModal] = useState(false);
-  const [smartFillSuggestions, setSmartFillSuggestions] = useState<{
+  // AI Smart Fill & Photo Studio (Assistant Magique IA)
+  interface SmartFillExtractionResult {
     suggested_title: string;
     suggested_description: string;
+    suggested_price: number | null;
     suggested_hub_category_name: string;
     suggested_hub_subcategory_name: string;
     suggested_storefront_category: string;
     suggested_storefront_subcategory: string;
-  } | null>(null);
+    suggested_tags: string[];
+    suggested_attributes: Array<{ name: string; value: string }>;
+    suggested_variants: Array<{ name: string; values: string[] }>;
+    suggested_seo_title: string;
+    suggested_seo_description: string;
+  }
+
+  const [smartFillLoading, setSmartFillLoading] = useState(false);
+  const [showSmartFillModal, setShowSmartFillModal] = useState(false);
+  const [smartFillMode, setSmartFillMode] = useState<'prompt' | 'current'>('prompt');
+  const [freePromptText, setFreePromptText] = useState<string>('');
+  const [smartFillLanguage, setSmartFillLanguage] = useState<'fr' | 'ar' | 'en'>('fr');
+  const [smartFillActiveTab, setSmartFillActiveTab] = useState<'input' | 'preview'>('input');
+  const [smartFillSuggestions, setSmartFillSuggestions] = useState<SmartFillExtractionResult | null>(null);
+  const [selectedFieldsToApply, setSelectedFieldsToApply] = useState<Record<string, boolean>>({
+    title: true,
+    description: true,
+    price: true,
+    categories: true,
+    tags: true,
+    attributes: true,
+    variants: true,
+    seo: true,
+  });
   const [photoStudioLoading, setPhotoStudioLoading] = useState(false);
   const [rawOriginalImage, setRawOriginalImage] = useState<string>('');
   const [processedStudioImage, setProcessedStudioImage] = useState<string>('');
@@ -918,9 +940,22 @@ export default function ProductsPage() {
   // AI SMART FILL & PHOTO STUDIO HANDLERS
   // -----------------------------------------------------------------------
 
-  const handleSmartFill = async () => {
-    if (!form.title && !form.description && !form.thumbnail) {
-      setError("Veuillez d'abord saisir un titre, une description ou ajouter une image.");
+  const handleOpenSmartFillModal = () => {
+    if (!freePromptText && (form.title || form.description)) {
+      setFreePromptText([form.title, form.description.replace(/<[^>]+>/g, ' ')].filter(Boolean).join(' - '));
+    }
+    setShowSmartFillModal(true);
+  };
+
+  const handleSmartFill = async (overridePrompt?: string) => {
+    const promptToSend = overridePrompt !== undefined ? overridePrompt : (smartFillMode === 'prompt' ? freePromptText : '');
+    
+    if (smartFillMode === 'prompt' && !promptToSend.trim()) {
+      setError("Veuillez coller un message, une note fournisseur ou rédiger un prompt libre.");
+      return;
+    }
+    if (smartFillMode === 'current' && !form.title && !form.description && !form.thumbnail) {
+      setError("Veuillez d'abord saisir un titre, une description ou ajouter une image dans la fiche.");
       return;
     }
 
@@ -932,17 +967,29 @@ export default function ProductsPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          title: form.title,
-          description: form.description,
+          prompt: smartFillMode === 'prompt' ? promptToSend : undefined,
+          title: smartFillMode === 'current' ? form.title : undefined,
+          description: smartFillMode === 'current' ? form.description : undefined,
           image_url: form.thumbnail,
-          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+          language: smartFillLanguage,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Génération intelligente échouée.');
+      if (!res.ok) throw new Error(data.error?.message || 'Extraction intelligente échouée.');
 
       setSmartFillSuggestions(data.suggestions);
+      setSmartFillActiveTab('preview');
+      setSelectedFieldsToApply({
+        title: Boolean(data.suggestions.suggested_title),
+        description: Boolean(data.suggestions.suggested_description),
+        price: Boolean(data.suggestions.suggested_price),
+        categories: Boolean(data.suggestions.suggested_hub_category_name || data.suggestions.suggested_storefront_category),
+        tags: Boolean(data.suggestions.suggested_tags?.length),
+        attributes: Boolean(data.suggestions.suggested_attributes?.length),
+        variants: Boolean(data.suggestions.suggested_variants?.length),
+        seo: Boolean(data.suggestions.suggested_seo_title || data.suggestions.suggested_seo_description),
+      });
       setShowSmartFillModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la génération IA.');
@@ -951,36 +998,110 @@ export default function ProductsPage() {
     }
   };
 
-  const applySmartFillItem = (field: 'title' | 'description' | 'hub_category' | 'storefront_category') => {
+  const applySmartFillItem = (field: 'title' | 'description' | 'price' | 'hub_category' | 'storefront_category' | 'tags' | 'attributes' | 'variants' | 'seo') => {
     if (!smartFillSuggestions) return;
     setForm((prev) => {
       const next = { ...prev };
-      if (field === 'title') next.title = smartFillSuggestions.suggested_title;
-      if (field === 'description') next.description = smartFillSuggestions.suggested_description;
-      if (field === 'hub_category') {
+      if (field === 'title' && smartFillSuggestions.suggested_title) {
+        next.title = smartFillSuggestions.suggested_title;
+        if (!next.slug) {
+          next.slug = smartFillSuggestions.suggested_title
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)+/g, '');
+        }
+      }
+      if (field === 'description' && smartFillSuggestions.suggested_description) {
+        next.description = smartFillSuggestions.suggested_description;
+      }
+      if (field === 'price' && smartFillSuggestions.suggested_price) {
+        next.price = Number(smartFillSuggestions.suggested_price).toFixed(3);
+      }
+      if (field === 'hub_category' && smartFillSuggestions.suggested_hub_category_name) {
         const found = marketplaceCategories.find((c) =>
-          c.name.toLowerCase().includes(smartFillSuggestions.suggested_hub_category_name.toLowerCase()),
+          c.name.toLowerCase().includes(smartFillSuggestions.suggested_hub_category_name.toLowerCase()) ||
+          smartFillSuggestions.suggested_hub_category_name.toLowerCase().includes(c.name.toLowerCase())
         );
         if (found) next.marketplace_category_id = found.id;
       }
-      if (field === 'storefront_category') {
+      if (field === 'storefront_category' && smartFillSuggestions.suggested_storefront_category) {
         const found = storefrontCategories.find((c) =>
-          c.name.toLowerCase().includes(smartFillSuggestions.suggested_storefront_category.toLowerCase()),
+          c.name.toLowerCase().includes(smartFillSuggestions.suggested_storefront_category.toLowerCase()) ||
+          smartFillSuggestions.suggested_storefront_category.toLowerCase().includes(c.name.toLowerCase())
         );
         if (found) next.storefront_category_id = found.id;
+      }
+      if (field === 'tags' && Array.isArray(smartFillSuggestions.suggested_tags) && smartFillSuggestions.suggested_tags.length > 0) {
+        next.tags = smartFillSuggestions.suggested_tags.join(', ');
+      }
+      if (field === 'attributes' && Array.isArray(smartFillSuggestions.suggested_attributes) && smartFillSuggestions.suggested_attributes.length > 0) {
+        next.attributes = smartFillSuggestions.suggested_attributes;
+      }
+      if (field === 'variants' && Array.isArray(smartFillSuggestions.suggested_variants) && smartFillSuggestions.suggested_variants.length > 0) {
+        // Generate combinatorial variants
+        const axes = smartFillSuggestions.suggested_variants.filter((a) => a.name && a.values.length > 0);
+        if (axes.length === 1) {
+          const axis = axes[0];
+          const defaultPrice = next.price || '0.000';
+          next.variants = axis.values.map((val) => ({
+            id: undefined,
+            sku: '',
+            title: `${val}`,
+            price: defaultPrice,
+            inventory_quantity: '10',
+            option_name: axis.name,
+            option_value: val,
+            options: { [axis.name]: val },
+          }));
+        } else if (axes.length >= 2) {
+          const ax1 = axes[0];
+          const ax2 = axes[1];
+          const defaultPrice = next.price || '0.000';
+          const generated: ProductVariantForm[] = [];
+          ax1.values.forEach((v1) => {
+            ax2.values.forEach((v2) => {
+              generated.push({
+                id: undefined,
+                sku: '',
+                title: `${v1} / ${v2}`,
+                price: defaultPrice,
+                inventory_quantity: '10',
+                option_name: ax1.name,
+                option_value: v1,
+                options: { [ax1.name]: v1, [ax2.name]: v2 },
+              });
+            });
+          });
+          next.variants = generated;
+        }
+      }
+      if (field === 'seo') {
+        if (smartFillSuggestions.suggested_seo_title) next.seo_title = smartFillSuggestions.suggested_seo_title;
+        if (smartFillSuggestions.suggested_seo_description) next.seo_description = smartFillSuggestions.suggested_seo_description;
       }
       return next;
     });
   };
 
-  const applyAllSmartFill = () => {
+  const applySelectedSmartFill = () => {
     if (!smartFillSuggestions) return;
-    applySmartFillItem('title');
-    applySmartFillItem('description');
-    applySmartFillItem('hub_category');
-    applySmartFillItem('storefront_category');
+    if (selectedFieldsToApply.title) applySmartFillItem('title');
+    if (selectedFieldsToApply.description) applySmartFillItem('description');
+    if (selectedFieldsToApply.price) applySmartFillItem('price');
+    if (selectedFieldsToApply.categories) {
+      applySmartFillItem('hub_category');
+      applySmartFillItem('storefront_category');
+    }
+    if (selectedFieldsToApply.tags) applySmartFillItem('tags');
+    if (selectedFieldsToApply.attributes) applySmartFillItem('attributes');
+    if (selectedFieldsToApply.variants) applySmartFillItem('variants');
+    if (selectedFieldsToApply.seo) applySmartFillItem('seo');
+
     setShowSmartFillModal(false);
-    setSuccess('Toutes les informations suggérées par l’IA ont été appliquées avec succès !');
+    setDrawerTab('general');
+    setSuccess('✨ Fiche produit enrichie avec succès par l’Assistant Magique IA !');
   };
 
   const handlePhotoStudioReplaceBackground = async (preset: string) => {
@@ -1621,6 +1742,20 @@ export default function ProductsPage() {
               onClick={() => {
                 resetForm();
                 setShowDrawer(true);
+                handleOpenSmartFillModal();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 px-3.5 py-2.5 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              title="Créer une fiche produit complète en 15 secondes via un prompt libre ou message WhatsApp"
+            >
+              <Sparkles className="h-4 w-4 text-yellow-300 animate-pulse" />
+              <span>Assistant Magique IA</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setShowDrawer(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-xs font-black text-white hover:bg-[#991B1B] shadow-md shadow-red-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
@@ -2146,7 +2281,7 @@ export default function ProductsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleSmartFill()}
+                  onClick={handleOpenSmartFillModal}
                   disabled={smartFillLoading}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-105 transition-all disabled:opacity-50"
                   title="L'IA analyse vos mots-clés et remplit automatiquement le titre, la description et la catégorisation !"
@@ -3928,131 +4063,620 @@ export default function ProductsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 7. AI SMART FILL REVIEW MODAL */}
+      {/* 7. AI SMART FILL / ASSISTANT MAGIQUE IA MODAL */}
       {/* ========================================================================= */}
-      {showSmartFillModal && smartFillSuggestions && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-3xl rounded-3xl border border-purple-200 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-purple-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20">
-                  <Sparkles className="w-5 h-5 text-yellow-300" />
+      {showSmartFillModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-4xl rounded-3xl border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-900 p-5 sm:p-7 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-purple-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-pink-500 text-white shadow-lg shadow-purple-500/25">
+                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">Suggestions IA Prêtes à Valider</h3>
-                  <p className="text-xs text-slate-400 font-medium">Examinez les propositions et appliquez-les en un clic</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                      Assistant Magique IA : Mode Prompt Libre & Extraction Fiche Complète
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      GPT-4 / Claude / Gemini
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Collez un message WhatsApp, une note fournisseur ou une phrase brute pour générer instantanément la fiche produit.
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSmartFillModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              {/* Suggested Title */}
-              <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                    📌 Titre Commercial Optimisé
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => applySmartFillItem('title')}
-                    className="px-3 py-1 rounded-lg bg-purple-600 text-white font-bold text-[11px] hover:bg-purple-700"
-                  >
-                    Appliquer le titre
-                  </button>
-                </div>
-                <p className="p-3 rounded-xl bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white border border-purple-100 dark:border-purple-900">
-                  {smartFillSuggestions.suggested_title}
-                </p>
+            {/* Mode Selector & Language Selector Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setSmartFillMode('prompt')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                    smartFillMode === 'prompt'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  ✍️ Mode Prompt Libre / Message Fournisseur
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSmartFillMode('current')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                    smartFillMode === 'current'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  📋 Champs de la Fiche Actuelle
+                </button>
               </div>
 
-              {/* Suggested HTML Description */}
-              <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                    📄 Fiche Description HTML Enrichie
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => applySmartFillItem('description')}
-                    className="px-3 py-1 rounded-lg bg-purple-600 text-white font-bold text-[11px] hover:bg-purple-700"
-                  >
-                    Appliquer la description
-                  </button>
-                </div>
-                <div
-                  className="p-3 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-purple-100 dark:border-purple-900 max-h-40 overflow-y-auto leading-relaxed prose prose-sm"
-                  dangerouslySetInnerHTML={{ __html: smartFillSuggestions.suggested_description }}
-                />
-              </div>
-
-              {/* Suggested Categories */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl border border-purple-100 bg-purple-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black uppercase text-purple-900 text-[10px]">🌐 Catégorie Hub</span>
+              {/* Language Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Langue :</span>
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: 'fr', label: '🇫🇷 Français' },
+                    { id: 'ar', label: '🇹🇳 Darija / Arabe' },
+                    { id: 'en', label: '🇬🇧 English' },
+                  ].map((lang) => (
                     <button
+                      key={lang.id}
                       type="button"
-                      onClick={() => applySmartFillItem('hub_category')}
-                      className="px-2.5 py-0.5 rounded-md bg-purple-600 text-white font-bold text-[10px]"
+                      onClick={() => setSmartFillLanguage(lang.id as any)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        smartFillLanguage === lang.id
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 border border-purple-300 dark:border-purple-700'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                      }`}
                     >
-                      Appliquer
+                      {lang.label}
                     </button>
-                  </div>
-                  <p className="p-2.5 rounded-lg bg-white font-bold text-slate-800">
-                    {smartFillSuggestions.suggested_hub_category_name}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl border border-purple-100 bg-purple-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black uppercase text-purple-900 text-[10px]">🏪 Catégorie Vitrine</span>
-                    <button
-                      type="button"
-                      onClick={() => applySmartFillItem('storefront_category')}
-                      className="px-2.5 py-0.5 rounded-md bg-purple-600 text-white font-bold text-[10px]"
-                    >
-                      Appliquer
-                    </button>
-                  </div>
-                  <p className="p-2.5 rounded-lg bg-white font-bold text-slate-800">
-                    {smartFillSuggestions.suggested_storefront_category}
-                  </p>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-purple-100 pt-4">
-              <button
-                type="button"
-                onClick={() => void handleSmartFill()}
-                disabled={smartFillLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200"
-              >
-                {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600" />}
-                Régénérer d&apos;autres propositions
-              </button>
+            {/* Input Section (Free Prompt Mode) */}
+            {smartFillMode === 'prompt' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    📝 Texte brut, description libre ou message fournisseur :
+                  </label>
+                  {smartFillSuggestions && (
+                    <button
+                      type="button"
+                      onClick={() => setSmartFillActiveTab(smartFillActiveTab === 'input' ? 'preview' : 'input')}
+                      className="text-xs font-bold text-purple-600 hover:underline"
+                    >
+                      {smartFillActiveTab === 'input' ? 'Voir suggestions extraites →' : '← Modifier le texte brut'}
+                    </button>
+                  )}
+                </div>
 
-              <button
-                type="button"
-                onClick={applyAllSmartFill}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-black shadow-md shadow-purple-600/20 hover:scale-105 transition-all"
-              >
-                <Check className="w-4 h-4 text-yellow-300" />
-                Tout Valider & Appliquer
-              </button>
+                <div className="relative">
+                  <textarea
+                    rows={4}
+                    value={freePromptText}
+                    onChange={(e) => setFreePromptText(e.target.value)}
+                    placeholder="Collez ici votre texte brut... Ex: Je vends des baskets sport running respirantes pour homme et femme, pointures 40 à 45, semelle amortissante confort, importées d'Italie, prix 120dt..."
+                    className="w-full p-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 leading-relaxed"
+                  />
+                  {freePromptText && (
+                    <button
+                      type="button"
+                      onClick={() => setFreePromptText('')}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1"
+                      title="Effacer le texte"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* 1-Click Quick Samples */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    💡 Exemples en 1-Clic pour tester :
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {[
+                      {
+                        icon: '👟',
+                        label: 'Baskets Running (120 DT)',
+                        text: "Baskets running respirantes pour homme et femme, semelle amortissante confort et adhérence supérieure, pointures 40 à 45, importées d'Italie, prix 120dt",
+                      },
+                      {
+                        icon: '👗',
+                        label: 'Robe Soirée Soie (85 DT)',
+                        text: "Robe longue soirée en soie naturelle avec broderie artisanale dorée, coupe fluide élégante, tailles S, M, L, XL, fait main en Tunisie, prix 85dt",
+                      },
+                      {
+                        icon: '📱',
+                        label: 'Écouteurs Bluetooth (49 DT)',
+                        text: "Écouteurs sans fil bluetooth 5.3 avec réduction active de bruit, autonomie 24h, boîtier étanche IPX5 et charge ultra-rapide, prix 49dt",
+                      },
+                      {
+                        icon: '🏺',
+                        label: 'Huile d’Olive Bio (35 DT)',
+                        text: "Huile d'olive extra vierge biologique première pression à froid récolte 2026, bouteille en verre 1 Litre région Sahel Tunisie, prix 35dt",
+                      },
+                    ].map((sample, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setFreePromptText(sample.text);
+                          void handleSmartFill(sample.text);
+                        }}
+                        className="p-2 rounded-xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20 hover:bg-purple-100/70 dark:hover:bg-purple-900/40 text-left transition-all group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm">{sample.icon}</span>
+                          <span className="font-bold text-xs text-purple-950 dark:text-purple-200 group-hover:text-purple-600 truncate">
+                            {sample.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{sample.text}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Primary Extract Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSmartFill()}
+                    disabled={smartFillLoading || !freePromptText.trim()}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white font-black text-sm shadow-lg shadow-purple-600/25 hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {smartFillLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Extraction intelligente par l'IA en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-yellow-300" />
+                        <span>Analyser & Extraire la Fiche Complète (1-Clic)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Input Section (Current Form Mode) */}
+            {smartFillMode === 'current' && (
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  L'IA utilisera le titre actuel (<strong>{form.title || 'Non renseigné'}</strong>), la description et l'image actuelle de votre fiche produit pour enrichir et compléter tous les champs manquants.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleSmartFill()}
+                  disabled={smartFillLoading || (!form.title && !form.description && !form.thumbnail)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-sm shadow-md shadow-purple-600/20 hover:opacity-95 disabled:opacity-50 transition-all"
+                >
+                  {smartFillLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Analyse de la fiche en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-yellow-300" />
+                      <span>Compléter & Enrichir la Fiche Produit Actuelle</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Extraction Results Preview Section */}
+            {smartFillSuggestions && (
+              <div className="space-y-4 pt-4 border-t border-purple-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white font-black text-xs">
+                      ✓
+                    </span>
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                      Fiche Produit Complète Extraite par l'IA
+                    </h4>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedFieldsToApply({
+                          title: true,
+                          description: true,
+                          price: true,
+                          categories: true,
+                          tags: true,
+                          attributes: true,
+                          variants: true,
+                          seo: true,
+                        })
+                      }
+                      className="text-[11px] font-bold text-purple-600 hover:underline"
+                    >
+                      Tout cocher
+                    </button>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedFieldsToApply({
+                          title: false,
+                          description: false,
+                          price: false,
+                          categories: false,
+                          tags: false,
+                          attributes: false,
+                          variants: false,
+                          seo: false,
+                        })
+                      }
+                      className="text-[11px] font-bold text-slate-500 hover:underline"
+                    >
+                      Tout décocher
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                  {/* Title & Price Card */}
+                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.title}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, title: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
+                          📌 Titre Commercial Optimisé
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => applySmartFillItem('title')}
+                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                      >
+                        Appliquer
+                      </button>
+                    </div>
+                    <p className="p-3 rounded-xl bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white border border-purple-100 dark:border-slate-700">
+                      {smartFillSuggestions.suggested_title}
+                    </p>
+
+                    {/* Detected Price */}
+                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700/60 flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.price}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, price: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
+                          💰 Prix Détecté :
+                        </span>
+                      </label>
+                      {smartFillSuggestions.suggested_price ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-black text-xs">
+                            {Number(smartFillSuggestions.suggested_price).toFixed(3)} TND
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => applySmartFillItem('price')}
+                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px]"
+                          >
+                            Appliquer
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Non spécifié dans le texte</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Categories Card */}
+                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.categories}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, categories: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
+                          🌐 Catégorisation Hub & Vitrine
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applySmartFillItem('hub_category');
+                          applySmartFillItem('storefront_category');
+                        }}
+                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                      >
+                        Appliquer les 2
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Catégorie Hub :</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {smartFillSuggestions.suggested_hub_category_name}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => applySmartFillItem('hub_category')}
+                          className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                        >
+                          Appliquer
+                        </button>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Vitrine Boutique :</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {smartFillSuggestions.suggested_storefront_category}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => applySmartFillItem('storefront_category')}
+                          className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                        >
+                          Appliquer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* HTML Marketing Description Card */}
+                  <div className="lg:col-span-2 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.description}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, description: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
+                          📄 Description Marketing HTML Complète
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => applySmartFillItem('description')}
+                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                      >
+                        Appliquer la description
+                      </button>
+                    </div>
+                    <div
+                      className="p-3.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-purple-100 dark:border-slate-700 max-h-48 overflow-y-auto leading-relaxed prose prose-sm dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: smartFillSuggestions.suggested_description }}
+                    />
+                  </div>
+
+                  {/* Technical Attributes & Tags */}
+                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.attributes}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, attributes: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
+                          ⚙️ Caractéristiques Techniques ({smartFillSuggestions.suggested_attributes?.length || 0})
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => applySmartFillItem('attributes')}
+                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                      >
+                        Appliquer
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 min-h-12 items-center">
+                      {smartFillSuggestions.suggested_attributes && smartFillSuggestions.suggested_attributes.length > 0 ? (
+                        smartFillSuggestions.suggested_attributes.map((attr, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                          >
+                            <strong className="text-purple-600 dark:text-purple-400 mr-1">{attr.name}:</strong> {attr.value}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Aucun attribut spécifique détecté</span>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.tags}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, tags: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
+                          🏷️ Tags E-commerce ({smartFillSuggestions.suggested_tags?.length || 0})
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => applySmartFillItem('tags')}
+                        className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                      >
+                        Appliquer
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {smartFillSuggestions.suggested_tags?.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Variants & SEO Card */}
+                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                    {/* Variants */}
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.variants}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, variants: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
+                          🔀 Déclinaisons & Variantes Détectées
+                        </span>
+                      </label>
+                      {smartFillSuggestions.suggested_variants && smartFillSuggestions.suggested_variants.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => applySmartFillItem('variants')}
+                          className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                        >
+                          Générer Déclinaisons
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 space-y-1.5 min-h-12">
+                      {smartFillSuggestions.suggested_variants && smartFillSuggestions.suggested_variants.length > 0 ? (
+                        smartFillSuggestions.suggested_variants.map((v, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 text-xs">
+                            <span className="font-black text-purple-700 dark:text-purple-300">{v.name} :</span>
+                            <div className="flex flex-wrap gap-1">
+                              {v.values.map((val, vi) => (
+                                <span key={vi} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] font-bold">
+                                  {val}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Produit unique (pas de tailles/couleurs multiples détectées)</span>
+                      )}
+                    </div>
+
+                    {/* SEO */}
+                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldsToApply.seo}
+                          onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, seo: e.target.checked }))}
+                          className="rounded text-purple-600"
+                        />
+                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
+                          🔍 Balises SEO Google
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => applySmartFillItem('seo')}
+                        className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                      >
+                        Appliquer
+                      </button>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 space-y-1">
+                      <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 truncate">
+                        {smartFillSuggestions.suggested_seo_title}
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                        {smartFillSuggestions.suggested_seo_description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-purple-100 dark:border-slate-800 pt-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSmartFill()}
+                  disabled={smartFillLoading || (smartFillMode === 'prompt' && !freePromptText.trim())}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600" />}
+                  <span>Régénérer d'autres propositions</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSmartFillModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  Fermer
+                </button>
+                <button
+                  type="button"
+                  onClick={applySelectedSmartFill}
+                  disabled={!smartFillSuggestions}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white text-xs font-black shadow-lg shadow-purple-600/25 hover:scale-105 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  <Check className="w-4 h-4 text-yellow-300" />
+                  <span>✨ Tout Appliquer à la Fiche Produit</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
-
-      {/* ========================================================================= */}
+      )}{/* ========================================================================= */}
       {/* 8. MEDIA PICKER MODAL */}
       {/* ========================================================================= */}
       {showMediaPicker && (
