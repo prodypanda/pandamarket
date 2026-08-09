@@ -234,6 +234,7 @@ export interface CreateProductInput {
   wholesale_min_quantity?: number | null;
   wholesale_price_tiers?: WholesalePriceTier[];
   variants?: ProductVariantInput[];
+  metadata?: Record<string, unknown>;
 }
 
 function isDownloadableType(type: ProductType): boolean {
@@ -381,7 +382,7 @@ export class ProductService {
     }
 
     const wholesalePricing = buildWholesalePricingMetadata(input, isWholesaleCapableSeller(input.store_seller_type));
-    const metadata = wholesalePricing ? { wholesale_pricing: wholesalePricing } : {};
+    const metadata = { ...(input.metadata || {}), ...(wholesalePricing ? { wholesale_pricing: wholesalePricing } : {}) };
     const variants = normalizeProductVariants(input.variants);
 
     const productId = await transaction(async (c) => {
@@ -587,9 +588,16 @@ export class ProductService {
     if (patch.wholesale_min_quantity !== undefined || patch.wholesale_price_tiers !== undefined) {
       const wholesalePricing = buildWholesalePricingMetadata(patch, false);
       if (wholesalePricing) {
+        const mergedMeta = { ...(patch.metadata || {}), wholesale_pricing: wholesalePricing };
         fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
-        values.push(JSON.stringify({ wholesale_pricing: wholesalePricing }));
+        values.push(JSON.stringify(mergedMeta));
+      } else if (patch.metadata && Object.keys(patch.metadata).length > 0) {
+        fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
+        values.push(JSON.stringify(patch.metadata));
       }
+    } else if (patch.metadata && Object.keys(patch.metadata).length > 0) {
+      fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${++i}::jsonb`);
+      values.push(JSON.stringify(patch.metadata));
     }
     if (patch.slug !== undefined) {
       current = await this.getById(id);

@@ -150,6 +150,7 @@ interface Product {
   attributes?: ProductAttribute[];
   metadata?: {
     wholesale_pricing?: WholesalePricing;
+    cost_price?: number;
   } & Record<string, unknown>;
   images?: ProductImage[];
   max_downloads?: number | null;
@@ -1468,10 +1469,13 @@ export default function ProductsPage() {
           license_keys: form.type === 'serial' ? licenseKeys : undefined,
           wholesale_min_quantity: isWholesaleSeller ? wholesaleMinQuantity : undefined,
           wholesale_price_tiers: isWholesaleSeller ? wholesalePriceTiers : undefined,
-          metadata: {
-            ...(editingProduct?.metadata || {}),
-            cost_price: form.cost_price ? parseFloat(form.cost_price) : undefined,
-          },
+          metadata: (() => {
+            const { wholesale_pricing, ...rest } = editingProduct?.metadata || {} as Record<string, unknown>;
+            return {
+              ...rest,
+              cost_price: form.cost_price ? parseFloat(form.cost_price) : undefined,
+            };
+          })(),
           variants,
           status: form.status,
         }),
@@ -3196,6 +3200,8 @@ export default function ProductsPage() {
                         <div className="relative py-2 flex flex-col items-center">
                           <div
                             onPointerDown={(e) => {
+                              e.preventDefault();
+                              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                               const rect = e.currentTarget.getBoundingClientRect();
                               const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
                               setStudioSliderPos(pct);
@@ -3207,6 +3213,7 @@ export default function ProductsPage() {
                                 setStudioSliderPos(pct);
                               }
                             }}
+                            style={{ touchAction: 'none' }}
                             className={`relative select-none overflow-hidden rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-slate-950 shadow-2xl cursor-ew-resize transition-all duration-300 ${
                               studioAspectRatio === '4:5'
                                 ? 'aspect-[4/5] w-full max-w-sm'
@@ -3217,35 +3224,36 @@ export default function ProductsPage() {
                                 : 'aspect-square w-full max-w-md'
                             }`}
                           >
-                            {/* Background Layer: Processed Studio AI Image */}
+                            {/* Background Layer: Processed Studio AI Image (APRÈS) */}
                             <img
                               src={processedStudioImage || form.thumbnail}
                               alt="Studio Après"
-                              className={`absolute inset-0 h-full w-full object-cover transition-transform duration-200 ${
-                                studioZoomEnabled ? 'scale-150 origin-center' : 'scale-100'
+                              draggable={false}
+                              className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${
+                                studioZoomEnabled ? 'scale-150 origin-center' : ''
                               }`}
                             />
 
-                            {/* Foreground Layer: Raw Original Image (Pixel-perfect clipping without resizing) */}
-                            <div
-                              className="absolute inset-0 overflow-hidden"
+                            {/* Foreground Layer: Raw Original Image (AVANT) — clipPath applied directly on img */}
+                            <img
+                              src={rawOriginalImage || form.thumbnail}
+                              alt="Original Avant"
+                              draggable={false}
+                              className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${
+                                studioZoomEnabled ? 'scale-150 origin-center' : ''
+                              }`}
                               style={{ clipPath: `inset(0 ${100 - studioSliderPos}% 0 0)` }}
-                            >
-                              <img
-                                src={rawOriginalImage || form.thumbnail}
-                                alt="Original Avant"
-                                className={`absolute inset-0 h-full w-full object-cover transition-transform duration-200 ${
-                                  studioZoomEnabled ? 'scale-150 origin-center' : 'scale-100'
-                                }`}
-                              />
-                            </div>
+                            />
 
-                            {/* Draggable Divider Handle */}
+                            {/* Draggable Divider Handle with vertical line */}
                             <div
                               className="absolute top-0 bottom-0 pointer-events-none z-20"
-                              style={{ left: `${studioSliderPos}%` }}
+                              style={{ left: `${studioSliderPos}%`, transform: 'translateX(-1px)' }}
                             >
-                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-8 w-8 rounded-full bg-white text-slate-900 shadow-xl flex items-center justify-center border-2 border-purple-600">
+                              {/* Vertical divider line */}
+                              <div className="absolute inset-y-0 w-0.5 bg-white/80 shadow-lg" />
+                              {/* Circular handle */}
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-px h-9 w-9 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center border-2 border-purple-600 ring-4 ring-purple-400/20">
                                 <ArrowLeftRight className="w-4 h-4 text-purple-700" />
                               </div>
                             </div>

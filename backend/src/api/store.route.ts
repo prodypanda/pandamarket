@@ -129,6 +129,7 @@ const storeProductSchema = z.object({
     inventory_quantity: z.number().int().min(0).optional(),
     options: z.record(z.string()).optional(),
   })).max(100).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 const updateStoreProductSchema = storeProductSchema.partial();
