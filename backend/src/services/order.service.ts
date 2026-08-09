@@ -481,7 +481,9 @@ export class OrderService {
       const customerId = opts.customer_id ?? null;
       const storefrontCustomerId = opts.storefront_customer_id ?? null;
       if (!customerId && !storefrontCustomerId) {
-        throw new PdValidationError('Customer is required');
+        if (!opts.shipping_address || !opts.shipping_address.phone) {
+          throw new PdValidationError('Customer or shipping contact phone is required');
+        }
       }
 
       let orderRows: OrderRow[];
