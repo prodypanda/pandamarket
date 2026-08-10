@@ -1952,8 +1952,7 @@ export default function AdminSettingsPage() {
           {renderTextInput(
             'rewards_widget_button_label',
             'Floating Trigger Button Label',
-            "e.g. 🎁 Gagnez jusqu'à 15 DT !",
-            'Text displayed on the floating trigger button at the bottom right of storefront pages.',
+            "🎁 Gagnez jusqu'à 15 DT !",
           )}
           {renderTextAreaInput(
             'rewards_widget_prizes_json',
