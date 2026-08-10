@@ -381,8 +381,8 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                       {/* Scratch Canvas Overlay */}
                       <canvas
                         ref={canvasRef}
-                        onMouseMove={handleScratch}
-                        onTouchMove={handleScratch}
+                        onMouseMove={handleScratchMove}
+                        onTouchMove={handleScratchMove}
                         className="absolute inset-0 cursor-crosshair touch-none"
                       />
                     </div>
