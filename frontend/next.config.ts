@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async rewrites() {
     const backendUrl =
-      process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://pandamarket-backend-fjom.onrender.com';
+      process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:9000';
     const publicStorageUrl = (
       process.env.PD_S3_PUBLIC_PROXY_URL ||
       process.env.PD_S3_ENDPOINT ||

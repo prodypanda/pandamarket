@@ -7,7 +7,6 @@ import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
-import { WhatsAppControlCenter } from '@/components/admin/WhatsAppControlCenter';
 import { type ReactNode, useEffect, useState } from 'react';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
@@ -184,21 +183,13 @@ interface PlatformSettings {
   payment_cod_enabled: boolean;
   payment_vendor_direct_enabled: boolean;
   payment_platform_credentials_source: 'environment' | 'platform_config' | 'vendor_direct_only';
-  whatsapp_gateway_url: string;
-  whatsapp_gateway_token: string;
-  whatsapp_gateway_instance: string;
-  meta_whatsapp_token: string;
-  meta_whatsapp_phone_id: string;
-  twilio_account_sid: string;
-  twilio_auth_token: string;
-  twilio_from_number: string;
   mandat_recipient_name: string;
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
   mandat_proof_email: string;
 }
 
-type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'whatsapp' | 'integrations' | 'plans' | 'email';
+type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 interface SmtpConfigPublic {
@@ -360,14 +351,6 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   notifications_sms_enabled: true,
   notifications_sms_provider: 'environment',
   notifications_sms_sender_name: 'PandaMarket',
-  whatsapp_gateway_url: 'https://evolution-api-5x9s.onrender.com',
-  whatsapp_gateway_token: 'sRdf4D54F1SDnuF511dvs541f21dvs51VsF21sGRfs541p2ou900a',
-  whatsapp_gateway_instance: 'pandamarket',
-  meta_whatsapp_token: '',
-  meta_whatsapp_phone_id: '',
-  twilio_account_sid: '',
-  twilio_auth_token: '',
-  twilio_from_number: '',
   security_login_max_attempts: 5,
   security_login_lockout_minutes: 15,
   security_password_min_length: 8,
@@ -439,7 +422,6 @@ const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; description: string
   { id: 'shipping', label: 'Shipping & Delivery', description: 'Aramex, La Poste, platform delivery & zone rates', icon: Truck },
   { id: 'security', label: 'Security & Governance', description: 'Login security, password rules, custom domains & 2FA', icon: ShieldCheck },
   { id: 'operations', label: 'Platform Operations', description: 'Maintenance mode, storage limits & chat quotas', icon: Shield },
-  { id: 'whatsapp', label: 'WhatsApp & SMS Gateway', description: 'Passerelle WhatsApp QR, code de jumelage, clé API & test OTP', icon: MessageSquare },
   { id: 'integrations', label: 'Integrations & Webmaster', description: 'GA4, GTM, Meta Pixel, Cloudflare & Search Console', icon: BarChart3 },
   { id: 'plans', label: 'Subscription Plans', description: 'Seller plans, prices, quotas and feature matrix', icon: Crown },
   { id: 'email', label: 'Transactional Emails', description: 'SMTP provider, credentials, test sender & templates', icon: Mail },
@@ -535,14 +517,6 @@ const TEXT_SETTING_KEYS = [
   'analytics_gtm_container_id',
   'analytics_meta_pixel_id',
   'search_console_verification',
-  'whatsapp_gateway_url',
-  'whatsapp_gateway_token',
-  'whatsapp_gateway_instance',
-  'meta_whatsapp_token',
-  'meta_whatsapp_phone_id',
-  'twilio_account_sid',
-  'twilio_auth_token',
-  'twilio_from_number',
   'cloudflare_account_id',
   'cloudflare_zone_id',
   'shipping_default_origin_city',
@@ -827,19 +801,6 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'maintenance_eta',
     'maintenance_allowed_ips',
     'maintenance_block_storefronts',
-  ],
-  whatsapp: [
-    'notifications_sms_enabled',
-    'notifications_sms_provider',
-    'notifications_sms_sender_name',
-    'whatsapp_gateway_url',
-    'whatsapp_gateway_token',
-    'whatsapp_gateway_instance',
-    'meta_whatsapp_token',
-    'meta_whatsapp_phone_id',
-    'twilio_account_sid',
-    'twilio_auth_token',
-    'twilio_from_number',
   ],
   integrations: [
     'analytics_ga4_enabled',
@@ -2372,10 +2333,6 @@ export default function AdminSettingsPage() {
           </div>
           {renderTextInput('notifications_sms_sender_name', 'SMS Sender Name', 'PandaMarket')}
         </div>
-      </section>
-
-      <section className={`${activeTab === 'whatsapp' ? '' : 'hidden'}`}>
-        <WhatsAppControlCenter settings={settings} updateSetting={updateSetting as any} />
       </section>
 
       <section className={`${activeTab === 'integrations' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>

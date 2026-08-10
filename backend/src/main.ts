@@ -154,27 +154,14 @@ async function bootstrap() {
         const allowed = [...config.adminCors, ...config.storeCors];
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
-
-        // Always allow localhost / 127.0.0.1 on any port
-        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        // In production, never allow wildcard
+        if (config.env === 'production' && allowed.includes('*')) {
+          return callback(new Error('Wildcard CORS origin not allowed in production'));
+        }
+        if (allowed.includes(origin) || allowed.some((a) => origin.endsWith(a.replace('*', '')))) {
           return callback(null, true);
         }
-
-        // Allow platform domains (Render, Vercel, PandaMarket, garbage.team)
-        if (/^https?:\/\/[a-zA-Z0-9-.]*\.(onrender\.com|vercel\.app|pandamarket\.tn|garbage\.team)(:\d+)?$/.test(origin)) {
-          return callback(null, true);
-        }
-
-        // Check configured admin/store CORS lists
-        if (
-          allowed.includes(origin) ||
-          allowed.some((a) => a !== '*' && origin.endsWith(a.replace(/^\*/, '')))
-        ) {
-          return callback(null, true);
-        }
-
-        // Return false to block CORS gracefully without throwing a 500 internal server error
-        return callback(null, false);
+        callback(new Error('Not allowed by CORS'));
       },
       credentials: true,
     }),
