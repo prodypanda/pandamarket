@@ -175,7 +175,10 @@ function StorefrontSearchBar({
   };
 
   return (
-    <div ref={containerRef} className={`relative ${isMobile ? 'w-full' : 'hidden md:flex flex-1 max-w-xs mx-4'}`}>
+    <div
+      ref={containerRef}
+      className={`relative ${isMobile ? 'w-full' : 'hidden md:flex flex-1 max-w-xs mx-4'}`}
+    >
       <div className="relative w-full">
         <input
           type="text"
@@ -231,7 +234,9 @@ function StorefrontSearchBar({
                       onClick={() => handleSelectSuggestion(item)}
                       onMouseEnter={() => setHighlightedIndex(idx)}
                       className={`w-full text-left px-3 py-2 flex items-center gap-3 transition-colors ${
-                        isHighlighted ? 'bg-emerald-50 dark:bg-slate-800 font-semibold' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                        isHighlighted
+                          ? 'bg-emerald-50 dark:bg-slate-800 font-semibold'
+                          : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
                       }`}
                     >
                       {item.thumbnail ? (
@@ -249,7 +254,9 @@ function StorefrontSearchBar({
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{item.title}</p>
+                        <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
+                          {item.title}
+                        </p>
                         {item.category && (
                           <span className="text-[10px] text-gray-400 uppercase tracking-wider block">
                             {item.category}
@@ -266,7 +273,11 @@ function StorefrontSearchBar({
             </ul>
           ) : (
             <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-              Aucun produit trouvé pour &ldquo;<span className="font-semibold text-gray-700 dark:text-gray-200">{internalQuery}</span>&rdquo;
+              Aucun produit trouvé pour &ldquo;
+              <span className="font-semibold text-gray-700 dark:text-gray-200">
+                {internalQuery}
+              </span>
+              &rdquo;
             </div>
           )}
 
@@ -276,7 +287,9 @@ function StorefrontSearchBar({
             onClick={() => handleExecuteSearch(internalQuery)}
             onMouseEnter={() => setHighlightedIndex(suggestions.length)}
             className={`w-full text-center py-2.5 px-3 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-colors ${
-              highlightedIndex === suggestions.length ? 'bg-emerald-50 dark:bg-slate-800' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+              highlightedIndex === suggestions.length
+                ? 'bg-emerald-50 dark:bg-slate-800'
+                : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
             }`}
           >
             Voir tous les résultats pour &ldquo;{internalQuery}&rdquo; →
@@ -364,7 +377,12 @@ export function StorefrontHeader({
 
   const renderMenuItemLabel = (item: StoreMenuItem) => {
     if (typeof item.localized_label === 'string') return item.localized_label;
-    return item.localized_label.fr || item.localized_label.en || Object.values(item.localized_label)[0] || '';
+    return (
+      item.localized_label.fr ||
+      item.localized_label.en ||
+      Object.values(item.localized_label)[0] ||
+      ''
+    );
   };
 
   const resolveItemHref = (item: StoreMenuItem) => {
@@ -421,9 +439,18 @@ export function StorefrontHeader({
 
           <Link href={storePathBase || '/'} className="flex items-center gap-2">
             {logoUrl ? (
-              <Image src={logoUrl} alt={storeName} width={180} height={36} unoptimized className="h-9 max-w-[180px] object-contain" />
+              <Image
+                src={logoUrl}
+                alt={storeName}
+                width={180}
+                height={36}
+                unoptimized
+                className="h-9 max-w-[180px] object-contain"
+              />
             ) : (
-              <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${theme.typography.headingStyle}`}>
+              <h1
+                className={`text-xl sm:text-2xl font-extrabold tracking-tight ${theme.typography.headingStyle}`}
+              >
                 {storeName}
               </h1>
             )}
@@ -433,10 +460,7 @@ export function StorefrontHeader({
         {/* Center: Primary Navigation (Desktop) */}
         {variant !== 'minimal' && (
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
-            <Link
-              href={storePathBase || '/'}
-              className="hover:opacity-80 transition-opacity"
-            >
+            <Link href={storePathBase || '/'} className="hover:opacity-80 transition-opacity">
               Accueil
             </Link>
 
@@ -451,19 +475,16 @@ export function StorefrontHeader({
                   const childCount = item.children?.length ?? 0;
                   // Mega menu: 6+ children OR item has a promotional image
                   const isMegaMenu = childCount >= 6 || (!!item.image && childCount >= 3);
-                  const columns = isMegaMenu
-                    ? childCount <= 8
-                      ? 2
-                      : childCount <= 12
-                        ? 3
-                        : 4
-                    : 1;
+                  const columns = isMegaMenu ? (childCount <= 8 ? 2 : childCount <= 12 ? 3 : 4) : 1;
 
                   return (
                     <div key={item.id} className="relative group">
                       <button
+                        type="button"
                         onClick={() => setOpenDropdownId(isOpen ? null : item.id)}
                         className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+                        aria-expanded={isOpen}
+                        aria-controls={`dropdown-${item.id}`}
                       >
                         {label}
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -471,6 +492,7 @@ export function StorefrontHeader({
 
                       {isOpen && (
                         <div
+                          id={`dropdown-${item.id}`}
                           className={`absolute top-full ${isMegaMenu ? 'left-1/2 -translate-x-1/2' : 'left-0'} mt-2 ${
                             isMegaMenu ? 'max-w-[90vw]' : 'w-48'
                           } rounded-xl shadow-xl border p-4 bg-white text-gray-900 z-50`}
@@ -484,10 +506,10 @@ export function StorefrontHeader({
                             <div className="flex gap-4">
                               {/* Columns of links */}
                               <div
-                                className={`grid gap-2 ${
-                                  item.image ? 'flex-1' : 'w-full'
-                                }`}
-                                style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+                                className={`grid gap-2 ${item.image ? 'flex-1' : 'w-full'}`}
+                                style={{
+                                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                                }}
                               >
                                 {item.children?.map((child) => (
                                   <Link
@@ -569,6 +591,7 @@ export function StorefrontHeader({
               <>
                 {categories.slice(0, 5).map((cat) => (
                   <button
+                    type="button"
                     key={cat}
                     onClick={() => onCategoryChange?.(activeCategory === cat ? '' : cat)}
                     className={`hover:opacity-80 transition-opacity ${
@@ -704,6 +727,7 @@ export function StorefrontHeader({
                   </h3>
                   <nav className="space-y-1 text-xs">
                     <button
+                      type="button"
                       onClick={() => {
                         onCategoryChange?.('');
                         setMobileMenuOpen(false);
@@ -716,6 +740,7 @@ export function StorefrontHeader({
                     </button>
                     {categories.map((cat) => (
                       <button
+                        type="button"
                         key={cat}
                         onClick={() => {
                           onCategoryChange?.(cat);
