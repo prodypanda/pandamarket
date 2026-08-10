@@ -203,6 +203,9 @@ export const PLATFORM_SETTING_DEFAULTS = {
   ads_prohibited_terms: '',
   ads_creative_image_required: false,
   ads_max_creative_description_length: 500,
+  rewards_widget_enabled: true,
+  rewards_widget_button_label: "🎁 Gagnez jusqu'à 15 DT !",
+  rewards_widget_prizes_json: '[{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EF4444","desc":"5.000 DT de remise immédiate sur votre panier"},{"label":"Livraison 0 DT","code":"LIVRAISON_ZERO","disc":7.0,"icon":"🚚","color":"#10B981","desc":"Frais de livraison 100% offerts"},{"label":"-10% Panier","code":"PANDA10","disc":10,"icon":"🔥","color":"#F59E0B","desc":"10% de réduction immédiate sur toute votre commande"},{"label":"15 DT Cadeau","code":"SUPER15","disc":15.0,"icon":"🎁","color":"#8B5CF6","desc":"15.000 DT de réduction dès 80 DT d’achat"},{"label":"-5% Fidélité","code":"FIDELITE5","disc":5,"icon":"⭐","color":"#3B82F6","desc":"5% de réduction exclusive client"},{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EC4899","desc":"5.000 DT de remise immédiate"}]',
 } satisfies Record<string, PlatformSettingValue>;
 
 export type PlatformSettingKey = keyof typeof PLATFORM_SETTING_DEFAULTS;
@@ -294,6 +297,9 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'email_marketing_enabled',
   'chat_bubble_enabled',
   'chat_bubble_position',
+  'rewards_widget_enabled',
+  'rewards_widget_button_label',
+  'rewards_widget_prizes_json',
   'default_currency',
   'maintenance_enabled',
   'maintenance_title',
@@ -400,6 +406,9 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'page_builder_enabled',
     'plugins_marketplace_enabled',
     'email_marketing_enabled',
+    'rewards_widget_enabled',
+    'rewards_widget_button_label',
+    'rewards_widget_prizes_json',
     'cart_enabled',
     'catalog_featured_category_slugs',
     'catalog_default_sort',
@@ -565,6 +574,7 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'ads_sponsored_brands_enabled',
   'ads_sponsored_content_enabled',
   'ads_creative_image_required',
+  'rewards_widget_enabled',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([

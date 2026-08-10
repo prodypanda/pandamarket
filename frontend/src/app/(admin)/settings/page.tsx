@@ -8,7 +8,7 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 
 interface PlatformSettings {
@@ -104,6 +104,9 @@ interface PlatformSettings {
   page_builder_enabled: boolean;
   plugins_marketplace_enabled: boolean;
   email_marketing_enabled: boolean;
+  rewards_widget_enabled: boolean;
+  rewards_widget_button_label: string;
+  rewards_widget_prizes_json: string;
   cart_enabled: boolean;
   shipping_enabled: boolean;
   shipping_self_managed_enabled: boolean;
@@ -309,6 +312,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   page_builder_enabled: true,
   plugins_marketplace_enabled: false,
   email_marketing_enabled: false,
+  rewards_widget_enabled: true,
+  rewards_widget_button_label: "🎁 Gagnez jusqu'à 15 DT !",
+  rewards_widget_prizes_json: '[{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EF4444","desc":"5.000 DT de remise immédiate sur votre panier"},{"label":"Livraison 0 DT","code":"LIVRAISON_ZERO","disc":7.0,"icon":"🚚","color":"#10B981","desc":"Frais de livraison 100% offerts"},{"label":"-10% Panier","code":"PANDA10","disc":10,"icon":"🔥","color":"#F59E0B","desc":"10% de réduction immédiate sur toute votre commande"},{"label":"15 DT Cadeau","code":"SUPER15","disc":15.0,"icon":"🎁","color":"#8B5CF6","desc":"15.000 DT de réduction dès 80 DT d’achat"},{"label":"-5% Fidélité","code":"FIDELITE5","disc":5,"icon":"⭐","color":"#3B82F6","desc":"5% de réduction exclusive client"},{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EC4899","desc":"5.000 DT de remise immédiate"}]',
   cart_enabled: true,
   shipping_enabled: true,
   shipping_self_managed_enabled: true,
@@ -582,6 +588,7 @@ const BOOLEAN_SETTING_KEYS = [
   'page_builder_enabled',
   'plugins_marketplace_enabled',
   'email_marketing_enabled',
+  'rewards_widget_enabled',
   'cart_enabled',
   'shipping_enabled',
   'shipping_self_managed_enabled',
@@ -706,6 +713,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'page_builder_enabled',
     'plugins_marketplace_enabled',
     'email_marketing_enabled',
+    'rewards_widget_enabled',
+    'rewards_widget_button_label',
+    'rewards_widget_prizes_json',
     'cart_enabled',
     'catalog_featured_category_slugs',
     'catalog_default_sort',
@@ -1924,6 +1934,32 @@ export default function AdminSettingsPage() {
             { key: 'plugins_marketplace_enabled' as const, label: 'Plugins Marketplace', description: 'Expose plugin marketplace capabilities when the module is available.' },
             { key: 'email_marketing_enabled' as const, label: 'Email Marketing', description: 'Expose email marketing add-on capabilities when the module is available.' },
           ].map(renderToggle)}
+        </div>
+      </section>
+
+      <section className={`${activeTab === 'commerce' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40 space-y-6`}>
+        <SectionHeader
+          icon={<Gift className="h-5 w-5" />}
+          title="Gamified Rewards & Retention Widget"
+          description="Configure floating rewards wheel, scratch cards, button label, and wheel prizes for customer conversion."
+        />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[
+            { key: 'rewards_widget_enabled' as const, label: 'Gamified Rewards Widget', description: 'Enable floating rewards wheel and scratch card widget on buyer storefront pages.' },
+          ].map(renderToggle)}
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {renderTextInput(
+            'rewards_widget_button_label',
+            'Floating Trigger Button Label',
+            "e.g. 🎁 Gagnez jusqu'à 15 DT !",
+            'Text displayed on the floating trigger button at the bottom right of storefront pages.',
+          )}
+          {renderTextAreaInput(
+            'rewards_widget_prizes_json',
+            'Wheel Prizes JSON Config',
+            'JSON array of wheel slices with label, coupon code, discount amount, color and description.',
+          )}
         </div>
       </section>
 

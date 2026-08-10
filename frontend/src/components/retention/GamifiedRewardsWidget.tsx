@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   Gift,
   Sparkles,
@@ -33,6 +34,7 @@ const PRIZES = [
 const STORAGE_SPIN_KEY = 'pd_last_spin_time';
 
 export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
+  const pathname = usePathname();
   const { applyCoupon } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [gameMode, setGameMode] = useState<'wheel' | 'scratch'>('wheel');
@@ -40,6 +42,73 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(true);
   const [hasPlayedToday, setHasPlayedToday] = useState(false);
+
+  // Dynamic Settings
+  const [enabled, setEnabled] = useState(true);
+  const [buttonLabel, setButtonLabel] = useState("🎁 Gagnez jusqu'à 15 DT !");
+  const [prizesList, setPrizesList] = useState(PRIZES);
+
+  // Route check
+  const isInternalOrAuthRoute =
+    !pathname ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/hub/dashboard') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/users') ||
+    pathname.startsWith('/vendors') ||
+    pathname.startsWith('/stores') ||
+    pathname.startsWith('/withdrawals') ||
+    pathname.startsWith('/plans') ||
+    pathname.startsWith('/marketplace-categories') ||
+    pathname.startsWith('/ai-costs') ||
+    pathname.startsWith('/audit-log') ||
+    pathname.startsWith('/smtp-config') ||
+    pathname.startsWith('/reports') ||
+    pathname.startsWith('/kyc') ||
+    pathname.startsWith('/mandats') ||
+    pathname.startsWith('/messages') ||
+    pathname.startsWith('/system-logs') ||
+    pathname.startsWith('/buyer-audit-log') ||
+    pathname.startsWith('/seller-audit-log') ||
+    pathname.startsWith('/platform-analytics') ||
+    pathname.startsWith('/platform-media') ||
+    pathname.startsWith('/admin-notes') ||
+    pathname.startsWith('/fraud-radar');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadWidgetSettings() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/marketplace/settings');
+        if (res.ok) {
+          const json = await res.json();
+          const settings = json.data || json;
+          if (!cancelled) {
+            if (typeof settings.rewards_widget_enabled === 'boolean') {
+              setEnabled(settings.rewards_widget_enabled);
+            }
+            if (settings.rewards_widget_button_label) {
+              setButtonLabel(settings.rewards_widget_button_label);
+            }
+            if (settings.rewards_widget_prizes_json) {
+              try {
+                const parsed = JSON.parse(settings.rewards_widget_prizes_json);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setPrizesList(parsed);
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
+    loadWidgetSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Wheel State
   const [isSpinning, setIsSpinning] = useState(false);
@@ -92,8 +161,8 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     }
   }, [gameMode, isOpen, wonPrize]);
 
-  const handleScratch = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!consent || !phone.trim() || wonPrize) return;
+  const handleScratchMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (hasPlayedToday || wonPrize || !phone.trim() || !consent) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -102,7 +171,6 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
@@ -115,7 +183,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
       const next = prev + 5;
       if (next >= 40 && !wonPrize) {
         // Trigger win
-        const prize = PRIZES[0]; // 5 DT
+        const prize = prizesList[0] || PRIZES[0];
         handleCompleteWin(prize, 'scratch_card');
       }
       return next;
@@ -126,12 +194,11 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     if (isSpinning || wonPrize || !phone.trim() || !consent) return;
     setIsSpinning(true);
 
-    // Pick random prize (weighted towards 5 DT / 10%)
-    const selectedIdx = Math.floor(Math.random() * PRIZES.length);
-    const prize = PRIZES[selectedIdx];
+    const list = prizesList.length > 0 ? prizesList : PRIZES;
+    const selectedIdx = Math.floor(Math.random() * list.length);
+    const prize = list[selectedIdx];
 
-    // Calculate rotation: 5 full spins (1800 deg) + offset to slice
-    const sliceAngle = 360 / PRIZES.length;
+    const sliceAngle = 360 / list.length;
     const targetAngle = 1800 + (360 - selectedIdx * sliceAngle - sliceAngle / 2);
 
     setWheelRotation(targetAngle);
@@ -147,26 +214,20 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     localStorage.setItem(STORAGE_SPIN_KEY, Date.now().toString());
     setHasPlayedToday(true);
 
-    // Send lead to backend
     try {
-      await fetchWithCsrf('/api/pd/cart/gamified-spin', {
+      await fetchWithCsrf('/api/pd/retention/rewards-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
-          store_id: storeId || undefined,
           phone: phone.trim(),
-          email: email.trim() || undefined,
-          consent_given: consent,
-          game_type: type,
-          prize_won: prize.label,
-          coupon_code: prize.code,
-          discount_value: prize.disc,
+          email: email.trim() || null,
+          prize_code: prize.code,
+          prize_label: prize.label,
+          type,
+          store_id: storeId || null,
         }),
       });
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const handleApplyToCart = () => {
@@ -186,6 +247,11 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Hide widget on internal admin / auth routes or if disabled in platform config
+  if (isInternalOrAuthRoute || !enabled) return null;
+
+  const currentPrizes = prizesList.length > 0 ? prizesList : PRIZES;
+
   return (
     <>
       {/* Floating Trigger Button on Bottom Right */}
@@ -199,7 +265,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
             <Gift className="h-4 w-4" />
           </span>
           <span className="hidden sm:inline tracking-wide uppercase text-[11px]">
-            🎁 Gagnez jusqu&apos;à 15 DT !
+            {buttonLabel || "🎁 Gagnez jusqu'à 15 DT !"}
           </span>
           <span className="inline sm:hidden font-bold">Cadeaux</span>
         </button>
@@ -272,8 +338,8 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                         transform: `rotate(${wheelRotation}deg)`,
                       }}
                     >
-                      {PRIZES.map((p, idx) => {
-                        const angle = (360 / PRIZES.length) * idx;
+                      {currentPrizes.map((p, idx) => {
+                        const angle = (360 / currentPrizes.length) * idx;
                         return (
                           <div
                             key={idx}
