@@ -11,6 +11,7 @@ async function restoreBackendEnvVars() {
       [
         { key: 'PD_NODE_ENV', value: 'production' },
         { key: 'PD_DATABASE_URL', value: 'postgresql://postgres.lwmagicgoqbvkxsyahgu:nh568425NH**--@aws-0-eu-central-1.pooler.supabase.com:6543/postgres' },
+        { key: 'PD_DATABASE_SSL', value: 'true' },
         { key: 'PD_REDIS_URL', value: 'redis://default:jrbiELGyUTOJpY751L3RPUah7p5sPlW4@forest-powder-workable-12949.db.redis.io:13264' },
         { key: 'PD_JWT_SECRET', value: 'pd_super_secret_jwt_key_2026' },
         { key: 'PD_SMS_PROVIDER', value: 'whatsapp_gateway' },
@@ -24,7 +25,7 @@ async function restoreBackendEnvVars() {
         },
       },
     );
-    console.log('Backend env vars restored successfully!');
+    console.log('Backend env vars restored successfully with PD_DATABASE_SSL=true!');
     console.log(JSON.stringify(res.data, null, 2));
   } catch (err) {
     if (err.response) {

@@ -10,7 +10,7 @@ async function updateService() {
       {
         serviceDetails: {
           envSpecificDetails: {
-            startCommand: 'cd backend && (node dist/src/main.js || node dist/backend/src/main.js)',
+            startCommand: 'cd backend && node dist/backend/src/main.js',
           },
         },
       },
