@@ -75,7 +75,7 @@ const envFallback = process.env.NODE_ENV === 'production' ? 'production' : 'deve
 export const config = {
   // App
   env: optional('PD_NODE_ENV', envFallback) as 'development' | 'production' | 'test',
-  port: asInt('PD_PORT', 9000),
+  port: asInt('PORT', asInt('PD_PORT', 9000)),
   logLevel: optional('PD_LOG_LEVEL', 'info'),
   hubDomain: optional('PD_HUB_DOMAIN', 'pandamarket.local')!,
   adminCors: asList('PD_ADMIN_CORS', ['http://localhost:3000']),
