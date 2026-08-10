@@ -1125,6 +1125,21 @@ export default function AdminSettingsPage() {
     );
   }
 
+  function renderTextAreaInput<K extends StringSettingKey>(key: K, label: string, placeholder = '') {
+    return (
+      <div key={key} className="space-y-1.5 md:col-span-2">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">{label}</label>
+        <textarea
+          rows={4}
+          value={settings[key]}
+          placeholder={placeholder}
+          onChange={(e) => updateSetting(key, e.target.value as PlatformSettings[K])}
+          className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-xs font-mono text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+        />
+      </div>
+    );
+  }
+
   function renderColorInput<K extends StringSettingKey>(key: K, label: string) {
     return (
       <div key={key} className="space-y-1.5">
