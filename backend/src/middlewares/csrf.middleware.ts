@@ -68,6 +68,7 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     req.path.includes('/orders/checkout') ||
     req.path.includes('/orders/check-phone') ||
     req.path.includes('/orders/guest-track') ||
+    req.path.includes('/auth/whatsapp/') ||
     req.path.includes('/payments/init') ||
     req.path.includes('/payments/mandat/upload') ||
     req.path.includes('/mandat/upload') ||

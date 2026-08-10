@@ -19,6 +19,7 @@ import { getRedis } from './db/redis';
 
 // Routers
 import authRouter from './api/auth.route';
+import whatsappAuthRouter from './api/whatsapp-auth.route';
 import storefrontAuthRouter from './api/storefront-auth.route';
 import storefrontAccountRouter from './api/storefront-account.route';
 import storeRouter from './api/store.route';
@@ -226,6 +227,7 @@ async function bootstrap() {
 
   // API Routes
   const apiRouter = express.Router();
+  apiRouter.use('/auth/whatsapp', whatsappAuthRouter);
   apiRouter.use('/auth', authRouter);
   apiRouter.use('/storefront/auth', storefrontAuthRouter);
   apiRouter.use('/storefront/account', storefrontAccountRouter);

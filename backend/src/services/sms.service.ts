@@ -47,13 +47,13 @@ function generateOtp(): string {
 }
 
 /**
- * Normalise a Tunisian phone number to +216XXXXXXXX format.
+ * Normalise a phone number to E.164 format (+216XXXXXXXX or +<country_code><number>).
  */
-function normalisePhone(phone: string): string {
+export function normalisePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-().]/g, '');
-  // If starts with 00216, replace with +216
-  if (cleaned.startsWith('00216')) {
-    cleaned = '+216' + cleaned.slice(5);
+  // If starts with 00, replace with +
+  if (cleaned.startsWith('00')) {
+    cleaned = '+' + cleaned.slice(2);
   }
   // If starts with 216 (no +), add +
   if (cleaned.startsWith('216') && !cleaned.startsWith('+')) {
@@ -66,6 +66,10 @@ function normalisePhone(phone: string): string {
   // If just 8 digits (no prefix), assume Tunisian
   if (/^\d{8}$/.test(cleaned)) {
     cleaned = '+216' + cleaned;
+  }
+  // If digits only without +, prepend + if looks like E.164
+  if (/^\d{9,15}$/.test(cleaned)) {
+    cleaned = '+' + cleaned;
   }
   return cleaned;
 }
@@ -85,15 +89,59 @@ function configuredSmsSender(settings: PlatformSettings): string {
 
 export class SmsService {
   /**
-   * Send an OTP to the given phone number.
+   * Send a WhatsApp 6-digit OTP code to the given phone number.
+   */
+  async sendWhatsAppOtp(phone: string): Promise<{ sent: boolean; message: string; otpForDev?: string }> {
+    const normalised = normalisePhone(phone);
+
+    if (!/^\+\d{8,15}$/.test(normalised)) {
+      throw new PdValidationError('Numéro de téléphone invalide. Exemple: +216 98 123 456');
+    }
+
+    const redis = getRedis();
+
+    // Rate limit: 1 OTP per minute per phone
+    const rateLimited = await withRedisTimeout(redis.get(otpRateLimitKey(normalised)));
+    if (rateLimited) {
+      throw new PdRateLimitError(OTP_RATE_LIMIT_SECONDS);
+    }
+
+    // Generate OTP
+    const otp = generateOtp();
+
+    // Store in Redis
+    await withRedisTimeout(redis.setex(otpKey(normalised), OTP_TTL_SECONDS, otp));
+    await withRedisTimeout(redis.del(otpAttemptsKey(normalised))); // Reset attempts
+    await withRedisTimeout(redis.setex(otpRateLimitKey(normalised), OTP_RATE_LIMIT_SECONDS, '1'));
+
+    const settings = await platformConfigService.getSettings();
+    const sender = configuredSmsSender(settings);
+    const message = `📱 ${sender}: Votre code de vérification WhatsApp est ${otp}. Valide pendant 10 minutes.`;
+
+    // Attempt dispatch via Twilio WhatsApp / Infobip / SMS Fallback
+    const sent = await this.dispatchWhatsAppOrSms(normalised, message, settings);
+
+    logger.info({ phone: normalised.slice(0, 7) + '****', sent, devOtp: sent ? undefined : otp }, 'WhatsApp OTP generated');
+
+    return {
+      sent,
+      message: sent
+        ? 'Code de vérification envoyé sur votre WhatsApp'
+        : `Code de vérification généré : ${otp} (mode dev)`,
+      otpForDev: sent ? undefined : otp,
+    };
+  }
+
+  /**
+   * Send an OTP to the given phone number via SMS.
    * Returns true if sent successfully.
    */
   async sendOtp(phone: string): Promise<{ sent: boolean; message: string }> {
     const normalised = normalisePhone(phone);
 
     // Validate format
-    if (!/^\+216\d{8}$/.test(normalised)) {
-      throw new PdValidationError('Invalid Tunisian phone number. Expected format: +216XXXXXXXX');
+    if (!/^\+\d{8,15}$/.test(normalised)) {
+      throw new PdValidationError('Invalid phone number. Expected format: +216XXXXXXXX');
     }
 
     const settings = await platformConfigService.getSettings();
@@ -180,6 +228,53 @@ export class SmsService {
 
     logger.info({ phone: normalised.slice(0, 7) + '****' }, 'OTP verified successfully');
     return true;
+  }
+
+  /**
+   * Dispatch WhatsApp or SMS message via configured provider.
+   */
+  private async dispatchWhatsAppOrSms(to: string, message: string, settings: PlatformSettings): Promise<boolean> {
+    const provider = configuredSmsProvider(settings);
+    const sender = configuredSmsSender(settings);
+
+    // Try Twilio WhatsApp if configured
+    if (provider === 'twilio' && config.sms.twilioAccountSid && config.sms.twilioAuthToken) {
+      const waSent = await this.sendViaTwilioWhatsApp(to, message);
+      if (waSent) return true;
+    }
+
+    // Fallback to SMS dispatch
+    return this.dispatchSms(to, message, provider, sender);
+  }
+
+  private async sendViaTwilioWhatsApp(to: string, message: string): Promise<boolean> {
+    try {
+      const accountSid = config.sms.twilioAccountSid;
+      const authToken = config.sms.twilioAuthToken;
+      if (!accountSid || !authToken) {
+        return false;
+      }
+      let from = config.sms.twilioFromNumber || '';
+      if (!from.startsWith('whatsapp:')) {
+        from = `whatsapp:${from}`;
+      }
+
+      const waTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+      await axios.post(
+        url,
+        new URLSearchParams({ To: waTo, From: from, Body: message }),
+        {
+          auth: { username: accountSid, password: authToken },
+          timeout: 10_000,
+        },
+      );
+      return true;
+    } catch (err) {
+      logger.warn({ err }, 'Twilio WhatsApp message dispatch failed');
+      return false;
+    }
   }
 
   /**

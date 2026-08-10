@@ -13,10 +13,12 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MarketplaceBrand } from '../MarketplaceBrand';
+import { WhatsAppAuthModal } from './WhatsAppAuthModal';
 
 type LoginVariant = 'seller' | 'admin';
 
@@ -64,6 +66,7 @@ export function RoleScopedLoginPage({
   const [error, setError] = useState('');
   const [twoFactorChallengeId, setTwoFactorChallengeId] = useState<string | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const isAdmin = variant === 'admin';
   const heroTitle = isAdmin ? 'Centre de contrôle marketplace' : 'Espace vendeur haute performance';
@@ -348,7 +351,8 @@ export function RoleScopedLoginPage({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0c0a09] px-4 py-10 text-white">
+    <>
+      <div className="relative min-h-screen overflow-hidden bg-[#0c0a09] px-4 py-10 text-white">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -519,21 +523,45 @@ export function RoleScopedLoginPage({
                   </>
                 )}
               </button>
-            </form>
+              </form>
 
-            {registerHref && registerLabel && (
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Pas encore de compte ?{' '}
-                  <Link href={registerHref} className="font-semibold text-orange-600 transition hover:text-orange-700 hover:underline">
-                    {registerLabel} →
-                  </Link>
-                </p>
-              </div>
-            )}
+              {!isAdmin && (
+                <div className="pt-3">
+                  <div className="relative flex items-center justify-center my-3">
+                    <div className="border-t border-gray-200 w-full" />
+                    <span className="bg-white px-3 text-xs font-bold text-gray-400 uppercase tracking-wider absolute">ou</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsWaModalOpen(true)}
+                    className="w-full py-3.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    <span>Se connecter / S&apos;inscrire par WhatsApp 📱</span>
+                  </button>
+                </div>
+              )}
+
+              {registerHref && registerLabel && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-600">
+                    Pas encore de compte ?{' '}
+                    <Link href={registerHref} className="font-semibold text-orange-600 transition hover:text-orange-700 hover:underline">
+                      {registerLabel} →
+                    </Link>
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <WhatsAppAuthModal
+        isOpen={isWaModalOpen}
+        onClose={() => setIsWaModalOpen(false)}
+        role="vendor"
+      />
+    </>
   );
 }

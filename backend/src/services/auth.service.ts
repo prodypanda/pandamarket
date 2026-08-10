@@ -758,6 +758,171 @@ export class AuthService {
     throw new PdAuthenticationError(PdErrorCode.AUTH_2FA_INVALID, 'Invalid authentication code');
   }
 
+  /**
+   * Login or Register a user/seller using WhatsApp 6-digit OTP code.
+   */
+  async loginOrRegisterWithWhatsApp(
+    opts: {
+      phone: string;
+      otp: string;
+      role?: UserRole;
+      first_name?: string;
+      last_name?: string;
+    },
+    context?: AccountSecurityContext,
+  ): Promise<{ user: UserRow; tokens: AuthTokens; is_new_user: boolean }> {
+    const { smsService, normalisePhone } = await import('./sms.service');
+    const normalised = normalisePhone(opts.phone);
+    const cleanPhone = normalised.replace(/\D/g, '');
+
+    // 1. Verify OTP
+    const isValid = await smsService.verifyOtp(normalised, opts.otp);
+    if (!isValid) {
+      throw new PdValidationError('Code de vérification invalide ou expiré', { field: 'otp' });
+    }
+
+    // 2. Search for existing user by phone
+    const phoneVariations = [normalised, cleanPhone, `216${cleanPhone}`, cleanPhone.replace(/^216/, '')];
+    const { rows: existingUsers } = await query<UserRow>(
+      `SELECT id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone, onboarding_state
+       FROM pd_user
+       WHERE phone = ANY($1) OR (phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = $2)
+       ORDER BY CASE WHEN email NOT LIKE '%@whatsapp.pandamarket.tn' THEN 0 ELSE 1 END, created_at ASC
+       LIMIT 1`,
+      [phoneVariations, cleanPhone],
+    );
+
+    let user: UserRow;
+    let isNewUser = false;
+
+    if (existingUsers.length > 0) {
+      user = existingUsers[0];
+      await query('UPDATE pd_user SET last_login_at = NOW() WHERE id = $1', [user.id]);
+    } else {
+      // 3. Create new WhatsApp User
+      isNewUser = true;
+      const userId = pdId('user');
+      const role = opts.role || UserRole.Vendor;
+      const placeholderEmail = `wa_${cleanPhone}@whatsapp.pandamarket.tn`;
+      const randomPassword = await bcrypt.hash(randomHex(16), config.bcryptRounds);
+      const firstName = opts.first_name || 'Vendeur';
+      const lastName = opts.last_name || 'WhatsApp';
+
+      const { rows: created } = await query<UserRow>(
+        `INSERT INTO pd_user
+          (id, email, password_hash, first_name, last_name, role, phone, email_verified, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, false, true)
+         RETURNING id, email, password_hash, first_name, last_name, role, store_id, email_verified, is_active, phone, onboarding_state`,
+        [userId, placeholderEmail, randomPassword, firstName, lastName, role, normalised],
+      );
+      user = created[0];
+
+      // If registering as vendor via WhatsApp, auto-create vendor store
+      if (role === UserRole.Vendor) {
+        try {
+          const storeId = pdId('store');
+          const storeName = `Boutique WhatsApp ${cleanPhone.slice(-4)}`;
+          const subdomain = `wa-${cleanPhone.slice(-6)}-${randomHex(2)}`;
+
+          await query(
+            `INSERT INTO pd_store (id, name, owner_id, subdomain, status, seller_type)
+             VALUES ($1, $2, $3, $4, 'unverified', 'retailer')`,
+            [storeId, storeName, userId, subdomain],
+          );
+
+          await query('UPDATE pd_user SET store_id = $1 WHERE id = $2', [storeId, userId]);
+          user.store_id = storeId;
+        } catch (err) {
+          logger.warn({ err, userId }, 'Auto-store creation for WhatsApp vendor failed');
+        }
+      }
+    }
+
+    // 4. Fuse unlinked guest orders matching phone number
+    try {
+      await this.mergeAccountsByPhone(user.id, normalised);
+    } catch (err) {
+      logger.warn({ err, userId: user.id }, 'Order fusion on WhatsApp login failed');
+    }
+
+    // 5. Issue Auth Tokens
+    const tokens = await this.issueTokens(user, context);
+
+    return { user, tokens, is_new_user: isNewUser };
+  }
+
+  /**
+   * Merge unlinked guest orders and temporary WhatsApp accounts into a primary user account.
+   */
+  async mergeAccountsByPhone(primaryUserId: string, phone: string): Promise<number> {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone) return 0;
+
+    const phoneVariations = [cleanPhone, `216${cleanPhone}`, cleanPhone.replace(/^216/, '')];
+
+    // Find any temporary WhatsApp users with matching phone
+    const { rows: tempUsers } = await query<{ id: string }>(
+      `SELECT id FROM pd_user
+       WHERE (phone = ANY($1) OR (phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = $2))
+         AND id != $3
+         AND email LIKE '%@whatsapp.pandamarket.tn'`,
+      [phoneVariations, cleanPhone, primaryUserId],
+    );
+
+    const tempUserIds = tempUsers.map((u) => u.id);
+
+    let updatedOrdersCount = 0;
+
+    await transaction(async (client) => {
+      // Re-assign guest orders and temp user orders to primary user
+      const orderRes = await client.query(
+        `UPDATE pd_order
+         SET customer_id = $1
+         WHERE (customer_id IS NULL OR customer_id = ANY($2::text[]))
+           AND (
+             (shipping_address->>'phone') = ANY($3)
+             OR (shipping_address->>'phone') LIKE '%' || $4 || '%'
+           )`,
+        [primaryUserId, tempUserIds.length > 0 ? tempUserIds : ['__none__'], phoneVariations, cleanPhone],
+      );
+      updatedOrdersCount = orderRes.rowCount || 0;
+
+      // Re-assign stores if temp user owned one and primary user does not
+      if (tempUserIds.length > 0) {
+        await client.query(
+          `UPDATE pd_store
+           SET owner_id = $1
+           WHERE owner_id = ANY($2::text[])
+             AND owner_id NOT IN (SELECT owner_id FROM pd_store WHERE owner_id = $1)`,
+          [primaryUserId, tempUserIds],
+        );
+
+        // Deactivate temporary users
+        await client.query(
+          `UPDATE pd_user
+           SET is_active = false, updated_at = NOW()
+           WHERE id = ANY($1::text[])`,
+          [tempUserIds],
+        );
+      }
+
+      // Update primary user's phone if missing
+      await client.query(
+        `UPDATE pd_user
+         SET phone = COALESCE(phone, $2),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [primaryUserId, phone],
+      );
+    });
+
+    if (updatedOrdersCount > 0) {
+      logger.info({ primaryUserId, cleanPhone, updatedOrdersCount }, 'Merged orders by phone');
+    }
+
+    return updatedOrdersCount;
+  }
+
   private async storeRefreshToken(
     userId: string,
     token: string,
