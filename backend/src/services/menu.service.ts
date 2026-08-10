@@ -7,7 +7,16 @@ import { logger } from '../utils/logger';
 
 export const menuItemTypeEnum = z.enum(['page', 'product', 'category', 'collection', 'custom_url']);
 export const menuLocationEnum = z.enum(['header', 'footer', 'mobile', 'utility']);
-export const footerBlockTypeEnum = z.enum(['menu', 'text', 'contact', 'social', 'newsletter', 'payment_badges', 'legal', 'map']);
+export const footerBlockTypeEnum = z.enum([
+  'menu',
+  'text',
+  'contact',
+  'social',
+  'newsletter',
+  'payment_badges',
+  'legal',
+  'map',
+]);
 
 export type MenuItemType = z.infer<typeof menuItemTypeEnum>;
 export type MenuLocation = z.infer<typeof menuLocationEnum>;
@@ -95,14 +104,16 @@ export class MenuService {
       [storeId],
     );
 
-    const resultMenus = [];
-    for (const menu of menus) {
-      const items = await this.getMenuItems(menu.id);
-      resultMenus.push({
-        ...menu,
-        items,
-      });
-    }
+    // ⚡ Bolt: Fetch menu items concurrently to reduce db latency bottleneck
+    const resultMenus = await Promise.all(
+      menus.map(async (menu) => {
+        const items = await this.getMenuItems(menu.id);
+        return {
+          ...menu,
+          items,
+        };
+      }),
+    );
 
     return { menus: resultMenus };
   }
@@ -260,15 +271,17 @@ export class MenuService {
       [storeId],
     );
 
-    const publicMenus = [];
-    for (const menu of menus) {
-      const items = await this.getMenuItems(menu.id, true);
-      publicMenus.push({
-        id: menu.id,
-        location: menu.location,
-        items,
-      });
-    }
+    // ⚡ Bolt: Fetch public menu items concurrently to reduce db latency bottleneck
+    const publicMenus = await Promise.all(
+      menus.map(async (menu) => {
+        const items = await this.getMenuItems(menu.id, true);
+        return {
+          id: menu.id,
+          location: menu.location,
+          items,
+        };
+      }),
+    );
 
     const { rows: footerRows } = await query<{ id: string; published_revision: any }>(
       `SELECT id, published_revision FROM pd_store_footer WHERE store_id = $1 AND is_published = true`,
