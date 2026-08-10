@@ -1,12 +1,87 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import axios from 'axios';
 import { UserRole } from '@pandamarket/types';
 import { asyncHandler } from '../middlewares';
 import { smsService } from '../services/sms.service';
 import { authService } from '../services/auth.service';
 import { orderService } from '../services/order.service';
+import { config } from '../config';
 
 const router = Router();
+
+/**
+ * Render HTML page displaying live WhatsApp QR Code from Evolution API.
+ */
+router.get(
+  '/qr-code',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const gatewayUrl = config.sms.whatsappGatewayUrl;
+    const gatewayToken = config.sms.whatsappGatewayToken;
+
+    if (!gatewayUrl || !gatewayToken) {
+      res.status(400).send('<h3>Passerelle WhatsApp non configurée.</h3>');
+      return;
+    }
+
+    try {
+      const baseUrl = gatewayUrl.split('/message/')[0];
+      const connectUrl = `${baseUrl}/instance/connect/pandamarket`;
+
+      const response = await axios.get(connectUrl, {
+        headers: { apikey: gatewayToken },
+      });
+
+      const qrImage = response.data?.base64 || response.data?.code;
+      const state = response.data?.instance?.state || 'close';
+
+      if (state === 'open' || !qrImage) {
+        res.setHeader('Content-Type', 'text/html');
+        res.send(`
+          <div style="font-family:system-ui;text-align:center;padding:50px;">
+            <h2 style="color:#25D366;font-size:24px;">✅ WhatsApp est Déjà Connecté !</h2>
+            <p style="color:#64748b;">Votre numéro WhatsApp est associé et prêt à envoyer des codes OTP en direct sur PandaMarket.</p>
+          </div>
+        `);
+        return;
+      }
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>PandaMarket - Scanner QR Code WhatsApp</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+            .card { background: white; color: #0f172a; padding: 32px; border-radius: 28px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.5); max-width: 380px; w-width: 100%; }
+            img { width: 260px; height: 260px; border-radius: 18px; margin: 16px 0; border: 3px solid #25D366; }
+            h2 { margin: 0; color: #0f172a; font-size: 22px; font-weight: 900; }
+            p { font-size: 13px; color: #64748b; margin-top: 8px; line-height: 1.5; font-weight: 500; }
+            .step { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 16px; font-size: 12px; font-weight: 700; margin-top: 18px; color: #1e293b; text-align: left; line-height: 1.7; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>Connecter WhatsApp 📱</h2>
+            <p>Scannez ce QR Code avec votre téléphone pour activer l'envoi de SMS / WhatsApp OTP sur PandaMarket.</p>
+            <img src="${qrImage}" alt="WhatsApp QR Code" />
+            <div class="step">
+              1. Ouvrez WhatsApp sur votre téléphone<br>
+              2. Allez dans <strong>Réglages ➔ Appareils connectés</strong><br>
+              3. Appuyez sur <strong>Lier un appareil</strong> et scannez ce code.
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    } catch (err: any) {
+      res.status(500).send(`<h3>Erreur de connexion Evolution API: ${err.message}</h3>`);
+    }
+  }),
+);
 
 function setAccessCookie(res: Response, accessToken: string) {
   res.cookie('pd_at', accessToken, {
