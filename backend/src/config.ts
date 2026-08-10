@@ -159,14 +159,18 @@ export const config = {
   },
   mailFrom: optional('PD_MAIL_FROM', 'PandaMarket <noreply@pandamarket.tn>')!,
 
-  // SMS (Phone verification)
+  // SMS & WhatsApp (Phone verification & Fast Checkout)
   sms: {
-    provider: optional('PD_SMS_PROVIDER', 'console') as 'twilio' | 'infobip' | 'console',
+    provider: optional('PD_SMS_PROVIDER', 'console') as 'twilio' | 'infobip' | 'meta_whatsapp' | 'whatsapp_gateway' | 'console',
     twilioAccountSid: optional('PD_TWILIO_ACCOUNT_SID', ''),
     twilioAuthToken: optional('PD_TWILIO_AUTH_TOKEN', ''),
     twilioFromNumber: optional('PD_TWILIO_FROM_NUMBER', ''),
     infobipApiKey: optional('PD_INFOBIP_API_KEY', ''),
     infobipBaseUrl: optional('PD_INFOBIP_BASE_URL', 'https://api.infobip.com'),
+    metaWhatsappToken: optional('PD_META_WHATSAPP_TOKEN', ''),
+    metaWhatsappPhoneId: optional('PD_META_WHATSAPP_PHONE_ID', ''),
+    whatsappGatewayUrl: optional('PD_WHATSAPP_GATEWAY_URL', ''),
+    whatsappGatewayToken: optional('PD_WHATSAPP_GATEWAY_TOKEN', ''),
   },
 
   // Observability

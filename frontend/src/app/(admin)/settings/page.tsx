@@ -144,7 +144,7 @@ interface PlatformSettings {
   notifications_realtime_enabled: boolean;
   notifications_email_enabled: boolean;
   notifications_sms_enabled: boolean;
-  notifications_sms_provider: 'environment' | 'console' | 'twilio' | 'infobip';
+  notifications_sms_provider: 'environment' | 'console' | 'meta_whatsapp' | 'whatsapp_gateway' | 'twilio' | 'infobip';
   notifications_sms_sender_name: string;
   security_login_max_attempts: number;
   security_login_lockout_minutes: number;
@@ -2324,7 +2324,9 @@ export default function AdminSettingsPage() {
               className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
             >
               <option value="environment">Environment default</option>
-              <option value="console">Console/log fallback</option>
+              <option value="console">Console/log fallback (Dev mode)</option>
+              <option value="meta_whatsapp">Meta WhatsApp Cloud API (Officiel Gratuit - 1000 msg/mois)</option>
+              <option value="whatsapp_gateway">Passerelle WhatsApp QR (Evolution API / UltraMsg / Baileys)</option>
               <option value="twilio">Twilio</option>
               <option value="infobip">Infobip</option>
             </select>

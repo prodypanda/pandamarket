@@ -74,11 +74,17 @@ export function normalisePhone(phone: string): string {
   return cleaned;
 }
 
-type SmsProvider = 'twilio' | 'infobip' | 'console';
+type SmsProvider = 'twilio' | 'infobip' | 'meta_whatsapp' | 'whatsapp_gateway' | 'console';
 
 function configuredSmsProvider(settings: PlatformSettings): SmsProvider {
   const provider = String(settings.notifications_sms_provider || 'environment');
-  if (provider === 'twilio' || provider === 'infobip' || provider === 'console') return provider;
+  if (
+    provider === 'twilio' ||
+    provider === 'infobip' ||
+    provider === 'meta_whatsapp' ||
+    provider === 'whatsapp_gateway' ||
+    provider === 'console'
+  ) return provider as SmsProvider;
   return config.sms.provider;
 }
 
@@ -237,7 +243,19 @@ export class SmsService {
     const provider = configuredSmsProvider(settings);
     const sender = configuredSmsSender(settings);
 
-    // Try Twilio WhatsApp if configured
+    // 1. Meta WhatsApp Cloud API (Direct Official Meta — 1,000 free conversations/month)
+    if (provider === 'meta_whatsapp' || (config.sms.metaWhatsappToken && config.sms.metaWhatsappPhoneId)) {
+      const metaSent = await this.sendViaMetaWhatsAppCloudApi(to, message);
+      if (metaSent) return true;
+    }
+
+    // 2. Custom WhatsApp Gateway / UltraMsg / Baileys / Evolution API (QR Code scan / Free Webhook)
+    if (provider === 'whatsapp_gateway' || (config.sms.whatsappGatewayUrl)) {
+      const gwSent = await this.sendViaCustomWhatsAppGateway(to, message);
+      if (gwSent) return true;
+    }
+
+    // 3. Twilio WhatsApp
     if (provider === 'twilio' && config.sms.twilioAccountSid && config.sms.twilioAuthToken) {
       const waSent = await this.sendViaTwilioWhatsApp(to, message);
       if (waSent) return true;
@@ -245,6 +263,78 @@ export class SmsService {
 
     // Fallback to SMS dispatch
     return this.dispatchSms(to, message, provider, sender);
+  }
+
+  private async sendViaMetaWhatsAppCloudApi(to: string, message: string): Promise<boolean> {
+    try {
+      const token = config.sms.metaWhatsappToken;
+      const phoneId = config.sms.metaWhatsappPhoneId;
+      if (!token || !phoneId) {
+        logger.warn('Meta WhatsApp Cloud API credentials not configured');
+        return false;
+      }
+
+      const cleanTo = to.replace(/\D/g, '');
+      const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
+
+      await axios.post(
+        url,
+        {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanTo,
+          type: 'text',
+          text: { preview_url: false, body: message },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10_000,
+        },
+      );
+      return true;
+    } catch (err) {
+      logger.warn({ err }, 'Meta WhatsApp Cloud API dispatch failed');
+      return false;
+    }
+  }
+
+  private async sendViaCustomWhatsAppGateway(to: string, message: string): Promise<boolean> {
+    try {
+      const gatewayUrl = config.sms.whatsappGatewayUrl;
+      const gatewayToken = config.sms.whatsappGatewayToken;
+      if (!gatewayUrl) {
+        logger.warn('Custom WhatsApp Gateway URL not configured');
+        return false;
+      }
+
+      const cleanTo = to.replace(/\D/g, '');
+      await axios.post(
+        gatewayUrl,
+        {
+          to: cleanTo,
+          phone: cleanTo,
+          number: cleanTo,
+          message,
+          text: message,
+          body: message,
+          token: gatewayToken,
+        },
+        {
+          headers: {
+            ...(gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, token: gatewayToken } : {}),
+            'Content-Type': 'application/json',
+          },
+          timeout: 10_000,
+        },
+      );
+      return true;
+    } catch (err) {
+      logger.warn({ err }, 'Custom WhatsApp Gateway dispatch failed');
+      return false;
+    }
   }
 
   private async sendViaTwilioWhatsApp(to: string, message: string): Promise<boolean> {
