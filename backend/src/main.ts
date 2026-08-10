@@ -356,8 +356,8 @@ async function bootstrap() {
   app.use(errorHandler);
 
   const port = config.port;
-  const server = app.listen(port, () => {
-    logger.info(`Server listening on port ${port} in ${config.env} mode.`);
+  const server = app.listen(port, '0.0.0.0', () => {
+    logger.info(`Server listening on 0.0.0.0:${port} in ${config.env} mode.`);
   });
 
   // Keep-alive self-ping to avoid free-tier cold starts (Render sleeps web
