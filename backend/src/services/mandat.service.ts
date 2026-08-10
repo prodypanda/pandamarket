@@ -43,7 +43,7 @@ export class MandatService {
   async uploadProof(opts: {
     order_id: string;
     uploaded_by: MandatUploader;
-    uploader_user_id: string;
+    uploader_user_id?: string | null;
     image_url: string;
     amount_expected: number;
   }): Promise<MandatProofRow> {

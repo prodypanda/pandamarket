@@ -149,6 +149,7 @@ router.post(
     const uniqueId = pdId('file');
     const ext = filename.split('.').pop()?.toLowerCase() || 'bin';
     const safeFilename = `${uniqueId}.${ext}`;
+    const uploaderId = req.user ? req.user.id : `guest_${uniqueId}`;
 
     switch (purpose) {
       case 'product_image':
@@ -171,7 +172,6 @@ router.post(
         break;
       case 'mandat_proof':
         bucket = config.s3.bucketPrivate;
-        const uploaderId = req.user ? req.user.id : `guest_${uniqueId}`;
         keyPrefix = `mandats/${uploaderId}`;
         break;
       case 'theme_asset':
@@ -226,12 +226,15 @@ router.post(
     const host = req.get('host');
     const protocol = req.protocol;
 
+    const currentUserId = req.user ? req.user.id : uploaderId;
+    const currentStoreId = req.user?.store_id ?? null;
+
     const uploadToken = signMockFileToken({
       type: 'mock_file_upload',
       bucket,
       key: fileKey,
-      owner_id: req.user!.id,
-      store_id: req.user!.store_id ?? null,
+      owner_id: currentUserId,
+      store_id: currentStoreId,
       purpose,
       max_size: maxSize,
       content_type,
@@ -250,7 +253,7 @@ router.post(
     const isPublic = bucket === config.s3.bucketPublic;
 
     logger.info(
-      { purpose, bucket, key: fileKey, user_id: req.user!.id },
+      { purpose, bucket, key: fileKey, user_id: currentUserId },
       'Presigned upload URL generated',
     );
 

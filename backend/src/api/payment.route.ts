@@ -196,7 +196,7 @@ router.post(
     const proof = await mandatService.uploadProof({
       order_id,
       uploaded_by: MandatUploader.Buyer,
-      uploader_user_id: req.user?.id || 'guest',
+      uploader_user_id: req.user?.id ?? null,
       image_url,
       amount_expected: parseFloat(order.total),
     });
