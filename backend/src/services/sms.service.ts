@@ -243,15 +243,22 @@ export class SmsService {
     const provider = configuredSmsProvider(settings);
     const sender = configuredSmsSender(settings);
 
+    const metaToken = (settings as any).meta_whatsapp_token || config.sms.metaWhatsappToken;
+    const metaPhoneId = (settings as any).meta_whatsapp_phone_id || config.sms.metaWhatsappPhoneId;
+
+    const gwUrl = (settings as any).whatsapp_gateway_url || config.sms.whatsappGatewayUrl;
+    const gwToken = (settings as any).whatsapp_gateway_token || config.sms.whatsappGatewayToken;
+    const gwInstance = (settings as any).whatsapp_gateway_instance || 'pandamarket';
+
     // 1. Meta WhatsApp Cloud API (Direct Official Meta — 1,000 free conversations/month)
-    if (provider === 'meta_whatsapp' || (config.sms.metaWhatsappToken && config.sms.metaWhatsappPhoneId)) {
-      const metaSent = await this.sendViaMetaWhatsAppCloudApi(to, message);
+    if (provider === 'meta_whatsapp' || (metaToken && metaPhoneId)) {
+      const metaSent = await this.sendViaMetaWhatsAppCloudApi(to, message, metaToken, metaPhoneId);
       if (metaSent) return true;
     }
 
-    // 2. Custom WhatsApp Gateway / UltraMsg / Baileys / Evolution API (QR Code scan / Free Webhook)
-    if (provider === 'whatsapp_gateway' || (config.sms.whatsappGatewayUrl)) {
-      const gwSent = await this.sendViaCustomWhatsAppGateway(to, message);
+    // 2. Custom WhatsApp Gateway / Evolution API (QR Code scan)
+    if (provider === 'whatsapp_gateway' || gwUrl) {
+      const gwSent = await this.sendViaCustomWhatsAppGateway(to, message, gwUrl, gwToken, gwInstance);
       if (gwSent) return true;
     }
 
@@ -265,17 +272,17 @@ export class SmsService {
     return this.dispatchSms(to, message, provider, sender);
   }
 
-  private async sendViaMetaWhatsAppCloudApi(to: string, message: string): Promise<boolean> {
+  private async sendViaMetaWhatsAppCloudApi(to: string, message: string, token?: string, phoneId?: string): Promise<boolean> {
     try {
-      const token = config.sms.metaWhatsappToken;
-      const phoneId = config.sms.metaWhatsappPhoneId;
-      if (!token || !phoneId) {
+      const authToken = token || config.sms.metaWhatsappToken;
+      const pid = phoneId || config.sms.metaWhatsappPhoneId;
+      if (!authToken || !pid) {
         logger.warn('Meta WhatsApp Cloud API credentials not configured');
         return false;
       }
 
       const cleanTo = to.replace(/\D/g, '');
-      const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
+      const url = `https://graph.facebook.com/v18.0/${pid}/messages`;
 
       await axios.post(
         url,
@@ -288,7 +295,7 @@ export class SmsService {
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json',
           },
           timeout: 10_000,
@@ -301,38 +308,51 @@ export class SmsService {
     }
   }
 
-  private async sendViaCustomWhatsAppGateway(to: string, message: string): Promise<boolean> {
+  private async sendViaCustomWhatsAppGateway(
+    to: string,
+    message: string,
+    gatewayUrl?: string,
+    gatewayToken?: string,
+    instanceName: string = 'pandamarket',
+  ): Promise<boolean> {
     try {
-      const gatewayUrl = config.sms.whatsappGatewayUrl;
-      const gatewayToken = config.sms.whatsappGatewayToken;
-      if (!gatewayUrl) {
+      let rawUrl = (gatewayUrl || config.sms.whatsappGatewayUrl || '').trim();
+      const token = (gatewayToken || config.sms.whatsappGatewayToken || '').trim();
+      if (!rawUrl) {
         logger.warn('Custom WhatsApp Gateway URL not configured');
         return false;
       }
 
+      // Format Evolution API target URL
+      let targetUrl = rawUrl;
+      if (!targetUrl.includes('/message/sendText/')) {
+        const baseUrl = targetUrl.replace(/\/+$/, '');
+        targetUrl = `${baseUrl}/message/sendText/${instanceName}`;
+      }
+
       const cleanTo = to.replace(/\D/g, '');
       await axios.post(
-        gatewayUrl,
+        targetUrl,
         {
+          number: cleanTo,
+          text: message,
+          // Fallbacks for other generic gateways
           to: cleanTo,
           phone: cleanTo,
-          number: cleanTo,
           message,
-          text: message,
           body: message,
-          token: gatewayToken,
         },
         {
           headers: {
-            ...(gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, token: gatewayToken } : {}),
+            ...(token ? { apikey: token, Authorization: `Bearer ${token}` } : {}),
             'Content-Type': 'application/json',
           },
-          timeout: 10_000,
+          timeout: 12_000,
         },
       );
       return true;
-    } catch (err) {
-      logger.warn({ err }, 'Custom WhatsApp Gateway dispatch failed');
+    } catch (err: any) {
+      logger.warn({ err: err.message, status: err.response?.status, data: err.response?.data }, 'Custom WhatsApp Gateway dispatch failed');
       return false;
     }
   }

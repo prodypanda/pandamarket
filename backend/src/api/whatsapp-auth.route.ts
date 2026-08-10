@@ -8,7 +8,173 @@ import { authService } from '../services/auth.service';
 import { orderService } from '../services/order.service';
 import { config } from '../config';
 
+import { platformConfigService } from '../services/platform-config.service';
+
 const router = Router();
+
+async function getGatewayCredentials() {
+  const settings = await platformConfigService.getSettings();
+  const rawUrl = (settings as any).whatsapp_gateway_url || config.sms.whatsappGatewayUrl || 'https://evolution-api-5x9s.onrender.com';
+  const token = (settings as any).whatsapp_gateway_token || config.sms.whatsappGatewayToken || 'sRdf4D54F1SDnuF511dvs541f21dvs51VsF21sGRfs541p2ou900a';
+  const instance = (settings as any).whatsapp_gateway_instance || 'pandamarket';
+  const baseUrl = rawUrl.split('/message/')[0].replace(/\/+$/, '');
+  return { settings, rawUrl, token, instance, baseUrl };
+}
+
+/**
+ * Get JSON live status of WhatsApp Evolution API instance
+ */
+router.get(
+  '/status',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { settings, rawUrl, token, instance, baseUrl } = await getGatewayCredentials();
+    const provider = settings.notifications_sms_provider || 'whatsapp_gateway';
+
+    try {
+      const response = await axios.get(`${baseUrl}/instance/connectionState/${instance}`, {
+        headers: { apikey: token },
+        timeout: 5000,
+      });
+
+      const state = response.data?.instance?.state || 'close';
+      res.json({
+        success: true,
+        data: {
+          state,
+          provider,
+          instanceName: instance,
+          baseUrl,
+          gatewayUrl: rawUrl,
+          rawResponse: response.data,
+        },
+      });
+    } catch (err: any) {
+      res.json({
+        success: false,
+        data: {
+          state: 'disconnected',
+          provider,
+          instanceName: instance,
+          baseUrl,
+          error: err.message,
+        },
+      });
+    }
+  }),
+);
+
+/**
+ * Get JSON live QR Code and connection state for admin dashboard
+ */
+router.get(
+  '/qr-data',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { token, instance, baseUrl } = await getGatewayCredentials();
+
+    try {
+      const response = await axios.get(`${baseUrl}/instance/connect/${instance}`, {
+        headers: { apikey: token },
+        timeout: 8000,
+      });
+
+      const base64 = response.data?.base64 || response.data?.code || null;
+      const state = response.data?.instance?.state || 'close';
+
+      res.json({
+        success: true,
+        data: {
+          state,
+          base64,
+          pairingCode: response.data?.pairingCode || null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err.response?.data?.message || err.message,
+      });
+    }
+  }),
+);
+
+/**
+ * Generate 8-digit WhatsApp Pairing Code for phone number
+ */
+router.post(
+  '/pair-code',
+  asyncHandler(async (req: Request, res: Response) => {
+    const schema = z.object({ phone: z.string().min(8) });
+    const parsed = schema.parse(req.body);
+    const { token, instance, baseUrl } = await getGatewayCredentials();
+
+    const cleanPhone = parsed.phone.replace(/\D/g, '');
+
+    try {
+      const response = await axios.get(`${baseUrl}/instance/connect/${instance}?number=${cleanPhone}`, {
+        headers: { apikey: token },
+        timeout: 10000,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          pairingCode: response.data?.pairingCode || response.data?.code || null,
+          state: response.data?.instance?.state || 'connecting',
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err.response?.data?.message || err.message,
+      });
+    }
+  }),
+);
+
+/**
+ * Disconnect / Logout WhatsApp instance to allow re-pairing
+ */
+router.post(
+  '/logout',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { token, instance, baseUrl } = await getGatewayCredentials();
+
+    try {
+      await axios.delete(`${baseUrl}/instance/logout/${instance}`, {
+        headers: { apikey: token },
+        timeout: 8000,
+      });
+
+      res.json({ success: true, message: 'Session WhatsApp déconnectée avec succès' });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err.response?.data?.message || err.message,
+      });
+    }
+  }),
+);
+
+/**
+ * Send test WhatsApp OTP message from Admin panel
+ */
+router.post(
+  '/test-send',
+  asyncHandler(async (req: Request, res: Response) => {
+    const schema = z.object({
+      phone: z.string().min(8, 'Numéro de téléphone invalide'),
+    });
+    const parsed = schema.parse(req.body);
+
+    const result = await smsService.sendWhatsAppOtp(parsed.phone);
+
+    res.json({
+      success: true,
+      message: result.message,
+      dev_otp: result.otpForDev,
+    });
+  }),
+);
 
 /**
  * Render HTML page displaying live WhatsApp QR Code from Evolution API.
@@ -16,20 +182,18 @@ const router = Router();
 router.get(
   '/qr-code',
   asyncHandler(async (_req: Request, res: Response) => {
-    const gatewayUrl = config.sms.whatsappGatewayUrl;
-    const gatewayToken = config.sms.whatsappGatewayToken;
+    const { token, instance, baseUrl } = await getGatewayCredentials();
 
-    if (!gatewayUrl || !gatewayToken) {
+    if (!baseUrl || !token) {
       res.status(400).send('<h3>Passerelle WhatsApp non configurée.</h3>');
       return;
     }
 
     try {
-      const baseUrl = gatewayUrl.split('/message/')[0];
-      const connectUrl = `${baseUrl}/instance/connect/pandamarket`;
+      const connectUrl = `${baseUrl}/instance/connect/${instance}`;
 
       const response = await axios.get(connectUrl, {
-        headers: { apikey: gatewayToken },
+        headers: { apikey: token },
       });
 
       const qrImage = response.data?.base64 || response.data?.code;
