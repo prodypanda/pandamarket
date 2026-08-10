@@ -301,6 +301,13 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'maintenance_illustration_url',
   'maintenance_eta',
   'maintenance_block_storefronts',
+  // Mandat Minute public instructions (guest checkout needs these)
+  'payment_mandat_enabled',
+  'payment_cod_enabled',
+  'mandat_recipient_name',
+  'mandat_recipient_cin',
+  'mandat_recipient_city',
+  'mandat_recipient_phone',
 ] as const satisfies readonly PlatformSettingKey[];
 
 export const PLATFORM_SETTING_SECTION_META: Array<{

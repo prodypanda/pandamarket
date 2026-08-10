@@ -45,15 +45,30 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mandatInfo, setMandatInfo] = useState<{ recipient_name?: string; recipient_cin?: string; phone?: string } | null>(null);
+  const [mandatInfo, setMandatInfo] = useState<{
+    recipient_name?: string;
+    recipient_cin?: string;
+    recipient_city?: string;
+    phone?: string;
+    whatsapp?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchWithCsrf('/api/pd/subscriptions/mandat-instructions', { credentials: 'include' })
+    fetch('/api/pd/marketplace/settings', { credentials: 'include' })
       .then(async (res) => {
         if (!res.ok) return;
         const json = await res.json();
-        if (!cancelled) setMandatInfo(json?.data ?? null);
+        const d = json?.data;
+        if (!cancelled && d) {
+          setMandatInfo({
+            recipient_name: d.mandat_recipient_name || '',
+            recipient_cin: d.mandat_recipient_cin || '',
+            recipient_city: d.mandat_recipient_city || '',
+            phone: d.mandat_recipient_phone || '',
+            whatsapp: d.marketplace_support_whatsapp || d.marketplace_support_phone || '',
+          });
+        }
       })
       .catch(() => {
         // Fallback to default
@@ -205,8 +220,9 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
     }
   };
 
-  const waSupportPhone = mandatInfo?.phone || '21699000000';
+  const waSupportPhone = mandatInfo?.whatsapp || mandatInfo?.phone || '';
   const cleanWaPhone = waSupportPhone.replace(/\D/g, '');
+  const hasWhatsApp = cleanWaPhone.length >= 8;
   const waSupportUrl = `https://wa.me/${cleanWaPhone.startsWith('216') ? cleanWaPhone : `216${cleanWaPhone}`}?text=${encodeURIComponent(
     `Bonjour PandaMarket, voici ma référence de commande Mandat Minute : *${orderId}*. Je souhaite vous transmettre mon reçu ou obtenir de l'aide pour valider ma commande.`,
   )}`;
@@ -327,17 +343,19 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
         )}
 
         {/* WhatsApp fallback */}
-        <div className="pt-2 border-t border-slate-100">
-          <a
-            href={`https://wa.me/${cleanWaPhone.startsWith('216') ? cleanWaPhone : `216${cleanWaPhone}`}?text=${encodeURIComponent('Bonjour, j\'ai passé une commande Mandat Minute et je souhaite vous transmettre mon reçu. Pouvez-vous m\'aider ?')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-black text-xs transition border border-emerald-200 w-full"
-          >
-            <MessageSquare className="w-4 h-4 text-emerald-600" />
-            Besoin d&apos;aide ? Contactez-nous via WhatsApp
-          </a>
-        </div>
+        {hasWhatsApp && (
+          <div className="pt-2 border-t border-slate-100">
+            <a
+              href={`https://wa.me/${cleanWaPhone.startsWith('216') ? cleanWaPhone : `216${cleanWaPhone}`}?text=${encodeURIComponent('Bonjour, j\'ai passé une commande Mandat Minute et je souhaite vous transmettre mon reçu. Pouvez-vous m\'aider ?')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-black text-xs transition border border-emerald-200 w-full"
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              Besoin d&apos;aide ? Contactez-nous via WhatsApp
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -378,15 +396,17 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
           >
             Retourner à l&apos;Accueil
           </button>
-          <a
-            href={waSupportUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 font-black rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] transition shadow-md text-xs"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Assistance WhatsApp
-          </a>
+          {hasWhatsApp && (
+            <a
+              href={waSupportUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 font-black rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] transition shadow-md text-xs"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Assistance WhatsApp
+            </a>
+          )}
         </div>
       </div>
     );
@@ -524,15 +544,17 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
 
       {/* Help / Future Options */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-        <a
-          href={waSupportUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-black text-xs transition border border-emerald-200"
-        >
-          <MessageSquare className="w-4 h-4 text-emerald-600" />
-          Envoyer le reçu via WhatsApp
-        </a>
+        {hasWhatsApp && (
+          <a
+            href={waSupportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-black text-xs transition border border-emerald-200"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            Envoyer le reçu via WhatsApp
+          </a>
+        )}
 
         <Link
           href="/register/buyer"
