@@ -2375,7 +2375,7 @@ export default function AdminSettingsPage() {
       </section>
 
       <section className={`${activeTab === 'whatsapp' ? '' : 'hidden'}`}>
-        <WhatsAppControlCenter settings={settings} updateSetting={updateSetting} />
+        <WhatsAppControlCenter settings={settings} updateSetting={updateSetting as any} />
       </section>
 
       <section className={`${activeTab === 'integrations' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>

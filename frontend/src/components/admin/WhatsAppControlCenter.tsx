@@ -22,7 +22,7 @@ import { fetchWithCsrf } from '@/lib/api';
 
 interface WhatsAppControlCenterProps {
   settings: any;
-  updateSetting: (key: string, value: any) => void;
+  updateSetting: (key: any, value: any) => void;
 }
 
 export function WhatsAppControlCenter({ settings, updateSetting }: WhatsAppControlCenterProps) {
