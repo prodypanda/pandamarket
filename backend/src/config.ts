@@ -85,7 +85,7 @@ export const config = {
   // Database
   databaseUrl: required('PD_DATABASE_URL'),
   databasePoolSize: asInt('PD_DATABASE_POOL_SIZE', 20),
-  databaseSsl: asBool('PD_DATABASE_SSL', false),
+  databaseSsl: asBool('PD_DATABASE_SSL', process.env.NODE_ENV === 'production' || process.env.PD_NODE_ENV === 'production' || (process.env.PD_DATABASE_URL ?? '').includes('supabase')),
 
   // Redis
   redisUrl: required('PD_REDIS_URL', 'redis://localhost:6379'),
