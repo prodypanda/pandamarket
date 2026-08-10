@@ -105,7 +105,7 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
         throw new Error('URL de téléversement non reçue du serveur.');
       }
 
-      // Step 2: Direct upload to storage
+      // Step 2: Direct upload to storage (handles S3 direct or mock upload)
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
@@ -113,7 +113,12 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
       });
 
       if (!uploadRes.ok) {
-        throw new Error('Échec du téléversement du fichier. Veuillez réessayer.');
+        const errBody = await uploadRes.json().catch(() => null);
+        throw new Error(
+          errBody?.error?.message ||
+          errBody?.message ||
+          `Échec du téléversement du fichier (${uploadRes.status}). Veuillez réessayer.`,
+        );
       }
 
       // Step 3: Register proof with order
@@ -128,7 +133,7 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
       });
 
       if (!proofRes.ok) {
-        const proofErr = await proofRes.json().catch(() => ({}));
+        const proofErr = await proofRes.json().catch(() => null);
         throw new Error(proofErr?.error?.message || 'Échec de soumission de la preuve de paiement.');
       }
 

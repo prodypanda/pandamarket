@@ -72,7 +72,7 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     req.path.includes('/payments/mandat/upload') ||
     req.path.includes('/mandat/upload') ||
     req.path.includes('/files/presign') ||
-    (config.env !== 'production' && req.path.includes('/upload-s3-mock/'))
+    req.path.includes('/upload-s3-mock/')
   ) {
     return next();
   }
