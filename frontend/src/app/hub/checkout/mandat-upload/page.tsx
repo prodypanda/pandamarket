@@ -27,7 +27,17 @@ type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes']
 function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceThemeClasses; isAliExpress: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const orderId = searchParams.get('order_id') || '';
+  const orderIdFromUrl = searchParams.get('order_id') || '';
+
+  const [resolvedOrderId, setResolvedOrderId] = useState(orderIdFromUrl);
+  const orderId = resolvedOrderId;
+
+  // Gate state — when no order_id in URL
+  const [manualRef, setManualRef] = useState('');
+  const [gatePhone, setGatePhone] = useState('');
+  const [gateSearching, setGateSearching] = useState(false);
+  const [gateError, setGateError] = useState('');
+  const [gateResults, setGateResults] = useState<Array<{ id: string; status: string; total: string; payment_gateway: string; created_at: string }> | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -52,6 +62,56 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
       cancelled = true;
     };
   }, []);
+
+  // Handle manual order reference submission
+  const handleManualRefSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = manualRef.trim();
+    if (!trimmed) {
+      setGateError('Veuillez saisir une référence de commande.');
+      return;
+    }
+    setGateError('');
+    setResolvedOrderId(trimmed);
+  };
+
+  // Handle phone-based order search
+  const handlePhoneSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = gatePhone.replace(/\D/g, '');
+    if (clean.length < 8) {
+      setGateError('Veuillez saisir un numéro tunisien valide (8 chiffres).');
+      return;
+    }
+    setGateSearching(true);
+    setGateError('');
+    setGateResults(null);
+    try {
+      const res = await fetchWithCsrf('/api/pd/orders/guest-track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: clean }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const mandatOrders = (data.orders || []).filter(
+          (o: { payment_gateway: string; status: string }) =>
+            o.payment_gateway === 'manual_mandat' && o.status === 'payment_required',
+        );
+        if (mandatOrders.length === 0) {
+          setGateError('Aucune commande Mandat Minute en attente trouvée pour ce numéro.');
+        }
+        setGateResults(mandatOrders);
+      } else {
+        setGateError(data?.error?.message || 'Recherche échouée.');
+      }
+    } catch {
+      setGateError('Impossible de joindre le serveur.');
+    } finally {
+      setGateSearching(false);
+    }
+  };
 
   const handleCopyOrderId = () => {
     if (!orderId) return;
@@ -150,6 +210,137 @@ function MandatUploadContent({ classes, isAliExpress }: { classes: MarketplaceTh
   const waSupportUrl = `https://wa.me/${cleanWaPhone.startsWith('216') ? cleanWaPhone : `216${cleanWaPhone}`}?text=${encodeURIComponent(
     `Bonjour PandaMarket, voici ma référence de commande Mandat Minute : *${orderId}*. Je souhaite vous transmettre mon reçu ou obtenir de l'aide pour valider ma commande.`,
   )}`;
+
+  // ─── GATE: No order reference → show entry screen ────────────────
+  if (!orderId) {
+    return (
+      <div className={`${classes.panel} max-w-2xl mx-auto mt-8 p-6 sm:p-10 rounded-[2rem] shadow-xl space-y-7 animate-in fade-in duration-200`}>
+        {/* Header */}
+        <div className="text-center space-y-2 pb-4 border-b border-slate-100">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+            <FileText className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Envoi de Reçu Mandat Minute
+          </h1>
+          <p className="text-sm text-slate-500 font-medium max-w-md mx-auto">
+            Saisissez votre référence de commande ou retrouvez-la avec votre numéro de téléphone.
+          </p>
+        </div>
+
+        {/* Option 1: Enter order reference directly */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white text-[10px] font-black">1</span>
+            <span className="text-sm font-black text-slate-800">J&apos;ai ma référence de commande</span>
+          </div>
+          <form onSubmit={handleManualRefSubmit} className="flex flex-col sm:flex-row gap-2.5">
+            <input
+              type="text"
+              value={manualRef}
+              onChange={(e) => setManualRef(e.target.value)}
+              placeholder="Ex: pd_order_XXXXXXXXXXXXXXXX"
+              className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/70 text-sm font-mono font-bold text-slate-900 outline-none focus:ring-2 focus:ring-slate-300 transition"
+            />
+            <button
+              type="submit"
+              className={`px-6 py-3 rounded-2xl font-black text-sm text-white transition hover:opacity-95 shadow-md cursor-pointer ${classes.primaryGradient}`}
+            >
+              <span className="flex items-center gap-1.5">
+                <ArrowRight className="w-4 h-4" />
+                Continuer
+              </span>
+            </button>
+          </form>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs font-black text-slate-400 uppercase tracking-wider">ou</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* Option 2: Search by phone */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white text-[10px] font-black">2</span>
+            <span className="text-sm font-black text-slate-800">Retrouver ma commande par téléphone</span>
+          </div>
+          <form onSubmit={handlePhoneSearch} className="flex flex-col sm:flex-row gap-2.5">
+            <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/70">
+              <span className="text-sm font-bold text-slate-400">+216</span>
+              <input
+                type="tel"
+                value={gatePhone}
+                onChange={(e) => setGatePhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="Ex: 98 123 456"
+                className="w-full text-sm font-mono font-bold text-slate-900 bg-transparent outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={gateSearching}
+              className="px-6 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-slate-800 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md"
+            >
+              {gateSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Rechercher
+            </button>
+          </form>
+        </div>
+
+        {/* Error */}
+        {gateError && (
+          <p className="text-xs font-bold text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">
+            {gateError}
+          </p>
+        )}
+
+        {/* Phone search results */}
+        {gateResults && gateResults.length > 0 && (
+          <div className="space-y-3 border-t border-slate-100 pt-4 animate-in fade-in duration-200">
+            <p className="text-xs font-black text-slate-600 uppercase tracking-wider">
+              {gateResults.length} commande(s) Mandat en attente :
+            </p>
+            {gateResults.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setResolvedOrderId(o.id)}
+                className="w-full text-left p-4 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-amber-50 hover:border-amber-300 transition cursor-pointer flex items-center justify-between gap-3"
+              >
+                <div className="space-y-0.5">
+                  <span className="font-mono font-black text-sm text-slate-900">
+                    #{o.id.slice(-8).toUpperCase()}
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {new Date(o.created_at).toLocaleDateString('fr-TN')} • {parseFloat(o.total).toFixed(3)} TND
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-amber-700 font-black text-xs">
+                  <Upload className="w-3.5 h-3.5" />
+                  Envoyer le reçu
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* WhatsApp fallback */}
+        <div className="pt-2 border-t border-slate-100">
+          <a
+            href={`https://wa.me/${cleanWaPhone.startsWith('216') ? cleanWaPhone : `216${cleanWaPhone}`}?text=${encodeURIComponent('Bonjour, j\'ai passé une commande Mandat Minute et je souhaite vous transmettre mon reçu. Pouvez-vous m\'aider ?')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-black text-xs transition border border-emerald-200 w-full"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            Besoin d&apos;aide ? Contactez-nous via WhatsApp
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
