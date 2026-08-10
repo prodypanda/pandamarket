@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { query } from '../db/pool';
 import { orderService } from '../services/order.service';
 import { asyncHandler, validate, requireAuth, optionalAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
 import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
@@ -517,6 +518,81 @@ router.post(
       notes: req.body.notes,
     });
     res.status(200).json({ settlement });
+  }),
+);
+
+const checkPhoneSchema = z.object({
+  phone: z.string().trim().min(6).max(30),
+});
+
+const guestTrackSchema = z.object({
+  phone: z.string().trim().min(6).max(30),
+  order_id: z.string().optional(),
+});
+
+// Check if phone number has a registered user account
+router.post(
+  '/check-phone',
+  validate(checkPhoneSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const raw = req.body.phone.replace(/\D/g, '');
+    const phoneVariations = [raw, `216${raw}`, raw.replace(/^216/, '')];
+
+    const { rows } = await query<{ first_name: string | null }>(
+      `SELECT first_name FROM pd_user WHERE phone = ANY($1) LIMIT 1`,
+      [phoneVariations],
+    );
+
+    if (rows.length > 0) {
+      res.status(200).json({ exists: true, first_name: rows[0].first_name || 'Client' });
+    } else {
+      res.status(200).json({ exists: false });
+    }
+  }),
+);
+
+// Guest order tracking by phone number (or order_id + phone)
+router.post(
+  '/guest-track',
+  validate(guestTrackSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const raw = req.body.phone.replace(/\D/g, '');
+    const phoneVariations = [raw, `216${raw}`, raw.replace(/^216/, '')];
+    const orderId = req.body.order_id?.trim();
+
+    let sql = `
+      SELECT o.id, o.customer_id, o.status, o.payment_gateway, o.payment_status,
+             o.subtotal, o.shipping_total, o.total, o.currency, o.created_at,
+             o.shipping_address,
+             COALESCE(
+               json_agg(
+                 json_build_object(
+                   'id', oi.id,
+                   'title', oi.title,
+                   'quantity', oi.quantity,
+                   'unit_price', oi.unit_price,
+                   'subtotal', oi.subtotal
+                 )
+               ) FILTER (WHERE oi.id IS NOT NULL), '[]'
+             ) as items
+      FROM pd_order o
+      LEFT JOIN pd_order_item oi ON oi.order_id = o.id
+      WHERE (
+        o.shipping_address->>'phone' = ANY($1)
+        OR o.shipping_address->>'phone' ILIKE ANY($1)
+      )
+    `;
+    const params: unknown[] = [phoneVariations];
+
+    if (orderId) {
+      sql += ` AND o.id = $2`;
+      params.push(orderId);
+    }
+
+    sql += ` GROUP BY o.id ORDER BY o.created_at DESC LIMIT 20`;
+
+    const { rows } = await query(sql, params);
+    res.status(200).json({ orders: rows });
   }),
 );
 

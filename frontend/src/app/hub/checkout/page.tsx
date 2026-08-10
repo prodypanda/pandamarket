@@ -1,7 +1,8 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { CreditCard, Banknote, Truck, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
@@ -20,6 +21,7 @@ export default function CheckoutPage() {
   const { t } = useLocale();
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
   const [selectedGateway, setSelectedGateway] = useState('flouci');
+  const [existingAccountName, setExistingAccountName] = useState<string | null>(null);
 
   function formatPrice(price: number): string {
     return `${price.toFixed(3)} ${t('common.currency')}`;
@@ -35,6 +37,37 @@ export default function CheckoutPage() {
     postal_code: '',
     phone: '',
   });
+
+  // Debounced check if phone belongs to existing registered account
+  useEffect(() => {
+    const raw = address.phone.replace(/\D/g, '');
+    if (raw.length < 8) {
+      setExistingAccountName(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchWithCsrf('/api/pd/orders/check-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ phone: address.phone }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.exists) {
+            setExistingAccountName(data.first_name || 'Client');
+          } else {
+            setExistingAccountName(null);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [address.phone]);
 
   const subtotal = getCartTotal();
   const shippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
@@ -294,8 +327,28 @@ export default function CheckoutPage() {
                   type="tel"
                   value={address.phone}
                   onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                  placeholder="Ex: 98 123 456"
                   className={inputClass}
                 />
+                {existingAccountName && (
+                  <div className="mt-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5 animate-in fade-in duration-200">
+                    <span className="text-base">💡</span>
+                    <div className="flex-1 space-y-1">
+                      <p className="font-bold">
+                        Bonjour {existingAccountName} ! Un compte PandaMarket est déjà associé à ce numéro.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 pt-0.5">
+                        <Link
+                          href={`/login/buyer?redirect=${encodeURIComponent('/hub/checkout')}`}
+                          className="font-black text-[#B91C1C] hover:underline"
+                        >
+                          Se connecter pour vos points fidélité &rarr;
+                        </Link>
+                        <span className="text-amber-700/70 font-semibold">ou Continuer en commande express</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

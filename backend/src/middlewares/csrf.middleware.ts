@@ -66,7 +66,12 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     req.path.includes('/cart/sync') ||
     req.path.includes('/cart/gamified-spin') ||
     req.path.includes('/orders/checkout') ||
+    req.path.includes('/orders/check-phone') ||
+    req.path.includes('/orders/guest-track') ||
     req.path.includes('/payments/init') ||
+    req.path.includes('/payments/mandat/upload') ||
+    req.path.includes('/mandat/upload') ||
+    req.path.includes('/files/presign') ||
     (config.env !== 'production' && req.path.includes('/upload-s3-mock/'))
   ) {
     return next();

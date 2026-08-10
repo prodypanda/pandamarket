@@ -2,7 +2,23 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Download, Package, Loader2, ShoppingBag, ChevronDown, Flag, MessageSquare, XCircle } from 'lucide-react';
+import {
+  Download,
+  Package,
+  Loader2,
+  ShoppingBag,
+  ChevronDown,
+  Flag,
+  MessageSquare,
+  XCircle,
+  Phone,
+  Search,
+  UserPlus,
+  Upload,
+  ExternalLink,
+  Clock,
+  CheckCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
@@ -80,6 +96,43 @@ export default function CustomerOrdersPage() {
   const [reportMessage, setReportMessage] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
   const [startingChatKey, setStartingChatKey] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestSearching, setGuestSearching] = useState(false);
+  const [guestOrders, setGuestOrders] = useState<Order[] | null>(null);
+  const [guestSearchError, setGuestSearchError] = useState('');
+
+  const handleGuestSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = guestPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 8) {
+      setGuestSearchError('Veuillez saisir un numéro de téléphone tunisien valide (8 chiffres).');
+      return;
+    }
+    setGuestSearching(true);
+    setGuestSearchError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/orders/guest-track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: cleanPhone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGuestOrders(data.orders || []);
+        if ((data.orders || []).length === 0) {
+          setGuestSearchError('Aucune commande trouvée pour ce numéro.');
+        }
+      } else {
+        setGuestSearchError(data?.error?.message || 'Recherche échouée.');
+      }
+    } catch {
+      setGuestSearchError('Impossible de joindre le serveur.');
+    } finally {
+      setGuestSearching(false);
+    }
+  };
+
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
 
   const handleDownload = async (productId: string) => {
@@ -211,6 +264,112 @@ export default function CustomerOrdersPage() {
               Continuer mes achats
             </Link>
           </div>
+        </div>
+
+        {/* Guest WhatsApp Order Tracking Card */}
+        <div className="mb-8 rounded-3xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#25D366]">
+                <Phone className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-900">
+                  Suivi de Commande Invité (WhatsApp 📱)
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Retrouvez toutes vos commandes passées sans compte grâce à votre numéro tunisien.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/register/buyer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Créer un compte pour lier l&apos;historique
+            </Link>
+          </div>
+
+          <form onSubmit={handleGuestSearch} className="flex flex-col sm:flex-row gap-2.5">
+            <div className="flex-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs">
+              <span className="font-bold text-slate-400">+216</span>
+              <input
+                type="tel"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="Ex: 98 123 456"
+                className="w-full font-mono font-bold text-slate-900 bg-transparent outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={guestSearching}
+              className="px-6 py-2.5 rounded-2xl bg-slate-900 text-white font-black text-xs hover:bg-slate-800 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {guestSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              <span>Rechercher mes commandes</span>
+            </button>
+          </form>
+
+          {guestSearchError && (
+            <p className="mt-3 text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-100">
+              {guestSearchError}
+            </p>
+          )}
+
+          {guestOrders && guestOrders.length > 0 && (
+            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-600">
+                  {guestOrders.length} Commande(s) Invité Trouvée(s)
+                </span>
+                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                  Liées à ce numéro
+                </span>
+              </div>
+
+              {guestOrders.map((gOrder) => (
+                <div
+                  key={gOrder.id}
+                  className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-black text-slate-900">
+                        #{gOrder.id.slice(-8).toUpperCase()}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(gOrder.status)}`}>
+                        {statusLabel(gOrder.status)}
+                      </span>
+                    </div>
+                    <p className="text-slate-500 font-medium">
+                      Date : {new Date(gOrder.created_at).toLocaleDateString('fr-TN')} • {paymentLabel(gOrder.payment_gateway)} • {parseFloat(gOrder.total).toFixed(3)} TND
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    {gOrder.status === 'payment_required' && gOrder.payment_gateway === 'manual_mandat' && (
+                      <Link
+                        href={`/hub/checkout/mandat-upload?order_id=${gOrder.id}`}
+                        className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 transition flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Envoyer le Reçu Mandat
+                      </Link>
+                    )}
+                    <Link
+                      href={`/register/buyer?phone=${encodeURIComponent(guestPhone)}`}
+                      className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition flex items-center gap-1"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+                      Lier à un compte
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       {/* Filters */}

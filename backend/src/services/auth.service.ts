@@ -194,6 +194,27 @@ export class AuthService {
     );
 
     logger.info({ user_id: id, role }, 'User registered');
+    // Automatically fuse past guest orders with matching email or phone
+    try {
+      const cleanPhone = opts.phone ? opts.phone.replace(/\D/g, '') : null;
+      const phoneVariations = cleanPhone
+        ? [cleanPhone, `216${cleanPhone}`, cleanPhone.replace(/^216/, '')]
+        : [];
+
+      await query(
+        `UPDATE pd_order
+         SET customer_id = $1
+         WHERE customer_id IS NULL
+           AND (
+             LOWER(shipping_address->>'email') = $2
+             OR (shipping_address->>'phone') = ANY($3)
+           )`,
+        [id, email, phoneVariations],
+      );
+    } catch (err) {
+      logger.warn({ err, user_id: id }, 'Failed to fuse guest orders');
+    }
+
     if (role === UserRole.Customer) {
       const hubDomain = config.hubDomain?.startsWith('http')
         ? config.hubDomain
@@ -271,6 +292,27 @@ export class AuthService {
     if (redis) {
       await withLoginRedisTimeout(redis.del(lockoutKey), 0, 'clear_login_attempts');
     }
+    // Automatically fuse past guest orders with matching email or phone
+    try {
+      const cleanPhone = user.phone ? user.phone.replace(/\D/g, '') : null;
+      const phoneVariations = cleanPhone
+        ? [cleanPhone, `216${cleanPhone}`, cleanPhone.replace(/^216/, '')]
+        : [];
+
+      await query(
+        `UPDATE pd_order
+         SET customer_id = $1
+         WHERE customer_id IS NULL
+           AND (
+             LOWER(shipping_address->>'email') = $2
+             OR (shipping_address->>'phone') = ANY($3)
+           )`,
+        [user.id, user.email.toLowerCase(), phoneVariations],
+      );
+    } catch (err) {
+      logger.warn({ err, user_id: user.id }, 'Failed to fuse guest orders upon login');
+    }
+
     await query('UPDATE pd_user SET last_login_at = NOW() WHERE id = $1', [user.id]);
     return user;
   }

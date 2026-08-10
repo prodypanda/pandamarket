@@ -11,7 +11,7 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
-import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '../middlewares';
+import { asyncHandler, requireAuth, optionalAuth, requireStorefrontCustomer, validate } from '../middlewares';
 import { presignUploadSchema } from '../validators';
 import { presignDownload, presignUpload, publicUrl } from '../utils/s3';
 import { config } from '../config';
@@ -97,11 +97,19 @@ const MAX_SIZES: Record<string, number> = {
  */
 router.post(
   '/presign',
-  requireAuth,
+  optionalAuth,
   uploadRateLimit,
   validate(presignUploadSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { filename, content_type, purpose, file_size } = req.body;
+
+    // Only mandat_proof allows guest presigned uploads
+    if (purpose !== 'mandat_proof' && !req.user) {
+      throw new PdAuthenticationError(
+        PdErrorCode.AUTH_TOKEN_INVALID,
+        'Authentication required',
+      );
+    }
 
     // Validate content type for the given purpose
     const allowed = ALLOWED_TYPES[purpose];
@@ -163,7 +171,8 @@ router.post(
         break;
       case 'mandat_proof':
         bucket = config.s3.bucketPrivate;
-        keyPrefix = `mandats/${req.user!.id}`;
+        const uploaderId = req.user ? req.user.id : `guest_${uniqueId}`;
+        keyPrefix = `mandats/${uploaderId}`;
         break;
       case 'theme_asset':
         bucket = config.s3.bucketThemes;

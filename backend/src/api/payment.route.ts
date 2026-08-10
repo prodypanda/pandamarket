@@ -176,13 +176,19 @@ router.post(
 // Upload Mandat Proof
 router.post(
   '/mandat/upload',
-  requireAuth,
+  optionalAuth,
   validate(mandatUploadSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { order_id, image_url } = req.body;
     const order = await orderService.getById(order_id);
 
-    if (order.customer_id !== req.user!.id) {
+    if (
+      order.customer_id &&
+      req.user &&
+      order.customer_id !== req.user.id &&
+      req.user.role !== UserRole.Admin &&
+      req.user.role !== UserRole.SuperAdmin
+    ) {
       res.status(403).json({ error: { message: 'Forbidden' } });
       return;
     }
@@ -190,7 +196,7 @@ router.post(
     const proof = await mandatService.uploadProof({
       order_id,
       uploaded_by: MandatUploader.Buyer,
-      uploader_user_id: req.user!.id,
+      uploader_user_id: req.user?.id || 'guest',
       image_url,
       amount_expected: parseFloat(order.total),
     });
