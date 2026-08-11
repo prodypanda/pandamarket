@@ -1007,7 +1007,7 @@ function CountryVisitBubbleMap({
       .catch(() => { /* silently fail */ });
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [topCountries, countriesWithTelemetry, mapTheme]);
 
   return (

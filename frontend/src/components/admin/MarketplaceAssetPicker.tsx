@@ -128,7 +128,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
 
       if (!uploadRes.ok) throw new Error('Upload failed. Please try again.');
 
-      let finalUrl = presignData.public_url;
+      const finalUrl = presignData.public_url;
 
       // Auto-Optimize if enabled and asset is an image
       if (autoOptimize && (file.type.startsWith('image/') || type === 'image') && presignData.file_key) {

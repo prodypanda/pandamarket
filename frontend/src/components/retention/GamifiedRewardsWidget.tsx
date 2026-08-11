@@ -79,7 +79,7 @@ function triggerConfetti(canvas: HTMLCanvasElement | null) {
     });
   }
 
-  let startTime = Date.now();
+  const startTime = Date.now();
   function animate() {
     if (!ctx || !canvas) return;
     const elapsed = Date.now() - startTime;
@@ -288,6 +288,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     setIsSpinning(true);
 
     const list = prizesList.length > 0 ? prizesList : DEFAULT_PRIZES;
+    // eslint-disable-next-line react-hooks/purity
     const selectedIdx = Math.floor(Math.random() * list.length);
     const prize = list[selectedIdx];
 
