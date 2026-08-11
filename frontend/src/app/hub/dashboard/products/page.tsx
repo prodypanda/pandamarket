@@ -2734,7 +2734,7 @@ export default function ProductsPage() {
                     >
                       {pNum}
                     </button>
-                  </React.Fragment>
+                  </Fragment>
                 );
               })}
 
