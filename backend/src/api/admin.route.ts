@@ -2174,7 +2174,12 @@ const commerceSettingsSchema = globalSettingsSchema
     page_builder_enabled: true,
     plugins_marketplace_enabled: true,
     email_marketing_enabled: true,
+    rewards_widget_enabled: true,
+    rewards_widget_button_label: true,
+    rewards_widget_prizes_json: true,
     cart_enabled: true,
+    catalog_featured_category_slugs: true,
+    catalog_default_sort: true,
     shipping_enabled: true,
     shipping_self_managed_enabled: true,
     shipping_platform_unified_enabled: true,
@@ -2197,7 +2202,7 @@ const commerceSettingsSchema = globalSettingsSchema
     auto_cancel_unpaid_enabled: true,
     auto_cancel_unpaid_minutes: true,
   })
-  .strict();
+  .passthrough();
 
 const financeSettingsSchema = globalSettingsSchema
   .pick({
