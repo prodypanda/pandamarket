@@ -234,7 +234,7 @@ export default function SellerMediaPage() {
                   aria-label={item.alt_text || item.product_title || filenameFromUrl(item.url)}
                   role="img"
                   className="h-full w-full bg-cover bg-center transition duration-300 group-hover:scale-105"
-                  style={{ backgroundImage: `url(${item.url})` }}
+                  style={{ backgroundImage: `url(${getResizedImageUrl(item.url, 'large')})` }}
                 />
               </button>
               <div className="p-4">
@@ -281,7 +281,7 @@ export default function SellerMediaPage() {
                   aria-label={selectedItem.alt_text || selectedItem.product_title || filenameFromUrl(selectedItem.url)}
                   role="img"
                   className="h-full min-h-[420px] w-full bg-contain bg-center bg-no-repeat"
-                  style={{ backgroundImage: `url(${selectedItem.url})` }}
+                  style={{ backgroundImage: `url(${getResizedImageUrl(selectedItem.url, 'large')})` }}
                 />
               </div>
               <div className="space-y-4 p-6">

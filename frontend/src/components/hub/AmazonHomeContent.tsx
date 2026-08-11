@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
@@ -157,7 +158,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
               <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-gray-100">
                 <span className="absolute left-2 top-2 z-10 rounded px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: '#cc0c39' }}>Deal</span>
                 {getProductImage(product) ? (
-                  <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getProductImage(product)})` }} />
+                  <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
                 )}
@@ -252,7 +253,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
             <div className="absolute left-1/2 top-full z-30 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 rounded-b-2xl border border-t-0 border-gray-200 bg-white p-5 shadow-2xl">
               <div className="flex gap-4">
                 {activeCategory.image_url && (
-                  <div aria-label={activeCategory.name} role="img" className="h-24 w-24 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${activeCategory.image_url})` }} />
+                  <div aria-label={activeCategory.name} role="img" className="h-24 w-24 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${getResizedImageUrl(activeCategory.image_url, 'large')})` }} />
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-black text-gray-900">{activeCategory.name}</p>
@@ -274,7 +275,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
         <div className="relative">
           <div className="relative h-[340px] overflow-hidden text-white" style={{ background: `linear-gradient(180deg, ${INK}, #37475a)` }}>
             {slide.imageUrl && (
-              <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${slide.imageUrl})` }} />
+              <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${getResizedImageUrl(slide.imageUrl, 'large')})` }} />
             )}
             <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-center px-4 pb-24 sm:px-6 lg:px-8">
               <h1 className="max-w-xl text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>
@@ -307,7 +308,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 <p className="text-sm font-black text-gray-900">{category.name}</p>
                 <Link href={`/hub/category/${encodeURIComponent(category.slug)}`} className="mt-2 block aspect-[4/3] overflow-hidden rounded-md bg-gray-100">
                   {category.image_url ? (
-                    <div aria-label={category.name} role="img" className="h-full w-full bg-cover bg-center transition-transform hover:scale-105" style={{ backgroundImage: `url(${category.image_url})` }} />
+                    <div aria-label={category.name} role="img" className="h-full w-full bg-cover bg-center transition-transform hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(category.image_url, 'large')})` }} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{category.name}</div>
                   )}

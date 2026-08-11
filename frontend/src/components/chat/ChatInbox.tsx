@@ -189,7 +189,7 @@ function ChatImageAttachment({ attachment, mine }: { attachment: ChatAttachment;
         aria-label={attachment.file_name}
         role="img"
         className="block h-44 w-64 max-w-full bg-cover bg-center"
-        style={{ backgroundImage: `url(${imageUrl})` }}
+        style={{ backgroundImage: `url(${getResizedImageUrl(imageUrl, 'large')})` }}
       />
     </a>
   );
@@ -718,7 +718,7 @@ export function ChatInbox({ mode, title, subtitle }: ChatInboxProps) {
                           aria-label={image.file.name}
                           role="img"
                           className="h-full w-full bg-cover bg-center"
-                          style={{ backgroundImage: `url(${image.previewUrl})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(image.previewUrl, 'large')})` }}
                         />
                         <button
                           type="button"

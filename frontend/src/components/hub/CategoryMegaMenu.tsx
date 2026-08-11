@@ -765,7 +765,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                     {/* Header Banner with Category Details */}
                     <div className="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-5 text-white shadow-lg dark:border-white/10">
                       {activeCategory.image_url && (
-                        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${activeCategory.image_url})` }} />
+                        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${getResizedImageUrl(activeCategory.image_url, 'large')})` }} />
                       )}
                       <div className="relative z-10 flex items-start justify-between gap-4">
                         <div className="space-y-1.5 max-w-[75%]">

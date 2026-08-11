@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CalendarDays, ExternalLink, Grid3X3, MapPin, Package, Search, ShieldCheck, Star, Store, Truck } from 'lucide-react';
 import { HubNavbar } from '../hub/HubNavbar';
@@ -214,7 +215,7 @@ export function MarketplaceSellerPage({
                     aria-label={store.name}
                     role="img"
                     className="h-full w-full bg-contain bg-center bg-no-repeat"
-                    style={{ backgroundImage: `url(${logoUrl})` }}
+                    style={{ backgroundImage: `url(${getResizedImageUrl(logoUrl, 'large')})` }}
                   />
                 ) : (
                   <Store className={`h-10 w-10 ${classes.primaryText}`} />
@@ -357,7 +358,7 @@ export function MarketplaceSellerPage({
                           aria-label={product.title}
                           role="img"
                           className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                          style={{ backgroundImage: `url(${imageUrl})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(imageUrl, 'large')})` }}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-400"><Package className="h-9 w-9" /></div>

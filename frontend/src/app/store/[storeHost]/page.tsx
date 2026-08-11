@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -428,7 +429,7 @@ export default async function StorePage({
                 aria-label={store.name}
                 role="img"
                 className="block h-8 w-28 bg-contain bg-left bg-no-repeat"
-                style={{ backgroundImage: `url(${logoUrl})` }}
+                style={{ backgroundImage: `url(${getResizedImageUrl(logoUrl, 'large')})` }}
               />
             ) : (
               <span className="text-lg font-bold" style={{ color: primaryColor }}>

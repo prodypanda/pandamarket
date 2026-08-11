@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { CalendarDays, CheckCircle2, ExternalLink, Globe2, Mail, MapPin, Package, Phone, Shield, Store } from 'lucide-react';
 import Link from 'next/link';
 import { getSellerTypeLabel } from '../../lib/seller-type';
@@ -108,7 +109,7 @@ export function SellerHoverCard({
             aria-label={name}
             role="img"
             className="h-full w-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${sellerSettings.logo_url})` }}
+            style={{ backgroundImage: `url(${getResizedImageUrl(sellerSettings.logo_url, 'large')})` }}
           />
         ) : (
           initials || <Store className="h-5 w-5" />
@@ -148,7 +149,7 @@ export function SellerHoverCard({
                   aria-label={name}
                   role="img"
                   className="h-full w-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${sellerSettings.logo_url})` }}
+                  style={{ backgroundImage: `url(${getResizedImageUrl(sellerSettings.logo_url, 'large')})` }}
                 />
               ) : (
                 initials || <Store className="h-6 w-6" />

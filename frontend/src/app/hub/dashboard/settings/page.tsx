@@ -1116,7 +1116,7 @@ export default function SettingsPage() {
                           aria-label={`${storeName || t('dashboardPages.settings.storeLogo')} ${logo.label}`}
                           role="img"
                           className="h-full w-full bg-contain bg-center bg-no-repeat"
-                          style={{ backgroundImage: `url(${logo.value})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(logo.value, 'large')})` }}
                         />
                       ) : (
                         <ImageIcon className="h-7 w-7 text-gray-300" />
@@ -1172,7 +1172,7 @@ export default function SettingsPage() {
                       aria-label="Image d'en-tête marketplace"
                       role="img"
                       className="h-full w-full bg-cover bg-center"
-                      style={{ backgroundImage: `url(${marketplaceHeaderImageUrl})` }}
+                      style={{ backgroundImage: `url(${getResizedImageUrl(marketplaceHeaderImageUrl, 'large')})` }}
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-gray-300">
@@ -1677,7 +1677,7 @@ export default function SettingsPage() {
                           aria-label={item.alt_text || item.product_title}
                           role="img"
                           className="h-full w-full bg-cover bg-center"
-                          style={{ backgroundImage: `url(${item.url})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(item.url, 'large')})` }}
                         />
                       </div>
                       <div className="p-2">
@@ -1726,7 +1726,7 @@ export default function SettingsPage() {
                           aria-label={item.alt_text || item.product_title}
                           role="img"
                           className="h-full w-full bg-cover bg-center"
-                          style={{ backgroundImage: `url(${item.url})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(item.url, 'large')})` }}
                         />
                       </div>
                       <div className="p-2">

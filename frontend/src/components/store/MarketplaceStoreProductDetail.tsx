@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { BadgeCheck, ChevronRight, Heart, PackageCheck, ShieldCheck, Star, Truck } from 'lucide-react';
 import { HubNavbar } from '../hub/HubNavbar';
@@ -322,7 +323,7 @@ export function MarketplaceStoreProductDetail({
                           aria-label={relatedProduct.title}
                           role="img"
                           className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                          style={{ backgroundImage: `url(${imageUrl})` }}
+                          style={{ backgroundImage: `url(${getResizedImageUrl(imageUrl, 'large')})` }}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-400">No Image</div>

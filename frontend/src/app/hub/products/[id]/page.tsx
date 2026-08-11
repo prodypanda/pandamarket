@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';

@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, Suspense } from 'react';
@@ -444,7 +445,7 @@ function SearchContent() {
                             aria-label={product.title}
                             role="img"
                             className="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                            style={{ backgroundImage: `url(${getProductImage(product)})` }}
+                            style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-400">

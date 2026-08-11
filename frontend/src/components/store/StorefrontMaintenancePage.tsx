@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import { Construction, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
@@ -52,7 +53,7 @@ export function StorefrontMaintenancePage({
               className="h-full w-full bg-contain bg-center bg-no-repeat"
               role="img"
               aria-label={storeName}
-              style={{ backgroundImage: `url(${logoUrl})` }}
+              style={{ backgroundImage: `url(${getResizedImageUrl(logoUrl, 'large')})` }}
             />
           </div>
         ) : (

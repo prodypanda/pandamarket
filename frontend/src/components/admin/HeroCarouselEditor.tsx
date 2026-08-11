@@ -188,7 +188,7 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
               <div
                 className="absolute inset-0 bg-cover bg-center transition-all duration-300"
                 style={{
-                  backgroundImage: `url(${currentSlide.imageUrl})`,
+                  backgroundImage: `url(${getResizedImageUrl(currentSlide.imageUrl, 'large')})`,
                   opacity: (currentSlide.bgOpacity ?? 40) / 100,
                 }}
               />

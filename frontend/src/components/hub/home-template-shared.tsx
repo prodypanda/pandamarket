@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { History } from 'lucide-react';
@@ -153,7 +154,7 @@ export function BlockBanner({ block }: {
         aria-label={block.title || 'Section banner'}
         role="img"
         className="h-full w-full bg-cover bg-center"
-        style={{ backgroundImage: `url(${block.image_url})` }}
+        style={{ backgroundImage: `url(${getResizedImageUrl(block.image_url, 'large')})` }}
       />
       {block.cta_label && (
         <span className="absolute bottom-3 start-3 rounded-full bg-black/70 px-4 py-1.5 text-xs font-black text-white">
@@ -189,7 +190,7 @@ export function RecentlyViewedRail({ accentClass = 'text-[#16C784]' }: { accentC
           >
             <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
               {item.thumbnail ? (
-                <div aria-label={item.title} role="img" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${item.thumbnail})` }} />
+                <div aria-label={item.title} role="img" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${getResizedImageUrl(item.thumbnail, 'large')})` }} />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
               )}

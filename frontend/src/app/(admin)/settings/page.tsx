@@ -1637,7 +1637,7 @@ export default function AdminSettingsPage() {
                         aria-label={`${settings.marketplace_name} ${logo.label}`}
                         role="img"
                         className="h-full w-full bg-contain bg-center bg-no-repeat"
-                        style={{ backgroundImage: `url(${logo.value})` }}
+                        style={{ backgroundImage: `url(${getResizedImageUrl(logo.value, 'large')})` }}
                       />
                     ) : (
                       <ImageIcon className="h-6 w-6 text-slate-300" />

@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -3509,7 +3510,7 @@ export default function OrdersPage() {
                                     aria-label={item.product_title || 'Product image'}
                                     role="img"
                                     className="h-full w-full bg-cover bg-center"
-                                    style={{ backgroundImage: `url(${item.thumbnail})` }}
+                                    style={{ backgroundImage: `url(${getResizedImageUrl(item.thumbnail, 'large')})` }}
                                   />
                                 )}
                               </div>
