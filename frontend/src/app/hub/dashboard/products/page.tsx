@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Fragment } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
 import { updateOnboardingStep } from '@/lib/onboarding';
@@ -2719,7 +2720,7 @@ export default function ProductsPage() {
                 const prevNum = arr[idx - 1];
                 const showEllipsis = prevNum && pNum - prevNum > 1;
                 return (
-                  <React.Fragment key={pNum}>
+                  <Fragment key={pNum}>
                     {showEllipsis && <span className="px-1 text-slate-400">...</span>}
                     <button
                       type="button"
