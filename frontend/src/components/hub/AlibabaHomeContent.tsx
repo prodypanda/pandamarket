@@ -468,6 +468,14 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
 
   return (
     <div dir={rtl ? 'rtl' : 'ltr'} className="min-h-screen bg-[#F5F7FA]">
+      {/* Preload hero carousel images for faster LCP */}
+      {slides.map((s, i) => (
+        <Fragment key={`preload-${i}`}>
+          {s.imageUrl && <link rel="preload" as="image" href={getResizedImageUrl(s.imageUrl, 'medium')} />}
+          {s.mobileImageUrl && <link rel="preload" as="image" href={getResizedImageUrl(s.mobileImageUrl, 'medium')} />}
+        </Fragment>
+      ))}
+
       {/* Top B2B Sourcing Announcement Bar */}
       <div className="bg-[#0b1e3f] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 text-xs font-black sm:px-6 lg:px-8">
