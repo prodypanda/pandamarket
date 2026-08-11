@@ -18,6 +18,7 @@ import { kycService } from '../services/kyc.service';
 import { mandatService } from '../services/mandat.service';
 import { reportService } from '../services/report.service';
 import { storeService } from '../services/store.service';
+import { imageVariantService } from '../services/image-variant.service';
 import { authService } from '../services/auth.service';
 import { accountSecurityService } from '../services/account-security.service';
 import { systemLogService } from '../services/system-log.service';
@@ -2058,6 +2059,19 @@ const globalSettingsSchema = z.object({
   max_product_images: z.coerce.number().int().min(1).max(50).optional(),
   max_products_per_store_free: z.coerce.number().int().min(1).max(10000).optional(),
   default_low_stock_threshold: z.coerce.number().int().min(0).max(1000).optional(),
+  image_size_thumbnail_w: z.coerce.number().int().min(20).max(2000).optional(),
+  image_size_thumbnail_h: z.coerce.number().int().min(20).max(2000).optional(),
+  image_size_thumbnail_crop: z.enum(['cover', 'inside']).optional(),
+  image_size_small_w: z.coerce.number().int().min(50).max(2000).optional(),
+  image_size_small_h: z.coerce.number().int().min(50).max(2000).optional(),
+  image_size_small_crop: z.enum(['cover', 'inside']).optional(),
+  image_size_medium_w: z.coerce.number().int().min(100).max(3000).optional(),
+  image_size_medium_h: z.coerce.number().int().min(100).max(3000).optional(),
+  image_size_medium_crop: z.enum(['cover', 'inside']).optional(),
+  image_size_large_w: z.coerce.number().int().min(200).max(4000).optional(),
+  image_size_large_h: z.coerce.number().int().min(200).max(4000).optional(),
+  image_size_large_crop: z.enum(['cover', 'inside']).optional(),
+  image_quality_webp: z.coerce.number().int().min(30).max(100).optional(),
   chat_message_rate_limit_per_minute: z.coerce.number().int().min(1).max(300).optional(),
   chat_max_images_per_message: z.coerce.number().int().min(1).max(10).optional(),
   chat_max_image_size_mb: z.coerce.number().int().min(1).max(25).optional(),
@@ -3705,6 +3719,20 @@ router.post(
       total_new_size: totalNew,
       total_saved_bytes: totalSavedBytes,
       total_saved_percentage: totalSavedPercentage,
+    });
+  }),
+);
+
+/**
+ * POST /admin/platform-media/regenerate-variants — Bulk regenerate all multi-size image variants
+ */
+router.post(
+  '/platform-media/regenerate-variants',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const summary = await imageVariantService.regenerateAllVariants();
+    res.status(200).json({
+      success: true,
+      data: summary,
     });
   }),
 );

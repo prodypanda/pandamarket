@@ -27,6 +27,7 @@ import {
   Edit3,
   Calendar,
   ArrowUpDown,
+  Layers,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 
@@ -96,6 +97,7 @@ export default function PlatformMediaPage() {
 
   // Bulk Optimization State
   const [bulkOptimizing, setBulkOptimizing] = useState(false);
+  const [regeneratingVariants, setRegeneratingVariants] = useState(false);
 
   // Rename Modal State
   const [renamingItem, setRenamingItem] = useState<MediaItem | null>(null);
@@ -342,6 +344,33 @@ export default function PlatformMediaPage() {
     }
   }
 
+  async function handleRegenerateVariants() {
+    if (!confirm('This will regenerate thumbnail, small, medium, and large variants for ALL original images in the platform. This may take several minutes. Continue?')) return;
+
+    setRegeneratingVariants(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/platform-media/regenerate-variants', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) throw new Error('Variant regeneration failed');
+
+      const json = await res.json();
+      const data = json.data;
+      setSuccess(`Variant regeneration complete! Processed ${data.processed} / ${data.total_originals} originals → ${data.variants_generated} variants generated${data.errors > 0 ? ` (${data.errors} errors)` : ''}.`);
+      loadMedia();
+    } catch (err: any) {
+      setError(err.message || 'Variant regeneration error');
+    } finally {
+      setRegeneratingVariants(false);
+    }
+  }
+
   async function handleDelete(key: string) {
     if (!confirm('Are you sure you want to delete this media asset?')) return;
 
@@ -445,6 +474,15 @@ export default function PlatformMediaPage() {
           >
             <Zap className={`h-4 w-4 ${bulkOptimizing ? 'animate-bounce text-[#ff6a00]' : ''}`} />
             {bulkOptimizing ? 'Compressing Folder...' : '⚡ Bulk Compress Folder'}
+          </button>
+          <button
+            onClick={handleRegenerateVariants}
+            disabled={regeneratingVariants}
+            className="flex items-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-xs font-black text-violet-700 shadow-xs hover:bg-violet-100 disabled:opacity-50"
+            title="Regenerate thumbnail, small, medium, and large variants for all original images"
+          >
+            <Layers className={`h-4 w-4 ${regeneratingVariants ? 'animate-spin' : ''}`} />
+            {regeneratingVariants ? 'Regenerating...' : '🖼️ Regenerate All Variants'}
           </button>
           <button
             onClick={loadMedia}

@@ -40,11 +40,18 @@ export function formatStorePrice(productOrPrice: StoreProduct | StoreProduct['pr
   return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
 }
 
-export function getStoreProductImage(product: StoreProduct): string {
+import { getResizedImageUrl, ImageVariantSize } from '@/lib/image-url';
+
+export function getStoreProductImage(product: StoreProduct, size: ImageVariantSize = 'original'): string {
+  let url = product.thumbnail || '';
   const first = product.images?.[0];
-  if (typeof first === 'string') return first;
-  if (first && typeof first === 'object' && typeof first.url === 'string') return first.url;
-  return product.thumbnail || '';
+  if (typeof first === 'string') {
+    url = first;
+  } else if (first && typeof first === 'object' && typeof first.url === 'string') {
+    url = first.url;
+  }
+  
+  return getResizedImageUrl(url, size);
 }
 
 

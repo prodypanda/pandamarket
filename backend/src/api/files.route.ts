@@ -19,6 +19,7 @@ import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { PdValidationError, PdErrorCode, PdForbiddenError, PdAuthenticationError } from '../errors';
 import { fileAssetService } from '../services/file-asset.service';
+import { imageVariantService } from '../services/image-variant.service';
 import { resolveDataPath } from '../utils/data-dir';
 import { reportService } from '../services/report.service';
 import { chatService } from '../services/chat.service';
@@ -481,6 +482,14 @@ mockFilesRouter.put(
       );
     } catch (dbErr) {
       logger.error({ err: dbErr, blobKey }, 'Failed to persist upload blob to database');
+    }
+
+    if (contentType.startsWith('image/')) {
+      try {
+        await imageVariantService.generateVariantsForBuffer(fileBuffer, bucket, cleanKey);
+      } catch (variantErr) {
+        logger.error({ err: variantErr, blobKey }, 'Failed generating image variants during upload');
+      }
     }
 
     logger.info({ bucket, key: cleanKey, path: filePath }, 'File uploaded and persisted to database');

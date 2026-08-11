@@ -2,6 +2,7 @@
 
 import { Maximize2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { getResizedImageUrl } from '@/lib/image-url';
 
 type ProductImage = string | { id?: string; url: string; alt_text?: string | null; position?: number | null; is_thumbnail?: boolean | null };
 
@@ -72,7 +73,7 @@ export function ProductGallery({
         {selectedUrl ? (
           <>
             <img
-              src={selectedUrl}
+              src={getResizedImageUrl(selectedUrl, 'large')}
               alt={selectedImage ? getImageAlt(selectedImage, title, selectedIndex) : title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
@@ -106,7 +107,7 @@ export function ProductGallery({
               >
                 {url && (
                   <img
-                    src={url}
+                    src={getResizedImageUrl(url, 'thumbnail')}
                     alt={getImageAlt(image, title, index)}
                     className="h-full w-full object-cover"
                   />
@@ -128,7 +129,7 @@ export function ProductGallery({
             <X className="h-6 w-6" />
           </button>
           <img
-            src={selectedUrl}
+            src={getResizedImageUrl(selectedUrl, 'original')}
             alt={selectedImage ? getImageAlt(selectedImage, title, selectedIndex) : title}
             className="max-h-[88vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
           />

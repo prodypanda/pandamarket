@@ -10,6 +10,7 @@ import {
   getStorefrontProductPath,
 } from '../themes/shared';
 import { useCart } from '../../contexts/CartContext';
+import { getResizedImageUrl } from '@/lib/image-url';
 
 export interface ProductCardProps {
   product: StoreProduct & {
@@ -56,13 +57,14 @@ export function ProductCard({
     product.variants?.[0]?.id,
   );
 
-  const mainImage = getStoreProductImage(product);
-  const secondImage =
+  const mainImage = getStoreProductImage(product, 'small');
+  const secondImageRaw =
     typeof product.images?.[1] === 'string'
       ? product.images[1]
-      : typeof product.images?.[1] === 'object'
-      ? product.images[1]?.url
-      : undefined;
+      : typeof product.images?.[1] === 'object' && product.images[1] !== null
+        ? product.images[1].url
+        : null;
+  const secondImage = secondImageRaw ? getResizedImageUrl(secondImageRaw, 'small') : null;
 
   const currentPrice = Number(product.price) || 0;
   const comparePrice = Number(product.compare_at_price) || 0;

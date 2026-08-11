@@ -139,6 +139,19 @@ interface PlatformSettings {
   max_product_images: number;
   max_products_per_store_free: number;
   default_low_stock_threshold: number;
+  image_size_thumbnail_w: number;
+  image_size_thumbnail_h: number;
+  image_size_thumbnail_crop: 'cover' | 'inside';
+  image_size_small_w: number;
+  image_size_small_h: number;
+  image_size_small_crop: 'cover' | 'inside';
+  image_size_medium_w: number;
+  image_size_medium_h: number;
+  image_size_medium_crop: 'cover' | 'inside';
+  image_size_large_w: number;
+  image_size_large_h: number;
+  image_size_large_crop: 'cover' | 'inside';
+  image_quality_webp: number;
   chat_message_rate_limit_per_minute: number;
   chat_max_images_per_message: number;
   chat_max_image_size_mb: number;
@@ -347,6 +360,19 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   max_product_images: 10,
   max_products_per_store_free: 50,
   default_low_stock_threshold: 5,
+  image_size_thumbnail_w: 150,
+  image_size_thumbnail_h: 150,
+  image_size_thumbnail_crop: 'cover',
+  image_size_small_w: 300,
+  image_size_small_h: 300,
+  image_size_small_crop: 'inside',
+  image_size_medium_w: 600,
+  image_size_medium_h: 600,
+  image_size_medium_crop: 'inside',
+  image_size_large_w: 1200,
+  image_size_large_h: 1200,
+  image_size_large_crop: 'inside',
+  image_quality_webp: 82,
   chat_message_rate_limit_per_minute: 20,
   chat_max_images_per_message: 4,
   chat_max_image_size_mb: 5,
@@ -2310,6 +2336,60 @@ export default function AdminSettingsPage() {
           {renderNumberInput('max_product_images', 'Max Product Images', 'images', 1, 50)}
           {renderNumberInput('max_products_per_store_free', 'Free Store Product Limit', 'products', 1, 10000)}
           {renderNumberInput('default_low_stock_threshold', 'Low Stock Threshold', 'units', 0, 1000)}
+        </div>
+      </section>
+
+      {/* Image Size Configurations */}
+      <section className={`${activeTab === 'operations' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<ImageIcon className="h-5 w-5" />}
+          title="Image Size Configurations"
+          description="Configure WordPress-style multi-size image variants. Every uploaded image is automatically resized to these presets for faster page loading."
+        />
+        <div className="space-y-6">
+          {/* Presets Grid */}
+          {([
+            { preset: 'thumbnail', label: 'Thumbnail', desc: 'Tiny previews, avatars, admin lists', wKey: 'image_size_thumbnail_w' as const, hKey: 'image_size_thumbnail_h' as const, cropKey: 'image_size_thumbnail_crop' as const, minW: 20, maxW: 2000, minH: 20, maxH: 2000 },
+            { preset: 'small', label: 'Small', desc: 'Product cards, cart items, grids', wKey: 'image_size_small_w' as const, hKey: 'image_size_small_h' as const, cropKey: 'image_size_small_crop' as const, minW: 50, maxW: 2000, minH: 50, maxH: 2000 },
+            { preset: 'medium', label: 'Medium', desc: 'Product detail view, category banners', wKey: 'image_size_medium_w' as const, hKey: 'image_size_medium_h' as const, cropKey: 'image_size_medium_crop' as const, minW: 100, maxW: 3000, minH: 100, maxH: 3000 },
+            { preset: 'large', label: 'Large', desc: 'Lightboxes, hero banners, zoom view', wKey: 'image_size_large_w' as const, hKey: 'image_size_large_h' as const, cropKey: 'image_size_large_crop' as const, minW: 200, maxW: 4000, minH: 200, maxH: 4000 },
+          ]).map((p) => (
+            <div key={p.preset} className="rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50 to-white p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#B91C1C]/10 text-[#B91C1C]">
+                  <ImageIcon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">{p.label}</p>
+                  <p className="text-xs font-semibold text-slate-400">{p.desc}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {renderNumberInput(p.wKey, 'Width', 'px', p.minW, p.maxW)}
+                {renderNumberInput(p.hKey, 'Height', 'px', p.minH, p.maxH)}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Crop Mode</label>
+                  <select
+                    value={settings[p.cropKey] || 'inside'}
+                    onChange={(e) => updateSetting(p.cropKey, e.target.value as PlatformSettings[typeof p.cropKey])}
+                    className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+                  >
+                    <option value="cover">Cover (crop to fill)</option>
+                    <option value="inside">Inside (fit without crop)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* WebP Quality */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {renderNumberInput('image_quality_webp', 'WebP Output Quality', '%', 30, 100)}
+          </div>
+
+          <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-4 text-xs font-semibold leading-relaxed text-amber-800">
+            📌 Changes to image sizes only affect <strong>future uploads</strong>. To apply new dimensions to existing images, use the <strong>&quot;Regenerate All Image Variants&quot;</strong> action from the Platform Media page.
+          </div>
         </div>
       </section>
 
