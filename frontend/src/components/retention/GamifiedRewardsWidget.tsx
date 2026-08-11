@@ -86,15 +86,22 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
           const json = await res.json();
           const settings = json.data || json;
           if (!cancelled) {
-            if (typeof settings.rewards_widget_enabled === 'boolean') {
-              setEnabled(settings.rewards_widget_enabled);
+            if (settings.rewards_widget_enabled !== undefined && settings.rewards_widget_enabled !== null) {
+              const isEnabled =
+                settings.rewards_widget_enabled === true ||
+                settings.rewards_widget_enabled === 'true' ||
+                settings.rewards_widget_enabled === 1 ||
+                settings.rewards_widget_enabled === '1';
+              setEnabled(isEnabled);
             }
             if (settings.rewards_widget_button_label) {
               setButtonLabel(settings.rewards_widget_button_label);
             }
             if (settings.rewards_widget_prizes_json) {
               try {
-                const parsed = JSON.parse(settings.rewards_widget_prizes_json);
+                const parsed = typeof settings.rewards_widget_prizes_json === 'string'
+                  ? JSON.parse(settings.rewards_widget_prizes_json)
+                  : settings.rewards_widget_prizes_json;
                 if (Array.isArray(parsed) && parsed.length > 0) {
                   setPrizesList(parsed);
                 }

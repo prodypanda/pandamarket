@@ -736,9 +736,9 @@ class PlatformConfigService {
 
   async getPublicSettings() {
     const settings = await this.getSettings();
-    const publicSettings: Record<string, string> = {};
+    const publicSettings: Record<string, PlatformSettingValue> = {};
     for (const key of PUBLIC_PLATFORM_SETTING_KEYS) {
-      publicSettings[key] = toStorageValue(settings[key]);
+      publicSettings[key] = settings[key];
     }
     return publicSettings;
   }
