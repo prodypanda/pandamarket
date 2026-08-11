@@ -1941,6 +1941,9 @@ const globalSettingsSchema = z.object({
   hub_homepage_layout: z
     .enum(['theme_default', 'classic', 'deals', 'premium_deals', 'alibaba', 'amazon'])
     .optional(),
+  hub_homepage_pagination_style: z
+    .enum(['infinite', 'load_more', 'pagination'])
+    .optional(),
   hub_megamenu_style: z
     .enum(['standard', 'visual_rich', 'ultra_rich', 'ultra_rich_deep'])
     .optional(),
@@ -2144,6 +2147,7 @@ const marketplaceSettingsSchema = globalSettingsSchema
     catalog_featured_category_slugs: true,
     catalog_default_sort: true,
     hub_homepage_layout: true,
+    hub_homepage_pagination_style: true,
     hub_megamenu_style: true,
     hub_megamenu_lazy_loading: true,
     hub_category_page_style: true,
