@@ -561,8 +561,15 @@ export default function ProductsPage() {
 
   // Pagination & Stats
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [storeCounts, setStoreCounts] = useState({
+    total: 0,
+    published: 0,
+    draft: 0,
+    low_stock: 0,
+  });
   const [sellerType, setSellerType] = useState<'retailer' | 'wholesaler' | 'hybrid'>('retailer');
   const [marketplaceName, setMarketplaceName] = useState('PandaMarket');
   const isWholesaleSeller = sellerType === 'wholesaler' || sellerType === 'hybrid';
@@ -677,7 +684,17 @@ export default function ProductsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/stores/me/products?page=${page}&limit=20`, {
+      const queryParams = new URLSearchParams();
+      queryParams.set('page', page.toString());
+      queryParams.set('limit', limit.toString());
+      if (statusFilter && statusFilter !== 'all') {
+        queryParams.set('status', statusFilter);
+      }
+      if (search.trim()) {
+        queryParams.set('search', search.trim());
+      }
+
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products?${queryParams.toString()}`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -687,6 +704,21 @@ export default function ProductsPage() {
         setProducts(nextProducts);
         setTotalPages(data.meta?.total_pages || 1);
         setTotalProducts(nextTotal);
+
+        if (data.meta?.counts) {
+          setStoreCounts({
+            total: Number(data.meta.counts.total || 0),
+            published: Number(data.meta.counts.published || 0),
+            draft: Number(data.meta.counts.draft || 0),
+            low_stock: Number(data.meta.counts.low_stock || 0),
+          });
+        } else {
+          setStoreCounts((prev) => ({
+            ...prev,
+            total: nextTotal,
+          }));
+        }
+
         if (page === 1) {
           syncFirstProductOnboarding(nextTotal, nextProducts);
         }
@@ -698,7 +730,15 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, limit, statusFilter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, search, limit]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -758,40 +798,24 @@ export default function ProductsPage() {
   // PRODUCT COMPUTATIONS & KPI METRICS
   // -----------------------------------------------------------------------
 
-  const publishedCount = useMemo(() => products.filter((p) => p.status === 'published').length, [products]);
-  const draftCount = useMemo(() => products.filter((p) => p.status === 'draft' || p.status === 'pending_approval').length, [products]);
-  const lowStockCount = useMemo(() => products.filter((p) => p.inventory_quantity <= 5).length, [products]);
+  const publishedCount = storeCounts.published;
+  const draftCount = storeCounts.draft;
+  const lowStockCount = storeCounts.low_stock;
   const totalStockCount = useMemo(() => products.reduce((acc, p) => acc + (p.inventory_quantity || 0), 0), [products]);
 
   const visibleProducts = useMemo(() => {
     return products.filter((p) => {
-      // Search
-      if (search.trim()) {
-        const term = search.toLowerCase();
-        const matchesTitle = p.title.toLowerCase().includes(term);
-        const matchesSku = p.product_reference?.toLowerCase().includes(term);
-        const matchesCategory = p.marketplace_category_name?.toLowerCase().includes(term) || p.storefront_category_name?.toLowerCase().includes(term);
-        if (!matchesTitle && !matchesSku && !matchesCategory) return false;
-      }
-      // Status
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'low_stock') {
-          if (p.inventory_quantity > 5) return false;
-        } else if (p.status !== statusFilter) {
-          return false;
-        }
-      }
-      // Type
+      // Type filter
       if (typeFilter !== 'all' && (p.type || 'physical') !== typeFilter) {
         return false;
       }
-      // Category
+      // Category filter
       if (categoryFilter !== 'all' && p.marketplace_category_id !== categoryFilter && p.storefront_category_id !== categoryFilter) {
         return false;
       }
       return true;
     });
-  }, [products, search, statusFilter, typeFilter, categoryFilter]);
+  }, [products, typeFilter, categoryFilter]);
 
   // -----------------------------------------------------------------------
   // 1-CLICK VARIANT MATRIX GENERATION ENGINE
@@ -2654,25 +2678,70 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-800/30">
-          <span>
-            Page {page} sur {totalPages} · {totalProducts} références totales
-          </span>
-          <div className="flex items-center gap-1.5">
+        {/* Full Interactive Pagination Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-800/30">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-medium text-slate-600 dark:text-slate-400">
+              Affichage {totalProducts === 0 ? 0 : (page - 1) * limit + 1} à {Math.min(page * limit, totalProducts)} sur {totalProducts} références
+            </span>
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] font-bold text-slate-500">Par page:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-[#B91C1C]"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setPage((c) => Math.max(1, c - 1))}
               disabled={page <= 1 || loading}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-50 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
             >
               Précédent
             </button>
+
+            {/* Page Number Buttons */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((pNum) => pNum === 1 || pNum === totalPages || Math.abs(pNum - page) <= 2)
+              .map((pNum, idx, arr) => {
+                const prevNum = arr[idx - 1];
+                const showEllipsis = prevNum && pNum - prevNum > 1;
+                return (
+                  <React.Fragment key={pNum}>
+                    {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                    <button
+                      type="button"
+                      onClick={() => setPage(pNum)}
+                      disabled={loading}
+                      className={`h-8 w-8 rounded-lg font-bold transition-all text-xs flex items-center justify-center ${
+                        page === pNum
+                          ? 'bg-[#B91C1C] text-white shadow-sm'
+                          : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {pNum}
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+
             <button
               type="button"
               onClick={() => setPage((c) => Math.min(totalPages, c + 1))}
               disabled={page >= totalPages || loading}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-50 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
             >
               Suivant
             </button>

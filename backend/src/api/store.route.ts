@@ -414,8 +414,9 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
-    const status = req.query.status as ProductStatus | undefined;
-    const result = await productService.listByStore(req.user!.store_id!, { page, limit, status });
+    const status = req.query.status as string | undefined;
+    const search = req.query.search as string | undefined;
+    const result = await productService.listByStore(req.user!.store_id!, { page, limit, status, search });
     res.status(200).json(result);
   }),
 );

@@ -926,22 +926,58 @@ export class ProductService {
   }
 
   /**
-   * List products for a store. Supports filtering by status.
+   * List products for a store. Supports filtering by status, search query, and returns store-wide KPI counts.
    */
   async listByStore(
     storeId: string,
-    opts: { status?: ProductStatus; page?: number; limit?: number } = {},
+    opts: { status?: ProductStatus | string; search?: string; page?: number; limit?: number } = {},
   ) {
     const page = Math.max(1, opts.page ?? 1);
-    const limit = Math.min(100, opts.limit ?? 20);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
     const offset = (page - 1) * limit;
     const params: unknown[] = [storeId];
-    let where = 'store_id = $1';
-    if (opts.status) {
-      params.push(opts.status);
-      where += ` AND status = $${params.length}`;
+    let where = 'p.store_id = $1';
+
+    if (opts.status && (opts.status as string) !== 'all') {
+      if ((opts.status as string) === 'low_stock') {
+        where += ` AND p.inventory_quantity <= 5`;
+      } else {
+        params.push(opts.status);
+        where += ` AND p.status = $${params.length}`;
+      }
     }
+
+    if (opts.search && opts.search.trim()) {
+      params.push(`%${opts.search.trim()}%`);
+      where += ` AND (p.title ILIKE $${params.length} OR p.product_reference ILIKE $${params.length} OR mc.name ILIKE $${params.length} OR sc.name ILIKE $${params.length})`;
+    }
+
+    const { rows: storeCountsRows } = await query<{
+      total: string;
+      published: string;
+      draft: string;
+      low_stock: string;
+    }>(
+      `SELECT 
+        COUNT(*)::text AS total,
+        COUNT(*) FILTER (WHERE p.status = 'published')::text AS published,
+        COUNT(*) FILTER (WHERE p.status = 'draft' OR p.status = 'pending_approval')::text AS draft,
+        COUNT(*) FILTER (WHERE p.inventory_quantity <= 5)::text AS low_stock
+       FROM pd_product p
+       WHERE p.store_id = $1`,
+      [storeId],
+    );
+
+    const counts = {
+      total: parseInt(storeCountsRows[0]?.total || '0', 10),
+      published: parseInt(storeCountsRows[0]?.published || '0', 10),
+      draft: parseInt(storeCountsRows[0]?.draft || '0', 10),
+      low_stock: parseInt(storeCountsRows[0]?.low_stock || '0', 10),
+    };
+
+    const countParams = [...params];
     params.push(limit, offset);
+
     const { rows } = await query<ProductRow>(
       `SELECT p.*,
               s.subdomain AS store_subdomain,
@@ -971,19 +1007,32 @@ export class ProductService {
          FROM pd_product_image pi
          WHERE pi.product_id = p.id
        ) img ON true
-       WHERE ${where.replaceAll('store_id', 'p.store_id').replaceAll('status', 'p.status')}
+       WHERE ${where}
        ORDER BY p.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
+
     const { rows: countRows } = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
        FROM pd_product p
-       WHERE ${where.replaceAll('store_id', 'p.store_id').replaceAll('status', 'p.status')}`,
-      params.slice(0, -2),
+       LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+       LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+       WHERE ${where}`,
+      countParams,
     );
-    const total = parseInt(countRows[0].count, 10);
-    return { data: await this.attachVariants(rows), meta: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    const total = parseInt(countRows[0]?.count || '0', 10);
+
+    return {
+      data: await this.attachVariants(rows),
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        counts,
+      },
+    };
   }
 
   /**
