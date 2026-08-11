@@ -39,6 +39,7 @@ import { LazyBlurImage } from '../ui/LazyBlurImage';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
+import { HubProductPagination } from './HubProductPagination';
 import {
   BlockBanner,
   RecentlyViewedRail,

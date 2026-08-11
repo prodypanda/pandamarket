@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, BadgePercent, Crown, Flame, Gift, Headphones, Package, Search, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Timer, Truck, Zap } from 'lucide-react';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
+import { HubProductPagination } from './HubProductPagination';
 
 interface Product {
   id: string;
@@ -40,6 +41,8 @@ interface MarketplaceSettings {
   hub_homepage_banner_cta_label?: string;
   hub_homepage_banner_cta_url?: string;
   hub_homepage_banner_image_url?: string;
+  hub_homepage_pagination_style?: string;
+  catalog_default_sort?: string;
 }
 
 interface AliExpress2HomeContentProps {
@@ -340,6 +343,15 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
             <SuperDealCard key={product.id} product={product} currency={currency} />
           ))}
         </div>
+
+        <HubProductPagination
+          style={marketplaceSettings?.hub_homepage_pagination_style}
+          sortBy={marketplaceSettings?.catalog_default_sort}
+          gridClassName="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+          renderCard={(product) => (
+            <SuperDealCard key={product.id} product={product as Product} currency={currency} />
+          )}
+        />
       </section>
 
       {/* ═══════════════════════════════════════

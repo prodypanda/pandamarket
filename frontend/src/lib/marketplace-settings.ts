@@ -39,6 +39,7 @@ export interface MarketplaceSettings {
   catalog_featured_category_slugs?: string;
   catalog_default_sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc' | string;
   hub_homepage_layout?: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | string;
+  hub_homepage_pagination_style?: 'infinite' | 'load_more' | 'pagination' | 'none' | string;
   hub_megamenu_style?: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep' | string;
   hub_megamenu_lazy_loading?: boolean;
   hub_category_page_style?: 'v1_classic' | 'v2_modern_showcase' | string;

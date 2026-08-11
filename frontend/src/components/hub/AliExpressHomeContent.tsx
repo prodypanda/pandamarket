@@ -10,6 +10,7 @@ import { getMarketplaceThemeClasses, resolveMarketplaceTheme } from '../../lib/m
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { useLocale } from '../../contexts/LocaleContext';
 import { BlockBanner, RecentlyViewedRail, isRtlLocale } from './home-template-shared';
+import { HubProductPagination } from './HubProductPagination';
 
 type MarketplaceThemeClasses = ReturnType<typeof getMarketplaceThemeClasses>;
 
@@ -50,6 +51,8 @@ interface MarketplaceSettings {
   hub_homepage_banner_cta_url?: string;
   hub_homepage_banner_image_url?: string;
   hub_homepage_blocks?: string;
+  hub_homepage_pagination_style?: string;
+  catalog_default_sort?: string;
 }
 
 interface AliExpressHomeContentProps {
@@ -198,6 +201,15 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {recommendedProducts.map((product) => <DealCard key={product.id} product={product} currency={currency} themeClasses={themeClasses} isAliExpress2={isAliExpress2} />)}
       </div>
+
+      <HubProductPagination
+        style={marketplaceSettings?.hub_homepage_pagination_style}
+        sortBy={marketplaceSettings?.catalog_default_sort}
+        gridClassName="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+        renderCard={(product) => (
+          <DealCard key={product.id} product={product as Product} currency={currency} themeClasses={themeClasses} isAliExpress2={isAliExpress2} />
+        )}
+      />
     </section>
   );
 

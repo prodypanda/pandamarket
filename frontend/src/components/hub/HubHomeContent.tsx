@@ -47,6 +47,8 @@ interface MarketplaceSettings {
   hub_homepage_banner_image_url?: string;
   hub_homepage_blocks?: string;
   default_currency?: string;
+  hub_homepage_pagination_style?: string;
+  catalog_default_sort?: string;
 }
 
 interface HubHomeContentProps {

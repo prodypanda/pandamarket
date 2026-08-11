@@ -53,6 +53,7 @@ interface PlatformSettings {
   catalog_featured_category_slugs: string;
   catalog_default_sort: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc';
   hub_homepage_layout: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | 'alibaba' | 'amazon';
+  hub_homepage_pagination_style: 'infinite' | 'load_more' | 'pagination' | 'none';
   hub_megamenu_style: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep';
   hub_megamenu_lazy_loading: boolean;
   hub_category_page_style: 'v1_classic' | 'v2_modern_showcase';
@@ -274,6 +275,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   catalog_featured_category_slugs: '',
   catalog_default_sort: 'newest',
   hub_homepage_layout: 'theme_default',
+  hub_homepage_pagination_style: 'none',
   hub_megamenu_style: 'standard',
   hub_megamenu_lazy_loading: true,
   hub_category_page_style: 'v1_classic',
@@ -479,6 +481,7 @@ type FreeTextSettingKey = Exclude<
   | 'chat_bubble_position'
   | 'catalog_default_sort'
   | 'hub_homepage_layout'
+  | 'hub_homepage_pagination_style'
   | 'hub_megamenu_style'
   | 'shipping_default_provider'
   | 'notifications_sms_provider'
@@ -699,6 +702,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'catalog_featured_category_slugs',
     'catalog_default_sort',
     'hub_homepage_layout',
+    'hub_homepage_pagination_style',
     'hub_megamenu_style',
     'hub_megamenu_lazy_loading',
     'hub_category_page_style',
@@ -905,6 +909,13 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
           : payload.hub_homepage_layout === 'amazon'
             ? 'amazon'
             : 'theme_default';
+  payload.hub_homepage_pagination_style = payload.hub_homepage_pagination_style === 'infinite'
+    ? 'infinite'
+    : payload.hub_homepage_pagination_style === 'load_more'
+      ? 'load_more'
+      : payload.hub_homepage_pagination_style === 'pagination'
+        ? 'pagination'
+        : 'none';
   payload.hub_megamenu_style = payload.hub_megamenu_style === 'visual_rich'
     ? 'visual_rich'
     : payload.hub_megamenu_style === 'ultra_rich'
@@ -1751,6 +1762,19 @@ export default function AdminSettingsPage() {
               <option value="premium_deals">Premium deals</option>
               <option value="alibaba">Alibaba B2B</option>
               <option value="amazon">Amazon classic</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Homepage Product Grid Loading Style</label>
+            <select
+              value={settings.hub_homepage_pagination_style || 'none'}
+              onChange={(e) => updateSetting('hub_homepage_pagination_style', e.target.value as PlatformSettings['hub_homepage_pagination_style'])}
+              className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+            >
+              <option value="none">None (Show exactly 12 items only)</option>
+              <option value="infinite">Infinite Scroll (Auto load on scroll)</option>
+              <option value="load_more">Load More Button</option>
+              <option value="pagination">Classic Pagination (1, 2, 3...)</option>
             </select>
           </div>
           <div className="space-y-1.5">

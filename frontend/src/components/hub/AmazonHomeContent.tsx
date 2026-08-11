@@ -20,6 +20,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
+import { HubProductPagination } from './HubProductPagination';
 import {
   BlockBanner,
   RecentlyViewedRail,
@@ -329,6 +330,27 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
       {middleBlocks.map((block) => (
         <Fragment key={block.id}>{middleRenderers[block.id]?.() ?? null}</Fragment>
       ))}
+
+      <div className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+        <HubProductPagination
+          style={marketplaceSettings.hub_homepage_pagination_style}
+          sortBy={marketplaceSettings.catalog_default_sort}
+          gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          renderCard={(product) => (
+            <Link key={product.id} href={getProductHref(product as HomeProduct)} className="group overflow-hidden rounded-lg border border-gray-200 bg-white p-3 transition hover:shadow-lg">
+              <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-gray-100">
+                {getProductImage(product as HomeProduct) ? (
+                  <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product as HomeProduct), 'medium')})` }} />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                )}
+              </div>
+              <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
+              <p className="mt-1 text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+            </Link>
+          )}
+        />
+      </div>
 
       {/* Back to top + footer mega-grid */}
       {isBlockEnabled('footer_links') && (
