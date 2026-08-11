@@ -18,6 +18,7 @@ interface HubProductPaginationProps {
   renderCard: (product: Product) => React.ReactNode;
   gridClassName?: string;
   initialProducts?: Product[];
+  initialTotalPages?: number;
 }
 
 export function HubProductPagination({
@@ -28,12 +29,13 @@ export function HubProductPagination({
   renderCard,
   gridClassName = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
   initialProducts = [],
+  initialTotalPages = 1,
 }: HubProductPaginationProps) {
   const [pages, setPages] = useState<Product[][]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   if (!style || style === 'none') {

@@ -91,7 +91,7 @@ function prioritizeFeaturedCategories(categories: MarketplaceCategory[], setting
   return [...featured, ...categories.filter((category) => !featuredIds.has(category.id))];
 }
 
-async function getTrendingProducts(sortBy?: string): Promise<Product[]> {
+async function getTrendingProducts(sortBy?: string): Promise<{ products: Product[], totalPages: number }> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const params = new URLSearchParams({ page: '1', limit: '16', sort: resolveCatalogSort(sortBy) });
@@ -106,11 +106,14 @@ async function getTrendingProducts(sortBy?: string): Promise<Product[]> {
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) return [];
+    if (!res.ok) return { products: [], totalPages: 1 };
     const data = await res.json();
-    return data.data || [];
+    return {
+      products: data.data || [],
+      totalPages: data.meta?.total_pages || 1,
+    };
   } catch {
-    return [];
+    return { products: [], totalPages: 1 };
   }
 }
 
@@ -148,7 +151,7 @@ export default async function HubHomepage({
   const marketplaceSettings = await getMarketplaceSettings();
   const activeLocale = sp.locale || cookieLocale || marketplaceSettings.marketplace_default_locale || 'fr';
 
-  const [trendingProducts, categories] = await Promise.all([
+  const [{ products: trendingProducts, totalPages: trendingTotalPages }, categories] = await Promise.all([
     getTrendingProducts(marketplaceSettings.catalog_default_sort),
     getMarketplaceCategories(activeLocale),
   ]);
@@ -160,6 +163,7 @@ export default async function HubHomepage({
     homepageLayout === 'alibaba' ? (
       <AlibabaHomeContent
         trendingProducts={trendingProducts}
+        trendingTotalPages={trendingTotalPages}
         categories={orderedCategories}
         marketplaceSettings={marketplaceSettings}
       />

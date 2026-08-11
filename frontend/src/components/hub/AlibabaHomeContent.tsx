@@ -67,6 +67,7 @@ interface TreeCategoryNode {
 
 interface AlibabaHomeContentProps {
   trendingProducts: HomeProduct[];
+  trendingTotalPages?: number;
   categories: HomeCategory[];
   marketplaceSettings: MarketplaceSettings;
 }
@@ -211,7 +212,7 @@ const TRANSLATIONS = {
   },
 };
 
-export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSettings }: AlibabaHomeContentProps) {
+export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categories, marketplaceSettings }: AlibabaHomeContentProps) {
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
   const { locale } = useLocale();
   const rtl = isRtlLocale(marketplaceSettings, locale);
@@ -440,6 +441,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
       </div>
       <HubProductPagination
         initialProducts={gridProducts}
+        initialTotalPages={trendingTotalPages}
         style={marketplaceSettings.hub_homepage_pagination_style}
         sortBy={marketplaceSettings.catalog_default_sort}
         gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
