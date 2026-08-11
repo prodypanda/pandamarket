@@ -33,8 +33,7 @@ export function getResizedImageUrl(
     trimmed.toLowerCase().endsWith('.gif') || 
     trimmed.toLowerCase().endsWith('.ico') ||
     trimmed.includes('/branding/') ||
-    trimmed.includes('logo') ||
-    size === 'original'
+    trimmed.includes('logo')
   ) {
     return trimmed;
   }
