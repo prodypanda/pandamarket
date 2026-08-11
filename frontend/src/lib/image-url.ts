@@ -27,9 +27,15 @@ export function getResizedImageUrl(
     return trimmed;
   }
 
-  // Only apply suffix to local / proxied product images (/pd-product-images/)
-  if (!trimmed.includes('/pd-product-images/') && !trimmed.startsWith('data:') && !trimmed.startsWith('/')) {
-    // External full URL (e.g. Unsplash, CDN), return as-is
+  // Do not resize SVGs or GIFs
+  if (trimmed.toLowerCase().endsWith('.svg') || trimmed.toLowerCase().endsWith('.gif') || trimmed.toLowerCase().endsWith('.ico')) {
+    return trimmed;
+  }
+
+  // Only apply suffix to local / proxied product images or backend storage
+  const isBackendImage = trimmed.includes('/pd-product-images/') || trimmed.includes('/api/files/') || trimmed.includes('/uploads/');
+  if (!isBackendImage && !trimmed.startsWith('data:')) {
+    // Return static assets (e.g. /logo.png) and external URLs as-is
     return trimmed;
   }
 
