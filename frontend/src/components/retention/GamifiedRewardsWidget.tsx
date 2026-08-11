@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Phone,
   Mail,
-  ShieldCheck,
   RotateCw,
   Ticket,
   Percent,
@@ -18,20 +17,95 @@ import {
   ArrowRight,
   Copy,
   Check,
+  Trophy,
+  Zap,
+  Star,
+  Award,
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { fetchWithCsrf } from '../../lib/api';
 
-const PRIZES = [
+export interface Prize {
+  label: string;
+  code: string;
+  disc: number;
+  icon: string;
+  color: string;
+  desc: string;
+}
+
+const DEFAULT_PRIZES: Prize[] = [
   { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎟️', color: '#EF4444', desc: '5.000 DT de remise immédiate sur votre panier' },
-  { label: 'Livraison 0 DT', code: 'LIVRAISON_ZERO', disc: 7.0, icon: '🚚', color: '#10B981', desc: 'Frais de livraison 100% offerts' },
+  { label: 'Livraison 0 DT', code: 'LIVRAISON_ZERO', disc: 7.0, icon: '🚚', color: '#10B981', desc: 'Frais de livraison 100% offerts sur toute la Tunisie' },
   { label: '-10% Panier', code: 'PANDA10', disc: 10, icon: '🔥', color: '#F59E0B', desc: '10% de réduction immédiate sur toute votre commande' },
   { label: '15 DT Cadeau', code: 'SUPER15', disc: 15.0, icon: '🎁', color: '#8B5CF6', desc: '15.000 DT de réduction dès 80 DT d’achat' },
-  { label: '-5% Fidélité', code: 'FIDELITE5', disc: 5, icon: '⭐', color: '#3B82F6', desc: '5% de réduction exclusive client' },
+  { label: '-5% Fidélité', code: 'FIDELITE5', disc: 5, icon: '⭐', color: '#3B82F6', desc: '5% de réduction exclusive client VIP' },
   { label: '5 DT Offerts', code: 'CHANCE5DT', disc: 5.0, icon: '🎟️', color: '#EC4899', desc: '5.000 DT de remise immédiate' },
 ];
 
 const STORAGE_SPIN_KEY = 'pd_last_spin_time';
+
+// Canvas Confetti Generator
+function triggerConfetti(canvas: HTMLCanvasElement | null) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  canvas.width = canvas.parentElement?.clientWidth || 400;
+  canvas.height = canvas.parentElement?.clientHeight || 400;
+
+  const particles: Array<{
+    x: number;
+    y: number;
+    size: number;
+    color: string;
+    vx: number;
+    vy: number;
+    rotation: number;
+    vr: number;
+  }> = [];
+
+  const colors = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#FBBF24'];
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2 - 40,
+      size: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 12,
+      vy: (Math.random() - 0.7) * 12,
+      rotation: Math.random() * 360,
+      vr: (Math.random() - 0.5) * 10,
+    });
+  }
+
+  let startTime = Date.now();
+  function animate() {
+    if (!ctx || !canvas) return;
+    const elapsed = Date.now() - startTime;
+    if (elapsed > 2500) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.25; // gravity
+      p.rotation += p.vr;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
 
 export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   const pathname = usePathname();
@@ -46,9 +120,20 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   // Dynamic Settings
   const [enabled, setEnabled] = useState(true);
   const [buttonLabel, setButtonLabel] = useState("🎁 Gagnez jusqu'à 15 DT !");
-  const [prizesList, setPrizesList] = useState(PRIZES);
+  const [prizesList, setPrizesList] = useState<Prize[]>(DEFAULT_PRIZES);
 
-  // Route check
+  // Wheel State
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [wonPrize, setWonPrize] = useState<Prize | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [appliedFeedback, setAppliedFeedback] = useState('');
+
+  // Scratch Canvas State
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const confettiCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Route Guard
   const isInternalOrAuthRoute =
     !pathname ||
     pathname.startsWith('/admin') ||
@@ -77,6 +162,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     pathname.startsWith('/admin-notes') ||
     pathname.startsWith('/fraud-radar');
 
+  // Load Marketplace Config Settings
   useEffect(() => {
     let cancelled = false;
     async function loadWidgetSettings() {
@@ -117,17 +203,6 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     };
   }, []);
 
-  // Wheel State
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [wheelRotation, setWheelRotation] = useState(0);
-  const [wonPrize, setWonPrize] = useState<typeof PRIZES[0] | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [appliedFeedback, setAppliedFeedback] = useState('');
-
-  // Scratch Canvas State
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [scratchedPct, setScratchedPct] = useState(0);
-
   // Check 24h cooldown
   useEffect(() => {
     try {
@@ -138,38 +213,53 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
           setHasPlayedToday(true);
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
-  // Initialize Scratch Canvas
+  // Initialize Ultra-Realistic Holographic Scratch Foil
   useEffect(() => {
     if (gameMode === 'scratch' && canvasRef.current && isOpen && !wonPrize) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      canvas.width = 300;
-      canvas.height = 140;
+      canvas.width = 320;
+      canvas.height = 150;
 
-      // Draw shiny silver/gold scratch surface
-      const grad = ctx.createLinearGradient(0, 0, 300, 140);
-      grad.addColorStop(0, '#CBD5E1');
-      grad.addColorStop(0.5, '#E2E8F0');
-      grad.addColorStop(1, '#94A3B8');
+      // Metallic foil gradient
+      const grad = ctx.createLinearGradient(0, 0, 320, 150);
+      grad.addColorStop(0, '#94A3B8');
+      grad.addColorStop(0.2, '#CBD5E1');
+      grad.addColorStop(0.4, '#F1F5F9');
+      grad.addColorStop(0.6, '#94A3B8');
+      grad.addColorStop(0.8, '#E2E8F0');
+      grad.addColorStop(1, '#64748B');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 300, 140);
+      ctx.fillRect(0, 0, 320, 150);
 
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 14px sans-serif';
+      // Subtle metallic sparkle diagonal lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      for (let i = -150; i < 400; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 100, 150);
+        ctx.stroke();
+      }
+
+      // Metallic Stamp Text
+      ctx.fillStyle = '#334155';
+      ctx.font = '900 13px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('✨ Grattez ici avec la souris / doigt ✨', 150, 75);
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+      ctx.shadowOffsetY = 1;
+      ctx.fillText('✨ GRATTEZ ICI POUR DÉVOILER ✨', 160, 78);
+      ctx.shadowOffsetY = 0;
     }
   }, [gameMode, isOpen, wonPrize]);
 
   const handleScratchMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (hasPlayedToday || wonPrize || !phone.trim() || !consent) return;
+    if (hasPlayedToday || wonPrize || !phone.trim() || phone.length < 8 || !consent) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -183,30 +273,26 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
 
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
 
-    setScratchedPct((prev) => {
-      const next = prev + 5;
-      if (next >= 40 && !wonPrize) {
-        // Trigger win
-        const prize = prizesList[0] || PRIZES[0];
-        handleCompleteWin(prize, 'scratch_card');
-      }
-      return next;
-    });
+    // Trigger win after sufficient scratch
+    if (!wonPrize) {
+      const prize = prizesList[0] || DEFAULT_PRIZES[0];
+      handleCompleteWin(prize, 'scratch_card');
+    }
   };
 
   const handleSpinWheel = async () => {
-    if (isSpinning || wonPrize || !phone.trim() || !consent) return;
+    if (isSpinning || wonPrize || !phone.trim() || phone.length < 8 || !consent) return;
     setIsSpinning(true);
 
-    const list = prizesList.length > 0 ? prizesList : PRIZES;
+    const list = prizesList.length > 0 ? prizesList : DEFAULT_PRIZES;
     const selectedIdx = Math.floor(Math.random() * list.length);
     const prize = list[selectedIdx];
 
     const sliceAngle = 360 / list.length;
-    const targetAngle = 1800 + (360 - selectedIdx * sliceAngle - sliceAngle / 2);
+    const targetAngle = 2160 + (360 - selectedIdx * sliceAngle - sliceAngle / 2);
 
     setWheelRotation(targetAngle);
 
@@ -216,10 +302,15 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     }, 4500);
   };
 
-  const handleCompleteWin = async (prize: typeof PRIZES[0], type: 'spin_wheel' | 'scratch_card') => {
+  const handleCompleteWin = async (prize: Prize, type: 'spin_wheel' | 'scratch_card') => {
     setWonPrize(prize);
     localStorage.setItem(STORAGE_SPIN_KEY, Date.now().toString());
     setHasPlayedToday(true);
+
+    // Burst confetti animation
+    setTimeout(() => {
+      triggerConfetti(confettiCanvasRef.current);
+    }, 200);
 
     try {
       await fetchWithCsrf('/api/pd/retention/rewards-lead', {
@@ -241,7 +332,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     if (!wonPrize) return;
     const res = applyCoupon(wonPrize.code);
     if (res.success) {
-      setAppliedFeedback('✅ Code promo activé dans votre panier !');
+      setAppliedFeedback('✅ Code promo activé avec succès dans votre panier !');
     } else {
       setAppliedFeedback(res.message);
     }
@@ -254,138 +345,159 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Hide widget on internal admin / auth routes or if disabled in platform config
   if (isInternalOrAuthRoute || !enabled) return null;
 
-  const currentPrizes = prizesList.length > 0 ? prizesList : PRIZES;
+  const currentPrizes = prizesList.length > 0 ? prizesList : DEFAULT_PRIZES;
 
   return (
     <>
-      {/* Floating Trigger Button on Bottom Right */}
+      {/* Ultra-Realistic Glassmorphic Floating Trigger Widget */}
       <div className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#B91C1C] via-red-600 to-amber-600 px-4 py-3 text-white font-black text-xs shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-red-500/30"
-        >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 animate-bounce">
-            <Gift className="h-4 w-4" />
-          </span>
-          <span className="hidden sm:inline tracking-wide uppercase text-[11px]">
-            {buttonLabel || "🎁 Gagnez jusqu'à 15 DT !"}
-          </span>
-          <span className="inline sm:hidden font-bold">Cadeaux</span>
-        </button>
+        <div className="relative group">
+          {/* Animated Glow Aura */}
+          <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-500 via-red-600 to-purple-600 blur-md opacity-75 group-hover:opacity-100 transition duration-500 animate-pulse" />
+
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="relative flex items-center gap-3 rounded-full bg-slate-950/90 border border-amber-400/40 px-4 py-3 text-white shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-red-500 shadow-inner text-slate-950 animate-bounce">
+              <Gift className="h-4 w-4 stroke-[2.5]" />
+            </span>
+            <span className="hidden sm:inline font-black tracking-wide text-xs bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent uppercase">
+              {buttonLabel || "🎁 Gagnez jusqu'à 15 DT !"}
+            </span>
+            <span className="inline sm:hidden font-black text-xs text-amber-300">Cadeaux</span>
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+          </button>
+        </div>
       </div>
 
-      {/* Main Interactive Modal */}
+      {/* Main Ultra-Realistic Casino Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-slate-900 border border-amber-500/30 shadow-[0_25px_70px_rgba(0,0,0,0.9)] p-6 sm:p-8 space-y-6 text-white">
+            {/* Confetti Overlay Canvas */}
+            <canvas ref={confettiCanvasRef} className="pointer-events-none absolute inset-0 z-20 w-full h-full" />
+
+            {/* Glowing Accent Top Bar */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-red-500 to-purple-500" />
+
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+              className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition border border-slate-700"
             >
               <X className="w-4 h-4" />
             </button>
 
             {/* Header */}
-            <div className="text-center space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-[#B91C1C] text-[10px] font-black uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                Cadeaux & Réductions PandaMarket
+            <div className="text-center space-y-1.5 pt-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-black uppercase tracking-widest shadow-inner">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                Cadeaux Exclusive PandaMarket
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
                 Tentez Votre Chance & Gagnez !
               </h2>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Tournez la roue ou grattez pour débloquer votre code promo immédiat sur vos achats.
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Tournez la roue casino ou grattez la carte VIP pour obtenir votre code promo instantané.
               </p>
             </div>
 
             {/* Mode Switcher */}
             {!wonPrize && (
-              <div className="flex items-center justify-center gap-2 p-1 rounded-2xl bg-slate-100 max-w-xs mx-auto border border-slate-200">
+              <div className="flex items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-slate-950 border border-slate-800 max-w-xs mx-auto">
                 <button
                   type="button"
                   onClick={() => setGameMode('wheel')}
                   className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                    gameMode === 'wheel' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                    gameMode === 'wheel'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  🎡 Roue de la Fortune
+                  🎡 Roue Casino
                 </button>
                 <button
                   type="button"
                   onClick={() => setGameMode('scratch')}
                   className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                    gameMode === 'scratch' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                    gameMode === 'scratch'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  🪙 Carte à Gratter
+                  🪙 Carte VIP
                 </button>
               </div>
             )}
 
             {/* Active Game Display */}
             {!wonPrize ? (
-              <div className="space-y-6">
-                {/* 1. Spin Wheel Mode */}
+              <div className="space-y-5">
+                {/* 1. Ultra 3D Wheel Mode */}
                 {gameMode === 'wheel' && (
                   <div className="relative flex flex-col items-center justify-center py-2">
-                    {/* Pointer */}
-                    <div className="absolute top-0 z-10 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[24px] border-t-slate-900 drop-shadow-md" />
+                    {/* Metallic 3D Pointer Needle */}
+                    <div className="absolute top-[-4px] z-30 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+                      <div className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[28px] border-t-amber-400" />
+                    </div>
 
-                    {/* Wheel Canvas / SVG */}
-                    <div
-                      className="relative w-64 h-64 rounded-full border-4 border-slate-900 shadow-xl overflow-hidden transition-all duration-[4500ms] ease-out flex items-center justify-center"
-                      style={{
-                        transform: `rotate(${wheelRotation}deg)`,
-                      }}
-                    >
-                      {currentPrizes.map((p, idx) => {
-                        const angle = (360 / currentPrizes.length) * idx;
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute top-0 left-0 w-full h-full"
-                            style={{
-                              transform: `rotate(${angle}deg)`,
-                              clipPath: 'polygon(50% 50%, 21% 0%, 79% 0%)',
-                              backgroundColor: p.color,
-                            }}
-                          >
-                            <span
-                              className="absolute top-4 left-1/2 -translate-x-1/2 text-white font-black text-[11px] tracking-tight whitespace-nowrap drop-shadow-sm"
-                              style={{ transform: 'translateX(-50%) rotate(0deg)' }}
+                    {/* Outer Gold Bezel Rim Frame */}
+                    <div className="relative p-2.5 rounded-full bg-gradient-to-tr from-amber-700 via-yellow-200 via-amber-500 to-amber-900 shadow-[0_15px_40px_rgba(0,0,0,0.8)] border border-amber-300/40">
+                      {/* Inner Wheel Body */}
+                      <div
+                        className="relative w-64 h-64 rounded-full border-4 border-slate-950 shadow-2xl overflow-hidden transition-all duration-[4500ms] cubic-bezier(0.15, 0.9, 0.2, 1) flex items-center justify-center"
+                        style={{
+                          transform: `rotate(${wheelRotation}deg)`,
+                        }}
+                      >
+                        {currentPrizes.map((p, idx) => {
+                          const angle = (360 / currentPrizes.length) * idx;
+                          return (
+                            <div
+                              key={idx}
+                              className="absolute top-0 left-0 w-full h-full"
+                              style={{
+                                transform: `rotate(${angle}deg)`,
+                                clipPath: 'polygon(50% 50%, 20% 0%, 80% 0%)',
+                                backgroundColor: p.color,
+                              }}
                             >
-                              {p.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {/* Center Hub */}
-                      <div className="absolute w-12 h-12 rounded-full bg-slate-900 border-4 border-white shadow-md flex items-center justify-center text-white font-black text-xs">
-                        🎁
+                              <span
+                                className="absolute top-4 left-1/2 -translate-x-1/2 text-white font-black text-[11px] tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+                                style={{ transform: 'translateX(-50%)' }}
+                              >
+                                {p.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                        {/* Metallic Center Brass Emblem Cap */}
+                        <div className="absolute w-14 h-14 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-amber-700 border-2 border-amber-100 shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] flex items-center justify-center text-slate-950 font-black text-sm">
+                          🎁
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 2. Scratch Card Mode */}
+                {/* 2. Ultra Scratch Card Mode */}
                 {gameMode === 'scratch' && (
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="relative rounded-2xl overflow-hidden border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-3 py-2">
+                    <div className="relative w-[320px] h-[150px] rounded-2xl overflow-hidden border-2 border-amber-400/60 bg-slate-950 p-4 text-center shadow-2xl flex flex-col items-center justify-center">
                       <div className="space-y-1">
-                        <span className="text-2xl">🎉</span>
-                        <p className="font-black text-amber-900 text-sm">FÉLICITATIONS !</p>
-                        <p className="font-mono font-black text-xl text-[#B91C1C]">CHANCE5DT</p>
-                        <p className="text-[11px] text-amber-800">5.000 DT de remise immédiate</p>
+                        <span className="text-3xl">🎉</span>
+                        <p className="font-black text-amber-300 text-sm tracking-wide">FÉLICITATIONS !</p>
+                        <p className="font-mono font-black text-2xl text-emerald-400">CHANCE5DT</p>
+                        <p className="text-[11px] text-slate-300">5.000 DT de remise immédiate</p>
                       </div>
 
-                      {/* Scratch Canvas Overlay */}
+                      {/* Holographic Scratch Canvas Overlay */}
                       <canvas
                         ref={canvasRef}
                         onMouseMove={handleScratchMove}
@@ -397,35 +509,35 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                 )}
 
                 {/* Player Identification & PDP Consent Form */}
-                <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-slate-600">
+                      <label className="block text-[10px] font-black uppercase text-amber-300 tracking-wider">
                         📱 Téléphone Tunisien *
                       </label>
-                      <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
-                        <span className="text-slate-400 font-bold">+216</span>
+                      <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs focus-within:border-amber-400 transition">
+                        <span className="text-slate-400 font-bold">🇹🇳 +216</span>
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
                           placeholder="98 123 456"
-                          className="w-full font-mono font-bold text-slate-800 outline-none"
+                          className="w-full font-mono font-bold text-white bg-transparent outline-none placeholder:text-slate-600"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-slate-600">
+                      <label className="block text-[10px] font-black uppercase text-amber-300 tracking-wider">
                         ✉️ Email (Optionnel)
                       </label>
-                      <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs focus-within:border-amber-400 transition">
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="client@domaine.tn"
-                          className="w-full text-slate-800 outline-none"
+                          className="w-full text-white bg-transparent outline-none placeholder:text-slate-600"
                         />
                       </div>
                     </div>
@@ -437,10 +549,10 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                       type="checkbox"
                       checked={consent}
                       onChange={(e) => setConsent(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                      className="mt-0.5 h-3.5 w-3.5 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-400"
                     />
-                    <span className="text-[10px] text-slate-500 leading-tight">
-                      J&apos;accepte de recevoir des codes de réduction et offres personnalisées par SMS / WhatsApp (Loi tunisienne sur la protection des données).
+                    <span className="text-[10px] text-slate-400 leading-tight">
+                      J&apos;accepte de recevoir mes offres personnalisées par SMS / WhatsApp (Loi tunisienne PDP).
                     </span>
                   </label>
                 </div>
@@ -451,58 +563,63 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                     type="button"
                     onClick={handleSpinWheel}
                     disabled={isSpinning || !phone.trim() || phone.length < 8 || !consent}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#B91C1C] to-amber-600 text-white font-black text-sm hover:opacity-95 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 font-black text-sm hover:brightness-110 active:scale-[0.99] transition shadow-[0_10px_30px_rgba(245,158,11,0.3)] disabled:opacity-40 flex items-center justify-center gap-2 uppercase tracking-wide"
                   >
                     {isSpinning ? (
                       <>
-                        <RotateCw className="w-4 h-4 animate-spin" />
+                        <RotateCw className="w-4 h-4 animate-spin text-slate-950" />
                         <span>La roue tourne... Bonne chance !</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Tourner la Roue Gratuitement !</span>
+                        <Sparkles className="w-4 h-4 text-slate-950" />
+                        <span>Tourner La Roue Gratuitement !</span>
                       </>
                     )}
                   </button>
                 )}
               </div>
             ) : (
-              /* Win Reward Display */
-              <div className="text-center space-y-5 animate-in zoom-in-95 duration-300">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-3xl shadow-inner">
-                  {wonPrize.icon}
+              /* Ultra Win Reward Display */
+              <div className="text-center space-y-5 animate-in zoom-in-95 duration-300 py-2">
+                <div className="relative mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 text-4xl shadow-[0_10px_30px_rgba(245,158,11,0.4)] border-2 border-yellow-200">
+                  <Trophy className="w-12 h-12 stroke-[2.5]" />
+                  <span className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-black shadow-md">
+                    ✓
+                  </span>
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-xs font-black uppercase text-emerald-600">Félicitations ! Vous avez gagné :</span>
-                  <h3 className="text-2xl font-black text-slate-900">{wonPrize.label}</h3>
-                  <p className="text-xs text-slate-500">{wonPrize.desc}</p>
+                  <span className="text-xs font-black uppercase tracking-widest text-amber-400">
+                    Félicitations ! Vous Avez Gagné :
+                  </span>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white">{wonPrize.label}</h3>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">{wonPrize.desc}</p>
                 </div>
 
                 {/* Coupon Code Card */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 max-w-sm mx-auto">
-                  <div>
-                    <span className="text-[9px] font-black uppercase text-slate-400">Votre Code Promo :</span>
-                    <p className="font-mono font-black text-lg text-[#B91C1C]">{wonPrize.code}</p>
+                <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/40 flex items-center justify-between gap-3 max-w-sm mx-auto shadow-inner">
+                  <div className="text-left">
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Votre Code Promo :</span>
+                    <p className="font-mono font-black text-xl text-amber-400 tracking-wider">{wonPrize.code}</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1"
+                    className="px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 text-xs font-black hover:bg-amber-500/20 transition flex items-center gap-1.5"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     <span>{copied ? 'Copié !' : 'Copier'}</span>
                   </button>
                 </div>
 
                 {appliedFeedback ? (
-                  <p className="text-xs font-bold text-emerald-600 animate-in fade-in">{appliedFeedback}</p>
+                  <p className="text-xs font-black text-emerald-400 animate-in fade-in">{appliedFeedback}</p>
                 ) : (
                   <button
                     type="button"
                     onClick={handleApplyToCart}
-                    className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-black text-sm hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm hover:brightness-110 transition shadow-[0_10px_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 uppercase tracking-wide"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Appliquer Directement à Mon Panier</span>
@@ -512,7 +629,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 underline"
+                  className="text-xs font-bold text-slate-400 hover:text-white underline transition"
                 >
                   Continuer mes achats
                 </button>
