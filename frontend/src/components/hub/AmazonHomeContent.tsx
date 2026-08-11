@@ -275,7 +275,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
         <div className="relative">
           <div className="relative h-[340px] overflow-hidden text-white" style={{ background: `linear-gradient(180deg, ${INK}, #37475a)` }}>
             {slide.imageUrl && (
-              <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${getResizedImageUrl(slide.imageUrl, 'large')})` }} />
+              <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${getResizedImageUrl(slide.imageUrl, 'medium')})` }} />
             )}
             <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-center px-4 pb-24 sm:px-6 lg:px-8">
               <h1 className="max-w-xl text-3xl font-black leading-tight sm:text-4xl">{slide.title}</h1>

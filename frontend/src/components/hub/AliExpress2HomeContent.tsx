@@ -80,7 +80,7 @@ function SuperDealCard({ product, currency, rank }: { product: Product; currency
           </div>
         )}
         {image ? (
-          <img src={image ? getResizedImageUrl(image, 'large') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          <img src={image ? getResizedImageUrl(image, 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-white/20">
             <ShoppingBag className="h-10 w-10" />
@@ -137,7 +137,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
         <div className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#ff4747]/20 blur-[120px] animate-pulse" />
         <div className="pointer-events-none absolute -right-20 top-20 h-[400px] w-[400px] rounded-full bg-[#ff8a00]/15 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-[#ff5f2e]/10 blur-[80px]" />
-        {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'large') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10" />}
+        {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'medium') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10" />}
 
         <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[1fr_340px]">

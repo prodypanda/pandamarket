@@ -83,7 +83,7 @@ function ProductCard({ product, currency }: { product: Product; currency: string
         )}
         {image ? (
           <img
-            src={image ? getResizedImageUrl(image, 'large') : ''}
+            src={image ? getResizedImageUrl(image, 'medium') : ''}
             alt={product.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
@@ -413,7 +413,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
 
             <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-8 text-white shadow-2xl shadow-emerald-950/20 md:p-10">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(22,199,132,0.55),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.18),transparent_28%)]" />
-              {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'large') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
+              {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'medium') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
               <div className="relative max-w-2xl">
                 <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white shadow-sm backdrop-blur">
                   <ShieldCheck className="h-4 w-4 text-[#1EE69A]" />

@@ -408,7 +408,7 @@ export default async function CategoryPage({
           /* ========================================================================= */
           <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-[#0b1e3f] via-[#163060] to-[#1e3c72] p-8 text-white shadow-xl">
             {category.banner_url && (
-              <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(${getResizedImageUrl(category.banner_url, 'large')})` }} />
+              <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(${getResizedImageUrl(category.banner_url, 'medium')})` }} />
             )}
 
             <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">

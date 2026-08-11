@@ -27,8 +27,15 @@ export function getResizedImageUrl(
     return trimmed;
   }
 
-  // Do not resize SVGs or GIFs
-  if (trimmed.toLowerCase().endsWith('.svg') || trimmed.toLowerCase().endsWith('.gif') || trimmed.toLowerCase().endsWith('.ico')) {
+  // Do not resize SVGs or GIFs or branding logos
+  if (
+    trimmed.toLowerCase().endsWith('.svg') || 
+    trimmed.toLowerCase().endsWith('.gif') || 
+    trimmed.toLowerCase().endsWith('.ico') ||
+    trimmed.includes('/branding/') ||
+    trimmed.includes('logo') ||
+    size === 'original'
+  ) {
     return trimmed;
   }
 

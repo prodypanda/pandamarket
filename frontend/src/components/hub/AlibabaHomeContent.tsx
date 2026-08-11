@@ -406,7 +406,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
               <div className="relative mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
                 <span className="absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>Deal</span>
                 {getProductImage(product) ? (
-                  <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }} />
+                  <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
                 )}
@@ -442,7 +442,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
           <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
             <div className="aspect-square overflow-hidden bg-gray-100">
               {getProductImage(product) ? (
-                <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }} />
+                <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
               )}
@@ -945,7 +945,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   <div
                     className="absolute inset-0 hidden sm:block bg-cover bg-center transition-all duration-500"
                     style={{
-                      backgroundImage: `url(${getResizedImageUrl(slide.imageUrl, 'large')})`,
+                      backgroundImage: `url(${getResizedImageUrl(slide.imageUrl, 'medium')})`,
                       opacity: (slide.bgOpacity ?? 40) / 100,
                     }}
                   />
@@ -955,7 +955,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                   <div
                     className="absolute inset-0 sm:hidden bg-cover bg-center transition-all duration-500"
                     style={{
-                      backgroundImage: `url(${getResizedImageUrl(slide.mobileImageUrl || slide.imageUrl, 'large')})`,
+                      backgroundImage: `url(${getResizedImageUrl(slide.mobileImageUrl || slide.imageUrl, 'medium')})`,
                       opacity: (slide.bgOpacity ?? 40) / 100,
                     }}
                   />

@@ -3372,7 +3372,7 @@ router.get(
         }
 
         const filename = row.asset_filename || pathParts[pathParts.length - 1] || rawKey;
-        const url = `/${rawKey}`;
+        const url = `/${row.bucket}/${rawKey}`;
         let width: number | null = null;
         let height: number | null = null;
 
@@ -3464,7 +3464,7 @@ router.patch(
       `INSERT INTO pd_file_asset (id, scope, purpose, url, file_key, bucket, filename, content_type, file_size)
        VALUES ($1, 'platform', 'marketplace_asset', $2, $3, 'pd-product-images', $4, $5, 0)
        ON CONFLICT (file_key) DO UPDATE SET filename = EXCLUDED.filename, updated_at = NOW()`,
-      [pdId('asset'), `/${key}`, key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
+      [pdId('asset'), `/pd-product-images/${key}`, key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
     );
 
     logger.info(
