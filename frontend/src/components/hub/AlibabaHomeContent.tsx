@@ -455,6 +455,26 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
           </Link>
         ))}
       </div>
+      <HubProductPagination
+        style={marketplaceSettings.hub_homepage_pagination_style}
+        sortBy={marketplaceSettings.catalog_default_sort}
+        gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+        renderCard={(product: any) => (
+          <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+            <div className="aspect-square overflow-hidden bg-gray-100">
+              {getProductImage(product) ? (
+                <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+              )}
+            </div>
+            <div className="p-3">
+              <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
+              <p className="mt-2 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
+            </div>
+          </Link>
+        )}
+      />
     </section>
   );
 
