@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   const tags: string[] = [];
   for (const hostname of hostnames) {
     const tag = storeHostTag(hostname);
-    revalidateTag(tag);
+    revalidateTag(tag, { expire: 0 });
     tags.push(tag);
   }
 
