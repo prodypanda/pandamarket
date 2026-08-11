@@ -275,7 +275,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   catalog_featured_category_slugs: '',
   catalog_default_sort: 'newest',
   hub_homepage_layout: 'theme_default',
-  hub_homepage_pagination_style: 'none',
+  hub_homepage_pagination_style: 'infinite',
   hub_megamenu_style: 'standard',
   hub_megamenu_lazy_loading: true,
   hub_category_page_style: 'v1_classic',

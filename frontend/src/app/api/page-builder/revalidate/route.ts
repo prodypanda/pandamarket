@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   if (body.homepage === true) tags.add(pageBuilderHomepageTag(storeId));
 
   for (const tag of tags) {
-    revalidateTag(tag, { expire: 0 });
+    revalidateTag(tag);
   }
 
   return NextResponse.json({ ok: true, tags: [...tags] });

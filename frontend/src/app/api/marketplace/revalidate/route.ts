@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  revalidateTag(MARKETPLACE_SETTINGS_TAG, { expire: 0 });
+  revalidateTag(MARKETPLACE_SETTINGS_TAG);
   revalidatePath('/hub', 'layout');
   revalidatePath('/');
 

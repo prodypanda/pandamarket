@@ -1942,7 +1942,7 @@ const globalSettingsSchema = z.object({
     .enum(['theme_default', 'classic', 'deals', 'premium_deals', 'alibaba', 'amazon'])
     .optional(),
   hub_homepage_pagination_style: z
-    .enum(['infinite', 'load_more', 'pagination'])
+    .enum(['infinite', 'load_more', 'pagination', 'none'])
     .optional(),
   hub_megamenu_style: z
     .enum(['standard', 'visual_rich', 'ultra_rich', 'ultra_rich_deep'])
