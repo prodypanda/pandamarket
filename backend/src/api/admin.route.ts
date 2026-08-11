@@ -3331,6 +3331,10 @@ router.get(
       FROM pd_file_blobs b
       LEFT JOIN pd_file_asset a ON (a.file_key = b.key OR a.url LIKE '%' || b.key)
       WHERE b.bucket = 'pd-product-images'
+        AND b.key NOT LIKE '%_thumbnail.webp'
+        AND b.key NOT LIKE '%_small.webp'
+        AND b.key NOT LIKE '%_medium.webp'
+        AND b.key NOT LIKE '%_large.webp'
       ORDER BY b.created_at DESC
     `;
 
@@ -3488,19 +3492,25 @@ router.delete(
       throw new PdValidationError('Asset key is required');
     }
 
-    await query('DELETE FROM pd_file_blobs WHERE key = $1', [key]);
+    const { baseKeyWithoutExt } = imageVariantService.getBaseKeyAndExtension(key);
+    const variants = ['thumbnail', 'small', 'medium', 'large'].map(p => `${baseKeyWithoutExt}_${p}.webp`);
+    const allKeysToDelete = [key, ...variants];
+
+    await query('DELETE FROM pd_file_blobs WHERE key = ANY($1)', [allKeysToDelete]);
     await query(
       'DELETE FROM pd_file_asset WHERE file_key = $1 OR file_key LIKE $2 OR url LIKE $2',
       [key, `%${key}%`],
     );
 
-    try {
-      const diskPath = path.join(resolveDataPath(), key);
-      if (fs.existsSync(diskPath)) {
-        fs.unlinkSync(diskPath);
+    for (const k of allKeysToDelete) {
+      try {
+        const diskPath = path.join(resolveDataPath(), k);
+        if (fs.existsSync(diskPath)) {
+          fs.unlinkSync(diskPath);
+        }
+      } catch {
+        // Ignore disk delete error
       }
-    } catch {
-      // Ignore disk delete error
     }
 
     logger.info({ admin_id: req.user!.id, key }, 'Admin deleted platform media asset');
@@ -3623,7 +3633,13 @@ router.post(
     const maxWidth = req.body.maxWidth || 1600;
 
     const findResult = await query(
-      "SELECT key, data, content_type FROM pd_file_blobs WHERE bucket = 'pd-product-images' ORDER BY created_at DESC",
+      `SELECT key, data, content_type FROM pd_file_blobs 
+       WHERE bucket = 'pd-product-images' 
+         AND key NOT LIKE '%_thumbnail.webp'
+         AND key NOT LIKE '%_small.webp'
+         AND key NOT LIKE '%_medium.webp'
+         AND key NOT LIKE '%_large.webp'
+       ORDER BY created_at DESC`,
     );
 
     let totalOriginal = 0;
