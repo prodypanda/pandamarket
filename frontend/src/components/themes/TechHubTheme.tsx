@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useState } from 'react';
 import { ShoppingBag, Zap, ChevronRight, Cpu, Play } from 'lucide-react';
 import Link from 'next/link';

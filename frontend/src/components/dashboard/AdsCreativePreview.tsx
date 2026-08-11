@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { Building2, Megaphone, ShoppingBag } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 
@@ -41,7 +42,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
     return (
       <div className="relative min-h-52 overflow-hidden rounded-2xl bg-slate-950 text-white md:col-span-2">
         {creative.image_url && (
-          <img src={creative.image_url} alt="Banner preview" onError={handleImgError} className="absolute inset-0 h-full w-full object-cover opacity-60" />
+          <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="Banner preview" onError={handleImgError} className="absolute inset-0 h-full w-full object-cover opacity-60" />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent" />
         <div className="relative max-w-lg p-6">
@@ -61,7 +62,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
         <div className="flex items-center gap-4">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">
             {creative.image_url ? (
-              <img src={creative.image_url} alt="Brand preview" onError={handleImgError} className="h-full w-full object-cover" />
+              <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="Brand preview" onError={handleImgError} className="h-full w-full object-cover" />
             ) : (
               <Building2 className="h-8 w-8 text-slate-300" />
             )}
@@ -83,7 +84,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
       <div className="relative overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
         <div className="aspect-square max-h-52 bg-slate-100">
           {creative.image_url ? (
-            <img src={creative.image_url} alt="Product preview" onError={handleImgError} className="h-full w-full object-cover" />
+            <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="Product preview" onError={handleImgError} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full items-center justify-center">
               <ShoppingBag className="h-10 w-10 text-slate-300" />
@@ -105,7 +106,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
       <div className="flex min-h-36 gap-4 p-4">
         <div className="flex w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
           {creative.image_url ? (
-            <img src={creative.image_url} alt="Content preview" onError={handleImgError} className="h-full w-full object-cover" />
+            <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="Content preview" onError={handleImgError} className="h-full w-full object-cover" />
           ) : (
             <Megaphone className="text-slate-300" />
           )}

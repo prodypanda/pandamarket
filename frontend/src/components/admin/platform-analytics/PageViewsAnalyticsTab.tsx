@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { DrilldownType, PlatformPageViewsAnalytics } from '@/types/analytics';
 import {
   Eye,
@@ -155,7 +156,7 @@ function StoreHoverCard({ store, children }: {
 
           <div className="flex items-start gap-3">
             {store.store_logo_url ? (
-              <img src={store.store_logo_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0" />
+              <img src={store.store_logo_url ? getResizedImageUrl(store.store_logo_url, 'medium') : ''} alt="" className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0" />
             ) : (
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 flex items-center justify-center flex-shrink-0">
                 <Store className="w-5 h-5 text-indigo-500" />

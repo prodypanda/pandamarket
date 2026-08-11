@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { useState, useEffect } from 'react';
 import { useCart, type CartItem } from '../../../contexts/CartContext';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
@@ -207,7 +208,7 @@ export default function CartPage() {
                         <div className="w-20 h-20 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100">
                           {item.image_url ? (
                             <img
-                              src={item.image_url}
+                              src={item.image_url ? getResizedImageUrl(item.image_url, 'medium') : ''}
                               alt={item.title}
                               className="w-full h-full object-cover"
                             />

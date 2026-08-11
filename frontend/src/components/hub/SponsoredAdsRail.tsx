@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { fetchWithCsrf } from '@/lib/api';
 import { ChevronLeft, ChevronRight, Megaphone } from 'lucide-react';
@@ -137,7 +138,7 @@ export function SponsoredAdsRail({
             }}
             className="relative block min-h-60"
           >
-            {currentAd.image_url && <img src={currentAd.image_url} alt={currentAd.title} className="absolute inset-0 h-full w-full object-cover opacity-60 transition-all duration-700" />}
+            {currentAd.image_url && <img src={currentAd.image_url ? getResizedImageUrl(currentAd.image_url, 'medium') : ''} alt={currentAd.title} className="absolute inset-0 h-full w-full object-cover opacity-60 transition-all duration-700" />}
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
             <div className="relative max-w-2xl p-8 sm:p-10">
               <span className="rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-950">
@@ -228,7 +229,7 @@ export function SponsoredAdsRail({
           >
             <div className="aspect-square bg-slate-100">
               {ad.image_url ? (
-                <img src={ad.image_url} alt={ad.title} className="h-full w-full object-cover" />
+                <img src={ad.image_url ? getResizedImageUrl(ad.image_url, 'medium') : ''} alt={ad.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center">
                   <Megaphone className="text-slate-300" />

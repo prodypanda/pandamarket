@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
 import {
@@ -271,7 +272,7 @@ function RecursiveCategoryItem({
 
           <div className="relative shrink-0">
             {node.image_url ? (
-              <img src={node.image_url} alt={node.name} className="h-10 w-10 rounded-xl border border-slate-200 object-cover shadow-xs" />
+              <img src={node.image_url ? getResizedImageUrl(node.image_url, 'medium') : ''} alt={node.name} className="h-10 w-10 rounded-xl border border-slate-200 object-cover shadow-xs" />
             ) : (
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
                 <Tags className="h-4 w-4" />
@@ -1228,7 +1229,7 @@ export default function MarketplaceCategoriesPage() {
                         <div className="flex items-center gap-4">
                           <div className="shrink-0">
                             {category.image_url ? (
-                              <img src={category.image_url} alt={category.name} className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
+                              <img src={category.image_url ? getResizedImageUrl(category.image_url, 'medium') : ''} alt={category.name} className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
                             ) : (
                               <div className="h-12 w-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-300">
                                 <ImageIcon className="w-6 h-6" />

@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { normalizePublicAssetUrl } from '@/lib/public-assets';

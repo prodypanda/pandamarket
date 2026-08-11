@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useState, useEffect, useCallback } from 'react';
@@ -484,7 +485,7 @@ export default function AnalyticsPage() {
                     {/* Product image — using <img> instead of next/image for dynamic URLs */}
                     {product.image_url ? (
                       <img
-                        src={product.image_url}
+                        src={product.image_url ? getResizedImageUrl(product.image_url, 'medium') : ''}
                         alt=""
                         className="h-10 w-10 rounded-xl object-cover border border-gray-100 shadow-sm"
                       />

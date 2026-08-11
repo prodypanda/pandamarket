@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { useCart } from '../../../../contexts/CartContext';
@@ -200,7 +201,7 @@ export default function StoreCartPage() {
                     <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                       {item.image_url ? (
                         <Image
-                          src={item.image_url}
+                          src={item.image_url ? getResizedImageUrl(item.image_url, 'medium') : ''}
                           alt={item.title}
                           width={80}
                           height={80}

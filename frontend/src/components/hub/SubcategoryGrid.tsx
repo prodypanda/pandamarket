@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { ArrowRight, Layers, Box } from 'lucide-react';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
@@ -86,7 +87,7 @@ export function SubcategoryGrid({
               <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-slate-100">
                 {sub.image_url ? (
                   <LazyBlurImage
-                    src={sub.image_url}
+                    src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                     alt={sub.name}
                     containerClassName="h-full w-full"
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -134,7 +135,7 @@ export function SubcategoryGrid({
               <div className="flex items-center gap-3">
                 {sub.image_url ? (
                   <LazyBlurImage
-                    src={sub.image_url}
+                    src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                     alt={sub.name}
                     containerClassName="h-10 w-10 shrink-0 rounded-xl border border-slate-200 shadow-xs"
                     className="h-full w-full object-cover"

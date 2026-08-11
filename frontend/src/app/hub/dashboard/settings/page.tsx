@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import { useState, useEffect, useCallback } from 'react';

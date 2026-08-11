@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
 import { HomepageBlocksEditor } from '@/components/admin/HomepageBlocksEditor';
@@ -1567,7 +1568,7 @@ export default function AdminSettingsPage() {
             {renderTextInput('maintenance_illustration_url', 'Maintenance Illustration URL', '/pd-themes/maintenance.webp')}
             {settings.maintenance_illustration_url && (
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                <img src={settings.maintenance_illustration_url} alt="Maintenance illustration preview" className="h-36 w-full object-cover" />
+                <img src={settings.maintenance_illustration_url ? getResizedImageUrl(settings.maintenance_illustration_url, 'medium') : ''} alt="Maintenance illustration preview" className="h-36 w-full object-cover" />
               </div>
             )}
             <button

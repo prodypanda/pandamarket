@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useEffect, useState } from 'react';
 import {
   Folder,
@@ -643,7 +644,7 @@ export default function PlatformMediaPage() {
               {/* Image Preview Box */}
               <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
                 <img
-                  src={item.url}
+                  src={item.url ? getResizedImageUrl(item.url, 'medium') : ''}
                   alt={item.filename}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   onError={(e) => {
@@ -737,7 +738,7 @@ export default function PlatformMediaPage() {
               {filteredItems.map((item) => (
                 <tr key={item.key} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-3">
-                    <img src={item.url} alt={item.filename} className="h-10 w-10 rounded-xl object-cover border border-slate-200" />
+                    <img src={item.url ? getResizedImageUrl(item.url, 'medium') : ''} alt={item.filename} className="h-10 w-10 rounded-xl object-cover border border-slate-200" />
                   </td>
                   <td className="p-4">
                     <span className="block max-w-xs truncate text-slate-900" title={item.filename}>
@@ -882,7 +883,7 @@ export default function PlatformMediaPage() {
             </div>
 
             <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-3">
-              <img src={optimizingItem.url} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
+              <img src={optimizingItem.url ? getResizedImageUrl(optimizingItem.url, 'medium') : ''} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
               <div className="space-y-1 text-xs">
                 <span className="block font-black text-slate-900">{optimizingItem.filename}</span>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-slate-500">
@@ -1062,7 +1063,7 @@ export default function PlatformMediaPage() {
             </div>
 
             <div className="relative flex max-h-[65vh] items-center justify-center overflow-hidden rounded-2xl bg-slate-900 p-2">
-              <img src={previewItem.url} alt={previewItem.filename} className="max-h-[60vh] w-auto object-contain rounded-xl" />
+              <img src={previewItem.url ? getResizedImageUrl(previewItem.url, 'medium') : ''} alt={previewItem.filename} className="max-h-[60vh] w-auto object-contain rounded-xl" />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">

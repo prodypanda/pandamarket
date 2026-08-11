@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -98,7 +99,7 @@ export function StorefrontFooter({
             <div className="space-y-3 md:col-span-1">
               <Link href={storePathBase || '/'}>
                 {logoUrl ? (
-                  <Image src={logoUrl} alt={storeName} width={160} height={32} unoptimized className="h-8 object-contain mb-2" />
+                  <Image src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt={storeName} width={160} height={32} unoptimized className="h-8 object-contain mb-2" />
                 ) : (
                   <h3 className={`text-lg font-bold ${theme.typography.headingStyle}`}>
                     {storeName}
@@ -182,7 +183,7 @@ export function StorefrontFooter({
         {branding?.map_embed_url && (
           <div className="mt-8 rounded-2xl overflow-hidden border" style={{ borderColor: `${footerTextColor}15` }}>
             <iframe
-              src={branding.map_embed_url}
+              src={branding.map_embed_url ? getResizedImageUrl(branding.map_embed_url, 'medium') : ''}
               width="100%"
               height="180"
               style={{ border: 0 }}
@@ -319,7 +320,7 @@ function renderBlockContent(
     case 'map':
       return branding?.map_embed_url ? (
         <iframe
-          src={branding.map_embed_url}
+          src={branding.map_embed_url ? getResizedImageUrl(branding.map_embed_url, 'medium') : ''}
           width="100%"
           height="120"
           style={{ border: 0 }}

@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { ImageIcon, Loader2, Plus, Save, Tags, Trash2, Upload, X } from 'lucide-react';
@@ -255,7 +256,7 @@ export default function StorefrontCategoriesPage() {
           </div>
           <div className="space-y-4">
             <div className="aspect-[4/3] rounded-2xl border border-dashed border-gray-300 bg-gray-50 overflow-hidden flex items-center justify-center">
-              {form.image_url ? <img src={form.image_url} alt={t('dashboardPages.categories.title')} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+              {form.image_url ? <img src={form.image_url ? getResizedImageUrl(form.image_url, 'medium') : ''} alt={t('dashboardPages.categories.title')} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
             </div>
             <div className="flex gap-2">
               <label className="inline-flex flex-1 items-center justify-center px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
@@ -320,7 +321,7 @@ export default function StorefrontCategoriesPage() {
                 <div key={category.id} className="p-5 grid grid-cols-1 lg:grid-cols-[132px_1fr_auto] gap-5 hover:bg-gray-50/40 transition-colors">
                 <div>
                   <div className="aspect-square rounded-2xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-                    {category.image_url ? <img src={category.image_url} alt={category.name} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
+                    {category.image_url ? <img src={category.image_url ? getResizedImageUrl(category.image_url, 'medium') : ''} alt={category.name} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
                   </div>
                   <label className="mt-2 inline-flex w-full items-center justify-center px-2 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
                     {t('dashboardPages.categories.upload')}

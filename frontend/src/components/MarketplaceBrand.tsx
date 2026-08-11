@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { selectLogoForSurface, type LogoSurface } from '../lib/public-assets';
 
@@ -40,7 +41,7 @@ export function MarketplaceBrand({
   return (
     <Link href={href} className={`flex items-center gap-2 ${className}`.trim()}>
       {logoUrl ? (
-        <img src={logoUrl} alt={name} className={imageClassName} />
+        <img src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt={name} className={imageClassName} />
       ) : (
         <span className={fallbackMarkClassName}>🐼</span>
       )}

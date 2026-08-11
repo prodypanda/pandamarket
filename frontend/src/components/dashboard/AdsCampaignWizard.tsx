@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Loader2, Package, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -620,7 +621,7 @@ function RichProductSelector({
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               {selectedProduct.image_url ? (
-                <img src={selectedProduct.image_url} alt={selectedProduct.title} className="h-full w-full object-cover" />
+                <img src={selectedProduct.image_url ? getResizedImageUrl(selectedProduct.image_url, 'medium') : ''} alt={selectedProduct.title} className="h-full w-full object-cover" />
               ) : (
                 <Package className="h-5 w-5 text-slate-400" />
               )}
@@ -671,7 +672,7 @@ function RichProductSelector({
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                       {prod.image_url ? (
-                        <img src={prod.image_url} alt={prod.title} className="h-full w-full object-cover" />
+                        <img src={prod.image_url ? getResizedImageUrl(prod.image_url, 'medium') : ''} alt={prod.title} className="h-full w-full object-cover" />
                       ) : (
                         <Package className="h-5 w-5 text-slate-400" />
                       )}

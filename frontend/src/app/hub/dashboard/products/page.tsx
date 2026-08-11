@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { Fragment } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
@@ -2480,7 +2481,7 @@ export default function ProductsPage() {
                         <div className="flex items-center gap-3">
                           <div className="h-11 w-11 flex-shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
                             {product.thumbnail ? (
-                              <img src={product.thumbnail} alt={product.title} className="h-full w-full object-cover" />
+                              <img src={product.thumbnail ? getResizedImageUrl(product.thumbnail, 'medium') : ''} alt={product.title} className="h-full w-full object-cover" />
                             ) : (
                               <Package className="w-5 h-5 text-slate-400" />
                             )}
@@ -2626,7 +2627,7 @@ export default function ProductsPage() {
                   <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center">
                     {product.thumbnail ? (
                       <img
-                        src={product.thumbnail}
+                        src={product.thumbnail ? getResizedImageUrl(product.thumbnail, 'medium') : ''}
                         alt={product.title}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -4071,7 +4072,7 @@ export default function ProductsPage() {
                       <div className="flex items-center gap-4">
                         <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                           {form.thumbnail ? (
-                            <img src={form.thumbnail} alt="Vignette" className="h-full w-full object-cover" />
+                            <img src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''} alt="Vignette" className="h-full w-full object-cover" />
                           ) : (
                             <ImageIcon className="w-8 h-8 text-slate-300" />
                           )}
@@ -4722,7 +4723,7 @@ export default function ProductsPage() {
                               {form.thumbnail ? (
                                 <div className="h-40 w-full rounded-lg overflow-hidden bg-slate-800 relative">
                                   <img
-                                    src={form.thumbnail}
+                                    src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                     alt={effectiveTitle}
                                     className="w-full h-full object-cover"
                                   />
@@ -4745,7 +4746,7 @@ export default function ProductsPage() {
                             {form.thumbnail ? (
                               <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
                                 <img
-                                  src={form.thumbnail}
+                                  src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                   alt={effectiveTitle}
                                   className="w-full h-full object-cover"
                                 />
@@ -4775,7 +4776,7 @@ export default function ProductsPage() {
                             {form.thumbnail && (
                               <div className="h-44 w-full relative overflow-hidden bg-slate-900">
                                 <img
-                                  src={form.thumbnail}
+                                  src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                   alt={effectiveTitle}
                                   className="w-full h-full object-cover"
                                 />
@@ -4852,7 +4853,7 @@ export default function ProductsPage() {
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 shadow-md">
                     <div className="aspect-square w-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
                       {form.thumbnail ? (
-                        <img src={form.thumbnail} alt="Aperçu" className="h-full w-full object-cover" />
+                        <img src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''} alt="Aperçu" className="h-full w-full object-cover" />
                       ) : (
                         <Package className="w-10 h-10 text-slate-300" />
                       )}
@@ -5842,7 +5843,7 @@ export default function ProductsPage() {
                       }}
                       className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-[#B91C1C] transition-all bg-slate-100"
                     >
-                      <img src={item.url} alt="Media" className="h-full w-full object-cover" />
+                      <img src={item.url ? getResizedImageUrl(item.url, 'medium') : ''} alt="Media" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>

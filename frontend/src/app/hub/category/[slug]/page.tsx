@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -338,7 +339,7 @@ export default async function CategoryPage({
                   <div className="flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-amber-400 backdrop-blur-xl border border-white/30 shadow-xl p-1 overflow-hidden">
                     {category.image_url ? (
                       <LazyBlurImage
-                        src={category.image_url}
+                        src={category.image_url ? getResizedImageUrl(category.image_url, 'medium') : ''}
                         alt={category.name}
                         containerClassName="h-full w-full rounded-xl"
                         className="h-full w-full object-cover"
@@ -414,7 +415,7 @@ export default async function CategoryPage({
               <div className="flex items-start gap-4">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-amber-400 backdrop-blur-md border border-white/20 shadow-md">
                   {category.image_url ? (
-                    <LazyBlurImage src={category.image_url} alt={category.name} containerClassName="h-full w-full rounded-2xl" className="h-full w-full object-cover" />
+                    <LazyBlurImage src={category.image_url ? getResizedImageUrl(category.image_url, 'medium') : ''} alt={category.name} containerClassName="h-full w-full rounded-2xl" className="h-full w-full object-cover" />
                   ) : (
                     <CategoryIconComp className="h-8 w-8" />
                   )}

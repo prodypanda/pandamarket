@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle, Image as ImageIcon, Inbox, Loader2, MessageSquare, PlusCircle, Search, Send, ShieldCheck, Store, UserRound, X } from 'lucide-react';

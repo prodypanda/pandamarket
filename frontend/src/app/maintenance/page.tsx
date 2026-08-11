@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { useEffect, useState, useCallback } from 'react';
 import { Construction, RefreshCw, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';

@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { useLocale } from '@/contexts/LocaleContext';
 import { fetchWithCsrf } from '@/lib/api';
 import { Check, Copy, ExternalLink, ImageIcon, Loader2, Search, UploadCloud, X } from 'lucide-react';

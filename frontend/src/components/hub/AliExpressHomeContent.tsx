@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, BadgePercent, Flame, Grid3X3, Headphones, Package, Search, ShieldCheck, ShoppingBag, Star, Store, Truck, Zap } from 'lucide-react';
@@ -77,7 +78,7 @@ function DealCard({ product, currency, themeClasses, isAliExpress2 }: { product:
       <div className={`relative aspect-square overflow-hidden ${isAliExpress2 ? 'bg-orange-50/30' : 'bg-orange-50'}`}>
         <span className={`absolute left-2 top-2 z-10 px-2.5 py-1 text-[10px] ${themeClasses.dealPill}`}>Deal</span>
         {image ? (
-          <img src={image} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img src={image ? getResizedImageUrl(image, 'large') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-orange-300">
             <ShoppingBag className="h-8 w-8" />
@@ -168,7 +169,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
           <Link key={category.slug} href={`/hub/search?category=${encodeURIComponent(category.slug)}`} className={`group overflow-hidden bg-white text-center transition hover:-translate-y-1 block ${themeClasses.card}`}>
             <div className={`aspect-square ${isAliExpress2 ? 'bg-orange-50/50' : 'bg-orange-50'}`}>
               {category.image_url ? (
-                <img src={normalizePublicAssetUrl(category.image_url)} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={category.image_url ? getResizedImageUrl(normalizePublicAssetUrl(category.image_url), 'medium') : ''} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-orange-300">
                   <Package className="h-8 w-8" />
@@ -246,7 +247,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
             <div className={`overflow-hidden ${isAliExpress2 ? 'rounded-xl shadow-xl shadow-orange-900/10' : 'rounded-3xl shadow-sm'}`}>
               <div className={`relative min-h-[420px] overflow-hidden ${isAliExpress2 ? 'bg-gradient-to-br from-[#ff4747] via-[#ff5f2e] to-[#ff8a00]' : 'bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.42),transparent_32%),linear-gradient(135deg,#ff4747_0%,#ff7a00_52%,#ffd36d_100%)]'} p-6 text-white md:p-10`}>
                 <div className="absolute -right-14 bottom-0 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
-                {bannerImage && <img src={bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
+                {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'large') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
                 <div className="relative max-w-2xl">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
                     <BadgePercent className="h-4 w-4" />

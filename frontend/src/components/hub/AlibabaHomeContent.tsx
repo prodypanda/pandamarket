@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -573,7 +574,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
                         {activeCategory.image_url ? (
                           <LazyBlurImage
-                            src={activeCategory.image_url}
+                            src={activeCategory.image_url ? getResizedImageUrl(activeCategory.image_url, 'medium') : ''}
                             alt={activeCategory.name}
                             containerClassName="absolute inset-0 h-full w-full"
                             className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
@@ -632,7 +633,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                 >
                                   {sub.image_url ? (
                                     <LazyBlurImage
-                                      src={sub.image_url}
+                                      src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                       alt={sub.name}
                                       containerClassName="h-full w-full"
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -704,7 +705,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                       <div className="relative h-48 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl">
                         {activeCategory.image_url ? (
                           <LazyBlurImage
-                            src={activeCategory.image_url}
+                            src={activeCategory.image_url ? getResizedImageUrl(activeCategory.image_url, 'medium') : ''}
                             alt={activeCategory.name}
                             containerClassName="absolute inset-0 h-full w-full"
                             className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
@@ -761,7 +762,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                 <div className="relative h-28 w-full overflow-hidden bg-slate-100">
                                   {sub.image_url ? (
                                     <LazyBlurImage
-                                      src={sub.image_url}
+                                      src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                       alt={sub.name}
                                       containerClassName="h-full w-full"
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -810,7 +811,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 text-[#ff6a00] shadow-sm border border-orange-100">
                             {activeCategory.image_url ? (
                               <LazyBlurImage
-                                src={activeCategory.image_url}
+                                src={activeCategory.image_url ? getResizedImageUrl(activeCategory.image_url, 'medium') : ''}
                                 alt={activeCategory.name}
                                 containerClassName="h-full w-full rounded-2xl"
                                 className="h-full w-full object-cover"
@@ -854,7 +855,7 @@ export function AlibabaHomeContent({ trendingProducts, categories, marketplaceSe
                                     <div className="flex items-center gap-2">
                                       {sub.image_url ? (
                                         <LazyBlurImage
-                                          src={sub.image_url}
+                                          src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                           alt={sub.name}
                                           containerClassName="h-7 w-7 rounded-xl border border-slate-200/60 shadow-xs shrink-0"
                                           className="h-full w-full object-cover"

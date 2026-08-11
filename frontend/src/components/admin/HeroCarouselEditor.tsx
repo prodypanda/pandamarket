@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Image as ImageIcon, Sparkles, Link as LinkIcon, Layers, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { MarketplaceAssetPicker } from './MarketplaceAssetPicker';

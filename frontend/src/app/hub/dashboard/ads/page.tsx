@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import {
   BarChart3, Building, CheckCircle2, ChevronRight, Edit3, Eye, Loader2, Megaphone, Plus, Trash2, UploadCloud, WalletCards, X,
@@ -428,7 +429,7 @@ export default function SellerAdsPage() {
                 <div key={c.id} className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-slate-50/70 transition">
                   <div className="flex items-center gap-4">
                     {creative?.image_url ? (
-                      <img src={creative.image_url} alt="" className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
+                      <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="" className="h-12 w-12 rounded-xl object-cover border border-slate-200" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
                         <Megaphone className="h-5 w-5" />

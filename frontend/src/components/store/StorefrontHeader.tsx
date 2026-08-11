@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -236,7 +237,7 @@ function StorefrontSearchBar({
                     >
                       {item.thumbnail ? (
                         <Image
-                          src={item.thumbnail}
+                          src={item.thumbnail ? getResizedImageUrl(item.thumbnail, 'medium') : ''}
                           alt={item.title}
                           width={36}
                           height={36}
@@ -421,7 +422,7 @@ export function StorefrontHeader({
 
           <Link href={storePathBase || '/'} className="flex items-center gap-2">
             {logoUrl ? (
-              <Image src={logoUrl} alt={storeName} width={180} height={36} unoptimized className="h-9 max-w-[180px] object-contain" />
+              <Image src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt={storeName} width={180} height={36} unoptimized className="h-9 max-w-[180px] object-contain" />
             ) : (
               <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${theme.typography.headingStyle}`}>
                 {storeName}

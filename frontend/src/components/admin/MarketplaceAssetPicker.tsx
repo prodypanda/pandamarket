@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { FileText, ImageIcon, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -397,7 +398,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                     <div className="relative flex aspect-square items-center justify-center bg-gray-50 overflow-hidden">
                       {isImage ? (
                         <img
-                          src={asset.url}
+                          src={asset.url ? getResizedImageUrl(asset.url, 'medium') : ''}
                           alt={asset.filename}
                           className="h-full w-full object-cover transition-transform group-hover:scale-105"
                           onError={(e) => {

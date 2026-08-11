@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -856,7 +857,7 @@ export default function SellerOnboardingPage() {
                         <div className="relative rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[120px]">
                           {logoUrl ? (
                             <div className="space-y-2">
-                              <img src={logoUrl} alt="Logo" className="h-10 object-contain" />
+                              <img src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt="Logo" className="h-10 object-contain" />
                               <button
                                 type="button"
                                 onClick={() => setLogoUrl('')}
@@ -898,7 +899,7 @@ export default function SellerOnboardingPage() {
                         <div className="relative rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[120px]">
                           {logoDarkUrl ? (
                             <div className="space-y-2">
-                              <img src={logoDarkUrl} alt="Logo Dark" className="h-10 object-contain" />
+                              <img src={logoDarkUrl ? getResizedImageUrl(logoDarkUrl, 'small') : ''} alt="Logo Dark" className="h-10 object-contain" />
                               <button
                                 type="button"
                                 onClick={() => setLogoDarkUrl('')}

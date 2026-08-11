@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { ArrowRight, BadgePercent, Crown, Flame, Gift, Headphones, Package, Search, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Timer, Truck, Zap } from 'lucide-react';
 import { getHubProductHref } from '../../lib/product-links';
@@ -79,7 +80,7 @@ function SuperDealCard({ product, currency, rank }: { product: Product; currency
           </div>
         )}
         {image ? (
-          <img src={image} alt={product.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          <img src={image ? getResizedImageUrl(image, 'large') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-white/20">
             <ShoppingBag className="h-10 w-10" />
@@ -136,7 +137,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
         <div className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#ff4747]/20 blur-[120px] animate-pulse" />
         <div className="pointer-events-none absolute -right-20 top-20 h-[400px] w-[400px] rounded-full bg-[#ff8a00]/15 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-[#ff5f2e]/10 blur-[80px]" />
-        {bannerImage && <img src={bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10" />}
+        {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'large') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10" />}
 
         <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -277,7 +278,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
             <Link key={category.slug} href={`/hub/search?category=${encodeURIComponent(category.slug)}`} className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.03] transition-all duration-500 hover:-translate-y-1 hover:border-[#ff4747]/30 hover:shadow-[0_12px_40px_-8px_rgba(255,71,71,0.2)]">
               <div className="aspect-square overflow-hidden bg-black/30">
                 {category.image_url ? (
-                  <img src={normalizePublicAssetUrl(category.image_url)} alt={category.name} className="h-full w-full object-cover opacity-70 transition-all duration-700 group-hover:scale-110 group-hover:opacity-100" />
+                  <img src={category.image_url ? getResizedImageUrl(normalizePublicAssetUrl(category.image_url), 'medium') : ''} alt={category.name} className="h-full w-full object-cover opacity-70 transition-all duration-700 group-hover:scale-110 group-hover:opacity-100" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-white/10">
                     <Package className="h-8 w-8" />

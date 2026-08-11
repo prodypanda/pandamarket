@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import {
   AlertTriangle,
@@ -557,7 +558,7 @@ export default function AdminAdsPage() {
                             className="h-4 w-4 rounded border-slate-300 text-emerald-600 cursor-pointer"
                           />
                           {primaryCreative?.image_url ? (
-                            <img src={primaryCreative.image_url} alt="" className="h-14 w-14 rounded-xl object-cover border border-slate-200" />
+                            <img src={primaryCreative.image_url ? getResizedImageUrl(primaryCreative.image_url, 'medium') : ''} alt="" className="h-14 w-14 rounded-xl object-cover border border-slate-200" />
                           ) : (
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
                               <Megaphone className="h-6 w-6" />

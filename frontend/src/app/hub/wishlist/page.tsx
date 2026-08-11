@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, Trash2, ShoppingCart, ArrowLeft } from 'lucide-react';
@@ -188,7 +189,7 @@ export default function WishlistPage() {
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
                     {item.product_thumbnail ? (
                       <img
-                        src={item.product_thumbnail}
+                        src={item.product_thumbnail ? getResizedImageUrl(item.product_thumbnail, 'medium') : ''}
                         alt={item.product_title || 'Product'}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />

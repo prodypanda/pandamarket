@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -418,7 +419,7 @@ export default function DashboardOverview() {
             {/* Store logo */}
             {store?.settings?.logo_url ? (
               <div className="hidden h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white shadow-xl sm:flex">
-                <img src={store.settings.logo_url} alt="" className="h-full w-full object-contain" />
+                <img src={store.settings.logo_url ? getResizedImageUrl(store.settings.logo_url, 'medium') : ''} alt="" className="h-full w-full object-contain" />
               </div>
             ) : (
               <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 sm:flex">

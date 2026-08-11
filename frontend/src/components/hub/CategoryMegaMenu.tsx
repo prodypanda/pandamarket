@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -314,7 +315,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                       <div className="flex items-center gap-3 truncate">
                         {cat.image_url ? (
                           <LazyBlurImage
-                            src={cat.image_url}
+                            src={cat.image_url ? getResizedImageUrl(cat.image_url, 'medium') : ''}
                             alt={cat.name}
                             containerClassName="h-10 w-10 shrink-0 rounded-2xl border border-slate-200/50 shadow-sm"
                             className="h-full w-full object-cover"
@@ -358,7 +359,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                     <div className="relative h-52 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
                       {activeCategory.image_url ? (
                         <LazyBlurImage
-                          src={activeCategory.image_url}
+                          src={activeCategory.image_url ? getResizedImageUrl(activeCategory.image_url, 'medium') : ''}
                           alt={activeCategory.name}
                           containerClassName="absolute inset-0 h-full w-full"
                           className="h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
@@ -424,7 +425,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                             >
                               {sub.image_url ? (
                                 <LazyBlurImage
-                                  src={sub.image_url}
+                                  src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                   alt={sub.name}
                                   containerClassName="h-full w-full"
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -520,7 +521,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                       <div className="flex items-center gap-3 truncate">
                         {cat.image_url ? (
                           <img
-                            src={cat.image_url}
+                            src={cat.image_url ? getResizedImageUrl(cat.image_url, 'medium') : ''}
                             alt={cat.name}
                             className="h-10 w-10 rounded-2xl object-cover shrink-0 border border-slate-200/50 shadow-sm"
                             onError={(e) => {
@@ -566,7 +567,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                     <div className="relative h-52 overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 text-white shadow-xl dark:border-white/10">
                       {activeCategory.image_url ? (
                         <img
-                          src={activeCategory.image_url}
+                          src={activeCategory.image_url ? getResizedImageUrl(activeCategory.image_url, 'medium') : ''}
                           alt={activeCategory.name}
                           className="absolute inset-0 h-full w-full object-cover opacity-50 transition-transform duration-700 hover:scale-105"
                           onError={(e) => {
@@ -627,7 +628,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                             <div className="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                               {sub.image_url ? (
                                 <img
-                                  src={sub.image_url}
+                                  src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                   alt={sub.name}
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                                   onError={(e) => {
@@ -719,7 +720,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                       <div className="flex items-center gap-3 truncate">
                         {cat.image_url ? (
                           <img
-                            src={cat.image_url}
+                            src={cat.image_url ? getResizedImageUrl(cat.image_url, 'medium') : ''}
                             alt={cat.name}
                             className="h-8 w-8 rounded-xl object-cover shrink-0 border border-slate-200/50 shadow-sm"
                             onError={(e) => {
@@ -822,7 +823,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                                     <div className="flex items-center gap-2.5">
                                       {sub.image_url ? (
                                         <img
-                                          src={sub.image_url}
+                                          src={sub.image_url ? getResizedImageUrl(sub.image_url, 'medium') : ''}
                                           alt={sub.name}
                                           className="h-9 w-9 rounded-xl object-cover border border-slate-200/50 shadow-sm"
                                           onError={(e) => {

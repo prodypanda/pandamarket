@@ -1,3 +1,4 @@
+import { getResizedImageUrl } from '@/lib/image-url';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
@@ -36,7 +37,7 @@ export function PoweredByMarketplace({
       <Link href={getHubAbsoluteUrl('/hub')} className={linkClassName} style={linkStyle}>
         {logoUrl ? (
           <Image
-            src={logoUrl}
+            src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''}
             alt={name}
             width={120}
             height={20}

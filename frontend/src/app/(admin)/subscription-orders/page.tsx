@@ -1,5 +1,6 @@
 'use client';
 
+import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
