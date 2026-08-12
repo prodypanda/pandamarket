@@ -43,6 +43,16 @@ export interface NoteAttachment {
   created_at: string;
 }
 
+export interface AdminNoteFolder {
+  id: string;
+  admin_id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NoteActivity {
   id: string;
   note_id: string;
@@ -55,6 +65,8 @@ export interface NoteActivity {
 export interface AdminNote {
   id: string;
   admin_id: string;
+  folder_id: string | null;
+  sort_order: number;
   type: NoteType;
   title: string;
   content: string;
@@ -81,6 +93,8 @@ export interface AdminNoteDetail extends AdminNote {
 
 export interface CreateNoteInput {
   admin_id: string;
+  folder_id?: string | null;
+  sort_order?: number;
   type: NoteType;
   title: string;
   content?: string;
@@ -94,6 +108,8 @@ export interface CreateNoteInput {
 }
 
 export interface UpdateNoteInput {
+  folder_id?: string | null;
+  sort_order?: number;
   title?: string;
   content?: string;
   content_format?: NoteContentFormat;
@@ -108,6 +124,7 @@ export interface UpdateNoteInput {
 }
 
 export interface ListNotesOptions {
+  folder_id?: string | null;
   type?: string;
   status?: NoteStatus;
   priority?: NotePriority;
@@ -193,6 +210,20 @@ class AdminNotesService {
       idx += 2;
     }
 
+    if (opts.folder_id !== undefined) {
+      if (
+        opts.folder_id === null ||
+        opts.folder_id === 'null' ||
+        opts.folder_id === 'none' ||
+        opts.folder_id === 'unorganized'
+      ) {
+        conditions.push(`folder_id IS NULL`);
+      } else {
+        conditions.push(`folder_id = $${idx++}`);
+        params.push(opts.folder_id);
+      }
+    }
+
     const where = conditions.join(' AND ');
 
     const countResult = await query<{ count: string }>(
@@ -204,6 +235,7 @@ class AdminNotesService {
     const dataResult = await query<AdminNote>(
       `SELECT * FROM admin_notes WHERE ${where}
        ORDER BY is_pinned DESC,
+                sort_order ASC,
                 (reminder_at IS NOT NULL AND reminder_at >= NOW()) DESC,
                 CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
                 updated_at DESC
@@ -246,8 +278,8 @@ class AdminNotesService {
 
   async create(input: CreateNoteInput): Promise<AdminNote> {
     const result = await query<AdminNote>(
-      `INSERT INTO admin_notes (admin_id, type, title, content, content_format, color, priority, is_pinned, reminder_at, due_at, tags)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO admin_notes (admin_id, type, title, content, content_format, color, priority, is_pinned, reminder_at, due_at, tags, folder_id, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         input.admin_id,
@@ -261,6 +293,8 @@ class AdminNotesService {
         input.reminder_at || null,
         input.due_at || null,
         input.tags || [],
+        input.folder_id ?? null,
+        input.sort_order ?? 0,
       ],
     );
     const note = result.rows[0];
@@ -290,6 +324,8 @@ class AdminNotesService {
       ['reminder_at', input.reminder_at],
       ['due_at', input.due_at],
       ['tags', input.tags],
+      ['folder_id', input.folder_id],
+      ['sort_order', input.sort_order],
     ];
 
     const changes: Record<string, unknown> = {};
@@ -758,6 +794,84 @@ class AdminNotesService {
       [adminId, sinceHoursAgo],
     );
     return result.rows;
+  }
+
+  // ─── FOLDERS & SORTING ─────────────────────────────────────────────
+
+  async createFolder(adminId: string, name: string, color?: string): Promise<AdminNoteFolder> {
+    const result = await query<AdminNoteFolder>(
+      `INSERT INTO admin_note_folders (admin_id, name, color)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [adminId, name, color || 'default'],
+    );
+    return result.rows[0];
+  }
+
+  async listFolders(adminId: string): Promise<AdminNoteFolder[]> {
+    const result = await query<AdminNoteFolder>(
+      `SELECT * FROM admin_note_folders WHERE admin_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+      [adminId],
+    );
+    return result.rows;
+  }
+
+  async updateFolder(id: string, adminId: string, input: { name?: string; color?: string; sort_order?: number }): Promise<AdminNoteFolder | null> {
+    const setClauses: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (input.name !== undefined) {
+      setClauses.push(`name = $${idx++}`);
+      params.push(input.name);
+    }
+    if (input.color !== undefined) {
+      setClauses.push(`color = $${idx++}`);
+      params.push(input.color);
+    }
+    if (input.sort_order !== undefined) {
+      setClauses.push(`sort_order = $${idx++}`);
+      params.push(input.sort_order);
+    }
+
+    if (setClauses.length === 0) {
+      const res = await query<AdminNoteFolder>(`SELECT * FROM admin_note_folders WHERE id = $1 AND admin_id = $2`, [id, adminId]);
+      return res.rows[0] || null;
+    }
+
+    setClauses.push(`updated_at = NOW()`);
+    const result = await query<AdminNoteFolder>(
+      `UPDATE admin_note_folders SET ${setClauses.join(', ')} WHERE id = $${idx} AND admin_id = $${idx + 1} RETURNING *`,
+      [...params, id, adminId],
+    );
+    return result.rows[0] || null;
+  }
+
+  async deleteFolder(id: string, adminId: string): Promise<boolean> {
+    const result = await query(`DELETE FROM admin_note_folders WHERE id = $1 AND admin_id = $2`, [id, adminId]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateFolderSortOrder(updates: { id: string; sort_order: number }[], adminId: string): Promise<void> {
+    if (!updates.length) return;
+    for (const update of updates) {
+      await query(`UPDATE admin_note_folders SET sort_order = $1, updated_at = NOW() WHERE id = $2 AND admin_id = $3`, [update.sort_order, update.id, adminId]);
+    }
+  }
+
+  async updateNoteSortOrder(updates: { id: string; sort_order: number }[], adminId: string): Promise<void> {
+    if (!updates.length) return;
+    for (const update of updates) {
+      await query(`UPDATE admin_notes SET sort_order = $1, updated_at = NOW() WHERE id = $2 AND admin_id = $3`, [update.sort_order, update.id, adminId]);
+    }
+  }
+
+  async moveToFolder(id: string, adminId: string, folderId: string | null): Promise<AdminNote | null> {
+    const result = await query<AdminNote>(
+      `UPDATE admin_notes SET folder_id = $1, updated_at = NOW() WHERE id = $2 AND admin_id = $3 RETURNING *`,
+      [folderId, id, adminId],
+    );
+    return result.rows[0] || null;
   }
 
   // ─── HELPERS ───────────────────────────────────────────────────────

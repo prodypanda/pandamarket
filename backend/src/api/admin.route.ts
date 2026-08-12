@@ -3769,6 +3769,8 @@ const noteContentFormatSchema = z.enum(['plain', 'markdown']);
 
 const createNoteSchema = z.object({
   type: noteTypeSchema,
+  folder_id: z.string().max(36).nullable().optional(),
+  sort_order: z.number().int().min(0).optional(),
   title: z.string().min(1).max(500),
   content: z.string().max(50000).optional(),
   content_format: noteContentFormatSchema.optional(),
@@ -3791,6 +3793,8 @@ const createNoteSchema = z.object({
 });
 
 const updateNoteSchema = z.object({
+  folder_id: z.string().max(36).nullable().optional(),
+  sort_order: z.number().int().min(0).optional(),
   title: z.string().min(1).max(500).optional(),
   content: z.string().max(50000).optional(),
   content_format: noteContentFormatSchema.optional(),
@@ -3815,6 +3819,7 @@ const updateNoteSchema = z.object({
 });
 
 const noteListSchema = z.object({
+  folder_id: z.string().max(36).nullable().optional().or(z.literal('').transform(() => null)),
   type: noteTypeSchema.optional(),
   status: noteStatusSchema.optional(),
   priority: notePrioritySchema.optional(),
@@ -3862,6 +3867,113 @@ const attachmentSchema = z.object({
   scope: z.string().max(20).optional(),
 });
 
+const createFolderSchema = z.object({
+  name: z.string().min(1).max(100),
+  color: z.string().max(20).optional(),
+});
+
+const updateFolderSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  color: z.string().max(20).optional(),
+  sort_order: z.number().int().min(0).optional(),
+});
+
+const updateSortOrderSchema = z.object({
+  updates: z.array(
+    z.object({
+      id: z.string().max(36),
+      sort_order: z.number().int().min(0),
+    })
+  ).min(1).max(500),
+});
+
+const moveToFolderSchema = z.object({
+  folder_id: z.string().max(36).nullable().or(z.literal('').transform(() => null)),
+});
+
+// ───────────────────────────────────────────────────────────
+// Folders
+// ───────────────────────────────────────────────────────────
+
+router.get(
+  '/notes/folders',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const folders = await adminNotesService.listFolders(req.user!.id);
+    res.status(200).json({ data: folders });
+  }),
+);
+
+router.post(
+  '/notes/folders',
+  requireAuth,
+  requireAdmin,
+  validate(createFolderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const folder = await adminNotesService.createFolder(req.user!.id, req.body.name, req.body.color);
+    res.status(201).json({ data: folder });
+  }),
+);
+
+router.put(
+  '/notes/folders/:id',
+  requireAuth,
+  requireAdmin,
+  validate(updateFolderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const folder = await adminNotesService.updateFolder(req.params.id, req.user!.id, req.body);
+    res.status(200).json({ data: folder });
+  }),
+);
+
+router.delete(
+  '/notes/folders/:id',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    await adminNotesService.deleteFolder(req.params.id, req.user!.id);
+    res.status(204).end();
+  }),
+);
+
+router.post(
+  '/notes/folders/sort',
+  requireAuth,
+  requireAdmin,
+  validate(updateSortOrderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await adminNotesService.updateFolderSortOrder(req.body.updates, req.user!.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/notes/sort',
+  requireAuth,
+  requireAdmin,
+  validate(updateSortOrderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await adminNotesService.updateNoteSortOrder(req.body.updates, req.user!.id);
+    res.status(200).json({ success: true });
+  }),
+);
+
+router.post(
+  '/notes/:id/move',
+  requireAuth,
+  requireAdmin,
+  validate(moveToFolderSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const note = await adminNotesService.moveToFolder(req.params.id, req.user!.id, req.body.folder_id);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+    res.status(200).json({ data: note });
+  }),
+);
+
 // List notes (supports all v2 filters)
 router.get(
   '/notes',
@@ -3870,6 +3982,7 @@ router.get(
   validate(noteListSchema, 'query'),
   asyncHandler(async (req: Request, res: Response) => {
     const q = req.query as unknown as {
+      folder_id?: string | null;
       type?: string;
       status?: 'active' | 'archived' | 'trashed';
       priority?: 'low' | 'normal' | 'high' | 'urgent';
@@ -3884,6 +3997,7 @@ router.get(
       limit?: number;
     };
     const result = await adminNotesService.list(req.user!.id, {
+      folder_id: q.folder_id,
       type: q.type,
       status: q.status,
       priority: q.priority,
