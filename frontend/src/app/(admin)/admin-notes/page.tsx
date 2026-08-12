@@ -442,7 +442,10 @@ export default function AdminNotesPage() {
 
   const fetchNotes = useCallback(async () => {
     try {
-      const res = await fetchWithCsrf(buildListUrl(), { credentials: 'include' });
+      const res = await fetchWithCsrf(buildListUrl(), {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       if (res.ok) {
         const json = await res.json();
         setNotes(json.data || []);
@@ -456,7 +459,10 @@ export default function AdminNotesPage() {
 
   const fetchFolders = useCallback(async () => {
     try {
-      const res = await fetchWithCsrf('/api/pd/admin/notes/folders', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/admin/notes/folders', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       if (res.ok) {
         const json = await res.json();
         setFolders(json.data || []);
@@ -468,7 +474,10 @@ export default function AdminNotesPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetchWithCsrf('/api/pd/admin/notes/stats', { credentials: 'include' });
+      const res = await fetchWithCsrf('/api/pd/admin/notes/stats', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       if (res.ok) {
         const json = await res.json();
         setStats(json.data || null);
@@ -480,13 +489,17 @@ export default function AdminNotesPage() {
 
   const fetchDetail = useCallback(async (id: string) => {
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/notes/${id}`, { credentials: 'include' });
+      const res = await fetchWithCsrf(`/api/pd/admin/notes/${id}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       if (res.ok) {
         const json = await res.json();
         setDetailData(json.data || null);
       }
       const actRes = await fetchWithCsrf(`/api/pd/admin/notes/${id}/activity`, {
         credentials: 'include',
+        cache: 'no-store',
       });
       if (actRes.ok) {
         const actJson = await actRes.json();
