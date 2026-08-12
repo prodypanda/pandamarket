@@ -402,7 +402,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
           {dealProducts.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group rounded-2xl border border-gray-100 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
@@ -444,7 +444,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
         initialTotalPages={trendingTotalPages}
         style={marketplaceSettings.hub_homepage_pagination_style}
         sortBy={marketplaceSettings.catalog_default_sort}
-        gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+        gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5"
         renderCard={(product: any) => (
           <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
             <div className="aspect-square overflow-hidden bg-gray-100">
