@@ -142,7 +142,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
           <button
             type="button"
             onClick={handleSkip}
-            className="absolute right-6 top-6 rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="absolute end-6 top-6 rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -173,7 +173,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pe-1">
                 {categories.map((cat) => {
                   const isSelected = selectedCategories.includes(cat.name);
                   return (
@@ -275,7 +275,7 @@ export function BuyerWelcomeModal({ onClose, onCompleted }: BuyerWelcomeModalPro
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-xl bg-white/10 p-2 text-slate-300 hover:bg-[#B91C1C] hover:text-white"
+                  className="absolute end-4 top-1/2 -translate-y-1/2 rounded-xl bg-white/10 p-2 text-slate-300 hover:bg-[#B91C1C] hover:text-white"
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </button>

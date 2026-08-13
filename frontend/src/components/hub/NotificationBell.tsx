@@ -193,7 +193,7 @@ export function NotificationBell() {
         )}
         {/* WebSocket connection indicator (subtle dot) */}
         <span
-          className={`absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${
+          className={`absolute bottom-0.5 end-0.5 w-1.5 h-1.5 rounded-full ${
             socketConnected ? 'bg-[#16C784]' : 'bg-gray-300'
           }`}
           title={socketConnected ? 'Temps réel actif' : 'Mode polling'}
@@ -202,7 +202,7 @@ export function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+        <div className="absolute end-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>

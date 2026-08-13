@@ -79,7 +79,7 @@ function ProductCard({ product, currency }: { product: Product; currency: string
     >
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
         {product.category && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold text-gray-700 shadow-sm">
+          <span className="absolute start-3 top-3 z-10 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold text-gray-700 shadow-sm">
             {product.category}
           </span>
         )}
@@ -429,7 +429,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                 </p>
                 <Link
                   href={bannerCtaUrl}
-                  className="flex max-w-xl items-center gap-3 rounded-full border border-white/15 bg-white p-2 pl-5 text-left text-gray-500 shadow-2xl shadow-black/20 transition-all hover:border-[#16C784]/40"
+                  className="flex max-w-xl items-center gap-3 rounded-full border border-white/15 bg-white p-2 ps-5 text-left text-gray-500 shadow-2xl shadow-black/20 transition-all hover:border-[#16C784]/40"
                 >
                   <Search className="h-5 w-5 text-gray-400" />
                   <span className="flex-1 text-sm">{t('common.search')}</span>

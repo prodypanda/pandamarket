@@ -99,18 +99,18 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
           onKeyDown={handleKeyDown}
           onFocus={() => query.length > 1 && setShowDropdown(true)}
           placeholder={t('common.search')}
-          className={`w-full px-5 py-3.5 pl-12 text-gray-900 bg-white rounded-full focus:outline-none transition-all ${
-            isAliExpress ? 'border-0 pr-28 shadow-none focus:ring-0' : 'border border-gray-200 focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 shadow-sm'
+          className={`w-full px-5 py-3.5 ps-12 text-gray-900 bg-white rounded-full focus:outline-none transition-all ${
+            isAliExpress ? 'border-0 pe-28 shadow-none focus:ring-0' : 'border border-gray-200 focus:border-[#16C784] focus:ring-4 focus:ring-[#16C784]/15 shadow-sm'
           }`}
         />
-        <Search className="absolute left-4 w-5 h-5 text-gray-400" />
+        <Search className="absolute start-4 w-5 h-5 text-gray-400" />
         {isAliExpress && (
           <button
             type="button"
             onClick={() => {
               if (query.trim()) router.push(`/hub/search?q=${encodeURIComponent(query.trim())}`);
             }}
-            className="absolute right-1.5 rounded-full bg-gradient-to-r from-[#ff4747] to-[#ff8a00] px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-orange-900/20 transition hover:scale-[1.02]"
+            className="absolute end-1.5 rounded-full bg-gradient-to-r from-[#ff4747] to-[#ff8a00] px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-orange-900/20 transition hover:scale-[1.02]"
           >
             Search
           </button>

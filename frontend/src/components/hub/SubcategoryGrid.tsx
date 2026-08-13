@@ -98,7 +98,7 @@ export function SubcategoryGrid({
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
-                <div className="absolute bottom-2.5 left-3 right-3 flex flex-col">
+                <div className="absolute bottom-2.5 start-3 end-3 flex flex-col">
                   <span className="text-xs sm:text-sm font-black text-white truncate drop-shadow-md">
                     {sub.name}
                   </span>
@@ -156,7 +156,7 @@ export function SubcategoryGrid({
               </div>
               <div className={`mt-3 flex items-center justify-end text-[10px] font-extrabold uppercase text-[#ff6a00] opacity-0 group-hover:opacity-100 transition-opacity`}>
                 <span>{i18n.view}</span>
-                <ArrowRight className={`ml-1 h-3 w-3 ${isRtl ? 'rotate-180 mr-1 ml-0' : ''}`} />
+                <ArrowRight className={`ms-1 h-3 w-3 ${isRtl ? 'rotate-180 me-1 ms-0' : ''}`} />
               </div>
             </Link>
           ))}

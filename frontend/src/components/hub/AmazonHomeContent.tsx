@@ -157,11 +157,11 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
           {lightningDeals.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group w-44 shrink-0 rounded-lg border border-gray-200 bg-white p-3 transition hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-gray-100">
-                <span className="absolute left-2 top-2 z-10 rounded px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: '#cc0c39' }}>Deal</span>
+                <span className="absolute start-2 top-2 z-10 rounded px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: '#cc0c39' }}>{t('hub.deal') || 'Deal'}</span>
                 {getProductImage(product) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
@@ -246,7 +246,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
           }}
         >
           <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-2 text-xs font-bold text-gray-700 sm:px-6 lg:px-8">
-            <span className="mr-1 shrink-0 rounded-md px-2 py-1 text-white" style={{ backgroundColor: INK }}>All</span>
+            <span className="me-1 shrink-0 rounded-md px-2 py-1 text-white" style={{ backgroundColor: INK }}>All</span>
             {stripCategories.map((category) => (
               <Link
                 key={category.id}
@@ -260,7 +260,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
             ))}
           </div>
           {activeCategory && (
-            <div className="absolute left-1/2 top-full z-30 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 rounded-b-2xl border border-t-0 border-gray-200 bg-white p-5 shadow-2xl">
+            <div className="absolute start-1/2 top-full z-30 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 rounded-b-2xl border border-t-0 border-gray-200 bg-white p-5 shadow-2xl">
               <div className="flex gap-4">
                 {activeCategory.image_url && (
                   <div aria-label={activeCategory.name} role="img" className="h-24 w-24 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${getResizedImageUrl(activeCategory.image_url, 'large')})` }} />
@@ -296,13 +296,13 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
             </div>
             {slides.length > 1 && (
               <>
-                <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-2 top-24 rounded-md bg-white/10 p-3 hover:bg-white/25">
+                <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute start-2 top-24 rounded-md bg-white/10 p-3 hover:bg-white/25">
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-2 top-24 rounded-md bg-white/10 p-3 hover:bg-white/25">
+                <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute end-2 top-24 rounded-md bg-white/10 p-3 hover:bg-white/25">
                   <ChevronRight className="h-5 w-5" />
                 </button>
-                <div className="absolute left-1/2 top-4 flex -translate-x-1/2 gap-1.5">
+                <div className="absolute start-1/2 top-4 flex -translate-x-1/2 gap-1.5">
                   {slides.map((entry, idx) => (
                     <button key={`${entry.title}-${idx}`} type="button" aria-label={`Slide ${idx + 1}`} onClick={() => setSlideIndex(idx)} className={`h-1.5 rounded-full transition-all ${idx === slideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40'}`} />
                   ))}
@@ -351,7 +351,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 {getProductImage(product as HomeProduct) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product as HomeProduct), 'medium')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>

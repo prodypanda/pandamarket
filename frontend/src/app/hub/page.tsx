@@ -145,10 +145,12 @@ export default async function HubHomepage({
   searchParams?: Promise<{ locale?: string }>;
 }) {
   const sp = searchParams ? await searchParams : {};
-  const cookieStore = await cookies();
+  
+  const [cookieStore, marketplaceSettings] = await Promise.all([
+    cookies(),
+    getMarketplaceSettings(),
+  ]);
   const cookieLocale = cookieStore.get('pd_locale')?.value;
-
-  const marketplaceSettings = await getMarketplaceSettings();
   const activeLocale = sp.locale || cookieLocale || marketplaceSettings.marketplace_default_locale || 'fr';
 
   const [{ products: trendingProducts, totalPages: trendingTotalPages }, categories] = await Promise.all([

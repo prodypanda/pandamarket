@@ -253,7 +253,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
       {isOpen && (
         <div
           dir={isRtl ? 'rtl' : 'ltr'}
-          className={`absolute ${isRtl ? 'right-0' : 'left-0'} top-full mt-3 z-50 transition-all duration-300 ${
+          className={`absolute ${isRtl ? 'end-0' : 'start-0'} top-full mt-3 z-50 transition-all duration-300 ${
               isUltraRichDeep
                 ? 'w-[1120px] max-w-[98vw] rounded-3xl border border-slate-200/90 bg-white/98 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f172a]/98'
                 : isUltraRich
@@ -282,7 +282,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             /* ======================================================================================== */
             <div className="grid grid-cols-12 gap-6">
               {/* Left Column: Department List */}
-              <div className="col-span-3 max-h-[580px] overflow-y-auto space-y-2 pr-2 border-r border-slate-100 dark:border-white/10">
+              <div className="col-span-3 max-h-[580px] overflow-y-auto space-y-2 pe-2 border-r border-slate-100 dark:border-white/10">
                 <div className="px-2 py-1 mb-1 flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                     {locale === 'ar' ? 'الأقسام الرئيسية' : locale === 'en' ? 'Main Departments' : 'Rayons Principaux'}
@@ -352,7 +352,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
               </div>
 
               {/* Right Main Showcase Container */}
-              <div className="col-span-9 max-h-[580px] overflow-y-auto space-y-5 pr-1">
+              <div className="col-span-9 max-h-[580px] overflow-y-auto space-y-5 pe-1">
                 {activeCategory && (
                   <>
                     {/* Large 220px Tall Hero Banner */}
@@ -436,7 +436,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-transparent" />
-                              <span className="absolute bottom-2.5 left-3 right-3 text-xs font-black text-white truncate drop-shadow-md">
+                              <span className="absolute bottom-2.5 start-3 end-3 text-xs font-black text-white truncate drop-shadow-md">
                                 {sub.name}
                               </span>
                             </Link>
@@ -497,7 +497,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             /* ========================================================================= */
             <div className="grid grid-cols-12 gap-6">
               {/* Left Column: Department List */}
-              <div className="col-span-3 max-h-[560px] overflow-y-auto space-y-2 pr-2 border-r border-slate-100 dark:border-white/10">
+              <div className="col-span-3 max-h-[560px] overflow-y-auto space-y-2 pe-2 border-r border-slate-100 dark:border-white/10">
                 <div className="px-2 py-1 mb-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                     {locale === 'ar' ? 'الأقسام الرئيسية' : locale === 'en' ? 'Main Departments' : 'Rayons Principaux'}
@@ -560,7 +560,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
               </div>
 
               {/* Right Main Showcase Container */}
-              <div className="col-span-9 max-h-[560px] overflow-y-auto space-y-5 pr-1">
+              <div className="col-span-9 max-h-[560px] overflow-y-auto space-y-5 pe-1">
                 {activeCategory && (
                   <>
                     {/* Large 220px Tall Hero Banner */}
@@ -641,7 +641,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                              <span className="absolute bottom-2.5 left-3 right-3 text-xs font-black text-white truncate drop-shadow-md">
+                              <span className="absolute bottom-2.5 start-3 end-3 text-xs font-black text-white truncate drop-shadow-md">
                                 {sub.name}
                               </span>
                             </div>
@@ -696,7 +696,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             /* ========================================================= */
             <div className="grid grid-cols-12 gap-5">
               {/* Left Column: Department Selector List */}
-              <div className="col-span-4 max-h-[500px] overflow-y-auto space-y-1.5 pr-2 border-r border-slate-100 dark:border-white/10">
+              <div className="col-span-4 max-h-[500px] overflow-y-auto space-y-1.5 pe-2 border-r border-slate-100 dark:border-white/10">
                 <div className="px-2 py-1 mb-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                     {locale === 'ar' ? 'الأقسام الرئيسية' : locale === 'en' ? 'Main Departments' : 'Rayons Principaux'}
@@ -759,13 +759,13 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
               </div>
 
               {/* Right Column: Visual Showcase Panel */}
-              <div className="col-span-8 max-h-[500px] overflow-y-auto space-y-4 pr-1">
+              <div className="col-span-8 max-h-[500px] overflow-y-auto space-y-4 pe-1">
                 {activeCategory ? (
                   <div>
                     {/* Header Banner with Category Details */}
                     <div className="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-5 text-white shadow-lg dark:border-white/10">
                       {activeCategory.image_url && (
-                        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${getResizedImageUrl(activeCategory.image_url, 'medium')})` }} />
+                        <div className="absolute end-0 top-0 bottom-0 w-1/3 opacity-20 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${getResizedImageUrl(activeCategory.image_url, 'medium')})` }} />
                       )}
                       <div className="relative z-10 flex items-start justify-between gap-4">
                         <div className="space-y-1.5 max-w-[75%]">
@@ -902,7 +902,7 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
             /* VERSION 1: STANDARD MEGAMENU (ALIBABA COMPACT LIST)       */
             /* ========================================================= */
             <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-4 border-r border-slate-100 dark:border-white/10 pr-2 space-y-1 max-h-[420px] overflow-y-auto">
+              <div className="col-span-4 border-r border-slate-100 dark:border-white/10 pe-2 space-y-1 max-h-[420px] overflow-y-auto">
                 {categories.map((cat) => {
                   const IconComp = getCategoryIconComponent(cat);
                   const isActive = activeCategory?.id === cat.id;

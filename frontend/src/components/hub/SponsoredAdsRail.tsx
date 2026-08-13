@@ -54,15 +54,22 @@ export function SponsoredAdsRail({
   const viewed = useRef(new Set<string>());
   const timers = useRef(new Map<string, number>());
 
+const adFetchCache = new Map<string, Promise<any>>();
+
   useEffect(() => {
     const device = window.matchMedia('(max-width: 767px)').matches ? 'mobile' : 'desktop';
     const audience = localStorage.getItem('pd_returning_visitor') === '1' ? 'returning' : 'new';
     localStorage.setItem('pd_returning_visitor', '1');
     const params = new URLSearchParams({ placement, limit: '6', locale, device, audience });
     if (category) params.set('category', category);
-    fetch(`/api/pd/ads/public/delivery?${params}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { ads: [] }))
-      .then((d) => setAds(d.ads || []))
+    
+    const url = `/api/pd/ads/public/delivery?${params}`;
+    if (!adFetchCache.has(url)) {
+      adFetchCache.set(url, fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : { ads: [] })));
+    }
+    
+    adFetchCache.get(url)
+      ?.then((d) => setAds(d.ads || []))
       .catch(() => setAds([]));
   }, [placement, locale, category]);
 
@@ -155,7 +162,7 @@ export function SponsoredAdsRail({
 
           {/* Multiple Banner Controls & Indicators */}
           {ads.length > 1 && (
-            <div className="absolute bottom-4 right-6 flex items-center gap-3 z-10">
+            <div className="absolute bottom-4 end-6 flex items-center gap-3 z-10">
               <button
                 type="button"
                 aria-label="Previous sponsored banner"

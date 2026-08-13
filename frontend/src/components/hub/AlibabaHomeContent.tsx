@@ -406,11 +406,11 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
           {dealProducts.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group rounded-2xl border border-gray-100 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
-                <span className="absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>Deal</span>
+                <span className="absolute start-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>{t('hub.deal') || 'Deal'}</span>
                 {getProductImage(product) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
@@ -451,7 +451,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
               {getProductImage(product) ? (
                 <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
               )}
             </div>
             <div className="p-3">
@@ -547,8 +547,8 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                         className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-extrabold transition-all ${
                           isActive
                             ? rtl
-                              ? 'bg-orange-50/90 text-[#ff6a00] border-r-4 border-[#ff6a00] pl-3'
-                              : 'bg-orange-50/90 text-[#ff6a00] border-l-4 border-[#ff6a00] pr-3'
+                              ? 'bg-orange-50/90 text-[#ff6a00] border-e-4 border-[#ff6a00] ps-3'
+                              : 'bg-orange-50/90 text-[#ff6a00] border-s-4 border-[#ff6a00] pe-3'
                             : 'text-slate-700 hover:bg-orange-50/40 hover:text-[#ff6a00]'
                         }`}
                       >
@@ -577,7 +577,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                 <div
                   dir={rtl ? 'rtl' : 'ltr'}
                   className={`absolute ${
-                    rtl ? 'right-full mr-3' : 'left-full ml-3'
+                    rtl ? 'end-full me-3' : 'start-full ms-3'
                   } top-0 z-50 ${
                     marketplaceSettings?.hub_megamenu_style === 'ultra_rich_deep'
                       ? 'w-[920px]'
@@ -640,7 +640,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
 
                       {/* Large Picture Subcategory Card Grid (Exact Style 3 Layout) with Deep Level 2/3 Submenus */}
                       {activeCategory.children && activeCategory.children.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-3.5 max-h-[360px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-3 gap-3.5 max-h-[360px] overflow-y-auto pe-1">
                           {activeCategory.children.map((sub) => {
                             const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
 
@@ -667,7 +667,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                                     </div>
                                   )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                                  <span className="absolute bottom-2 left-2.5 right-2.5 text-xs font-black text-white truncate drop-shadow-md">
+                                  <span className="absolute bottom-2 start-2.5 end-2.5 text-xs font-black text-white truncate drop-shadow-md">
                                     {sub.name}
                                   </span>
                                 </Link>
@@ -771,7 +771,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
 
                       {/* Large Picture Subcategory Card Grid */}
                       {activeCategory.children && activeCategory.children.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-3.5 max-h-[340px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-3 gap-3.5 max-h-[340px] overflow-y-auto pe-1">
                           {activeCategory.children.map((sub) => {
                             const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
 
@@ -796,7 +796,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                                     </div>
                                   )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                                  <span className="absolute bottom-2 left-2.5 right-2.5 text-xs font-black text-white truncate drop-shadow-md">
+                                  <span className="absolute bottom-2 start-2.5 end-2.5 text-xs font-black text-white truncate drop-shadow-md">
                                     {sub.name}
                                   </span>
                                 </div>
@@ -863,7 +863,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
 
                       {/* Multi-Column Subcategories Grid (Visual Rich or Standard) */}
                       {activeCategory.children && activeCategory.children.length > 0 ? (
-                        <div className={`grid ${marketplaceSettings?.hub_megamenu_style === 'visual_rich' ? 'grid-cols-2 gap-3.5' : 'grid-cols-3 gap-3'} max-h-[380px] overflow-y-auto pr-1`}>
+                        <div className={`grid ${marketplaceSettings?.hub_megamenu_style === 'visual_rich' ? 'grid-cols-2 gap-3.5' : 'grid-cols-3 gap-3'} max-h-[380px] overflow-y-auto pe-1`}>
                           {activeCategory.children.map((sub) => {
                             const SubIcon = (sub.icon && ICON_MAP[sub.icon]) || getCategoryIconComponent(sub);
 
@@ -937,7 +937,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                       </div>
                       <div>
                         <p className="text-[11px] font-black leading-tight">{i18n.tradeAssuranceVerified}</p>
-                        <p className="text-[9.5px] font-medium text-white/60">On-time delivery & quality protection</p>
+                        <p className="text-[9.5px] font-medium text-white/60">{t('hub.alibaba.protection') || 'On-time delivery & quality protection'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1">
@@ -946,7 +946,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                       </div>
                       <div>
                         <p className="text-[11px] font-black leading-tight">{i18n.verifiedSuppliers}</p>
-                        <p className="text-[9.5px] font-medium text-white/60">Verified factory OEM/ODM capacity</p>
+                        <p className="text-[9.5px] font-medium text-white/60">{t('hub.alibaba.capacity') || 'Verified factory OEM/ODM capacity'}</p>
                       </div>
                     </div>
                   </div>
@@ -1008,16 +1008,16 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                   <>
                     {(marketplaceSettings.hub_hero_carousel_show_arrows ?? true) && (
                       <>
-                        <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
+                        <button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)} className="absolute start-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
+                        <button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % slides.length)} className="absolute end-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 hover:bg-white/30 backdrop-blur-md">
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </>
                     )}
                     {(marketplaceSettings.hub_hero_carousel_dots_style || 'pill') !== 'hidden' && (
-                      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+                      <div className="absolute bottom-4 start-1/2 flex -translate-x-1/2 items-center gap-1.5">
                         {marketplaceSettings.hub_hero_carousel_dots_style === 'numbers' ? (
                           <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-black tracking-wider text-white backdrop-blur-md border border-white/20">
                             {slideIndex + 1} / {slides.length}

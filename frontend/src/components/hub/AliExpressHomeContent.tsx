@@ -79,9 +79,9 @@ function DealCard({ product, currency, themeClasses, isAliExpress2 }: { product:
   return (
     <Link href={getHubProductHref(product)} className={`group overflow-hidden ${themeClasses.card} block`}>
       <div className={`relative aspect-square overflow-hidden ${isAliExpress2 ? 'bg-orange-50/30' : 'bg-orange-50'}`}>
-        <span className={`absolute left-2 top-2 z-10 px-2.5 py-1 text-[10px] ${themeClasses.dealPill}`}>Deal</span>
+        <span className={`absolute start-2 top-2 z-10 px-2.5 py-1 text-[10px] ${themeClasses.dealPill}`}>{t('hub.deal') || 'Deal'}</span>
         {image ? (
-          <img src={image ? getResizedImageUrl(image, 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img loading="lazy" src={image ? getResizedImageUrl(image, 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-orange-300">
             <ShoppingBag className="h-8 w-8" />
@@ -172,7 +172,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
           <Link key={category.slug} href={`/hub/search?category=${encodeURIComponent(category.slug)}`} className={`group overflow-hidden bg-white text-center transition hover:-translate-y-1 block ${themeClasses.card}`}>
             <div className={`aspect-square ${isAliExpress2 ? 'bg-orange-50/50' : 'bg-orange-50'}`}>
               {category.image_url ? (
-                <img src={category.image_url ? getResizedImageUrl(normalizePublicAssetUrl(category.image_url), 'medium') : ''} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img loading="lazy" src={category.image_url ? getResizedImageUrl(normalizePublicAssetUrl(category.image_url), 'medium') : ''} alt={category.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-orange-300">
                   <Package className="h-8 w-8" />
@@ -259,7 +259,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
             <div className={`overflow-hidden ${isAliExpress2 ? 'rounded-xl shadow-xl shadow-orange-900/10' : 'rounded-3xl shadow-sm'}`}>
               <div className={`relative min-h-[420px] overflow-hidden ${isAliExpress2 ? 'bg-gradient-to-br from-[#ff4747] via-[#ff5f2e] to-[#ff8a00]' : 'bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.42),transparent_32%),linear-gradient(135deg,#ff4747_0%,#ff7a00_52%,#ffd36d_100%)]'} p-6 text-white md:p-10`}>
                 <div className="absolute -right-14 bottom-0 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
-                {bannerImage && <img src={bannerImage ? getResizedImageUrl(bannerImage, 'medium') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
+                {bannerImage && <img loading="lazy" src={bannerImage ? getResizedImageUrl(bannerImage, 'medium') : ''} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
                 <div className="relative max-w-2xl">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
                     <BadgePercent className="h-4 w-4" />
@@ -269,7 +269,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
                     {bannerTitle}
                   </h1>
                   <p className="mt-5 max-w-xl text-lg font-medium text-white/85">{bannerSubtitle}</p>
-                  <Link href={bannerCtaUrl} className="mt-8 flex max-w-xl items-center gap-3 rounded-full bg-white p-2 pl-5 text-left text-gray-500 shadow-2xl shadow-orange-950/20 transition hover:scale-[1.01]">
+                  <Link href={bannerCtaUrl} className="mt-8 flex max-w-xl items-center gap-3 rounded-full bg-white p-2 ps-5 text-left text-gray-500 shadow-2xl shadow-orange-950/20 transition hover:scale-[1.01]">
                     <Search className="h-5 w-5 text-gray-400" />
                     <span className="flex-1 text-sm">Search products, stores, categories...</span>
                     <span className={`px-5 py-3 text-sm ${themeClasses.primary}`}>{bannerCtaLabel}</span>
