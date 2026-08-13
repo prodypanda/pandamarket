@@ -10,6 +10,7 @@ import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
 import { RecentlyViewedRail, isRtlLocale } from './home-template-shared';
+import { HubProductPagination } from './HubProductPagination';
 
 interface Product {
   id: string;
@@ -304,11 +305,15 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
           </Link>
         </div>
         {trendingProducts.length > 0 ? (
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {trendingProducts.map((product) => (
-              <ProductCard key={product.id} product={product} currency={currency} />
-            ))}
-          </div>
+          <HubProductPagination
+            initialProducts={trendingProducts}
+            style={marketplaceSettings?.hub_homepage_pagination_style}
+            sortBy={marketplaceSettings?.catalog_default_sort}
+            gridClassName="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            renderCard={(product) => (
+              <ProductCard key={product.id} product={product as Product} currency={currency} />
+            )}
+          />
         ) : (
           <div className="py-12 text-center">
             <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-gray-300" />

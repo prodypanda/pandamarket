@@ -144,10 +144,11 @@ export function HubProductPagination({
 
       {/* 3. Pagination Controls */}
       {style === 'pagination' ? (
-        <div className="mt-8 flex items-center justify-center gap-2">
+        <nav aria-label="Product pagination" className="mt-8 flex items-center justify-center gap-2">
           <button
             onClick={() => handlePageClick(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1 || loading}
+            aria-label="Previous page"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -166,6 +167,8 @@ export function HubProductPagination({
                 key={pageNum}
                 onClick={() => handlePageClick(pageNum)}
                 disabled={loading}
+                aria-label={`Page ${pageNum}`}
+                aria-current={currentPage === pageNum ? 'page' : undefined}
                 className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold shadow-sm transition-colors ${
                   currentPage === pageNum
                     ? 'bg-[#ff6a00] text-white shadow-orange-950/20'
@@ -180,11 +183,12 @@ export function HubProductPagination({
           <button
             onClick={() => handlePageClick(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages || loading}
+            aria-label="Next page"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-        </div>
+        </nav>
       ) : (
         /* Load More or Infinite */
         hasMore && (

@@ -282,6 +282,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['All five layouts honor every configured loading style.', 'No product is skipped or duplicated at a page boundary.', 'Total pages and active page remain correct after sort/layout changes.', 'Fast repeated navigation cannot let an older response overwrite the latest page.', 'Keyboard and screen-reader users can identify and operate current/previous/next pages.'],
     related: ['HC-01 — capability matrix.', 'QA-01 — cross-layout regression suite.', 'HR-01 — explicit loading/error/empty states.'],
     tags: ['bug', 'hub', 'pagination', 'api-contract', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-05', folder: FOLDERS.hub, sortOrder: 5,
@@ -311,6 +312,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['The account control never exposes a destination that is known to be speculative.', 'Each role lands on the intended account/dashboard route.', 'Unauthenticated users see a stable buyer-login destination.', 'Label and accessible name are localized and do not change unexpectedly while focused.'],
     related: ['HH-14 — Create Store routing.', 'LA-02 — navbar accessible names/states.'],
     tags: ['bug', 'hub', 'auth', 'navbar', 'hydration'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-07', folder: FOLDERS.hub, sortOrder: 7,
@@ -325,6 +327,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Footer labels change correctly with FR/EN/AR locale and align correctly in RTL.', 'Disabled/renamed categories are not advertised under stale names.', 'Every rendered link resolves to an allowed working destination.', 'Admins can update configured footer content without a code change.'],
     related: ['LA-01 — complete localization audit.', 'AS-23 — safe structured editors.'],
     tags: ['bug', 'hub', 'footer', 'i18n', 'navigation'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-08', folder: FOLDERS.hub, sortOrder: 8,
@@ -1080,7 +1083,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-07', 'HH-01', 'HH-02', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

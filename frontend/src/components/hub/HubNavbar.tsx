@@ -60,7 +60,7 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
       : role === 'vendor' || currentUser?.store_id
         ? '/hub/dashboard'
         : '/hub/account';
-  const accountHref = currentUser ? dashboardHref : authChecked ? '/login/buyer' : '/hub/account';
+  const accountHref = currentUser ? dashboardHref : '/login/buyer';
 
   useEffect(() => {
     let cancelled = false;

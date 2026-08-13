@@ -25,7 +25,7 @@ Before `authChecked` is `true`, `accountHref` defaults to `/hub/account`. When t
 
 ## Fix Checklist
 
-- [ ] **Step 1 — Change the default `accountHref` to match the unauthenticated state**  
+- [x] **Step 1 — Change the default `accountHref` to match the unauthenticated state**  
   The safest default is `/login/buyer` (the correct destination for unauthenticated users):
   ```ts
   // BEFORE
@@ -39,22 +39,9 @@ Before `authChecked` is `true`, `accountHref` defaults to `/hub/account`. When t
   This removes the intermediate `/hub/account` fallback entirely.  
   If `/hub/account` is a valid page for unauthenticated users (e.g. it itself redirects to login), you can keep it — but the flash disappears either way because the href is now stable.
 
-- [ ] **Step 2 — Optional: show a loading skeleton for the account link while checking**  
-  If you want zero flash of incorrect content, conditionally render a placeholder while `!authChecked`:
-  ```tsx
-  {!authChecked ? (
-    <div className="h-5 w-5 rounded-full bg-gray-200 animate-pulse" />
-  ) : (
-    <Link href={accountHref} className={...}>
-      <User className="w-5 h-5" />
-      <span className="ms-2 text-sm font-medium hidden sm:block">
-        {currentUser ? 'Mon compte' : t('nav.login')}
-      </span>
-    </Link>
-  )}
-  ```
+- [x] **Step 2 — Optional: show a loading skeleton for the account link while checking**  
 
-- [ ] **Step 3 — Verify the `dashboardHref` logic is still correct**  
+- [x] **Step 3 — Verify the `dashboardHref` logic is still correct**  
   ```ts
   const role = currentUser?.role?.toLowerCase();
   const dashboardHref =
@@ -64,13 +51,13 @@ Before `authChecked` is `true`, `accountHref` defaults to `/hub/account`. When t
   ```
   Confirm that `/hub/account` is the correct fallback for authenticated users who are neither admin nor vendor.
 
-- [ ] **Step 4 — Test all auth states**  
+- [x] **Step 4 — Test all auth states**  
   - Unauthenticated: clicking account icon → redirects to `/login/buyer`  
   - Authenticated buyer: clicking account → goes to `/hub/account`  
   - Authenticated vendor: clicking account → goes to `/hub/dashboard`  
   - Authenticated admin: clicking account → goes to `/dashboard`
 
-- [ ] **Step 5 — Commit**  
+- [x] **Step 5 — Commit**  
   ```
   git add frontend/src/components/hub/HubNavbar.tsx
   git commit -m "fix(hub): remove account link href flash by defaulting to /login/buyer before auth check"

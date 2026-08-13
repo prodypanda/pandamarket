@@ -17,10 +17,16 @@ function safeFooterHref(value?: string) {
   return '/hub/search';
 }
 
-export function HubFooter(props: MarketplaceThemeSettings) {
-  const { t } = useLocale();
-  const { settings, classes, isAliExpress, isAliExpress2 } = useMarketplaceTheme(props);
+export interface HubFooterProps extends MarketplaceThemeSettings {
+  topCategories?: Array<{ name: string; slug: string }>;
+}
+
+export function HubFooter(props: HubFooterProps) {
+  const { topCategories: initialTopCategories, ...themeProps } = props;
+  const { t, locale } = useLocale();
+  const { settings, classes, isAliExpress, isAliExpress2 } = useMarketplaceTheme(themeProps);
   const [cmsPages, setCmsPages] = useState<{title: string; slug: string; show_in_footer: boolean}[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<Array<{ name: string; slug: string }>>(initialTopCategories || []);
 
   useEffect(() => {
     fetch('/api/pd/marketplace/cms/public')
@@ -28,6 +34,20 @@ export function HubFooter(props: MarketplaceThemeSettings) {
       .then(json => setCmsPages(json.data || []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (initialTopCategories && initialTopCategories.length > 0) {
+      setDynamicCategories(initialTopCategories);
+      return;
+    }
+    fetch(`/api/pd/categories?locale=${encodeURIComponent(locale || 'fr')}`)
+      .then(res => res.ok ? res.json() : { data: [] })
+      .then(json => {
+        const cats = (json.data || []).filter((c: any) => !c.is_default).slice(0, 3);
+        setDynamicCategories(cats.map((c: any) => ({ name: c.name, slug: c.slug })));
+      })
+      .catch(() => {});
+  }, [initialTopCategories, locale]);
 
   const currentYear = new Date().getFullYear();
   const marketplaceName = settings.marketplace_name || 'PandaMarket';
@@ -144,9 +164,13 @@ export function HubFooter(props: MarketplaceThemeSettings) {
             <h4 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isAliExpress2 ? 'text-white/50' : 'text-white'}`}>Marketplace</h4>
             <ul className="space-y-2.5">
               <li><Link href="/hub/search" className={linkClass}>{t('nav.explore')}</Link></li>
-              <li><Link href="/hub/search?category=Electronics" className={linkClass}>Electronics</Link></li>
-              <li><Link href="/hub/search?category=Fashion" className={linkClass}>Fashion</Link></li>
-              <li><Link href="/hub/search?category=Home" className={linkClass}>Home</Link></li>
+              {dynamicCategories.map((cat) => (
+                <li key={cat.slug}>
+                  <Link href={`/hub/search?category=${encodeURIComponent(cat.slug)}`} className={linkClass}>
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
               <li><Link href="/hub/pricing" className={linkClass}>{t('nav.pricing')}</Link></li>
               {cmsPages.filter(p => p.show_in_footer).map(p => (
                 <li key={p.slug}><Link href={`/hub/pages/${p.slug}`} className={linkClass}>{p.title}</Link></li>

@@ -210,7 +210,10 @@ export default async function HubHomepage({
       {homeContent}
       <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={activeLocale as any} />
       <SponsoredAdsRail locale={activeLocale as any} />
-      <HubFooter {...marketplaceSettings} />
+      <HubFooter
+        {...marketplaceSettings}
+        topCategories={orderedCategories.filter((c) => !c.is_default).slice(0, 3).map((c) => ({ name: c.name, slug: c.slug }))}
+      />
     </div>
   );
 }
