@@ -179,23 +179,23 @@ export function RecentlyViewedRail({ accentClass = 'text-[#16C784]' }: { accentC
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-5 flex items-center gap-2">
         <History className={`h-5 w-5 ${accentClass}`} />
-        <h2 className="text-xl font-black text-gray-900">Recently viewed</h2>
+        <h2 className="text-xl font-black text-gray-900 dark:text-white">Recently viewed</h2>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {items.map((item) => (
           <Link
             key={item.id}
             href={item.href}
-            className="w-40 shrink-0 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+            className="w-40 shrink-0 rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/[0.03] p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
           >
-            <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
+            <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-white/[0.03]">
               {item.thumbnail ? (
                 <div aria-label={item.title} role="img" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${getResizedImageUrl(item.thumbnail, 'large')})` }} />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400 dark:text-gray-500">No image</div>
               )}
             </div>
-            <p className="line-clamp-2 text-xs font-bold text-gray-900">{item.title}</p>
+            <p className="line-clamp-2 text-xs font-bold text-gray-900 dark:text-white">{item.title}</p>
             <p className={`mt-1 text-sm font-black ${accentClass}`}>{item.price.toFixed(3)} TND</p>
           </Link>
         ))}

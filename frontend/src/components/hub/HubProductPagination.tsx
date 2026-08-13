@@ -38,14 +38,6 @@ export function HubProductPagination({
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  if (!style || style === 'none') {
-    return initialProducts.length > 0 ? (
-      <div className={gridClassName}>
-        {initialProducts.map(renderCard)}
-      </div>
-    ) : null;
-  }
-
   const fetchPage = async (pageNumber: number, replace: boolean = false) => {
     if (loading) return;
     setLoading(true);
@@ -125,6 +117,14 @@ export function HubProductPagination({
   // Determine what to display for the FIRST page (initialProducts)
   // If style is 'pagination' AND we have clicked a page (so pages.length > 0), we DO NOT display initialProducts.
   const shouldDisplayInitial = !(style === 'pagination' && pages.length > 0);
+
+  if (!style || style === 'none') {
+    return initialProducts.length > 0 ? (
+      <div className={gridClassName}>
+        {initialProducts.map(renderCard)}
+      </div>
+    ) : null;
+  }
 
   return (
     <div className="mt-4 w-full">

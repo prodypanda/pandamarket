@@ -1,0 +1,1663 @@
+diff --git a/frontend/src/app/(admin)/admin-notes/page.tsx b/frontend/src/app/(admin)/admin-notes/page.tsx
+index 8a2d23e..e763a54 100644
+--- a/frontend/src/app/(admin)/admin-notes/page.tsx
++++ b/frontend/src/app/(admin)/admin-notes/page.tsx
+@@ -31,6 +31,14 @@ import {
+   ListChecks,
+   Plus as PlusIcon,
+   History,
++  Folder,
++  FolderPlus,
++  FolderOpen,
++  GripVertical,
++  ChevronRight,
++  Check,
++  FolderMinus,
++  Sparkles,
+ } from 'lucide-react';
+ 
+ /* ─── Types ─── */
+@@ -57,9 +65,21 @@ interface NoteAttachment {
+   created_at: string;
+ }
+ 
++interface AdminNoteFolder {
++  id: string;
++  admin_id: string;
++  name: string;
++  color: string;
++  sort_order: number;
++  created_at: string;
++  updated_at: string;
++}
++
+ interface AdminNote {
+   id: string;
+   admin_id: string;
++  folder_id: string | null;
++  sort_order: number;
+   type: 'note' | 'reminder' | 'draft';
+   title: string;
+   content: string;
+@@ -160,6 +180,73 @@ const COLORS = [
+   },
+ ];
+ 
++const FOLDER_COLORS = [
++  {
++    id: 'default',
++    label: 'Slate',
++    dot: 'bg-slate-400',
++    bg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
++    border: 'border-slate-200 dark:border-slate-700',
++    badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
++  },
++  {
++    id: 'blue',
++    label: 'Blue',
++    dot: 'bg-blue-500',
++    bg: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
++    border: 'border-blue-200 dark:border-blue-800',
++    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800',
++  },
++  {
++    id: 'green',
++    label: 'Green',
++    dot: 'bg-emerald-500',
++    bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
++    border: 'border-emerald-200 dark:border-emerald-800',
++    badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
++  },
++  {
++    id: 'yellow',
++    label: 'Amber',
++    dot: 'bg-amber-500',
++    bg: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
++    border: 'border-amber-200 dark:border-amber-800',
++    badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800',
++  },
++  {
++    id: 'red',
++    label: 'Red',
++    dot: 'bg-red-500',
++    bg: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300',
++    border: 'border-red-200 dark:border-red-800',
++    badge: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800',
++  },
++  {
++    id: 'purple',
++    label: 'Violet',
++    dot: 'bg-violet-500',
++    bg: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300',
++    border: 'border-violet-200 dark:border-violet-800',
++    badge: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 border-violet-200 dark:border-violet-800',
++  },
++  {
++    id: 'pink',
++    label: 'Pink',
++    dot: 'bg-pink-500',
++    bg: 'bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300',
++    border: 'border-pink-200 dark:border-pink-800',
++    badge: 'bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300 border-pink-200 dark:border-pink-800',
++  },
++  {
++    id: 'orange',
++    label: 'Orange',
++    dot: 'bg-orange-500',
++    bg: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
++    border: 'border-orange-200 dark:border-orange-800',
++    badge: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-800',
++  },
++];
++
+ const PRIORITY_CONFIG = {
+   low: {
+     label: 'Low',
+@@ -191,6 +278,10 @@ function getColorConfig(colorId: string) {
+   return COLORS.find((c) => c.id === colorId) || COLORS[0];
+ }
+ 
++function getFolderColorConfig(colorId: string) {
++  return FOLDER_COLORS.find((c) => c.id === colorId) || FOLDER_COLORS[0];
++}
++
+ function formatDate(dateStr: string) {
+   const d = new Date(dateStr);
+   const now = new Date();
+@@ -291,6 +382,8 @@ function renderMarkdown(markdown: string): string {
+ export default function AdminNotesPage() {
+   const { t } = useLocale();
+   const [notes, setNotes] = useState<AdminNote[]>([]);
++  const [folders, setFolders] = useState<AdminNoteFolder[]>([]);
++  const [activeFolder, setActiveFolder] = useState<string>('all'); // 'all' | 'unorganized' | folderId
+   const [stats, setStats] = useState<NoteStats | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [activeTab, setActiveTab] = useState<TabType>('all');
+@@ -306,14 +399,25 @@ export default function AdminNotesPage() {
+   const [detailData, setDetailData] = useState<AdminNoteDetail | null>(null);
+   const [activity, setActivity] = useState<NoteActivity[]>([]);
+ 
++  // Folder Modal state
++  const [showFolderModal, setShowFolderModal] = useState(false);
++  const [editingFolder, setEditingFolder] = useState<AdminNoteFolder | null>(null);
++  const [folderNameInput, setFolderNameInput] = useState('');
++  const [folderColorInput, setFolderColorInput] = useState('default');
++  const [savingFolder, setSavingFolder] = useState(false);
++
++  // Drag and Drop state
++  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
++  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
++  const [dragOverNoteId, setDragOverNoteId] = useState<string | null>(null);
++
+   // Editor state
+   const [editorTitle, setEditorTitle] = useState('');
+   const [editorContent, setEditorContent] = useState('');
+   const [editorType, setEditorType] = useState<'note' | 'reminder' | 'draft'>('note');
+   const [editorColor, setEditorColor] = useState('default');
+-  const [editorPriority, setEditorPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>(
+-    'normal',
+-  );
++  const [editorFolderId, setEditorFolderId] = useState<string | null>(null);
++  const [editorPriority, setEditorPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
+   const [editorFormat, setEditorFormat] = useState<'plain' | 'markdown'>('plain');
+   const [editorPreviewMode, setEditorPreviewMode] = useState(false);
+   const [editorReminderAt, setEditorReminderAt] = useState('');
+@@ -324,12 +428,17 @@ export default function AdminNotesPage() {
+     const params = new URLSearchParams();
+     params.set('status', statusFilter);
+     if (activeTab !== 'all') params.set('type', activeTab);
++    if (activeFolder === 'unorganized') {
++      params.set('folder_id', 'unorganized');
++    } else if (activeFolder !== 'all') {
++      params.set('folder_id', activeFolder);
++    }
+     if (showOverdue) params.set('overdue', 'true');
+     if (showUpcoming) params.set('upcoming', 'true');
+     if (searchQuery) params.set('search', searchQuery);
+     params.set('limit', '100');
+     return `/api/pd/admin/notes?${params.toString()}`;
+-  }, [statusFilter, activeTab, showOverdue, showUpcoming, searchQuery]);
++  }, [statusFilter, activeTab, activeFolder, showOverdue, showUpcoming, searchQuery]);
+ 
+   const fetchNotes = useCallback(async () => {
+     try {
+@@ -345,6 +454,18 @@ export default function AdminNotesPage() {
+     }
+   }, [buildListUrl]);
+ 
++  const fetchFolders = useCallback(async () => {
++    try {
++      const res = await fetchWithCsrf('/api/pd/admin/notes/folders', { credentials: 'include' });
++      if (res.ok) {
++        const json = await res.json();
++        setFolders(json.data || []);
++      }
++    } catch {
++      /* ignore */
++    }
++  }, []);
++
+   const fetchStats = useCallback(async () => {
+     try {
+       const res = await fetchWithCsrf('/api/pd/admin/notes/stats', { credentials: 'include' });
+@@ -380,7 +501,8 @@ export default function AdminNotesPage() {
+   useEffect(() => {
+     fetchNotes();
+     fetchStats();
+-  }, [fetchNotes, fetchStats]);
++    fetchFolders();
++  }, [fetchNotes, fetchStats, fetchFolders]);
+ 
+   // Listen for realtime reminder notifications to refresh
+   useRealtimeEvent('notification', (payload: unknown) => {
+@@ -396,6 +518,8 @@ export default function AdminNotesPage() {
+     setEditorContent('');
+     setEditorType(type);
+     setEditorColor('default');
++    // Pre-assign folder if currently in a specific custom folder
++    setEditorFolderId(activeFolder !== 'all' && activeFolder !== 'unorganized' ? activeFolder : null);
+     setEditorPriority('normal');
+     setEditorFormat('plain');
+     setEditorPreviewMode(false);
+@@ -411,6 +535,7 @@ export default function AdminNotesPage() {
+     setEditorContent(note.content);
+     setEditorType(note.type);
+     setEditorColor(note.color);
++    setEditorFolderId(note.folder_id || null);
+     setEditorPriority(note.priority);
+     setEditorFormat(note.content_format || 'plain');
+     setEditorPreviewMode(false);
+@@ -431,6 +556,7 @@ export default function AdminNotesPage() {
+         content: editorContent,
+         type: editorType,
+         color: editorColor,
++        folder_id: editorFolderId,
+         priority: editorPriority,
+         content_format: editorFormat,
+         reminder_at: editorReminderAt ? new Date(editorReminderAt).toISOString() : null,
+@@ -469,6 +595,136 @@ export default function AdminNotesPage() {
+     }
+   };
+ 
++  // Folder Operations
++  const openNewFolderModal = () => {
++    setEditingFolder(null);
++    setFolderNameInput('');
++    setFolderColorInput('default');
++    setShowFolderModal(true);
++  };
++
++  const openEditFolderModal = (f: AdminNoteFolder, e?: React.MouseEvent) => {
++    e?.stopPropagation();
++    setEditingFolder(f);
++    setFolderNameInput(f.name);
++    setFolderColorInput(f.color || 'default');
++    setShowFolderModal(true);
++  };
++
++  const saveFolder = async () => {
++    if (!folderNameInput.trim()) return;
++    setSavingFolder(true);
++    try {
++      if (editingFolder) {
++        const res = await fetchWithCsrf(`/api/pd/admin/notes/folders/${editingFolder.id}`, {
++          method: 'PUT',
++          credentials: 'include',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ name: folderNameInput.trim(), color: folderColorInput }),
++        });
++        if (res.ok) {
++          const json = await res.json();
++          setFolders((prev) => prev.map((f) => (f.id === editingFolder.id ? json.data : f)));
++        }
++      } else {
++        const res = await fetchWithCsrf('/api/pd/admin/notes/folders', {
++          method: 'POST',
++          credentials: 'include',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ name: folderNameInput.trim(), color: folderColorInput }),
++        });
++        if (res.ok) {
++          const json = await res.json();
++          setFolders((prev) => [...prev, json.data]);
++        }
++      }
++      setShowFolderModal(false);
++      setEditingFolder(null);
++      setFolderNameInput('');
++    } catch {
++      /* ignore */
++    } finally {
++      setSavingFolder(false);
++    }
++  };
++
++  const deleteFolder = async (folder: AdminNoteFolder, e?: React.MouseEvent) => {
++    e?.stopPropagation();
++    const promptText =
++      (t('admin.notes.confirmDeleteFolder') as string) ||
++      "Delete folder '{name}'? Notes inside will be moved to Unorganized.";
++    if (!confirm(promptText.replace('{name}', folder.name))) return;
++    try {
++      const res = await fetchWithCsrf(`/api/pd/admin/notes/folders/${folder.id}`, {
++        method: 'DELETE',
++        credentials: 'include',
++      });
++      if (res.ok) {
++        setFolders((prev) => prev.filter((f) => f.id !== folder.id));
++        if (activeFolder === folder.id) {
++          setActiveFolder('all');
++        }
++        fetchNotes();
++        fetchStats();
++      }
++    } catch {
++      /* ignore */
++    }
++  };
++
++  // Drag and Drop: Move note to folder
++  const handleNoteDropOnFolder = async (noteId: string | null, targetFolderId: string | null) => {
++    if (!noteId) return;
++    // Optimistic update
++    setNotes((prev) =>
++      prev.map((n) => (n.id === noteId ? { ...n, folder_id: targetFolderId } : n)),
++    );
++    try {
++      await fetchWithCsrf(`/api/pd/admin/notes/${noteId}/move`, {
++        method: 'POST',
++        credentials: 'include',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ folder_id: targetFolderId }),
++      });
++      fetchNotes();
++      fetchStats();
++    } catch {
++      fetchNotes();
++    } finally {
++      setDraggedNoteId(null);
++      setDragOverFolderId(null);
++    }
++  };
++
++  // Drag and Drop: Reorder notes in list
++  const handleNoteDropOnNote = async (draggedId: string | null, targetId: string) => {
++    if (!draggedId || draggedId === targetId) return;
++    const draggedIdx = notes.findIndex((n) => n.id === draggedId);
++    const targetIdx = notes.findIndex((n) => n.id === targetId);
++    if (draggedIdx < 0 || targetIdx < 0) return;
++
++    const reordered = [...notes];
++    const [removed] = reordered.splice(draggedIdx, 1);
++    reordered.splice(targetIdx, 0, removed);
++
++    // Optimistic update
++    setNotes(reordered);
++    setDragOverNoteId(null);
++    setDraggedNoteId(null);
++
++    const updates = reordered.map((n, idx) => ({ id: n.id, sort_order: idx }));
++    try {
++      await fetchWithCsrf('/api/pd/admin/notes/sort', {
++        method: 'POST',
++        credentials: 'include',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ updates }),
++      });
++    } catch {
++      fetchNotes();
++    }
++  };
++
+   const doLifecycle = async (
+     id: string,
+     action: 'archive' | 'trash' | 'restore' | 'delete',
+@@ -612,9 +868,7 @@ export default function AdminNotesPage() {
+     }
+   };
+ 
+-  // Filter by search (client-side, server already handles too)
+   const filteredNotes = notes;
+-
+   const pinnedNotes = filteredNotes.filter((n) => n.is_pinned);
+   const unpinnedNotes = filteredNotes.filter((n) => !n.is_pinned);
+ 
+@@ -640,6 +894,8 @@ export default function AdminNotesPage() {
+     },
+   ];
+ 
++  const currentFolderObj = folders.find((f) => f.id === activeFolder);
++
+   return (
+     <div className="space-y-6">
+       {/* Header */}
+@@ -681,7 +937,7 @@ export default function AdminNotesPage() {
+           </button>
+           <button
+             onClick={() => openNewEditor('draft')}
+-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50"
++            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+           >
+             <FileText className="h-4 w-4" /> {t('admin.notes.newDraft') as string}
+           </button>
+@@ -730,275 +986,528 @@ export default function AdminNotesPage() {
+         </div>
+       )}
+ 
+-      {/* Tabs + Status Filter + Search */}
+-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+-          {tabs.map((tab) => (
+-            <button
+-              key={tab.key}
+-              onClick={() => setActiveTab(tab.key)}
+-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+-                activeTab === tab.key
+-                  ? 'bg-gradient-to-r from-[#B91C1C] to-red-700 text-white shadow-md'
+-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'
+-              }`}
+-            >
+-              <tab.icon className="h-3.5 w-3.5" />
+-              {tab.label}
+-              <span
+-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}
+-              >
+-                {tab.count}
++      {/* Main Workspace Layout (Sidebar + Notes List) */}
++      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
++        {/* Left Sidebar: Folders */}
++        <div className="w-full lg:w-64 flex-shrink-0 space-y-4">
++          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
++            <div className="mb-2 flex items-center justify-between px-2 pt-1">
++              <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">
++                {t('admin.notes.folders') as string}
+               </span>
+-            </button>
+-          ))}
+-        </div>
++              <button
++                onClick={openNewFolderModal}
++                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 transition-all hover:bg-red-50 hover:text-red-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
++                title={t('admin.notes.newFolder') as string}
++              >
++                <FolderPlus className="h-3.5 w-3.5" />
++                <span>{t('admin.notes.newFolder') as string}</span>
++              </button>
++            </div>
+ 
+-        {/* Status filter pills */}
+-        <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+-          {(['active', 'archived', 'trashed'] as const).map((s) => (
+-            <button
+-              key={s}
+-              onClick={() => setStatusFilter(s)}
+-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all ${
+-                statusFilter === s
+-                  ? s === 'archived'
+-                    ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-white'
+-                    : s === 'trashed'
+-                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+-                      : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+-                  : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+-              }`}
+-            >
+-              {s === 'archived' ? (
+-                <Archive className="h-3 w-3" />
+-              ) : s === 'trashed' ? (
+-                <Trash2 className="h-3 w-3" />
+-              ) : (
+-                <CheckCircle2 className="h-3 w-3" />
+-              )}
+-              {t(`admin.notes.status.${s}`) as string}
+-            </button>
+-          ))}
+-        </div>
+-      </div>
++            {/* Folder Drop Target & Navigation List */}
++            <div className="space-y-1">
++              {/* All Notes Folder */}
++              <button
++                onClick={() => setActiveFolder('all')}
++                onDragOver={(e) => {
++                  e.preventDefault();
++                  e.dataTransfer.dropEffect = 'move';
++                  setDragOverFolderId('all');
++                }}
++                onDragLeave={() => {
++                  if (dragOverFolderId === 'all') setDragOverFolderId(null);
++                }}
++                onDrop={(e) => {
++                  e.preventDefault();
++                  setDragOverFolderId(null);
++                }}
++                className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all ${
++                  activeFolder === 'all'
++                    ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
++                    : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50'
++                }`}
++              >
++                <div className="flex items-center gap-2.5">
++                  <Folder className="h-4 w-4 text-slate-400 group-hover:text-red-600" />
++                  <span>{t('admin.notes.allFolders') as string}</span>
++                </div>
++                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 dark:bg-slate-700 dark:text-slate-400">
++                  {stats?.total || 0}
++                </span>
++              </button>
+ 
+-      {/* Search + Quick Filters */}
+-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+-        <div className="relative flex-1 sm:max-w-xs">
+-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+-          <input
+-            type="text"
+-            value={searchQuery}
+-            onChange={(e) => setSearchQuery(e.target.value)}
+-            placeholder={t('admin.notes.searchPlaceholder') as string}
+-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-800 shadow-sm outline-none transition-all focus:border-red-300 focus:ring-2 focus:ring-red-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+-          />
+-        </div>
+-        <div className="flex items-center gap-2">
+-          <button
+-            onClick={() => {
+-              setShowOverdue(!showOverdue);
+-              setShowUpcoming(false);
+-            }}
+-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+-              showOverdue
+-                ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+-                : 'border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400'
+-            }`}
+-          >
+-            <AlertCircle className="h-3.5 w-3.5" /> {t('admin.notes.showOverdue') as string}
+-          </button>
+-          <button
+-            onClick={() => {
+-              setShowUpcoming(!showUpcoming);
+-              setShowOverdue(false);
+-            }}
+-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+-              showUpcoming
+-                ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
+-                : 'border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400'
+-            }`}
+-          >
+-            <Clock className="h-3.5 w-3.5" /> {t('admin.notes.showUpcoming') as string}
+-          </button>
+-          {statusFilter === 'trashed' && (
+-            <button
+-              onClick={emptyTrash}
+-              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-red-700"
+-            >
+-              <Trash2 className="h-3.5 w-3.5" /> {t('admin.notes.emptyTrash') as string}
+-            </button>
+-          )}
+-        </div>
+-      </div>
++              {/* Unorganized / No Folder */}
++              <button
++                onClick={() => setActiveFolder('unorganized')}
++                onDragOver={(e) => {
++                  e.preventDefault();
++                  e.dataTransfer.dropEffect = 'move';
++                  if (dragOverFolderId !== 'unorganized') setDragOverFolderId('unorganized');
++                }}
++                onDragLeave={() => {
++                  if (dragOverFolderId === 'unorganized') setDragOverFolderId(null);
++                }}
++                onDrop={(e) => {
++                  e.preventDefault();
++                  handleNoteDropOnFolder(draggedNoteId, null);
++                }}
++                className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all ${
++                  dragOverFolderId === 'unorganized'
++                    ? 'ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/50 scale-[1.02]'
++                    : activeFolder === 'unorganized'
++                      ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
++                      : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50'
++                }`}
++              >
++                <div className="flex items-center gap-2.5">
++                  <FolderMinus className="h-4 w-4 text-amber-500" />
++                  <span>{t('admin.notes.noFolder') as string}</span>
++                </div>
++                {dragOverFolderId === 'unorganized' ? (
++                  <span className="text-[10px] text-amber-600 font-black animate-pulse">
++                    {t('admin.notes.dropToMove') as string}
++                  </span>
++                ) : (
++                  <span className="text-[10px] text-slate-400">
++                    <ChevronRight className="h-3 w-3" />
++                  </span>
++                )}
++              </button>
+ 
+-      {/* Bulk Action Toolbar */}
+-      {selectedIds.size > 0 && (
+-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3">
+-          <span className="text-xs font-black text-red-700 dark:text-red-300">
+-            {(t('admin.notes.selectedCount') as string).replace(
+-              '{count}',
+-              String(selectedIds.size),
+-            )}
+-          </span>
+-          <div className="flex-1" />
+-          <button
+-            onClick={() => bulkAction('complete')}
+-            className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-bold text-green-700 transition-all hover:bg-green-200 dark:bg-green-900 dark:text-green-300"
+-          >
+-            <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />
+-            {t('admin.notes.bulkComplete') as string}
+-          </button>
+-          <button
+-            onClick={() => bulkAction('incomplete')}
+-            className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
+-          >
+-            {t('admin.notes.bulkIncomplete') as string}
+-          </button>
+-          {statusFilter === 'active' && (
+-            <button
+-              onClick={() => bulkAction('archive')}
+-              className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
+-            >
+-              <Archive className="mr-1 inline h-3.5 w-3.5" />
+-              {t('admin.notes.bulkArchive') as string}
+-            </button>
+-          )}
+-          {statusFilter !== 'trashed' && (
+-            <button
+-              onClick={() => bulkAction('trash')}
+-              className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition-all hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300"
+-            >
+-              <Trash2 className="mr-1 inline h-3.5 w-3.5" />
+-              {t('admin.notes.bulkTrash') as string}
+-            </button>
+-          )}
+-          {statusFilter !== 'active' && (
+-            <button
+-              onClick={() => bulkAction('restore')}
+-              className="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300"
+-            >
+-              <ArchiveRestore className="mr-1 inline h-3.5 w-3.5" />
+-              {t('admin.notes.bulkRestore') as string}
+-            </button>
+-          )}
+-          {statusFilter === 'trashed' && (
+-            <button
+-              onClick={() => bulkAction('delete')}
+-              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-red-700"
+-            >
+-              <Trash2 className="mr-1 inline h-3.5 w-3.5" />
+-              {t('admin.notes.bulkDelete') as string}
+-            </button>
+-          )}
+-          <button
+-            onClick={() => setSelectedIds(new Set())}
+-            className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+-          >
+-            {t('admin.notes.deselectAll') as string}
+-          </button>
+-        </div>
+-      )}
++              {/* Custom Folders */}
++              {folders.map((folder) => {
++                const colorCfg = getFolderColorConfig(folder.color);
++                const isHoveredDrop = dragOverFolderId === folder.id;
++                const isActive = activeFolder === folder.id;
+ 
+-      {/* Notes Grid */}
+-      {loading ? (
+-        <div className="flex items-center justify-center py-20">
+-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-200 border-t-red-600" />
+-        </div>
+-      ) : filteredNotes.length === 0 ? (
+-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white py-20 text-center dark:border-slate-700 dark:bg-slate-800">
+-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
+-            <StickyNote className="h-8 w-8 text-slate-400" />
++                return (
++                  <div
++                    key={folder.id}
++                    onClick={() => setActiveFolder(folder.id)}
++                    onDragOver={(e) => {
++                      e.preventDefault();
++                      e.dataTransfer.dropEffect = 'move';
++                      if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
++                    }}
++                    onDragLeave={() => {
++                      if (dragOverFolderId === folder.id) setDragOverFolderId(null);
++                    }}
++                    onDrop={(e) => {
++                      e.preventDefault();
++                      handleNoteDropOnFolder(draggedNoteId, folder.id);
++                    }}
++                    className={`group relative flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all ${
++                      isHoveredDrop
++                        ? 'ring-2 ring-red-500 bg-red-50 dark:bg-red-950/50 scale-[1.02] shadow-md'
++                        : isActive
++                          ? `${colorCfg.bg} ${colorCfg.border} border shadow-sm`
++                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50'
++                    }`}
++                  >
++                    <div className="flex min-w-0 items-center gap-2.5">
++                      <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${colorCfg.dot}`} />
++                      <Folder className="h-4 w-4 flex-shrink-0 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
++                      <span className="truncate">{folder.name}</span>
++                    </div>
++
++                    {isHoveredDrop ? (
++                      <span className="text-[10px] font-black text-red-600 dark:text-red-400 animate-pulse">
++                        {t('admin.notes.dropToMove') as string}
++                      </span>
++                    ) : (
++                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
++                        <button
++                          onClick={(e) => openEditFolderModal(folder, e)}
++                          className="rounded p-1 text-slate-400 hover:bg-white/80 hover:text-blue-600 dark:hover:bg-slate-700"
++                          title={t('admin.notes.editFolder') as string}
++                        >
++                          <Pencil className="h-3 w-3" />
++                        </button>
++                        <button
++                          onClick={(e) => deleteFolder(folder, e)}
++                          className="rounded p-1 text-slate-400 hover:bg-white/80 hover:text-red-600 dark:hover:bg-slate-700"
++                          title={t('admin.notes.deleteFolder') as string}
++                        >
++                          <Trash2 className="h-3 w-3" />
++                        </button>
++                      </div>
++                    )}
++                  </div>
++                );
++              })}
++            </div>
+           </div>
+-          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">
+-            {t('admin.notes.noItems') as string}
+-          </h3>
+-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+-            {t('admin.notes.noItemsDesc') as string}
+-          </p>
+-          <button
+-            onClick={() => openNewEditor()}
+-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#B91C1C] to-red-700 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5"
+-          >
+-            <Plus className="h-4 w-4" /> {t('admin.notes.createFirstNote') as string}
+-          </button>
+         </div>
+-      ) : (
+-        <div className="space-y-4">
+-          {/* Pinned Section */}
+-          {pinnedNotes.length > 0 && (
+-            <div>
+-              <div className="mb-2 flex items-center gap-2 px-1">
+-                <Pin className="h-3.5 w-3.5 text-amber-500" />
+-                <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+-                  {t('admin.notes.pinned') as string}
+-                </span>
++
++        {/* Right Area: Filters + Grid */}
++        <div className="flex-1 min-w-0 space-y-6">
++          {/* Active Folder Banner (if specific folder selected) */}
++          {currentFolderObj && (
++            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
++              <div className="flex items-center gap-3">
++                <div
++                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${getFolderColorConfig(currentFolderObj.color).bg}`}
++                >
++                  <FolderOpen className="h-5 w-5" />
++                </div>
++                <div>
++                  <h2 className="text-base font-black text-slate-900 dark:text-white">
++                    {currentFolderObj.name}
++                  </h2>
++                  <p className="text-xs text-slate-400">
++                    {t('admin.notes.dragToReorder') as string} · {filteredNotes.length} notes
++                  </p>
++                </div>
+               </div>
+-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+-                {pinnedNotes.map((note) => (
+-                  <NoteCard
+-                    key={note.id}
+-                    note={note}
+-                    isSelected={selectedIds.has(note.id)}
+-                    onToggleSelect={() => toggleSelect(note.id)}
+-                    onEdit={() => openEditEditor(note)}
+-                    onOpenDetail={() => {
+-                      setDetailId(note.id);
+-                      fetchDetail(note.id);
+-                    }}
+-                    onDelete={() => deleteNote(note.id)}
+-                    onArchive={() => doLifecycle(note.id, 'archive')}
+-                    onTrash={() => doLifecycle(note.id, 'trash')}
+-                    onRestore={() => doLifecycle(note.id, 'restore')}
+-                    onTogglePin={() => togglePin(note.id)}
+-                    onToggleComplete={() => toggleComplete(note.id)}
+-                  />
+-                ))}
++              <div className="flex items-center gap-1.5">
++                <button
++                  onClick={(e) => openEditFolderModal(currentFolderObj, e)}
++                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
++                >
++                  <Pencil className="mr-1 inline h-3 w-3" />
++                  {t('admin.notes.editFolder') as string}
++                </button>
++                <button
++                  onClick={() => setActiveFolder('all')}
++                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400"
++                >
++                  {t('admin.notes.allFolders') as string}
++                </button>
+               </div>
+             </div>
+           )}
+ 
+-          {/* Other Notes */}
+-          {unpinnedNotes.length > 0 && (
+-            <div>
+-              {pinnedNotes.length > 0 && (
+-                <div className="mb-2 flex items-center gap-2 px-1">
+-                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+-                    {t('admin.notes.other') as string}
++          {/* Tabs + Status Filter + Search */}
++          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
++            <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
++              {tabs.map((tab) => (
++                <button
++                  key={tab.key}
++                  onClick={() => setActiveTab(tab.key)}
++                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
++                    activeTab === tab.key
++                      ? 'bg-gradient-to-r from-[#B91C1C] to-red-700 text-white shadow-md'
++                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'
++                  }`}
++                >
++                  <tab.icon className="h-3.5 w-3.5" />
++                  {tab.label}
++                  <span
++                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${
++                      activeTab === tab.key
++                        ? 'bg-white/20 text-white'
++                        : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
++                    }`}
++                  >
++                    {tab.count}
+                   </span>
+-                </div>
++                </button>
++              ))}
++            </div>
++
++            {/* Status filter pills */}
++            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
++              {(['active', 'archived', 'trashed'] as const).map((s) => (
++                <button
++                  key={s}
++                  onClick={() => setStatusFilter(s)}
++                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all ${
++                    statusFilter === s
++                      ? s === 'archived'
++                        ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-white'
++                        : s === 'trashed'
++                          ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                          : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
++                      : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
++                  }`}
++                >
++                  {s === 'archived' ? (
++                    <Archive className="h-3 w-3" />
++                  ) : s === 'trashed' ? (
++                    <Trash2 className="h-3 w-3" />
++                  ) : (
++                    <CheckCircle2 className="h-3 w-3" />
++                  )}
++                  {t(`admin.notes.status.${s}`) as string}
++                </button>
++              ))}
++            </div>
++          </div>
++
++          {/* Search + Quick Filters */}
++          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
++            <div className="relative flex-1 sm:max-w-xs">
++              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
++              <input
++                type="text"
++                value={searchQuery}
++                onChange={(e) => setSearchQuery(e.target.value)}
++                placeholder={t('admin.notes.searchPlaceholder') as string}
++                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-800 shadow-sm outline-none transition-all focus:border-red-300 focus:ring-2 focus:ring-red-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
++              />
++            </div>
++            <div className="flex items-center gap-2">
++              <button
++                onClick={() => {
++                  setShowOverdue(!showOverdue);
++                  setShowUpcoming(false);
++                }}
++                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
++                  showOverdue
++                    ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                    : 'border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400'
++                }`}
++              >
++                <AlertCircle className="h-3.5 w-3.5" /> {t('admin.notes.showOverdue') as string}
++              </button>
++              <button
++                onClick={() => {
++                  setShowUpcoming(!showUpcoming);
++                  setShowOverdue(false);
++                }}
++                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
++                  showUpcoming
++                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
++                    : 'border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400'
++                }`}
++              >
++                <Clock className="h-3.5 w-3.5" /> {t('admin.notes.showUpcoming') as string}
++              </button>
++              {statusFilter === 'trashed' && (
++                <button
++                  onClick={emptyTrash}
++                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-red-700"
++                >
++                  <Trash2 className="h-3.5 w-3.5" /> {t('admin.notes.emptyTrash') as string}
++                </button>
+               )}
+-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+-                {unpinnedNotes.map((note) => (
+-                  <NoteCard
+-                    key={note.id}
+-                    note={note}
+-                    isSelected={selectedIds.has(note.id)}
+-                    onToggleSelect={() => toggleSelect(note.id)}
+-                    onEdit={() => openEditEditor(note)}
+-                    onOpenDetail={() => {
+-                      setDetailId(note.id);
+-                      fetchDetail(note.id);
+-                    }}
+-                    onDelete={() => deleteNote(note.id)}
+-                    onArchive={() => doLifecycle(note.id, 'archive')}
+-                    onTrash={() => doLifecycle(note.id, 'trash')}
+-                    onRestore={() => doLifecycle(note.id, 'restore')}
+-                    onTogglePin={() => togglePin(note.id)}
+-                    onToggleComplete={() => toggleComplete(note.id)}
+-                  />
+-                ))}
++            </div>
++          </div>
++
++          {/* Bulk Action Toolbar */}
++          {selectedIds.size > 0 && (
++            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3">
++              <span className="text-xs font-black text-red-700 dark:text-red-300">
++                {(t('admin.notes.selectedCount') as string).replace(
++                  '{count}',
++                  String(selectedIds.size),
++                )}
++              </span>
++              <div className="flex-1" />
++              <button
++                onClick={() => bulkAction('complete')}
++                className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-bold text-green-700 transition-all hover:bg-green-200 dark:bg-green-900 dark:text-green-300"
++              >
++                <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />
++                {t('admin.notes.bulkComplete') as string}
++              </button>
++              <button
++                onClick={() => bulkAction('incomplete')}
++                className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
++              >
++                {t('admin.notes.bulkIncomplete') as string}
++              </button>
++              {statusFilter === 'active' && (
++                <button
++                  onClick={() => bulkAction('archive')}
++                  className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
++                >
++                  <Archive className="mr-1 inline h-3.5 w-3.5" />
++                  {t('admin.notes.bulkArchive') as string}
++                </button>
++              )}
++              {statusFilter !== 'trashed' && (
++                <button
++                  onClick={() => bulkAction('trash')}
++                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition-all hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300"
++                >
++                  <Trash2 className="mr-1 inline h-3.5 w-3.5" />
++                  {t('admin.notes.bulkTrash') as string}
++                </button>
++              )}
++              {statusFilter !== 'active' && (
++                <button
++                  onClick={() => bulkAction('restore')}
++                  className="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300"
++                >
++                  <ArchiveRestore className="mr-1 inline h-3.5 w-3.5" />
++                  {t('admin.notes.bulkRestore') as string}
++                </button>
++              )}
++              {statusFilter === 'trashed' && (
++                <button
++                  onClick={() => bulkAction('delete')}
++                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-red-700"
++                >
++                  <Trash2 className="mr-1 inline h-3.5 w-3.5" />
++                  {t('admin.notes.bulkDelete') as string}
++                </button>
++              )}
++              <button
++                onClick={() => setSelectedIds(new Set())}
++                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
++              >
++                {t('admin.notes.deselectAll') as string}
++              </button>
++            </div>
++          )}
++
++          {/* Notes Grid */}
++          {loading ? (
++            <div className="flex items-center justify-center py-20">
++              <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-200 border-t-red-600" />
++            </div>
++          ) : filteredNotes.length === 0 ? (
++            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white py-20 text-center dark:border-slate-700 dark:bg-slate-800">
++              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
++                <StickyNote className="h-8 w-8 text-slate-400" />
+               </div>
++              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">
++                {t('admin.notes.noItems') as string}
++              </h3>
++              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
++                {t('admin.notes.noItemsDesc') as string}
++              </p>
++              <button
++                onClick={() => openNewEditor()}
++                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#B91C1C] to-red-700 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5"
++              >
++                <Plus className="h-4 w-4" /> {t('admin.notes.createFirstNote') as string}
++              </button>
++            </div>
++          ) : (
++            <div className="space-y-6">
++              {/* Pinned Section */}
++              {pinnedNotes.length > 0 && (
++                <div>
++                  <div className="mb-3 flex items-center gap-2 px-1">
++                    <Pin className="h-3.5 w-3.5 text-amber-500" />
++                    <span className="text-xs font-black uppercase tracking-wider text-slate-400">
++                      {t('admin.notes.pinned') as string}
++                    </span>
++                  </div>
++                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
++                    {pinnedNotes.map((note) => (
++                      <NoteCard
++                        key={note.id}
++                        note={note}
++                        folders={folders}
++                        isSelected={selectedIds.has(note.id)}
++                        isDraggable={statusFilter === 'active'}
++                        isDragOver={dragOverNoteId === note.id}
++                        onDragStart={(e) => {
++                          e.dataTransfer.setData('text/plain', note.id);
++                          e.dataTransfer.effectAllowed = 'move';
++                          setDraggedNoteId(note.id);
++                        }}
++                        onDragEnd={() => {
++                          setDraggedNoteId(null);
++                          setDragOverFolderId(null);
++                          setDragOverNoteId(null);
++                        }}
++                        onDragOver={(e) => {
++                          e.preventDefault();
++                          e.dataTransfer.dropEffect = 'move';
++                          if (dragOverNoteId !== note.id) setDragOverNoteId(note.id);
++                        }}
++                        onDragLeave={() => {
++                          if (dragOverNoteId === note.id) setDragOverNoteId(null);
++                        }}
++                        onDrop={(e) => {
++                          e.preventDefault();
++                          handleNoteDropOnNote(draggedNoteId, note.id);
++                        }}
++                        onToggleSelect={() => toggleSelect(note.id)}
++                        onEdit={() => openEditEditor(note)}
++                        onOpenDetail={() => {
++                          setDetailId(note.id);
++                          fetchDetail(note.id);
++                        }}
++                        onDelete={() => deleteNote(note.id)}
++                        onArchive={() => doLifecycle(note.id, 'archive')}
++                        onTrash={() => doLifecycle(note.id, 'trash')}
++                        onRestore={() => doLifecycle(note.id, 'restore')}
++                        onTogglePin={() => togglePin(note.id)}
++                        onToggleComplete={() => toggleComplete(note.id)}
++                        onMoveFolder={(fid) => handleNoteDropOnFolder(note.id, fid)}
++                      />
++                    ))}
++                  </div>
++                </div>
++              )}
++
++              {/* Other Notes */}
++              {unpinnedNotes.length > 0 && (
++                <div>
++                  {pinnedNotes.length > 0 && (
++                    <div className="mb-3 flex items-center gap-2 px-1">
++                      <span className="text-xs font-black uppercase tracking-wider text-slate-400">
++                        {t('admin.notes.other') as string}
++                      </span>
++                    </div>
++                  )}
++                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
++                    {unpinnedNotes.map((note) => (
++                      <NoteCard
++                        key={note.id}
++                        note={note}
++                        folders={folders}
++                        isSelected={selectedIds.has(note.id)}
++                        isDraggable={statusFilter === 'active'}
++                        isDragOver={dragOverNoteId === note.id}
++                        onDragStart={(e) => {
++                          e.dataTransfer.setData('text/plain', note.id);
++                          e.dataTransfer.effectAllowed = 'move';
++                          setDraggedNoteId(note.id);
++                        }}
++                        onDragEnd={() => {
++                          setDraggedNoteId(null);
++                          setDragOverFolderId(null);
++                          setDragOverNoteId(null);
++                        }}
++                        onDragOver={(e) => {
++                          e.preventDefault();
++                          e.dataTransfer.dropEffect = 'move';
++                          if (dragOverNoteId !== note.id) setDragOverNoteId(note.id);
++                        }}
++                        onDragLeave={() => {
++                          if (dragOverNoteId === note.id) setDragOverNoteId(null);
++                        }}
++                        onDrop={(e) => {
++                          e.preventDefault();
++                          handleNoteDropOnNote(draggedNoteId, note.id);
++                        }}
++                        onToggleSelect={() => toggleSelect(note.id)}
++                        onEdit={() => openEditEditor(note)}
++                        onOpenDetail={() => {
++                          setDetailId(note.id);
++                          fetchDetail(note.id);
++                        }}
++                        onDelete={() => deleteNote(note.id)}
++                        onArchive={() => doLifecycle(note.id, 'archive')}
++                        onTrash={() => doLifecycle(note.id, 'trash')}
++                        onRestore={() => doLifecycle(note.id, 'restore')}
++                        onTogglePin={() => togglePin(note.id)}
++                        onToggleComplete={() => toggleComplete(note.id)}
++                        onMoveFolder={(fid) => handleNoteDropOnFolder(note.id, fid)}
++                      />
++                    ))}
++                  </div>
++                </div>
++              )}
+             </div>
+           )}
+         </div>
+-      )}
++      </div>
+ 
+       {/* Editor Modal */}
+       {showEditor && (
+         <NoteEditor
+           editingNote={editingNote}
++          folders={folders}
++          editorFolderId={editorFolderId}
++          setEditorFolderId={setEditorFolderId}
+           editorTitle={editorTitle}
+           setEditorTitle={setEditorTitle}
+           editorContent={editorContent}
+@@ -1026,10 +1535,26 @@ export default function AdminNotesPage() {
+         />
+       )}
+ 
++      {/* Folder Creator / Editor Modal */}
++      {showFolderModal && (
++        <FolderModal
++          editingFolder={editingFolder}
++          folderName={folderNameInput}
++          setFolderName={setFolderNameInput}
++          folderColor={folderColorInput}
++          setFolderColor={setFolderColorInput}
++          saving={savingFolder}
++          onSave={saveFolder}
++          onClose={() => setShowFolderModal(false)}
++          t={t}
++        />
++      )}
++
+       {/* Detail Drawer */}
+       {detailId && detailData && (
+         <NoteDetailDrawer
+           note={detailData}
++          folders={folders}
+           activity={activity}
+           onClose={() => {
+             setDetailId(null);
+@@ -1078,7 +1603,15 @@ function StatCard({
+ /* ─── Note Card ─── */
+ function NoteCard({
+   note,
++  folders,
+   isSelected,
++  isDraggable,
++  isDragOver,
++  onDragStart,
++  onDragEnd,
++  onDragOver,
++  onDragLeave,
++  onDrop,
+   onToggleSelect,
+   onEdit,
+   onOpenDetail,
+@@ -1088,9 +1621,18 @@ function NoteCard({
+   onRestore,
+   onTogglePin,
+   onToggleComplete,
++  onMoveFolder,
+ }: {
+   note: AdminNote;
++  folders: AdminNoteFolder[];
+   isSelected: boolean;
++  isDraggable: boolean;
++  isDragOver: boolean;
++  onDragStart: (e: React.DragEvent) => void;
++  onDragEnd: () => void;
++  onDragOver: (e: React.DragEvent) => void;
++  onDragLeave: () => void;
++  onDrop: (e: React.DragEvent) => void;
+   onToggleSelect: () => void;
+   onEdit: () => void;
+   onOpenDetail: () => void;
+@@ -1100,6 +1642,7 @@ function NoteCard({
+   onRestore: () => void;
+   onTogglePin: () => void;
+   onToggleComplete: () => void;
++  onMoveFolder: (folderId: string | null) => void;
+ }) {
+   const { t } = useLocale();
+   const colorCfg = getColorConfig(note.color);
+@@ -1108,6 +1651,9 @@ function NoteCard({
+   const overdue = isOverdue(note.reminder_at, note.is_completed);
+   const dueSoon = isDueSoon(note.reminder_at, note.is_completed);
+ 
++  const matchedFolder = folders.find((f) => f.id === note.folder_id);
++  const folderColorCfg = matchedFolder ? getFolderColorConfig(matchedFolder.color) : null;
++
+   const typeIcon = note.type === 'reminder' ? Bell : note.type === 'draft' ? FileText : StickyNote;
+   const TypeIcon = typeIcon;
+   const typeColor =
+@@ -1136,7 +1682,19 @@ function NoteCard({
+ 
+   return (
+     <div
+-      className={`group relative flex flex-col rounded-2xl border ${colorCfg.border} ${colorCfg.bg} p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 ${note.is_completed ? 'opacity-60' : ''} ${overdue ? 'ring-2 ring-red-300 dark:ring-red-700' : ''} ${dueSoon ? 'ring-2 ring-violet-200 dark:ring-violet-700' : ''}`}
++      draggable={isDraggable}
++      onDragStart={onDragStart}
++      onDragEnd={onDragEnd}
++      onDragOver={onDragOver}
++      onDragLeave={onDragLeave}
++      onDrop={onDrop}
++      className={`group relative flex flex-col rounded-2xl border ${colorCfg.border} ${colorCfg.bg} p-4 shadow-sm transition-all hover:shadow-md ${
++        isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
++      } ${
++        isDragOver ? 'ring-2 ring-blue-500 scale-[1.02] shadow-lg' : 'hover:-translate-y-0.5'
++      } ${note.is_completed ? 'opacity-60' : ''} ${
++        overdue ? 'ring-2 ring-red-300 dark:ring-red-700' : ''
++      } ${dueSoon ? 'ring-2 ring-violet-200 dark:ring-violet-700' : ''}`}
+     >
+       {/* Selection checkbox */}
+       <div className="absolute -left-2 -top-2 z-10">
+@@ -1150,7 +1708,10 @@ function NoteCard({
+ 
+       {/* Top Row */}
+       <div className="mb-2 flex items-start justify-between gap-2">
+-        <div className="flex items-center gap-1.5">
++        <div className="flex flex-wrap items-center gap-1.5">
++          {isDraggable && (
++            <GripVertical className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
++          )}
+           <TypeIcon className={`h-3.5 w-3.5 ${typeColor}`} />
+           {note.priority !== 'normal' && (
+             <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${priorityCfg.bg}`}>
+@@ -1158,6 +1719,14 @@ function NoteCard({
+               {priorityCfg.label}
+             </span>
+           )}
++          {matchedFolder && (
++            <span
++              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${folderColorCfg?.badge}`}
++            >
++              <Folder className="h-2.5 w-2.5" />
++              {matchedFolder.name}
++            </span>
++          )}
+           {overdue && (
+             <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900 dark:text-red-300 animate-pulse">
+               {t('admin.notes.reminderOverdue') as string}
+@@ -1172,6 +1741,7 @@ function NoteCard({
+             <FileType2 className="h-3 w-3 text-slate-300 dark:text-slate-500" title="Markdown" />
+           )}
+         </div>
++
+         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+           <button
+             onClick={onOpenDetail}
+@@ -1252,7 +1822,9 @@ function NoteCard({
+ 
+       {/* Title */}
+       <h4
+-        className={`mb-1 cursor-pointer text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 ${note.is_completed ? 'line-through' : ''}`}
++        className={`mb-1 cursor-pointer text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 ${
++          note.is_completed ? 'line-through' : ''
++        }`}
+         onClick={onOpenDetail}
+       >
+         {note.is_pinned && <Pin className="mr-1 inline h-3 w-3 text-amber-500" />}
+@@ -1267,7 +1839,11 @@ function NoteCard({
+         <div className="mb-2 flex flex-wrap items-center gap-1.5">
+           {note.reminder_at && (
+             <span
+-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${overdue ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'}`}
++              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
++                overdue
++                  ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
++              }`}
+             >
+               <Bell className="h-2.5 w-2.5" />
+               {formatReminderDate(note.reminder_at)}
+@@ -1308,9 +1884,120 @@ function NoteCard({
+   );
+ }
+ 
++/* ─── Folder Modal (Create & Edit) ─── */
++function FolderModal({
++  editingFolder,
++  folderName,
++  setFolderName,
++  folderColor,
++  setFolderColor,
++  saving,
++  onSave,
++  onClose,
++  t,
++}: {
++  editingFolder: AdminNoteFolder | null;
++  folderName: string;
++  setFolderName: (v: string) => void;
++  folderColor: string;
++  setFolderColor: (v: string) => void;
++  saving: boolean;
++  onSave: () => void;
++  onClose: () => void;
++  t: (key: string) => string | undefined;
++}) {
++  return (
++    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
++      <div className="mx-4 flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
++        {/* Header */}
++        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-4">
++          <div className="flex items-center gap-2">
++            <Folder className="h-5 w-5 text-red-600" />
++            <h3 className="text-base font-black text-slate-900 dark:text-white">
++              {editingFolder
++                ? (t('admin.notes.editFolder') as string)
++                : (t('admin.notes.newFolder') as string)}
++            </h3>
++          </div>
++          <button
++            onClick={onClose}
++            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
++          >
++            <X className="h-5 w-5" />
++          </button>
++        </div>
++
++        {/* Body */}
++        <div className="space-y-4 px-6 py-5">
++          <div>
++            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
++              {t('admin.notes.folderName') as string}
++            </label>
++            <input
++              type="text"
++              value={folderName}
++              onChange={(e) => setFolderName(e.target.value)}
++              placeholder={t('admin.notes.folderPlaceholder') as string}
++              autoFocus
++              onKeyDown={(e) => e.key === 'Enter' && onSave()}
++              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-red-300 focus:ring-2 focus:ring-red-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
++            />
++          </div>
++
++          <div>
++            <label className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
++              {t('admin.notes.folderColor') as string}
++            </label>
++            <div className="flex flex-wrap items-center gap-2.5">
++              {FOLDER_COLORS.map((c) => (
++                <button
++                  key={c.id}
++                  type="button"
++                  onClick={() => setFolderColor(c.id)}
++                  className={`flex h-8 w-8 items-center justify-center rounded-full ${c.dot} transition-all ${
++                    folderColor === c.id
++                      ? 'ring-2 ring-offset-2 ring-slate-700 scale-110 shadow-md dark:ring-offset-slate-900'
++                      : 'hover:scale-105 opacity-80 hover:opacity-100'
++                  }`}
++                >
++                  {folderColor === c.id && <Check className="h-4 w-4 text-white" />}
++                </button>
++              ))}
++            </div>
++          </div>
++        </div>
++
++        {/* Footer */}
++        <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-700 px-6 py-4">
++          <button
++            onClick={onClose}
++            className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
++          >
++            {t('admin.notes.editor.cancel') as string}
++          </button>
++          <button
++            onClick={onSave}
++            disabled={saving || !folderName.trim()}
++            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#B91C1C] to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50"
++          >
++            {saving
++              ? (t('admin.notes.editor.saving') as string)
++              : editingFolder
++                ? (t('admin.notes.editor.update') as string)
++                : (t('admin.notes.editor.create') as string)}
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++}
++
+ /* ─── Note Editor Modal ─── */
+ function NoteEditor(props: {
+   editingNote: AdminNote | null;
++  folders: AdminNoteFolder[];
++  editorFolderId: string | null;
++  setEditorFolderId: (v: string | null) => void;
+   editorTitle: string;
+   setEditorTitle: (v: string) => void;
+   editorContent: string;
+@@ -1338,6 +2025,7 @@ function NoteEditor(props: {
+ }) {
+   const { t } = useLocale();
+   const p = props;
++
+   return (
+     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+       <div className="mx-4 flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+@@ -1363,25 +2051,45 @@ function NoteEditor(props: {
+ 
+         {/* Modal Body (scrollable) */}
+         <div className="space-y-4 overflow-y-auto px-6 py-5">
+-          {/* Type selector */}
+-          <div className="flex items-center gap-2">
+-            {(['note', 'reminder', 'draft'] as const).map((ty) => (
+-              <button
+-                key={ty}
+-                onClick={() => p.setEditorType(ty)}
+-                className={`rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all ${
+-                  p.editorType === ty
+-                    ? ty === 'note'
+-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+-                      : ty === 'reminder'
+-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+-                        : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+-                    : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+-                }`}
++          {/* Type & Folder selector */}
++          <div className="flex flex-wrap items-center justify-between gap-3">
++            {/* Type selector */}
++            <div className="flex items-center gap-1.5">
++              {(['note', 'reminder', 'draft'] as const).map((ty) => (
++                <button
++                  key={ty}
++                  onClick={() => p.setEditorType(ty)}
++                  className={`rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all ${
++                    p.editorType === ty
++                      ? ty === 'note'
++                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
++                        : ty === 'reminder'
++                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
++                          : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
++                      : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
++                  }`}
++                >
++                  {t(`admin.notes.type.${ty}`) as string}
++                </button>
++              ))}
++            </div>
++
++            {/* Folder selection dropdown */}
++            <div className="flex items-center gap-1.5">
++              <Folder className="h-4 w-4 text-slate-400" />
++              <select
++                value={p.editorFolderId || ''}
++                onChange={(e) => p.setEditorFolderId(e.target.value ? e.target.value : null)}
++                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-red-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+               >
+-                {t(`admin.notes.type.${ty}`) as string}
+-              </button>
+-            ))}
++                <option value="">{t('admin.notes.noFolderAssigned') as string}</option>
++                {p.folders.map((f) => (
++                  <option key={f.id} value={f.id}>
++                    📁 {f.name}
++                  </option>
++                ))}
++              </select>
++            </div>
+           </div>
+ 
+           {/* Title */}
+@@ -1418,13 +2126,21 @@ function NoteEditor(props: {
+                 <div className="flex items-center gap-1">
+                   <button
+                     onClick={() => p.setEditorPreviewMode(false)}
+-                    className={`rounded-lg px-2 py-1 text-[10px] font-bold ${!p.editorPreviewMode ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'text-slate-400'}`}
++                    className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
++                      !p.editorPreviewMode
++                        ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                        : 'text-slate-400'
++                    }`}
+                   >
+                     {t('admin.notes.editor.edit') as string}
+                   </button>
+                   <button
+                     onClick={() => p.setEditorPreviewMode(true)}
+-                    className={`rounded-lg px-2 py-1 text-[10px] font-bold ${p.editorPreviewMode ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'text-slate-400'}`}
++                    className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
++                      p.editorPreviewMode
++                        ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                        : 'text-slate-400'
++                    }`}
+                   >
+                     {t('admin.notes.editor.preview') as string}
+                   </button>
+@@ -1437,7 +2153,9 @@ function NoteEditor(props: {
+                 dangerouslySetInnerHTML={{
+                   __html:
+                     renderMarkdown(p.editorContent) ||
+-                    `<p class="text-slate-400">${t('admin.notes.editor.contentPlaceholder') as string}</p>`,
++                    `<p class="text-slate-400">${
++                      t('admin.notes.editor.contentPlaceholder') as string
++                    }</p>`,
+                 }}
+               />
+             ) : (
+@@ -1464,6 +2182,7 @@ function NoteEditor(props: {
+             {COLORS.map((c) => (
+               <button
+                 key={c.id}
++                type="button"
+                 onClick={() => p.setEditorColor(c.id)}
+                 className={`h-6 w-6 rounded-full ${c.dot} transition-all ${
+                   p.editorColor === c.id
+@@ -1484,6 +2203,7 @@ function NoteEditor(props: {
+               return (
+                 <button
+                   key={pr}
++                  type="button"
+                   onClick={() => p.setEditorPriority(pr)}
+                   className={`rounded-lg px-2.5 py-1 text-xs font-bold capitalize transition-all ${
+                     p.editorPriority === pr
+@@ -1568,10 +2288,12 @@ function NoteEditor(props: {
+ /* ─── Note Detail Drawer ─── */
+ function NoteDetailDrawer({
+   note,
++  folders,
+   activity,
+   onClose,
+ }: {
+   note: AdminNoteDetail;
++  folders: AdminNoteFolder[];
+   activity: NoteActivity[];
+   onClose: () => void;
+ }) {
+@@ -1580,6 +2302,9 @@ function NoteDetailDrawer({
+   const [uploading, setUploading] = useState(false);
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
++  const matchedFolder = folders.find((f) => f.id === note.folder_id);
++  const folderColorCfg = matchedFolder ? getFolderColorConfig(matchedFolder.color) : null;
++
+   const addChecklistItem = async () => {
+     if (!newItem.trim()) return;
+     try {
+@@ -1716,9 +2441,19 @@ function NoteDetailDrawer({
+         <div
+           className={`flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-4 ${colorCfg.bg}`}
+         >
+-          <h3 className="text-lg font-black text-slate-900 dark:text-white line-clamp-1">
+-            {note.title}
+-          </h3>
++          <div className="flex items-center gap-2">
++            <h3 className="text-lg font-black text-slate-900 dark:text-white line-clamp-1">
++              {note.title}
++            </h3>
++            {matchedFolder && (
++              <span
++                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold border ${folderColorCfg?.badge}`}
++              >
++                <Folder className="h-3 w-3" />
++                {matchedFolder.name}
++              </span>
++            )}
++          </div>
+           <button
+             onClick={onClose}
+             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+@@ -1750,7 +2485,11 @@ function NoteDetailDrawer({
+             <div className="flex flex-wrap gap-2">
+               {note.reminder_at && (
+                 <div
+-                  className={`rounded-lg px-3 py-2 text-xs font-bold ${isOverdue(note.reminder_at, note.is_completed) ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'}`}
++                  className={`rounded-lg px-3 py-2 text-xs font-bold ${
++                    isOverdue(note.reminder_at, note.is_completed)
++                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
++                  }`}
+                 >
+                   <Bell className="mr-1.5 inline h-3.5 w-3.5" />
+                   {t('admin.notes.reminderAt') as string}: {formatReminderDate(note.reminder_at)}
+@@ -1796,12 +2535,20 @@ function NoteDetailDrawer({
+                   >
+                     <button
+                       onClick={() => toggleChecklistItem(item)}
+-                      className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded ${item.is_done ? 'bg-green-500 text-white' : 'border border-slate-300 dark:border-slate-600'}`}
++                      className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded ${
++                        item.is_done
++                          ? 'bg-green-500 text-white'
++                          : 'border border-slate-300 dark:border-slate-600'
++                      }`}
+                     >
+                       {item.is_done && <CheckCircle2 className="h-3 w-3" />}
+                     </button>
+                     <span
+-                      className={`flex-1 text-xs ${item.is_done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-300'}`}
++                      className={`flex-1 text-xs ${
++                        item.is_done
++                          ? 'text-slate-400 line-through'
++                          : 'text-slate-700 dark:text-slate-300'
++                      }`}
+                     >
+                       {item.content}
+                     </span>

@@ -202,10 +202,10 @@ export default async function HubHomepage({
         marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
         marketplaceTheme={marketplaceTheme}
       />
-      <SponsoredAdsRail placement="hub.home_banner" title="Sponsored content" variant="banner" locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
+      <SponsoredAdsRail placement="hub.home_banner" title="Sponsored content" variant="banner" locale={activeLocale as any} />
       {homeContent}
-      <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
-      <SponsoredAdsRail locale={marketplaceSettings.marketplace_default_locale || 'fr'} />
+      <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={activeLocale as any} />
+      <SponsoredAdsRail locale={activeLocale as any} />
       <HubFooter {...marketplaceSettings} />
     </div>
   );

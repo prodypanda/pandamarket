@@ -136,8 +136,13 @@ export default async function RootLayout({
     ? validMetaPixelId(marketplaceSettings.analytics_meta_pixel_id)
     : "";
 
+  const brandStyles = {
+    ...(marketplaceSettings.marketplace_primary_color ? { '--brand-primary': marketplaceSettings.marketplace_primary_color } : {}),
+    ...(marketplaceSettings.marketplace_secondary_color ? { '--brand-secondary': marketplaceSettings.marketplace_secondary_color } : {}),
+  } as React.CSSProperties;
+
   return (
-    <html lang="fr" className={`${inter.variable} ${playfair.variable} ${poppins.variable} ${montserrat.variable} ${lora.variable} ${spaceGrotesk.variable} h-full antialiased`}>
+    <html lang="fr" className={`${inter.variable} ${playfair.variable} ${poppins.variable} ${montserrat.variable} ${lora.variable} ${spaceGrotesk.variable} h-full antialiased`} style={brandStyles}>
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         {gtmContainerId && (
           <noscript>

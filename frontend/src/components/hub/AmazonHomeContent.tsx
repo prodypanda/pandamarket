@@ -236,7 +236,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
 
       {/* Category strip with hover panels */}
       {isBlockEnabled('category_strip') && (
-        <div className="relative border-b border-gray-300 bg-white" onMouseLeave={() => setActiveCategory(null)}>
+        <div
+          className="relative border-b border-gray-300 bg-white"
+          onMouseLeave={() => setActiveCategory(null)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) {
+              setActiveCategory(null);
+            }
+          }}
+        >
           <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-2 text-xs font-bold text-gray-700 sm:px-6 lg:px-8">
             <span className="mr-1 shrink-0 rounded-md px-2 py-1 text-white" style={{ backgroundColor: INK }}>All</span>
             {stripCategories.map((category) => (
@@ -244,6 +252,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 key={category.id}
                 href={`/hub/category/${encodeURIComponent(category.slug)}`}
                 onMouseEnter={() => setActiveCategory(category)}
+                onFocus={() => setActiveCategory(category)}
                 className={`shrink-0 rounded-md px-2 py-1 transition-colors ${activeCategory?.id === category.id ? 'bg-gray-100 text-[#007185]' : 'hover:bg-gray-100'}`}
               >
                 {category.name}

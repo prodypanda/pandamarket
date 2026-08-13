@@ -518,6 +518,11 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                   activeCategory ? 'z-50 shadow-2xl ring-1 ring-orange-200' : 'z-10 shadow-md'
                 }`}
                 onMouseLeave={() => setActiveCategory(null)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                    setActiveCategory(null);
+                  }
+                }}
               >
                 <p className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700">
                   <LayoutGrid className="h-4 w-4" style={{ color: ORANGE }} /> {i18n.allCategories}
@@ -531,6 +536,9 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
 
                   return (
                     <li key={category.id} onMouseEnter={() => {
+                      setActiveCategory(category);
+                      setActiveSubcategory(category.children && category.children.length > 0 ? category.children[0] : null);
+                    }} onFocus={() => {
                       setActiveCategory(category);
                       setActiveSubcategory(category.children && category.children.length > 0 ? category.children[0] : null);
                     }}>
