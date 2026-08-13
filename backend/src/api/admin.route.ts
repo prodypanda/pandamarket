@@ -53,7 +53,7 @@ import {
   type PlatformSettingSection,
   type PlatformSettingValue,
 } from '../services/platform-config.service';
-import { PdErrorCode, PdNotFoundError } from '../errors';
+import { PdConflictError, PdErrorCode, PdNotFoundError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
 import { adsService } from '../services/ads.service';
 import { adsRefillService } from '../services/ads-refill.service';
@@ -2429,11 +2429,36 @@ router.put(
       return;
     }
     const parsed = parsedResult.data as Partial<Record<PlatformSettingKey, PlatformSettingValue>>;
-    const updatedKeys = await platformConfigService.updateSectionSettings(
-      section,
-      parsed,
-      req.user!.id,
-    );
+    const expectedVersionHeader = req.header('if-match');
+    const expectedVersion = expectedVersionHeader === undefined
+      ? undefined
+      : expectedVersionHeader.replace(/^W\//, '').replace(/^"|"$/g, '') === '0'
+        ? null
+        : expectedVersionHeader.replace(/^W\//, '').replace(/^"|"$/g, '');
+
+    let updatedKeys: PlatformSettingKey[];
+    try {
+      updatedKeys = await platformConfigService.updateSectionSettings(
+        section,
+        parsed,
+        req.user!.id,
+        expectedVersion,
+      );
+    } catch (error) {
+      if (error instanceof PdConflictError && error.code === PdErrorCode.SETTINGS_CONFLICT) {
+        const latest = await platformConfigService.getGroupedSettings();
+        res.status(409).json({
+          error: {
+            code: error.code,
+            message: error.message,
+            details: { ...error.details, current_version: latest.section_versions[section] },
+          },
+          ...latest,
+        });
+        return;
+      }
+      throw error;
+    }
 
     logger.info(
       { admin_id: req.user!.id, section, keys: updatedKeys },

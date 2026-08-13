@@ -1,4 +1,6 @@
-# Hub Homepage — Admin Notes Index
+# Hub Homepage — Historical Markdown Index
+
+> **Historical snapshot:** Use `backend/src/scripts/hub-settings-admin-notes.catalog.ts` and the production Superadmin Admin Notes page for the current HH-01–HH-18 definitions. Several conclusions below were corrected on 2026-08-13.
 
 This folder contains all documented bugs, enhancements, and improvements for the Hub Homepage (`/hub`).
 

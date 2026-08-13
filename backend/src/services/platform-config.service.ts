@@ -1,6 +1,7 @@
 import { query, transaction } from '../db/pool';
 import { getRedis, withRedisTimeout } from '../db/redis';
 import { logger } from '../utils/logger';
+import { PdConflictError, PdErrorCode } from '../errors';
 
 export type PlatformSettingValue = string | number | boolean;
 export type PlatformSettingSection = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
@@ -225,6 +226,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
 export type PlatformSettingKey = keyof typeof PLATFORM_SETTING_DEFAULTS;
 export type PlatformSettings = Record<PlatformSettingKey, PlatformSettingValue>;
 export type PlatformSettingsBySection = Record<PlatformSettingSection, Partial<PlatformSettings>>;
+export type PlatformSettingsSectionVersions = Record<PlatformSettingSection, string | null>;
 
 export const PLATFORM_SETTING_KEYS = Object.keys(PLATFORM_SETTING_DEFAULTS) as PlatformSettingKey[];
 
@@ -650,7 +652,13 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {
-  return value === 'marketplace' || value === 'commerce' || value === 'finance' || value === 'operations' || value === 'integrations';
+  return value === 'marketplace'
+    || value === 'commerce'
+    || value === 'finance'
+    || value === 'shipping'
+    || value === 'security'
+    || value === 'operations'
+    || value === 'integrations';
 }
 
 function isPlatformSettingKey(value: string): value is PlatformSettingKey {
@@ -688,6 +696,11 @@ function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
     operations: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.operations),
     integrations: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.integrations),
   };
+}
+
+function versionValue(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
 class PlatformConfigService {
@@ -765,11 +778,38 @@ class PlatformConfigService {
 
   async getGroupedSettings() {
     const settings = await this.getSettings();
+    const sectionVersions = await this.getSectionVersions();
     return {
       data: settings,
       sections: groupSettings(settings),
       section_meta: PLATFORM_SETTING_SECTION_META,
+      section_versions: sectionVersions,
     };
+  }
+
+  async getSectionVersions(): Promise<PlatformSettingsSectionVersions> {
+    const versions = {} as PlatformSettingsSectionVersions;
+    for (const section of Object.keys(PLATFORM_SETTING_SECTION_KEYS) as PlatformSettingSection[]) {
+      versions[section] = null;
+    }
+
+    const { rows } = await query<{ key: string; updated_at: Date | string | null }>(
+      `SELECT key, updated_at
+       FROM pd_platform_config
+       WHERE key = ANY($1::text[])`,
+      [PLATFORM_SETTING_KEYS],
+    );
+    const keyVersions = new Map(rows.map((row) => [row.key, versionValue(row.updated_at)]));
+
+    for (const section of Object.keys(PLATFORM_SETTING_SECTION_KEYS) as PlatformSettingSection[]) {
+      const timestamps = PLATFORM_SETTING_SECTION_KEYS[section]
+        .map((key) => keyVersions.get(key))
+        .filter((value): value is string => Boolean(value));
+      versions[section] = timestamps.length > 0
+        ? new Date(Math.max(...timestamps.map((value) => Date.parse(value)))).toISOString()
+        : null;
+    }
+    return versions;
   }
 
   async getPublicSettings() {
@@ -806,6 +846,7 @@ class PlatformConfigService {
     section: PlatformSettingSection,
     input: Partial<Record<PlatformSettingKey, PlatformSettingValue>>,
     adminId: string,
+    expectedVersion?: string | null,
   ) {
     const allowedKeys = new Set<PlatformSettingKey>(PLATFORM_SETTING_SECTION_KEYS[section]);
     const sectionInput: Partial<Record<PlatformSettingKey, PlatformSettingValue>> = {};
@@ -814,7 +855,39 @@ class PlatformConfigService {
         sectionInput[key] = value;
       }
     }
-    return this.updateSettings(sectionInput, adminId);
+    const entries = Object.entries(sectionInput) as Array<[PlatformSettingKey, PlatformSettingValue]>;
+    await transaction(async (client) => {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`pd_platform_settings:${section}`]);
+      if (expectedVersion !== undefined) {
+        const { rows } = await client.query<{ updated_at: Date | string | null }>(
+          `SELECT MAX(updated_at) AS updated_at
+           FROM pd_platform_config
+           WHERE key = ANY($1::text[])`,
+          [PLATFORM_SETTING_SECTION_KEYS[section]],
+        );
+        const currentVersion = versionValue(rows[0]?.updated_at);
+        if (currentVersion !== expectedVersion) {
+          throw new PdConflictError(
+            PdErrorCode.SETTINGS_CONFLICT,
+            'This settings section changed after it was loaded. Review the latest values before saving again.',
+            { section, expected_version: expectedVersion, current_version: currentVersion },
+          );
+        }
+      }
+
+      for (const [key, value] of entries) {
+        await client.query(
+          `INSERT INTO pd_platform_config (key, value, updated_by, updated_at)
+           VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_by = $3, updated_at = NOW()`,
+          [key, toStorageValue(value), adminId],
+        );
+      }
+    });
+
+    const updatedKeys = entries.map(([key]) => key);
+    await this.invalidateCache(updatedKeys);
+    return updatedKeys;
   }
 }
 

@@ -11,6 +11,16 @@ import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useState } from 'react';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
+import {
+  getDirtySettingsKeys,
+  mergeServerSettingsPreservingDrafts,
+  mergeSavedSettings,
+  mergeSubmittedSettings,
+  pickChangedSettings,
+  type PlatformSettingsResponse,
+  type SettingsSectionVersions,
+} from '@/lib/admin-settings-save';
+import { type PlatformSettings as SharedPlatformSettings, type PlatformSettingsTab as SharedPlatformSettingsTab } from '@/types/settings';
 
 interface PlatformSettings {
   marketplace_name: string;
@@ -1026,6 +1036,13 @@ async function getSettingsErrorMessage(res: Response, fallback: string) {
   }
 }
 
+function createSettingsRequestId() {
+  const suffix = typeof globalThis.crypto?.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `settings-load-${suffix}`;
+}
+
 function SectionHeader({
   icon,
   title,
@@ -1056,6 +1073,10 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [settingsLoadSucceeded, setSettingsLoadSucceeded] = useState(false);
+  const [settingsLoadError, setSettingsLoadError] = useState<{ message: string; requestId: string; status?: number } | null>(null);
+  const [settingsLoadAttempt, setSettingsLoadAttempt] = useState(0);
+  const [sectionVersions, setSectionVersions] = useState<SettingsSectionVersions>({});
   const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('marketplace');
   const [smtpForm, setSmtpForm] = useState<SmtpFormData>(DEFAULT_SMTP_FORM);
@@ -1072,6 +1093,7 @@ export default function AdminSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   function updateSetting<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
+    if (!settingsLoadSucceeded) return;
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
   }
@@ -1269,9 +1291,14 @@ export default function AdminSettingsPage() {
           const loadedSettings = { ...DEFAULT_SETTINGS, ...(data.data || {}) };
           setSettings(loadedSettings);
           setSavedSettings(loadedSettings);
+          setSectionVersions(data.section_versions || {});
+          setSettingsLoadSucceeded(true);
         }
       } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : 'Failed to load platform settings');
+        if (active) {
+          setSettingsLoadSucceeded(false);
+          setError(err instanceof Error ? err.message : 'Failed to load platform settings');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -1320,27 +1347,92 @@ export default function AdminSettingsPage() {
   }, []);
 
   async function handleSave() {
-    if (!isPlatformSettingsTab(activeTab)) return;
+    if (!isPlatformSettingsTab(activeTab) || !settingsLoadSucceeded) return;
+
+    const section = activeTab;
+    const normalizedSettings = { ...DEFAULT_SETTINGS, ...buildSettingsPayload(settings) };
+    const payload = pickChangedSettings(
+      normalizedSettings as SharedPlatformSettings,
+      savedSettings as SharedPlatformSettings,
+      SETTINGS_TAB_KEYS[section],
+    ) as Partial<PlatformSettings>;
+    const submittedKeys = Object.keys(payload) as Array<keyof PlatformSettings>;
+    if (submittedKeys.length === 0) {
+      setSettings((current) => {
+        const next = { ...current };
+        for (const key of SETTINGS_TAB_KEYS[section]) {
+          if (current[key] === settings[key] && normalizedSettings[key] === savedSettings[key]) {
+            next[key] = normalizedSettings[key] as never;
+          }
+        }
+        return next;
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      return;
+    }
 
     setSaving(true);
     setError('');
     try {
-      const payload = buildSettingsPayload(settings);
-      const res = await fetchWithCsrf(`/api/pd/admin/settings`, {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const sectionVersion = sectionVersions[section as SharedPlatformSettingsTab];
+      if (sectionVersion !== undefined) headers['If-Match'] = sectionVersion ? `"${sectionVersion}"` : '"0"';
+
+      const res = await fetchWithCsrf(`/api/pd/admin/settings/${section}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        const data = await res.json() as { data?: Partial<PlatformSettings> };
-        const nextSettings = { ...DEFAULT_SETTINGS, ...(data.data || { ...settings, ...payload }) };
-        setSettings(nextSettings);
-        setSavedSettings(nextSettings);
+        const data = await res.json() as PlatformSettingsResponse;
+        const responseSection = data.sections?.[section as SharedPlatformSettingsTab]
+          ?? (data.data ? Object.fromEntries(SETTINGS_TAB_KEYS[section].map((key) => [key, data.data?.[key]])) as Partial<PlatformSettings> : undefined);
+        setSettings((current) => mergeSubmittedSettings(
+          current as SharedPlatformSettings,
+          savedSettings as SharedPlatformSettings,
+          payload as Partial<SharedPlatformSettings>,
+          responseSection,
+          settings as SharedPlatformSettings,
+        ).current as PlatformSettings);
+        setSavedSettings((previous) => mergeSavedSettings(
+          previous as SharedPlatformSettings,
+          payload as Partial<SharedPlatformSettings>,
+          responseSection,
+        ) as PlatformSettings);
+        setSectionVersions((previous) => ({ ...previous, ...data.section_versions }));
         // Bust the cached hub pages so theme/layout changes show up immediately.
         fetch('/api/marketplace/revalidate', { method: 'POST', credentials: 'include' }).catch(() => undefined);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+      } else if (res.status === 409) {
+        let conflictData: PlatformSettingsResponse & { error?: { message?: string; details?: { current_version?: string | null } } } = {};
+        try {
+          conflictData = await res.json();
+        } catch {
+          // Keep the fallback conflict message below.
+        }
+        const responseSection = conflictData.sections?.[section as SharedPlatformSettingsTab]
+          ?? (conflictData.data ? Object.fromEntries(SETTINGS_TAB_KEYS[section].map((key) => [key, conflictData.data?.[key]])) as Partial<PlatformSettings> : undefined);
+        if (responseSection) {
+          setSettings((current) => mergeServerSettingsPreservingDrafts(
+            current as SharedPlatformSettings,
+            savedSettings as SharedPlatformSettings,
+            responseSection,
+          ).current as PlatformSettings);
+          setSavedSettings((previous) => mergeServerSettingsPreservingDrafts(
+            previous as SharedPlatformSettings,
+            previous as SharedPlatformSettings,
+            responseSection,
+          ).saved as PlatformSettings);
+        }
+        const currentVersion = conflictData.section_versions?.[section as SharedPlatformSettingsTab]
+          ?? conflictData.error?.details?.current_version;
+        if (currentVersion !== undefined) {
+          setSectionVersions((previous) => ({ ...previous, [section]: currentVersion }));
+        }
+        setError(conflictData.error?.message || 'This section changed after you loaded it. Your draft is preserved; review the latest saved values and save again.');
       } else {
         setError(await getSettingsErrorMessage(res, 'Failed to save platform settings'));
       }
@@ -1414,9 +1506,26 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const hasUnsavedPlatformChanges = isPlatformSettingsTab(activeTab)
-    ? SETTINGS_TAB_KEYS[activeTab].some((key) => settings[key] !== savedSettings[key])
-    : false;
+  const activePlatformDirtyKeys = isPlatformSettingsTab(activeTab)
+    ? getDirtySettingsKeys(settings as SharedPlatformSettings, savedSettings as SharedPlatformSettings, SETTINGS_TAB_KEYS[activeTab])
+    : [];
+  const hasUnsavedPlatformChanges = activePlatformDirtyKeys.length > 0;
+  const hasAnyUnsavedPlatformChanges = (Object.keys(SETTINGS_TAB_KEYS) as PlatformSettingsTab[])
+    .some((section) => getDirtySettingsKeys(settings as SharedPlatformSettings, savedSettings as SharedPlatformSettings, SETTINGS_TAB_KEYS[section]).length > 0);
+
+  function resetActiveSection() {
+    if (!isPlatformSettingsTab(activeTab)) return;
+    const sectionKeys = SETTINGS_TAB_KEYS[activeTab];
+    setSettings((previous) => {
+      const next = { ...previous };
+      for (const key of sectionKeys) {
+        (next as unknown as Record<keyof SharedPlatformSettings, SharedPlatformSettings[keyof SharedPlatformSettings]>)[key] = (savedSettings as SharedPlatformSettings)[key];
+      }
+      return next;
+    });
+    setSaved(false);
+    setError('');
+  }
 
   return (
     <div className="relative mx-auto max-w-7xl space-y-8 pb-12">
@@ -1482,7 +1591,7 @@ export default function AdminSettingsPage() {
 
         <button
           onClick={activeTab === 'plans' ? undefined : activeTab === 'email' ? handleSmtpSave : handleSave}
-          disabled={activeTab === 'plans' || (activeTab === 'email' ? smtpSaving || smtpLoading : saving)}
+          disabled={activeTab === 'plans' || (activeTab === 'email' ? smtpSaving || smtpLoading : saving || loading || !settingsLoadSucceeded || !hasUnsavedPlatformChanges)}
           className="flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-900/25 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-red-900/30 disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {activeTab === 'email'
@@ -1492,7 +1601,7 @@ export default function AdminSettingsPage() {
         </button>
       </div>
 
-      {error && <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" aria-live="assertive" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
       {/* Modern Compact Settings Navigation Pills with Custom Red Scrollbar */}
@@ -2761,16 +2870,21 @@ export default function AdminSettingsPage() {
       />
 
       {/* Floating Sticky Save Settings Bar */}
+      {isPlatformSettingsTab(activeTab) && (
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border border-slate-700/80 bg-slate-900/95 px-5 py-3 text-white shadow-2xl backdrop-blur-md transition-all hover:border-[#ff6a00]/50">
         <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${JSON.stringify(settings) !== JSON.stringify(savedSettings) ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-          <span className="text-xs font-extrabold">{JSON.stringify(settings) !== JSON.stringify(savedSettings) ? 'Unsaved changes' : 'Settings up to date'}</span>
+          <span className={`h-2.5 w-2.5 rounded-full ${hasUnsavedPlatformChanges ? 'bg-amber-400 animate-pulse' : hasAnyUnsavedPlatformChanges ? 'bg-sky-400' : 'bg-emerald-400'}`} />
+          <span className="text-xs font-extrabold">
+            {hasUnsavedPlatformChanges
+              ? `${activePlatformDirtyKeys.length} unsaved ${activePlatformDirtyKeys.length === 1 ? 'change' : 'changes'} here`
+              : hasAnyUnsavedPlatformChanges ? 'Unsaved changes in another section' : 'Settings up to date'}
+          </span>
         </div>
         <div className="h-4 w-px bg-slate-700" />
         <button
           type="button"
-          onClick={() => { setSettings(savedSettings); setSaved(false); setError(''); }}
-          disabled={JSON.stringify(settings) === JSON.stringify(savedSettings) || saving}
+          onClick={resetActiveSection}
+          disabled={!hasUnsavedPlatformChanges || saving}
           className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
         >
           <RotateCcw className="h-3.5 w-3.5" /> Reset
@@ -2778,7 +2892,7 @@ export default function AdminSettingsPage() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || loading || !settingsLoadSucceeded || !hasUnsavedPlatformChanges}
           className="inline-flex items-center gap-2 rounded-full bg-[#ff6a00] px-5 py-2 text-xs font-black text-white shadow-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
         >
           {saving ? (
@@ -2792,6 +2906,7 @@ export default function AdminSettingsPage() {
           )}
         </button>
       </div>
+      )}
     </div>
   );
 }

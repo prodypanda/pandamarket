@@ -1,4 +1,6 @@
-# Admin Settings — Admin Notes Index
+# Admin Settings — Historical Markdown Index
+
+> **Historical snapshot:** Use `backend/src/scripts/hub-settings-admin-notes.catalog.ts` and the production Superadmin Admin Notes page for the current AS-01–AS-24 definitions. Several conclusions below were corrected on 2026-08-13.
 
 This folder contains all documented bugs, enhancements, and improvements for the Superadmin Settings page (`/dashboard/settings`).
 

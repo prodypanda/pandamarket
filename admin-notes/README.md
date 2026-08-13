@@ -1,4 +1,53 @@
-# PandaMarket Admin Notes — Master Index
+# PandaMarket Admin Notes — Historical Markdown Index
+
+> **Current source of truth (2026-08-13):** The production Superadmin Admin Notes page is synchronized from `backend/src/scripts/hub-settings-admin-notes.catalog.ts` by `backend/src/scripts/sync-hub-settings-admin-notes.ts`. The individual Markdown files below are historical snapshots and several claims were corrected by the deep source audit.
+
+## Current production catalog
+
+| Folder | IDs | Count |
+|---|---:|---:|
+| Hub Homepage — Fixes & Improvements | HH-01–HH-18 | 18 |
+| Admin Settings — Fixes & Improvements | AS-01–AS-24 | 24 |
+| Hub Configuration Contract & Layout Parity | HC-01–HC-02 | 2 |
+| Hub Reliability & Observability | HR-01–HR-03 | 3 |
+| Localization & Accessibility | LA-01–LA-04 | 4 |
+| Security & Operations | SO-01–SO-03 | 3 |
+| Quality Assurance & Regression Coverage | QA-01 | 1 |
+| Hub Product Ideas & Growth | PI-01–PI-03 | 3 |
+| Admin Notes Governance | NG-01 | 1 |
+| **Total** |  | **59** |
+
+Every open production note has a 14-row database checklist and detailed evidence, reproduction, root cause/data flow, implementation guidance, edge cases, accessibility/i18n/responsive/security/performance/observability requirements, tests, rollout/rollback, and acceptance criteria.
+
+### Corrected stale claims
+
+- The third outer sponsored rail already defaults to `hub.sponsored_products`; duplicate ownership is the issue.
+- Settings tabs remain mounted; hidden draft and save/reset scope are the risks, not tab-switch state loss.
+- SMTP empty-password preservation is verified complete.
+- The hero editor already has an inline preview; the remaining need is production-faithful cross-layout draft preview.
+- Homepage Blocks already exists; schema safety, validation, accessibility, and layout capability remain open.
+- Recently viewed tracking is installed on product detail.
+- No footer social RTL defect was reproducible.
+- Client layout components are server-prerendered; there is no generic blank-Hub defect.
+- TTL length alone is not the defect; freshness, invalidation, and publication need one contract.
+
+### New product ideas
+
+- **PI-01:** draft, preview, approval, scheduling, publish, and rollback for Hub appearance.
+- **PI-02:** rule-based merchandising and sponsored-slot governance.
+- **PI-03:** Hub preview plus accessibility/visual quality lab in Superadmin.
+
+### Synchronization safety
+
+From `backend/`, supply database configuration only through normal `PD_*` environment variables:
+
+```powershell
+npx tsx src/scripts/sync-hub-settings-admin-notes.ts --dry-run
+npx tsx src/scripts/sync-hub-settings-admin-notes.ts --apply
+npx tsx src/scripts/sync-hub-settings-admin-notes.ts --verify
+```
+
+The script is read-only by default, preserves IDs and completed state, preserves AS-07/HH-12/HH-15/HH-18 at 4/4, and never deletes, trashes, archives, or uncompletes notes/folders. Do not modify or print `REMOTE_CREDENTIALS.md`.
 
 This directory contains all documented technical issues, enhancements, and improvements for the PandaMarket platform, organized by area.
 

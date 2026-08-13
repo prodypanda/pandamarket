@@ -112,6 +112,7 @@ export const PdErrorCode = {
   RATE_LIMITED: 'PD_RATE_LIMITED',
   INTERNAL_ERROR: 'PD_INTERNAL_ERROR',
   SERVICE_UNAVAILABLE: 'PD_SERVICE_UNAVAILABLE',
+  SETTINGS_CONFLICT: 'PD_SETTINGS_CONFLICT',
 } as const;
 
 export type PdErrorCodeValue = (typeof PdErrorCode)[keyof typeof PdErrorCode];
