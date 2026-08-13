@@ -7,6 +7,7 @@ import { useMarketplaceTheme } from '../../hooks/useMarketplaceTheme';
 import type { MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
 import { MarketplaceBrand } from '../MarketplaceBrand';
+import { useState, useEffect } from 'react';
 
 function safeFooterHref(value?: string) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -19,6 +20,15 @@ function safeFooterHref(value?: string) {
 export function HubFooter(props: MarketplaceThemeSettings) {
   const { t } = useLocale();
   const { settings, classes, isAliExpress, isAliExpress2 } = useMarketplaceTheme(props);
+  const [cmsPages, setCmsPages] = useState<{title: string; slug: string; show_in_footer: boolean}[]>([]);
+
+  useEffect(() => {
+    fetch('/api/pd/marketplace/cms/public')
+      .then(res => res.ok ? res.json() : { data: [] })
+      .then(json => setCmsPages(json.data || []))
+      .catch(() => {});
+  }, []);
+
   const currentYear = new Date().getFullYear();
   const marketplaceName = settings.marketplace_name || 'PandaMarket';
   const tagline = settings.marketplace_tagline || t('common.tagline');
@@ -138,6 +148,9 @@ export function HubFooter(props: MarketplaceThemeSettings) {
               <li><Link href="/hub/search?category=Fashion" className={linkClass}>Fashion</Link></li>
               <li><Link href="/hub/search?category=Home" className={linkClass}>Home</Link></li>
               <li><Link href="/hub/pricing" className={linkClass}>{t('nav.pricing')}</Link></li>
+              {cmsPages.filter(p => p.show_in_footer).map(p => (
+                <li key={p.slug}><Link href={`/hub/pages/${p.slug}`} className={linkClass}>{p.title}</Link></li>
+              ))}
             </ul>
           </div>
 

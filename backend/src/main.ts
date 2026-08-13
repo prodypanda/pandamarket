@@ -42,6 +42,7 @@ import marketplaceRouter from './api/marketplace.route';
 import vendorRouter from './api/vendor.route';
 import shippingRouter from './api/shipping.route';
 import themeRouter from './api/theme.route';
+import { platformCmsRouter } from './api/platform-cms.route';
 import pageBuilderRouter from './api/page-builder.route';
 import reviewRouter from './api/review.route';
 import wishlistRouter from './api/wishlist.route';
@@ -275,6 +276,7 @@ async function bootstrap() {
   apiRouter.use('/credits', creditsRouter);
   apiRouter.use('/categories', categoriesRouter);
   apiRouter.use('/marketplace', marketplaceRouter);
+  apiRouter.use('/marketplace/cms', platformCmsRouter);
   apiRouter.use('/vendor', vendorRouter);
   apiRouter.use('/shipping', shippingRouter);
   apiRouter.use('/themes', themeRouter);
