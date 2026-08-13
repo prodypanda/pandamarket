@@ -19,7 +19,7 @@
     "@hookform/resolvers": "^5.7.1",
     "@pandamarket/types": "*",
     "@tailwindcss/oxide": "4.2.4",
-    "dompurify": "^3.4.2",
+    "dompurify": "^3.4.13",
     "grapesjs": "^0.22.16",
     "grapesjs-blocks-basic": "^1.0.2",
     "lightningcss": "^1.32.0",
