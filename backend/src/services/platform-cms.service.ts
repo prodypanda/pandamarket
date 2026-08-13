@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
-import { db } from '../db';
-import { ulid } from 'ulid';
+import { getPool } from '../db/pool';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface PlatformPage {
   id: string;
@@ -21,7 +21,7 @@ export class PlatformCmsService {
   private pool: Pool;
 
   constructor() {
-    this.pool = db;
+    this.pool = getPool();
   }
 
   async listPages(): Promise<PlatformPage[]> {
@@ -54,7 +54,7 @@ export class PlatformCmsService {
   }
 
   async createPage(data: Partial<PlatformPage>): Promise<PlatformPage> {
-    const id = ulid();
+    const id = uuidv4();
     const res = await this.pool.query(
       `INSERT INTO pd_platform_page 
         (id, slug, title, builder_data, html, css, is_published, show_in_footer, show_in_header, sort_order) 

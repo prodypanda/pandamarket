@@ -1,7 +1,7 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { platformCmsService } from '../services/platform-cms.service';
-import { asyncHandler, requireAuth, requireSuperAdmin } from '../middlewares';
+import { asyncHandler, requireAuth, requireAdmin } from '../middlewares';
 
 const router = Router();
 
@@ -29,8 +29,8 @@ const updatePageSchema = z.object({
 router.get(
   '/',
   requireAuth,
-  requireSuperAdmin,
-  asyncHandler(async (req: Request, res: Response) => {
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
     const pages = await platformCmsService.listPages();
     res.json({ data: pages });
   })
@@ -39,7 +39,7 @@ router.get(
 // GET /api/pd/marketplace/cms/public
 router.get(
   '/public',
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const pages = await platformCmsService.listPublicPages();
     res.json({ data: pages });
   })
@@ -62,7 +62,7 @@ router.get(
 router.get(
   '/:id',
   requireAuth,
-  requireSuperAdmin,
+  requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const page = await platformCmsService.getPage(req.params.id);
     if (!page) {
@@ -77,7 +77,7 @@ router.get(
 router.post(
   '/',
   requireAuth,
-  requireSuperAdmin,
+  requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const data = createPageSchema.parse(req.body);
     const page = await platformCmsService.createPage(data);
@@ -89,7 +89,7 @@ router.post(
 router.put(
   '/:id',
   requireAuth,
-  requireSuperAdmin,
+  requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const data = updatePageSchema.parse(req.body);
     const page = await platformCmsService.updatePage(req.params.id, data);
@@ -101,7 +101,7 @@ router.put(
 router.delete(
   '/:id',
   requireAuth,
-  requireSuperAdmin,
+  requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     await platformCmsService.deletePage(req.params.id);
     res.status(204).send();
