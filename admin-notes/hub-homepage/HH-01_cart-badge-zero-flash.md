@@ -27,13 +27,13 @@
 
 ## Fix Checklist
 
-- [ ] **Step 1 — Open the file**  
+- [x] **Step 1 — Open the file**  
   Open `frontend/src/components/hub/HubNavbar.tsx` and navigate to **line 193**.
 
-- [ ] **Step 2 — Locate the cart badge span**  
+- [x] **Step 2 — Locate the cart badge span**  
   Find the `<span>` inside the cart `<Link>` that renders `{cartCount}`.
 
-- [ ] **Step 3 — Add a conditional render guard**  
+- [x] **Step 3 — Add a conditional render guard**  
   Wrap the badge `<span>` with `{cartCount > 0 && (…)}` so it only renders when there are items:
 
   ```tsx
@@ -53,7 +53,7 @@
   )}
   ```
 
-- [ ] **Step 4 — Add aria-label to the cart Link**  
+- [x] **Step 4 — Add aria-label to the cart Link**  
   The `<Link>` itself has no accessible name. Add `aria-label` that reflects cart state:
 
   ```tsx
@@ -64,16 +64,16 @@
   >
   ```
 
-- [ ] **Step 5 — Handle the 99+ overflow**  
+- [x] **Step 5 — Handle the 99+ overflow**  
   If `cartCount > 99`, display `"99+"` instead of a 3-digit number that overflows the badge circle (see Step 3 code above).
 
-- [ ] **Step 6 — Test the fix**  
+- [x] **Step 6 — Test the fix**  
   - Load `/hub` with no items in cart → red badge must NOT appear.  
   - Add 1 item to cart → badge must show `1`.  
   - Add 100 items → badge must show `99+`.  
   - Verify with screen reader that the aria-label is read correctly.
 
-- [ ] **Step 7 — Commit**  
+- [x] **Step 7 — Commit**  
   ```
   git add frontend/src/components/hub/HubNavbar.tsx
   git commit -m "fix(hub): hide cart badge when cartCount is 0, add aria-label and 99+ overflow"

@@ -55,6 +55,7 @@ interface HubHomeContentProps {
   trendingProducts: Product[];
   categories: MarketplaceCategory[];
   marketplaceSettings?: MarketplaceSettings;
+  totalProducts?: number;
 }
 
 // Sections that can be reordered from the admin Homepage Blocks editor.
@@ -113,7 +114,7 @@ function ProductCard({ product, currency }: { product: Product; currency: string
   );
 }
 
-export function HubHomeContent({ trendingProducts, categories, marketplaceSettings }: HubHomeContentProps) {
+export function HubHomeContent({ trendingProducts, categories, marketplaceSettings, totalProducts }: HubHomeContentProps) {
   const { t, locale } = useLocale();
   const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -151,8 +152,11 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const bannerCtaLabel = activeSlide?.cta_label || marketplaceSettings?.hub_homepage_banner_cta_label?.trim() || t('nav.explore');
   const bannerCtaUrl = activeSlide?.cta_url || marketplaceSettings?.hub_homepage_banner_cta_url?.trim() || '/hub/search';
   const bannerImage = normalizePublicAssetUrl(activeSlide?.image_url || marketplaceSettings?.hub_homepage_banner_image_url || '');
+  const activeProductCount = typeof totalProducts === 'number' && totalProducts > 0
+    ? totalProducts
+    : trendingProducts.length;
   const marketplaceStats = [
-    { label: 'Produits actifs', value: `${trendingProducts.length}+` },
+    { label: 'Produits actifs', value: `${activeProductCount.toLocaleString()}+` },
     { label: 'Catégories', value: `${publicCategories.length}+` },
     { label: 'Paiements', value: '4 modes' },
   ];

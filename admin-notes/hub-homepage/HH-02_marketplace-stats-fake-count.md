@@ -25,12 +25,12 @@ const marketplaceStats = [
 
 ## Fix Checklist
 
-- [ ] **Step 1 — Update the backend API response check**  
+- [x] **Step 1 — Update the backend API response check**  
   Open `frontend/src/app/hub/page.tsx` and inspect the `getTrendingProducts` return at line 110–114.  
   Confirm that `data.meta.total` (total product count across all pages) is available in the response.  
   If not, confirm with the backend team that `GET /api/pd/products/public` returns `meta.total`.
 
-- [ ] **Step 2 — Extract `totalProducts` in `getTrendingProducts`**  
+- [x] **Step 2 — Extract `totalProducts` in `getTrendingProducts`**  
   ```ts
   // hub/page.tsx — update the return type and value
   async function getTrendingProducts(sortBy?: string): Promise<{
@@ -47,13 +47,13 @@ const marketplaceStats = [
   }
   ```
 
-- [ ] **Step 3 — Pass `totalProducts` down to the content component**  
+- [x] **Step 3 — Pass `totalProducts` down to the content component**  
   In `HubHomepage` (hub/page.tsx line 154), destructure `totalProducts`:
   ```ts
   const [{ products: trendingProducts, totalPages: trendingTotalPages, totalProducts }, categories] = ...
   ```
 
-- [ ] **Step 4 — Add `totalProducts` to `HubHomeContentProps`**  
+- [x] **Step 4 — Add `totalProducts` to `HubHomeContentProps`**  
   In `HubHomeContent.tsx`, extend the props interface:
   ```ts
   interface HubHomeContentProps {
@@ -64,7 +64,7 @@ const marketplaceStats = [
   }
   ```
 
-- [ ] **Step 5 — Update the stats array**  
+- [x] **Step 5 — Update the stats array**  
   Replace the hardcoded count with the real total:
   ```ts
   const marketplaceStats = [
@@ -79,7 +79,7 @@ const marketplaceStats = [
   ];
   ```
 
-- [ ] **Step 6 — Pass the prop at the call site**  
+- [x] **Step 6 — Pass the prop at the call site**  
   In `hub/page.tsx` where `<HubHomeContent>` is rendered (line ~191):
   ```tsx
   <HubHomeContent
@@ -90,12 +90,12 @@ const marketplaceStats = [
   />
   ```
 
-- [ ] **Step 7 — Test**  
+- [x] **Step 7 — Test**  
   - Seed the DB with more than 16 products.  
   - Visit `/hub` and confirm the stat shows the actual total, not 16.  
   - With 0 products, confirm it shows `0+` gracefully.
 
-- [ ] **Step 8 — Commit**  
+- [x] **Step 8 — Commit**  
   ```
   git add frontend/src/app/hub/page.tsx frontend/src/components/hub/HubHomeContent.tsx
   git commit -m "fix(hub): show real total product count in hero stats instead of page-1 count"

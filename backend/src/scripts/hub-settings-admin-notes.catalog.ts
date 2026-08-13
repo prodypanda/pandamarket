@@ -239,6 +239,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['No badge is rendered for an empty cart.', 'A persisted non-zero count appears once without flashing `0`.', 'The cart link remains keyboard accessible and its accessible name communicates the final count.', 'No hydration warning or layout shift is introduced.'],
     related: ['LA-02 — accessible names and states for icon controls.', 'HH-06 — authentication-dependent navbar hydration.'],
     tags: ['bug', 'hub', 'navbar', 'cart', 'hydration'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-02', folder: FOLDERS.hub, sortOrder: 2,
@@ -253,6 +254,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['The displayed total equals the API aggregate when the catalog has more than one page.', 'Changing page size does not change the statistic.', 'Missing/failed metadata never produces a fabricated count.', 'All layouts that show product totals consume the same authoritative field.'],
     related: ['HR-01 — fetch failures must not become valid-looking empty content.', 'HC-01 — shared settings/data capability matrix.'],
     tags: ['bug', 'hub', 'hero', 'stats', 'api-contract'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-03', folder: FOLDERS.hub, sortOrder: 3,
@@ -1078,7 +1080,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-07', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-07', 'HH-01', 'HH-02', 'HH-12', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

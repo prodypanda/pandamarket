@@ -33,6 +33,7 @@ interface CartContextType {
   getItemCount: () => number;
   getItemsByStore: () => Record<string, { store_name: string; items: CartItem[] }>;
   syncToServer: (email?: string, phone?: string) => Promise<void>;
+  isHydrated: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -231,6 +232,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       getItemCount,
       getItemsByStore,
       syncToServer,
+      isHydrated,
     }),
     [
       items,
@@ -249,6 +251,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       getItemCount,
       getItemsByStore,
       syncToServer,
+      isHydrated,
     ],
   );
 

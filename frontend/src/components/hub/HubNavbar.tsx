@@ -40,7 +40,7 @@ interface MarketplaceSettings {
 
 export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogoLightUrl, marketplaceLogoDarkUrl, marketplaceTheme, showInstantChat = true }: HubNavbarProps) {
   const { t } = useLocale();
-  const { getItemCount } = useCart();
+  const { getItemCount, isHydrated } = useCart();
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const resolvedMarketplaceName = marketplaceName || marketplaceSettings.marketplace_name || 'PandaMarket';
   const resolvedMarketplaceLogoUrl = normalizePublicAssetUrl(marketplaceLogoUrl || marketplaceSettings.marketplace_logo_url);
@@ -190,11 +190,20 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
             <Link href="/hub/messages" className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
               <MessageSquare className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <Link href="/hub/cart" className={`flex items-center transition-colors relative ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
+            <Link
+              href="/hub/cart"
+              aria-label={isHydrated && cartCount > 0 ? `Cart — ${cartCount} ${cartCount === 1 ? 'item' : 'items'}` : 'Cart'}
+              className={`flex items-center transition-colors relative ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}
+            >
               <ShoppingBag className="w-5 h-5" strokeWidth={1.75} />
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                {cartCount}
-              </span>
+              {isHydrated && cartCount > 0 && (
+                <span
+                  className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center pointer-events-none"
+                  aria-hidden="true"
+                >
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>
