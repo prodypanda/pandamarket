@@ -1,0 +1,88 @@
+﻿// ═══════════════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function insertNotes(
+  adminId: string,
+  folderId: string,
+  notes: NoteInput[],
+  prefix: string,
+) {
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    const noteId = pdId('anote');
+    await run(
+      `INSERT INTO admin_notes
+         (id, admin_id, folder_id, type, title, content, content_format,
+          color, priority, is_pinned, tags, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [noteId, adminId, folderId, 'note', note.title, note.content, 'markdown',
+       note.color, note.priority, note.is_pinned, note.tags, i + 1],
+    );
+    for (let j = 0; j < note.checklist.length; j++) {
+      await run(
+        `INSERT INTO admin_note_checklist_items (id, note_id, content, is_done, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [pdId('acl'), noteId, note.checklist[j], false, j + 1],
+      );
+    }
+    console.log(`  ✅ ${prefix}-${String(i + 1).padStart(2, '0')}: ${note.title.substring(0, 55)}…`);
+    console.log(`     └─ ${note.checklist.length} checklist items`);
+  }
+}
+
+async function main() {
+  console.log('🔌 Connecting to production Supabase DB…');
+
+  const adminRes = await run(
+    `SELECT id FROM pd_user WHERE role IN ('super_admin', 'admin') ORDER BY created_at ASC LIMIT 1`,
+  );
+  if (adminRes.rowCount === 0) { console.error('❌ No admin user found'); process.exit(1); }
+  const adminId = adminRes.rows[0].id as string;
+  console.log(`✅ Admin user: ${adminId}`);
+
+  // ── Delete old Hub + Settings folders ──────────────────────────────────
+  console.log('\n🗑️  Removing old v1 folders...');
+  await run(
+    `DELETE FROM admin_note_folders WHERE admin_id = $1
+      AND (name ILIKE '%Hub Homepage%' OR name ILIKE '%Admin Settings%' OR name ILIKE '%POC%')`,
+    [adminId],
+  );
+
+  // ── Create Hub folder ───────────────────────────────────────────────────
+  const hubFolder = await run(
+    `INSERT INTO admin_note_folders (admin_id, name, color) VALUES ($1, $2, $3) RETURNING id`,
+    [adminId, '🏠 Hub Homepage — Fixes & Improvements', '#16C784'],
+  );
+  const hubFolderId = hubFolder.rows[0].id as string;
+  console.log(`\n📁 Hub folder: ${hubFolderId}`);
+
+  // ── Create Admin Settings folder ────────────────────────────────────────
+  const settingsFolder = await run(
+    `INSERT INTO admin_note_folders (admin_id, name, color) VALUES ($1, $2, $3) RETURNING id`,
+    [adminId, '⚙️ Admin Settings — Fixes & Improvements', '#B91C1C'],
+  );
+  const settingsFolderId = settingsFolder.rows[0].id as string;
+  console.log(`📁 Settings folder: ${settingsFolderId}`);
+
+  // ── Insert Hub notes ────────────────────────────────────────────────────
+  console.log('\n📝 Inserting Hub Homepage notes (HH-01 to HH-18)...');
+  await insertNotes(adminId, hubFolderId, HUB_NOTES, 'HH');
+
+  // ── Insert Admin Settings notes ─────────────────────────────────────────
+  console.log('\n📝 Inserting Admin Settings notes (AS-01 to AS-20)...');
+  await insertNotes(adminId, settingsFolderId, AS_NOTES, 'AS');
+
+  console.log('\n🎉 All done!');
+  console.log(`   ${HUB_NOTES.length} Hub notes + ${AS_NOTES.length} Admin Settings notes inserted.`);
+  console.log('   Open the superadmin dashboard → Admin Notes to see them.');
+
+  await pool.end();
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error('❌ Fatal error:', err);
+  pool.end().catch(() => {});
+  process.exit(1);
+});
