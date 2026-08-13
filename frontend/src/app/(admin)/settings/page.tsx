@@ -1325,8 +1325,8 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setError('');
     try {
-      const payload = buildSettingsPayload(settings, activeTab);
-      const res = await fetchWithCsrf(`/api/pd/admin/settings/${activeTab}`, {
+      const payload = buildSettingsPayload(settings);
+      const res = await fetchWithCsrf(`/api/pd/admin/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
