@@ -157,11 +157,11 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
           {lightningDeals.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group w-44 shrink-0 rounded-lg border border-gray-200 bg-white p-3 transition hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-gray-100">
-                <span className="absolute start-2 top-2 z-10 rounded px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: '#cc0c39' }}>{t('hub.deal') || 'Deal'}</span>
+                <span className="absolute start-2 top-2 z-10 rounded px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: '#cc0c39' }}>{String('hub.deal') || 'Deal'}</span>
                 {getProductImage(product) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'large')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
@@ -351,7 +351,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 {getProductImage(product as HomeProduct) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product as HomeProduct), 'medium')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>

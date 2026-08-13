@@ -16,24 +16,27 @@
     "test:e2e:chromium": "playwright test --project=chromium"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.7.1",
     "@pandamarket/types": "*",
+    "@tailwindcss/oxide": "4.2.4",
     "dompurify": "^3.4.2",
     "grapesjs": "^0.22.16",
     "grapesjs-blocks-basic": "^1.0.2",
+    "lightningcss": "^1.32.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.85.0",
     "socket.io-client": "^4.8.3",
-    "lightningcss": "^1.32.0",
-    "@tailwindcss/oxide": "4.2.4"
+    "zod": "^4.4.2"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "^1.32.0",
-    "lightningcss-win32-x64-msvc": "^1.32.0",
     "@tailwindcss/oxide-linux-x64-gnu": "4.2.4",
-    "@tailwindcss/oxide-win32-x64-msvc": "4.2.4"
+    "@tailwindcss/oxide-win32-x64-msvc": "4.2.4",
+    "lightningcss-linux-x64-gnu": "^1.32.0",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

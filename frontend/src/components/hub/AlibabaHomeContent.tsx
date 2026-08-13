@@ -406,11 +406,11 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
           {dealProducts.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group rounded-2xl border border-gray-100 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
-                <span className="absolute start-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>{t('hub.deal') || 'Deal'}</span>
+                <span className="absolute start-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>{String('hub.deal') || 'Deal'}</span>
                 {getProductImage(product) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
@@ -451,7 +451,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
               {getProductImage(product) ? (
                 <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{t('hub.noImage') || 'No image'}</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
               )}
             </div>
             <div className="p-3">
@@ -937,7 +937,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                       </div>
                       <div>
                         <p className="text-[11px] font-black leading-tight">{i18n.tradeAssuranceVerified}</p>
-                        <p className="text-[9.5px] font-medium text-white/60">{t('hub.alibaba.protection') || 'On-time delivery & quality protection'}</p>
+                        <p className="text-[9.5px] font-medium text-white/60">{String('hub.alibaba.protection') || 'On-time delivery & quality protection'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1">
@@ -946,7 +946,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                       </div>
                       <div>
                         <p className="text-[11px] font-black leading-tight">{i18n.verifiedSuppliers}</p>
-                        <p className="text-[9.5px] font-medium text-white/60">{t('hub.alibaba.capacity') || 'Verified factory OEM/ODM capacity'}</p>
+                        <p className="text-[9.5px] font-medium text-white/60">{String('hub.alibaba.capacity') || 'Verified factory OEM/ODM capacity'}</p>
                       </div>
                     </div>
                   </div>
