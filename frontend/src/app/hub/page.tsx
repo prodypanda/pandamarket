@@ -103,8 +103,9 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
     const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
+      const revalidateSec = parseInt(process.env.HUB_PRODUCT_REVALIDATE_SECONDS || '300', 10);
       res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
-        next: { revalidate: 120 },
+        next: { revalidate: revalidateSec, tags: ['hub_products'] },
         signal: controller.signal,
       });
     } finally {

@@ -48,7 +48,7 @@ const attachmentSchema = z.object({
   file_name: z.string().trim().min(1).max(255),
   mime_type: z.string().trim().min(3).max(127),
   file_size_bytes: z.coerce.number().int().min(0).max(25 * 1024 * 1024),
-  file_url: z.string().trim().url().max(2000),
+  file_url: z.string().trim().max(2000),
   message_id: z.string().trim().min(3).max(64).optional(),
 });
 

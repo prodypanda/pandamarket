@@ -54,6 +54,20 @@ export const createStoreSchema = z.object({
   plan: z.string().optional().transform((value) => (value ? normalizePlanId(value) : undefined)),
 });
 
+export const urlOrPathSchema = z.string().refine(
+  (val) => {
+    if (!val) return true;
+    if (val.startsWith('/') || val.startsWith('data:image/')) return true;
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: 'Invalid URL or path' },
+);
+
 export const updateStoreSettingsSchema = z.object({
   colors: z
     .object({
@@ -62,10 +76,10 @@ export const updateStoreSettingsSchema = z.object({
       accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     })
     .optional(),
-  logo_url: z.string().url().optional(),
-  logo_light_url: z.string().url().optional(),
-  logo_dark_url: z.string().url().optional(),
-  favicon_url: z.string().url().optional(),
+  logo_url: urlOrPathSchema.optional(),
+  logo_light_url: urlOrPathSchema.optional(),
+  logo_dark_url: urlOrPathSchema.optional(),
+  favicon_url: urlOrPathSchema.optional(),
   store_name: z.string().max(150).optional(),
   store_description: z.string().max(1000).optional(),
   social: z
@@ -116,7 +130,7 @@ export const updateProductSchema = createProductSchema.partial().extend({
 });
 
 export const addProductImageSchema = z.object({
-  url: z.string().url(),
+  url: urlOrPathSchema,
   alt_text: z.string().max(200).optional(),
   is_thumbnail: z.boolean().optional(),
 });
@@ -163,7 +177,7 @@ export const cancelOrderSchema = z.object({
 
 export const uploadMandatSchema = z.object({
   order_id: z.string().min(1),
-  image_url: z.string().url(),
+  image_url: urlOrPathSchema,
   amount_expected: z.number().min(0),
 });
 
@@ -190,8 +204,8 @@ export const updatePayoutModeSchema = z.object({
 // =====================================================
 
 export const submitKycSchema = z.object({
-  rc_document_url: z.string().url(),
-  cin_document_url: z.string().url(),
+  rc_document_url: urlOrPathSchema,
+  cin_document_url: urlOrPathSchema,
   phone_number: z.string().min(6).max(30),
 });
 
@@ -214,7 +228,7 @@ export const upgradePlanSchema = z.object({
 // =====================================================
 
 export const aiCompressSchema = z.object({
-  image_url: z.string().url(),
+  image_url: urlOrPathSchema,
   product_id: z.string().optional(),
 });
 
@@ -232,7 +246,7 @@ export const createReportSchema = z.object({
   order_id: z.string().optional(),
   category: z.string().max(40).optional(),
   reason: z.string().min(10).max(2000),
-  evidence_urls: z.array(z.string().url()).max(10).optional(),
+  evidence_urls: z.array(urlOrPathSchema).max(10).optional(),
 });
 
 export const updateReportStatusSchema = z.object({
@@ -241,7 +255,7 @@ export const updateReportStatusSchema = z.object({
 });
 
 export const reportAttachmentInputSchema = z.object({
-  file_url: z.string().url().optional(),
+  file_url: urlOrPathSchema.optional(),
   file_key: z.string().min(1).max(1024).optional(),
   file_name: z.string().min(1).max(255),
   content_type: z.string().min(1).max(120),

@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { asyncHandler, requireAdmin, requireAuth, requireRole, requireStore, validate } from '../middlewares';
 import { chatService } from '../services/chat.service';
 
+import { urlOrPathSchema } from '../validators';
+
 const router = Router();
 
 const attachmentSchema = z.object({
-  file_url: z.string().url().nullable().optional(),
+  file_url: urlOrPathSchema.nullable().optional(),
   file_key: z.string().max(500).nullable().optional(),
   file_name: z.string().trim().min(1).max(255),
   content_type: z.string().trim().min(1).max(120),

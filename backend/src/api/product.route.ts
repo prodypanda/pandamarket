@@ -9,6 +9,8 @@ import { ProductType, ProductStatus, SellerType } from '@pandamarket/types';
 import { pdId } from '../utils/crypto';
 import { PdValidationError } from '../errors';
 
+import { urlOrPathSchema } from '../validators';
+
 const router = Router();
 
 const createProductSchema = z.object({
@@ -23,7 +25,7 @@ const createProductSchema = z.object({
   price: z.number().min(0),
   inventory_quantity: z.number().min(0).optional(),
   weight_grams: z.number().min(0).optional(),
-  thumbnail: z.string().url().nullable().optional(),
+  thumbnail: urlOrPathSchema.nullable().optional(),
   seo_title: z.string().max(200).nullable().optional(),
   seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
@@ -57,7 +59,7 @@ const createProductSchema = z.object({
 const updateProductSchema = createProductSchema.partial();
 
 const addProductImageSchema = z.object({
-  url: z.string().url(),
+  url: urlOrPathSchema,
   alt_text: z.string().max(200).optional(),
   is_thumbnail: z.boolean().optional(),
 });

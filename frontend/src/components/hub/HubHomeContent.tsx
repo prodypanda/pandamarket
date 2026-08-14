@@ -3,7 +3,8 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, BadgeCheck, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Pause, Play, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Truck, Zap } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Check, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Pause, Play, Search, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Store, Truck, Zap } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
@@ -73,6 +74,29 @@ function getProductImage(product: Product) {
 
 function ProductCard({ product, currency }: { product: Product; currency: string }) {
   const image = getProductImage(product);
+  const { addToCart } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({
+      product_id: product.id,
+      title: product.title,
+      slug: product.slug,
+      category: product.category,
+      marketplace_category_slug: product.marketplace_category_slug,
+      price: typeof product.price === 'number' ? product.price : Number(product.price) || 0,
+      base_price: typeof product.price === 'number' ? product.price : Number(product.price) || 0,
+      quantity: 1,
+      store_id: product.id,
+      store_name: product.store_name || 'PandaMarket Store',
+      store_subdomain: product.store_subdomain,
+      image_url: image || null,
+    });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
 
   return (
     <Link
@@ -102,13 +126,32 @@ function ProductCard({ product, currency }: { product: Product; currency: string
           <p className="mb-1 truncate text-xs font-semibold text-[#16C784]">{product.store_name}</p>
         )}
         <h3 className="mb-3 line-clamp-2 min-h-[40px] font-bold text-gray-900 dark:text-white">{product.title}</h3>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-black text-[#16C784]">
             {formatPrice(product.price)} {currency}
           </span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors group-hover:bg-[#16C784] group-hover:text-white dark:bg-gray-800 dark:text-gray-400">
-            <ArrowRight className="h-4 w-4" />
-          </span>
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            aria-label={`Ajouter ${product.title} au panier`}
+            className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-all shadow-sm ${
+              added
+                ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                : 'bg-[#16C784] text-white hover:bg-[#13b074] shadow-emerald-500/20'
+            }`}
+          >
+            {added ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Ajouté</span>
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="h-3.5 w-3.5" />
+                <span>Panier</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </Link>

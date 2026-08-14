@@ -212,26 +212,30 @@ async function bootstrap() {
   app.use(['/pd-product-images', '/pd-themes'], async (req, res, next) => {
     try {
       const bucket = req.baseUrl.replace(/^\//, '');
-      const key = req.path.replace(/^\//, '');
-      const blobKey = `${bucket}/${key}`;
+      let cleanKey = req.path.replace(/^\//, '');
+      if (cleanKey.startsWith(`${bucket}/`)) {
+        cleanKey = cleanKey.substring(bucket.length + 1);
+      }
+      const key1 = `${bucket}/${cleanKey}`;
+      const key2 = cleanKey;
 
-      // 1. Try direct exact match in pd_file_blobs
+      // 1. Try direct exact match in pd_file_blobs (with or without bucket prefix)
       const { rows } = await query<{ content_type: string; data: Buffer }>(
-        'SELECT content_type, data FROM pd_file_blobs WHERE key = $1',
-        [blobKey],
+        'SELECT content_type, data FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1',
+        [key1, key2],
       );
 
       if (rows.length > 0) {
-        const filePath = path.join(getDataDir(), bucket, key);
+        const filePath = path.join(getDataDir(), bucket, cleanKey);
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
         await fs.promises.writeFile(filePath, rows[0].data);
-        res.setHeader('Content-Type', rows[0].content_type);
+        res.setHeader('Content-Type', rows[0].content_type || 'image/jpeg');
         res.send(rows[0].data);
         return;
       }
 
       // 2. Try on-the-fly size variant generation if a preset suffix was requested
-      const generated = await imageVariantService.getOrGenerateVariantOnTheFly(bucket, key);
+      const generated = await imageVariantService.getOrGenerateVariantOnTheFly(bucket, cleanKey);
       if (generated) {
         res.setHeader('Content-Type', generated.contentType);
         res.send(generated.buffer);

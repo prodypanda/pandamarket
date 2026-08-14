@@ -436,6 +436,7 @@ router.get(
     res.status(200).json({ data: activity, ...activity });
   }),
 );
+import { urlOrPathSchema } from '../validators';
 
 const assetListQuerySchema = z.object({
   type: z.enum(['image', 'document']).optional(),
@@ -444,7 +445,7 @@ const assetListQuerySchema = z.object({
 });
 
 const registerAssetSchema = z.object({
-  url: z.string().url(),
+  url: urlOrPathSchema,
   file_key: z.string().min(1).max(500),
   bucket: z.string().min(1).max(120),
   filename: z.string().min(1).max(255),
@@ -3372,36 +3373,45 @@ router.get(
     const items = await Promise.all(
       result.rows.map(async (row: any) => {
         const rawKey = row.key as string;
-        const pathParts = rawKey.split('/');
+        let cleanKey = rawKey;
+        if (cleanKey.startsWith(`${row.bucket}/`)) {
+          cleanKey = cleanKey.substring(row.bucket.length + 1);
+        }
+        const pathParts = cleanKey.split('/');
 
         let folder = 'general';
         if (
+          pathParts.length >= 2 &&
+          ['categories', 'branding', 'banners', 'general'].includes(pathParts[1])
+        ) {
+          folder = pathParts[1];
+        } else if (
           pathParts.length >= 3 &&
           ['categories', 'branding', 'banners', 'general'].includes(pathParts[2])
         ) {
           folder = pathParts[2];
         } else if (
-          rawKey.toLowerCase().includes('category') ||
-          rawKey.toLowerCase().includes('cat_') ||
-          rawKey.toLowerCase().includes('marketplace/pd_user_')
+          cleanKey.toLowerCase().includes('category') ||
+          cleanKey.toLowerCase().includes('cat_') ||
+          cleanKey.toLowerCase().includes('marketplace/pd_user_')
         ) {
           folder = 'categories';
         } else if (
-          rawKey.toLowerCase().includes('logo') ||
-          rawKey.toLowerCase().includes('favicon') ||
-          rawKey.toLowerCase().includes('brand')
+          cleanKey.toLowerCase().includes('logo') ||
+          cleanKey.toLowerCase().includes('favicon') ||
+          cleanKey.toLowerCase().includes('brand')
         ) {
           folder = 'branding';
         } else if (
-          rawKey.toLowerCase().includes('banner') ||
-          rawKey.toLowerCase().includes('hero') ||
-          rawKey.toLowerCase().includes('slide')
+          cleanKey.toLowerCase().includes('banner') ||
+          cleanKey.toLowerCase().includes('hero') ||
+          cleanKey.toLowerCase().includes('slide')
         ) {
           folder = 'banners';
         }
 
-        const filename = row.asset_filename || pathParts[pathParts.length - 1] || rawKey;
-        const url = `/${row.bucket}/${rawKey}`;
+        const filename = row.asset_filename || pathParts[pathParts.length - 1] || cleanKey;
+        const url = `/${row.bucket}/${cleanKey}`;
         let width: number | null = null;
         let height: number | null = null;
 
@@ -3416,7 +3426,7 @@ router.get(
         }
 
         return {
-          key: rawKey,
+          key: cleanKey,
           url,
           filename,
           folder,
@@ -3469,9 +3479,10 @@ router.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { key, new_filename } = req.body;
 
-    const findResult = await query('SELECT key, content_type FROM pd_file_blobs WHERE key = $1', [
-      key,
-    ]);
+    const findResult = await query(
+      'SELECT key, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1',
+      [key, `pd-product-images/${key}`],
+    );
     if (findResult.rows.length === 0) {
       throw new PdValidationError('Media asset not found in database');
     }
@@ -3524,14 +3535,15 @@ router.delete(
     const { baseKeyWithoutExt } = imageVariantService.getBaseKeyAndExtension(key);
     const variants = ['thumbnail', 'small', 'medium', 'large'].map(p => `${baseKeyWithoutExt}_${p}.webp`);
     const allKeysToDelete = [key, ...variants];
+    const prefixedKeys = allKeysToDelete.map((k) => `pd-product-images/${k}`);
 
-    await query('DELETE FROM pd_file_blobs WHERE key = ANY($1)', [allKeysToDelete]);
+    await query('DELETE FROM pd_file_blobs WHERE key = ANY($1) OR key = ANY($2)', [allKeysToDelete, prefixedKeys]);
     await query(
       'DELETE FROM pd_file_asset WHERE file_key = $1 OR file_key LIKE $2 OR url LIKE $2',
       [key, `%${key}%`],
     );
 
-    for (const k of allKeysToDelete) {
+    for (const k of [...allKeysToDelete, ...prefixedKeys]) {
       try {
         const diskPath = path.join(resolveDataPath(), k);
         if (fs.existsSync(diskPath)) {
@@ -3567,9 +3579,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { key, quality, maxWidth, format } = req.body;
 
-    const findResult = await query('SELECT data, content_type FROM pd_file_blobs WHERE key = $1', [
-      key,
-    ]);
+    const findResult = await query(
+      'SELECT data, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1',
+      [key, `pd-product-images/${key}`],
+    );
     if (findResult.rows.length === 0) {
       throw new PdValidationError('Media asset not found in database');
     }

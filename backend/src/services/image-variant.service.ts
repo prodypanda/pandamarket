@@ -198,16 +198,23 @@ export class ImageVariantService {
       return null;
     }
 
+    let cleanBase = baseKeyWithoutExt;
+    if (cleanBase.startsWith(`${bucket}/`)) {
+      cleanBase = cleanBase.substring(bucket.length + 1);
+    }
+
     // Try finding the original file blob in database under common original extensions
     const candidateKeys = [
-      `${bucket}/${baseKeyWithoutExt}.jpg`,
-      `${bucket}/${baseKeyWithoutExt}.jpeg`,
-      `${bucket}/${baseKeyWithoutExt}.png`,
-      `${bucket}/${baseKeyWithoutExt}.webp`,
-      `${bucket}/${baseKeyWithoutExt}.gif`,
-      `${baseKeyWithoutExt}.jpg`,
-      `${baseKeyWithoutExt}.png`,
-      `${baseKeyWithoutExt}.webp`,
+      `${bucket}/${cleanBase}.jpg`,
+      `${bucket}/${cleanBase}.jpeg`,
+      `${bucket}/${cleanBase}.png`,
+      `${bucket}/${cleanBase}.webp`,
+      `${bucket}/${cleanBase}.gif`,
+      `${cleanBase}.jpg`,
+      `${cleanBase}.jpeg`,
+      `${cleanBase}.png`,
+      `${cleanBase}.webp`,
+      `${cleanBase}.gif`,
     ];
 
     const { rows } = await query<{ data: Buffer }>(
@@ -221,18 +228,23 @@ export class ImageVariantService {
       return null;
     }
 
+    let cleanRequestedKey = requestedKey;
+    if (cleanRequestedKey.startsWith(`${bucket}/`)) {
+      cleanRequestedKey = cleanRequestedKey.substring(bucket.length + 1);
+    }
+
     const originalBuffer = rows[0].data;
-    const summary = await this.generateVariantsForBuffer(originalBuffer, bucket, requestedKey);
+    const summary = await this.generateVariantsForBuffer(originalBuffer, bucket, cleanRequestedKey);
 
     if (!summary.success) {
       return null;
     }
 
     // Return the generated variant blob from DB
-    const variantBlobKey = `${bucket}/${requestedKey}`;
+    const variantBlobKey = `${bucket}/${cleanRequestedKey}`;
     const { rows: variantRows } = await query<{ data: Buffer; content_type: string }>(
       `SELECT data, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2 LIMIT 1`,
-      [variantBlobKey, requestedKey],
+      [variantBlobKey, cleanRequestedKey],
     );
 
     if (variantRows.length > 0) {

@@ -74,13 +74,15 @@ const updatePaymentConfigSchema = z.object({
   konnect_receiver_wallet: z.string().optional(),
 });
 
+import { urlOrPathSchema } from '../validators';
+
 const storefrontCategorySchema = z.object({
-  name: z.string().min(2).max(120),
-  parent_id: z.string().nullable().optional(),
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(120),
   description: z.string().max(1000).nullable().optional(),
   short_description: z.string().max(255).nullable().optional(),
   long_description: z.string().max(5000).nullable().optional(),
-  image_url: z.string().url().nullable().optional(),
+  image_url: urlOrPathSchema.nullable().optional(),
   position: z.number().int().optional(),
 });
 
@@ -100,7 +102,7 @@ const storeProductSchema = z.object({
   price: z.number().min(0),
   inventory_quantity: z.number().min(0).optional(),
   weight_grams: z.number().min(0).optional(),
-  thumbnail: z.string().url().nullable().optional(),
+  thumbnail: urlOrPathSchema.nullable().optional(),
   seo_title: z.string().max(200).nullable().optional(),
   seo_description: z.string().max(300).nullable().optional(),
   tags: z.array(z.string()).optional(),
@@ -135,7 +137,7 @@ const storeProductSchema = z.object({
 const updateStoreProductSchema = storeProductSchema.partial();
 
 const storeProductImageSchema = z.object({
-  url: z.string().url(),
+  url: urlOrPathSchema,
   alt_text: z.string().max(200).optional(),
   is_thumbnail: z.boolean().optional(),
 });
