@@ -5,6 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
 import { HomepageBlocksEditor } from '@/components/admin/HomepageBlocksEditor';
 import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
+import { HubAppearancePreviewLab } from '@/components/admin/HubAppearancePreviewLab';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
@@ -1502,6 +1503,7 @@ export default function SuperAdminSettingsPage() {
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'published' | 'failed'>('idle');
   const [lastSavedAuditInfo, setLastSavedAuditInfo] = useState<{ section: string; keys: string[]; timestamp: number } | null>(null);
+  const [isPreviewLabOpen, setIsPreviewLabOpen] = useState(false);
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -2625,12 +2627,21 @@ export default function SuperAdminSettingsPage() {
         </div>
       </section>
 
-      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
-        <SectionHeader
-          icon={<ImageIcon className="h-5 w-5" />}
-          title="Hub Homepage and Catalog"
-          description="Configure homepage layout, hero banner copy, featured category order, and the default product sort."
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <SectionHeader
+            icon={<ImageIcon className="h-5 w-5" />}
+            title="Hub Homepage and Catalog"
+            description="Configure homepage layout, hero banner copy, featured category order, and the default product sort."
+          />
+          <button
+            type="button"
+            onClick={() => setIsPreviewLabOpen(true)}
+            className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition shrink-0"
+          >
+            <Eye className="h-4 w-4" />
+            <span>Launch Appearance & a11y Lab</span>
+          </button>
+        </div>
         {/* Visual Homepage Layout Selector (AS-11) */}
         <div className="space-y-3">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Homepage Layout Visual Selector</label>
@@ -3982,6 +3993,15 @@ export default function SuperAdminSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Hub Appearance & Accessibility Lab (PI-01, PI-03) */}
+      <HubAppearancePreviewLab
+        settings={settings}
+        isOpen={isPreviewLabOpen}
+        onClose={() => setIsPreviewLabOpen(false)}
+        onPublishLive={handleSave}
+        isSaving={saving}
+      />
     </div>
   );
 }
