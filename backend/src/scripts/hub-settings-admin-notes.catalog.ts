@@ -344,6 +344,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Simple eligible products can be added from every supported layout.', 'Variant products never add an arbitrary variant.', 'Unavailable products present a truthful disabled/view-details state.', 'Card and action remain valid semantic, keyboard, touch, and screen-reader controls.', 'Cart count and line items update once per successful action.'],
     related: ['HH-01 — stable cart badge.', 'HC-01 — cross-layout capability parity.'],
     tags: ['enhancement', 'hub', 'cart', 'conversion', 'variants'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-09', folder: FOLDERS.hub, sortOrder: 9,
@@ -464,6 +465,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Each data type has a documented freshness target and fallback TTL.', 'Successful relevant mutations trigger scoped invalidation.', 'The admin UI distinguishes “saved” from “published/propagated.”', 'Transient invalidation failure is retried or clearly actionable.'],
     related: ['HR-02 — settings save/revalidation outcome.', 'PI-01 — draft/publish/rollback workflow.'],
     tags: ['improvement', 'hub', 'cache', 'revalidation', 'freshness'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-17', folder: FOLDERS.hub, sortOrder: 17,
@@ -1098,7 +1100,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-17', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

@@ -29,44 +29,12 @@ res = await fetch(`${backendUrl}/api/pd/categories?locale=...`, {
 
 ## Improvement Checklist
 
-- [ ] **Step 1 — Increase the products ISR revalidation interval**  
-  Change line 103:
-  ```ts
-  // BEFORE
-  next: { revalidate: 120 },
-
-  // AFTER — 5 minutes, aligned with categories
-  next: { revalidate: 300 },
-  ```
-
-- [ ] **Step 2 — Consider making this configurable via environment variable**  
-  If deployment needs differ (high-traffic vs. low-traffic), expose the revalidation interval:
-  ```ts
-  const PRODUCT_REVALIDATE_SECONDS = parseInt(process.env.HUB_PRODUCT_REVALIDATE_SECONDS ?? '300', 10);
-
-  res = await fetch(`...`, {
-    next: { revalidate: PRODUCT_REVALIDATE_SECONDS },
-  });
-  ```
-
-- [ ] **Step 3 — Add an on-demand revalidation trigger for product updates**  
-  Instead of relying only on time-based ISR, add a webhook that triggers revalidation when a product is published/updated.  
-  - In the backend, after a product is published (`product.status = 'active'`), call:
-    ```ts
-    fetch(`${FRONTEND_URL}/api/marketplace/revalidate`, { method: 'POST', ... });
-    ```
-  - The frontend already has the `/api/marketplace/revalidate` route (used in admin settings save).
-
-- [ ] **Step 4 — Verify the revalidation endpoint exists and works**  
-  Open `frontend/src/app/api/marketplace/revalidate/route.ts` (or equivalent).  
-  Confirm it calls `revalidatePath('/hub')` and requires authentication.
-
-- [ ] **Step 5 — Test ISR behavior**  
-  - Publish a new product.  
-  - Without triggering revalidation, wait up to 300s → product appears on `/hub`.  
-  - With on-demand revalidation triggered → product appears within seconds.
-
-- [ ] **Step 6 — Commit**  
+- [x] **Step 1 — Increase the products ISR revalidation interval**  
+- [x] **Step 2 — Support HUB_PRODUCT_REVALIDATE_SECONDS environment variable**  
+- [x] **Step 3 — Add cache tags and verify on-demand revalidation trigger**  
+- [x] **Step 4 — Verify the revalidation endpoint exists and works**  
+- [x] **Step 5 — Test ISR behavior**  
+- [x] **Step 6 — Commit**  
   ```
   git add frontend/src/app/hub/page.tsx
   git commit -m "perf(hub): increase ISR revalidate from 120s to 300s to reduce unnecessary backend polling"
