@@ -98,10 +98,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // @ts-ignore - NextConfig in this canary version doesn't include eslint but it is still processed
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;
