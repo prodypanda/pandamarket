@@ -36,6 +36,14 @@ function adsSession() {
   return value;
 }
 
+interface AdCacheItem {
+  promise: Promise<{ ads: Ad[] }>;
+  timestamp: number;
+}
+
+const adDeliveryCache = new Map<string, AdCacheItem>();
+const AD_DELIVERY_TTL_MS = 60_000;
+
 export function SponsoredAdsRail({
   placement = 'hub.sponsored_products',
   title = 'Sponsored',
@@ -54,8 +62,7 @@ export function SponsoredAdsRail({
   const [activeIndex, setActiveIndex] = useState(0);
   const viewed = useRef(new Set<string>());
   const timers = useRef(new Map<string, number>());
-
-const adFetchCache = new Map<string, Promise<any>>();
+  const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const device = window.matchMedia('(max-width: 767px)').matches ? 'mobile' : 'desktop';
@@ -65,16 +72,22 @@ const adFetchCache = new Map<string, Promise<any>>();
     if (category) params.set('category', category);
     
     const url = `/api/pd/ads/public/delivery?${params}`;
-    if (!adFetchCache.has(url)) {
-      adFetchCache.set(url, fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : { ads: [] })));
+    const cached = adDeliveryCache.get(url);
+    const isExpired = cached && Date.now() - cached.timestamp > AD_DELIVERY_TTL_MS;
+
+    if (!cached || isExpired) {
+      const fetchPromise = fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : { ads: [] }));
+      adDeliveryCache.set(url, { promise: fetchPromise, timestamp: Date.now() });
     }
     
-    adFetchCache.get(url)
+    const entry = adDeliveryCache.get(url);
+    entry?.promise
       ?.then((d) => {
         setAds(d.ads || []);
         setLoading(false);
       })
       .catch(() => {
+        adDeliveryCache.delete(url);
         setAds([]);
         setLoading(false);
       });
@@ -89,7 +102,7 @@ const adFetchCache = new Map<string, Promise<any>>();
     return () => clearInterval(interval);
   }, [variant, ads.length]);
 
-  // Impression observer
+  // Impression observer scoped to railRef
   useEffect(() => {
     if (!ads.length || !('IntersectionObserver' in window)) return;
     const observer = new IntersectionObserver(
@@ -121,7 +134,9 @@ const adFetchCache = new Map<string, Promise<any>>();
         }),
       { threshold: [0, 0.5, 1] }
     );
-    document.querySelectorAll('[data-sponsored-ad]').forEach((el) => observer.observe(el));
+    if (railRef.current) {
+      railRef.current.querySelectorAll('[data-sponsored-ad]').forEach((el) => observer.observe(el));
+    }
     return () => {
       observer.disconnect();
       timers.current.forEach((timer) => window.clearTimeout(timer));
@@ -157,7 +172,7 @@ const adFetchCache = new Map<string, Promise<any>>();
   if (variant === 'banner') {
     const currentAd = ads[activeIndex % ads.length];
     return (
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <section ref={railRef} className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
           <Link
             data-sponsored-ad
@@ -239,7 +254,7 @@ const adFetchCache = new Map<string, Promise<any>>();
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <section ref={railRef} className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center gap-2">
         <Megaphone className="h-5 w-5 text-amber-600" />
         <h2 className="text-xl font-black text-slate-900">{title}</h2>

@@ -9,7 +9,7 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -2378,6 +2378,16 @@ export default function SuperAdminSettingsPage() {
         </div>
       </section>
 
+      {/* Marketplace Theme & Aesthetic (AS-09) */}
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<Palette className="h-5 w-5" />}
+          title="Marketplace Theme & Aesthetic"
+          description="Select the visual design preset and skin that dictates homepage typography, badge styling, and layout defaults."
+        />
+        {renderMarketplaceThemeSelector()}
+      </section>
+
       <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <SectionHeader
           icon={<Store className="h-5 w-5" />}
@@ -2718,6 +2728,37 @@ export default function SuperAdminSettingsPage() {
                       Remove
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Live Promotional Banner Preview (AS-08) */}
+          <div className="md:col-span-2 space-y-2 rounded-2xl border border-slate-200 bg-stone-50 p-5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700">Live Banner Preview (AS-08)</label>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Draft Preview</span>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-lg sm:p-8">
+              {settings.hub_homepage_banner_image_url && (
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
+                  style={{ backgroundImage: `url(${getResizedImageUrl(settings.hub_homepage_banner_image_url, 'large')})` }}
+                />
+              )}
+              <div className="relative z-10 max-w-lg space-y-2">
+                <span className="inline-block rounded-full bg-white/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
+                  PandaMarket Promos
+                </span>
+                <h3 className="text-xl font-black sm:text-2xl">
+                  {settings.hub_homepage_banner_title || 'Titre de votre bannière ici'}
+                </h3>
+                <p className="text-xs text-white/80 sm:text-sm">
+                  {settings.hub_homepage_banner_subtitle || 'Sous-titre explicatif et accroche commerciale'}
+                </p>
+                <div className="pt-2">
+                  <span className="inline-flex items-center gap-2 rounded-xl bg-[#16C784] px-4 py-2 text-xs font-black text-white shadow-md">
+                    {settings.hub_homepage_banner_cta_label || 'Explorer le Hub'} →
+                  </span>
                 </div>
               </div>
             </div>

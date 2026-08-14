@@ -623,6 +623,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Full preview uses production layout components and draft values without public save.', 'Admins can inspect every layout, locale, and target viewport relevant to the changed setting.', 'Unsupported controls and validation problems are visible before publish.', 'Preview access is authenticated, expires, and does not leak secrets.'],
     related: ['PI-01 — staged publish/rollback.', 'PI-03 — preview lab.', 'HC-01 — capability matrix.'],
     tags: ['enhancement', 'admin-settings', 'preview', 'hub', 'responsive'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-09', folder: FOLDERS.settings, sortOrder: 9,
@@ -637,6 +638,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['A new operator can locate a requested Hub control without scanning the full page.', 'Layout-specific controls are clearly labeled and conditionally visible/disabled with explanation.', 'Deep links/search focus the exact section.', 'Reorganization does not reset drafts or change stored values.'],
     related: ['AS-06 — functional search.', 'AS-11 — visual layout selector.', 'HC-01 — capability matrix.'],
     tags: ['improvement', 'admin-settings', 'information-architecture', 'discoverability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-10', folder: FOLDERS.settings, sortOrder: 10,
@@ -931,6 +933,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['A transient delivery failure can recover on retry/remount.', 'No rail observes another rail’s DOM nodes.', 'One qualifying view produces the intended single impression under the documented policy.', 'Cached inventory expires/invalidates within the campaign freshness target.'],
     related: ['HH-05 — placement ownership.', 'HH-09 — explicit ad states.', 'HH-11 — sponsored autoplay.'],
     tags: ['bug', 'hub', 'ads', 'cache', 'impressions', 'analytics'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'LA-01', folder: FOLDERS.localization, sortOrder: 1,
@@ -1112,7 +1115,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
