@@ -868,6 +868,106 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
   ],
 };
 
+interface SettingsSearchItem {
+  key: string;
+  tab: SettingsTab;
+  label: string;
+  description: string;
+  keywords: string[];
+}
+
+const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
+  // Marketplace & Hero
+  { key: 'marketplace_name', tab: 'marketplace', label: 'Marketplace Name', description: 'Brand and display name of the marketplace platform', keywords: ['name', 'brand', 'nom', 'title'] },
+  { key: 'marketplace_tagline', tab: 'marketplace', label: 'Marketplace Tagline', description: 'Subtitle and promotional tagline displayed in headers and metadata', keywords: ['tagline', 'slogan', 'description', 'subtitle'] },
+  { key: 'marketplace_logo_url', tab: 'marketplace', label: 'Main Logo URL', description: 'Primary logo image URL for standard light backgrounds', keywords: ['logo', 'image', 'brand', 'header'] },
+  { key: 'marketplace_logo_light_url', tab: 'marketplace', label: 'Light Logo URL', description: 'Alternative logo for dark/colored background surfaces', keywords: ['logo', 'light', 'white', 'brand'] },
+  { key: 'marketplace_logo_dark_url', tab: 'marketplace', label: 'Dark Logo URL', description: 'Alternative logo for bright/white background surfaces', keywords: ['logo', 'dark', 'black', 'brand'] },
+  { key: 'marketplace_favicon_url', tab: 'marketplace', label: 'Favicon URL', description: 'Browser tab icon image URL', keywords: ['favicon', 'icon', 'tab'] },
+  { key: 'marketplace_og_image_url', tab: 'marketplace', label: 'OpenGraph Share Image', description: 'Default banner image for social sharing previews (FB, Twitter, WhatsApp)', keywords: ['og', 'image', 'share', 'social', 'preview'] },
+  { key: 'marketplace_public_url', tab: 'marketplace', label: 'Public Canonical URL', description: 'Production public base URL of the marketplace', keywords: ['url', 'domain', 'canonical', 'link'] },
+  { key: 'marketplace_theme', tab: 'marketplace', label: 'Marketplace Visual Theme', description: 'Active marketplace design aesthetic (PandaMarket, AliExpress, AliExpress 2.0)', keywords: ['theme', 'style', 'design', 'aliexpress', 'skin'] },
+  { key: 'marketplace_primary_color', tab: 'marketplace', label: 'Primary Brand Color', description: 'Primary accent color across all Hub homepage layouts and controls', keywords: ['color', 'primary', 'brand', 'green', 'couleur', 'accent'] },
+  { key: 'marketplace_secondary_color', tab: 'marketplace', label: 'Secondary Brand Color', description: 'Secondary accent color for badges, gradients, and buttons', keywords: ['color', 'secondary', 'brand', 'couleur', 'accent'] },
+  { key: 'marketplace_default_locale', tab: 'marketplace', label: 'Default Locale', description: 'Default storefront language (French, English, Arabic)', keywords: ['language', 'locale', 'french', 'arabic', 'english', 'langue'] },
+  { key: 'marketplace_rtl_enabled', tab: 'marketplace', label: 'RTL (Right-to-Left) Support', description: 'Enable bidirectional Arabic layout support across buyer surfaces', keywords: ['rtl', 'arabic', 'direction', 'layout'] },
+  { key: 'hub_homepage_layout', tab: 'marketplace', label: 'Hub Homepage Layout', description: 'Homepage arrangement style (Classic, Deals, Premium Deals, Alibaba, Amazon)', keywords: ['layout', 'homepage', 'amazon', 'alibaba', 'deals', 'grid'] },
+  { key: 'hub_homepage_pagination_style', tab: 'marketplace', label: 'Product Pagination Mode', description: 'Choose between Infinite Scroll, Load More button, or Numeric Pagination', keywords: ['pagination', 'scroll', 'infinite', 'load more', 'pages'] },
+  { key: 'hub_megamenu_style', tab: 'marketplace', label: 'Header Mega Menu Style', description: 'Visual density and showcase mode of the header category dropdown', keywords: ['megamenu', 'menu', 'categories', 'navigation', 'dropdown'] },
+  { key: 'hub_hero_show_carousel', tab: 'marketplace', label: 'Hero Promotional Carousel', description: 'Toggle promotional hero banner carousel slider', keywords: ['carousel', 'slider', 'banner', 'hero', 'promo'] },
+  { key: 'hub_hero_show_category_sidebar', tab: 'marketplace', label: 'Hero Category Sidebar Rail', description: 'Toggle left-side quick category rail in the hero section', keywords: ['sidebar', 'category', 'rail', 'hero'] },
+  { key: 'hub_hero_show_seller_rail', tab: 'marketplace', label: 'Hero Seller Onboarding Rail', description: 'Promotional right-side widget encouraging new seller signups', keywords: ['seller', 'rail', 'onboarding', 'signup', 'vendor'] },
+  { key: 'hub_homepage_banner_title', tab: 'marketplace', label: 'Promotional Banner Title', description: 'Headline for the secondary homepage promotional banner', keywords: ['banner', 'title', 'promo', 'headline'] },
+  { key: 'hub_homepage_banner_image_url', tab: 'marketplace', label: 'Promotional Banner Image', description: 'Background asset for homepage banner', keywords: ['banner', 'image', 'promo'] },
+
+  // Commerce & Catalog
+  { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
+  { key: 'vendor_registration_enabled', tab: 'commerce', label: 'Vendor Registration Open', description: 'Allow new merchants and creators to sign up and open stores', keywords: ['vendor', 'seller', 'signup', 'registration', 'vendeur'] },
+  { key: 'buyer_registration_enabled', tab: 'commerce', label: 'Buyer Registration Open', description: 'Allow new buyers to register accounts on the platform', keywords: ['buyer', 'client', 'signup', 'registration', 'acheteur'] },
+  { key: 'product_moderation_required', tab: 'commerce', label: 'Product Moderation Queue', description: 'Require admin review before unverified seller listings go live', keywords: ['moderation', 'approval', 'review', 'products', 'validation'] },
+  { key: 'product_auto_publish_verified', tab: 'commerce', label: 'Auto-Publish for Verified Sellers', description: 'Automatically publish listings from verified and trusted merchants', keywords: ['auto publish', 'verified', 'instant'] },
+  { key: 'seller_type_change_auto_approval', tab: 'commerce', label: 'Seller Tier Upgrade Approval', description: 'Auto-approve seller tier change requests without manual review', keywords: ['seller type', 'tier', 'approval', 'upgrade'] },
+  { key: 'reviews_enabled', tab: 'commerce', label: 'Customer Reviews System', description: 'Allow verified buyers to leave ratings and text reviews', keywords: ['reviews', 'ratings', 'avis', 'commentaires', 'stars'] },
+  { key: 'wishlist_enabled', tab: 'commerce', label: 'Buyer Wishlist Feature', description: 'Allow buyers to bookmark and save favorite products', keywords: ['wishlist', 'favoris', 'bookmark', 'heart'] },
+  { key: 'ai_tools_enabled', tab: 'commerce', label: 'AI Assistant & Copilot Tools', description: 'Enable Gemini AI copywriter, SEO generator, and product enhancers for sellers', keywords: ['ai', 'gemini', 'copilot', 'generator', 'intelligence'] },
+  { key: 'page_builder_enabled', tab: 'commerce', label: 'Storefront Drag-and-Drop Page Builder', description: 'Allow merchants to design custom landing pages and visual blocks', keywords: ['page builder', 'blocks', 'landing', 'customizer'] },
+  { key: 'rewards_widget_enabled', tab: 'commerce', label: 'Gamified Rewards & Wheel Widget', description: 'Enable floating gamification wheel and scratch cards for customer retention', keywords: ['rewards', 'wheel', 'gamification', 'roulette', 'cadeau', 'prizes', 'spin'] },
+  { key: 'rewards_widget_prizes_json', tab: 'commerce', label: 'Wheel Prize Slices & Coupons', description: 'Configure wheel slices, promo coupon codes, discounts, and colors', keywords: ['rewards', 'prizes', 'coupons', 'wheel', 'slices', 'promos'] },
+  { key: 'catalog_default_sort', tab: 'commerce', label: 'Catalog Default Sort Order', description: 'Default sorting for catalog and search listings (newest, price, popularity)', keywords: ['sort', 'catalog', 'tri', 'order', 'default'] },
+  { key: 'tax_mode', tab: 'commerce', label: 'Tax Mode & Calculations', description: 'Tax display mode (tax included, tax exclusive, or none)', keywords: ['tax', 'tva', 'included', 'exclusive', 'impot'] },
+  { key: 'default_tax_rate', tab: 'commerce', label: 'Default Tax Rate (%)', description: 'Default VAT / TVA percentage rate applied to taxable catalog items', keywords: ['tax rate', 'tva', 'taux', 'percentage'] },
+  { key: 'price_rounding_mode', tab: 'commerce', label: 'Price Rounding Mode', description: 'Rounding precision for currency display and conversions', keywords: ['rounding', 'arrondi', 'price', 'precision'] },
+  { key: 'auto_cancel_unpaid_enabled', tab: 'commerce', label: 'Auto-Cancel Unpaid Orders', description: 'Automatically release stock and cancel orders unpaid within time limit', keywords: ['cancel', 'unpaid', 'timeout', 'orders', 'expiration'] },
+
+  // Finance & Payments
+  { key: 'payment_flouci_enabled', tab: 'finance', label: 'Flouci Mobile Wallet Gateway', description: 'Enable fast mobile payment and QR code checkout via Flouci Tunisia', keywords: ['flouci', 'payment', 'wallet', 'gateway', 'paiement', 'mobile'] },
+  { key: 'payment_konnect_enabled', tab: 'finance', label: 'Konnect Tunisia Payment Gateway', description: 'Accept bank cards (Carte Bancaire, e-Dinar, Visa, Mastercard) through Konnect', keywords: ['konnect', 'payment', 'carte', 'edinar', 'visa', 'mastercard'] },
+  { key: 'payment_paypal_enabled', tab: 'finance', label: 'PayPal Global Gateway', description: 'Accept international payments with automatic currency FX conversion', keywords: ['paypal', 'gateway', 'international', 'usd', 'eur'] },
+  { key: 'payment_mandat_enabled', tab: 'finance', label: 'Mandat Minute / Postal Wire', description: 'Allow offline payments via Tunisian Post (La Poste Mandat Minute)', keywords: ['mandat', 'poste', 'wire', 'postal', 'offline'] },
+  { key: 'payment_cod_enabled', tab: 'finance', label: 'Cash on Delivery (COD)', description: 'Allow buyers to pay the courier in cash upon package delivery', keywords: ['cod', 'cash', 'delivery', 'livraison', 'especes', 'paiement'] },
+  { key: 'payment_sandbox_mode', tab: 'finance', label: 'Payment Test / Sandbox Mode', description: 'Run all payment gateway transactions in test/staging sandbox environment', keywords: ['sandbox', 'test', 'mode', 'simulation'] },
+  { key: 'platform_commission_rate', tab: 'finance', label: 'Platform Marketplace Commission (%)', description: 'Standard commission percentage retained by the marketplace on sales', keywords: ['commission', 'rate', 'percentage', 'fee', 'frais'] },
+  { key: 'min_withdrawal_tnd', tab: 'finance', label: 'Minimum Vendor Payout Withdrawal (TND)', description: 'Minimum wallet balance required for sellers to request a payout transfer', keywords: ['payout', 'withdrawal', 'minimum', 'retrait', 'solde'] },
+  { key: 'payout_schedule', tab: 'finance', label: 'Automated Payout Schedule', description: 'Frequency of vendor wallet settlements (Daily, Weekly, Bi-weekly, Monthly, Manual)', keywords: ['payout', 'schedule', 'settlement', 'virement', 'frequence'] },
+  { key: 'default_currency', tab: 'finance', label: 'Default Marketplace Currency', description: 'Standard platform currency code (TND, EUR, USD)', keywords: ['currency', 'devise', 'tnd', 'dinar'] },
+
+  // Shipping & Delivery
+  { key: 'shipping_enabled', tab: 'shipping', label: 'Platform Shipping Management', description: 'Master switch for automated platform shipping and rate calculation', keywords: ['shipping', 'delivery', 'livraison', 'expedition'] },
+  { key: 'shipping_aramex_enabled', tab: 'shipping', label: 'Aramex Courier Integration', description: 'Automate tracking number generation and package pickup with Aramex', keywords: ['aramex', 'shipping', 'courier', 'livraison', 'tracking'] },
+  { key: 'shipping_laposte_enabled', tab: 'shipping', label: 'Rapid-Poste / La Poste Delivery', description: 'National postal parcel delivery service integration', keywords: ['laposte', 'rapidposte', 'poste', 'shipping', 'colis'] },
+  { key: 'shipping_platform_flat_rate_tnd', tab: 'shipping', label: 'Flat Standard Shipping Fee (TND)', description: 'Base shipping cost applied to customer carts in standard zones', keywords: ['rate', 'fee', 'shipping', 'frais', 'livraison', 'tarif'] },
+  { key: 'shipping_free_shipping_threshold_tnd', tab: 'shipping', label: 'Free Shipping Order Threshold (TND)', description: 'Cart subtotal amount above which shipping becomes 100% free', keywords: ['free shipping', 'threshold', 'gratuite', 'livraison gratuite'] },
+  { key: 'shipping_domestic_zone_cities', tab: 'shipping', label: 'Domestic Coastal Zone Cities', description: 'List of standard tier cities (e.g. Tunis, Ariana, Sousse, Sfax)', keywords: ['cities', 'zones', 'domestic', 'villes', 'regions'] },
+  { key: 'shipping_remote_zone_cities', tab: 'shipping', label: 'Remote / South Zone Cities', description: 'List of extended delivery zone cities requiring higher freight rates', keywords: ['remote', 'south', 'zones', 'regions', 'lointaines'] },
+
+  // Security & Governance
+  { key: 'security_login_max_attempts', tab: 'security', label: 'Max Failed Login Attempts', description: 'Failed login attempts allowed before IP/account temporary lockout', keywords: ['security', 'login', 'attempts', 'lockout', 'connexion', 'securite'] },
+  { key: 'security_password_min_length', tab: 'security', label: 'Minimum Password Length', description: 'Enforce strong user and merchant password length policy', keywords: ['password', 'length', 'mot de passe', 'security'] },
+  { key: 'security_2fa_required_roles', tab: 'security', label: 'Enforced Two-Factor (2FA) Roles', description: 'User roles required to set up 2FA (admin, super_admin, vendor)', keywords: ['2fa', 'two-factor', 'otp', 'authenticator', 'securite'] },
+  { key: 'security_custom_domains_enabled', tab: 'security', label: 'Seller Custom Domains Support', description: 'Allow sellers to connect their own custom domains with SSL certificate', keywords: ['custom domain', 'domain', 'dns', 'cname', 'ssl'] },
+
+  // Platform Operations
+  { key: 'maintenance_enabled', tab: 'operations', label: 'Platform Maintenance Mode', description: 'Lock public buyer storefronts with custom outage announcement screen', keywords: ['maintenance', 'outage', 'lock', 'status', 'fermeture'] },
+  { key: 'maintenance_title', tab: 'operations', label: 'Maintenance Screen Title', description: 'Headline shown to visitors during maintenance downtime', keywords: ['maintenance', 'title', 'headline'] },
+  { key: 'maintenance_allowed_ips', tab: 'operations', label: 'Maintenance IP Whitelist', description: 'Comma-separated IP addresses allowed to bypass maintenance mode', keywords: ['ip', 'whitelist', 'bypass', 'maintenance'] },
+  { key: 'chat_bubble_enabled', tab: 'operations', label: 'Live Storefront Support Chat', description: 'Toggle floating buyer-to-vendor direct live chat widget', keywords: ['chat', 'bubble', 'support', 'live', 'messaging'] },
+  { key: 'max_upload_size_mb', tab: 'operations', label: 'Max File Upload Size (MB)', description: 'Maximum allowed attachment and image file upload size in megabytes', keywords: ['upload', 'size', 'storage', 'limit', 'mb', 'fichier'] },
+  { key: 'max_product_images', tab: 'operations', label: 'Max Images Per Product Listing', description: 'Maximum number of gallery images allowed per product listing', keywords: ['images', 'product', 'gallery', 'photos', 'limit'] },
+
+  // Integrations & Webmaster
+  { key: 'analytics_ga4_measurement_id', tab: 'integrations', label: 'Google Analytics 4 (GA4)', description: 'GA4 Measurement ID (format: G-XXXXXXXXXX) for eCommerce tracking', keywords: ['ga4', 'google', 'analytics', 'tracking', 'statistiques'] },
+  { key: 'analytics_gtm_container_id', tab: 'integrations', label: 'Google Tag Manager (GTM)', description: 'GTM Container ID (format: GTM-XXXXXXX)', keywords: ['gtm', 'google', 'tag manager', 'container'] },
+  { key: 'analytics_meta_pixel_id', tab: 'integrations', label: 'Meta (Facebook) Pixel ID', description: 'Meta Pixel ID for conversion and retargeting ads', keywords: ['meta', 'facebook', 'pixel', 'ads', 'retargeting'] },
+  { key: 'cloudflare_integration_enabled', tab: 'integrations', label: 'Cloudflare Custom Hostnames (SSL)', description: 'Cloudflare for SaaS integration for automatic SSL certificate provisioning', keywords: ['cloudflare', 'ssl', 'domain', 'saas', 'dns'] },
+  { key: 'search_console_verification', tab: 'integrations', label: 'Google Search Console Verification', description: 'HTML meta tag verification token for Google Webmaster Tools', keywords: ['search console', 'google', 'seo', 'verification', 'webmaster'] },
+
+  // Subscriptions & Plans
+  { key: 'plans_management', tab: 'plans', label: 'Seller Subscription Tiers', description: 'Configure Free, Starter, Pro, and Enterprise seller plans, quotas, and feature flags', keywords: ['plans', 'subscription', 'pricing', 'tiers', 'seller', 'abonnement', 'tarifs'] },
+
+  // Transactional Emails
+  { key: 'smtp_configuration', tab: 'email', label: 'SMTP Server & Transactional Email', description: 'Configure Brevo, Resend, SendGrid, Gmail, or Custom SMTP server credentials', keywords: ['smtp', 'email', 'host', 'port', 'password', 'mail', 'brevo', 'resend', 'sendgrid', 'templates'] },
+];
+
 interface ToggleSetting {
   key: BooleanSettingKey;
   label: string;
@@ -892,6 +992,16 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
 
   for (const key of BOOLEAN_SETTING_KEYS) {
     payload[key] = Boolean(payload[key]);
+  }
+
+  // Validate rewards_widget_prizes_json is valid JSON array
+  try {
+    const parsed = JSON.parse(payload.rewards_widget_prizes_json || '[]');
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      payload.rewards_widget_prizes_json = DEFAULT_SETTINGS.rewards_widget_prizes_json;
+    }
+  } catch {
+    payload.rewards_widget_prizes_json = DEFAULT_SETTINGS.rewards_widget_prizes_json;
   }
 
   payload.marketplace_theme = payload.marketplace_theme === 'aliexpress2' ? 'aliexpress2' : payload.marketplace_theme === 'aliexpress' ? 'aliexpress' : 'panda';
@@ -1065,6 +1175,254 @@ function SectionHeader({
   );
 }
 
+interface RewardPrize {
+  label: string;
+  code: string;
+  disc: number;
+  icon: string;
+  color: string;
+  desc: string;
+}
+
+function RewardsPrizeEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [mode, setMode] = useState<'visual' | 'json'>('visual');
+  const [jsonDraft, setJsonDraft] = useState(value);
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setJsonDraft(value);
+    try {
+      JSON.parse(value);
+      setJsonError(null);
+    } catch (e: unknown) {
+      setJsonError(e instanceof Error ? e.message : 'Invalid JSON');
+    }
+  }, [value]);
+
+  const prizes: RewardPrize[] = useMemo(() => {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  }, [value]);
+
+  const updatePrize = (index: number, updated: Partial<RewardPrize>) => {
+    const next = [...prizes];
+    next[index] = { ...next[index], ...updated };
+    onChange(JSON.stringify(next, null, 2));
+  };
+
+  const addPrize = () => {
+    const next = [
+      ...prizes,
+      {
+        label: '5 DT Offerts',
+        code: `CHANCE${Math.floor(Math.random() * 90 + 10)}DT`,
+        disc: 5.0,
+        icon: '🎁',
+        color: '#16C784',
+        desc: '5.000 DT de remise immédiate sur votre panier',
+      },
+    ];
+    onChange(JSON.stringify(next, null, 2));
+  };
+
+  const removePrize = (index: number) => {
+    if (prizes.length <= 2) return;
+    const next = prizes.filter((_, i) => i !== index);
+    onChange(JSON.stringify(next, null, 2));
+  };
+
+  const handleJsonChange = (newJson: string) => {
+    setJsonDraft(newJson);
+    try {
+      const parsed = JSON.parse(newJson);
+      if (!Array.isArray(parsed)) {
+        setJsonError('JSON must be an array of prize objects');
+      } else {
+        setJsonError(null);
+        onChange(newJson);
+      }
+    } catch (e: unknown) {
+      setJsonError(e instanceof Error ? e.message : 'Invalid JSON');
+    }
+  };
+
+  const formatJson = () => {
+    try {
+      const parsed = JSON.parse(jsonDraft);
+      const formatted = JSON.stringify(parsed, null, 2);
+      setJsonDraft(formatted);
+      onChange(formatted);
+      setJsonError(null);
+    } catch {}
+  };
+
+  return (
+    <div id="setting-rewards_widget_prizes_json" className="space-y-4 md:col-span-2 rounded-2xl border border-slate-200/80 bg-stone-50/60 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+            Wheel Prize Slices & Rewards ({prizes.length} Slices)
+          </label>
+          <p className="text-xs text-slate-500">
+            Configure coupons, discounts, and visual colors for the spinning wheel gamification widget.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMode(mode === 'visual' ? 'json' : 'visual')}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 shadow-sm"
+          >
+            {mode === 'visual' ? '{ } Raw JSON Mode' : '🎛️ Visual Editor Mode'}
+          </button>
+        </div>
+      </div>
+
+      {mode === 'visual' ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {prizes.map((prize, idx) => (
+              <div
+                key={idx}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-amber-300 hover:shadow-md"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={prize.icon || '🎁'}
+                      onChange={(e) => updatePrize(idx, { icon: e.target.value })}
+                      title="Emoji Icon"
+                      className="h-9 w-10 rounded-lg border border-slate-200 bg-stone-50 text-center text-base"
+                    />
+                    <input
+                      type="text"
+                      value={prize.label}
+                      onChange={(e) => updatePrize(idx, { label: e.target.value })}
+                      placeholder="Prize Label (e.g. 5 DT Offerts)"
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-[#B91C1C]"
+                    />
+                    <input
+                      type="color"
+                      value={prize.color || '#16C784'}
+                      onChange={(e) => updatePrize(idx, { color: e.target.value })}
+                      title="Slice Color"
+                      className="h-8 w-8 cursor-pointer rounded-lg border border-slate-200 bg-transparent p-0"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400">Coupon Code</label>
+                      <input
+                        type="text"
+                        value={prize.code}
+                        onChange={(e) => updatePrize(idx, { code: e.target.value.toUpperCase() })}
+                        placeholder="CODE"
+                        className="w-full rounded-lg border border-slate-200 bg-stone-50 px-2 py-1 text-xs font-mono font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400">Discount Value</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={prize.disc}
+                        onChange={(e) => updatePrize(idx, { disc: Number(e.target.value) || 0 })}
+                        placeholder="DT / %"
+                        className="w-full rounded-lg border border-slate-200 bg-stone-50 px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400">Description</label>
+                    <input
+                      type="text"
+                      value={prize.desc || ''}
+                      onChange={(e) => updatePrize(idx, { desc: e.target.value })}
+                      placeholder="Description shown upon winning"
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 outline-none focus:border-[#B91C1C]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+                  <span className="text-[10px] font-bold text-slate-400">Slice #{idx + 1}</span>
+                  {prizes.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removePrize(idx)}
+                      className="text-[11px] font-bold text-red-500 hover:text-red-700 transition"
+                    >
+                      Delete Slice
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={addPrize}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-4 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 transition"
+            >
+              + Add Wheel Slice
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(DEFAULT_SETTINGS.rewards_widget_prizes_json)}
+              className="text-xs font-bold text-slate-500 hover:text-slate-700"
+            >
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <textarea
+            rows={8}
+            value={jsonDraft}
+            onChange={(e) => handleJsonChange(e.target.value)}
+            className={`w-full rounded-xl border px-4 py-3 font-mono text-xs outline-none transition-all ${
+              jsonError
+                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/15'
+                : 'border-slate-200 bg-white focus:border-[#B91C1C] focus:ring-2 focus:ring-[#B91C1C]/15'
+            }`}
+          />
+          {jsonError ? (
+            <p className="text-xs font-bold text-red-600">
+              ⚠️ Invalid JSON: {jsonError} (fix before saving)
+            </p>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-emerald-600">✓ Valid JSON syntax</span>
+              <button
+                type="button"
+                onClick={formatJson}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800"
+              >
+                Beautify / Format JSON
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminSettingsPage() {
   const { t } = useLocale();
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
@@ -1123,7 +1481,7 @@ export default function AdminSettingsPage() {
 
   function renderToggle({ key, label, description }: ToggleSetting) {
     return (
-      <div key={key} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-stone-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
+      <div id={`setting-${key}`} key={key} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-stone-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
         <div className="pr-4">
           <p className="text-sm font-bold text-slate-900">{label}</p>
           <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">{description}</p>
@@ -1154,7 +1512,7 @@ export default function AdminSettingsPage() {
     step?: number,
   ) {
     return (
-      <div key={key} className="space-y-1.5">
+      <div id={`setting-${key}`} key={key} className="space-y-1.5">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">{label}</label>
         <div className="flex items-center gap-2">
           <input
@@ -1174,7 +1532,7 @@ export default function AdminSettingsPage() {
 
   function renderTextInput<K extends StringSettingKey>(key: K, label: string, placeholder = '') {
     return (
-      <div key={key} className="space-y-1.5">
+      <div id={`setting-${key}`} key={key} className="space-y-1.5">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">{label}</label>
         <input
           type="text"
@@ -1189,7 +1547,7 @@ export default function AdminSettingsPage() {
 
   function renderTextAreaInput<K extends StringSettingKey>(key: K, label: string, placeholder = '') {
     return (
-      <div key={key} className="space-y-1.5 md:col-span-2">
+      <div id={`setting-${key}`} key={key} className="space-y-1.5 md:col-span-2">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">{label}</label>
         <textarea
           rows={4}
@@ -1204,7 +1562,7 @@ export default function AdminSettingsPage() {
 
   function renderColorInput<K extends StringSettingKey>(key: K, label: string) {
     return (
-      <div key={key} className="space-y-1.5">
+      <div id={`setting-${key}`} key={key} className="space-y-1.5">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">{label}</label>
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-stone-50 px-3 py-2.5">
           <input
@@ -1521,6 +1879,19 @@ export default function AdminSettingsPage() {
     return dirty;
   }, [settings, savedSettings]);
 
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return SETTINGS_SEARCH_INDEX.filter(
+      (item) =>
+        item.label.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.key.toLowerCase().includes(q) ||
+        item.tab.toLowerCase().includes(q) ||
+        item.keywords.some((kw) => kw.toLowerCase().includes(q)),
+    );
+  }, [searchQuery]);
+
   const activePlatformDirtyKeys = isPlatformSettingsTab(activeTab)
     ? getDirtySettingsKeys(settings as SharedPlatformSettings, savedSettings as SharedPlatformSettings, SETTINGS_TAB_KEYS[activeTab])
     : [];
@@ -1635,6 +2006,59 @@ export default function AdminSettingsPage() {
           {activeTab === 'plans' ? 'Use Plan Actions Below' : activeTab === 'email' ? smtpSaved ? 'Email Saved!' : 'Save Email Config' : saved ? 'Saved Successfully!' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Real-Time Settings Search Results Panel */}
+      {searchQuery.trim() && (
+        <div className="rounded-[2rem] border border-amber-200 bg-white p-6 shadow-2xl animate-in fade-in duration-200">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-amber-800">
+              {searchResults.length} Setting{searchResults.length === 1 ? '' : 's'} Found for &ldquo;{searchQuery}&rdquo;
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-xs font-bold text-slate-400 hover:text-slate-700"
+            >
+              Clear Search (✕)
+            </button>
+          </div>
+          {searchResults.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {searchResults.map((result) => (
+                <button
+                  key={result.key}
+                  type="button"
+                  onClick={() => {
+                    handleTabClick(result.tab);
+                    setSearchQuery('');
+                    setTimeout(() => {
+                      document.getElementById(`setting-${result.key}`)?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                      });
+                    }, 150);
+                  }}
+                  className="flex flex-col items-start gap-1 rounded-2xl border border-slate-100 bg-stone-50 p-4 text-left transition hover:border-amber-300 hover:bg-amber-50/60 hover:shadow-md"
+                >
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className="text-xs font-black text-slate-900">{result.label}</span>
+                    <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                      {result.tab}
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-500 line-clamp-2">{result.description}</p>
+                  <span className="mt-1 font-mono text-[10px] text-slate-400">key: {result.key}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-sm font-bold text-slate-600">No settings match &ldquo;{searchQuery}&rdquo;</p>
+              <p className="mt-1 text-xs text-slate-400">Try searching for &quot;logo&quot;, &quot;shipping&quot;, &quot;aramex&quot;, &quot;flouci&quot;, &quot;color&quot;, &quot;smtp&quot;, or &quot;plans&quot;.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <div role="alert" aria-live="assertive" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
@@ -2173,11 +2597,10 @@ export default function AdminSettingsPage() {
             'Floating Trigger Button Label',
             "🎁 Gagnez jusqu'à 15 DT !",
           )}
-          {renderTextAreaInput(
-            'rewards_widget_prizes_json',
-            'Wheel Prizes JSON Config',
-            'JSON array of wheel slices with label, coupon code, discount amount, color and description.',
-          )}
+          <RewardsPrizeEditor
+            value={settings.rewards_widget_prizes_json}
+            onChange={(val) => updateSetting('rewards_widget_prizes_json', val)}
+          />
         </div>
       </section>
 

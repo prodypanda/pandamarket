@@ -566,6 +566,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Malformed or semantically invalid prize data cannot be persisted.', 'Existing valid prizes migrate without loss.', 'Every configured prize renders correctly in preview and buyer widget.', 'Duplicate or unavailable promotion codes are flagged before publication.'],
     related: ['AS-23 — shared structured editor safety.', 'AS-24 — schema single source.'],
     tags: ['bug', 'admin-settings', 'rewards', 'validation', 'financial-risk'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-06', folder: FOLDERS.settings, sortOrder: 6,
@@ -580,6 +581,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Searching a known key or alias shows and navigates to the correct control.', 'No-results and cleared states are explicit.', 'Keyboard-only and screen-reader interaction follows combobox expectations.', 'Search respects permissions/layout capability and does not expose hidden sensitive values.'],
     related: ['AS-09 — discoverability.', 'LA-02 — settings control accessibility.'],
     tags: ['bug', 'admin-settings', 'search', 'navigation', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-07', folder: FOLDERS.settings, sortOrder: 7,
@@ -1085,7 +1087,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
