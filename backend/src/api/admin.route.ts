@@ -40,6 +40,7 @@ import {
   SellerType,
   StoreStatus,
   AiJobType,
+  UserRole,
 } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { smtpConfigService } from '../services/smtp-config.service';
@@ -2415,6 +2416,18 @@ router.put(
   validate(settingsSectionParamSchema, 'params'),
   asyncHandler(async (req: Request, res: Response) => {
     const { section } = req.params as { section: PlatformSettingSection };
+
+    // Privileged Section Authorization Guard (SO-02)
+    if (['finance', 'security'].includes(section) && req.user?.role !== UserRole.SuperAdmin) {
+      res.status(403).json({
+        error: {
+          code: 'PD_FORBIDDEN',
+          message: `Modifying ${section} settings requires SuperAdmin privileges`,
+        },
+      });
+      return;
+    }
+
     const parsedResult = settingsSectionSchemas[section].safeParse(req.body);
     if (!parsedResult.success) {
       res.status(400).json({

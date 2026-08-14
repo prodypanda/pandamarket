@@ -19,9 +19,11 @@ import {
 import { AnalyticsTabID, PlatformOverviewAnalytics } from '@/types/analytics';
 import { MetricCard } from './MetricCard';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
+import { TunisiaChoroplethMap } from './TunisiaChoroplethMap';
 import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
 
 interface OverviewAnalyticsTabProps {
+
   data: PlatformOverviewAnalytics | null;
   currency?: string;
   onNavigateToTab?: (tabId: AnalyticsTabID) => void;
@@ -297,6 +299,10 @@ export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }
           </div>
         </div>
       </div>
+
+      {/* SECTION 3: Tunisia 24 Governorates & Diaspora Regional Telemetry */}
+      <TunisiaChoroplethMap currency={currency} />
     </div>
   );
 }
+

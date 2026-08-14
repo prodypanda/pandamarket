@@ -179,6 +179,7 @@ export function requireRole(...roles: UserRole[]): RequestHandler {
 }
 
 export const requireAdmin: RequestHandler = requireRole(UserRole.Admin, UserRole.SuperAdmin);
+export const requireSuperAdmin: RequestHandler = requireRole(UserRole.SuperAdmin);
 export const requireVendor: RequestHandler = requireRole(UserRole.Vendor);
 
 /**

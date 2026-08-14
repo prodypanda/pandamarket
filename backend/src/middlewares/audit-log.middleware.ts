@@ -21,27 +21,51 @@ import { logger } from '../utils/logger';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// Fields to redact from the request body before logging
-const REDACT_FIELDS = new Set([
+// Sensitive field patterns to redact from request body/metadata before logging (SO-03)
+const SENSITIVE_PATTERNS = [
   'password',
   'password_hash',
-  'token',
   'secret',
+  'token',
   'api_key',
-  'flouci_app_secret',
-  'konnect_api_key',
+  'apikey',
+  'app_secret',
+  'client_secret',
+  'private_key',
   'access_token',
   'refresh_token',
-]);
+  'auth_token',
+  'flouci_app_secret',
+  'konnect_api_key',
+  'paypal_sandbox_client_secret',
+  'paypal_live_client_secret',
+  'smtp_pass',
+  'smtp_password',
+  'card_number',
+  'cvv',
+  'cin_number',
+];
 
-function redactBody(body: Record<string, unknown>): Record<string, unknown> {
-  if (!body || typeof body !== 'object') return body;
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[-_]/g, '');
+  return SENSITIVE_PATTERNS.some((pattern) => {
+    const normalizedPattern = pattern.replace(/[-_]/g, '');
+    return normalized.includes(normalizedPattern);
+  });
+}
+
+export function redactBody(data: unknown): unknown {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== 'object') return data;
+  if (Array.isArray(data)) {
+    return data.map((item) => redactBody(item));
+  }
   const redacted: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(body)) {
-    if (REDACT_FIELDS.has(key.toLowerCase())) {
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (isSensitiveKey(key)) {
       redacted[key] = '[REDACTED]';
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      redacted[key] = redactBody(value as Record<string, unknown>);
+    } else if (typeof value === 'object' && value !== null) {
+      redacted[key] = redactBody(value);
     } else {
       redacted[key] = value;
     }

@@ -200,12 +200,13 @@ export function normalizeTunisiaGovernorate(address: {
   if (/gafsa|metlaoui|redeyef|moulares|el ksar|mdhilla|sened|belkhir/.test(raw)) return 'GAF';
   if (/tozeur|nefta|degache|tamaghza|hazoua|el hamma du j[eé]rid/.test(raw)) return 'TOZ';
   if (/k[eé]bili|kebili|douz|souk lahad|faouar|el gol[aâ]a|jemna/.test(raw)) return 'KEB';
-  if (/gab[eèé]s|gabes|mareth|matmata|nouvelle matmata|ghannouch|el hamma|metouia/.test(raw)) return 'GAB';
+  if (/gab[eèé]?s|gabes|gabs|mareth|matmata|nouvelle matmata|ghannouch|el hamma|metouia/.test(raw)) return 'GAB';
   if (/m[eé]denine|medenine|djerba|houmt souk|midoun|ajim|zarzis|ben guerdane/.test(raw)) return 'MED';
   if (/tataouine|ghomrassen|remada|dehiba|bir lahmar|sm[aâ]r|beni mhira/.test(raw)) return 'TAT';
 
   return 'TUN';
 }
+
 
 export function compute60sVelocityChart(
   events: RawTelemetryEvent[],

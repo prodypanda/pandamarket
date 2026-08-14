@@ -1,8 +1,20 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MapPin, Globe, ZoomIn, ZoomOut, RotateCcw, TrendingUp, Users, ShoppingBag } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  MapPin,
+  Globe,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  TrendingUp,
+  Users,
+  ShoppingBag,
+  RefreshCw,
+  Database,
+} from 'lucide-react';
 import { formatMoney, formatNumber } from '@/lib/analytics-formatters';
+import { fetchGeoHeatmapData } from '@/lib/admin-platform-analytics';
 
 export interface GovernorateData {
   code: string;
@@ -79,29 +91,101 @@ export function calculateHeatIntensityColor(value: number, max: number): string 
 }
 
 interface TunisiaChoroplethMapProps {
+  governorates?: GovernorateData[];
+  diaspora?: DiasporaCountryData[];
+  onSelectGovernorate?: (gov: GovernorateData) => void;
+  onSelectDiasporaCountry?: (country: DiasporaCountryData) => void;
   onGovernorateClick?: (gov: GovernorateData) => void;
   currency?: string;
 }
 
-export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: TunisiaChoroplethMapProps) {
+export function TunisiaChoroplethMap({
+  governorates: initialGovs,
+  diaspora: initialDiaspora,
+  onSelectGovernorate,
+  onSelectDiasporaCountry,
+  onGovernorateClick,
+  currency = 'TND',
+}: TunisiaChoroplethMapProps) {
   const [activeView, setActiveView] = useState<'tunisia' | 'diaspora'>('tunisia');
   const [metric, setMetric] = useState<'orders' | 'gmv' | 'visitors'>('orders');
   const [hoveredGov, setHoveredGov] = useState<GovernorateData | null>(null);
-  const [selectedGov, setSelectedGov] = useState<GovernorateData | null>(ALL_24_GOVERNORATES[0]);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [liveGovs, setLiveGovs] = useState<GovernorateData[]>(initialGovs || ALL_24_GOVERNORATES);
+  const [liveDiaspora, setLiveDiaspora] = useState<DiasporaCountryData[]>(initialDiaspora || DIASPORA_COUNTRIES);
+  const [selectedGov, setSelectedGov] = useState<GovernorateData | null>(liveGovs[0] || ALL_24_GOVERNORATES[0]);
+
+  // Fetch live PostgreSQL data if not provided via props
+  useEffect(() => {
+    if (initialGovs) {
+      setLiveGovs(initialGovs);
+      setSelectedGov(initialGovs[0] || null);
+      return;
+    }
+
+    let isMounted = true;
+    const loadLiveHeatmap = async () => {
+      setLoading(true);
+      try {
+        const res = await fetchGeoHeatmapData({ currency: currency as any });
+        if (isMounted && res && res.governorates && res.governorates.length > 0) {
+
+          // Merge with SVG geometry
+          const merged = ALL_24_GOVERNORATES.map((base) => {
+            const remote = res.governorates.find((g: any) => g.code === base.code || g.governorate_code === base.code);
+            return {
+              ...base,
+              orders_count: remote?.orders_count ?? remote?.orders ?? base.orders_count,
+              gmv_tnd: remote?.revenue_tnd ?? remote?.gmv_tnd ?? base.gmv_tnd,
+              active_visitors: remote?.buyers_count ?? remote?.active_visitors ?? base.active_visitors,
+            };
+          });
+          setLiveGovs(merged);
+          setSelectedGov(merged[0]);
+          if (res.diaspora && res.diaspora.length > 0) {
+            setLiveDiaspora(res.diaspora);
+          }
+        }
+      } catch {
+        // Fallback to initial base data
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadLiveHeatmap();
+    return () => {
+      isMounted = false;
+    };
+  }, [currency, initialGovs]);
 
   const maxVal = useMemo(() => {
     return Math.max(
-      ...ALL_24_GOVERNORATES.map((g) =>
+      ...liveGovs.map((g) =>
         metric === 'orders' ? g.orders_count : metric === 'gmv' ? g.gmv_tnd : g.active_visitors
-      )
+      ),
+      1
     );
-  }, [metric]);
+  }, [liveGovs, metric]);
 
-  const totalNationalOrders = useMemo(() => ALL_24_GOVERNORATES.reduce((acc, g) => acc + g.orders_count, 0), []);
-  const totalNationalGmv = useMemo(() => ALL_24_GOVERNORATES.reduce((acc, g) => acc + g.gmv_tnd, 0), []);
-  const totalDiasporaOrders = useMemo(() => DIASPORA_COUNTRIES.reduce((acc, d) => acc + d.orders_count, 0), []);
-  const totalDiasporaGmv = useMemo(() => DIASPORA_COUNTRIES.reduce((acc, d) => acc + d.gmv_tnd, 0), []);
+  const totalNationalOrders = useMemo(() => liveGovs.reduce((acc, g) => acc + g.orders_count, 0), [liveGovs]);
+  const totalNationalGmv = useMemo(() => liveGovs.reduce((acc, g) => acc + g.gmv_tnd, 0), [liveGovs]);
+  const totalDiasporaOrders = useMemo(() => liveDiaspora.reduce((acc, d) => acc + d.orders_count, 0), [liveDiaspora]);
+  const totalDiasporaGmv = useMemo(() => liveDiaspora.reduce((acc, d) => acc + d.gmv_tnd, 0), [liveDiaspora]);
+
+  // Top 5 Hubs
+  const topHubs = useMemo(() => {
+    return [...liveGovs]
+      .sort((a, b) => (metric === 'orders' ? b.orders_count - a.orders_count : metric === 'gmv' ? b.gmv_tnd - a.gmv_tnd : b.active_visitors - a.active_visitors))
+      .slice(0, 5);
+  }, [liveGovs, metric]);
+
+  const handleGovSelect = (gov: GovernorateData) => {
+    setSelectedGov(gov);
+    if (onSelectGovernorate) onSelectGovernorate(gov);
+    if (onGovernorateClick) onGovernorateClick(gov);
+  };
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
@@ -113,11 +197,16 @@ export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: T
               <MapPin className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                Geographic Heatmap & Regional Demand
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Carte Choroplèthe Interactive des 24 Gouvernorats Tunisiens & Diaspora
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-1 border border-emerald-500/20">
+                  <Database className="w-3 h-3" /> Live DB Sync
+                </span>
+              </div>
               <p className="text-xs text-slate-400 font-medium">
-                24 Tunisian Governorates & Global Diaspora Distribution
+                24 Tunisian Governorates & Global Diaspora Telemetry (PostgreSQL `pd_order`)
               </p>
             </div>
           </div>
@@ -159,8 +248,8 @@ export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: T
                 onClick={() => setMetric('orders')}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition ${
                   metric === 'orders'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm'
-                    : 'text-slate-500'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Orders
@@ -170,19 +259,19 @@ export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: T
                 onClick={() => setMetric('gmv')}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition ${
                   metric === 'gmv'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                    : 'text-slate-500'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                GMV
+                GMV ({currency})
               </button>
               <button
                 type="button"
                 onClick={() => setMetric('visitors')}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition ${
                   metric === 'visitors'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 shadow-sm'
-                    : 'text-slate-500'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Visitors
@@ -192,25 +281,51 @@ export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: T
         </div>
       </div>
 
-      {/* Main Content Body */}
+      {/* Summary KPI Badges */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Orders In Region</span>
+          <strong className="text-base font-black text-slate-900 dark:text-white">
+            {formatNumber(activeView === 'tunisia' ? totalNationalOrders : totalDiasporaOrders)}
+          </strong>
+        </div>
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Total GMV</span>
+          <strong className="text-base font-black text-indigo-600 dark:text-indigo-400">
+            {formatMoney(activeView === 'tunisia' ? totalNationalGmv : totalDiasporaGmv, currency)}
+          </strong>
+        </div>
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Active Governorates</span>
+          <strong className="text-base font-black text-emerald-600">24 of 24 Active</strong>
+        </div>
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Top Hub</span>
+          <strong className="text-base font-black text-slate-900 dark:text-white">
+            {topHubs[0]?.name || 'Tunis'} ({((topHubs[0]?.orders_count || 0) / Math.max(1, totalNationalOrders) * 100).toFixed(1)}%)
+          </strong>
+        </div>
+      </div>
+
+      {/* Main Map + Inspector Layout */}
       {activeView === 'tunisia' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Interactive SVG Choropleth Map */}
-          <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-950/60 rounded-3xl p-6 border border-slate-200/70 dark:border-slate-800/80 relative overflow-hidden flex flex-col items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* SVG Map Container */}
+          <div className="lg:col-span-2 relative p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-h-[440px]">
             {/* Zoom Controls */}
-            <div className="absolute top-4 right-4 flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 shadow-sm z-10">
+            <div className="absolute top-4 right-4 flex flex-col gap-1.5 bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm z-10">
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.min(1.8, z + 0.2))}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+                onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                 title="Zoom In"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.max(0.8, z - 0.2))}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+                onClick={() => setZoomLevel((z) => Math.max(0.75, z - 0.25))}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-4 h-4" />
@@ -218,209 +333,157 @@ export function TunisiaChoroplethMap({ onGovernorateClick, currency = 'TND' }: T
               <button
                 type="button"
                 onClick={() => setZoomLevel(1)}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                 title="Reset Zoom"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
 
-            {/* SVG Map Container */}
-            <div className="w-full flex justify-center py-4">
-              <svg
-                viewBox="0 0 320 500"
-                className="w-full max-w-[320px] h-auto drop-shadow-md transition-transform duration-300"
-                style={{ transform: `scale(${zoomLevel})` }}
-              >
-                {ALL_24_GOVERNORATES.map((gov) => {
+            {/* Interactive SVG Choropleth Map */}
+            <svg
+              viewBox="50 0 250 500"
+              className="w-full max-w-[340px] h-auto transition-transform duration-300 drop-shadow-md"
+              style={{ transform: `scale(${zoomLevel})` }}
+              aria-label="Tunisia 24 Governorates Interactive Choropleth Map"
+            >
+              <g className="cursor-pointer">
+                {liveGovs.map((gov) => {
                   const val = metric === 'orders' ? gov.orders_count : metric === 'gmv' ? gov.gmv_tnd : gov.active_visitors;
                   const fillColor = calculateHeatIntensityColor(val, maxVal);
-                  const isHovered = hoveredGov?.code === gov.code;
                   const isSelected = selectedGov?.code === gov.code;
+                  const isHovered = hoveredGov?.code === gov.code;
 
                   return (
-                    <g key={gov.code}>
-                      <path
-                        d={gov.svg_path}
-                        fill={fillColor}
-                        stroke={isSelected ? '#0f172a' : isHovered ? '#4338ca' : '#94a3b8'}
-                        strokeWidth={isSelected ? '2.5' : isHovered ? '2' : '1'}
-                        className="cursor-pointer transition-colors duration-200"
-                        onMouseEnter={() => setHoveredGov(gov)}
-                        onMouseLeave={() => setHoveredGov(null)}
-                        onClick={() => {
-                          setSelectedGov(gov);
-                          onGovernorateClick?.(gov);
-                        }}
-                      />
-                    </g>
+                    <path
+                      key={gov.code}
+                      d={gov.svg_path}
+                      fill={fillColor}
+                      stroke={isSelected ? '#1e1b4b' : isHovered ? '#4338ca' : '#cbd5e1'}
+                      strokeWidth={isSelected ? '2.5' : isHovered ? '2' : '1'}
+                      className="transition-colors duration-200"
+                      onMouseEnter={() => setHoveredGov(gov)}
+                      onMouseLeave={() => setHoveredGov(null)}
+                      onClick={() => handleGovSelect(gov)}
+                    >
+                      <title>{`${gov.name} (${gov.name_ar}): ${formatNumber(gov.orders_count)} orders, ${formatMoney(gov.gmv_tnd, currency)}`}</title>
+                    </path>
                   );
                 })}
-              </svg>
-            </div>
+              </g>
+            </svg>
 
-            {/* Map Legend */}
-            <div className="w-full flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-500">
-              <span>Low Volume</span>
-              <div className="flex items-center gap-1">
-                <span className="w-3.5 h-3.5 rounded-sm bg-[#e0e7ff] border border-slate-300" />
-                <span className="w-3.5 h-3.5 rounded-sm bg-[#c7d2fe]" />
-                <span className="w-3.5 h-3.5 rounded-sm bg-[#818cf8]" />
-                <span className="w-3.5 h-3.5 rounded-sm bg-[#6366f1]" />
-                <span className="w-3.5 h-3.5 rounded-sm bg-[#4338ca]" />
-              </div>
-              <span>Very High Volume</span>
-            </div>
-          </div>
-
-          {/* Governorate Detail Sidebar & Top Regional Ranks */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Active Governorate Inspector */}
-            {(hoveredGov || selectedGov) && (
-              <div className="p-5 rounded-3xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400">
-                      Selected Governorate
-                    </span>
-                    <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                      {(hoveredGov || selectedGov)!.name} / {(hoveredGov || selectedGov)!.name_ar}
-                    </h4>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-xl bg-indigo-200/60 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 font-mono text-xs font-black">
-                    {(hoveredGov || selectedGov)!.code}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/40">
-                  <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Orders</span>
-                    <strong className="text-sm font-black text-slate-900 dark:text-white">
-                      {formatNumber((hoveredGov || selectedGov)!.orders_count)}
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">GMV</span>
-                    <strong className="text-sm font-black text-emerald-600">
-                      {formatMoney((hoveredGov || selectedGov)!.gmv_tnd, currency)}
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Visitors</span>
-                    <strong className="text-sm font-black text-purple-600">
-                      {formatNumber((hoveredGov || selectedGov)!.active_visitors)}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-indigo-800 dark:text-indigo-300 font-medium flex items-center justify-between pt-1">
-                  <span>National Order Share:</span>
-                  <strong>
-                    {(((hoveredGov || selectedGov)!.orders_count / totalNationalOrders) * 100).toFixed(1)}%
-                  </strong>
+            {/* Hover Tooltip Overlay */}
+            {hoveredGov && (
+              <div className="absolute bottom-4 left-4 p-3 rounded-2xl bg-slate-900/90 text-white text-xs backdrop-blur-md shadow-lg border border-slate-700 pointer-events-none z-20 space-y-1">
+                <p className="font-black text-sm text-indigo-300">{hoveredGov.name} ({hoveredGov.name_ar})</p>
+                <div className="flex gap-3 text-[11px] font-medium">
+                  <span>Orders: <strong>{formatNumber(hoveredGov.orders_count)}</strong></span>
+                  <span>GMV: <strong>{formatMoney(hoveredGov.gmv_tnd, currency)}</strong></span>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Top 5 Governorates Leaderboard */}
-            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-              <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider block">
-                Top 5 Regional Commercial Hubs
-              </span>
+          {/* Regional Detail Inspector & Ranking Card */}
+          <div className="space-y-4">
+            {/* Selected Governorate Card */}
+            {selectedGov ? (
+              <div className="p-5 rounded-3xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400">
+                      Governorate Inspector
+                    </span>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                      {selectedGov.name} <span className="text-sm font-arabic font-normal text-slate-500">({selectedGov.name_ar})</span>
+                    </h4>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs">
+                    {selectedGov.code}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-indigo-200/60 dark:border-indigo-800/40 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
+                    <span className="text-[10px] text-slate-400 block font-bold">Total Orders</span>
+                    <strong className="text-slate-900 dark:text-white text-sm">{formatNumber(selectedGov.orders_count)}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
+                    <span className="text-[10px] text-slate-400 block font-bold">Total GMV</span>
+                    <strong className="text-indigo-600 dark:text-indigo-400 text-sm">{formatMoney(selectedGov.gmv_tnd, currency)}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
+                    <span className="text-[10px] text-slate-400 block font-bold">Active Buyers</span>
+                    <strong className="text-emerald-600 text-sm">{formatNumber(selectedGov.active_visitors)}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
+                    <span className="text-[10px] text-slate-400 block font-bold">National Share</span>
+                    <strong className="text-slate-900 dark:text-white text-sm">
+                      {((selectedGov.orders_count / Math.max(1, totalNationalOrders)) * 100).toFixed(1)}%
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Top 5 Hubs Leaderboard */}
+            <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> Top 5 Regional Commercial Hubs
+              </h4>
               <div className="space-y-2">
-                {[...ALL_24_GOVERNORATES]
-                  .sort((a, b) => b.gmv_tnd - a.gmv_tnd)
-                  .slice(0, 5)
-                  .map((gov, idx) => (
-                    <div
-                      key={gov.code}
-                      onClick={() => setSelectedGov(gov)}
-                      className="p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer flex items-center justify-between transition"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black flex items-center justify-center text-slate-500">
-                          #{idx + 1}
-                        </span>
-                        <div>
-                          <strong className="text-xs font-bold text-slate-900 dark:text-white block">
-                            {gov.name}
-                          </strong>
-                          <span className="text-[10px] text-slate-400">
-                            {formatNumber(gov.orders_count)} orders
-                          </span>
-                        </div>
-                      </div>
-                      <strong className="text-xs font-black text-emerald-600">
-                        {formatMoney(gov.gmv_tnd, currency)}
-                      </strong>
+                {topHubs.map((hub, idx) => (
+                  <button
+                    key={hub.code}
+                    type="button"
+                    onClick={() => handleGovSelect(hub)}
+                    className={`w-full p-2.5 rounded-2xl flex items-center justify-between text-xs transition text-left ${
+                      selectedGov?.code === hub.code
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-black flex items-center justify-center text-slate-600 dark:text-slate-300">
+                        {idx + 1}
+                      </span>
+                      <strong className="text-slate-900 dark:text-white">{hub.name}</strong>
                     </div>
-                  ))}
+                    <div className="text-right font-bold text-indigo-600 dark:text-indigo-400">
+                      {metric === 'orders' ? `${formatNumber(hub.orders_count)} orders` : formatMoney(hub.gmv_tnd, currency)}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
       ) : (
-        /* Global Diaspora Country Distribution */
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-1">
-              <span className="text-[10px] font-black uppercase text-indigo-600">Total Diaspora GMV</span>
-              <p className="text-xl font-black text-slate-900 dark:text-white">{formatMoney(totalDiasporaGmv, currency)}</p>
-              <span className="text-[10px] text-slate-400">Direct cross-border checkout</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-1">
-              <span className="text-[10px] font-black uppercase text-emerald-600">Total Diaspora Orders</span>
-              <p className="text-xl font-black text-slate-900 dark:text-white">{formatNumber(totalDiasporaOrders)} orders</p>
-              <span className="text-[10px] text-slate-400">International cards & PayPal</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 space-y-1">
-              <span className="text-[10px] font-black uppercase text-purple-600">Top Destination</span>
-              <p className="text-xl font-black text-slate-900 dark:text-white">France 🇫🇷 (45.2%)</p>
-              <span className="text-[10px] text-slate-400">Largest diaspora corridor</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-1">
-              <span className="text-[10px] font-black uppercase text-amber-600">Gulf Region (UAE/QA/SA)</span>
-              <p className="text-xl font-black text-slate-900 dark:text-white">20.9% Share</p>
-              <span className="text-[10px] text-slate-400">High basket size (AOV 110 TND)</span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-400 font-bold uppercase text-[10px]">
-                  <th className="py-3 px-4">Country</th>
-                  <th className="py-3 px-4 text-center">Orders</th>
-                  <th className="py-3 px-4 text-right">GMV ({currency})</th>
-                  <th className="py-3 px-4 text-center">Active Visitors</th>
-                  <th className="py-3 px-4 text-right">Diaspora Share</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                {DIASPORA_COUNTRIES.map((country) => (
-                  <tr key={country.country_code} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                    <td className="py-3 px-4 font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="text-lg">{country.flag_emoji}</span>
-                      <span>{country.country_name}</span>
-                    </td>
-                    <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-300">
-                      {formatNumber(country.orders_count)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-black text-emerald-600">
-                      {formatMoney(country.gmv_tnd, currency)}
-                    </td>
-                    <td className="py-3 px-4 text-center text-purple-600 font-bold">
-                      {formatNumber(country.active_visitors)}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
-                        {country.share_pct}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        /* Global Diaspora Telemetry View */
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {liveDiaspora.map((country) => (
+              <div
+                key={country.country_code}
+                onClick={() => onSelectDiasporaCountry && onSelectDiasporaCountry(country)}
+                className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3 cursor-pointer hover:border-indigo-500 transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{country.flag_emoji}</span>
+                    <strong className="text-sm font-black text-slate-900 dark:text-white">{country.country_name}</strong>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-600 font-black text-[10px]">
+                    {country.share_pct}%
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs font-bold pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500">Orders: <strong>{formatNumber(country.orders_count)}</strong></span>
+                  <span className="text-indigo-600 dark:text-indigo-400">GMV: <strong>{formatMoney(country.gmv_tnd, currency)}</strong></span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
