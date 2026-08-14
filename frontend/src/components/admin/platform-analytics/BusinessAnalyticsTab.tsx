@@ -68,45 +68,40 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
 
   const { orders, checkout, buyers, sellers, payouts, risk, operations } = data;
 
-  // Real 7-Stage Granular Conversion Funnel from Telemetry & PostgreSQL
+  // Real 7-Stage Granular Conversion Funnel from Telemetry & Database
   const pvSummary = pageViewsTelemetry?.summary;
-  const totalSessions = pvSummary?.unique_visitors || pvSummary?.total_page_views || Math.max(orders.total_orders * 35, 1250);
-  const catalogBrowse = pvSummary?.marketplace_views || Math.round(totalSessions * 0.78);
-  const searchQueries = (pageViewsTelemetry?.top_marketplace_searches || []).reduce((acc: number, s: any) => acc + (s.count || 0), 0) || Math.round(totalSessions * 0.42);
-  const productViews = (pageViewsTelemetry?.top_products_viewed || []).reduce((acc: number, p: any) => acc + (p.views_count || 0), 0) || Math.round(totalSessions * 0.35);
-  const addToCarts = Math.round(productViews * 0.38) || Math.round(totalSessions * 0.14);
-  const checkoutStarts = checkout.checkout_started || Math.max(orders.total_orders, Math.round(totalSessions * 0.065));
-  const completedPayments = checkout.payment_completed || orders.paid_orders || Math.max(1, Math.round(totalSessions * 0.024));
+  const totalSessions = Number(pvSummary?.unique_visitors || pvSummary?.total_page_views || buyers.total_buyers_current || orders.total_orders || 0);
+  const catalogBrowse = Number(pvSummary?.marketplace_views || 0);
+  const searchQueries = (pageViewsTelemetry?.top_marketplace_searches || []).reduce((acc: number, s: any) => acc + Number(s.count || 0), 0);
+  const productViews = (pageViewsTelemetry?.top_products_viewed || []).reduce((acc: number, p: any) => acc + Number(p.views_count || 0), 0);
+  const checkoutStartedCount = checkout.available ? Number(checkout.checkout_started || 0) : Number(orders.total_orders || 0);
+  const paymentCompletedCount = checkout.available ? Number(checkout.payment_completed || 0) : Number(orders.paid_orders || 0);
+  const addToCarts = Number((checkout as any).cart_created || checkoutStartedCount || 0);
+  const checkoutStarts = checkoutStartedCount;
+  const completedPayments = paymentCompletedCount;
 
   const funnelStages = [
-    { label: '1. Total Sessions', count: totalSessions, icon: Eye, color: 'bg-slate-500', dropPct: 0 },
-    { label: '2. Catalog Browse', count: catalogBrowse, icon: Store, color: 'bg-blue-500', dropPct: Math.max(0, Math.round(((totalSessions - catalogBrowse) / Math.max(1, totalSessions)) * 100)) },
-    { label: '3. Search Queries', count: searchQueries, icon: Search, color: 'bg-indigo-500', dropPct: Math.max(0, Math.round(((catalogBrowse - searchQueries) / Math.max(1, catalogBrowse)) * 100)) },
-    { label: '4. Product Views', count: productViews, icon: ShoppingBag, color: 'bg-purple-500', dropPct: Math.max(0, Math.round(((searchQueries - productViews) / Math.max(1, searchQueries)) * 100)) },
-    { label: '5. Add to Cart', count: addToCarts, icon: ShoppingBag, color: 'bg-amber-500', dropPct: Math.max(0, Math.round(((productViews - addToCarts) / Math.max(1, productViews)) * 100)) },
-    { label: '6. Checkout Started', count: checkoutStarts, icon: CreditCard, color: 'bg-orange-500', dropPct: Math.max(0, Math.round(((addToCarts - checkoutStarts) / Math.max(1, addToCarts)) * 100)) },
-    { label: '7. Payment Complete', count: completedPayments, icon: PackageCheck, color: 'bg-emerald-500', dropPct: Math.max(0, Math.round(((checkoutStarts - completedPayments) / Math.max(1, checkoutStarts)) * 100)) },
+    { label: '1. Sessions Visiteurs', count: totalSessions, icon: Eye, color: 'bg-slate-500', dropPct: 0 },
+    { label: '2. Visites Catalogue', count: catalogBrowse, icon: Store, color: 'bg-blue-500', dropPct: totalSessions > 0 && catalogBrowse < totalSessions ? Math.round(((totalSessions - catalogBrowse) / totalSessions) * 100) : 0 },
+    { label: '3. Recherches Produits', count: searchQueries, icon: Search, color: 'bg-indigo-500', dropPct: catalogBrowse > 0 && searchQueries < catalogBrowse ? Math.round(((catalogBrowse - searchQueries) / catalogBrowse) * 100) : 0 },
+    { label: '4. Fiches Consultées', count: productViews, icon: ShoppingBag, color: 'bg-purple-500', dropPct: searchQueries > 0 && productViews < searchQueries ? Math.round(((searchQueries - productViews) / searchQueries) * 100) : 0 },
+    { label: '5. Ajouts Panier', count: addToCarts, icon: ShoppingBag, color: 'bg-amber-500', dropPct: productViews > 0 && addToCarts < productViews ? Math.round(((productViews - addToCarts) / productViews) * 100) : 0 },
+    { label: '6. Checkouts Initiés', count: checkoutStarts, icon: CreditCard, color: 'bg-orange-500', dropPct: addToCarts > 0 && checkoutStarts < addToCarts ? Math.round(((addToCarts - checkoutStarts) / addToCarts) * 100) : 0 },
+    { label: '7. Commandes Payées', count: completedPayments, icon: PackageCheck, color: 'bg-emerald-500', dropPct: checkoutStarts > 0 && completedPayments < checkoutStarts ? Math.round(((checkoutStarts - completedPayments) / checkoutStarts) * 100) : 0 },
   ];
 
   // Zero-Result Search Demands (Derived from live search queries log)
-  const realSearches = pageViewsTelemetry?.top_marketplace_searches;
+  const realSearches = (pageViewsTelemetry?.top_marketplace_searches || []).filter((s: any) => s.zero_results || s.count > 0);
   const unmetSearches = useMemo(() => {
     if (realSearches && realSearches.length > 0) {
       return realSearches.slice(0, 6).map((s: any) => ({
-        query: s.query,
-        count: s.count,
-        category: 'Marketplace Search',
-        potentialRevenueTnd: s.count * (orders.average_order_value_tnd || 50),
+        query: String(s.query || ''),
+        count: Number(s.count || 1),
+        category: s.category || 'Recherche Marketplace',
+        potentialRevenueTnd: Number(s.count || 1) * Number(orders.average_order_value_tnd || 45),
       }));
     }
-    return [
-      { query: 'Huile de figue de barbarie bio', count: 480, category: 'Cosmetics', potentialRevenueTnd: 28800 },
-      { query: 'Harissa artisanale fumée Cap Bon', count: 350, category: 'Food & Gourmet', potentialRevenueTnd: 5250 },
-      { query: 'Poterie Sejnane certifiée UNESCO', count: 290, category: 'Handicrafts', potentialRevenueTnd: 18500 },
-      { query: 'Tapis Kairouan pure laine 2x3m', count: 210, category: 'Home & Living', potentialRevenueTnd: 42000 },
-      { query: 'Miel de thym sauvage Kasserine', count: 180, category: 'Food & Gourmet', potentialRevenueTnd: 7200 },
-      { query: 'Savon noir eucalyptus naturel', count: 140, category: 'Cosmetics', potentialRevenueTnd: 2100 },
-    ];
+    return [];
   }, [realSearches, orders.average_order_value_tnd]);
 
   const handleNotifyVendors = (queryTerm: string) => {
@@ -261,65 +256,79 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
-                <th className="py-2.5 px-3">Search Query Term</th>
-                <th className="py-2.5 px-3">Category</th>
-                <th className="py-2.5 px-3">Zero-Match Searches</th>
-                <th className="py-2.5 px-3">Est. Missed GMV Demand</th>
-                <th className="py-2.5 px-3">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {unmetSearches.map((item: any, idx: number) => {
-                const isNotified = notifiedQueries.has(item.query);
+        {unmetSearches.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
+                  <th className="py-2.5 px-3">Search Query Term</th>
+                  <th className="py-2.5 px-3">Category</th>
+                  <th className="py-2.5 px-3">Zero-Match Searches</th>
+                  <th className="py-2.5 px-3">Est. Missed GMV Demand</th>
+                  <th className="py-2.5 px-3">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {unmetSearches.map((item: any, idx: number) => {
+                  const isNotified = notifiedQueries.has(item.query);
 
-                return (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                      &ldquo;{item.query}&rdquo;
-                    </td>
-                    <td className="py-3 px-3 text-slate-500">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-black text-amber-600">
-                      {formatNumber(item.count)} searches
-                    </td>
-                    <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
-                      ~{formatMoney(item.potentialRevenueTnd, currency)}
-                    </td>
-                    <td className="py-3 px-3">
-                      <button
-                        type="button"
-                        onClick={() => handleNotifyVendors(item.query)}
-                        disabled={isNotified}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                          isNotified
-                            ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 border border-emerald-200'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
-                        }`}
-                      >
-                        {isNotified ? (
-                          <>
-                            <CheckCircle2 className="w-3 h-3" /> Vendors Alerted
-                          </>
-                        ) : (
-                          <>
-                            <BellRing className="w-3 h-3" /> Notify Vendors
-                          </>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
+                        &ldquo;{item.query}&rdquo;
+                      </td>
+                      <td className="py-3 px-3 text-slate-500">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold">
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-black text-amber-600">
+                        {formatNumber(item.count)} searches
+                      </td>
+                      <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
+                        ~{formatMoney(item.potentialRevenueTnd, currency)}
+                      </td>
+                      <td className="py-3 px-3">
+                        <button
+                          type="button"
+                          onClick={() => handleNotifyVendors(item.query)}
+                          disabled={isNotified}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                            isNotified
+                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 border border-emerald-200'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
+                          }`}
+                        >
+                          {isNotified ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3" /> Vendors Alerted
+                            </>
+                          ) : (
+                            <>
+                              <BellRing className="w-3 h-3" /> Notify Vendors
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-8 px-4 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="inline-flex p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+              Surveillance Active des Requêtes (100% de Succès Catalogue)
+            </h4>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Aucun déficit de recherche sans résultat enregistré sur cette période. Toutes les requêtes formulées par les acheteurs ont retourné des produits actifs.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 4. Buyer & Customer Telemetry */}

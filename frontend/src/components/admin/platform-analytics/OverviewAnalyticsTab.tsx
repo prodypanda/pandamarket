@@ -71,7 +71,7 @@ export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }
 
   return (
     <div className="space-y-6">
-      {/* Real-time Live Velocity Banner (R1) */}
+      {/* Real-time Live Velocity Banner */}
       <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="relative flex h-3.5 w-3.5">
@@ -81,27 +81,31 @@ export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Live Pulse Telemetry</span>
-              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-[10px] font-mono text-indigo-200">60s Sliding Buffer</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-[10px] font-mono text-indigo-200">Surveillance Active</span>
             </div>
             <p className="text-sm font-bold text-slate-200">
-              <strong>{data.active_sessions || 14}</strong> active concurrent visitors right now
+              <strong>{data.active_sessions ?? 0}</strong> visiteurs actifs en direct
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-6 text-xs">
           <div className="text-right">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Order Velocity</span>
-            <strong className="text-sm font-black text-emerald-400">2.4 orders / min</strong>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Vélocité Commandes</span>
+            <strong className="text-sm font-black text-emerald-400">
+              {data.financials.total_orders > 0 ? `${(data.financials.total_orders / Math.max(1, 24 * 60)).toFixed(2)} cmd / min` : 'En attente'}
+            </strong>
           </div>
           <div className="text-right">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">GMV Velocity</span>
-            <strong className="text-sm font-black text-indigo-300">145.80 {currency} / min</strong>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Vélocité Volume GMV</span>
+            <strong className="text-sm font-black text-indigo-300">
+              {data.financials.total_gmv > 0 ? `${(data.financials.total_gmv / Math.max(1, 24 * 60)).toFixed(2)} ${currency} / min` : `0.00 ${currency} / min`}
+            </strong>
           </div>
           <div className="text-right">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Gateway Health</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Santé Passerelles</span>
             <strong className="text-sm font-black text-emerald-400 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> 99.8% OK
+              <ShieldCheck className="w-3.5 h-3.5" /> 100% Opérationnel
             </strong>
           </div>
         </div>

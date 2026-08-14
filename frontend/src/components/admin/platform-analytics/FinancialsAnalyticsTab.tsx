@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Flame,
   Scale,
@@ -87,49 +87,86 @@ export function FinancialsAnalyticsTab({ data, currency = 'TND' }: FinancialsAna
     ? liveReconciliation.is_balanced
     : Math.abs(grossOrderGmv - (settledPayouts + escrowFloating + platformCommissionTake + deductedRefunds)) < 1;
 
-  // Gateway Matrix Data (Live or Fallback)
-  const defaultGateways = [
-    { name: 'Flouci', code: 'flouci', type: 'Instant Wallet & Card', successRate: 98.4, volumeTnd: grossOrderGmv * 0.42, feePct: 1.5, latencyMs: 340, status: 'operational' },
-    { name: 'Konnect', code: 'konnect', type: 'Payment Gateway API', successRate: 97.8, volumeTnd: grossOrderGmv * 0.28, feePct: 2.1, latencyMs: 420, status: 'operational' },
-    { name: 'Mandat Minute', code: 'mandat', type: 'La Poste Tunisienne', successRate: 94.2, volumeTnd: grossOrderGmv * 0.14, feePct: 0.8, latencyMs: 1200, status: 'operational' },
-    { name: 'Stripe', code: 'stripe', type: 'International Card', successRate: 99.1, volumeTnd: grossOrderGmv * 0.09, feePct: 2.9, latencyMs: 290, status: 'operational' },
-    { name: 'PayPal', code: 'paypal', type: 'Diaspora Digital Wallet', successRate: 98.9, volumeTnd: grossOrderGmv * 0.04, feePct: 3.4, latencyMs: 380, status: 'operational' },
-    { name: 'Cash on Delivery (COD)', code: 'cod', type: 'Courier Cash Collection', successRate: 86.5, volumeTnd: grossOrderGmv * 0.03, feePct: 0.0, latencyMs: 4800, status: 'degraded' },
-  ];
-
   const GATEWAY_NAMES: Record<string, string> = {
-    flouci: 'Flouci',
-    konnect: 'Konnect',
-    mandat: 'Mandat Minute (D17)',
-    stripe: 'Stripe',
-    paypal: 'PayPal',
-    cod: 'Cash on Delivery (COD)',
+    flouci: 'Flouci (Cartes Bancaires & Portefeuille)',
+    konnect: 'Konnect (Passerelle BCT Agréée)',
+    manual_mandat: 'Mandat Minute (La Poste Tunisienne / D17)',
+    mandat: 'Mandat Minute (La Poste Tunisienne / D17)',
+    stripe: 'Stripe (Cartes Internationales)',
+    paypal: 'PayPal (Diaspora & International)',
+    cod: 'Paiement à la Livraison (Cash on Delivery)',
   };
 
   const GATEWAY_TYPES: Record<string, string> = {
-    flouci: 'Instant Wallet & Card',
-    konnect: 'Payment Gateway API',
-    mandat: 'La Poste Tunisienne',
-    stripe: 'International Card',
-    paypal: 'Diaspora Digital Wallet',
-    cod: 'Courier Cash Collection',
+    flouci: 'Portefeuille Électronique & Cartes',
+    konnect: 'Passerelle Paiement Agréée BCT',
+    manual_mandat: 'La Poste Tunisienne & D17',
+    mandat: 'La Poste Tunisienne & D17',
+    stripe: 'Cartes Visa / MasterCard Internationales',
+    paypal: 'Portefeuille Numérique International',
+    cod: 'Encaissement Espèces Coursier',
   };
 
-  const gateways = (liveGateways && liveGateways.length > 0)
-    ? liveGateways.map((g: any, idx: number) => {
-        const gwKey = String(g.gateway || g.gateway_code || g.code || '').toLowerCase();
-        return {
-          name: g.display_name || GATEWAY_NAMES[gwKey] || g.gateway_name || g.name || gwKey || 'Payment Gateway',
-          code: gwKey || g.gateway || `gw-${idx}`,
-          type: GATEWAY_TYPES[gwKey] || g.gateway_type || g.type || 'Payment Rail',
-          successRate: g.success_rate_pct ?? g.successRate ?? 98.0,
-          volumeTnd: g.total_volume_tnd ?? g.volume_tnd ?? g.volumeTnd ?? 0,
-          feePct: g.fee_pct ?? (gwKey === 'stripe' ? 2.9 : gwKey === 'paypal' ? 3.4 : gwKey === 'konnect' ? 2.1 : gwKey === 'mandat' ? 0.8 : gwKey === 'flouci' ? 1.5 : 0.0),
-          latencyMs: g.latency_ms ?? Math.round((g.avg_latency_seconds || 0.35) * 1000),
-          status: (g.success_rate_pct ?? 100) >= 90 ? 'operational' : 'degraded',
-        };
-      })
-    : defaultGateways;
+  const GATEWAY_DEFAULT_FEES: Record<string, number> = {
+    flouci: 1.5,
+    konnect: 2.1,
+    manual_mandat: 0.8,
+    mandat: 0.8,
+    stripe: 2.9,
+    paypal: 3.4,
+    cod: 0.0,
+  };
+
+  const defaultGateways = [
+    { name: GATEWAY_NAMES.flouci, code: 'flouci', type: GATEWAY_TYPES.flouci, successRate: 98.4, volumeTnd: 0, feePct: 1.5, latencyMs: 340, status: 'operational' },
+    { name: GATEWAY_NAMES.konnect, code: 'konnect', type: GATEWAY_TYPES.konnect, successRate: 97.8, volumeTnd: 0, feePct: 2.1, latencyMs: 420, status: 'operational' },
+    { name: GATEWAY_NAMES.manual_mandat, code: 'manual_mandat', type: GATEWAY_TYPES.manual_mandat, successRate: 94.2, volumeTnd: 0, feePct: 0.8, latencyMs: 1200, status: 'operational' },
+    { name: GATEWAY_NAMES.stripe, code: 'stripe', type: GATEWAY_TYPES.stripe, successRate: 99.1, volumeTnd: 0, feePct: 2.9, latencyMs: 290, status: 'operational' },
+    { name: GATEWAY_NAMES.paypal, code: 'paypal', type: GATEWAY_TYPES.paypal, successRate: 98.9, volumeTnd: 0, feePct: 3.4, latencyMs: 380, status: 'operational' },
+    { name: GATEWAY_NAMES.cod, code: 'cod', type: GATEWAY_TYPES.cod, successRate: 86.5, volumeTnd: 0, feePct: 0.0, latencyMs: 4800, status: 'operational' },
+  ];
+
+  // Process live gateways with normalization and strict deduplication
+  const gateways = useMemo(() => {
+    if (!liveGateways || liveGateways.length === 0) {
+      return defaultGateways;
+    }
+
+    const seen = new Set<string>();
+    const result: Array<{
+      name: string;
+      code: string;
+      type: string;
+      successRate: number;
+      volumeTnd: number;
+      feePct: number;
+      latencyMs: number;
+      status: string;
+    }> = [];
+
+    for (let idx = 0; idx < liveGateways.length; idx++) {
+      const g: any = liveGateways[idx];
+      let gwKey = String(g.gateway || g.gateway_code || g.code || '').toLowerCase().trim();
+      if (gwKey === 'mandat') gwKey = 'manual_mandat';
+      if (!gwKey) gwKey = `gw-${idx}`;
+
+      if (seen.has(gwKey)) continue;
+      seen.add(gwKey);
+
+      result.push({
+        name: g.display_name || GATEWAY_NAMES[gwKey] || g.gateway_name || g.name || gwKey,
+        code: gwKey,
+        type: GATEWAY_TYPES[gwKey] || g.gateway_type || g.type || 'Passerelle de Paiement',
+        successRate: Number(g.success_rate_pct ?? g.successRate ?? (g.total_attempts > 0 ? ((g.successful_captures / g.total_attempts) * 100).toFixed(1) : 100)),
+        volumeTnd: Number(g.total_volume_tnd ?? g.volume_tnd ?? g.volumeTnd ?? 0),
+        feePct: Number(g.fee_pct ?? GATEWAY_DEFAULT_FEES[gwKey] ?? 0.0),
+        latencyMs: Number(g.latency_ms ?? Math.round((g.avg_latency_seconds || 0.35) * 1000)),
+        status: (g.success_rate_pct ?? 100) >= 90 ? 'operational' : 'degraded',
+      });
+    }
+
+    return result;
+  }, [liveGateways, defaultGateways]);
 
 
   // MRR Waterfall Breakdown
