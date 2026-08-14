@@ -22,6 +22,8 @@ import {
 } from '@pandamarket/types';
 import { subscriptionService } from './subscription.service';
 import { categoryService } from './category.service';
+import { imageVariantService } from './image-variant.service';
+import { fileAssetService } from './file-asset.service';
 import { logger } from '../utils/logger';
 import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
 import { sanitizeProductDescription } from '../utils/sanitize-html';
@@ -428,6 +430,10 @@ export class ProductService {
     const metadata = { ...(input.metadata || {}), ...(wholesalePricing ? { wholesale_pricing: wholesalePricing } : {}) };
     const variants = normalizeProductVariants(input.variants);
 
+    if (input.thumbnail) {
+      input.thumbnail = await this.duplicateImageToProductFolder(input.store_id, input.thumbnail);
+    }
+
     const productId = await transaction(async (c) => {
       const { rows } = await c.query<ProductRow>(
         `INSERT INTO pd_product
@@ -572,9 +578,13 @@ export class ProductService {
       patch.type === ProductType.Digital ||
       patch.type === ProductType.Serial ||
       patch.digital_file_key !== undefined ||
-      licenseKeys.length > 0
+      licenseKeys.length > 0 ||
+      patch.thumbnail
     ) {
       current = await this.getById(id);
+      if (patch.thumbnail) {
+        patch.thumbnail = await this.duplicateImageToProductFolder(current.store_id, patch.thumbnail);
+      }
       const nextType = patch.type ?? current.type;
       const nextStatus = patch.status ?? current.status;
       const nextFileKey = patch.digital_file_key !== undefined ? patch.digital_file_key : current.digital_file_key;

@@ -679,6 +679,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['There is one documented authoritative commission source for every seller plan.', 'Changing the displayed rate changes the actual calculated rate or the control is removed.', 'Historical orders retain their captured commission values.', 'Reports, invoices, and refunds reconcile to the same rule.'],
     related: ['AS-24 — schema/default governance.', 'QA-01 — financial/settings regression coverage.'],
     tags: ['bug', 'admin-settings', 'finance', 'commission', 'dead-setting'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-13', folder: FOLDERS.settings, sortOrder: 13,
@@ -693,6 +694,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['The UI never implies seller-rail settings affect unsupported layouts.', 'Values persist safely across layout switches.', 'Alibaba preview/runtime reflects the configured content.', 'Any cross-layout seller CTA uses an explicit shared block contract.'],
     related: ['HC-01 — capability matrix.', 'HH-14 — seller CTA routing.'],
     tags: ['improvement', 'admin-settings', 'alibaba', 'seller-rail', 'layout-scope'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-14', folder: FOLDERS.settings, sortOrder: 14,
@@ -765,6 +767,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['A fresh production deployment resolves to the approved canonical origin.', 'Preview/local origins cannot be accidentally published as production.', 'All public URL consumers use the same normalized source.', 'Changing the origin is permissioned, audited, previewed, and reversible.'],
     related: ['HH-13 — SEO metadata.', 'SO-02 — privileged setting permissions.', 'AS-24 — defaults governance.'],
     tags: ['bug', 'admin-settings', 'public-url', 'deployment', 'security'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-19', folder: FOLDERS.settings, sortOrder: 19,
@@ -794,6 +797,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Every tab is discoverable and reachable at 320 px without precision scrolling.', 'The active tab is visible after click, keyboard navigation, and reload.', 'Semantics match behavior and screen readers announce selection.', 'No horizontal page overflow or sticky-header obstruction occurs.'],
     related: ['AS-09 — information architecture.', 'LA-02 — settings semantics.'],
     tags: ['improvement', 'admin-settings', 'mobile', 'tabs', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-21', folder: FOLDERS.settings, sortOrder: 21,
@@ -1100,7 +1104,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

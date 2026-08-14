@@ -51,6 +51,12 @@ interface MarketplaceSettings {
   default_currency?: string;
   hub_homepage_pagination_style?: string;
   catalog_default_sort?: string;
+  hub_hero_show_seller_rail?: boolean | string;
+  hub_hero_seller_rail_title?: string;
+  hub_hero_seller_rail_subtitle?: string;
+  hub_hero_seller_rail_cta_label?: string;
+  hub_hero_seller_rail_cta_url?: string;
+  hub_hero_seller_rail_badge_text?: string;
 }
 
 interface HubHomeContentProps {
@@ -592,11 +598,29 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                   </Link>
                 );
               })}
-              <Link href="/hub/vendor-signup" className="rounded-3xl bg-gradient-to-br from-[#16C784] to-[#0f9f6e] p-5 text-white shadow-xl shadow-[#16C784]/20 transition hover:-translate-y-1">
-                <Store className="mb-4 h-8 w-8" />
-                <p className="text-lg font-black">{t('hub.hero.ctaCreateStore')}</p>
-                <p className="mt-2 text-sm text-white/75">Launch your seller storefront and sell on PandaMarket.</p>
-              </Link>
+              {marketplaceSettings?.hub_hero_show_seller_rail !== false && (
+                <Link
+                  href={marketplaceSettings?.hub_hero_seller_rail_cta_url || '/hub/vendor-signup'}
+                  className="rounded-3xl bg-gradient-to-br from-[#16C784] to-[#0f9f6e] p-5 text-white shadow-xl shadow-[#16C784]/20 transition hover:-translate-y-1"
+                >
+                  <Store className="mb-4 h-8 w-8" />
+                  {marketplaceSettings?.hub_hero_seller_rail_badge_text && (
+                    <span className="mb-2 inline-flex rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                      {marketplaceSettings.hub_hero_seller_rail_badge_text}
+                    </span>
+                  )}
+                  <p className="text-lg font-black">
+                    {marketplaceSettings?.hub_hero_seller_rail_title || t('hub.hero.ctaCreateStore')}
+                  </p>
+                  <p className="mt-2 text-sm text-white/75">
+                    {marketplaceSettings?.hub_hero_seller_rail_subtitle || 'Launch your seller storefront and sell on PandaMarket.'}
+                  </p>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-black text-white/90">
+                    <span>{marketplaceSettings?.hub_hero_seller_rail_cta_label || t('nav.createStore')}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
+                </Link>
+              )}
             </aside>
           </div>
         </div>

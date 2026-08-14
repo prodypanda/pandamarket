@@ -8,8 +8,8 @@ import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -260,12 +260,12 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   marketplace_supported_locales: 'fr,en,ar',
   marketplace_rtl_enabled: true,
   marketplace_support_email: 'support@pandamarket.tn',
-  marketplace_support_phone: '',
-  marketplace_support_whatsapp: '',
-  marketplace_address: '',
+  marketplace_support_phone: '+216 71 000 000',
+  marketplace_support_whatsapp: '+216 50 000 000',
+  marketplace_address: '123 Avenue Habib Bourguiba, Tunis',
   marketplace_city: 'Tunis',
-  marketplace_country: 'Tunisia',
-  marketplace_business_hours: '',
+  marketplace_country: 'TN',
+  marketplace_business_hours: 'Mon–Fri 09:00–18:00',
   marketplace_facebook_url: '',
   marketplace_instagram_url: '',
   marketplace_x_url: '',
@@ -962,7 +962,7 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'search_console_verification', tab: 'integrations', label: 'Google Search Console Verification', description: 'HTML meta tag verification token for Google Webmaster Tools', keywords: ['search console', 'google', 'seo', 'verification', 'webmaster'] },
 
   // Subscriptions & Plans
-  { key: 'plans_management', tab: 'plans', label: 'Seller Subscription Tiers', description: 'Configure Free, Starter, Pro, and Enterprise seller plans, quotas, and feature flags', keywords: ['plans', 'subscription', 'pricing', 'tiers', 'seller', 'abonnement', 'tarifs'] },
+  { key: 'plans_management', tab: 'plans', label: 'Seller Subscription Tiers', description: 'Configure Free, Starter, Pro, and Enterprise seller plans, quotas, and feature matrix', keywords: ['plans', 'subscription', 'pricing', 'tiers', 'seller', 'abonnement', 'tarifs'] },
 
   // Transactional Emails
   { key: 'smtp_configuration', tab: 'email', label: 'SMTP Server & Transactional Email', description: 'Configure Brevo, Resend, SendGrid, Gmail, or Custom SMTP server credentials', keywords: ['smtp', 'email', 'host', 'port', 'password', 'mail', 'brevo', 'resend', 'sendgrid', 'templates'] },
@@ -993,6 +993,15 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
   for (const key of BOOLEAN_SETTING_KEYS) {
     payload[key] = Boolean(payload[key]);
   }
+
+  // Normalize marketplace_public_url (AS-18)
+  const publicUrl = String(payload.marketplace_public_url || '').trim();
+  if (publicUrl) {
+    payload.marketplace_public_url = publicUrl.replace(/\/+$/, '');
+  }
+
+  // Clamp platform_commission_rate (AS-12)
+  payload.platform_commission_rate = Math.max(0, Math.min(100, Number(payload.platform_commission_rate) || 0));
 
   // Validate rewards_widget_prizes_json is valid JSON array
   try {
@@ -1489,6 +1498,33 @@ export default function SuperAdminSettingsPage() {
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateTabScroll = () => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 5);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5);
+  };
+
+  useEffect(() => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    updateTabScroll();
+    el.addEventListener('scroll', updateTabScroll, { passive: true });
+    window.addEventListener('resize', updateTabScroll);
+    return () => {
+      el.removeEventListener('scroll', updateTabScroll);
+      window.removeEventListener('resize', updateTabScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeBtn = tabStripRef.current?.querySelector('[data-active="true"]');
+    activeBtn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeTab]);
 
   function updateSetting<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
     if (!settingsLoadSucceeded) return;
@@ -2121,44 +2157,81 @@ export default function SuperAdminSettingsPage() {
       {error && <div role="alert" aria-live="assertive" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
-      {/* Modern Compact Settings Navigation Pills with Custom Red Scrollbar */}
-      <div
-        className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2.5 shadow-sm scrollbar-thin scrollbar-thumb-[#B91C1C]/40 scrollbar-track-slate-100 hover:scrollbar-thumb-[#B91C1C]"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: '#B91C1C #F1F5F9' }}
-      >
-        {SETTINGS_TABS.map((tab) => {
-          const Icon = tab.icon;
-          const selected = activeTab === tab.id;
-          const isDirty = dirtyTabs.has(tab.id as PlatformSettingsTab);
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleTabClick(tab.id)}
-              title={tab.description}
-              className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                selected
-                  ? 'bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-md shadow-red-900/25 scale-[1.02]'
-                  : 'bg-stone-50 text-slate-600 hover:bg-amber-50/70 hover:text-slate-900 hover:border-amber-200'
-              }`}
-            >
-              <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
-                selected ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700'
-              }`}>
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              <span className="whitespace-nowrap tracking-tight">{tab.label}</span>
-              {isDirty && (
-                <span
-                  className={`h-2 w-2 rounded-full ring-2 ${
-                    selected ? 'bg-amber-300 ring-[#B91C1C]' : 'bg-amber-500 ring-white'
-                  } animate-pulse`}
-                  title="Unsaved changes in this section"
-                />
-              )}
-            </button>
-          );
-        })}
+      {/* Modern Compact Settings Navigation Pills with Horizontal Scroll Controls (AS-20) */}
+      <div className="relative group">
+        {/* Left fade gradient */}
+        {canScrollLeft && (
+          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-white via-white/80 to-transparent rounded-l-2xl" />
+        )}
+        {/* Right fade gradient */}
+        {canScrollRight && (
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-white via-white/80 to-transparent rounded-r-2xl" />
+        )}
+
+        {/* Scroll Left Button */}
+        {canScrollLeft && (
+          <button
+            type="button"
+            aria-label="Scroll tabs left"
+            onClick={() => tabStripRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+            className="absolute left-1.5 top-1/2 z-20 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-md border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+
+        {/* Scroll Right Button */}
+        {canScrollRight && (
+          <button
+            type="button"
+            aria-label="Scroll tabs right"
+            onClick={() => tabStripRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+            className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-md border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+
+        <div
+          ref={tabStripRef}
+          className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2.5 shadow-sm scrollbar-thin scrollbar-thumb-[#B91C1C]/40 scrollbar-track-slate-100 hover:scrollbar-thumb-[#B91C1C]"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {SETTINGS_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const selected = activeTab === tab.id;
+            const isDirty = dirtyTabs.has(tab.id as PlatformSettingsTab);
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                data-active={selected}
+                onClick={() => handleTabClick(tab.id)}
+                title={tab.description}
+                className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+                  selected
+                    ? 'bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-md shadow-red-900/25 scale-[1.02]'
+                    : 'bg-stone-50 text-slate-600 hover:bg-amber-50/70 hover:text-slate-900 hover:border-amber-200'
+                }`}
+              >
+                <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
+                  selected ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700'
+                }`}>
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="whitespace-nowrap tracking-tight">{tab.label}</span>
+                {isDirty && (
+                  <span
+                    className={`h-2 w-2 rounded-full ring-2 ${
+                      selected ? 'bg-amber-300 ring-[#B91C1C]' : 'bg-amber-500 ring-white'
+                    } animate-pulse`}
+                    title="Unsaved changes in this section"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className={activeTab === 'security' ? 'rounded-[2rem] border border-slate-200/70 bg-white p-6 shadow-xl shadow-slate-200/40' : 'hidden'}>
@@ -2293,8 +2366,13 @@ export default function SuperAdminSettingsPage() {
           {renderTextInput('marketplace_city', 'City')}
           {renderTextInput('marketplace_country', 'Country')}
           {renderTextInput('marketplace_business_hours', 'Business Hours', 'Mon–Fri 09:00–18:00')}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-1.5">
             {renderTextInput('marketplace_public_url', 'Public Marketplace URL', 'https://pandamarket.tn')}
+            {(!settings.marketplace_public_url || settings.marketplace_public_url.includes('garbage.team')) && (
+              <p className="text-xs font-bold text-amber-700">
+                ⚠ Ensure your production URL is configured. Canonical URLs, emails, and sharing links depend on this value.
+              </p>
+            )}
           </div>
           <div className="md:col-span-2">
             {renderTextInput('marketplace_og_image_url', 'Social Sharing Image URL', '/og-image.png')}
@@ -2561,9 +2639,17 @@ export default function SuperAdminSettingsPage() {
           {/* Seller Rail Settings */}
           {settings.hub_hero_show_seller_rail && (
             <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
-              <h4 className="mb-3 text-sm font-black text-slate-800 flex items-center gap-2">
-                <Store className="h-4 w-4 text-[#ff6a00]" /> Seller Rail Configuration
-              </h4>
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <Store className="h-4 w-4 text-[#ff6a00]" /> Seller Rail Configuration
+                </h4>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-800">
+                  Alibaba B2B &amp; Classic Hero CTA
+                </span>
+              </div>
+              <p className="mb-4 text-xs text-slate-500">
+                Configures the right-side vendor promotion rail on Alibaba B2B layout and the hero aside store-creation CTA card on the Classic layout.
+              </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {renderTextInput('hub_hero_seller_rail_title', 'Rail Card Title', 'Accès Vendeurs & Fournisseurs')}
                 {renderTextInput('hub_hero_seller_rail_subtitle', 'Rail Subtitle', 'Ouvrez votre boutique B2B...')}
@@ -2847,7 +2933,12 @@ export default function SuperAdminSettingsPage() {
           description="Manage platform commission, withdrawal threshold, and default currency."
         />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {renderNumberInput('platform_commission_rate', 'Free Plan Commission Rate', '%', 0, 100, 0.5)}
+          <div className="space-y-1.5">
+            {renderNumberInput('platform_commission_rate', 'Free Plan Commission Rate', '%', 0, 100, 0.5)}
+            <p className="text-[11px] font-medium text-slate-500">
+              Fallback commission rate on sales for stores without an active paid subscription plan.
+            </p>
+          </div>
           {renderNumberInput('min_withdrawal_tnd', 'Minimum Withdrawal Amount', settings.default_currency, 1)}
           {renderTextInput('default_currency', 'Settlement Currency')}
           <div className="space-y-1.5">
@@ -2863,6 +2954,40 @@ export default function SuperAdminSettingsPage() {
               <option value="biweekly">Biweekly</option>
               <option value="monthly">Monthly</option>
             </select>
+          </div>
+        </div>
+
+        {/* Commission Rate by Plan Tier Breakdown (AS-12) */}
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-stone-50/70 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Commission Rates by Subscription Tier</h4>
+              <p className="text-xs text-slate-500">Paid plans take precedence over the global fallback rate.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleTabClick('plans')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-[#B91C1C] hover:text-[#B91C1C] transition shadow-sm"
+            >
+              Manage Plans →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+            {[
+              { plan: 'Free', rate: `${settings.platform_commission_rate}%`, isFallback: true },
+              { plan: 'Starter', rate: '0%', isFallback: false },
+              { plan: 'Regular', rate: '0%', isFallback: false },
+              { plan: 'Agency', rate: '0%', isFallback: false },
+              { plan: 'Pro', rate: '0%', isFallback: false },
+              { plan: 'Golden', rate: '0%', isFallback: false },
+              { plan: 'Platinum', rate: '0%', isFallback: false },
+            ].map((t) => (
+              <div key={t.plan} className="rounded-xl border border-slate-200/80 bg-white p-2.5 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t.plan}</span>
+                <p className="mt-1 text-sm font-black text-slate-900">{t.rate}</p>
+                <span className="text-[9px] font-bold text-slate-500">{t.isFallback ? 'Global' : 'Plan'}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -2969,7 +3094,7 @@ export default function SuperAdminSettingsPage() {
 
         <div className="rounded-xl bg-slate-50 p-4 border border-slate-200/80 text-xs text-slate-600 space-y-1">
           <p className="font-bold text-slate-800">📌 What is Webhook ID and how to get it?</p>
-          <p>When you add your platform Webhook URL (<code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-300">https://www.garbage.team/api/pd/payments/webhook/paypal</code>) in the PayPal Developer Dashboard under Apps & Credentials → Webhooks, PayPal generates a <strong>Webhook ID</strong>. Paste it above so PandaMarket can cryptographically verify every inbound payment event.</p>
+          <p>When you add your platform Webhook URL (<code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-300">https://pandamarket.tn/api/pd/payments/webhook/paypal</code>) in the PayPal Developer Dashboard under Apps &amp; Credentials → Webhooks, PayPal generates a <strong>Webhook ID</strong>. Paste it above so PandaMarket can cryptographically verify every inbound payment event.</p>
         </div>
       </section>
 

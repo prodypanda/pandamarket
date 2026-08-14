@@ -49,9 +49,9 @@ const uploadRateLimit = rateLimit({
   },
 });
 
-// Allowed MIME types per purpose
 const ALLOWED_TYPES: Record<string, string[]> = {
   product_image: ['image/jpeg', 'image/png', 'image/webp'],
+  store_asset: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'],
   digital_product: [
     'application/pdf',
     'application/zip',
@@ -79,6 +79,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 // Max file sizes per purpose (bytes)
 const MAX_SIZES: Record<string, number> = {
   product_image: 10 * 1024 * 1024, // 10 MB
+  store_asset: 15 * 1024 * 1024, // 15 MB
   digital_product: 100 * 1024 * 1024,
   kyc_document: 10 * 1024 * 1024, // 10 MB
   mandat_proof: 10 * 1024 * 1024, // 10 MB
@@ -147,6 +148,21 @@ router.post(
       case 'product_image':
         bucket = config.s3.bucketPublic;
         keyPrefix = `products/${req.user!.store_id ?? req.user!.id}`;
+        break;
+      case 'store_asset':
+        if (!req.user!.store_id) {
+          throw new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            'Only vendors can upload store assets',
+          );
+        }
+        bucket = config.s3.bucketPublic;
+        const storeSubFolder =
+          req.body.folder &&
+          ['uncategorized', 'products', 'branding', 'general'].includes(req.body.folder)
+            ? req.body.folder
+            : 'uncategorized';
+        keyPrefix = `stores/${req.user!.store_id}/${storeSubFolder}`;
         break;
       case 'digital_product':
         if (!req.user!.store_id) {
