@@ -8,6 +8,7 @@ import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
+import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
@@ -1500,6 +1501,7 @@ export default function SuperAdminSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'published' | 'failed'>('idle');
+  const [lastSavedAuditInfo, setLastSavedAuditInfo] = useState<{ section: string; keys: string[]; timestamp: number } | null>(null);
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -1733,6 +1735,7 @@ export default function SuperAdminSettingsPage() {
           setSavedSettings(loadedSettings);
           setSectionVersions(data.section_versions || {});
           setSettingsLoadSucceeded(true);
+          setSettingsLoadError(null);
         }
       } catch (err) {
         if (active) {
@@ -1747,7 +1750,7 @@ export default function SuperAdminSettingsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [settingsLoadAttempt]);
 
   useEffect(() => {
     if (activeTab !== 'email' || smtpLoaded) return;
@@ -1859,10 +1862,15 @@ export default function SuperAdminSettingsPage() {
         }
 
         setSaved(true);
+        setLastSavedAuditInfo({
+          section,
+          keys: submittedKeys,
+          timestamp: Date.now(),
+        });
         setTimeout(() => {
           setSaved(false);
           setPublishStatus('idle');
-        }, 4000);
+        }, 5000);
       } else if (res.status === 409) {
         let conflictData: PlatformSettingsResponse & { error?: { message?: string; details?: { current_version?: string | null } } } = {};
         try {
@@ -2187,7 +2195,44 @@ export default function SuperAdminSettingsPage() {
         </div>
       )}
 
-      {error && <div role="alert" aria-live="assertive" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {/* Save Success Banner with Audit Log Traceability Link (AS-17) */}
+      {lastSavedAuditInfo && saved && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-xs text-emerald-950 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2.5 font-bold">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>
+              Successfully saved {lastSavedAuditInfo.keys.length} setting{lastSavedAuditInfo.keys.length === 1 ? '' : 's'} in <strong className="capitalize">{lastSavedAuditInfo.section}</strong> ({lastSavedAuditInfo.keys.slice(0, 4).join(', ')}{lastSavedAuditInfo.keys.length > 4 ? ` +${lastSavedAuditInfo.keys.length - 4} more` : ''})
+            </span>
+          </div>
+          <Link
+            href="/audit-log"
+            className="inline-flex items-center gap-1 font-black text-emerald-700 underline hover:text-emerald-900"
+          >
+            View change in Audit Log →
+          </Link>
+        </div>
+      )}
+
+      {/* Authoritative Load Error Retry Banner (AS-22) */}
+      {error && !settingsLoadSucceeded && (
+        <div role="alert" aria-live="assertive" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800 shadow-sm">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+            <div>
+              <strong className="block font-bold">Failed to load platform settings from server</strong>
+              <p className="text-xs text-red-600 mt-0.5">{error}. Settings mutation and saving are blocked to protect live configuration.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsLoadAttempt((prev) => prev + 1)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-red-700 transition"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Retry Load
+          </button>
+        </div>
+      )}
+      {error && settingsLoadSucceeded && <div role="alert" aria-live="assertive" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loading && <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">Loading settings...</div>}
 
       {/* Modern Compact Settings Navigation Pills with Horizontal Scroll Controls (AS-20) */}

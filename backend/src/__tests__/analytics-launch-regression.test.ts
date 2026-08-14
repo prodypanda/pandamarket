@@ -10,6 +10,13 @@ vi.mock('../db/pool', () => ({
 }));
 
 vi.mock('../db/redis', () => ({
+  getRedis: () => ({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    keys: vi.fn().mockResolvedValue([]),
+  }),
+  withRedisTimeout: (promise: Promise<unknown>) => promise,
   get: vi.fn().mockResolvedValue(null),
   set: vi.fn().mockResolvedValue('OK'),
   del: vi.fn().mockResolvedValue(1),

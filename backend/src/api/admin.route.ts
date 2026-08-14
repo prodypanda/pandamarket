@@ -5026,6 +5026,69 @@ router.get(
 );
 
 // ==========================================================
+// Superadmin Modular Platform Analytics APIs (R1 & R2)
+// ==========================================================
+
+router.get(
+  '/analytics/pulse/live',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const data = await analyticsService.getLivePulseData();
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/geo/heatmap',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsService } = await import('../services/analytics.service');
+    const params = extractAnalyticsQueryParams(req);
+    const data = await analyticsService.getGeoHeatmapData(params);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/financials/reconciliation',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsReconciliationService } = await import('../services/analytics-reconciliation.service');
+    const params = extractAnalyticsQueryParams(req);
+    const data = await analyticsReconciliationService.getTriFoldReconciliation(params);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/financials/mrr-waterfall',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsReconciliationService } = await import('../services/analytics-reconciliation.service');
+    const params = extractAnalyticsQueryParams(req);
+    const data = await analyticsReconciliationService.getSaaSMRRWaterfall(params);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+router.get(
+  '/analytics/gateways/matrix',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { analyticsReconciliationService } = await import('../services/analytics-reconciliation.service');
+    const params = extractAnalyticsQueryParams(req);
+    const data = await analyticsReconciliationService.getGatewayReliabilityMatrix(params);
+    res.status(200).json({ success: true, data });
+  }),
+);
+
+// ==========================================================
 // Superadmin Modular Platform Analytics APIs
 // ==========================================================
 

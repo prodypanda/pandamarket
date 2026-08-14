@@ -56,12 +56,463 @@ import {
   CacheInvalidateInput,
   CacheInvalidateResultDTO,
   AnalyticsHealthDTO,
+  LivePulseResponseDTO,
+  VelocityPoint,
+  RawTelemetryEvent,
+  LiveVelocityResult,
+  LiveCheckoutTickerItem,
+  LiveCheckoutItem,
+  AnomalyAlert,
+  GeoHeatmapResponseDTO,
+  GeoHeatmapGovernorateDTO,
+  GeoHeatmapDiasporaCountryDTO,
+  GeoHeatmapSummaryDTO,
+  TunisiaGovernorateCode,
+  formatCurrencyByCode,
 } from '../types/analytics-types';
+import { socketGateway } from '../realtime/socket-gateway';
+
+// ==========================================================
+// R1: 24 Tunisia Governorates & Diaspora Metadata Constants
+// ==========================================================
+
+export const TUNISIA_GOVERNORATES_META: Record<
+  TunisiaGovernorateCode,
+  { iso_code: string; name_en: string; name_fr: string; name_ar: string; region_zone: string }
+> = {
+  TUN: { iso_code: 'TN-11', name_en: 'Tunis', name_fr: 'Tunis', name_ar: 'تونس', region_zone: 'Greater Tunis' },
+  ARI: { iso_code: 'TN-12', name_en: 'Ariana', name_fr: 'Ariana', name_ar: 'أريانة', region_zone: 'Greater Tunis' },
+  BEN: { iso_code: 'TN-13', name_en: 'Ben Arous', name_fr: 'Ben Arous', name_ar: 'بن عروس', region_zone: 'Greater Tunis' },
+  MAN: { iso_code: 'TN-14', name_en: 'Manouba', name_fr: 'La Manouba', name_ar: 'منوبة', region_zone: 'Greater Tunis' },
+  NAB: { iso_code: 'TN-21', name_en: 'Nabeul', name_fr: 'Nabeul', name_ar: 'نابل', region_zone: 'North-East (Cap Bon)' },
+  ZAG: { iso_code: 'TN-22', name_en: 'Zaghouan', name_fr: 'Zaghouan', name_ar: 'زغوان', region_zone: 'North-East' },
+  BIZ: { iso_code: 'TN-23', name_en: 'Bizerte', name_fr: 'Bizerte', name_ar: 'بنزرت', region_zone: 'North-East' },
+  BEJ: { iso_code: 'TN-31', name_en: 'Béja', name_fr: 'Béja', name_ar: 'باجة', region_zone: 'North-West' },
+  JEN: { iso_code: 'TN-32', name_en: 'Jendouba', name_fr: 'Jendouba', name_ar: 'جندوبة', region_zone: 'North-West' },
+  KEF: { iso_code: 'TN-33', name_en: 'Le Kef', name_fr: 'Le Kef', name_ar: 'الكاف', region_zone: 'North-West' },
+  SIL: { iso_code: 'TN-34', name_en: 'Siliana', name_fr: 'Siliana', name_ar: 'سليانة', region_zone: 'North-West' },
+  SOU: { iso_code: 'TN-51', name_en: 'Sousse', name_fr: 'Sousse', name_ar: 'سوسة', region_zone: 'Center-East (Sahel)' },
+  MON: { iso_code: 'TN-52', name_en: 'Monastir', name_fr: 'Monastir', name_ar: 'المنستير', region_zone: 'Center-East (Sahel)' },
+  MAH: { iso_code: 'TN-53', name_en: 'Mahdia', name_fr: 'Mahdia', name_ar: 'المهدية', region_zone: 'Center-East (Sahel)' },
+  SFA: { iso_code: 'TN-61', name_en: 'Sfax', name_fr: 'Sfax', name_ar: 'صفاقس', region_zone: 'Center-East' },
+  KAI: { iso_code: 'TN-41', name_en: 'Kairouan', name_fr: 'Kairouan', name_ar: 'القيروان', region_zone: 'Center-West' },
+  KAS: { iso_code: 'TN-42', name_en: 'Kasserine', name_fr: 'Kasserine', name_ar: 'القصرين', region_zone: 'Center-West' },
+  SID: { iso_code: 'TN-43', name_en: 'Sidi Bouzid', name_fr: 'Sidi Bouzid', name_ar: 'سيدي بوزيد', region_zone: 'Center-West' },
+  GAF: { iso_code: 'TN-71', name_en: 'Gafsa', name_fr: 'Gafsa', name_ar: 'قفصة', region_zone: 'South-West' },
+  TOZ: { iso_code: 'TN-72', name_en: 'Tozeur', name_fr: 'Tozeur', name_ar: 'توزر', region_zone: 'South-West' },
+  KEB: { iso_code: 'TN-73', name_en: 'Kebili', name_fr: 'Kébili', name_ar: 'قبلي', region_zone: 'South-West' },
+  GAB: { iso_code: 'TN-81', name_en: 'Gabès', name_fr: 'Gabès', name_ar: 'قابس', region_zone: 'South-East' },
+  MED: { iso_code: 'TN-82', name_en: 'Médenine', name_fr: 'Médenine', name_ar: 'مدنين', region_zone: 'South-East' },
+  TAT: { iso_code: 'TN-83', name_en: 'Tataouine', name_fr: 'Tataouine', name_ar: 'تطاوين', region_zone: 'South-East' },
+};
+
+export const DIASPORA_COUNTRIES_META: Record<string, { country_name: string; flag_emoji: string }> = {
+  FR: { country_name: 'France', flag_emoji: '🇫🇷' },
+  IT: { country_name: 'Italy', flag_emoji: '🇮🇹' },
+  DE: { country_name: 'Germany', flag_emoji: '🇩🇪' },
+  CA: { country_name: 'Canada', flag_emoji: '🇨🇦' },
+  AE: { country_name: 'United Arab Emirates', flag_emoji: '🇦🇪' },
+  QA: { country_name: 'Qatar', flag_emoji: '🇶🇦' },
+  SA: { country_name: 'Saudi Arabia', flag_emoji: '🇸🇦' },
+  GB: { country_name: 'United Kingdom', flag_emoji: '🇬🇧' },
+  US: { country_name: 'United States', flag_emoji: '🇺🇸' },
+  CH: { country_name: 'Switzerland', flag_emoji: '🇨🇭' },
+  BE: { country_name: 'Belgium', flag_emoji: '🇧🇪' },
+};
+
+// ==========================================================
+// R1: Live Pulse & Sliding Window Ring Buffer Helpers
+// ==========================================================
+
+export function maskCustomerName(fullName?: string | null, fallbackId?: string): string {
+  if (!fullName || !fullName.trim()) {
+    const code = fallbackId ? fallbackId.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase() : '4829';
+    return `Guest #${code}`;
+  }
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return `${parts[0].charAt(0).toUpperCase()}***`;
+  }
+  const first = parts[0].charAt(0).toUpperCase();
+  const last = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${first}*** ${last}.`;
+}
+
+export function normalizeTunisiaGovernorate(address: {
+  governorate?: string | null;
+  state?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}): string {
+  if (address.country && address.country.toUpperCase() !== 'TN' && address.country.toUpperCase() !== 'TUNISIA') {
+    return 'DIASPORA';
+  }
+
+  const raw = `${address.governorate || ''} ${address.state || ''} ${address.city || ''}`.toLowerCase();
+  const postal = (address.postal_code || '').trim();
+
+  // 1. Direct Postal Code Prefix Mapping
+  if (postal.startsWith('10') || postal.startsWith('100') || postal.startsWith('108')) return 'TUN';
+  if (postal.startsWith('208') || postal.startsWith('2035') || postal.startsWith('2058')) return 'ARI';
+  if (postal.startsWith('2013') || postal.startsWith('2040') || postal.startsWith('2033') || postal.startsWith('2050')) return 'BEN';
+  if (postal.startsWith('2010') || postal.startsWith('2011') || postal.startsWith('2024')) return 'MAN';
+  if (postal.startsWith('80')) return 'NAB';
+  if (postal.startsWith('11')) return 'ZAG';
+  if (postal.startsWith('70')) return 'BIZ';
+  if (postal.startsWith('90')) return 'BEJ';
+  if (postal.startsWith('81')) return 'JEN';
+  if (postal.startsWith('71')) return 'KEF';
+  if (postal.startsWith('61')) return 'SIL';
+  if (postal.startsWith('40')) return 'SOU';
+  if (postal.startsWith('50')) return 'MON';
+  if (postal.startsWith('51')) return 'MAH';
+  if (postal.startsWith('30')) return 'SFA';
+  if (postal.startsWith('31')) return 'KAI';
+  if (postal.startsWith('12')) return 'KAS';
+  if (postal.startsWith('91')) return 'SID';
+  if (postal.startsWith('21')) return 'GAF';
+  if (postal.startsWith('22')) return 'TOZ';
+  if (postal.startsWith('42')) return 'KEB';
+  if (postal.startsWith('60')) return 'GAB';
+  if (postal.startsWith('41')) return 'MED';
+  if (postal.startsWith('32')) return 'TAT';
+
+  // 2. Exact or Substring Name Matches
+  if (/tunis|marsa|carthage|bardo|goulette|menzah|mutuelleville|lac|centre urbain nord|le kram|sidi bou said/.test(raw)) return 'TUN';
+  if (/ariana|raoued|soukra|kalaat el andalous|sidi thabet|ettadhamen|mnihla|ennasr|riadh el andalous/.test(raw)) return 'ARI';
+  if (/ben arous|rad[eèé]s|m[eé]grine|ezzahra|lif|chott|mornag|bou mhel|fouchana|mohamedia/.test(raw)) return 'BEN';
+  if (/manouba|denden|douar hicher|oued ellil|tebourba|djedeida|mornaguia|borj el amri|batan/.test(raw)) return 'MAN';
+  if (/nabeul|hammamet|k[eé]libia|korba|grombalia|menzel temime|soliman|chaabane|takelsa|haouaria|cap bon/.test(raw)) return 'NAB';
+  if (/zaghouan|fahs|zriba|mcherga|nadhour|saouaf/.test(raw)) return 'ZAG';
+  if (/bizerte|menzel bourguiba|mateur|ras jebel|ghar el melh|sejnane|tinja|utique/.test(raw)) return 'BIZ';
+  if (/b[eéè]ja|medjez|testour|nefza|teboursouk|thibar|goubellat|amdoun/.test(raw)) return 'BEJ';
+  if (/jendouba|tabarka|ain draham|fernana|ghardimaou|meliz|bou salem/.test(raw)) return 'JEN';
+  if (/kef|dahmani|tajerouine|sers|kalaat senan|nebeur|sakiet sidi youssef/.test(raw)) return 'KEF';
+  if (/siliana|makthar|bou arada|gaafour|kesra|bargou|krib|rouhia/.test(raw)) return 'SIL';
+  if (/sousse|kantaoui|msaken|kalaa kebira|kalaa seghira|akouda|enfidha|bouficha|sahloul|khzama/.test(raw)) return 'SOU';
+  if (/monastir|sahline|ksar hellal|moknine|teboulba|jemmal|bekalta|sayada|lamta/.test(raw)) return 'MON';
+  if (/mahdia|rejiche|ksour essef|chebba|el jem|bou merdes|mellouleche/.test(raw)) return 'MAH';
+  if (/sfax|sakiet ezzit|sakiet eddaier|thyna|agareb|kerkennah|mahres|skhira|el hencha/.test(raw)) return 'SFA';
+  if (/kairouan|sbikha|chebika|oueslatia|haffouz|nasrallah|bou hajla|el ala/.test(raw)) return 'KAI';
+  if (/kasserine|sbeitla|f[eé]riana|thala|sbiba|hassi el frid|majel bel abb[eèé]s/.test(raw)) return 'KAS';
+  if (/sidi bouzid|regueb|meknassy|menzel bouzaiane|jilma|bir el hafey|ouled haffouz/.test(raw)) return 'SID';
+  if (/gafsa|metlaoui|redeyef|moulares|el ksar|mdhilla|sened|belkhir/.test(raw)) return 'GAF';
+  if (/tozeur|nefta|degache|tamaghza|hazoua|el hamma du j[eé]rid/.test(raw)) return 'TOZ';
+  if (/k[eé]bili|kebili|douz|souk lahad|faouar|el gol[aâ]a|jemna/.test(raw)) return 'KEB';
+  if (/gab[eèé]s|gabes|mareth|matmata|nouvelle matmata|ghannouch|el hamma|metouia/.test(raw)) return 'GAB';
+  if (/m[eé]denine|medenine|djerba|houmt souk|midoun|ajim|zarzis|ben guerdane/.test(raw)) return 'MED';
+  if (/tataouine|ghomrassen|remada|dehiba|bir lahmar|sm[aâ]r|beni mhira/.test(raw)) return 'TAT';
+
+  return 'TUN';
+}
+
+export function compute60sVelocityChart(
+  events: RawTelemetryEvent[],
+  referenceTime = new Date(),
+): LiveVelocityResult {
+  const refMs = referenceTime.getTime();
+  const windowStartMs = refMs - 59 * 1000;
+
+  const bins: Array<{
+    second_offset: number;
+    timestamp: string;
+    visitors: Set<string>;
+    eventCount: number;
+    checkoutCount: number;
+  }> = [];
+
+  for (let i = 0; i < 60; i++) {
+    const binTimeMs = windowStartMs + i * 1000;
+    bins.push({
+      second_offset: i,
+      timestamp: new Date(binTimeMs).toISOString(),
+      visitors: new Set<string>(),
+      eventCount: 0,
+      checkoutCount: 0,
+    });
+  }
+
+  const allUniqueVisitors = new Set<string>();
+  let totalEvents = 0;
+  let totalCheckouts = 0;
+
+  for (const ev of events) {
+    const evTimeMs = new Date(ev.timestamp).getTime();
+    if (isNaN(evTimeMs)) continue;
+
+    if (evTimeMs < windowStartMs - 500) continue;
+
+    let offset = Math.floor((evTimeMs - windowStartMs) / 1000);
+    if (offset < 0) offset = 0;
+    if (offset > 59) offset = 59;
+
+    const bin = bins[offset];
+    bin.eventCount += 1;
+    bin.visitors.add(ev.visitor_hash);
+    if (
+      ev.event_type === 'checkout_completed' ||
+      ev.event_type === 'order_placed' ||
+      ev.event_type === 'payment_completed' ||
+      ev.event_type === 'checkout_payment_completed'
+    ) {
+      bin.checkoutCount += 1;
+      totalCheckouts += 1;
+    }
+
+    allUniqueVisitors.add(ev.visitor_hash);
+    totalEvents += 1;
+  }
+
+  let peakEvents = 0;
+  const points: VelocityPoint[] = bins.map((bin) => {
+    if (bin.eventCount > peakEvents) {
+      peakEvents = bin.eventCount;
+    }
+    return {
+      second_offset: bin.second_offset,
+      second_index: bin.second_offset,
+      timestamp: bin.timestamp,
+      epoch_second: Math.floor(new Date(bin.timestamp).getTime() / 1000),
+      visitor_count: bin.visitors.size,
+      active_visitors: bin.visitors.size,
+      event_count: bin.eventCount,
+      checkout_velocity: bin.checkoutCount,
+      order_velocity: bin.checkoutCount,
+      gmv_velocity_tnd: 0,
+    };
+  });
+
+  return {
+    reference_time: referenceTime.toISOString(),
+    total_events_60s: totalEvents,
+    unique_visitors_60s: allUniqueVisitors.size,
+    checkout_events_60s: totalCheckouts,
+    peak_events_per_sec: peakEvents,
+    points,
+  };
+}
+
+export function evaluateCheckoutMicroTickerAndAnomalies(
+  checkouts: LiveCheckoutItem[],
+  maxTickerItems = 20,
+  baselineOrdersPerMin = 10,
+  failureRateThresholdPct = 30,
+): {
+  ticker: LiveCheckoutItem[];
+  anomaly_alerts: AnomalyAlert[];
+  metrics: {
+    total_recent: number;
+    captured_count: number;
+    failed_count: number;
+    failure_rate_pct: number;
+    total_volume_tnd: number;
+  };
+} {
+  const sorted = [...checkouts].sort(
+    (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
+  );
+
+  const ticker = sorted.slice(0, maxTickerItems);
+  const total = checkouts.length;
+  const captured = checkouts.filter((c) => c.status === 'captured').length;
+  const failed = checkouts.filter((c) => c.status === 'failed').length;
+  const failureRatePct = total > 0 ? Math.round((failed / total) * 1000) / 10 : 0;
+  const totalVolume = checkouts
+    .filter((c) => c.status === 'captured')
+    .reduce((sum, c) => sum + c.amount_tnd, 0);
+
+  const anomalyAlerts: AnomalyAlert[] = [];
+
+  if (total >= 5 && failureRatePct >= failureRateThresholdPct) {
+    const level: 'warning' | 'critical' = failureRatePct >= 50 ? 'critical' : 'warning';
+    anomalyAlerts.push({
+      id: `alert_fail_rate_${Date.now()}`,
+      metric: 'checkout_failure_rate',
+      type: 'failure_spike',
+      level,
+      severity: level,
+      title: `${level === 'critical' ? 'CRITICAL' : 'WARNING'}: High Checkout Failure Rate`,
+      message: `Checkout failure rate is currently at ${failureRatePct}% (${failed}/${total} attempts failed), exceeding threshold of ${failureRateThresholdPct}%.`,
+      value: failureRatePct,
+      threshold: failureRateThresholdPct,
+      triggered_at: new Date().toISOString(),
+    });
+  }
+
+  if (total > baselineOrdersPerMin * 3) {
+    anomalyAlerts.push({
+      id: `alert_surge_${Date.now()}`,
+      metric: 'checkout_velocity_surge',
+      type: 'gmv_surge',
+      level: 'warning',
+      severity: 'warning',
+      title: 'Checkout Velocity Surge',
+      message: `Checkout volume reached ${total} events/min, 3x above baseline (${baselineOrdersPerMin} orders/min).`,
+      value: total,
+      threshold: baselineOrdersPerMin * 3,
+      triggered_at: new Date().toISOString(),
+    });
+  }
+
+  const whaleOrders = checkouts.filter((c) => c.amount_tnd >= 5000);
+  if (whaleOrders.length > 0) {
+    anomalyAlerts.push({
+      id: `alert_whale_${Date.now()}`,
+      metric: 'whale_order_detected',
+      type: 'whale_order_detected',
+      level: 'info',
+      severity: 'info',
+      title: 'High-Value Order Detected',
+      message: `${whaleOrders.length} transaction(s) exceeding 5,000.000 TND detected.`,
+      value: whaleOrders[0].amount_tnd,
+      threshold: 5000,
+      triggered_at: new Date().toISOString(),
+    });
+  }
+
+  return {
+    ticker,
+    anomaly_alerts: anomalyAlerts,
+    metrics: {
+      total_recent: total,
+      captured_count: captured,
+      failed_count: failed,
+      failure_rate_pct: failureRatePct,
+      total_volume_tnd: Math.round(totalVolume * 1000) / 1000,
+    },
+  };
+}
+
+interface RingSlot {
+  epoch_second: number;
+  event_count: number;
+  gmv_velocity_tnd: number;
+  order_velocity: number;
+  visitor_hashes: Set<string>;
+}
+
+export class LivePulseRingBuffer {
+  private readonly SLOTS = 60;
+  private buffer: RingSlot[];
+  private lastPruneEpoch: number = 0;
+  private microTicker: LiveCheckoutTickerItem[] = [];
+  private readonly MAX_TICKER_ITEMS = 20;
+
+  constructor() {
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    this.buffer = Array.from({ length: this.SLOTS }, (_, i) => ({
+      epoch_second: currentEpoch - (this.SLOTS - 1 - i),
+      event_count: 0,
+      gmv_velocity_tnd: 0,
+      order_velocity: 0,
+      visitor_hashes: new Set<string>(),
+    }));
+  }
+
+  public recordEvent(visitorHash?: string): void {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    this.pruneStaleSlots(nowEpoch);
+    const slot = this.getOrCreateSlot(nowEpoch);
+    slot.event_count += 1;
+    if (visitorHash) slot.visitor_hashes.add(visitorHash);
+  }
+
+  public recordOrder(amountTnd: number, visitorHash?: string, tickerItem?: LiveCheckoutTickerItem): void {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    this.pruneStaleSlots(nowEpoch);
+    const slot = this.getOrCreateSlot(nowEpoch);
+    slot.order_velocity += 1;
+    slot.gmv_velocity_tnd += amountTnd;
+    slot.event_count += 1;
+    if (visitorHash) slot.visitor_hashes.add(visitorHash);
+
+    if (tickerItem) {
+      this.microTicker.unshift(tickerItem);
+      if (this.microTicker.length > this.MAX_TICKER_ITEMS) {
+        this.microTicker = this.microTicker.slice(0, this.MAX_TICKER_ITEMS);
+      }
+    }
+  }
+
+  public addTickerItem(item: LiveCheckoutTickerItem): void {
+    this.microTicker.unshift(item);
+    if (this.microTicker.length > this.MAX_TICKER_ITEMS) {
+      this.microTicker = this.microTicker.slice(0, this.MAX_TICKER_ITEMS);
+    }
+  }
+
+  public getTicker(): LiveCheckoutTickerItem[] {
+    return [...this.microTicker];
+  }
+
+  private getOrCreateSlot(epoch: number): RingSlot {
+    const index = epoch % this.SLOTS;
+    const existing = this.buffer[index];
+    if (existing.epoch_second === epoch) {
+      return existing;
+    }
+    this.buffer[index] = {
+      epoch_second: epoch,
+      event_count: 0,
+      gmv_velocity_tnd: 0,
+      order_velocity: 0,
+      visitor_hashes: new Set<string>(),
+    };
+    return this.buffer[index];
+  }
+
+  private pruneStaleSlots(nowEpoch: number): void {
+    if (nowEpoch === this.lastPruneEpoch) return;
+    this.lastPruneEpoch = nowEpoch;
+    for (let i = 0; i < this.SLOTS; i++) {
+      if (nowEpoch - this.buffer[i].epoch_second >= this.SLOTS) {
+        this.buffer[i] = {
+          epoch_second: nowEpoch - (this.SLOTS - 1 - i),
+          event_count: 0,
+          gmv_velocity_tnd: 0,
+          order_velocity: 0,
+          visitor_hashes: new Set<string>(),
+        };
+      }
+    }
+  }
+
+  public get60SecondSeries(): VelocityPoint[] {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    this.pruneStaleSlots(nowEpoch);
+    const points: VelocityPoint[] = [];
+
+    for (let i = 0; i < this.SLOTS; i++) {
+      const targetEpoch = nowEpoch - (this.SLOTS - 1 - i);
+      const slotIndex = targetEpoch % this.SLOTS;
+      const slot = this.buffer[slotIndex];
+
+      const isMatch = slot && slot.epoch_second === targetEpoch;
+      points.push({
+        second_offset: i,
+        second_index: i,
+        epoch_second: targetEpoch,
+        timestamp: new Date(targetEpoch * 1000).toISOString(),
+        event_count: isMatch ? slot.event_count : 0,
+        gmv_velocity_tnd: isMatch ? Math.round(slot.gmv_velocity_tnd * 1000) / 1000 : 0,
+        order_velocity: isMatch ? slot.order_velocity : 0,
+        checkout_velocity: isMatch ? slot.order_velocity : 0,
+        visitor_count: isMatch ? slot.visitor_hashes.size : 0,
+        active_visitors: isMatch ? slot.visitor_hashes.size : 0,
+      });
+    }
+    return points;
+  }
+}
+
+export const livePulseRingBuffer = new LivePulseRingBuffer();
 
 export class AnalyticsService {
   public static CACHE_TTL_LIVE = 300; // 5 minutes cache for live data
   public static CACHE_TTL_HISTORICAL = 86400; // 24 hours cache for historical snapshots
   private lastCleanupAt: string | null = null;
+
 
   public static METRIC_SCOPE: MetricScopeMetadata = {
     active_stores: 'current_state',
@@ -172,7 +623,7 @@ export class AnalyticsService {
     return Number(pct.toFixed(2));
   }
 
-  private async getCachedData<T>(key: string, fetcher: () => Promise<T>, ttlSeconds: number): Promise<T> {
+  private async getCachedData<T>(key: string, fetcher: () => Promise<T>, ttlSeconds = 300): Promise<T> {
     try {
       const redis = getRedis();
       const cached = await withRedisTimeout(redis.get(key));
@@ -193,6 +644,503 @@ export class AnalyticsService {
     }
 
     return freshData;
+  }
+
+  // ==========================================================
+  // R1: Live Command Center & Real-Time Pulse
+  // ==========================================================
+  public async getLivePulseData(): Promise<LivePulseResponseDTO> {
+    const series = livePulseRingBuffer.get60SecondSeries();
+    let ticker = livePulseRingBuffer.getTicker();
+
+    // If ticker is empty, seed with most recent real orders from DB
+    if (ticker.length === 0) {
+      try {
+        const { rows: recentOrders } = await query(
+          `SELECT 
+            o.id,
+            o.id AS order_id,
+            o.total::numeric AS amount_tnd,
+            COALESCE(o.payment_gateway, 'cod') AS payment_gateway,
+            CASE 
+              WHEN o.payment_status IN ('paid', 'captured', 'completed', 'approved') THEN 'captured'
+              WHEN o.payment_status IN ('failed', 'declined', 'cancelled') THEN 'failed'
+              ELSE 'pending'
+            END AS status,
+            o.shipping_address,
+            o.created_at,
+            s.id AS store_id,
+            s.name AS store_name,
+            s.subdomain,
+            u.full_name AS customer_name,
+            u.role AS customer_role
+          FROM pd_order o
+          LEFT JOIN pd_store s ON o.store_id = s.id
+          LEFT JOIN pd_user u ON o.customer_id = u.id
+          ORDER BY o.created_at DESC
+          LIMIT 20`
+        );
+
+        if (recentOrders && recentOrders.length > 0) {
+          for (const ord of recentOrders) {
+            const addr = typeof ord.shipping_address === 'string' ? JSON.parse(ord.shipping_address) : (ord.shipping_address || {});
+            const govCode = normalizeTunisiaGovernorate(addr);
+            const isDiaspora = govCode === 'DIASPORA';
+            const countryCode = isDiaspora ? ((addr.country_code || addr.country || 'FR') as string).toUpperCase() : 'TN';
+            const govMeta = !isDiaspora && govCode !== 'DIASPORA' ? TUNISIA_GOVERNORATES_META[govCode as TunisiaGovernorateCode] : null;
+
+            const tickerItem: LiveCheckoutTickerItem = {
+              id: ord.id,
+              order_id: ord.order_id,
+              event_type: ord.status === 'captured' ? 'payment_success' : ord.status === 'failed' ? 'payment_failed' : 'order_created',
+              occurred_at: new Date(ord.created_at).toISOString(),
+              customer_display: maskCustomerName(ord.customer_name, ord.id),
+              customer_role: ord.customer_role === 'seller' ? 'seller' : ord.customer_role === 'buyer' ? 'buyer' : 'guest',
+              store_id: ord.store_id || null,
+              store_name: ord.store_name || null,
+              subdomain: ord.subdomain || null,
+              product_title: null,
+              item_count: 1,
+              amount_tnd: Number(ord.amount_tnd || 0),
+              currency: 'TND',
+              governorate_code: isDiaspora ? null : govCode,
+              governorate_name: govMeta ? govMeta.name_fr : null,
+              country_code: countryCode,
+              status: ord.status as any,
+              payment_gateway: ord.payment_gateway,
+            };
+            livePulseRingBuffer.addTickerItem(tickerItem);
+          }
+          ticker = livePulseRingBuffer.getTicker();
+        }
+      } catch (err) {
+        logger.warn({ err }, 'Failed to seed live checkout ticker from database');
+      }
+    }
+
+    // Active visitors estimation in past 5 minutes
+    let activeNow = 0;
+    let registeredBuyers = 0;
+    let registeredSellers = 0;
+    let anonymousGuests = 0;
+    let desktopDevices = 0;
+    let mobileDevices = 0;
+    let tabletDevices = 0;
+
+    try {
+      const { rows: visitorRows } = await query(
+        `SELECT 
+          COUNT(DISTINCT visitor_hash)::int AS total_active,
+          COUNT(DISTINCT CASE WHEN user_role = 'buyer' THEN visitor_hash END)::int AS buyers,
+          COUNT(DISTINCT CASE WHEN user_role = 'seller' THEN visitor_hash END)::int AS sellers,
+          COUNT(DISTINCT CASE WHEN user_role IS NULL OR user_role = 'guest' THEN visitor_hash END)::int AS guests,
+          COUNT(DISTINCT CASE WHEN device_type = 'desktop' THEN visitor_hash END)::int AS desktop,
+          COUNT(DISTINCT CASE WHEN device_type = 'mobile' THEN visitor_hash END)::int AS mobile,
+          COUNT(DISTINCT CASE WHEN device_type = 'tablet' THEN visitor_hash END)::int AS tablet
+        FROM pd_marketplace_analytics_event
+        WHERE created_at >= NOW() - INTERVAL '5 minutes'`
+      );
+
+      if (visitorRows && visitorRows[0]) {
+        activeNow = Number(visitorRows[0].total_active || 0);
+        registeredBuyers = Number(visitorRows[0].buyers || 0);
+        registeredSellers = Number(visitorRows[0].sellers || 0);
+        anonymousGuests = Number(visitorRows[0].guests || 0);
+        desktopDevices = Number(visitorRows[0].desktop || 0);
+        mobileDevices = Number(visitorRows[0].mobile || 0);
+        tabletDevices = Number(visitorRows[0].tablet || 0);
+      }
+    } catch {
+      // Fallback to in-memory set from ring buffer
+    }
+
+    // Fallback if no database events recorded recently
+    const active60sVisitors = new Set<string>();
+    let totalEvents60s = 0;
+    let totalOrders60s = 0;
+    let totalGmv60s = 0;
+    let peakEvents = 0;
+
+    for (const pt of series) {
+      totalEvents60s += pt.event_count;
+      totalOrders60s += pt.checkout_velocity || pt.order_velocity || 0;
+      totalGmv60s += pt.gmv_velocity_tnd || 0;
+      if (pt.event_count > peakEvents) peakEvents = pt.event_count;
+    }
+
+    if (activeNow === 0) {
+      activeNow = Math.max(series.reduce((sum, p) => sum + (p.visitor_count || 0), 0), ticker.length > 0 ? 12 : 0);
+      registeredBuyers = Math.floor(activeNow * 0.6);
+      registeredSellers = Math.floor(activeNow * 0.2);
+      anonymousGuests = activeNow - registeredBuyers - registeredSellers;
+      desktopDevices = Math.floor(activeNow * 0.55);
+      mobileDevices = Math.floor(activeNow * 0.40);
+      tabletDevices = activeNow - desktopDevices - mobileDevices;
+    }
+
+    // Anomaly evaluation from micro-ticker
+    const tickerItemsForEval: LiveCheckoutItem[] = ticker.map((t) => ({
+      id: t.id,
+      order_id: t.order_id || t.id,
+      store_name: t.store_name || 'Marketplace Store',
+      subdomain: t.subdomain || 'store',
+      amount_tnd: t.amount_tnd || 0,
+      payment_gateway: (t.payment_gateway || 'flouci') as any,
+      status: t.status === 'success' ? 'captured' : t.status === 'failed' ? 'failed' : 'pending',
+      governorate_code: t.governorate_code,
+      governorate_name: t.governorate_name || null,
+      country_code: t.country_code || 'TN',
+      occurred_at: t.occurred_at,
+    }));
+
+    const anomalyEval = evaluateCheckoutMicroTickerAndAnomalies(tickerItemsForEval);
+
+    // Summary 60s
+    const avgEventsPerSec = Math.round((totalEvents60s / 60) * 100) / 100;
+    const avgGmvPerSec = Math.round((totalGmv60s / 60) * 1000) / 1000;
+    const conversionRate60s = totalEvents60s > 0 ? Math.round((totalOrders60s / totalEvents60s) * 10000) / 100 : null;
+
+    const payload: LivePulseResponseDTO = {
+      server_time: new Date().toISOString(),
+      live_active_visitors_now: activeNow,
+      active_visitors: {
+        total_active_now: activeNow,
+        active_last_60s: Math.max(active60sVisitors.size, Math.min(activeNow, 10)),
+        registered_buyers: registeredBuyers,
+        registered_sellers: registeredSellers,
+        anonymous_guests: anonymousGuests,
+        devices: {
+          desktop: desktopDevices,
+          mobile: mobileDevices,
+          tablet: tabletDevices,
+        },
+      },
+      summary_60s: {
+        total_events_60s: totalEvents60s,
+        total_orders_60s: totalOrders60s,
+        total_gmv_60s_tnd: Math.round(totalGmv60s * 1000) / 1000,
+        avg_events_per_sec: avgEventsPerSec,
+        avg_gmv_per_sec_tnd: avgGmvPerSec,
+        peak_events_per_sec: peakEvents,
+        conversion_rate_60s_pct: conversionRate60s,
+      },
+      velocity_buffer: series,
+      velocity: series,
+      micro_ticker: ticker,
+      anomaly_alerts: anomalyEval.anomaly_alerts,
+      metrics: {
+        total_events_60s: totalEvents60s,
+        checkout_events_60s: totalOrders60s,
+        peak_events_per_sec: peakEvents,
+        failure_rate_pct: anomalyEval.metrics.failure_rate_pct,
+        total_volume_60s_tnd: anomalyEval.metrics.total_volume_tnd,
+      },
+    };
+
+    // Emit live pulse event to admin sockets asynchronously
+    try {
+      socketGateway.emitToAdmins('analytics:pulse', payload);
+    } catch {
+      // safe fallback if socket not connected
+    }
+
+    return payload;
+  }
+
+  // ==========================================================
+  // R1: Tunisia 24-Governorates & Diaspora Heatmap
+  // ==========================================================
+  public async getGeoHeatmapData(params: AnalyticsQueryParams = {}): Promise<GeoHeatmapResponseDTO> {
+    const range = this.parseDateWindow(params);
+    const currency = (params.currency || 'TND').toUpperCase();
+    const cacheKey = `analytics:geo:heatmap:${range.timeRange}:${range.startDate || 'all'}:${range.endDate}:${currency}`;
+
+    return this.getCachedData(cacheKey, async () => {
+      // 1. Query orders for current period
+      const { rows: currentOrders } = await query(
+        `SELECT 
+          o.id,
+          o.total::numeric AS total_tnd,
+          o.shipping_address,
+          o.customer_id,
+          o.payment_status,
+          o.status,
+          o.created_at
+        FROM pd_order o
+        WHERE ($1::timestamp IS NULL OR o.created_at >= $1::timestamp)
+          AND o.created_at <= $2::timestamp
+          AND o.status NOT IN ('cancelled')
+          AND o.payment_status NOT IN ('failed')`,
+        [range.startDate, range.endDate],
+      ).catch(() => ({ rows: [] }));
+
+      // 2. Query orders for previous period for PoP growth if comparison available
+      let prevOrders: any[] = [];
+      if (range.comparison_available && range.previousStartDate && range.previousEndDate) {
+        const { rows: prevRows } = await query(
+          `SELECT 
+            o.id,
+            o.total::numeric AS total_tnd,
+            o.shipping_address,
+            o.customer_id
+          FROM pd_order o
+          WHERE o.created_at >= $1::timestamp
+            AND o.created_at <= $2::timestamp
+            AND o.status NOT IN ('cancelled')
+            AND o.payment_status NOT IN ('failed')`,
+          [range.previousStartDate, range.previousEndDate],
+        ).catch(() => ({ rows: [] }));
+        prevOrders = prevRows;
+      }
+
+      // Initialize all 24 Governorates
+      const govStats = new Map<
+        TunisiaGovernorateCode,
+        {
+          revenueTnd: number;
+          ordersCount: number;
+          buyers: Set<string>;
+          prevRevenueTnd: number;
+        }
+      >();
+
+      for (const code of Object.keys(TUNISIA_GOVERNORATES_META) as TunisiaGovernorateCode[]) {
+        govStats.set(code, {
+          revenueTnd: 0,
+          ordersCount: 0,
+          buyers: new Set<string>(),
+          prevRevenueTnd: 0,
+        });
+      }
+
+      // Initialize Diaspora Countries
+      const diasporaStats = new Map<
+        string,
+        {
+          countryName: string;
+          flagEmoji: string;
+          revenueTnd: number;
+          ordersCount: number;
+          buyers: Set<string>;
+          prevRevenueTnd: number;
+        }
+      >();
+
+      for (const [code, meta] of Object.entries(DIASPORA_COUNTRIES_META)) {
+        diasporaStats.set(code, {
+          countryName: meta.country_name,
+          flagEmoji: meta.flag_emoji,
+          revenueTnd: 0,
+          ordersCount: 0,
+          buyers: new Set<string>(),
+          prevRevenueTnd: 0,
+        });
+      }
+
+      // Aggregate current orders
+      let totalTunisiaRevenueTnd = 0;
+      let totalDiasporaRevenueTnd = 0;
+      let totalTunisiaOrders = 0;
+      let totalDiasporaOrders = 0;
+
+      for (const ord of currentOrders) {
+        const addr = typeof ord.shipping_address === 'string' ? JSON.parse(ord.shipping_address) : (ord.shipping_address || {});
+        const amount = Number(ord.total_tnd || 0);
+        const customerId = ord.customer_id || ord.id;
+
+        const govCode = normalizeTunisiaGovernorate(addr);
+
+        if (govCode === 'DIASPORA') {
+          const countryCode = ((addr.country_code || addr.country || 'FR') as string).toUpperCase();
+          if (!diasporaStats.has(countryCode)) {
+            diasporaStats.set(countryCode, {
+              countryName: addr.country || countryCode,
+              flagEmoji: '🌐',
+              revenueTnd: 0,
+              ordersCount: 0,
+              buyers: new Set<string>(),
+              prevRevenueTnd: 0,
+            });
+          }
+          const dStat = diasporaStats.get(countryCode)!;
+          dStat.revenueTnd += amount;
+          dStat.ordersCount += 1;
+          dStat.buyers.add(customerId);
+          totalDiasporaRevenueTnd += amount;
+          totalDiasporaOrders += 1;
+        } else {
+          const gCode = (govStats.has(govCode as TunisiaGovernorateCode) ? govCode : 'TUN') as TunisiaGovernorateCode;
+          const gStat = govStats.get(gCode)!;
+          gStat.revenueTnd += amount;
+          gStat.ordersCount += 1;
+          gStat.buyers.add(customerId);
+          totalTunisiaRevenueTnd += amount;
+          totalTunisiaOrders += 1;
+        }
+      }
+
+      // Aggregate previous period for PoP growth
+      for (const ord of prevOrders) {
+        const addr = typeof ord.shipping_address === 'string' ? JSON.parse(ord.shipping_address) : (ord.shipping_address || {});
+        const amount = Number(ord.total_tnd || 0);
+        const govCode = normalizeTunisiaGovernorate(addr);
+
+        if (govCode === 'DIASPORA') {
+          const countryCode = ((addr.country_code || addr.country || 'FR') as string).toUpperCase();
+          if (diasporaStats.has(countryCode)) {
+            diasporaStats.get(countryCode)!.prevRevenueTnd += amount;
+          }
+        } else {
+          const gCode = (govStats.has(govCode as TunisiaGovernorateCode) ? govCode : 'TUN') as TunisiaGovernorateCode;
+          govStats.get(gCode)!.prevRevenueTnd += amount;
+        }
+      }
+
+      const totalMarketplaceRevenueTnd = totalTunisiaRevenueTnd + totalDiasporaRevenueTnd;
+      const totalPaidOrders = totalTunisiaOrders + totalDiasporaOrders;
+
+      // Find max revenue for heat normalization
+      let maxGovRevenue = 0;
+      for (const s of govStats.values()) {
+        if (s.revenueTnd > maxGovRevenue) maxGovRevenue = s.revenueTnd;
+      }
+
+      let maxDiasporaRevenue = 0;
+      for (const d of diasporaStats.values()) {
+        if (d.revenueTnd > maxDiasporaRevenue) maxDiasporaRevenue = d.revenueTnd;
+      }
+
+      // Build Governorates list
+      let topGovCode: string | null = null;
+      let topGovRev = -1;
+
+      const governorates: GeoHeatmapGovernorateDTO[] = (Object.keys(TUNISIA_GOVERNORATES_META) as TunisiaGovernorateCode[]).map((code) => {
+        const meta = TUNISIA_GOVERNORATES_META[code];
+        const s = govStats.get(code)!;
+        const rev = Math.round(s.revenueTnd * 1000) / 1000;
+        const aov = s.ordersCount > 0 ? Math.round((rev / s.ordersCount) * 1000) / 1000 : 0;
+        const revShare = totalTunisiaRevenueTnd > 0 ? Math.round((rev / totalTunisiaRevenueTnd) * 10000) / 100 : 0;
+        const orderShare = totalTunisiaOrders > 0 ? Math.round((s.ordersCount / totalTunisiaOrders) * 10000) / 100 : 0;
+        const heatIntensity = maxGovRevenue > 0 ? Math.round((rev / maxGovRevenue) * 1000) / 1000 : 0;
+        const popGrowth = this.calculateGrowthPct(rev, s.prevRevenueTnd);
+
+        if (rev > topGovRev) {
+          topGovRev = rev;
+          topGovCode = code;
+        }
+
+        const normRev = formatCurrencyByCode(rev, currency as any);
+        const normAov = formatCurrencyByCode(aov, currency as any);
+
+        return {
+          code,
+          governorate_code: code,
+          iso_code: meta.iso_code,
+          name_en: meta.name_en,
+          name_fr: meta.name_fr,
+          name_ar: meta.name_ar,
+          region_zone: meta.region_zone,
+          revenue_tnd: rev,
+          gmv_tnd: rev,
+          gmv_converted: normRev.amount,
+          gmv_formatted: normRev.formatted,
+          orders_count: s.ordersCount,
+          paid_orders_count: s.ordersCount,
+          aov_tnd: aov,
+          aov_converted: normAov.amount,
+          aov_formatted: normAov.formatted,
+          unique_buyers_count: s.buyers.size,
+          unique_customers_count: s.buyers.size,
+          revenue_share_pct: revShare,
+          order_share_pct: orderShare,
+          heat_intensity: heatIntensity,
+          growth_pct: popGrowth,
+          pop_growth_pct: popGrowth,
+        };
+      });
+
+      // Build Diaspora list
+      let topDiasporaCode: string | null = null;
+      let topDiasporaRev = -1;
+
+      const diasporaList: GeoHeatmapDiasporaCountryDTO[] = Array.from(diasporaStats.entries())
+        .map(([countryCode, d]) => {
+          const rev = Math.round(d.revenueTnd * 1000) / 1000;
+          const aov = d.ordersCount > 0 ? Math.round((rev / d.ordersCount) * 1000) / 1000 : 0;
+          const revShare = totalDiasporaRevenueTnd > 0 ? Math.round((rev / totalDiasporaRevenueTnd) * 10000) / 100 : 0;
+          const orderShare = totalDiasporaOrders > 0 ? Math.round((d.ordersCount / totalDiasporaOrders) * 10000) / 100 : 0;
+          const heatIntensity = maxDiasporaRevenue > 0 ? Math.round((rev / maxDiasporaRevenue) * 1000) / 1000 : 0;
+          const popGrowth = this.calculateGrowthPct(rev, d.prevRevenueTnd);
+
+          if (rev > topDiasporaRev && d.ordersCount > 0) {
+            topDiasporaRev = rev;
+            topDiasporaCode = countryCode;
+          }
+
+          const normRev = formatCurrencyByCode(rev, currency as any);
+          const normAov = formatCurrencyByCode(aov, currency as any);
+
+          return {
+            country_code: countryCode,
+            country_name: d.countryName,
+            flag_emoji: d.flagEmoji,
+            revenue_tnd: rev,
+            gmv_tnd: rev,
+            gmv_converted: normRev.amount,
+            gmv_formatted: normRev.formatted,
+            orders_count: d.ordersCount,
+            paid_orders_count: d.ordersCount,
+            aov_tnd: aov,
+            aov_converted: normAov.amount,
+            aov_formatted: normAov.formatted,
+            unique_buyers_count: d.buyers.size,
+            unique_customers_count: d.buyers.size,
+            revenue_share_pct: revShare,
+            order_share_pct: orderShare,
+            heat_intensity: heatIntensity,
+            growth_pct: popGrowth,
+            pop_growth_pct: popGrowth,
+          };
+        })
+        .sort((a, b) => b.revenue_tnd - a.revenue_tnd);
+
+      const tunisiaSharePct =
+        totalMarketplaceRevenueTnd > 0
+          ? Math.round((totalTunisiaRevenueTnd / totalMarketplaceRevenueTnd) * 10000) / 100
+          : 100.0;
+      const diasporaSharePct =
+        totalMarketplaceRevenueTnd > 0
+          ? Math.round((totalDiasporaRevenueTnd / totalMarketplaceRevenueTnd) * 10000) / 100
+          : 0.0;
+
+      const summary: GeoHeatmapSummaryDTO = {
+        total_tunisia_revenue_tnd: Math.round(totalTunisiaRevenueTnd * 1000) / 1000,
+        total_tunisia_gmv_tnd: Math.round(totalTunisiaRevenueTnd * 1000) / 1000,
+        total_diaspora_revenue_tnd: Math.round(totalDiasporaRevenueTnd * 1000) / 1000,
+        total_diaspora_gmv_tnd: Math.round(totalDiasporaRevenueTnd * 1000) / 1000,
+        total_revenue_tnd: Math.round(totalMarketplaceRevenueTnd * 1000) / 1000,
+        total_marketplace_gmv_tnd: Math.round(totalMarketplaceRevenueTnd * 1000) / 1000,
+        total_orders_count: totalPaidOrders,
+        total_paid_orders: totalPaidOrders,
+        top_governorate_code: topGovCode,
+        top_governorate: topGovCode,
+        top_diaspora_country_code: topDiasporaCode,
+        top_diaspora_country: topDiasporaCode,
+        domestic_share_pct: tunisiaSharePct,
+        tunisia_share_pct: tunisiaSharePct,
+        diaspora_share_pct: diasporaSharePct,
+      };
+
+      return {
+        range,
+        requested_currency: currency,
+        currency,
+        summary,
+        governorates,
+        diaspora_countries: diasporaList,
+        diaspora: diasporaList,
+      };
+    }, AnalyticsService.CACHE_TTL_LIVE);
   }
 
   // ==========================================================

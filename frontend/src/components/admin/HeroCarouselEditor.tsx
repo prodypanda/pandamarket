@@ -2,7 +2,7 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Image as ImageIcon, Sparkles, Link as LinkIcon, Layers, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Image as ImageIcon, Sparkles, Link as LinkIcon, Layers, ChevronLeft, ChevronRight, Eye, AlertTriangle, RotateCcw } from 'lucide-react';
 import { MarketplaceAssetPicker } from './MarketplaceAssetPicker';
 
 export interface CarouselSlide {
@@ -38,15 +38,17 @@ const PRESET_GRADIENTS: Record<string, { label: string; bg: string }> = {
 
 export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps) {
   const [slides, setSlides] = useState<CarouselSlide[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [showPreview, setShowPreview] = useState<boolean>(true);
   const [isAssetPickerOpen, setIsAssetPickerOpen] = useState<boolean>(false);
   const [assetTarget, setAssetTarget] = useState<'desktop' | 'mobile'>('desktop');
 
-  // Parse JSON value on initial load or change
+  // Parse JSON value on initial load or change (AS-23)
   useEffect(() => {
     if (!value || value.trim() === '' || value === '[]') {
       setSlides([]);
+      setParseError(null);
       return;
     }
     try {
@@ -69,15 +71,20 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
             bgOpacity: Number(item.bgOpacity ?? item.bg_opacity ?? 40),
           }))
         );
+        setParseError(null);
+      } else {
+        setParseError('Stored carousel slides payload is not an array.');
       }
     } catch (err) {
       console.warn('Failed to parse carousel slides:', err);
+      setParseError(err instanceof Error ? err.message : 'Invalid JSON format in stored carousel slides.');
     }
   }, [value]);
 
   // Sync back to JSON string
   const updateSlides = (nextSlides: CarouselSlide[]) => {
     setSlides(nextSlides);
+    setParseError(null);
     onChange(JSON.stringify(nextSlides));
   };
 
@@ -137,10 +144,34 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
     setSelectedIndex(index + 1);
   };
 
+  const handleResetSlides = () => {
+    updateSlides([]);
+  };
+
   const currentSlide = slides[selectedIndex] || slides[0];
 
   return (
     <div className="space-y-6">
+      {/* Parse Error Notification (AS-23) */}
+      {parseError && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <strong className="block font-bold">Stored carousel slides failed schema parsing</strong>
+              <p className="text-amber-700 mt-0.5">{parseError}. Raw data is preserved to prevent silent deletion.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetSlides}
+            className="inline-flex items-center gap-1 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Initialize Fresh List
+          </button>
+        </div>
+      )}
+
       {/* Top Action Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
         <div>

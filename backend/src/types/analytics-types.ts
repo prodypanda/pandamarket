@@ -809,4 +809,522 @@ export interface AnalyticsHealthDTO {
   warnings: string[];
 }
 
+// ==========================================================
+// Part 9: R1 & R2 Core Analytics & Financials Types & DTOs
+// ==========================================================
+
+export const PLATFORM_FX_RATES = {
+  EUR_TO_TND: 3.350,
+  USD_TO_TND: 3.100,
+} as const;
+
+export interface MultiCurrencyValue {
+  tnd: number;
+  eur: number;
+  usd: number;
+  formatted_tnd: string;
+  formatted_eur: string;
+  formatted_usd: string;
+}
+
+export function normalizeCurrency(tndAmount: number, fxRates = PLATFORM_FX_RATES): MultiCurrencyValue {
+  if (isNaN(tndAmount) || !isFinite(tndAmount)) {
+    throw new Error('Invalid monetary amount for currency normalization');
+  }
+
+  // TND: 3 decimal places (millimes)
+  const tnd = Math.round(tndAmount * 1000) / 1000;
+  // EUR: 2 decimal places (cents)
+  const eur = Math.round((tnd / fxRates.EUR_TO_TND) * 100) / 100;
+  // USD: 2 decimal places (cents)
+  const usd = Math.round((tnd / fxRates.USD_TO_TND) * 100) / 100;
+
+  return {
+    tnd,
+    eur,
+    usd,
+    formatted_tnd: `${tnd.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} TND`,
+    formatted_eur: `€${eur.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    formatted_usd: `$${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  };
+}
+
+export function formatCurrencyByCode(
+  amountTnd: number,
+  currency: 'TND' | 'EUR' | 'USD' | string = 'TND',
+  fxRates = PLATFORM_FX_RATES,
+): {
+  amount: number;
+  currency: 'TND' | 'EUR' | 'USD';
+  formatted: string;
+} {
+  const norm = normalizeCurrency(amountTnd, fxRates);
+  const upper = (currency || 'TND').toUpperCase();
+  switch (upper) {
+    case 'EUR':
+      return { amount: norm.eur, currency: 'EUR', formatted: norm.formatted_eur };
+    case 'USD':
+      return { amount: norm.usd, currency: 'USD', formatted: norm.formatted_usd };
+    case 'TND':
+    default:
+      return { amount: norm.tnd, currency: 'TND', formatted: norm.formatted_tnd };
+  }
+}
+
+// ----------------------------------------------------------
+// R1: Live Pulse & 60s Sliding Buffer
+// ----------------------------------------------------------
+
+export interface RawTelemetryEvent {
+  id: string;
+  timestamp: string;
+  visitor_hash: string;
+  session_hash?: string;
+  event_type: string;
+  store_id?: string | null;
+  amount_tnd?: number;
+}
+
+export interface VelocityPoint {
+  second_offset: number; // 0 to 59
+  second_index?: number; // alias for 0 to 59
+  timestamp: string;
+  epoch_second?: number;
+  visitor_count: number;
+  event_count: number;
+  checkout_velocity: number;
+  gmv_velocity_tnd?: number;
+  order_velocity?: number;
+  active_visitors?: number;
+}
+
+export interface LiveVelocityResult {
+  reference_time: string;
+  total_events_60s: number;
+  unique_visitors_60s: number;
+  checkout_events_60s: number;
+  peak_events_per_sec: number;
+  points: VelocityPoint[];
+}
+
+export type MicroTickerEventType =
+  | 'cart_add'
+  | 'checkout_started'
+  | 'payment_attempted'
+  | 'payment_success'
+  | 'payment_failed'
+  | 'order_created'
+  | 'checkout_completed'
+  | 'order_placed';
+
+export interface LiveCheckoutItem {
+  id: string;
+  order_id: string;
+  store_name: string;
+  subdomain?: string;
+  amount_tnd: number;
+  payment_gateway: 'flouci' | 'konnect' | 'manual_mandat' | 'stripe' | 'paypal' | 'cod';
+  status: 'captured' | 'pending' | 'failed';
+  governorate_code: string | null;
+  governorate_name: string | null;
+  country_code: string;
+  occurred_at: string;
+}
+
+export interface LiveCheckoutTickerItem {
+  id: string;
+  order_id?: string;
+  event_type: MicroTickerEventType;
+  occurred_at: string;
+  customer_display: string;
+  customer_role: 'guest' | 'buyer' | 'seller';
+  store_id: string | null;
+  store_name: string | null;
+  subdomain?: string | null;
+  product_title: string | null;
+  item_count: number;
+  amount_tnd: number | null;
+  currency: 'TND' | 'EUR' | 'USD';
+  governorate_code: string | null;
+  governorate_name?: string | null;
+  country_code: string;
+  status: 'success' | 'pending' | 'failed' | 'captured';
+  payment_gateway?: string | null;
+}
+
+export type PulseAnomalyType =
+  | 'throughput_drop'
+  | 'failure_spike'
+  | 'gmv_surge'
+  | 'high_cart_abandonment'
+  | 'checkout_failure_rate'
+  | 'checkout_velocity_surge'
+  | 'whale_order_detected';
+
+export interface PulseAnomalyAlertItem {
+  id: string;
+  type?: PulseAnomalyType;
+  metric?: string;
+  severity?: 'info' | 'warning' | 'critical';
+  level?: 'info' | 'warning' | 'critical';
+  title: string;
+  message: string;
+  current_value?: number;
+  baseline_value?: number;
+  delta_pct?: number;
+  value?: number;
+  threshold?: number;
+  detected_at?: string;
+  triggered_at?: string;
+  suggested_action?: string;
+}
+
+export type AnomalyAlert = PulseAnomalyAlertItem;
+
+export interface ActiveVisitorsBreakdown {
+  total_active_now: number;
+  active_last_60s: number;
+  registered_buyers: number;
+  registered_sellers: number;
+  anonymous_guests: number;
+  devices: {
+    desktop: number;
+    mobile: number;
+    tablet: number;
+  };
+}
+
+export interface LivePulseSummary {
+  total_events_60s: number;
+  total_orders_60s: number;
+  total_gmv_60s_tnd: number;
+  avg_events_per_sec: number;
+  avg_gmv_per_sec_tnd: number;
+  peak_events_per_sec: number;
+  conversion_rate_60s_pct: number | null;
+}
+
+export interface LivePulseResponseDTO {
+  server_time: string;
+  live_active_visitors_now: number;
+  active_visitors: ActiveVisitorsBreakdown;
+  summary_60s: LivePulseSummary;
+  velocity_buffer: VelocityPoint[];
+  velocity: VelocityPoint[];
+  micro_ticker: LiveCheckoutTickerItem[];
+  anomaly_alerts: PulseAnomalyAlertItem[];
+  metrics?: {
+    total_events_60s: number;
+    checkout_events_60s: number;
+    peak_events_per_sec: number;
+    failure_rate_pct: number;
+    total_volume_60s_tnd: number;
+  };
+}
+
+// ----------------------------------------------------------
+// R1: Tunisia 24-Governorates & Top Diaspora Heatmap
+// ----------------------------------------------------------
+
+export type TunisiaGovernorateCode =
+  | 'TUN'
+  | 'ARI'
+  | 'BEN'
+  | 'MAN'
+  | 'NAB'
+  | 'ZAG'
+  | 'BIZ'
+  | 'BEJ'
+  | 'JEN'
+  | 'KEF'
+  | 'SIL'
+  | 'SOU'
+  | 'MON'
+  | 'MAH'
+  | 'SFA'
+  | 'KAI'
+  | 'KAS'
+  | 'SID'
+  | 'GAF'
+  | 'TOZ'
+  | 'KEB'
+  | 'GAB'
+  | 'MED'
+  | 'TAT';
+
+export interface GeoHeatmapGovernorateDTO {
+  code: string; // e.g. 'TUN', 'SFA', 'SOU'
+  governorate_code?: string; // alias
+  iso_code?: string;
+  name_fr: string;
+  name_ar: string;
+  name_en: string;
+  region_zone?: string;
+  revenue_tnd: number;
+  gmv_tnd?: number; // alias
+  gmv_converted?: number;
+  gmv_formatted?: string;
+  orders_count: number;
+  paid_orders_count?: number; // alias
+  aov_tnd: number;
+  aov_converted?: number;
+  aov_formatted?: string;
+  unique_buyers_count: number;
+  unique_customers_count?: number; // alias
+  revenue_share_pct: number;
+  order_share_pct: number;
+  heat_intensity: number; // 0.000 to 1.000 normalized score
+  growth_pct?: number | null;
+  pop_growth_pct?: number | null;
+}
+
+export type GovernorateHeatmapItem = GeoHeatmapGovernorateDTO;
+
+export interface GeoHeatmapDiasporaCountryDTO {
+  country_code: string; // ISO 3166-1 alpha-2, e.g. 'FR', 'IT', 'DE'
+  country_name: string;
+  flag_emoji?: string;
+  revenue_tnd: number;
+  gmv_tnd?: number; // alias
+  gmv_converted?: number;
+  gmv_formatted?: string;
+  orders_count: number;
+  paid_orders_count?: number; // alias
+  aov_tnd: number;
+  aov_converted?: number;
+  aov_formatted?: string;
+  unique_buyers_count?: number;
+  unique_customers_count?: number;
+  revenue_share_pct: number;
+  order_share_pct?: number;
+  heat_intensity: number; // 0.000 to 1.000 normalized score
+  growth_pct?: number | null;
+  pop_growth_pct?: number | null;
+}
+
+export type DiasporaHeatmapItem = GeoHeatmapDiasporaCountryDTO;
+
+export interface GeoHeatmapSummaryDTO {
+  total_tunisia_revenue_tnd: number;
+  total_tunisia_gmv_tnd?: number; // alias
+  total_diaspora_revenue_tnd: number;
+  total_diaspora_gmv_tnd?: number; // alias
+  total_revenue_tnd: number;
+  total_marketplace_gmv_tnd?: number; // alias
+  total_orders_count: number;
+  total_paid_orders?: number; // alias
+  top_governorate_code: string | null;
+  top_governorate?: string | null; // alias
+  top_diaspora_country_code: string | null;
+  top_diaspora_country?: string | null; // alias
+  domestic_share_pct: number;
+  tunisia_share_pct?: number; // alias
+  diaspora_share_pct: number;
+}
+
+export type GeoHeatmapSummary = GeoHeatmapSummaryDTO;
+
+export interface GeoHeatmapResponseDTO {
+  range: NormalizedAnalyticsRange;
+  requested_currency?: string;
+  currency?: 'TND' | 'EUR' | 'USD' | string;
+  summary: GeoHeatmapSummaryDTO;
+  governorates: GeoHeatmapGovernorateDTO[];
+  diaspora_countries: GeoHeatmapDiasporaCountryDTO[];
+  diaspora?: GeoHeatmapDiasporaCountryDTO[]; // alias
+}
+
+// ----------------------------------------------------------
+// R2: Tri-Fold Financial Reconciliation
+// ----------------------------------------------------------
+
+export interface OrderReconciliationItem {
+  id: string;
+  store_id: string;
+  subtotal_tnd: number;
+  shipping_tnd: number;
+  total_tnd: number;
+  commission_rate_pct: number;
+  status: 'paid' | 'delivered' | 'refunded' | 'cancelled';
+  payout_status: 'pending_escrow' | 'released' | 'held';
+}
+
+export interface TriFoldReconciliationReport {
+  range?: NormalizedAnalyticsRange;
+  currency?: 'TND' | 'EUR' | 'USD' | string;
+  gross_gmv: MultiCurrencyValue;
+  marketplace_order_gmv: MultiCurrencyValue;
+  subscription_revenue: MultiCurrencyValue;
+  ads_revenue: MultiCurrencyValue;
+  platform_net_commission_take: MultiCurrencyValue;
+  total_platform_net_revenue: MultiCurrencyValue;
+  escrow_floating_balance: MultiCurrencyValue;
+  pending_vendor_payouts: MultiCurrencyValue;
+  settled_vendor_payouts: MultiCurrencyValue;
+  refunds_deducted: MultiCurrencyValue;
+  effective_take_rate_pct: number;
+  reconciliation_balance_check: {
+    balanced: boolean;
+    calculated_sum_tnd: number;
+    discrepancy_tnd: number;
+  };
+  period_comparison?: {
+    gmv_growth_pct: number | null;
+    net_revenue_growth_pct: number | null;
+    commission_take_growth_pct: number | null;
+    escrow_growth_pct: number | null;
+  };
+}
+
+export type FinancialReconciliationDTO = TriFoldReconciliationReport;
+
+// ----------------------------------------------------------
+// R2: SaaS MRR Waterfall
+// ----------------------------------------------------------
+
+export interface SubscriptionPlanConfig {
+  plan_id: 'free' | 'starter' | 'regular' | 'agency' | 'pro' | 'golden' | 'platinum';
+  name: string;
+  monthly_price_tnd: number;
+  annual_price_tnd: number;
+}
+
+export const PLATFORM_SAAS_PLANS: Record<string, SubscriptionPlanConfig> = {
+  free: { plan_id: 'free', name: 'Free Tier', monthly_price_tnd: 0, annual_price_tnd: 0 },
+  starter: { plan_id: 'starter', name: 'Starter', monthly_price_tnd: 29.000, annual_price_tnd: 290.000 },
+  regular: { plan_id: 'regular', name: 'Regular', monthly_price_tnd: 59.000, annual_price_tnd: 590.000 },
+  agency: { plan_id: 'agency', name: 'Agency', monthly_price_tnd: 89.000, annual_price_tnd: 890.000 },
+  pro: { plan_id: 'pro', name: 'Pro Merchant', monthly_price_tnd: 129.000, annual_price_tnd: 1290.000 },
+  golden: { plan_id: 'golden', name: 'Golden Tier', monthly_price_tnd: 199.000, annual_price_tnd: 1990.000 },
+  platinum: { plan_id: 'platinum', name: 'Platinum Enterprise', monthly_price_tnd: 299.000, annual_price_tnd: 2990.000 },
+};
+
+export type SubscriptionLifecycleEvent =
+  | { type: 'new_subscription'; store_id: string; plan_id: string; billing_cycle: 'monthly' | 'annual'; mrr_tnd: number }
+  | { type: 'plan_expansion'; store_id: string; previous_plan_id: string; new_plan_id: string; mrr_delta_tnd: number }
+  | { type: 'plan_contraction'; store_id: string; previous_plan_id: string; new_plan_id: string; mrr_delta_tnd: number }
+  | { type: 'churn_cancellation'; store_id: string; plan_id: string; churned_mrr_tnd: number }
+  | { type: 'reactivation'; store_id: string; plan_id: string; mrr_tnd: number };
+
+export interface ActiveSubscriptionSnapshot {
+  store_id: string;
+  plan_id: string;
+  billing_cycle: 'monthly' | 'annual';
+  mrr_contribution_tnd: number;
+}
+
+export interface SaaSMasterWaterfallDTO {
+  range?: NormalizedAnalyticsRange;
+  beginning_mrr_tnd: number;
+  new_mrr_tnd: number;
+  expansion_mrr_tnd: number;
+  contraction_mrr_tnd: number;
+  churned_mrr_tnd: number;
+  net_new_mrr_tnd: number;
+  ending_mrr_tnd: number;
+  ending_arr_tnd: number;
+  quick_ratio: number | null;
+  mrr_growth_rate_pct: number | null;
+  plan_breakdown: Array<{
+    plan_id: string;
+    subscribers_count: number;
+    mrr_contribution_tnd: number;
+    share_pct: number;
+  }>;
+  multi_currency?: {
+    beginning_mrr: MultiCurrencyValue;
+    new_mrr: MultiCurrencyValue;
+    expansion_mrr: MultiCurrencyValue;
+    contraction_mrr: MultiCurrencyValue;
+    churned_mrr: MultiCurrencyValue;
+    net_new_mrr: MultiCurrencyValue;
+    ending_mrr: MultiCurrencyValue;
+    ending_arr: MultiCurrencyValue;
+  };
+}
+
+// ----------------------------------------------------------
+// R2: Payment Gateways Reliability & Conversion Matrix
+// ----------------------------------------------------------
+
+export type PaymentGatewayType =
+  | 'flouci'
+  | 'konnect'
+  | 'manual_mandat'
+  | 'stripe'
+  | 'paypal'
+  | 'cod';
+
+export type PaymentFailureReason =
+  | 'card_declined'
+  | 'insufficient_funds'
+  | 'gateway_timeout'
+  | '3ds_failed'
+  | 'session_expired'
+  | 'user_cancelled'
+  | 'cod_refused_at_door'
+  | 'invalid_credentials'
+  | 'mandat_rejected';
+
+export interface PaymentAttemptRecord {
+  id: string;
+  order_id: string;
+  gateway: PaymentGatewayType;
+  amount_tnd: number;
+  status: 'captured' | 'failed' | 'pending';
+  failure_reason?: PaymentFailureReason | null;
+  latency_ms: number;
+  created_at: string;
+  settled_at?: string | null;
+}
+
+export interface PaymentGatewayFeeConfig {
+  percentage_rate: number;
+  fixed_fee_tnd: number;
+}
+
+export const GATEWAY_FEE_SCHEDULE: Record<PaymentGatewayType, PaymentGatewayFeeConfig> = {
+  flouci: { percentage_rate: 0.015, fixed_fee_tnd: 0.000 },
+  konnect: { percentage_rate: 0.025, fixed_fee_tnd: 0.300 },
+  stripe: { percentage_rate: 0.029, fixed_fee_tnd: 0.300 },
+  paypal: { percentage_rate: 0.034, fixed_fee_tnd: 0.350 },
+  manual_mandat: { percentage_rate: 0.000, fixed_fee_tnd: 0.000 },
+  cod: { percentage_rate: 0.000, fixed_fee_tnd: 0.000 },
+};
+
+export const GATEWAY_DISPLAY_NAMES: Record<PaymentGatewayType, string> = {
+  flouci: 'Flouci (Mobile Wallet & Konnect)',
+  konnect: 'Konnect Gateway (Cards & Gstore)',
+  manual_mandat: 'Mandat Minute (La Poste Tunisienne)',
+  stripe: 'Stripe International (Credit/Debit Cards)',
+  paypal: 'PayPal International',
+  cod: 'Cash on Delivery (COD Courier)',
+};
+
+export interface PaymentGatewayReliabilityItem {
+  gateway: PaymentGatewayType;
+  display_name: string;
+  total_attempts: number;
+  successful_captures: number;
+  failed_attempts: number;
+  pending_attempts: number;
+  success_rate_pct: number;
+  total_volume_tnd: number;
+  avg_latency_seconds: number;
+  estimated_gateway_fees_tnd: number;
+  error_breakdown: Record<string, number>;
+}
+
+export interface GatewayReliabilityMatrixResponse {
+  range?: NormalizedAnalyticsRange;
+  total_attempts_all_gateways: number;
+  total_successful_all_gateways: number;
+  overall_success_rate_pct: number;
+  total_volume_all_gateways_tnd: number;
+  total_estimated_fees_tnd: number;
+  gateways: PaymentGatewayReliabilityItem[];
+}
+
+
+
 

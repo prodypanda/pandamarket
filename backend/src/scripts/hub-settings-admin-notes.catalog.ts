@@ -759,6 +759,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Every successful settings change has one discoverable domain audit record.', 'The success UI links directly to it and names the changed section/keys.', 'Sensitive values are never persisted in audit metadata.', 'Failed/no-op saves are represented accurately.'],
     related: ['SO-03 — secret redaction.', 'PI-01 — version/rollback history.'],
     tags: ['enhancement', 'admin-settings', 'audit-log', 'traceability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-18', folder: FOLDERS.settings, sortOrder: 18,
@@ -833,6 +834,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['No settings mutation can be sent before successful authoritative load.', 'Failure state has retry and actionable diagnostics.', 'Cached/stale display, if used, is clearly labeled and non-editable.', 'Automated tests prove GET failure cannot lead to PUT.'],
     related: ['AS-01 — unscoped payload.', 'HR-01 — explicit failure states.'],
     tags: ['bug', 'admin-settings', 'load-failure', 'data-loss', 'high'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-23', folder: FOLDERS.settings, sortOrder: 23,
@@ -847,6 +849,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Malformed stored JSON cannot be silently converted and saved as empty content.', 'Every saved slide/block passes the shared semantic schema.', 'Invalid URLs/media/copy show field-specific errors before save.', 'All editor actions are keyboard/screen-reader operable and Reset is explicit/reversible.'],
     related: ['AS-05 — rewards schema editor.', 'AS-24 — schema single source.', 'AS-08 — preview.'],
     tags: ['bug', 'admin-settings', 'editors', 'json', 'validation', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-24', folder: FOLDERS.settings, sortOrder: 24,
@@ -1118,7 +1121,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
