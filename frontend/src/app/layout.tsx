@@ -137,6 +137,8 @@ export default async function RootLayout({
     : "";
 
   const brandStyles = {
+    '--pd-primary': marketplaceSettings.marketplace_primary_color || '#16C784',
+    '--pd-secondary': marketplaceSettings.marketplace_secondary_color || '#0f9f6e',
     ...(marketplaceSettings.marketplace_primary_color ? { '--brand-primary': marketplaceSettings.marketplace_primary_color } : {}),
     ...(marketplaceSettings.marketplace_secondary_color ? { '--brand-secondary': marketplaceSettings.marketplace_secondary_color } : {}),
   } as React.CSSProperties;

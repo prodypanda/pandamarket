@@ -522,6 +522,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Every section with unsaved work is identifiable while viewing another section.', 'Safe tab switching does not show unnecessary dialogs.', 'Discard/route-exit prompts name the sections and changes that will be lost.', 'Saving one section neither publishes nor clears another section’s draft.'],
     related: ['AS-01 — scoped saves.', 'AS-14 — per-tab discard.', 'AS-21 — action bars.'],
     tags: ['bug', 'admin-settings', 'drafts', 'navigation', 'data-integrity'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-03', folder: FOLDERS.settings, sortOrder: 3,
@@ -536,6 +537,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Changing configured colors updates every documented Hub surface without deployment.', 'Each layout clearly indicates deliberate exceptions.', 'Text/focus/control contrast meets WCAG AA in light and dark modes.', 'No component falls back to an unrelated legacy palette after hydration.'],
     related: ['HC-01 — capability matrix.', 'AS-09 — theme/layout discoverability.', 'QA-01 — visual regressions.'],
     tags: ['bug', 'admin-settings', 'hub', 'theme', 'design-tokens'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-04', folder: FOLDERS.settings, sortOrder: 4,
@@ -1083,7 +1085,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

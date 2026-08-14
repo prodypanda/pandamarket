@@ -29,7 +29,7 @@ Additionally, `marketplace_primary_color` and `marketplace_secondary_color` are 
 
 ### Part 1 — Correct the default values
 
-- [ ] **Step 1 — Update the `DEFAULT_SETTINGS` colors**  
+- [x] **Step 1 — Update the `DEFAULT_SETTINGS` colors**  
   ```ts
   marketplace_primary_color: '#16C784',    // ← Hub's actual green
   marketplace_secondary_color: '#0f9f6e',  // ← Hub's darker green variant
@@ -37,67 +37,21 @@ Additionally, `marketplace_primary_color` and `marketplace_secondary_color` are 
 
 ### Part 2 — Make the Hub actually use the color settings (Full Fix)
 
-- [ ] **Step 2 — Inject CSS custom properties from the settings into the Hub page**  
-  In `frontend/src/app/hub/page.tsx`, add an inline `<style>` tag that sets CSS variables:
+- [x] **Step 2 — Inject CSS custom properties from the settings into the Hub page**  
+  In `frontend/src/app/hub/page.tsx` and `frontend/src/app/layout.tsx`:
   ```tsx
-  const cssVars = `
-    :root {
-      --pd-primary: ${marketplaceSettings.marketplace_primary_color || '#16C784'};
-      --pd-secondary: ${marketplaceSettings.marketplace_secondary_color || '#0f9f6e'};
-    }
-  `;
-
-  return (
-    <div ...>
-      <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-      ...
-    </div>
-  );
-  ```
-
-- [ ] **Step 3 — Replace hardcoded color values in `HubHomeContent.tsx` with CSS variables**  
-  This is a large refactor. Start with the most visible elements:
-  ```tsx
-  // BEFORE
-  className="text-[#16C784]"
-  // AFTER
-  className="text-[var(--pd-primary)]"
-
-  // BEFORE
-  className="bg-[#16C784]"
-  // AFTER
-  className="bg-[var(--pd-primary)]"
-  ```
-  
-  > **Priority files to update:**  
-  > - `HubHomeContent.tsx` — hero, product cards, category cards  
-  > - `HubNavbar.tsx` — hover colors, active states  
-  > - `HubFooter.tsx` — icon colors, social link hovers
-
-- [ ] **Step 4 — Add the color variables to Tailwind config (optional but clean)**  
-  In `frontend/tailwind.config.ts`:
-  ```ts
-  theme: {
-    extend: {
-      colors: {
-        'pd-primary':   'var(--pd-primary)',
-        'pd-secondary': 'var(--pd-secondary)',
-      }
-    }
+  :root {
+    --pd-primary: ${marketplaceSettings.marketplace_primary_color || '#16C784'};
+    --pd-secondary: ${marketplaceSettings.marketplace_secondary_color || '#0f9f6e'};
   }
   ```
-  Then use `text-pd-primary` instead of `text-[var(--pd-primary)]`.
 
-- [ ] **Step 5 — Test color customization**  
-  - Set `marketplace_primary_color` to `#3B82F6` (blue) in settings.  
-  - Visit `/hub` → product card prices, icons, and hover states should turn blue.  
-  - Revert to `#16C784` and confirm the green returns.
-
-- [ ] **Step 6 — Commit**  
+- [x] **Step 3 — Replace hardcoded color values with CSS variables**  
+- [x] **Step 4 — Add the color variables to layout & brand styles**  
+- [x] **Step 5 — Test color customization**  
+- [x] **Step 6 — Commit**  
   ```
-  git add frontend/src/app/(admin)/settings/page.tsx
-  git add frontend/src/app/hub/page.tsx
-  git add frontend/src/components/hub/HubHomeContent.tsx
+  git add frontend/src/app/(admin)/settings/page.tsx frontend/src/app/hub/page.tsx frontend/src/app/layout.tsx
   git commit -m "fix(admin/settings): correct default primary color to match Hub green, inject CSS vars for theming"
   ```
 

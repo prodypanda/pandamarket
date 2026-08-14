@@ -8,7 +8,7 @@ import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
@@ -254,8 +254,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   marketplace_og_image_url: '/og-image.png',
   marketplace_public_url: 'https://garbage.team',
   marketplace_theme: 'panda',
-  marketplace_primary_color: '#B91C1C',
-  marketplace_secondary_color: '#C6922E',
+  marketplace_primary_color: '#16C784',
+  marketplace_secondary_color: '#0f9f6e',
   marketplace_default_locale: 'fr',
   marketplace_supported_locales: 'fr,en,ar',
   marketplace_rtl_enabled: true,
@@ -1079,6 +1079,8 @@ export default function AdminSettingsPage() {
   const [sectionVersions, setSectionVersions] = useState<SettingsSectionVersions>({});
   const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('marketplace');
+  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [smtpForm, setSmtpForm] = useState<SmtpFormData>(DEFAULT_SMTP_FORM);
   const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
   const [smtpLoading, setSmtpLoading] = useState(true);
@@ -1506,12 +1508,45 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const dirtyTabs = useMemo(() => {
+    const dirty = new Set<PlatformSettingsTab>();
+    (Object.keys(SETTINGS_TAB_KEYS) as PlatformSettingsTab[]).forEach((section) => {
+      const dirtyKeys = getDirtySettingsKeys(
+        settings as SharedPlatformSettings,
+        savedSettings as SharedPlatformSettings,
+        SETTINGS_TAB_KEYS[section],
+      );
+      if (dirtyKeys.length > 0) dirty.add(section);
+    });
+    return dirty;
+  }, [settings, savedSettings]);
+
   const activePlatformDirtyKeys = isPlatformSettingsTab(activeTab)
     ? getDirtySettingsKeys(settings as SharedPlatformSettings, savedSettings as SharedPlatformSettings, SETTINGS_TAB_KEYS[activeTab])
     : [];
   const hasUnsavedPlatformChanges = activePlatformDirtyKeys.length > 0;
-  const hasAnyUnsavedPlatformChanges = (Object.keys(SETTINGS_TAB_KEYS) as PlatformSettingsTab[])
-    .some((section) => getDirtySettingsKeys(settings as SharedPlatformSettings, savedSettings as SharedPlatformSettings, SETTINGS_TAB_KEYS[section]).length > 0);
+  const hasAnyUnsavedPlatformChanges = dirtyTabs.size > 0;
+
+  function handleTabClick(tabId: SettingsTab) {
+    if (tabId === activeTab) return;
+    if (isPlatformSettingsTab(activeTab) && dirtyTabs.has(activeTab)) {
+      setPendingTab(tabId);
+      setShowUnsavedDialog(true);
+    } else {
+      setActiveTab(tabId);
+    }
+  }
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasAnyUnsavedPlatformChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasAnyUnsavedPlatformChanges]);
 
   function resetActiveSection() {
     if (!isPlatformSettingsTab(activeTab)) return;
@@ -1612,11 +1647,12 @@ export default function AdminSettingsPage() {
         {SETTINGS_TABS.map((tab) => {
           const Icon = tab.icon;
           const selected = activeTab === tab.id;
+          const isDirty = dirtyTabs.has(tab.id as PlatformSettingsTab);
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               title={tab.description}
               className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
                 selected
@@ -1630,6 +1666,14 @@ export default function AdminSettingsPage() {
                 <Icon className="h-3.5 w-3.5" />
               </span>
               <span className="whitespace-nowrap tracking-tight">{tab.label}</span>
+              {isDirty && (
+                <span
+                  className={`h-2 w-2 rounded-full ring-2 ${
+                    selected ? 'bg-amber-300 ring-[#B91C1C]' : 'bg-amber-500 ring-white'
+                  } animate-pulse`}
+                  title="Unsaved changes in this section"
+                />
+              )}
             </button>
           );
         })}
@@ -2906,6 +2950,54 @@ export default function AdminSettingsPage() {
           )}
         </button>
       </div>
+      )}
+
+      {/* Unsaved Changes Tab Switch Confirmation Dialog */}
+      {showUnsavedDialog && pendingTab && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-[2rem] border border-amber-200 bg-white p-8 shadow-2xl">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Unsaved Changes</h3>
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+              You have unsaved changes in the <strong className="capitalize">{activeTab}</strong> section. If you switch sections now, your uncommitted edits will be discarded.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUnsavedDialog(false);
+                  setPendingTab(null);
+                }}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Stay & Save
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPlatformSettingsTab(activeTab)) {
+                    const sectionKeys = SETTINGS_TAB_KEYS[activeTab];
+                    setSettings((prev) => {
+                      const next = { ...prev };
+                      for (const key of sectionKeys) {
+                        (next as any)[key] = (savedSettings as any)[key];
+                      }
+                      return next;
+                    });
+                  }
+                  setActiveTab(pendingTab);
+                  setShowUnsavedDialog(false);
+                  setPendingTab(null);
+                }}
+                className="flex-1 rounded-xl bg-[#B91C1C] py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] shadow-sm transition"
+              >
+                Discard & Switch
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

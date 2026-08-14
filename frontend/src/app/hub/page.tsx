@@ -199,6 +199,11 @@ export default async function HubHomepage({
 
   return (
     <div className={`min-h-screen ${marketplaceTheme === 'aliexpress2' ? 'bg-[#09090b]' : 'bg-white dark:bg-[#0F0F23]'}`}>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `:root { --pd-primary: ${marketplaceSettings.marketplace_primary_color || '#16C784'}; --pd-secondary: ${marketplaceSettings.marketplace_secondary_color || '#0f9f6e'}; }`,
+        }}
+      />
       <HubNavbar
         marketplaceName={marketplaceSettings.marketplace_name}
         marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
