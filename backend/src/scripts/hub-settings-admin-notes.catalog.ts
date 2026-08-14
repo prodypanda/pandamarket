@@ -1017,6 +1017,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['No tracked current file contains active production credentials.', 'Exposed credentials are revoked/rotated and access reviewed.', 'Only the safe idempotent synchronizer is documented for note updates.', '`REMOTE_CREDENTIALS.md` is unchanged and never printed/embedded.'],
     related: ['NG-01 — synchronization governance.', 'SO-03 — audit redaction.'],
     tags: ['security', 'credentials', 'operations', 'urgent'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'SO-02', folder: FOLDERS.security, sortOrder: 2,
@@ -1031,6 +1032,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Executable permissions match documented role policy.', 'Unauthorized roles cannot read or mutate restricted settings directly by API.', 'Sensitive domains can be separated from appearance-only administration.', 'Denied attempts are safely audited and tested.'],
     related: ['AS-10 — maintenance safety.', 'PI-01 — publish permission.', 'AS-18 — public origin.'],
     tags: ['security', 'rbac', 'admin-settings', 'least-privilege'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'SO-03', folder: FOLDERS.security, sortOrder: 3,
@@ -1045,6 +1047,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['No secret value can appear in audit logs for current registered settings.', 'New sensitive keys fail CI unless audit classification is defined.', 'Before/after metadata is useful for non-sensitive fields and state-only for secrets.', 'Nested/array payloads are safely handled.'],
     related: ['AS-17 — audit link/change record.', 'AS-24 — sensitivity metadata.', 'SO-01 — credential response.'],
     tags: ['security', 'audit-log', 'secrets', 'redaction', 'bug'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'NG-01', folder: FOLDERS.governance, sortOrder: 1,
@@ -1124,7 +1127,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04', 'SO-01', 'SO-02', 'SO-03'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
