@@ -1062,6 +1062,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Repeated apply produces zero changes.', 'No existing note/folder is deleted, trashed, or archived.', 'Completed verified notes remain completed with their checklist state.', 'Every managed note has detailed content, tags, folder, and database checklist rows.'],
     related: ['SO-01 — safe credential handling.', 'QA-01 — synchronizer tests.'],
     tags: ['governance', 'admin-notes', 'idempotency', 'safety'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'QA-01', folder: FOLDERS.quality, sortOrder: 1,
@@ -1076,6 +1077,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['A regression in any declared layout capability fails an automated test.', 'Settings cannot silently save wrong-scope/default data without test failure.', 'Critical accessibility/failure-state workflows are covered.', 'Test fixtures are deterministic, isolated, and do not mutate production.'],
     related: ['HC-01 — test matrix source.', 'All HH/AS/HR/LA/SO notes.'],
     tags: ['qa', 'e2e', 'hub', 'admin-settings', 'regression'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'PI-01', folder: FOLDERS.ideas, sortOrder: 1,
@@ -1127,7 +1129,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04', 'SO-01', 'SO-02', 'SO-03'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04', 'NG-01', 'QA-01', 'SO-01', 'SO-02', 'SO-03'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
