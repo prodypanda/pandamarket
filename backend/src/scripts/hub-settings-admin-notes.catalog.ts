@@ -372,6 +372,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Configured category icons appear consistently in Classic and the mega-menu.', 'Fallbacks are deterministic and do not replace text labels.', 'Long FR/AR labels and RTL direction do not clip or misalign.', 'Keyboard focus is visible and touch targets meet minimum size.'],
     related: ['LA-04 — mega-menu keyboard/focus model.', 'HC-01 — layout parity matrix.'],
     tags: ['enhancement', 'hub', 'categories', 'icons', 'classic-layout'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-11', folder: FOLDERS.hub, sortOrder: 11,
@@ -386,6 +387,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['All carousels pause for focus/hover/hidden page and honor reduced motion.', 'Active slide and controls are correctly exposed to assistive technology.', 'No timer runs after unmount or with one slide.', 'Manual navigation works consistently in every homepage layout and sponsored banner.'],
     related: ['HC-02 — carousel setting scope/dead transition control.', 'LA-02 — control naming and state.'],
     tags: ['bug', 'hub', 'carousel', 'a11y', 'motion', 'wcag'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-12', folder: FOLDERS.hub, sortOrder: 12,
@@ -644,6 +646,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Maintenance cannot be enabled through an accidental generic save.', 'Confirmation shows exact impact and effective time in the operator timezone.', 'The UI reports persistence and propagation separately.', 'Enable/disable actions have complete audit records and a tested rollback.'],
     related: ['HR-02 — save/publication result.', 'SO-02 — privileged settings permissions.', 'PI-01 — scheduling and rollback.'],
     tags: ['enhancement', 'admin-settings', 'maintenance', 'safety', 'availability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-11', folder: FOLDERS.settings, sortOrder: 11,
@@ -700,6 +703,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Section discard changes only the active section.', 'Hidden drafts remain intact unless a confirmed global discard is used.', 'Action labels name their scope and are disabled when nothing in scope is dirty.', 'Discard works with keyboard/screen reader and preserves saved server values.'],
     related: ['AS-02 — draft tracking.', 'AS-21 — action bars.'],
     tags: ['enhancement', 'admin-settings', 'reset', 'drafts', 'data-safety'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-15', folder: FOLDERS.settings, sortOrder: 15,
@@ -1091,7 +1095,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
