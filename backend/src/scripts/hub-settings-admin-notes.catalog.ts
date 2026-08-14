@@ -728,6 +728,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Every promotional image field displays its target requirements before selection.', 'Invalid/unsafe images cannot be silently published.', 'Admins can preview desktop/mobile crops and set a focal point where needed.', 'Delivered images meet agreed format, dimension, and byte budgets.'],
     related: ['AS-04 — asset picker.', 'AS-08/PI-03 — preview.'],
     tags: ['enhancement', 'admin-settings', 'images', 'validation', 'performance'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-16', folder: FOLDERS.settings, sortOrder: 16,
@@ -743,6 +744,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Initial Settings route no longer fetches SMTP or loads heavy inactive domains unnecessarily.', 'First tab activation has a clear bounded loading state.', 'Drafts survive tab switches and lazy remounts.', 'Measured initial JS/render/request cost improves without accessibility regression.'],
     related: ['AS-02 — draft ownership.', 'QA-01 — performance regression coverage.'],
     tags: ['improvement', 'admin-settings', 'performance', 'lazy-loading'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-17', folder: FOLDERS.settings, sortOrder: 17,
@@ -816,6 +818,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Every visible Save/Reset action operates on exactly the visible domain it names.', 'No action silently returns.', 'Plans, Email, and platform tabs report their own dirty/save state.', 'Only one primary sticky action surface is present at a time.'],
     related: ['AS-01 — scoped saves.', 'AS-14 — scoped discard.', 'AS-02 — domain drafts.'],
     tags: ['bug', 'admin-settings', 'action-bar', 'save', 'high'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-22', folder: FOLDERS.settings, sortOrder: 22,
@@ -1115,7 +1118,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

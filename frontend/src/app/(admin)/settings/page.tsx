@@ -1483,6 +1483,7 @@ export default function SuperAdminSettingsPage() {
   const [sectionVersions, setSectionVersions] = useState<SettingsSectionVersions>({});
   const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | 'hub_homepage_banner_image_url' | 'marketplace_og_image_url' | 'marketplace_favicon_url' | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('marketplace');
+  const [smtpLoaded, setSmtpLoaded] = useState(false);
   const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [smtpForm, setSmtpForm] = useState<SmtpFormData>(DEFAULT_SMTP_FORM);
@@ -1749,6 +1750,7 @@ export default function SuperAdminSettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (activeTab !== 'email' || smtpLoaded) return;
     let active = true;
     async function fetchSmtpConfig() {
       setSmtpLoading(true);
@@ -1773,6 +1775,7 @@ export default function SuperAdminSettingsPage() {
           ([key, preset]) => key !== 'custom' && preset.host === data.smtp_host,
         );
         setSmtpSelectedPreset(matchedPreset ? matchedPreset[0] : 'custom');
+        setSmtpLoaded(true);
       } catch (err) {
         if (active) setSmtpError(err instanceof Error ? err.message : 'Failed to load email configuration');
       } finally {
@@ -1783,7 +1786,7 @@ export default function SuperAdminSettingsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeTab, smtpLoaded]);
 
   async function handleSave() {
     if (!isPlatformSettingsTab(activeTab) || !settingsLoadSucceeded) return;
@@ -2349,6 +2352,10 @@ export default function SuperAdminSettingsPage() {
             />
           </div>
           <div className="md:col-span-2 space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Maintenance Illustration</label>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">800×600px (4:3) • Max 1MB</span>
+            </div>
             {renderTextInput('maintenance_illustration_url', 'Maintenance Illustration URL', '/pd-themes/maintenance.webp')}
             {settings.maintenance_illustration_url && (
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
@@ -2414,9 +2421,12 @@ export default function SuperAdminSettingsPage() {
               </p>
             )}
           </div>
-          {/* Social Sharing Image with Asset Picker (AS-04) */}
+          {/* Social Sharing Image with Asset Picker (AS-04, AS-15) */}
           <div className="md:col-span-2 space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Social Sharing Image URL (OpenGraph)</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Social Sharing Image URL (OpenGraph)</label>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">1200×630px (1.91:1) • Max 1MB</span>
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -2434,9 +2444,12 @@ export default function SuperAdminSettingsPage() {
               </button>
             </div>
           </div>
-          {/* Favicon with Asset Picker (AS-04) */}
+          {/* Favicon with Asset Picker (AS-04, AS-15) */}
           <div className="md:col-span-2 space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Favicon URL</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Favicon URL</label>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">32×32px / 64×64px (1:1) • ICO/PNG/SVG</span>
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -2455,7 +2468,10 @@ export default function SuperAdminSettingsPage() {
             </div>
           </div>
           <div className="md:col-span-2 space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Marketplace Logos</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Marketplace Logos</label>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">512×512px / 400×120px • PNG/SVG</span>
+            </div>
             <p className="text-xs font-medium text-slate-500 ml-1">Use a dark logo on light surfaces and a light logo on dark surfaces. The main logo remains the fallback.</p>
             <div className="grid gap-4 rounded-[1.5rem] border border-slate-200/70 bg-stone-50 p-5 shadow-sm lg:grid-cols-3">
               {[
@@ -2687,9 +2703,12 @@ export default function SuperAdminSettingsPage() {
           {renderTextInput('hub_homepage_banner_subtitle', 'Banner Subtitle', 'Short hero description')}
           {renderTextInput('hub_homepage_banner_cta_label', 'Banner CTA Label', 'Explorer le Hub')}
           {renderTextInput('hub_homepage_banner_cta_url', 'Banner CTA URL', '/hub/search')}
-          {/* Banner Image with Asset Picker Integration (AS-04) */}
+          {/* Banner Image with Asset Picker Integration (AS-04, AS-15) */}
           <div className="md:col-span-2 space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Promotional Banner Image</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Promotional Banner Image</label>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">1920×600px (16:5) • Max 2MB • WebP/PNG/JPG</span>
+            </div>
             <div className="flex flex-col sm:flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-stone-50 p-4">
               <div className="flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
                 {settings.hub_homepage_banner_image_url ? (
