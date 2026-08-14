@@ -50,6 +50,7 @@ export function SponsoredAdsRail({
   variant?: 'cards' | 'banner';
 }) {
   const [ads, setAds] = useState<Ad[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const viewed = useRef(new Set<string>());
   const timers = useRef(new Map<string, number>());
@@ -69,8 +70,14 @@ const adFetchCache = new Map<string, Promise<any>>();
     }
     
     adFetchCache.get(url)
-      ?.then((d) => setAds(d.ads || []))
-      .catch(() => setAds([]));
+      ?.then((d) => {
+        setAds(d.ads || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setAds([]);
+        setLoading(false);
+      });
   }, [placement, locale, category]);
 
   // Auto-rotate banner ads if multiple ads exist
@@ -121,6 +128,29 @@ const adFetchCache = new Map<string, Promise<any>>();
       timers.current.clear();
     };
   }, [ads]);
+
+  if (loading) {
+    return variant === 'banner' ? (
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="h-60 animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800" />
+      </section>
+    ) : (
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-4 h-6 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-2xl border border-slate-100 dark:border-white/5">
+              <div className="aspect-square animate-pulse bg-slate-200 dark:bg-slate-800" />
+              <div className="p-3 space-y-2">
+                <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   if (!ads.length) return null;
 

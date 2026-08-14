@@ -358,6 +358,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Loading does not shift surrounding content beyond the agreed CLS budget.', 'Empty inventory and delivery failure are distinguishable in telemetry.', 'Transient failures can recover without reloading the entire page.', 'Buyer-facing error treatment remains discreet and accessible.'],
     related: ['HR-03 — cache and observer isolation.', 'HH-05 — placement ownership.'],
     tags: ['bug', 'hub', 'ads', 'loading', 'cls', 'observability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-10', folder: FOLDERS.hub, sortOrder: 10,
@@ -775,6 +776,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Eligible full values copy correctly on supported desktop/mobile browsers.', 'Success/failure is announced and focus remains stable.', 'Secrets are never exposed merely to support copying.', 'RTL and long values do not overflow the field/control row.'],
     related: ['SO-03 — secret handling.', 'LA-02 — accessible controls.'],
     tags: ['improvement', 'admin-settings', 'clipboard', 'payments', 'operator-ux'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-20', folder: FOLDERS.settings, sortOrder: 20,
@@ -1095,7 +1097,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

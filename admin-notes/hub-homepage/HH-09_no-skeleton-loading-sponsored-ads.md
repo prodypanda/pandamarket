@@ -26,77 +26,19 @@ There is no loading state. The component fetches ads client-side, and until the 
 
 ### Part 1 — Add a `loading` state
 
-- [ ] **Step 1 — Add a `loading` state variable**  
-  ```ts
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [loading, setLoading] = useState(true);  // ← add this
-  ```
-
-- [ ] **Step 2 — Set `loading = false` after the fetch**  
-  ```ts
-  useEffect(() => {
-    // ...
-    fetch(`/api/pd/ads/public/delivery?${params}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { ads: [] }))
-      .then((d) => {
-        setAds(d.ads || []);
-        setLoading(false);    // ← add this
-      })
-      .catch(() => {
-        setAds([]);
-        setLoading(false);    // ← add this
-      });
-  }, [placement, locale, category]);
-  ```
+- [x] **Step 1 — Add a `loading` state variable**  
+- [x] **Step 2 — Set `loading = false` after the fetch**  
 
 ### Part 2 — Render skeleton when loading
 
-- [ ] **Step 3 — Add skeleton markup for the `cards` variant**  
-  Replace the early `return null` with a conditional:
-  ```tsx
-  if (loading) {
-    return variant === 'banner' ? (
-      // Banner skeleton
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="h-60 animate-pulse rounded-3xl bg-gray-100 dark:bg-gray-800" />
-      </section>
-    ) : (
-      // Cards skeleton
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-4 h-6 w-32 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="overflow-hidden rounded-2xl border border-gray-100">
-              <div className="aspect-square animate-pulse bg-gray-100 dark:bg-gray-800" />
-              <div className="p-3 space-y-2">
-                <div className="h-3 w-16 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
-                <div className="h-4 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (!ads.length) return null;  // keep the empty-state guard
-  ```
+- [x] **Step 3 — Add skeleton markup for the `cards` and `banner` variant**  
 
 ### Part 3 — Prevent layout shift with reserved space
 
-- [ ] **Step 4 — Add `min-h` to the section container when ads eventually populate**  
-  Ensure the wrapper height doesn't collapse by using `min-h` classes that match skeleton dimensions, then remove them once ads load.
-
-- [ ] **Step 5 — Test in Chrome DevTools → Network → Slow 3G**  
-  - The skeleton placeholders should appear immediately on page load.  
-  - After ~2–3 seconds, the real ads should fade in.  
-  - If no ads exist, the section collapses gracefully after loading.
-
-- [ ] **Step 6 — Measure CLS improvement**  
-  Use Chrome DevTools → Performance → Core Web Vitals.  
-  CLS on the hub homepage should decrease toward 0 after this fix.
-
-- [ ] **Step 7 — Commit**  
+- [x] **Step 4 — Add `min-h` to the section container when ads eventually populate**  
+- [x] **Step 5 — Test in Chrome DevTools → Network → Slow 3G**  
+- [x] **Step 6 — Measure CLS improvement**  
+- [x] **Step 7 — Commit**  
   ```
   git add frontend/src/components/hub/SponsoredAdsRail.tsx
   git commit -m "feat(hub): add skeleton loading state to SponsoredAdsRail to prevent layout shift"

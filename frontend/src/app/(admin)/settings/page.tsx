@@ -9,7 +9,7 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -1423,7 +1423,44 @@ function RewardsPrizeEditor({
   );
 }
 
-export default function AdminSettingsPage() {
+function CopyableField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 select-all truncate">
+          {value || <span className="text-slate-400 font-normal">Not configured</span>}
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={!value}
+          title="Copy to clipboard"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-[#B91C1C] hover:bg-[#B91C1C] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+        >
+          {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+      {copied && (
+        <p className="text-[10px] font-bold text-emerald-600 ml-1">Copied to clipboard!</p>
+      )}
+    </div>
+  );
+}
+
+export default function SuperAdminSettingsPage() {
   const { t } = useLocale();
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
   const [savedSettings, setSavedSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
@@ -2948,6 +2985,33 @@ export default function AdminSettingsPage() {
           {renderTextInput('mandat_recipient_cin', 'Identifiant Number (CIN / MF)')}
           {renderTextInput('mandat_recipient_city', 'City')}
           <div className="md:col-span-2">{renderTextInput('mandat_proof_email', 'Proof of Payment Email Address', 'e.g. billing@pandamarket.tn')}</div>
+        </div>
+
+        {/* Read-only quick copy summary for support agents */}
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-black uppercase tracking-wider text-amber-900">
+              Quick Copy for Support & Buyer Inquiries
+            </p>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-2.5 py-0.5">
+              1-Click Copy
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <CopyableField label="Recipient Name" value={settings.mandat_recipient_name} />
+            <CopyableField label="CIN / Tax ID" value={settings.mandat_recipient_cin} />
+            <CopyableField label="City" value={settings.mandat_recipient_city} />
+            <CopyableField label="Proof Email" value={settings.mandat_proof_email} />
+          </div>
+          <CopyableField
+            label="Full Payment Wire Instructions"
+            value={[
+              settings.mandat_recipient_name ? `Bénéficiaire: ${settings.mandat_recipient_name}` : '',
+              settings.mandat_recipient_cin ? `CIN/MF: ${settings.mandat_recipient_cin}` : '',
+              settings.mandat_recipient_city ? `Ville: ${settings.mandat_recipient_city}` : '',
+              settings.mandat_proof_email ? `Email preuve: ${settings.mandat_proof_email}` : '',
+            ].filter(Boolean).join(' | ')}
+          />
         </div>
       </section>
 
