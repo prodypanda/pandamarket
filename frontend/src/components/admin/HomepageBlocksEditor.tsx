@@ -181,6 +181,37 @@ export function HomepageBlocksEditor({ value, onChange }: HomepageBlocksEditorPr
                   </div>
                 )}
 
+                {/* Audience Targeting & Sponsored Slot Governance (PI-02) */}
+                {block.enabled && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                    <div>
+                      <label className={FIELD_LABEL_CLASS}>Target Audience Rule</label>
+                      <select
+                        value={block.target_audience || 'all'}
+                        onChange={(e) => updateBlock(activeTemplate, block.id, { target_audience: e.target.value as HomeBlockConfig['target_audience'] })}
+                        className={INPUT_CLASS}
+                      >
+                        <option value="all">All Visitors (Global)</option>
+                        <option value="mobile_only">Mobile Visitors Only</option>
+                        <option value="desktop_only">Desktop Visitors Only</option>
+                        <option value="diaspora_international">Diaspora & Cross-Border (TN Abroad)</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-4">
+                      <input
+                        type="checkbox"
+                        id={`sponsored-${block.id}`}
+                        checked={Boolean(block.sponsored_disclosure)}
+                        onChange={(e) => updateBlock(activeTemplate, block.id, { sponsored_disclosure: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor={`sponsored-${block.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">
+                        Enforce "Sponsored" disclosure badge
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 {(def.supportsImage || def.supportsCta) && block.enabled && (
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     {def.supportsImage && (

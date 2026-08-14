@@ -57,6 +57,11 @@ export interface HomeBlockConfig {
   cta_label?: string;
   cta_url?: string;
   slides?: HomeHeroSlide[];
+  target_audience?: 'all' | 'mobile_only' | 'desktop_only' | 'diaspora_international';
+  sponsored_disclosure?: boolean;
+  schedule_active?: boolean;
+  schedule_start?: string;
+  schedule_end?: string;
 }
 
 const MAX_URL_LENGTH = 2048;

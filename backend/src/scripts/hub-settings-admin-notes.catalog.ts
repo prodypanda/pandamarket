@@ -1107,6 +1107,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['An authorized admin can schedule a rule and preview the winning content/context.', 'Conflicts and missing inventory have deterministic fallbacks.', 'Paid content is labeled and metrics reconcile to placement ownership.', 'Rules can be disabled/rolled back without code deployment.'],
     related: ['HH-05, HR-03, HC-01, PI-01.'],
     tags: ['idea', 'merchandising', 'ads', 'targeting', 'scheduling'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'PI-03', folder: FOLDERS.ideas, sortOrder: 3,
@@ -1131,7 +1132,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04', 'NG-01', 'PI-01', 'PI-03', 'QA-01', 'SO-01', 'SO-02', 'SO-03'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04', 'NG-01', 'PI-01', 'PI-02', 'PI-03', 'QA-01', 'SO-01', 'SO-02', 'SO-03'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
