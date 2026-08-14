@@ -23,10 +23,14 @@ export async function generateMetadata(): Promise<Metadata> {
   }, 'light');
   const ogImageUrl = marketplaceSettings.marketplace_og_image_url || logoImageUrl || '/og-image.png';
   const description = `Parcourez ${marketplaceName} : ${tagline}`;
+  const publicUrl = marketplaceSettings.marketplace_public_url || 'https://pandamarket.tn';
 
   return {
     title: `Hub — ${marketplaceName}`,
     description,
+    alternates: {
+      canonical: `${publicUrl}/hub`,
+    },
     openGraph: {
       title: `${marketplaceName} Hub`,
       description,
@@ -198,8 +202,48 @@ export default async function HubHomepage({
       />
     );
 
+  const publicUrl = marketplaceSettings.marketplace_public_url || 'https://pandamarket.tn';
+  const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
+  const tagline = marketplaceSettings.marketplace_tagline || 'La marketplace tunisienne pour boutiques modernes';
+
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: marketplaceName,
+    url: publicUrl,
+    logo: marketplaceSettings.marketplace_logo_url || `${publicUrl}/logo.png`,
+    description: tagline,
+    ...(marketplaceSettings.marketplace_support_email && {
+      contactPoint: {
+        '@type': 'ContactPoint',
+        email: marketplaceSettings.marketplace_support_email,
+        contactType: 'customer support',
+      },
+    }),
+  };
+
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Trending Products on ${marketplaceName}`,
+    itemListElement: trendingProducts.slice(0, 10).map((product, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: `${publicUrl}/hub/products/${product.slug || product.id}`,
+      name: product.title,
+    })),
+  };
+
   return (
     <div className={`min-h-screen ${marketplaceTheme === 'aliexpress2' ? 'bg-[#09090b]' : 'bg-white dark:bg-[#0F0F23]'}`}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      />
       <style
         dangerouslySetInnerHTML={{
           __html: `:root { --pd-primary: ${marketplaceSettings.marketplace_primary_color || '#16C784'}; --pd-secondary: ${marketplaceSettings.marketplace_secondary_color || '#0f9f6e'}; }`,

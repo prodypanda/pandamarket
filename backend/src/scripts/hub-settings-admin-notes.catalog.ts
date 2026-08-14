@@ -415,6 +415,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Structured data validates without critical errors.', 'Every URL/image/price in markup matches visible current content.', 'Canonical and locale metadata are stable across layouts.', 'No secrets, admin data, or fabricated ratings/counts are emitted.'],
     related: ['HH-02 — authoritative totals.', 'AS-18 — public URL configuration.'],
     tags: ['enhancement', 'hub', 'seo', 'json-ld', 'metadata'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-14', folder: FOLDERS.hub, sortOrder: 14,
@@ -429,6 +430,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Signed-out visitors reach vendor signup without a protected-route bounce.', 'Existing vendors reach their seller dashboard.', 'Pending/suspended/blocked states receive truthful copy and destination.', 'CTA label and destination remain stable once interactive and are localized.'],
     related: ['HH-06 — auth hydration.', 'PI-02 — seller/merchandising growth experiments.'],
     tags: ['bug', 'hub', 'navbar', 'seller-acquisition', 'routing'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-15', folder: FOLDERS.hub, sortOrder: 15,
@@ -1089,7 +1091,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

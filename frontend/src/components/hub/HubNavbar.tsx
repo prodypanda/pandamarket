@@ -61,6 +61,13 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
         ? '/hub/dashboard'
         : '/hub/account';
   const accountHref = currentUser ? dashboardHref : '/login/buyer';
+  const createStoreHref = !currentUser
+    ? '/hub/vendor-signup'
+    : role === 'buyer' && !currentUser.store_id
+      ? '/hub/vendor-signup'
+      : role === 'admin' || role === 'super_admin'
+        ? '/dashboard'
+        : '/hub/dashboard';
 
   useEffect(() => {
     let cancelled = false;
@@ -172,8 +179,10 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
 
           {/* Navigation Items */}
           <div className="flex items-center space-x-4">
-            <Link href="/hub/dashboard" className={`text-sm font-medium transition-colors hidden lg:block ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
-              {t('nav.createStore')}
+            <Link href={createStoreHref} className={`text-sm font-medium transition-colors hidden lg:block ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
+              {currentUser && (role === 'vendor' || currentUser.store_id)
+                ? t('nav.dashboard')
+                : t('nav.createStore')}
             </Link>
             <div className={`h-6 w-px hidden lg:block ${isAliExpress2 ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`} />
             <LocaleSwitcher />
