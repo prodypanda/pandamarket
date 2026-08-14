@@ -1481,7 +1481,7 @@ export default function SuperAdminSettingsPage() {
   const [settingsLoadError, setSettingsLoadError] = useState<{ message: string; requestId: string; status?: number } | null>(null);
   const [settingsLoadAttempt, setSettingsLoadAttempt] = useState(0);
   const [sectionVersions, setSectionVersions] = useState<SettingsSectionVersions>({});
-  const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | null>(null);
+  const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | 'hub_homepage_banner_image_url' | 'marketplace_og_image_url' | 'marketplace_favicon_url' | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('marketplace');
   const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -1555,6 +1555,7 @@ export default function SuperAdminSettingsPage() {
   }
 
   function renderToggle({ key, label, description }: ToggleSetting) {
+    const isChecked = Boolean(settings[key]);
     return (
       <div id={`setting-${key}`} key={key} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-stone-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
         <div className="pr-4">
@@ -1563,14 +1564,17 @@ export default function SuperAdminSettingsPage() {
         </div>
         <button
           type="button"
+          role="switch"
+          aria-checked={isChecked}
+          aria-label={label}
           onClick={() => updateSetting(key, !settings[key])}
-          className={`relative h-7 w-14 shrink-0 rounded-full transition-all duration-300 shadow-inner ${
-            settings[key] ? 'bg-[#B91C1C] shadow-red-900/20' : 'bg-slate-200'
+          className={`relative h-7 w-14 shrink-0 rounded-full transition-all duration-300 shadow-inner focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+            isChecked ? 'bg-[#B91C1C] shadow-red-900/20' : 'bg-slate-200'
           }`}
         >
           <span
             className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
-              settings[key] ? 'translate-x-7' : 'translate-x-0'
+              isChecked ? 'translate-x-7' : 'translate-x-0'
             }`}
           />
         </button>
@@ -2400,11 +2404,45 @@ export default function SuperAdminSettingsPage() {
               </p>
             )}
           </div>
-          <div className="md:col-span-2">
-            {renderTextInput('marketplace_og_image_url', 'Social Sharing Image URL', '/og-image.png')}
+          {/* Social Sharing Image with Asset Picker (AS-04) */}
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Social Sharing Image URL (OpenGraph)</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={settings.marketplace_og_image_url || ''}
+                onChange={(e) => updateSetting('marketplace_og_image_url', e.target.value)}
+                placeholder="/og-image.png"
+                className="flex-1 rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+              />
+              <button
+                type="button"
+                onClick={() => setMarketplaceLogoPickerTarget('marketplace_og_image_url')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#B91C1C] px-4 py-3 text-xs font-bold text-white hover:bg-[#991B1B] shrink-0"
+              >
+                <UploadCloud className="h-4 w-4" /> Choose
+              </button>
+            </div>
           </div>
-          <div className="md:col-span-2">
-            {renderTextInput('marketplace_favicon_url', 'Favicon URL', '/favicon.ico')}
+          {/* Favicon with Asset Picker (AS-04) */}
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Favicon URL</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={settings.marketplace_favicon_url || ''}
+                onChange={(e) => updateSetting('marketplace_favicon_url', e.target.value)}
+                placeholder="/favicon.ico"
+                className="flex-1 rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
+              />
+              <button
+                type="button"
+                onClick={() => setMarketplaceLogoPickerTarget('marketplace_favicon_url')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#B91C1C] px-4 py-3 text-xs font-bold text-white hover:bg-[#991B1B] shrink-0"
+              >
+                <UploadCloud className="h-4 w-4" /> Choose
+              </button>
+            </div>
           </div>
           <div className="md:col-span-2 space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Marketplace Logos</label>
@@ -2522,9 +2560,49 @@ export default function SuperAdminSettingsPage() {
           title="Hub Homepage and Catalog"
           description="Configure homepage layout, hero banner copy, featured category order, and the default product sort."
         />
+        {/* Visual Homepage Layout Selector (AS-11) */}
+        <div className="space-y-3">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Homepage Layout Visual Selector</label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { id: 'theme_default', name: 'Theme Default', tag: 'Auto', icon: '🎨', desc: 'Adapts to theme' },
+              { id: 'classic', name: 'Classic', tag: 'Standard', icon: '🏛️', desc: 'Hero & sidebar' },
+              { id: 'deals', name: 'Deals', tag: 'Discounts', icon: '⚡', desc: 'Countdown & flash' },
+              { id: 'premium_deals', name: 'Premium Deals', tag: 'VIP Dark', icon: '✨', desc: 'High contrast' },
+              { id: 'alibaba', name: 'Alibaba B2B', tag: 'Wholesale', icon: '📦', desc: 'Multi-tier seller' },
+              { id: 'amazon', name: 'Amazon Classic', tag: 'Department', icon: '🛒', desc: 'Multi-card grid' },
+            ].map((layout) => {
+              const isSelected = settings.hub_homepage_layout === layout.id;
+              return (
+                <button
+                  key={layout.id}
+                  type="button"
+                  onClick={() => updateSetting('hub_homepage_layout', layout.id as PlatformSettings['hub_homepage_layout'])}
+                  className={`group relative flex flex-col items-start rounded-2xl border p-3.5 text-start transition-all ${
+                    isSelected
+                      ? 'border-[#B91C1C] bg-red-50/50 shadow-md ring-2 ring-[#B91C1C]/20'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-xl">{layout.icon}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                      isSelected ? 'bg-[#B91C1C] text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {layout.tag}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs font-bold text-slate-900">{layout.name}</p>
+                  <p className="text-[11px] text-slate-500 line-clamp-1">{layout.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Homepage Layout</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Homepage Layout Selection</label>
             <select
               value={settings.hub_homepage_layout}
               onChange={(e) => updateSetting('hub_homepage_layout', e.target.value as PlatformSettings['hub_homepage_layout'])}
@@ -2599,8 +2677,50 @@ export default function SuperAdminSettingsPage() {
           {renderTextInput('hub_homepage_banner_subtitle', 'Banner Subtitle', 'Short hero description')}
           {renderTextInput('hub_homepage_banner_cta_label', 'Banner CTA Label', 'Explorer le Hub')}
           {renderTextInput('hub_homepage_banner_cta_url', 'Banner CTA URL', '/hub/search')}
-          <div className="md:col-span-2">
-            {renderTextInput('hub_homepage_banner_image_url', 'Banner Image URL', '/pd-product-images/...')}
+          {/* Banner Image with Asset Picker Integration (AS-04) */}
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Promotional Banner Image</label>
+            <div className="flex flex-col sm:flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-stone-50 p-4">
+              <div className="flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                {settings.hub_homepage_banner_image_url ? (
+                  <div
+                    aria-label="Banner image preview"
+                    role="img"
+                    className="h-full w-full bg-cover bg-center"
+                    style={{ backgroundImage: `url(${getResizedImageUrl(settings.hub_homepage_banner_image_url, 'medium')})` }}
+                  />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-slate-300" />
+                )}
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                <input
+                  type="text"
+                  value={settings.hub_homepage_banner_image_url || ''}
+                  onChange={(e) => updateSetting('hub_homepage_banner_image_url', e.target.value)}
+                  placeholder="/pd-product-images/..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMarketplaceLogoPickerTarget('hub_homepage_banner_image_url')}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#B91C1C] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#991B1B]"
+                  >
+                    <UploadCloud className="h-3.5 w-3.5" /> Choose from Library
+                  </button>
+                  {settings.hub_homepage_banner_image_url && (
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('hub_homepage_banner_image_url', '')}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="md:col-span-2">
             {renderTextInput('catalog_featured_category_slugs', 'Featured Category Slugs', 'electronics,beauty,home')}
@@ -3598,7 +3718,17 @@ export default function SuperAdminSettingsPage() {
 
       <MarketplaceAssetPicker
         open={marketplaceLogoPickerTarget !== null}
-        title={marketplaceLogoPickerTarget === 'maintenance_illustration_url' ? 'Maintenance illustration gallery' : 'Marketplace logo gallery'}
+        title={
+          marketplaceLogoPickerTarget === 'maintenance_illustration_url'
+            ? 'Maintenance illustration gallery'
+            : marketplaceLogoPickerTarget === 'hub_homepage_banner_image_url'
+              ? 'Banner image gallery'
+              : marketplaceLogoPickerTarget === 'marketplace_og_image_url'
+                ? 'Social sharing image gallery'
+                : marketplaceLogoPickerTarget === 'marketplace_favicon_url'
+                  ? 'Favicon gallery'
+                  : 'Marketplace logo gallery'
+        }
         type="image"
         onClose={() => setMarketplaceLogoPickerTarget(null)}
         onSelect={(url) => {

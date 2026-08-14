@@ -562,6 +562,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Admins can select an existing platform asset for every Hub promotional image field.', 'Invalid/unsafe URLs cannot be saved silently.', 'Preview uses the same normalized/optimized URL behavior as the Hub.', 'Desktop/mobile aspect and missing-alt warnings are clear before save.'],
     related: ['AS-15 — image dimension/aspect validation.', 'AS-23 — safe structured editors.'],
     tags: ['enhancement', 'admin-settings', 'assets', 'images', 'authoring'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-05', folder: FOLDERS.settings, sortOrder: 5,
@@ -665,6 +666,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['Each layout can be compared visually and by capability before selection.', 'Radio cards have correct group/checked semantics and work at mobile/zoom sizes.', 'Switch warnings list inactive settings without deleting them.', 'Theme-default resolution is explicit and tested.'],
     related: ['HC-01 — capability manifest.', 'AS-08/PI-03 — real preview.'],
     tags: ['enhancement', 'admin-settings', 'layout', 'preview', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'AS-12', folder: FOLDERS.settings, sortOrder: 12,
@@ -958,6 +960,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Every interactive control has a meaningful unique accessible name.', 'Toggle/tab/current/loading/error states are announced correctly.', 'All workflows complete keyboard-only with visible focus and no obstruction.', 'Automated accessibility tests cover Hub navbar/search/pagination and Settings toggles/tabs/editors.'],
     related: ['LA-03 — search combobox.', 'LA-04 — mega-menu.', 'HH-11 — carousel.'],
     tags: ['bug', 'a11y', 'hub', 'admin-settings', 'wcag'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'LA-03', folder: FOLDERS.localization, sortOrder: 3,
@@ -972,6 +975,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Older responses never replace newer-query results.', 'Error and empty states are visibly/telemetrically distinct.', 'All suggestions can be reached/selected/dismissed by keyboard and announced correctly.', 'Changing locale/query closes or refreshes stale results safely.'],
     related: ['HR-01 — error semantics.', 'LA-02 — accessible controls.', 'QA-01.'],
     tags: ['bug', 'hub', 'search', 'race-condition', 'a11y'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'LA-04', folder: FOLDERS.localization, sortOrder: 4,
@@ -1108,7 +1112,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'LA-01', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

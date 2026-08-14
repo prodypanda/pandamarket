@@ -35,14 +35,19 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestSeqRef = useRef<number>(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
+        setActiveIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -51,24 +56,45 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
 
   const fetchResults = useCallback(async (q: string) => {
     if (q.trim().length < 2) {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
       setResults([]);
       setShowDropdown(false);
+      setActiveIndex(-1);
       return;
     }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const currentSeq = ++requestSeqRef.current;
+
     setIsSearching(true);
     setShowDropdown(true);
+    setActiveIndex(-1);
+
     try {
-      const res = await fetch(`/api/pd/search/suggest?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/pd/search/suggest?q=${encodeURIComponent(q)}`, {
+        signal: controller.signal,
+      });
+      if (currentSeq !== requestSeqRef.current) return;
       if (res.ok) {
         const data = await res.json();
-        setResults(data.suggestions || []);
+        if (currentSeq === requestSeqRef.current) {
+          setResults(data.suggestions || []);
+        }
       } else {
+        if (currentSeq === requestSeqRef.current) setResults([]);
+      }
+    } catch (err: unknown) {
+      if ((err as Error)?.name !== 'AbortError' && currentSeq === requestSeqRef.current) {
         setResults([]);
       }
-    } catch {
-      setResults([]);
     } finally {
-      setIsSearching(false);
+      if (currentSeq === requestSeqRef.current) {
+        setIsSearching(false);
+      }
     }
   }, []);
 
@@ -79,21 +105,48 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchResults(val);
-    }, 300);
+    }, 250);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && query.trim()) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!showDropdown && query.length > 1) {
+        setShowDropdown(true);
+      }
+      setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
       setShowDropdown(false);
-      router.push(`/hub/search?q=${encodeURIComponent(query.trim())}`);
+      setActiveIndex(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      setShowDropdown(false);
+      if (activeIndex >= 0 && results[activeIndex]) {
+        router.push(getHubProductHref(results[activeIndex]));
+      } else if (query.trim()) {
+        router.push(`/hub/search?q=${encodeURIComponent(query.trim())}`);
+      }
     }
   };
+
+  const activeOptionId = activeIndex >= 0 && results[activeIndex] ? `suggestion-${results[activeIndex].id}` : undefined;
 
   return (
     <div className="relative w-full max-w-2xl mx-auto" ref={wrapperRef}>
       <div className={`relative flex items-center ${isAliExpress ? 'rounded-full bg-white p-1 shadow-lg shadow-orange-900/10 ring-2 ring-[#ff4747]' : ''}`}>
         <input
+          ref={inputRef}
           type="text"
+          role="combobox"
+          aria-expanded={showDropdown && query.length > 1}
+          aria-controls="hub-search-suggestions"
+          aria-autocomplete="list"
+          aria-activedescendant={activeOptionId}
+          aria-label={t('common.search')}
           value={query}
           onChange={handleSearch}
           onKeyDown={handleKeyDown}
@@ -118,35 +171,56 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
       </div>
 
       {showDropdown && query.length > 1 && (
-        <div className="absolute w-full mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl shadow-slate-900/10 z-50 overflow-hidden">
+        <div
+          id="hub-search-suggestions"
+          role="listbox"
+          aria-label="Suggestions de recherche"
+          className="absolute w-full mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl shadow-slate-900/10 z-50 overflow-hidden"
+        >
           {isSearching ? (
-            <div className="p-4 text-center text-sm text-gray-500">{t('common.loading')}</div>
+            <div className="p-4 text-center text-sm text-gray-500" role="status">{t('common.loading')}</div>
           ) : results.length > 0 ? (
             <>
               <ul className="divide-y divide-gray-50">
-                {results.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={getHubProductHref(r)}
-                      onClick={() => setShowDropdown(false)}
-                      className={`p-4 cursor-pointer transition-colors flex justify-between items-center gap-4 block ${
-                        isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-[#16C784]/5'
-                      }`}
+                {results.map((r, index) => {
+                  const isSelected = index === activeIndex;
+                  return (
+                    <li
+                      key={r.id}
+                      id={`suggestion-${r.id}`}
+                      role="option"
+                      aria-selected={isSelected}
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                        {r.category && <p className="text-xs text-gray-500 truncate">{r.category}</p>}
-                      </div>
-                      <span className={`text-sm font-bold whitespace-nowrap ${isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'}`}>
-                        {formatResultPrice(r.price, t('common.currency'))}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                      <Link
+                        href={getHubProductHref(r)}
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setActiveIndex(-1);
+                        }}
+                        className={`p-4 cursor-pointer transition-colors flex justify-between items-center gap-4 block ${
+                          isSelected
+                            ? isAliExpress ? 'bg-orange-100' : 'bg-[#16C784]/15'
+                            : isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-[#16C784]/5'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{r.title}</p>
+                          {r.category && <p className="text-xs text-gray-500 truncate">{r.category}</p>}
+                        </div>
+                        <span className={`text-sm font-bold whitespace-nowrap ${isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'}`}>
+                          {formatResultPrice(r.price, t('common.currency'))}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
               <Link
                 href={`/hub/search?q=${encodeURIComponent(query)}`}
-                onClick={() => setShowDropdown(false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  setActiveIndex(-1);
+                }}
                 className={`block p-3 text-center text-sm font-medium hover:bg-gray-50 border-t border-gray-100 ${
                   isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'
                 }`}
@@ -155,7 +229,7 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
               </Link>
             </>
           ) : (
-            <div className="p-4 text-center text-sm text-gray-500">{t('common.noResults')}</div>
+            <div className="p-4 text-center text-sm text-gray-500" role="status">{t('common.noResults')}</div>
           )}
         </div>
       )}
