@@ -10,14 +10,12 @@ import { ConsentScriptGate } from "../components/store/ConsentScriptGate";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
   display: "swap",
 });
 
@@ -31,21 +29,18 @@ const poppins = Poppins({
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
   display: "swap",
 });
 
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
   display: "swap",
 });
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
   display: "swap",
 });
 

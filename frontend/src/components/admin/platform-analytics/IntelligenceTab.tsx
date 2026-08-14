@@ -168,10 +168,11 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
             <Brain className="w-6 h-6 text-indigo-600" /> Analytics Intelligence & Risk Engine
           </h2>
           <p className="text-xs text-slate-400 font-medium">
-            AI-driven metric anomaly detection, vendor churn early warning, and predictive scenario simulation
+            AI-driven behavioral telemetry, vendor churn early warning, and predictive scenario simulation
           </p>
         </div>
       </div>
+
 
       {/* SECTION 1: Daily Executive AI Digest (R5) */}
       <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white border border-indigo-500/30 shadow-lg space-y-4">
@@ -451,9 +452,12 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
         {/* Proactive Risk & Anomaly Alerts */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-amber-500" /> Proactive Anomaly Radar
+            <ShieldAlert className="w-5 h-5 text-amber-500" />
+            <span>Metric Anomaly Detection</span>
           </h3>
           <div className="space-y-3">
+
+
             <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />

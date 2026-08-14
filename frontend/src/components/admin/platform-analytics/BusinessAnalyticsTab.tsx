@@ -134,13 +134,14 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
             </span>
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white">
-                7-Stage Granular Conversion Funnel & Drop-Off Analysis
+                Checkout Conversion Funnel & 7-Stage Pipeline
               </h3>
               <p className="text-xs text-slate-400 font-medium">
                 End-to-end customer purchasing journey from initial visitor landing to captured payment
               </p>
             </div>
           </div>
+
 
           <div className="px-3 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800">
             Overall Conversion: <strong>{((completedPayments / totalSessions) * 100).toFixed(2)}%</strong>

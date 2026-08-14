@@ -172,9 +172,10 @@ export function VendorsAnalyticsTab({ data, currency = 'TND' }: VendorsAnalytics
         {/* Top Vendors Table */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-            <Store className="w-5 h-5 text-indigo-600" aria-hidden="true" /> Top Performing Vendors Leaderboard
+            <Store className="w-5 h-5 text-indigo-600" aria-hidden="true" /> Top Performing Vendors Matrix
           </h3>
           <div className="overflow-x-auto">
+
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
