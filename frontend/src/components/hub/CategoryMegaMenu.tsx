@@ -121,7 +121,8 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [configuredStyle, setConfiguredStyle] = useState<'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep'>('standard');
-  const [lazyLoadingEnabled, setLazyLoadingEnabled] = useState<boolean>(true);
+  const [lazyLoadingEnabled, setLazyLoadingEnabled] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -211,8 +212,19 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
         setIsOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const buttonStyle = isAliExpress2
@@ -231,9 +243,13 @@ export function CategoryMegaMenu({ variant, marketplaceTheme, megamenuStyle: pro
   return (
     <div className="relative" ref={menuRef}>
       <button
+        ref={triggerRef}
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-xs font-black transition-all ${buttonStyle}`}
         aria-expanded={isOpen}
+        aria-haspopup="true"
+        aria-label={locale === 'ar' ? 'جميع الأقسام' : locale === 'en' ? 'All Departments' : 'Toutes les catégories'}
       >
         <Grid className="h-4 w-4" />
         <span className="tracking-wide">

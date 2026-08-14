@@ -899,6 +899,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Real empty and fetch failure have different UI and telemetry.', 'Partial data can render without claiming unavailable sections are empty.', 'Retry/recovery works and stale data is labeled.', 'Monitoring detects sustained product/category delivery failures.'],
     related: ['AS-22 — load failure safety.', 'HH-09 — ad status.', 'QA-01 — failure E2E.'],
     tags: ['bug', 'hub', 'reliability', 'error-state', 'observability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HR-02', folder: FOLDERS.reliability, sortOrder: 2,
@@ -913,6 +914,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['The UI never labels a failed propagation as fully published.', 'Operators can retry without duplicating changes.', 'Public Hub can report/verify the expected settings version.', 'Persistence and publication share a correlation/audit record.'],
     related: ['HH-16 — freshness contract.', 'PI-01 — staged publication.'],
     tags: ['bug', 'admin-settings', 'revalidation', 'publication', 'observability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HR-03', folder: FOLDERS.reliability, sortOrder: 3,
@@ -941,6 +943,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['No buyer-visible Hub string is unintentionally hardcoded/mixed across FR/EN/AR.', 'Currency/count/date formatting follows locale policy.', 'Arabic RTL has correct logical order, focus order, alignment, and no clipping.', 'Missing admin translations use a visible documented fallback.'],
     related: ['HH-07 — footer.', 'LA-02/03/04 — interaction accessibility.', 'QA-01.'],
     tags: ['bug', 'hub', 'i18n', 'rtl', 'localization'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'LA-02', folder: FOLDERS.localization, sortOrder: 2,
@@ -983,6 +986,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Menu fully opens, navigates, closes, and returns focus by keyboard.', 'Portal interactions do not close unexpectedly or trap focus.', 'Hub load does not duplicate identical settings/category requests.', 'All variants retain correct semantics and RTL behavior.'],
     related: ['HH-10 — category visual parity.', 'LA-02 — semantics.', 'HR-01 — data errors.'],
     tags: ['bug', 'hub', 'mega-menu', 'keyboard', 'performance'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'SO-01', folder: FOLDERS.security, sortOrder: 1,
@@ -1104,7 +1108,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-12', 'AS-13', 'AS-14', 'AS-18', 'AS-19', 'AS-20', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'LA-01', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

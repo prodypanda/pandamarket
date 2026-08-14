@@ -1498,6 +1498,7 @@ export default function SuperAdminSettingsPage() {
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'published' | 'failed'>('idle');
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -1836,10 +1837,25 @@ export default function SuperAdminSettingsPage() {
           responseSection,
         ) as PlatformSettings);
         setSectionVersions((previous) => ({ ...previous, ...data.section_versions }));
-        // Bust the cached hub pages so theme/layout changes show up immediately.
-        fetch('/api/marketplace/revalidate', { method: 'POST', credentials: 'include' }).catch(() => undefined);
+
+        // Await on-demand publication and distinguish persistence vs cache invalidation (HR-02)
+        setPublishStatus('publishing');
+        try {
+          const revRes = await fetch('/api/marketplace/revalidate', { method: 'POST', credentials: 'include' });
+          if (revRes.ok) {
+            setPublishStatus('published');
+          } else {
+            setPublishStatus('failed');
+          }
+        } catch {
+          setPublishStatus('failed');
+        }
+
         setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        setTimeout(() => {
+          setSaved(false);
+          setPublishStatus('idle');
+        }, 4000);
       } else if (res.status === 409) {
         let conflictData: PlatformSettingsResponse & { error?: { message?: string; details?: { current_version?: string | null } } } = {};
         try {
@@ -2096,7 +2112,17 @@ export default function SuperAdminSettingsPage() {
             {activeTab === 'email'
               ? smtpSaving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
               : saving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {activeTab === 'plans' ? 'Use Plan Actions Below' : activeTab === 'email' ? smtpSaved ? 'Email Saved!' : 'Save Email Config' : saved ? 'Saved Successfully!' : 'Save Changes'}
+            {activeTab === 'plans'
+              ? 'Use Plan Actions Below'
+              : activeTab === 'email'
+                ? smtpSaved ? 'Email Saved!' : 'Save Email Config'
+                : saved
+                  ? publishStatus === 'published'
+                    ? 'Saved & Published!'
+                    : publishStatus === 'failed'
+                      ? 'Saved (Publish Delayed)'
+                      : 'Saved Successfully!'
+                  : 'Save Changes'}
           </button>
         </div>
       </div>

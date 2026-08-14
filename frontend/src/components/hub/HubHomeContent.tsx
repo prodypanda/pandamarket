@@ -3,7 +3,7 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, BadgeCheck, Check, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Pause, Play, Search, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Store, Truck, Zap } from 'lucide-react';
+import { ArrowRight, AlertTriangle, BadgeCheck, Check, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Pause, Play, RotateCcw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Store, Truck, Zap } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
@@ -64,6 +64,7 @@ interface HubHomeContentProps {
   categories: MarketplaceCategory[];
   marketplaceSettings?: MarketplaceSettings;
   totalProducts?: number;
+  hasFetchError?: boolean;
 }
 
 // Sections that can be reordered from the admin Homepage Blocks editor.
@@ -164,7 +165,7 @@ function ProductCard({ product, currency }: { product: Product; currency: string
   );
 }
 
-export function HubHomeContent({ trendingProducts, categories, marketplaceSettings, totalProducts }: HubHomeContentProps) {
+export function HubHomeContent({ trendingProducts, categories, marketplaceSettings, totalProducts, hasFetchError }: HubHomeContentProps) {
   const { t, locale } = useLocale();
   const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -368,6 +369,24 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
               <ProductCard key={product.id} product={product as Product} currency={currency} />
             )}
           />
+        ) : hasFetchError ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50/70 p-8 text-center dark:border-amber-900/30 dark:bg-amber-950/20">
+            <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-600" />
+            <h3 className="text-base font-black text-amber-950 dark:text-amber-300">
+              {locale === 'ar' ? 'تعذر تحميل المنتجات الرائجة مؤقتاً' : locale === 'en' ? 'Trending products temporarily unavailable' : 'Articles tendances temporairement indisponibles'}
+            </h3>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-400">
+              {locale === 'ar' ? 'يرجى تحديث الصفحة أو المحاولة لاحقاً' : locale === 'en' ? 'Please refresh the page or check back shortly.' : 'Veuillez rafraîchir la page ou réessayer dans quelques instants.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#16C784] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#13b074] transition"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>{locale === 'ar' ? 'إعادة المحاولة' : locale === 'en' ? 'Retry' : 'Réessayer'}</span>
+            </button>
+          </div>
         ) : (
           <div className="py-12 text-center">
             <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-gray-300" />

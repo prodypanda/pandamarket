@@ -187,16 +187,28 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
             <div className={`h-6 w-px hidden lg:block ${isAliExpress2 ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`} />
             <LocaleSwitcher />
             <ThemeToggle />
-            <Link href={accountHref} className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
+            <Link
+              href={accountHref}
+              aria-label={currentUser ? (t('nav.myAccount') || 'Mon compte') : t('nav.login')}
+              className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}
+            >
               <User className="w-5 h-5" strokeWidth={1.75} />
               <span className="ms-2 text-sm font-medium hidden sm:block">
-                {currentUser ? 'Mon compte' : t('nav.login')}
+                {currentUser ? (t('nav.myAccount') || 'Mon compte') : t('nav.login')}
               </span>
             </Link>
-            <Link href="/hub/wishlist" className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:text-red-400'}`}>
+            <Link
+              href="/hub/wishlist"
+              aria-label={t('nav.wishlist') || 'Favoris'}
+              className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:text-red-400'}`}
+            >
               <Heart className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <Link href="/hub/messages" className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
+            <Link
+              href="/hub/messages"
+              aria-label={t('nav.messages') || 'Messages'}
+              className={`flex items-center transition-colors ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}
+            >
               <MessageSquare className="w-5 h-5" strokeWidth={1.75} />
             </Link>
             <Link
