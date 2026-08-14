@@ -144,6 +144,9 @@ export function verifyMockFileToken(token: string): MockFileTokenPayload {
     if (err instanceof jwt.TokenExpiredError) {
       throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_EXPIRED, 'File token expired');
     }
+    if (err instanceof jwt.JsonWebTokenError) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid file token');
+    }
     throw err;
   }
 }

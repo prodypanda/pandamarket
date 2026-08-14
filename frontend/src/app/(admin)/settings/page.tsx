@@ -1451,6 +1451,7 @@ export default function AdminSettingsPage() {
   const [smtpTestMessage, setSmtpTestMessage] = useState('');
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
 
   function updateSetting<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
     if (!settingsLoadSucceeded) return;
@@ -1959,6 +1960,14 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
+      {savedSettings.maintenance_enabled && (
+        <div className="flex items-center justify-center gap-3 rounded-2xl bg-red-600 px-4 py-3 text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-red-950/20 animate-pulse">
+          <AlertTriangle className="h-4 w-4" />
+          <span>MAINTENANCE MODE IS ACTIVE — Storefronts are offline</span>
+          <AlertTriangle className="h-4 w-4" />
+        </div>
+      )}
+
       <div className="sticky top-0 z-40 -mx-4 flex flex-col gap-4 rounded-b-3xl border-b border-amber-100 bg-white/95 px-4 py-3.5 shadow-sm backdrop-blur-xl sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#B91C1C] text-white shadow-lg shadow-red-900/20">
@@ -1995,16 +2004,28 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        <button
-          onClick={activeTab === 'plans' ? undefined : activeTab === 'email' ? handleSmtpSave : handleSave}
-          disabled={activeTab === 'plans' || (activeTab === 'email' ? smtpSaving || smtpLoading : saving || loading || !settingsLoadSucceeded || !hasUnsavedPlatformChanges)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-900/25 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-red-900/30 disabled:opacity-50 disabled:hover:translate-y-0"
-        >
-          {activeTab === 'email'
-            ? smtpSaving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
-            : saving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {activeTab === 'plans' ? 'Use Plan Actions Below' : activeTab === 'email' ? smtpSaved ? 'Email Saved!' : 'Save Email Config' : saved ? 'Saved Successfully!' : 'Save Changes'}
-        </button>
+        <div className="flex items-center gap-2">
+          {hasUnsavedPlatformChanges && (
+            <button
+              type="button"
+              onClick={resetActiveSection}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Discard Draft
+            </button>
+          )}
+          <button
+            onClick={activeTab === 'plans' ? undefined : activeTab === 'email' ? handleSmtpSave : handleSave}
+            disabled={activeTab === 'plans' || (activeTab === 'email' ? smtpSaving || smtpLoading : saving || loading || !settingsLoadSucceeded || !hasUnsavedPlatformChanges)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-900/25 transition-all hover:-translate-y-0.5 hover:bg-[#991B1B] hover:shadow-red-900/30 disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            {activeTab === 'email'
+              ? smtpSaving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
+              : saving ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {activeTab === 'plans' ? 'Use Plan Actions Below' : activeTab === 'email' ? smtpSaved ? 'Email Saved!' : 'Save Email Config' : saved ? 'Saved Successfully!' : 'Save Changes'}
+          </button>
+        </div>
       </div>
 
       {/* Real-Time Settings Search Results Panel */}
@@ -2129,11 +2150,46 @@ export default function AdminSettingsPage() {
         )}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {renderToggle({
-            key: 'maintenance_enabled',
-            label: 'Enable Maintenance Mode',
-            description: 'Block all non-admin access to the marketplace.',
-          })}
+          {/* Custom Danger Maintenance Toggle with Confirmation Guard */}
+          <div
+            id="setting-maintenance_enabled"
+            className={`flex items-center justify-between gap-4 rounded-2xl border-2 p-5 transition-all ${
+              settings.maintenance_enabled
+                ? 'border-red-300 bg-red-50/80 shadow-md shadow-red-500/10'
+                : 'border-slate-200 bg-white'
+            }`}
+          >
+            <div className="pr-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-slate-900">Enable Maintenance Mode</p>
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700">
+                  DANGER
+                </span>
+              </div>
+              <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
+                Block all non-admin access to the marketplace. This takes your platform offline immediately.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (!settings.maintenance_enabled) {
+                  setShowMaintenanceConfirm(true);
+                } else {
+                  updateSetting('maintenance_enabled', false);
+                }
+              }}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-all duration-300 shadow-inner ${
+                settings.maintenance_enabled ? 'bg-red-600 shadow-red-900/20' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                  settings.maintenance_enabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
           {renderToggle({
             key: 'maintenance_block_storefronts',
             label: 'Block Storefronts Too',
@@ -3417,6 +3473,43 @@ export default function AdminSettingsPage() {
                 className="flex-1 rounded-xl bg-[#B91C1C] py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] shadow-sm transition"
               >
                 Discard & Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dangerous Action Confirmation Dialog for Maintenance Mode */}
+      {showMaintenanceConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-[2rem] border border-red-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <h3 className="text-lg font-black text-slate-950">Enable Maintenance Mode?</h3>
+            <p className="mt-2 text-xs font-medium text-slate-600 leading-relaxed">
+              This will <strong>immediately block all buyers and vendors</strong> from browsing and purchasing on the marketplace. Only admin accounts will be able to access the platform.
+            </p>
+            <p className="mt-2 text-xs font-bold text-red-600">
+              Are you sure you want to take the platform offline?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMaintenanceConfirm(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateSetting('maintenance_enabled', true);
+                  setShowMaintenanceConfirm(false);
+                }}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 shadow-md shadow-red-900/20 transition"
+              >
+                Yes, Take Offline
               </button>
             </div>
           </div>

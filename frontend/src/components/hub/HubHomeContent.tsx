@@ -3,7 +3,7 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, BadgeCheck, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Truck, Zap } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CreditCard, Flame, Grid3X3, Headphones, PackageCheck, Pause, Play, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Truck, Zap } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
@@ -119,6 +119,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const { t, locale } = useLocale();
   const rtl = isRtlLocale(marketplaceSettings, locale);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   // Admin-managed block configuration (enable/disable, order, titles, limits)
   const blocks = useMemo(
@@ -142,10 +143,10 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   // Admin-defined hero slides rotate and override the banner settings.
   const heroSlides = blockById.get('hero')?.slides ?? [];
   useEffect(() => {
-    if (heroSlides.length <= 1) return;
+    if (heroSlides.length <= 1 || paused) return;
     const id = setInterval(() => setSlideIndex((prev) => (prev + 1) % heroSlides.length), 6000);
     return () => clearInterval(id);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, paused]);
   const activeSlide = heroSlides.length > 0 ? heroSlides[slideIndex % heroSlides.length] : null;
 
   const bannerTitle = activeSlide?.title || marketplaceSettings?.hub_homepage_banner_title?.trim() || t('hub.hero.title');
@@ -410,16 +411,35 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                 Departments
               </div>
               <div className="space-y-1">
-                {heroCategories.map((category) => (
-                  <Link
-                    key={category.slug}
-                    href={`/hub/search?category=${encodeURIComponent(category.slug)}`}
-                    className="flex items-center justify-between rounded-2xl px-3 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-[#16C784]/10 hover:text-[#0f9f6e] dark:text-gray-300"
-                  >
-                    <span className="truncate">{category.name}</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                ))}
+                {heroCategories.map((category) => {
+                  const catImg = category.image_url
+                    ? getResizedImageUrl(normalizePublicAssetUrl(category.image_url), 'thumbnail')
+                    : null;
+                  return (
+                    <Link
+                      key={category.slug}
+                      href={`/hub/search?category=${encodeURIComponent(category.slug)}`}
+                      className="flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-[#16C784]/10 hover:text-[#0f9f6e] dark:text-gray-300"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {catImg ? (
+                          <img
+                            src={catImg}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-6 w-6 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#16C784]/10 text-[#16C784]">
+                            <Grid3X3 className="h-3.5 w-3.5" />
+                          </span>
+                        )}
+                        <span className="truncate">{category.name}</span>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                    </Link>
+                  );
+                })}
                 <Link href="/hub/search" className="mt-2 flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2.5 text-sm font-bold text-[#16C784] dark:bg-white/5">
                   {t('common.seeAll')} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
@@ -457,10 +477,46 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                   ))}
                 </div>
                 {heroSlides.length > 1 && (
-                  <div className="mt-6 flex gap-1.5">
-                    {heroSlides.map((entry, idx) => (
-                      <button key={`${entry.title}-${idx}`} type="button" aria-label={`Slide ${idx + 1}`} onClick={() => setSlideIndex(idx)} className={`h-1.5 rounded-full transition-all ${idx === slideIndex % heroSlides.length ? 'w-6 bg-white' : 'w-2 bg-white/40'}`} />
-                    ))}
+                  <div className="mt-6 flex items-center gap-3">
+                    <div
+                      role="tablist"
+                      aria-label="Hero slide navigation"
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          setSlideIndex((prev) => (prev + 1) % heroSlides.length);
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          setSlideIndex((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+                        }
+                      }}
+                      onFocus={() => setPaused(true)}
+                      onBlur={() => setPaused(false)}
+                      className="flex items-center gap-1.5 focus:outline-none"
+                      tabIndex={0}
+                    >
+                      {heroSlides.map((entry, idx) => (
+                        <button
+                          key={`${entry.title}-${idx}`}
+                          type="button"
+                          role="tab"
+                          aria-selected={idx === slideIndex % heroSlides.length}
+                          aria-label={`Slide ${idx + 1}${entry.title ? `: ${entry.title}` : ''}`}
+                          onClick={() => setSlideIndex(idx)}
+                          className={`h-1.5 rounded-full transition-all focus:outline-none focus:ring-1 focus:ring-white ${
+                            idx === slideIndex % heroSlides.length ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={paused ? 'Play slideshow' : 'Pause slideshow'}
+                      onClick={() => setPaused((p) => !p)}
+                      className="rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white transition"
+                    >
+                      {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                    </button>
                   </div>
                 )}
               </div>

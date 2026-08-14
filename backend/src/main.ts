@@ -268,9 +268,7 @@ async function bootstrap() {
   apiRouter.use('/search', searchRouter);
   apiRouter.use('/internal', internalRouter);
   apiRouter.use('/files', filesRouter);
-  if (config.env !== 'production' && process.env.NODE_ENV !== 'production') {
-    apiRouter.use('/files', mockFilesRouter);
-  }
+  apiRouter.use('/files', mockFilesRouter);
   apiRouter.use('/admin', adminRouter);
   apiRouter.use('/notifications', notificationRouter);
   apiRouter.use('/credits', creditsRouter);

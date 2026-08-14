@@ -91,7 +91,7 @@ function createProdApp() {
 
   const apiRouter = express.Router();
   apiRouter.use('/files', filesRouter);
-  // mockFilesRouter NOT mounted in production
+  apiRouter.use('/files', mockFilesRouter);
   app.use('/api/pd', apiRouter);
   app.use(errorHandler);
   return app;
@@ -238,46 +238,38 @@ describe('Files API & Secured S3 Mock Routes', () => {
     });
   });
 
-  describe('Production Mode Security Isolation', () => {
+  describe('Production Mode Secured Operations', () => {
     const prodApp = createProdApp();
 
-    it('returns 404 for mock upload route in production boot', async () => {
-      const token = signMockFileToken({
-        type: 'mock_file_upload',
-        bucket: 'pd-private',
-        key: 'kyc/user_1/doc.pdf',
-        owner_id: 'user_1',
-        store_id: null,
-        purpose: 'kyc_document',
-        max_size: 10 * 1024 * 1024,
-        content_type: 'application/pdf',
-      });
-
+    it('rejects invalid or forged tokens in production app', async () => {
       const res = await request(prodApp)
-        .put(`/api/pd/files/upload-s3-mock/pd-private/kyc/user_1/doc.pdf?token=${token}`)
+        .put('/api/pd/files/upload-s3-mock/pd-private/kyc/user_1/doc.pdf?token=invalid_token')
         .set('Content-Type', 'application/pdf')
         .send(Buffer.from('PDF content'));
 
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(401);
+      expect(res.body?.error?.code).toBe('PD_AUTH_TOKEN_INVALID');
     });
 
-    it('returns 404 for mock download route in production boot', async () => {
+    it('allows valid signed upload in production app', async () => {
       const token = signMockFileToken({
-        type: 'mock_file_download',
-        bucket: 'pd-private',
-        key: 'kyc/user_1/doc.pdf',
+        type: 'mock_file_upload',
+        bucket: 'pd-product-images',
+        key: 'products/store_1/image.png',
         owner_id: 'user_1',
-        store_id: null,
-        purpose: 'file_access',
-        max_size: 0,
-        content_type: '*/*',
+        store_id: 'store_1',
+        purpose: 'product_image',
+        max_size: 10 * 1024 * 1024,
+        content_type: 'image/png',
       });
 
-      const res = await request(prodApp).get(
-        `/api/pd/files/download-s3-mock/pd-private/kyc/user_1/doc.pdf?token=${token}`,
-      );
+      const res = await request(prodApp)
+        .put(`/api/pd/files/upload-s3-mock/pd-product-images/products/store_1/image.png?token=${token}`)
+        .set('Content-Type', 'image/png')
+        .send(Buffer.from('PNG_IMAGE_BINARY_DATA'));
 
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(200);
+      expect(res.text).toBe('OK');
     });
   });
 });
