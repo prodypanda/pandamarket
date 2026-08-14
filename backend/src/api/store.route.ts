@@ -1,14 +1,21 @@
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storeService, type StoreRow } from '../services/store.service';
 import { categoryService } from '../services/category.service';
 import { productService } from '../services/product.service';
-import { fileAssetService } from '../services/file-asset.service';
+import { imageVariantService } from '../services/image-variant.service';
 import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
-import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType, StoreStatus } from '@pandamarket/types';
+import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType, StoreStatus, PdErrorCode } from '@pandamarket/types';
 import { config } from '../config';
-import { PdValidationError } from '../errors';
+import { PdValidationError, PdForbiddenError } from '../errors';
 import { normalizePlanId } from '../utils/plan-id';
+import { resolveDataPath } from '../utils/data-dir';
+import { pdId } from '../utils/crypto';
+import { logger } from '../utils/logger';
+import { query } from '../db/pool';
 import { pageBuilderService } from '../services/page-builder.service';
 import { platformConfigService } from '../services/platform-config.service';
 import { menuService, draftNavigationInputSchema, draftFooterInputSchema } from '../services/menu.service';
@@ -16,6 +23,18 @@ import { domainVerificationService } from '../services/domain-verification.servi
 import { outboxService } from '../services/outbox.service';
 
 const router = Router();
+
+const renameStoreMediaSchema = z.object({
+  key: z.string().min(1),
+  new_filename: z.string().min(1).max(255),
+});
+
+const optimizeStoreMediaSchema = z.object({
+  key: z.string().min(1),
+  quality: z.number().int().min(30).max(100).optional().default(80),
+  maxWidth: z.number().int().min(100).max(3840).optional().default(1600),
+  format: z.enum(['webp', 'jpeg', 'png', 'original']).optional().default('webp'),
+});
 
 async function pageBuilderEnabled() {
   const settings = await platformConfigService.getSettings();
@@ -509,31 +528,431 @@ router.delete(
   }),
 );
 
+/**
+ * GET /me/media — List store media assets with folder filtering, search, dimensions, and storage stats
+ */
 router.get(
   '/me/media',
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
-    const limit = parseInt(req.query.limit as string, 10) || 60;
-    const [productMedia, storeAssets] = await Promise.all([
-      productService.listStoreMedia(req.user!.store_id!, { limit }),
-      fileAssetService.listAssets({ scope: 'store', storeId: req.user!.store_id!, type: 'image', limit }),
-    ]);
-    const seen = new Set<string>();
-    const media = [
-      ...storeAssets.map((asset) => ({
-        url: asset.url,
-        product_id: asset.id,
-        product_title: asset.filename,
-        alt_text: asset.filename,
-        is_thumbnail: false,
-      })),
-      ...productMedia,
-    ].filter((item) => {
-      if (seen.has(item.url)) return false;
-      seen.add(item.url);
+    const storeId = req.user!.store_id!;
+    const folderFilter = (req.query.folder as string) || 'all';
+    const searchQuery = ((req.query.search as string) || '').trim().toLowerCase();
+    const sortBy = (req.query.sort_by as string) || 'date_desc';
+
+    // 1. Fetch file blobs related to this store from pd_file_blobs
+    const blobResult = await query<{
+      key: string;
+      bucket: string;
+      content_type: string;
+      size: string;
+      created_at: Date;
+      data: Buffer | null;
+      asset_filename: string | null;
+      asset_id: string | null;
+    }>(
+      `SELECT b.key, b.bucket, b.content_type, OCTET_LENGTH(b.data) as size, b.created_at, b.data,
+              a.filename as asset_filename, a.id as asset_id
+       FROM pd_file_blobs b
+       LEFT JOIN pd_file_asset a ON (a.file_key = b.key OR a.url LIKE '%' || b.key)
+       WHERE (
+         b.key LIKE '%' || $1 || '%'
+         OR a.store_id = $1
+       )
+       AND b.key NOT LIKE '%_thumbnail.webp'
+       AND b.key NOT LIKE '%_small.webp'
+       AND b.key NOT LIKE '%_medium.webp'
+       AND b.key NOT LIKE '%_large.webp'
+       ORDER BY b.created_at DESC`,
+      [storeId],
+    );
+
+    // 2. Fetch product images and thumbnails linked to this store
+    const productMediaResult = await query<{
+      url: string;
+      product_id: string;
+      product_title: string;
+      alt_text: string | null;
+      is_thumbnail: boolean;
+      created_at: Date;
+    }>(
+      `SELECT pi.url, p.id as product_id, p.title as product_title, pi.alt_text, pi.is_thumbnail, pi.created_at
+       FROM pd_product_image pi
+       JOIN pd_product p ON p.id = pi.product_id
+       WHERE p.store_id = $1
+       UNION ALL
+       SELECT p.thumbnail as url, p.id as product_id, p.title as product_title, p.title as alt_text, true as is_thumbnail, p.created_at
+       FROM pd_product p
+       WHERE p.store_id = $1 AND p.thumbnail IS NOT NULL`,
+      [storeId],
+    );
+
+    // Build map of product association by URL and by Key
+    const productMap = new Map<string, { product_id: string; product_title: string; alt_text?: string | null }>();
+    for (const pm of productMediaResult.rows) {
+      if (pm.url) {
+        productMap.set(pm.url, { product_id: pm.product_id, product_title: pm.product_title, alt_text: pm.alt_text });
+        const clean = pm.url.replace(/^\/?(pd-product-images\/)?/, '');
+        productMap.set(clean, { product_id: pm.product_id, product_title: pm.product_title, alt_text: pm.alt_text });
+      }
+    }
+
+    const itemsMap = new Map<string, any>();
+
+    // Process blobs
+    for (const row of blobResult.rows) {
+      const rawKey = row.key;
+      let cleanKey = rawKey;
+      if (cleanKey.startsWith(`${row.bucket}/`)) {
+        cleanKey = cleanKey.substring(row.bucket.length + 1);
+      }
+      const pathParts = cleanKey.split('/');
+
+      let folder: 'products' | 'branding' | 'uncategorized' | 'general' = 'uncategorized';
+      if (cleanKey.includes('/products/') || cleanKey.startsWith('products/')) {
+        folder = 'products';
+      } else if (cleanKey.includes('/branding/') || cleanKey.includes('logo') || cleanKey.includes('favicon') || cleanKey.includes('banner')) {
+        folder = 'branding';
+      } else if (cleanKey.includes('/uncategorized/')) {
+        folder = 'uncategorized';
+      } else if (pathParts.length >= 3 && ['products', 'branding', 'uncategorized', 'general'].includes(pathParts[2])) {
+        folder = pathParts[2] as any;
+      }
+
+      const url = `/${row.bucket}/${cleanKey}`;
+      const prodInfo = productMap.get(url) || productMap.get(cleanKey) || productMap.get(rawKey);
+
+      let width: number | null = null;
+      let height: number | null = null;
+      if (row.data && row.content_type?.startsWith('image/')) {
+        try {
+          const meta = await sharp(row.data).metadata();
+          width = meta.width ?? null;
+          height = meta.height ?? null;
+        } catch {
+          // Ignore sharp metadata error
+        }
+      }
+
+      const filename = row.asset_filename || prodInfo?.product_title || pathParts[pathParts.length - 1] || cleanKey;
+
+      itemsMap.set(url, {
+        key: cleanKey,
+        url,
+        filename,
+        folder,
+        content_type: row.content_type || 'image/jpeg',
+        size: parseInt(row.size, 10) || 0,
+        width,
+        height,
+        dimensions: width && height ? `${width} × ${height} px` : null,
+        product_id: prodInfo?.product_id || null,
+        product_title: prodInfo?.product_title || null,
+        created_at: row.created_at,
+      });
+    }
+
+    // Process any remaining product media not in blobs (e.g. external seeds or public assets)
+    for (const pm of productMediaResult.rows) {
+      if (!pm.url || itemsMap.has(pm.url)) continue;
+      const pathParts = pm.url.split('/');
+      const filename = pm.alt_text || pm.product_title || pathParts[pathParts.length - 1] || 'product-image.jpg';
+      let key = pm.url.replace(/^\/?(pd-product-images\/)?/, '');
+      itemsMap.set(pm.url, {
+        key,
+        url: pm.url,
+        filename,
+        folder: 'products',
+        content_type: 'image/jpeg',
+        size: 0,
+        width: null,
+        height: null,
+        dimensions: null,
+        product_id: pm.product_id,
+        product_title: pm.product_title,
+        created_at: pm.created_at,
+      });
+    }
+
+    const allItems = Array.from(itemsMap.values());
+
+    // Filter
+    let filtered = allItems.filter((item) => {
+      if (folderFilter !== 'all' && item.folder !== folderFilter) return false;
+      if (searchQuery) {
+        const matchesName = item.filename.toLowerCase().includes(searchQuery);
+        const matchesKey = item.key.toLowerCase().includes(searchQuery);
+        const matchesProduct = (item.product_title || '').toLowerCase().includes(searchQuery);
+        if (!matchesName && !matchesKey && !matchesProduct) return false;
+      }
       return true;
-    }).slice(0, limit);
-    res.status(200).json({ data: media });
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === 'date_asc') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (sortBy === 'name_asc') return a.filename.localeCompare(b.filename);
+      if (sortBy === 'name_desc') return b.filename.localeCompare(a.filename);
+      if (sortBy === 'size_desc') return b.size - a.size;
+      if (sortBy === 'size_asc') return a.size - b.size;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const totalStorageUsed = allItems.reduce((acc, cur) => acc + (cur.size || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      data: filtered,
+      summary: {
+        total: allItems.length,
+        products: allItems.filter((i) => i.folder === 'products').length,
+        branding: allItems.filter((i) => i.folder === 'branding').length,
+        uncategorized: allItems.filter((i) => i.folder === 'uncategorized').length,
+        general: allItems.filter((i) => i.folder === 'general').length,
+        storage_used: totalStorageUsed,
+      },
+    });
+  }),
+);
+
+/**
+ * PATCH /me/media/rename — Rename a seller media asset while preserving file extension
+ */
+router.patch(
+  '/me/media/rename',
+  requireStore,
+  validate(renameStoreMediaSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    const { key, new_filename } = req.body;
+
+    // Security check: ensure key belongs to this store
+    if (!key.includes(storeId)) {
+      const { rows: assetRows } = await query(
+        'SELECT id FROM pd_file_asset WHERE (file_key = $1 OR url LIKE $2) AND store_id = $3 LIMIT 1',
+        [key, `%${key}%`, storeId],
+      );
+      if (assetRows.length === 0) {
+        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You can only rename media belonging to your store');
+      }
+    }
+
+    const findResult = await query(
+      'SELECT key, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1',
+      [key, `pd-product-images/${key}`],
+    );
+
+    const rawKey = findResult.rows[0]?.key || key;
+    const pathParts = rawKey.split('/');
+    const originalFilename = pathParts[pathParts.length - 1] || rawKey;
+    const extMatch = originalFilename.match(/\.([a-zA-Z0-9]+)$/);
+    const originalExt = extMatch ? extMatch[1].toLowerCase() : '';
+
+    let cleanName = new_filename.trim().replace(/[/\\]/g, '');
+    if (originalExt) {
+      cleanName = cleanName.replace(new RegExp(`\\.${originalExt}$`, 'i'), '');
+      cleanName = cleanName.replace(/\.[a-zA-Z0-9]+$/, '');
+      cleanName = `${cleanName}.${originalExt}`;
+    }
+
+    await query(
+      `INSERT INTO pd_file_asset (id, scope, purpose, url, file_key, bucket, filename, content_type, file_size, store_id, owner_user_id)
+       VALUES ($1, 'store', 'product_image', $2, $3, 'pd-product-images', $4, $5, 0, $6, $7)
+       ON CONFLICT (file_key) DO UPDATE SET filename = EXCLUDED.filename, updated_at = NOW()`,
+      [pdId('asset'), `/pd-product-images/${key}`, key, cleanName, findResult.rows[0]?.content_type || 'image/jpeg', storeId, req.user!.id],
+    );
+
+    await query(
+      'UPDATE pd_product_image SET alt_text = $1 WHERE url LIKE $2',
+      [cleanName, `%${key}%`],
+    );
+
+    logger.info(
+      { store_id: storeId, user_id: req.user!.id, key, new_filename: cleanName },
+      'Seller renamed media picture',
+    );
+
+    res.status(200).json({
+      success: true,
+      key,
+      new_filename: cleanName,
+    });
+  }),
+);
+
+/**
+ * DELETE /me/media — Delete a seller media asset and all size variants
+ */
+router.delete(
+  '/me/media',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    const key = (req.body.key || req.query.key || '') as string;
+    if (!key) {
+      throw new PdValidationError('Media key is required');
+    }
+
+    // Security check: ensure key belongs to this store
+    if (!key.includes(storeId)) {
+      const { rows: assetRows } = await query(
+        'SELECT id FROM pd_file_asset WHERE (file_key = $1 OR url LIKE $2) AND store_id = $3 LIMIT 1',
+        [key, `%${key}%`, storeId],
+      );
+      if (assetRows.length === 0) {
+        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You can only delete media belonging to your store');
+      }
+    }
+
+    const { baseKeyWithoutExt } = imageVariantService.getBaseKeyAndExtension(key);
+    let cleanBase = baseKeyWithoutExt;
+    if (cleanBase.startsWith('pd-product-images/')) {
+      cleanBase = cleanBase.substring(18);
+    }
+    const variants = ['thumbnail', 'small', 'medium', 'large'].map((p) => `${cleanBase}_${p}.webp`);
+    const allKeysToDelete = [key, cleanBase, ...variants];
+    const prefixedKeys = allKeysToDelete.map((k) => `pd-product-images/${k}`);
+
+    await query('DELETE FROM pd_file_blobs WHERE key = ANY($1) OR key = ANY($2)', [allKeysToDelete, prefixedKeys]);
+    await query(
+      'DELETE FROM pd_file_asset WHERE (file_key = $1 OR file_key LIKE $2 OR url LIKE $2) AND (store_id = $3 OR owner_user_id = $4)',
+      [key, `%${key}%`, storeId, req.user!.id],
+    );
+
+    for (const k of [...allKeysToDelete, ...prefixedKeys]) {
+      try {
+        const diskPath = path.join(resolveDataPath(), k);
+        if (fs.existsSync(diskPath)) {
+          fs.unlinkSync(diskPath);
+        }
+      } catch {
+        // Ignore disk delete error
+      }
+    }
+
+    // Also remove from pd_product_image where URL matches
+    await query(
+      `DELETE FROM pd_product_image
+       WHERE (url = $1 OR url LIKE $2)
+       AND product_id IN (SELECT id FROM pd_product WHERE store_id = $3)`,
+      [`/pd-product-images/${key}`, `%${key}%`, storeId],
+    );
+
+    logger.info({ store_id: storeId, user_id: req.user!.id, key }, 'Seller deleted media asset');
+
+    res.status(200).json({
+      success: true,
+      message: 'Media asset deleted successfully',
+    });
+  }),
+);
+
+/**
+ * POST /me/media/optimize — Optimize/compress a seller media picture
+ */
+router.post(
+  '/me/media/optimize',
+  requireStore,
+  validate(optimizeStoreMediaSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    const { key, quality, maxWidth, format } = req.body;
+
+    // Security check: ensure key belongs to this store
+    if (!key.includes(storeId)) {
+      const { rows: assetRows } = await query(
+        'SELECT id FROM pd_file_asset WHERE (file_key = $1 OR url LIKE $2) AND store_id = $3 LIMIT 1',
+        [key, `%${key}%`, storeId],
+      );
+      if (assetRows.length === 0) {
+        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'You can only optimize media belonging to your store');
+      }
+    }
+
+    const findResult = await query(
+      'SELECT data, content_type, bucket FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1',
+      [key, `pd-product-images/${key}`],
+    );
+    if (findResult.rows.length === 0 || !findResult.rows[0].data) {
+      throw new PdValidationError('Media asset not found in database');
+    }
+
+    const row = findResult.rows[0];
+    const originalBuffer = row.data as Buffer;
+    const originalSize = originalBuffer.length;
+
+    let pipeline = sharp(originalBuffer);
+    const metadata = await pipeline.metadata();
+
+    if (metadata.width && metadata.width > maxWidth) {
+      pipeline = pipeline.resize({ width: maxWidth, withoutEnlargement: true });
+    }
+
+    let targetContentType = row.content_type || 'image/jpeg';
+    let targetFormat = format;
+    if (targetFormat === 'original') {
+      if (row.content_type === 'image/png') targetFormat = 'png';
+      else if (row.content_type === 'image/webp') targetFormat = 'webp';
+      else targetFormat = 'jpeg';
+    }
+
+    if (targetFormat === 'webp') {
+      pipeline = pipeline.webp({ quality });
+      targetContentType = 'image/webp';
+    } else if (targetFormat === 'jpeg') {
+      pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+      targetContentType = 'image/jpeg';
+    } else if (targetFormat === 'png') {
+      pipeline = pipeline.png({ quality, compressionLevel: 8 });
+      targetContentType = 'image/png';
+    }
+
+    const newBuffer = await pipeline.toBuffer();
+    const newSize = newBuffer.length;
+
+    // Update in pd_file_blobs
+    const bucket = row.bucket || 'pd-product-images';
+    await query(
+      'UPDATE pd_file_blobs SET data = $1, content_type = $2 WHERE key = $3 OR key = $4',
+      [newBuffer, targetContentType, key, `pd-product-images/${key}`],
+    );
+
+    // Update local cache
+    try {
+      const diskPath = path.join(resolveDataPath(), key);
+      if (fs.existsSync(diskPath)) {
+        fs.writeFileSync(diskPath, newBuffer);
+      }
+    } catch {}
+
+    // Regenerate variants
+    try {
+      await imageVariantService.generateVariantsForBuffer(newBuffer, bucket, key);
+    } catch {}
+
+    // Update pd_file_asset file_size
+    await query(
+      'UPDATE pd_file_asset SET file_size = $1, content_type = $2, updated_at = NOW() WHERE file_key = $3 OR url LIKE $4',
+      [newSize, targetContentType, key, `%${key}%`],
+    );
+
+    const savedBytes = Math.max(0, originalSize - newSize);
+    const savedPercentage = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) + '%' : '0%';
+
+    logger.info(
+      { store_id: storeId, user_id: req.user!.id, key, originalSize, newSize, savedPercentage },
+      'Seller optimized media picture',
+    );
+
+    res.status(200).json({
+      success: true,
+      key,
+      original_size: originalSize,
+      new_size: newSize,
+      saved_bytes: savedBytes,
+      saved_percentage: savedPercentage,
+      format: targetFormat,
+    });
   }),
 );
 

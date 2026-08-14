@@ -1383,6 +1383,70 @@ export class ProductService {
   // ---------------------------------------------------------------
 
   /**
+   * Duplicates an image from another store folder (e.g. uncategorized or branding)
+   * into the dedicated products folder (products/${storeId}/) so all product assets
+   * originate from a single unified folder.
+   */
+  async duplicateImageToProductFolder(storeId: string, sourceUrl: string): Promise<string> {
+    if (!sourceUrl || !storeId) return sourceUrl;
+    if (sourceUrl.includes(`/products/${storeId}/`) || sourceUrl.startsWith(`products/${storeId}/`)) {
+      return sourceUrl;
+    }
+
+    const match = sourceUrl.match(/\/pd-product-images\/(.+)$/) || sourceUrl.match(/^pd-product-images\/(.+)$/);
+    const keyCandidate = match ? match[1] : (sourceUrl.startsWith('/') ? sourceUrl.substring(1) : sourceUrl);
+    const cleanKey = keyCandidate.startsWith('pd-product-images/') ? keyCandidate.substring(18) : keyCandidate;
+
+    try {
+      const { rows } = await query<{ data: Buffer; content_type: string; bucket: string }>(
+        `SELECT data, content_type, bucket FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1`,
+        [cleanKey, `pd-product-images/${cleanKey}`],
+      );
+
+      if (rows.length === 0 || !rows[0].data) {
+        return sourceUrl;
+      }
+
+      const ext = cleanKey.split('.').pop()?.toLowerCase() || 'jpeg';
+      const newFileId = pdId('file');
+      const newKey = `products/${storeId}/${newFileId}.${ext}`;
+      const bucket = rows[0].bucket || 'pd-product-images';
+
+      await query(
+        `INSERT INTO pd_file_blobs (bucket, key, content_type, data, created_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+        [bucket, newKey, rows[0].content_type || 'image/jpeg', rows[0].data],
+      );
+
+      const newUrl = `/${bucket}/${newKey}`;
+
+      await fileAssetService.registerAsset({
+        scope: 'store',
+        purpose: 'product_image',
+        url: newUrl,
+        file_key: newKey,
+        bucket,
+        filename: `${newFileId}.${ext}`,
+        content_type: rows[0].content_type || 'image/jpeg',
+        file_size: rows[0].data.length,
+        owner_user_id: storeId,
+        store_id: storeId,
+      }).catch(() => null);
+
+      try {
+        await imageVariantService.generateVariantsForBuffer(rows[0].data, bucket, newKey);
+      } catch {
+        // Variant generation fallback
+      }
+
+      return newUrl;
+    } catch {
+      return sourceUrl;
+    }
+  }
+
+  /**
    * Add an image URL to a product (after it's been uploaded to S3 via presigned URL).
    */
   async addImage(
@@ -1391,6 +1455,14 @@ export class ProductService {
     opts: { url: string; alt_text?: string; is_thumbnail?: boolean },
   ): Promise<{ id: string; url: string; alt_text: string | null; position: number }> {
     await subscriptionService.assertCanAddImage(productId, plan);
+
+    const { rows: pRows } = await query<{ store_id: string }>(
+      'SELECT store_id FROM pd_product WHERE id = $1',
+      [productId],
+    );
+    const storeId = pRows[0]?.store_id;
+    const finalUrl = storeId ? await this.duplicateImageToProductFolder(storeId, opts.url) : opts.url;
+
     return transaction(async (c) => {
       const { rows: posRows } = await c.query<{ next_pos: number }>(
         `SELECT COALESCE(MAX(position), -1) + 1 AS next_pos
@@ -1405,7 +1477,7 @@ export class ProductService {
         );
         await c.query('UPDATE pd_product SET thumbnail = $2 WHERE id = $1', [
           productId,
-          opts.url,
+          finalUrl,
         ]);
       }
       const { rows } = await c.query<{
@@ -1416,7 +1488,7 @@ export class ProductService {
       }>(
         `INSERT INTO pd_product_image (id, product_id, url, alt_text, position, is_thumbnail)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, url, alt_text, position`,
-        [id, productId, opts.url, opts.alt_text ?? null, posRows[0].next_pos, opts.is_thumbnail ?? false],
+        [id, productId, finalUrl, opts.alt_text ?? null, posRows[0].next_pos, opts.is_thumbnail ?? false],
       );
       return rows[0];
     });
