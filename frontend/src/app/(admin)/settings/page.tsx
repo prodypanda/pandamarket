@@ -2627,6 +2627,7 @@ export default function SuperAdminSettingsPage() {
         </div>
       </section>
 
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <SectionHeader
             icon={<ImageIcon className="h-5 w-5" />}
