@@ -73,6 +73,7 @@ interface AlibabaHomeContentProps {
 }
 
 interface HeroSlide {
+  id?: string | null;
   title: string;
   subtitle: string;
   ctaLabel: string;
@@ -955,10 +956,17 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
             </aside>
             )}
 
-            {/* Hero Carousel */}
+            {/* Hero Carousel with Dynamic Transition (HC-02) */}
             {showCarousel && slide && (
               <div
-                className="relative overflow-hidden rounded-2xl text-white shadow-lg transition-all duration-500"
+                key={`slide-${slideIndex}-${slide.id || slide.title}`}
+                className={`relative overflow-hidden rounded-2xl text-white shadow-lg motion-reduce:transition-none ${
+                  marketplaceSettings.hub_hero_carousel_transition === 'fade'
+                    ? 'animate-in fade-in duration-500'
+                    : marketplaceSettings.hub_hero_carousel_transition === 'zoom'
+                    ? 'animate-in zoom-in-95 duration-500'
+                    : 'transition-all duration-500'
+                }`}
                 style={{
                   background: PRESET_GRADIENTS[slide.bgPreset || 'navy'] || PRESET_GRADIENTS.navy,
                 }}

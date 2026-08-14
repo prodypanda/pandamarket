@@ -2914,10 +2914,16 @@ export default function SuperAdminSettingsPage() {
           {/* Carousel Slides Configuration */}
           {settings.hub_hero_show_carousel && (
             <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4">
-              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Hero Carousel Configuration
-              </h4>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4 border-b border-slate-200/80 pb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <Globe2 className="h-4 w-4 text-[#ff6a00]" /> Hero Carousel Configuration
+                </h4>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-black text-orange-800">Active on: Alibaba B2B & Theme Default</span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">HC-01 Capability Matrix</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-5 border-b border-slate-200/80 pb-4">
                 <div>
                   <label className="mb-1 block text-xs font-bold text-gray-600">Slide Source Mode</label>
                   <select
@@ -2925,29 +2931,28 @@ export default function SuperAdminSettingsPage() {
                     onChange={(e) => updateSetting('hub_hero_carousel_source_mode', e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
                   >
-                    <option value="hybrid">🔀 Hybrid (Custom Slides + Categories)</option>
-                    <option value="custom_only">🎯 Custom Carousel Slides Only</option>
-                    <option value="auto_categories_only">🏷️ Auto Category Banners Only</option>
+                    <option value="hybrid">🔀 Hybrid (Custom + Categories)</option>
+                    <option value="custom_only">🎯 Custom Slides Only</option>
+                    <option value="auto_categories_only">🏷️ Auto Categories Only</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">Auto Category Slides Count</label>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Auto Categories Count</label>
                   <input
                     type="number"
                     min={1}
                     max={10}
                     value={settings.hub_hero_carousel_max_categories}
                     onChange={(e) => updateSetting('hub_hero_carousel_max_categories', Math.max(1, Math.min(10, Number(e.target.value) || 5)))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
                   />
-                  <p className="mt-1 text-[11px] text-gray-400">Number of top categories to auto-generate banners for (1 to 10).</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">Slide Rotation Delay (ms)</label>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Slide Rotation Delay</label>
                   <select
                     value={settings.hub_hero_carousel_interval}
                     onChange={(e) => updateSetting('hub_hero_carousel_interval', Number(e.target.value))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
                   >
                     <option value={3000}>3 Seconds (Fast)</option>
                     <option value={5000}>5 Seconds (Recommended)</option>
@@ -2957,16 +2962,28 @@ export default function SuperAdminSettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">Indicator Dots Style</label>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Indicator Dots</label>
                   <select
                     value={settings.hub_hero_carousel_dots_style}
                     onChange={(e) => updateSetting('hub_hero_carousel_dots_style', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
                   >
                     <option value="pill">Pill Dots</option>
                     <option value="circle">Circle Dots</option>
                     <option value="numbers">Numbers / Counter</option>
                     <option value="hidden">Hidden</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">Transition Animation (HC-02)</label>
+                  <select
+                    value={settings.hub_hero_carousel_transition || 'slide'}
+                    onChange={(e) => updateSetting('hub_hero_carousel_transition', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C]"
+                  >
+                    <option value="slide">Slide Animation</option>
+                    <option value="fade">Cross-Fade</option>
+                    <option value="zoom">Scale Zoom</option>
                   </select>
                 </div>
               </div>

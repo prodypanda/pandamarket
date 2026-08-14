@@ -298,16 +298,17 @@ export default function ComprehensivePlatformAnalyticsPage() {
             <AnalyticsLoadingState message={`Fetching live ${activeTab} telemetry...`} />
           ) : (
             <>
-              {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} />}
+              {activeTab === 'overview' && <OverviewAnalyticsTab data={overviewData} currency={currency} onNavigateToTab={(tab) => handleTabChange(tab as AnalyticsTabID)} />}
               {activeTab === 'page_views' && <PageViewsAnalyticsTab data={pageViewsData} liveData={pageViewsLiveData} onOpenDrilldown={handleOpenDrilldown} />}
-              {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} />}
-              {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} />}
-              {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} />}
+              {activeTab === 'business' && <BusinessAnalyticsTab data={businessData} currency={currency} />}
+              {activeTab === 'financials' && <FinancialsAnalyticsTab data={revenueData} currency={currency} />}
+              {activeTab === 'vendors' && <VendorsAnalyticsTab data={vendorData} currency={currency} />}
               {activeTab === 'ads' && <AdsAnalyticsTab data={adsData} />}
               {activeTab === 'system' && <SystemAnalyticsTab data={systemData} />}
-              {activeTab === 'intelligence' && <IntelligenceTab />}
+              {activeTab === 'intelligence' && <IntelligenceTab currency={currency} />}
               {activeTab === 'governance' && <GovernanceTab />}
             </>
+
           )}
         </div>
       </div>

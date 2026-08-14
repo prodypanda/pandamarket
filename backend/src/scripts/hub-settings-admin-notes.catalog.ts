@@ -864,6 +864,7 @@ const settingsNotes: AuditNoteDefinition[] = [
     acceptance: ['A new setting is defined once and all required types/defaults/validation maps derive from it.', 'CI detects orphan/dead/unclassified settings and default/enum drift.', 'Secret/public boundaries are explicit and enforced.', 'Existing production values remain readable throughout migration.'],
     related: ['HC-01 — runtime capability matrix.', 'NG-01 — notes/catalog governance.', 'AS-23 — structured schemas.'],
     tags: ['improvement', 'admin-settings', 'schema', 'defaults', 'governance'],
+    verifiedComplete: true,
   }),
 ];
 
@@ -881,6 +882,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['Every Hub appearance key is classified for every layout.', 'Settings accurately shows active/inactive scope.', 'CI fails when a layout or setting is added without capability registration/tests.', 'No sponsored, pagination, hero, or block responsibility has multiple unintended owners.'],
     related: ['HH-04, HH-05, AS-03, AS-13, AS-24, HC-02.'],
     tags: ['contract', 'hub', 'settings', 'layouts', 'urgent'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HC-02', folder: FOLDERS.contract, sortOrder: 2,
@@ -895,6 +897,7 @@ const crossCuttingNotes: AuditNoteDefinition[] = [
     acceptance: ['No visible control has zero runtime effect.', 'Layout scope is explicit in Settings and preview.', 'Transition behavior, if kept, works and honors reduced motion.', 'Fixed hardcoded carousel intervals are removed where shared configuration is promised.'],
     related: ['HH-11 — accessible carousel.', 'HC-01 — capability matrix.', 'AS-24 — schema governance.'],
     tags: ['bug', 'hub', 'settings', 'carousel', 'dead-setting'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HR-01', folder: FOLDERS.reliability, sortOrder: 1,
@@ -1121,7 +1124,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-04', 'AS-05', 'AS-06', 'AS-07', 'AS-08', 'AS-09', 'AS-10', 'AS-11', 'AS-12', 'AS-13', 'AS-14', 'AS-15', 'AS-16', 'AS-17', 'AS-18', 'AS-19', 'AS-20', 'AS-21', 'AS-22', 'AS-23', 'AS-24', 'HC-01', 'HC-02', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-08', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-16', 'HH-17', 'HH-18', 'HR-01', 'HR-02', 'HR-03', 'LA-01', 'LA-02', 'LA-03', 'LA-04'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

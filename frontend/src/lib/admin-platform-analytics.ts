@@ -372,4 +372,32 @@ export async function triggerReportScheduleNow(id: string): Promise<ReportExecut
   return res.json();
 }
 
+// ==========================================================
+// Superadmin Modular Analytics APIs (R1 & R2)
+// ==========================================================
+
+export async function fetchLivePulseData(): Promise<any> {
+  return requestAnalyticsEndpoint('/api/pd/admin/analytics/pulse/live');
+}
+
+export async function fetchGeoHeatmapData(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint(`/api/pd/admin/analytics/geo/heatmap${q}`);
+}
+
+export async function fetchTriFoldReconciliation(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint(`/api/pd/admin/analytics/financials/reconciliation${q}`);
+}
+
+export async function fetchSaaSMRRWaterfall(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint(`/api/pd/admin/analytics/financials/mrr-waterfall${q}`);
+}
+
+export async function fetchGatewayReliabilityMatrix(filters: AnalyticsFilterParams = {}): Promise<any> {
+  const q = buildQueryString(filters);
+  return requestAnalyticsEndpoint(`/api/pd/admin/analytics/gateways/matrix${q}`);
+}
+
 

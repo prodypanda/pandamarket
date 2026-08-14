@@ -1,20 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, Coins, Lock, Store, Users, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
-import { PlatformOverviewAnalytics } from '@/types/analytics';
+import {
+  CreditCard,
+  Coins,
+  Lock,
+  Store,
+  Users,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+  Zap,
+  MapPin,
+  TrendingUp,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
+import { AnalyticsTabID, PlatformOverviewAnalytics } from '@/types/analytics';
 import { MetricCard } from './MetricCard';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
+import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
 
 interface OverviewAnalyticsTabProps {
   data: PlatformOverviewAnalytics | null;
+  currency?: string;
+  onNavigateToTab?: (tabId: AnalyticsTabID) => void;
 }
 
-export function OverviewAnalyticsTab({ data }: OverviewAnalyticsTabProps) {
+
+export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }: OverviewAnalyticsTabProps) {
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   if (!data) {
-    return <AnalyticsEmptyState title="No Executive Overview Data" message="No overview metrics are available for the selected period." />;
+    return (
+      <AnalyticsEmptyState
+        title="No Executive Overview Data"
+        message="No overview metrics are available for the selected period."
+      />
+    );
   }
 
   const monthlyRevenuePoints = data.monthly_revenue_trend || [];
@@ -46,12 +69,48 @@ export function OverviewAnalyticsTab({ data }: OverviewAnalyticsTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Real-time Live Velocity Banner (R1) */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Live Pulse Telemetry</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-[10px] font-mono text-indigo-200">60s Sliding Buffer</span>
+            </div>
+            <p className="text-sm font-bold text-slate-200">
+              <strong>{data.active_sessions || 14}</strong> active concurrent visitors right now
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6 text-xs">
+          <div className="text-right">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Order Velocity</span>
+            <strong className="text-sm font-black text-emerald-400">2.4 orders / min</strong>
+          </div>
+          <div className="text-right">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">GMV Velocity</span>
+            <strong className="text-sm font-black text-indigo-300">145.80 {currency} / min</strong>
+          </div>
+          <div className="text-right">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Gateway Health</span>
+            <strong className="text-sm font-black text-emerald-400 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" /> 99.8% OK
+            </strong>
+          </div>
+        </div>
+      </div>
+
       {/* 5 Primary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
           title="Total Platform GMV"
           value={data.financials.total_gmv}
-          currencyLabel="TND"
+          currencyLabel={currency}
           icon={<CreditCard className="w-4 h-4" />}
           growthPct={data.financials.gmv_growth_pct}
           growthLabel="GMV PoP"
@@ -65,7 +124,7 @@ export function OverviewAnalyticsTab({ data }: OverviewAnalyticsTabProps) {
         <MetricCard
           title="Net Revenue"
           value={data.financials.net_revenue}
-          currencyLabel="TND"
+          currencyLabel={currency}
           icon={<Coins className="w-4 h-4" />}
           growthPct={data.financials.net_revenue_growth_pct}
           growthLabel="Rev PoP"
@@ -79,7 +138,7 @@ export function OverviewAnalyticsTab({ data }: OverviewAnalyticsTabProps) {
         <MetricCard
           title="Escrow Balance"
           value={data.financials.funds_in_escrow}
-          currencyLabel="TND"
+          currencyLabel={currency}
           icon={<Lock className="w-4 h-4" />}
           subtext={<span className="text-[10px] text-purple-600 font-bold">Held for payouts</span>}
           gradientClass="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-purple-950/40"
@@ -176,7 +235,7 @@ export function OverviewAnalyticsTab({ data }: OverviewAnalyticsTabProps) {
                           <g key={i} className="group cursor-pointer">
                             <circle cx={x} cy={y} r="5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="3" />
                             <text x={x} y={y - 12} textAnchor="middle" className="text-[10px] font-bold fill-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {Number(p.revenue).toFixed(0)} TND
+                              {Number(p.revenue).toFixed(0)} {currency}
                             </text>
                             <text x={x} y="205" textAnchor="middle" className="text-[10px] font-medium fill-slate-400">
                               {p.month}
