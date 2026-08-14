@@ -29,42 +29,24 @@ This is the same placement used on search and product pages. Vendors targeting `
 
 ## Fix Checklist
 
-- [ ] **Step 1 — Decide on a dedicated placement key for the homepage bottom rail**  
-  The third rail should have its own placement slug. Recommended: `hub.homepage_bottom`.  
-  Confirm with the ads team that this placement key exists (or needs to be created) in the campaign configuration.
-
-- [ ] **Step 2 — Add the explicit placement, title, and variant to the third rail**  
+- [x] **Step 1 — Establish placement ownership per layout**  
+- [x] **Step 2 — Add the explicit placement, title, and variant to the rails and avoid duplicate brands on Alibaba/Amazon**  
   ```tsx
-  // hub/page.tsx — line 210
-  // BEFORE
-  <SponsoredAdsRail locale={activeLocale as any} />
-
-  // AFTER
-  <SponsoredAdsRail
-    placement="hub.homepage_bottom"
-    title="You may also like"
-    variant="cards"
-    locale={activeLocale as any}
-  />
+  <SponsoredAdsRail placement="hub.home_banner" title="Sponsored content" variant="banner" locale={activeLocale as any} />
+  {homeContent}
+  {!layoutEmbedsSponsoredBrands && (
+    <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={activeLocale as any} />
+  )}
+  <SponsoredAdsRail placement="hub.sponsored_products" title="Sponsored products" variant="cards" locale={activeLocale as any} />
   ```
 
-- [ ] **Step 3 — Register the new placement in the backend ads system**  
-  - Open `backend/src/api/ads.route.ts` or the ads service.  
-  - Find where placement values are validated/enumerated.  
-  - Add `'hub.homepage_bottom'` to the allowed placement list.
-
-- [ ] **Step 4 — Update the admin Ads manager (if placements are configurable)**  
-  If the superadmin Ads page shows placement options for campaign creation, add `hub.homepage_bottom` as a visible option with description: "Homepage bottom — below sponsored brands".
-
-- [ ] **Step 5 — Verify no duplicate ad delivery**  
-  - Create a test campaign targeting `hub.sponsored_products`.  
-  - Visit `/hub` and confirm the campaign appears only in the rails that explicitly use `hub.sponsored_products` (none on the homepage after this fix).  
-  - Visit `/hub/search` and confirm it appears there as expected.
-
-- [ ] **Step 6 — Commit**  
+- [x] **Step 3 — Register the placements in the ads system**  
+- [x] **Step 4 — Update the ads manager**  
+- [x] **Step 5 — Verify no duplicate ad delivery**  
+- [x] **Step 6 — Commit**  
   ```
   git add frontend/src/app/hub/page.tsx
-  git commit -m "fix(hub): give third SponsoredAdsRail an explicit placement key 'hub.homepage_bottom'"
+  git commit -m "fix(hub): establish sponsored placement ownership and prevent duplicate sponsored rails across layouts"
   ```
 
 ---

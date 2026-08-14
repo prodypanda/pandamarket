@@ -262,27 +262,31 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
           </Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
-          {dealProducts.map((product) => (
-            <Link key={product.id} href={getHubProductHref(product)} className="group flex gap-4 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1A1A2E]">
-              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800">
-                {getProductImage(product) ? (
-                  <img src={getProductImage(product) ? getResizedImageUrl(getProductImage(product), 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-gray-400">
-                    <PackageCheck className="h-6 w-6" />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[11px] font-black text-red-600">
-                  <Flame className="h-3 w-3" />
-                  Trending
+          {dealProducts.map((product) => {
+            const rawImage = getProductImage(product);
+            const imageSrc = rawImage ? getResizedImageUrl(rawImage, 'medium') : '';
+            return (
+              <Link key={product.id} href={getHubProductHref(product)} className="group flex gap-4 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1A1A2E]">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800">
+                  {imageSrc ? (
+                    <img src={imageSrc} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-gray-400">
+                      <PackageCheck className="h-6 w-6" />
+                    </div>
+                  )}
                 </div>
-                <h3 className="line-clamp-2 font-bold text-gray-900 dark:text-white">{product.title}</h3>
-                <p className="mt-2 font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
-              </div>
-            </Link>
-          ))}
+                <div className="min-w-0">
+                  <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[11px] font-black text-red-600">
+                    <Flame className="h-3 w-3" />
+                    Trending
+                  </div>
+                  <h3 className="line-clamp-2 font-bold text-gray-900 dark:text-white">{product.title}</h3>
+                  <p className="mt-2 font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -463,28 +467,32 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
             </div>
 
             <aside className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-              {heroProducts.map((product, index) => (
-                <Link
-                  key={product.id}
-                  href={getHubProductHref(product)}
-                  className="group flex overflow-hidden rounded-3xl border border-gray-100 bg-white p-3 shadow-xl shadow-emerald-950/5 transition-all hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-[#1A1A2E]"
-                >
-                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800">
-                    {getProductImage(product) ? (
-                      <img src={getProductImage(product) ? getResizedImageUrl(getProductImage(product), 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-gray-400">
-                        <ShoppingBag className="h-5 w-5" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 px-3 py-1">
-                    <p className="text-[11px] font-black uppercase tracking-wide text-[#16C784]">Top pick #{index + 1}</p>
-                    <h3 className="mt-1 line-clamp-2 text-sm font-bold text-gray-900 dark:text-white">{product.title}</h3>
-                    <p className="mt-1 text-sm font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
-                  </div>
-                </Link>
-              ))}
+              {heroProducts.map((product, index) => {
+                const rawImage = getProductImage(product);
+                const imageSrc = rawImage ? getResizedImageUrl(rawImage, 'medium') : '';
+                return (
+                  <Link
+                    key={product.id}
+                    href={getHubProductHref(product)}
+                    className="group flex overflow-hidden rounded-3xl border border-gray-100 bg-white p-3 shadow-xl shadow-emerald-950/5 transition-all hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-[#1A1A2E]"
+                  >
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800">
+                      {imageSrc ? (
+                        <img src={imageSrc} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-400">
+                          <ShoppingBag className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 px-3 py-1">
+                      <p className="text-[11px] font-black uppercase tracking-wide text-[#16C784]">Top pick #{index + 1}</p>
+                      <h3 className="mt-1 line-clamp-2 text-sm font-bold text-gray-900 dark:text-white">{product.title}</h3>
+                      <p className="mt-1 text-sm font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
+                    </div>
+                  </Link>
+                );
+              })}
               <Link href="/hub/vendor-signup" className="rounded-3xl bg-gradient-to-br from-[#16C784] to-[#0f9f6e] p-5 text-white shadow-xl shadow-[#16C784]/20 transition hover:-translate-y-1">
                 <Store className="mb-4 h-8 w-8" />
                 <p className="text-lg font-black">{t('hub.hero.ctaCreateStore')}</p>

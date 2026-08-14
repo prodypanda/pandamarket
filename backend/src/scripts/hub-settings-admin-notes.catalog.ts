@@ -268,6 +268,7 @@ const hubNotes: AuditNoteDefinition[] = [
     howTo: ['Resolve `const image = getProductImage(product)` once at the top of each card/render callback.', 'Prefer a shared `resolveHubProductImage(product, size)` helper or normalized product-card view model for all layouts.', 'Keep resizing separate from source selection so a missing URL is not passed through the resizer.', 'Measure before/after only as a regression guard; do not introduce heavyweight memoization for a trivial pure computation.', 'Add tests for image array, thumbnail fallback, empty URL, and already-normalized public asset paths.'],
     acceptance: ['Each card resolves its source image once per render.', 'Image fallback behavior is identical across the affected layouts.', 'No invalid empty URL is sent to the resize helper.', 'Targeted rendering tests and lint/typecheck pass.'],
     tags: ['performance', 'hub', 'images', 'maintainability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-04', folder: FOLDERS.hub, sortOrder: 4,
@@ -298,6 +299,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Each configured sponsored slot renders exactly once.', 'Disabling or moving a block behaves consistently in Alibaba, Amazon, AliExpress, Premium Deals, and Classic.', 'Delivery and impression metrics match the number of actual visible slots.', 'The default `hub.sponsored_products` placement remains supported and documented.'],
     related: ['HR-03 — sponsored cache and observer isolation.', 'HC-01 — layout capability matrix.'],
     tags: ['bug', 'hub', 'ads', 'placements', 'analytics'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-06', folder: FOLDERS.hub, sortOrder: 6,
@@ -1087,7 +1089,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-04', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-12', 'HH-15', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();

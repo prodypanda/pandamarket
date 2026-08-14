@@ -161,6 +161,7 @@ export default async function HubHomepage({
   const orderedCategories = prioritizeFeaturedCategories(categories, marketplaceSettings);
   const marketplaceTheme = resolveMarketplaceTheme(marketplaceSettings.marketplace_theme);
   const homepageLayout = resolveHomepageLayout(marketplaceSettings.hub_homepage_layout);
+  const layoutEmbedsSponsoredBrands = homepageLayout === 'alibaba' || homepageLayout === 'amazon';
 
   const homeContent =
     homepageLayout === 'alibaba' ? (
@@ -213,8 +214,10 @@ export default async function HubHomepage({
       />
       <SponsoredAdsRail placement="hub.home_banner" title="Sponsored content" variant="banner" locale={activeLocale as any} />
       {homeContent}
-      <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={activeLocale as any} />
-      <SponsoredAdsRail locale={activeLocale as any} />
+      {!layoutEmbedsSponsoredBrands && (
+        <SponsoredAdsRail placement="hub.sponsored_brands" title="Sponsored brands" locale={activeLocale as any} />
+      )}
+      <SponsoredAdsRail placement="hub.sponsored_products" title="Sponsored products" variant="cards" locale={activeLocale as any} />
       <HubFooter
         {...marketplaceSettings}
         topCategories={orderedCategories.filter((c) => !c.is_default).slice(0, 3).map((c) => ({ name: c.name, slug: c.slug }))}
