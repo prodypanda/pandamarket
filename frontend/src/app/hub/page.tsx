@@ -167,40 +167,82 @@ export default async function HubHomepage({
   const homepageLayout = resolveHomepageLayout(marketplaceSettings.hub_homepage_layout);
   const layoutEmbedsSponsoredBrands = homepageLayout === 'alibaba' || homepageLayout === 'amazon';
 
-  const homeContent =
-    homepageLayout === 'alibaba' ? (
-      <AlibabaHomeContent
-        trendingProducts={trendingProducts}
-        trendingTotalPages={trendingTotalPages}
-        categories={orderedCategories}
-        marketplaceSettings={marketplaceSettings}
-      />
-    ) : homepageLayout === 'amazon' ? (
-      <AmazonHomeContent
-        trendingProducts={trendingProducts}
-        categories={orderedCategories}
-        marketplaceSettings={marketplaceSettings}
-      />
-    ) : homepageLayout === 'premium_deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress2') ? (
-      <AliExpress2HomeContent
-        trendingProducts={trendingProducts}
-        categories={orderedCategories}
-        marketplaceSettings={marketplaceSettings}
-      />
-    ) : homepageLayout === 'deals' || (homepageLayout === 'theme_default' && marketplaceTheme === 'aliexpress') ? (
-      <AliExpressHomeContent
-        trendingProducts={trendingProducts}
-        categories={orderedCategories}
-        marketplaceSettings={marketplaceSettings}
-      />
-    ) : (
-      <HubHomeContent
-        trendingProducts={trendingProducts}
-        categories={orderedCategories}
-        marketplaceSettings={marketplaceSettings}
-        totalProducts={totalProducts}
-      />
-    );
+  function renderHomeContent() {
+    switch (homepageLayout) {
+      case 'alibaba':
+        return (
+          <AlibabaHomeContent
+            trendingProducts={trendingProducts}
+            trendingTotalPages={trendingTotalPages}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+          />
+        );
+      case 'amazon':
+        return (
+          <AmazonHomeContent
+            trendingProducts={trendingProducts}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+          />
+        );
+      case 'premium_deals':
+        return (
+          <AliExpress2HomeContent
+            trendingProducts={trendingProducts}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+          />
+        );
+      case 'deals':
+        return (
+          <AliExpressHomeContent
+            trendingProducts={trendingProducts}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+          />
+        );
+      case 'theme_default':
+        if (marketplaceTheme === 'aliexpress2') {
+          return (
+            <AliExpress2HomeContent
+              trendingProducts={trendingProducts}
+              categories={orderedCategories}
+              marketplaceSettings={marketplaceSettings}
+            />
+          );
+        }
+        if (marketplaceTheme === 'aliexpress') {
+          return (
+            <AliExpressHomeContent
+              trendingProducts={trendingProducts}
+              categories={orderedCategories}
+              marketplaceSettings={marketplaceSettings}
+            />
+          );
+        }
+        return (
+          <HubHomeContent
+            trendingProducts={trendingProducts}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+            totalProducts={totalProducts}
+          />
+        );
+      case 'classic':
+      default:
+        return (
+          <HubHomeContent
+            trendingProducts={trendingProducts}
+            categories={orderedCategories}
+            marketplaceSettings={marketplaceSettings}
+            totalProducts={totalProducts}
+          />
+        );
+    }
+  }
+
+  const homeContent = renderHomeContent();
 
   const publicUrl = marketplaceSettings.marketplace_public_url || 'https://pandamarket.tn';
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';

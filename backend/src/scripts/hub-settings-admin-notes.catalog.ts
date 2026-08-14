@@ -478,6 +478,7 @@ const hubNotes: AuditNoteDefinition[] = [
     acceptance: ['Every supported layout/theme combination has an explicit test.', 'Adding a layout produces compile-time/test failures until its renderer and capabilities are registered.', 'Unknown stored values use the documented fallback and are observable.', 'Rendered behavior remains unchanged for existing valid configurations.'],
     related: ['HC-01 — settings-to-layout capability matrix.', 'HC-02 — Alibaba-only carousel controls.'],
     tags: ['improvement', 'hub', 'layout', 'typescript', 'maintainability'],
+    verifiedComplete: true,
   }),
   n({
     externalId: 'HH-18', folder: FOLDERS.hub, sortOrder: 18,
@@ -1097,7 +1098,7 @@ export const auditNotes: AuditNoteDefinition[] = [
   ...crossCuttingNotes,
 ];
 
-export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-18'] as const;
+export const expectedCompletedExternalIds = ['AS-01', 'AS-02', 'AS-03', 'AS-05', 'AS-06', 'AS-07', 'AS-10', 'AS-14', 'AS-19', 'HH-01', 'HH-02', 'HH-03', 'HH-04', 'HH-05', 'HH-06', 'HH-07', 'HH-09', 'HH-10', 'HH-11', 'HH-12', 'HH-13', 'HH-14', 'HH-15', 'HH-17', 'HH-18'] as const;
 
 export function validateCatalog(notes: AuditNoteDefinition[] = auditNotes): void {
   const ids = new Set<string>();
