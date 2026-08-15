@@ -49,6 +49,8 @@ export interface PlatformSettings {
   hub_homepage_banner_cta_url: string;
   hub_homepage_banner_image_url: string;
   hub_homepage_blocks: string;
+  hub_feed_base_sort?: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
+  hub_feed_personalization_pct?: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;

@@ -9,6 +9,7 @@ import { ProductDescriptionRenderer } from '../product/ProductDescription';
 import { ProductGallery } from '../product/ProductGallery';
 import { SellerHoverCard } from '../product/SellerHoverCard';
 import { ContactSellerButton } from '../chat/ContactSellerButton';
+import { StoreFollowButton } from './StoreFollowButton';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { WhatsAppDirectOrderButton } from './WhatsAppDirectOrderButton';
@@ -158,6 +159,7 @@ export function MarketplaceStoreProductDetail({
               <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
               <p className={`mt-1 text-4xl font-black sm:text-5xl ${classes.primaryText}`}>{formatPrice(product.price)}</p>
             </div>
+
             {wholesalePricing && (
               <div className={`mb-6 rounded-[1.75rem] p-5 ${isAliExpress ? 'border border-orange-100 bg-orange-50/70' : 'border border-emerald-100 bg-emerald-50/70'}`}>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">{tx('productWholesale.publicTitle')}</p>
@@ -193,6 +195,7 @@ export function MarketplaceStoreProductDetail({
                 createdAt={product.store_created_at ?? store.created_at}
                 productCount={product.store_product_count}
                 settings={product.store_settings || store.settings}
+                storeId={store.id}
                 accentColor={accentHex}
               />
               <ContactSellerButton
@@ -200,6 +203,12 @@ export function MarketplaceStoreProductDetail({
                 productId={product.id}
                 subject={product.title}
                 isAliExpress={isAliExpress}
+              />
+              <StoreFollowButton
+                storeId={store.id}
+                storeName={store.name}
+                variant="action_bar"
+                size="md"
               />
             </div>
 

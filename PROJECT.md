@@ -1,140 +1,86 @@
-# Project: PandaMarket Platform Analytics Overhaul
+# Project: PandaMarket Feature 20 — Store Subscriptions, Followed Feed, AI Interest Engine & Seller Loyalty
 
 ## Architecture
-PandaMarket Superadmin Platform Analytics Command Center overhaul spanning backend high-performance aggregation pipelines, Redis memoization, real-time telemetry streams, AI predictive time-series modeling, multi-currency normalization, and a high-craft glassmorphic frontend with 10 domain tabs, bespoke SVG/Canvas visualizations, and interactive slide-out entity drilldowns.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                          Frontend Command Center (Next.js 16 App Router)                    │
-│  - 10 Domain Tabs: Live Pulse, Overview, Financials, Funnels, Vendors, Merchandising,       │
-│    Geography, Forecasting, Ads, Governance                                                  │
-│  - Bespoke SVG/Canvas Chart Visualizers (60s Velocity, 24-Gov Choropleth, MRR Waterfall,   │
-│    7-Stage Funnel, 2x2 Scatter Quadrant, Risk Spider Radar, 30/60/90d Confidence Bands)     │
-│  - Multi-Currency Context (TND, EUR, USD) & Interactive Right Slide-Out Drilldown Drawer    │
-└──────────────────────────────────────────────┬──────────────────────────────────────────────┘
-                                               │ HTTPS / REST / Socket.IO
-                                               ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                         Backend Analytics Engine (Express + TypeScript)                     │
-│  - Routes: `/api/pd/admin/analytics/*` (Admin Auth & Superadmin Guarded)                    │
-│  - Services: Tri-Fold Reconciliation, SaaS Waterfall, 7-Stage Funnel, Vendor SLA & Radar,  │
-│    Holt-Winters Forecasting, What-If Simulator, Executive AI Digest, Multi-Sheet Reports    │
-│  - Real-Time Pulse: 60s Sliding Buffer & Live Checkout Event Broadcaster                    │
-└───────────────────────┬───────────────────────────────────────────────┬─────────────────────┘
-                        │                                               │
-                        ▼                                               ▼
-┌───────────────────────────────────────────────┐     ┌───────────────────────────────────────┐
-│           Redis Caching & Rollups             │     │      PostgreSQL Database Engine       │
-│  - 60s Sliding Ring Buffer                    │     │  - Core Tables: `pd_order`, `wallet`, │
-│  - Query Result Caching with TTL              │     │    `pd_fulfillment`, `pd_store`, etc. │
-│  - Real-time visitor & event deduplication    │     │  - Rollup Tables: Daily & Search      │
-└───────────────────────────────────────────────┘     └───────────────────────────────────────┘
-```
-
----
+PandaMarket is a multi-tenant marketplace platform built with Node.js/Express/PostgreSQL backend and Next.js 16 App Router frontend.
+- **Backend**: Express + TypeScript, raw PostgreSQL connection pool (`getPool()`), BullMQ async workers on Redis (`pd_ai_queue`, `pd_notification_batch_queue`, `pd_email_queue`), Socket.IO gateway (`socketGateway.emitToUser`), `@google/generative-ai` (Gemini Pro).
+- **Frontend**: Next.js 16, React 19, Tailwind CSS v4, Lucide React, Socket.IO client, `fetchWithCsrf` client layer with automatic session refresh.
+- **Admin**: Superadmin `/admin/notes` interactive task workspace with folder ID `ff32063c-baff-42ca-ad94-768b20c5e6d4` and `/admin/settings` platform configuration with optimistic concurrency & advisory locks.
 
 ## Feature Inventory
-
-Every feature identified in the Survey phase is enumerated below with its assigned milestone:
-
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Real-time visitor stream & 60s velocity chart | 60-second second-by-second throughput and active visitor pulse | M1 (Backend) / M4 (Frontend) | R1 |
-| 2 | Tunisia 24-Governorates & Diaspora Choropleth | Interactive SVG choropleth mapping all 24 governorates + top diaspora nations | M1 (Backend) / M4 (Frontend) | R1 |
-| 3 | Live checkout micro-ticker & anomaly alerts | Live event stream of checkouts/carts with anomaly threshold alerts | M1 (Backend) / M4 (Frontend) | R1 |
-| 4 | Tri-Fold Financial Reconciliation | GMV vs Net Commission Take vs Escrow Floating Balance & Payouts | M1 (Backend) / M4 (Frontend) | R2 |
-| 5 | SaaS MRR Waterfall Engine | Beginning MRR, New, Expansion, Contraction, Churn, Net New MRR, Quick Ratio | M1 (Backend) / M4 (Frontend) | R2 |
-| 6 | Payment Gateway Reliability & Conversion Matrix | Flouci, Konnect, Mandat, Stripe, PayPal, COD success rates and latency | M1 (Backend) / M4 (Frontend) | R2 |
-| 7 | Multi-currency normalization engine | Dynamic conversion across TND (3 decimals), EUR (2 decimals), USD (2 decimals) | M1 (Backend) / M4 (Frontend) | R2 |
-| 8 | 7-Stage Granular Conversion Funnel | Session → Product → Cart → Checkout → Address → Payment → Order with drop-offs | M2 (Backend) / M4 (Frontend) | R3 |
-| 9 | Zero-result search query intelligence | Unmet customer demand ranking, opportunity scoring, and catalog gap suggestions | M2 (Backend) / M4 (Frontend) | R3 |
-| 10 | N-day repurchase cohort retention matrix | True SQL-based repeat buyer retention grid across Day 1, 7, 14, 30, 60, 90 | M2 (Backend) / M4 (Frontend) | R3 |
-| 11 | 2x2 Vendor Performance Scatter Matrix | Scatter plot of GMV vs Fulfillment SLA Compliance (Champions, Stars, At-Risk, etc.) | M2 (Backend) / M4 (Frontend) | R4 |
-| 12 | Operational SLA Tracking | Avg Time to Dispatch (hrs), Order Defect Rate (ODR %), On-time delivery % | M2 (Backend) / M4 (Frontend) | R4 |
-| 13 | Vendor Fraud, Wash Trading & Churn Radar | Multi-signal risk radar and early warning heuristics | M2 (Backend) / M4 (Frontend) | R4 |
-| 14 | 30/60/90-Day Predictive Forecasting | Time-series forecasting with 80% and 95% confidence intervals | M3 (Backend) / M4 (Frontend) | R5 |
-| 15 | Dynamic "What-If" Scenario Simulator | Parametric simulator for commission rate, traffic multiplier, merchant growth | M3 (Backend) / M4 (Frontend) | R5 |
-| 16 | Daily Executive Natural Language AI Digest | AI-synthesized narrative digest with takeaways, anomalies, recommendations | M3 (Backend) / M4 (Frontend) | R5 |
-| 17 | Multi-Format Scheduled Reports | Daily/Weekly/Monthly PDF and Multi-Sheet Excel export engine | M3 (Backend) / M4 (Frontend) | R6 |
-| 18 | 10 Domain Tabs & Impeccable Glassmorphic UI | Dark/light glassmorphic command center across all 10 domain tabs | M4 (Frontend) | R6 |
-| 19 | Interactive Slide-Out Entity Drilldown Drawer | Contextual slide-out drawer for Orders, Vendors, Products, Logs, Customers | M4 (Frontend) | R6 |
-| 20 | Opaque-box E2E Test Suite (Tiers 1-4) | Comprehensive test suite covering all features, boundaries, combinations | Track A (E2E) | AC |
-| 21 | Final Verification, Audit & Deployment | 100% E2E Pass, Tier 5 Adversarial Hardening, Forensic Audit, Render Deploy | M5 (Final) | AC |
-
----
+| 1 | DB Schema & Migrations | Create `pd_store_subscription`, `pd_buyer_interest_profile`, `pd_seller_broadcast`, add columns `interest_tags`, `subscribers_count`, `verified_subscribers_count` | M1 | ORIGINAL_REQUEST R1, R3, R5 |
+| 2 | Superadmin Admin-Notes DB Population | Populate Folder `ff32063c-baff-42ca-ad94-768b20c5e6d4` with 6 task cards and 44 interactive checklist items | M1 | ORIGINAL_REQUEST R6 |
+| 3 | Store Subscription REST APIs | `POST/DELETE /api/pd/stores/:id/subscribe`, `GET /api/pd/stores/:id/subscription-status`, `GET /api/pd/buyer/subscriptions` | M2 | ORIGINAL_REQUEST R1 |
+| 4 | Anti-Bot Verified Subscriber Logic | Verify buyer has $\ge 1$ completed purchase to increment `verified_subscribers_count` | M2 | ORIGINAL_REQUEST R1 |
+| 5 | Seller Logarithmic Trust Score Formula | $0.40 \cdot \text{Rating} + 0.30 \cdot \text{SLA} + 0.20 \cdot \log_{10}(\text{Verified Subs}+1) - 0.10 \cdot \text{Dispute Rate}$ | M2 | ORIGINAL_REQUEST R5 |
+| 6 | Store Follow UI Button & Badges | Animated `StoreFollowButton` with optimistic UI and live badges on PDP seller hover card, seller action bar, and vendor directory cards | M2 | ORIGINAL_REQUEST R1 |
+| 7 | Sliding 15-min Notification Buffer | BullMQ 15-min debounced sliding aggregation buffer in `pd_notification_batch_queue` for price drops and new product publications | M3 | ORIGINAL_REQUEST R2 |
+| 8 | In-App Notification Center & WebSocket Push | Single consolidated notifications in notification center dropdown + real-time `socketGateway.emitToUser` push | M3 | ORIGINAL_REQUEST R2 |
+| 9 | 7:00 PM Daily Email Digest | BullMQ repeatable cron `0 19 * * *` dispatching daily summary of followed store updates to opted-in buyers | M3 | ORIGINAL_REQUEST R2 |
+| 10 | Gemini Pro AI Product Auto-Tagging | Event-driven BullMQ jobs on product creation/update + nightly sweep cron generating normalized `interest_tags` | M4 | ORIGINAL_REQUEST R3 |
+| 11 | Dynamic Buyer Interest Profile Engine | Calculate tag weights with 60-day exponential decay formula: $\sum W(e) \cdot e^{-\Delta t/60}$ (Orders=5, Subs=4, Likes=2) | M4 | ORIGINAL_REQUEST R3 |
+| 12 | 'My Followed Feed' Page (`/my-followed-feed`) | Section 1: Mes Boutiques Suivies carousel, Section 2: Nouveautés & Baisses de Prix timeline, Section 3: Découvertes & Boutiques Similaires | M4 | ORIGINAL_REQUEST R3 |
+| 13 | Strict Seller Retention Boundary | Enforce 100% competitor-free private store pages (`*.pandamarket.tn`); cross-seller recommendations restricted to Marketplace Hub & Followed Feed | M4 | ORIGINAL_REQUEST R3 |
+| 14 | Marketplace Hub 30% Interest Injection | Hub feed generator injecting ~30% interest-matched products for logged-in buyers | M5 | ORIGINAL_REQUEST R4 |
+| 15 | Superadmin Feed Algorithm Tuning Controls | Platform settings for `hub_feed_base_sort` (shuffled/newest/alpha/bestsellers) and `hub_feed_personalization_pct` (0-50%) in `/admin/settings` | M5 | ORIGINAL_REQUEST R4 |
+| 16 | AI Auto-Tagging Diagnostic Monitor | Health monitor card in `/admin/settings` and `GET /api/pd/admin/analytics/ai-tagging-health` reporting tag coverage and status | M5 | ORIGINAL_REQUEST R4 |
+| 17 | Seller Dashboard 'Abonnés & Fidélité' Tab | New dashboard route `/hub/dashboard/loyalty` with 4 Growth KPI cards (Total, New this week, % Verified, Growth rate) | M6 | ORIGINAL_REQUEST R5 |
+| 18 | Subscriber Broadcast Composer & Rate Limiter | Send custom message + store coupon to subscribers, rate-limited to max 2 broadcasts/calendar week | M6 | ORIGINAL_REQUEST R5 |
+| 19 | Broadcast History Table & Audience Map | Broadcast performance table (claims %, GMV) and geographic breakdown across 24 Tunisian governorates | M6 | ORIGINAL_REQUEST R5 |
+| 20 | Complete E2E Test Suite & Coverage Hardening | 100% passing E2E tests (Tiers 1-4) + Tier 5 Adversarial Coverage Hardening | M7 | ORIGINAL_REQUEST Acceptance Criteria |
 
 ## Milestones
-
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| **Track A** | E2E Testing Track | Requirement-driven opaque-box test suites (Tiers 1-4) -> `TEST_READY.md` | none | IN_PROGRESS |
-| **M1** | Backend Core Engine & Financials | R1 (Pulse & Geo APIs), R2 (Reconciliation, SaaS Waterfall, Gateways, FX) | none | IN_PROGRESS |
-| **M2** | Funnels, Search & Vendor Quadrant | R3 (7-Stage Funnel, Zero-Search, Cohorts), R4 (2x2 Quadrant, SLA, Risk Radar) | M1 contracts | PLANNED |
-| **M3** | AI Forecasting, Simulator & Reports | R5 (30/60/90d Forecast, What-If Simulator, AI Digest), R6 (Report Exports) | M1 contracts | PLANNED |
-| **M4** | Frontend Command Center & UI/UX Craft | All 10 Domain Tabs, Bespoke SVG/Canvas Charts, Drilldown Drawer, Glassmorphism | M1-M3 contracts | PLANNED |
-| **M5** | Final Verification, Audit & Deployment | Pass 100% E2E Tests, Adversarial Hardening (Tier 5), Forensic Audit, Render Deploy | Track A, M1-M4 | PLANNED |
-
----
+| M1 | Database Migrations & Admin-Notes Seeding | Schema migration `073_store_subscriptions_and_ai_interest.sql`, seed folder `ff32063c-baff-42ca-ad94-768b20c5e6d4` with 6 task cards and 44 checklist items | none | DONE |
+| M2 | Store Subscriptions & Anti-Bot Verification | Backend subscription service, APIs, anti-bot purchase check, trust score formula, frontend `StoreFollowButton` & badges | M1 | DONE |
+| M3 | Smart Batched Notifications | 15-min BullMQ sliding buffer, consolidated in-app notifications, WebSocket push, 7:00 PM email digest, bell dropdown UI | M2 | IN_PROGRESS |
+| M4 | AI Interest Engine & 'My Followed Feed' Page | Gemini auto-tagging, dynamic buyer interest profile calculation with 60-day decay, `/my-followed-feed` page (3 sections), strict storefront isolation | M2 | PLANNED |
+| M5 | Marketplace Hub Algorithm Tuning & Superadmin | 30% feed injection, superadmin settings card in `/admin/settings`, base sorting selector, personalization slider, AI health monitor | M4 | PLANNED |
+| M6 | Seller Loyalty Dashboard & Broadcasts | Seller dashboard `/hub/dashboard/loyalty`, KPI cards, broadcast composer with 2/week limit, history table, Tunisian governorate map | M2 | PLANNED |
+| M7 | E2E Verification & Adversarial Hardening | Verification of 100% E2E test suite (Tiers 1-4) + Tier 5 adversarial testing + forensic integrity audit | M1, M2, M3, M4, M5, M6 | PLANNED |
 
 ## Interface Contracts
 
-### Backend ↔ Frontend REST Endpoints
+### Store Subscription API
+- `POST /api/pd/stores/:id/subscribe` -> `{ success: true, is_subscribed: true, is_verified_buyer: boolean, subscribers_count: number, verified_subscribers_count: number }`
+- `DELETE /api/pd/stores/:id/subscribe` -> `{ success: true, is_subscribed: false, subscribers_count: number, verified_subscribers_count: number }`
+- `GET /api/pd/stores/:id/subscription-status` -> `{ is_subscribed: boolean, is_verified_buyer: boolean, notify_price_drops: boolean, notify_new_products: boolean, subscribers_count: number, verified_subscribers_count: number }`
+- `GET /api/pd/buyer/subscriptions` -> `{ subscriptions: Array<{ store: StoreSummary, latest_products: ProductSummary[], unread_updates_count: number }> }`
 
-1. **`GET /api/pd/admin/analytics/pulse/live`**
-   - Output: `{ success: true, data: { live_active_visitors_now: number, velocity: VelocityPoint[], micro_ticker: LiveCheckoutTickerItem[], anomaly_alerts: AnomalyAlertItem[] } }`
-2. **`GET /api/pd/admin/analytics/geo/heatmap?timeRange=&startDate=&endDate=`**
-   - Output: `{ success: true, data: GeoHeatmapResponseDTO }` (24 governorates + top diaspora countries)
-3. **`GET /api/pd/admin/analytics/financials/reconciliation?timeRange=&currency=`**
-   - Output: `{ success: true, data: FinancialReconciliationDTO }` (GMV, Commission, Escrow, Multi-currency TND/EUR/USD)
-4. **`GET /api/pd/admin/analytics/financials/mrr-waterfall?timeRange=&currency=`**
-   - Output: `{ success: true, data: SaaSMasterWaterfallDTO }` (Beginning, New, Expansion, Contraction, Churn, Net New, Quick Ratio)
-5. **`GET /api/pd/admin/analytics/gateways/matrix?timeRange=`**
-   - Output: `{ success: true, data: { gateways: PaymentGatewayReliabilityItem[] } }`
-6. **`GET /api/pd/admin/analytics/funnel/conversion?timeRange=&storeId=`**
-   - Output: `{ success: true, data: Granular7StageFunnelDTO }` (7 discrete stages, conversion %, drop-off %)
-7. **`GET /api/pd/admin/analytics/search/unmet-demand?timeRange=&limit=`**
-   - Output: `{ success: true, data: { queries: UnmetSearchDemandItem[] } }`
-8. **`GET /api/pd/admin/analytics/cohorts/repurchase?interval=`**
-   - Output: `{ success: true, data: { cohorts: RepurchaseCohortMatrixDTO } }`
-9. **`GET /api/pd/admin/analytics/vendors/quadrant?timeRange=&minOrders=`**
-   - Output: `{ success: true, data: VendorQuadrantMatrixResponseDTO }` (2x2 scatter coordinates, categories, SLA compliance)
-10. **`GET /api/pd/admin/analytics/predictive/forecast?horizon=30d|60d|90d&metric=gmv|revenue|orders`**
-    - Output: `{ success: true, data: TimeSeriesForecastResponseDTO }` (Historical + projected + 80%/95% confidence bands)
-11. **`POST /api/pd/admin/analytics/predictive/simulate`**
-    - Body: `{ traffic_delta_pct, conversion_delta_pct, commission_rate_pct, subscription_price_delta_pct, vendor_growth_pct }`
-    - Output: `{ success: true, data: WhatIfSimulationResultDTO }`
-12. **`GET /api/pd/admin/analytics/predictive/digest?timeRange=`**
-    - Output: `{ success: true, data: ExecutiveAIDigestDTO }`
-13. **`POST /api/pd/admin/analytics/export/multi-format`**
-    - Body: `{ format: 'excel' | 'pdf' | 'csv', timeRange, currency, sections }`
-    - Output: Binary stream or downloadable attachment.
+### Notification Batching Worker & WebSocket
+- Redis list key: `notif_buffer:store:{storeId}:{type}`
+- Delayed BullMQ job: queue `pd_notification_batch_queue`, jobId `batch:{storeId}:{type}`, delay 15 min.
+- WebSocket event: `socketGateway.emitToUser(buyerId, 'notification', payload)`
 
----
+### AI Interest Engine & Buyer Profile
+- Gemini Pro Tagging: returns JSON `{ tags: string[] }` (4–8 normalized lowercase tags).
+- Buyer Interest Profile Calculation:
+  $$\text{Tag Weight}(T) = \sum_{e \in \text{Events}(T)} W(e) \cdot e^{-\frac{\Delta t \text{ (days)}}{60}}$$
+  $W(\text{order}) = 5.0$, $W(\text{subscription}) = 4.0$, $W(\text{wishlist}) = 2.0$.
+- `GET /api/pd/marketplace/recommendations/buyer-interests` -> `{ recommended_products: Product[], similar_stores: Store[] }`
 
-## Code Layout & File Ownership Boundaries
+### Hub Feed Algorithm & Superadmin Settings
+- Settings keys: `hub_feed_base_sort` (`random`|`newest`|`alphabetical`|`best_sellers`), `hub_feed_personalization_pct` (0–50), `ai_auto_tagging_enabled` (boolean).
+- Diagnostic endpoint: `GET /api/pd/admin/analytics/ai-tagging-health` -> `{ total_products, tagged_products, tag_coverage_pct, top_tags, pending_tag_jobs }`
 
-- **Backend Types & DTOs**: `backend/src/types/analytics-types.ts`, `packages/types/src/index.ts`
-- **Backend Analytics Services**:
-  - `backend/src/services/analytics.service.ts` (Core aggregations, rollups, live pulse)
-  - `backend/src/services/analytics-reconciliation.service.ts` (Financials, SaaS waterfall, gateways, multi-currency)
-  - `backend/src/services/analytics-funnel.service.ts` (7-Stage funnel, search demand, cohorts)
-  - `backend/src/services/analytics-vendor-quadrant.service.ts` (Vendor 2x2 matrix, SLA, risk radar)
-  - `backend/src/services/analytics-forecasting.service.ts` (Holt-Winters time-series, What-If simulator, AI digest)
-  - `backend/src/services/analytics-reports.service.ts` (Multi-sheet export, PDF/HTML formats, schedules)
-- **Backend Analytics Routes**:
-  - `backend/src/api/admin.route.ts` (Mounts all `/analytics/*` endpoints with `requireAdmin`)
-  - `backend/src/api/analytics.route.ts` (Public event ingestion and storefront telemetry)
-- **Frontend Command Center Components**:
-  - `frontend/src/app/(admin)/platform-analytics/page.tsx` (Root command center container)
-  - `frontend/src/components/admin/platform-analytics/AnalyticsTabsNav.tsx` (10-domain tab navigation)
-  - `frontend/src/components/admin/platform-analytics/PlatformAnalyticsHeader.tsx` (Filters, currency, export)
-  - `frontend/src/components/admin/platform-analytics/tabs/*.tsx` (10 dedicated tab components)
-  - `frontend/src/components/admin/platform-analytics/charts/*.tsx` (Bespoke SVG/Canvas visualizers)
-  - `frontend/src/components/admin/platform-analytics/interactive/*.tsx` (Drilldown drawer, ticker, simulator)
-  - `frontend/src/components/admin/platform-analytics/utils/*.ts` (Currency normalizer, SVG maps)
-  - `frontend/src/lib/admin-platform-analytics.ts` (Typed API client hooks and fetchers)
-- **E2E Testing Track**:
-  - `backend/src/__tests__/analytics-e2e-suite.test.ts`
-  - `frontend/src/__tests__/platform-analytics-components.test.tsx`
-  - `frontend/src/__tests__/analytics-currency-normalizer.test.ts`
-  - `frontend/e2e/platform-analytics.spec.ts`
+### Seller Trust Score & Broadcasts
+- Logarithmic formula:
+  $$\text{Trust Score} = 0.40 \cdot \text{Rating} + 0.30 \cdot \text{SLA} + 0.20 \cdot \log_{10}(\text{Verified Subscribers} + 1) - 0.10 \cdot \text{Dispute Rate}$$
+- `POST /api/pd/seller/subscribers/broadcast` -> `{ success: true, broadcast_id: string, recipients_count: number }` (enforces max 2 per week).
+- `GET /api/pd/seller/subscribers/analytics` -> `{ total_subscribers, new_this_week, verified_pct, growth_rate_pct, governorate_distribution: Record<string, number> }`
+
+## Code Layout
+- Backend:
+  - Database Migrations: `backend/src/migrations/sql/073_store_subscriptions_and_ai_interest.sql`
+  - Services: `backend/src/services/store-subscription.service.ts`, `backend/src/services/notification-batch.service.ts`, `backend/src/services/ai-product-tagger.service.ts`, `backend/src/services/buyer-interest.service.ts`, `backend/src/services/seller-broadcast.service.ts`, `backend/src/services/seller-trust.service.ts`
+  - Routes: `backend/src/api/store.route.ts`, `backend/src/api/buyer.route.ts`, `backend/src/api/seller.route.ts`, `backend/src/api/marketplace.route.ts`, `backend/src/api/admin.route.ts`
+  - Queues & Workers: `backend/src/queues/notification-batch-queue.ts`, `backend/src/workers/notification-batch.worker.ts`, `backend/src/workers/ai-tagger.worker.ts`
+  - Seeding Scripts: `backend/src/scripts/insert-feature20-admin-notes.ts`
+  - Unit/Integration Tests: `backend/src/__tests__/store-subscription.service.test.ts`, `backend/src/__tests__/smart-notification-batch.test.ts`, `backend/src/__tests__/buyer-interest.service.test.ts`, `backend/src/__tests__/seller-trust.service.test.ts`, `backend/src/__tests__/admin-notes-feature20.test.ts`
+- Frontend:
+  - Pages: `frontend/src/app/hub/my-followed-feed/page.tsx`, `frontend/src/app/hub/dashboard/loyalty/page.tsx`, `frontend/src/app/(admin)/settings/page.tsx`, `frontend/src/app/(admin)/admin-notes/page.tsx`
+  - Components: `frontend/src/components/store/StoreFollowButton.tsx`, `frontend/src/components/feed/FollowedStoresCarousel.tsx`, `frontend/src/components/feed/FeedTimeline.tsx`, `frontend/src/components/feed/DiscoverSimilarStores.tsx`, `frontend/src/components/dashboard/BroadcastComposer.tsx`, `frontend/src/components/dashboard/TunisiaAudienceMap.tsx`, `frontend/src/components/hub/NotificationBell.tsx`, `frontend/src/components/hub/HubNavbar.tsx`
+  - Types: `frontend/src/types/settings.ts`, `packages/types/`
+  - Unit/Component Tests: `frontend/src/__tests__/store-follow-button.test.tsx`, `frontend/src/__tests__/my-followed-feed.test.tsx`, `frontend/src/__tests__/seller-loyalty-dashboard.test.tsx`, `frontend/src/__tests__/admin-settings-algorithm.test.tsx`

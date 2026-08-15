@@ -15,6 +15,7 @@ import { SellerHoverCard } from '../../../../components/product/SellerHoverCard'
 import { RecentlyViewedTracker } from '../../../../components/hub/RecentlyViewedTracker';
 import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 import { ContactSellerButton } from '../../../../components/chat/ContactSellerButton';
+import { StoreFollowButton } from '../../../../components/store/StoreFollowButton';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
 import { getStorefrontWebsiteHref } from '../../../../lib/storefront-url';
@@ -365,6 +366,7 @@ export default async function ProductDetailPage({
                   createdAt={product.store_created_at}
                   productCount={product.store_product_count}
                   settings={product.store_settings}
+                  storeId={product.store_id}
                   accentColor={accentHex}
                 />
                 <ContactSellerButton
@@ -372,6 +374,12 @@ export default async function ProductDetailPage({
                   productId={product.id}
                   subject={product.title}
                   isAliExpress={isAliExpress}
+                />
+                <StoreFollowButton
+                  storeId={product.store_id}
+                  storeName={product.store_name}
+                  variant="action_bar"
+                  size="md"
                 />
               </div>
             )}

@@ -10,6 +10,7 @@ import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
 import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
 import type { StoreBranding, StoreSocialLinks } from '../themes/shared';
 import { selectLogoForSurface } from '../../lib/public-assets';
+import { StoreFollowButton } from './StoreFollowButton';
 
 export interface MarketplaceStoreData {
   id: string;
@@ -256,19 +257,27 @@ export function MarketplaceSellerPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 rounded-[1.75rem] bg-white/15 p-4 text-center backdrop-blur">
-              <div>
-                <p className="text-2xl font-black">{products.length}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Products</p>
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-3 rounded-[1.75rem] bg-white/15 p-4 text-center backdrop-blur">
+                <div>
+                  <p className="text-2xl font-black">{products.length}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Products</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black">{visibleCategories.length}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Categories</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black">{sellerScore}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Seller score</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-black">{visibleCategories.length}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Categories</p>
-              </div>
-              <div>
-                <p className="text-2xl font-black">{sellerScore}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Seller score</p>
-              </div>
+              <StoreFollowButton
+                storeId={store.id}
+                storeName={store.name}
+                variant="pdp_card"
+                size="md"
+              />
             </div>
           </div>
         </section>

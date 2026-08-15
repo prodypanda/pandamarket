@@ -75,11 +75,17 @@ export class PdAuthenticationError extends PdError {
 // =====================================================
 export class PdForbiddenError extends PdError {
   constructor(
-    code: PdErrorCodeValue = PdErrorCode.PERM_FORBIDDEN,
-    message = 'Forbidden',
+    codeOrMessage: PdErrorCodeValue | string = PdErrorCode.PERM_FORBIDDEN,
+    message?: string,
     details?: Record<string, unknown>,
   ) {
-    super(code, message, 403, details);
+    if (message !== undefined) {
+      super(codeOrMessage as PdErrorCodeValue, message, 403, details);
+    } else if (Object.values(PdErrorCode).includes(codeOrMessage as PdErrorCodeValue)) {
+      super(codeOrMessage as PdErrorCodeValue, 'Forbidden', 403, details);
+    } else {
+      super(PdErrorCode.PERM_FORBIDDEN, codeOrMessage, 403, details);
+    }
   }
 }
 
@@ -105,11 +111,17 @@ export class PdPlanRequiredError extends PdError {
 // =====================================================
 export class PdNotFoundError extends PdError {
   constructor(
-    code: PdErrorCodeValue = PdErrorCode.NOT_FOUND,
-    message = 'Resource not found',
+    codeOrMessage: PdErrorCodeValue | string = PdErrorCode.NOT_FOUND,
+    message?: string,
     details?: Record<string, unknown>,
   ) {
-    super(code, message, 404, details);
+    if (message !== undefined) {
+      super(codeOrMessage as PdErrorCodeValue, message, 404, details);
+    } else if (Object.values(PdErrorCode).includes(codeOrMessage as PdErrorCodeValue)) {
+      super(codeOrMessage as PdErrorCodeValue, 'Resource not found', 404, details);
+    } else {
+      super(PdErrorCode.NOT_FOUND, codeOrMessage, 404, details);
+    }
   }
 }
 
@@ -130,10 +142,14 @@ export class PdConflictError extends PdError {
 // 429 — Rate Limit
 // =====================================================
 export class PdRateLimitError extends PdError {
-  constructor(retryAfterSeconds: number) {
-    super(PdErrorCode.RATE_LIMITED, 'Too many requests', 429, {
-      retry_after: retryAfterSeconds,
-    });
+  constructor(retryAfterOrMessage: number | string = 60, message?: string) {
+    if (typeof retryAfterOrMessage === 'number') {
+      super(PdErrorCode.RATE_LIMITED, message || 'Too many requests', 429, {
+        retry_after: retryAfterOrMessage,
+      });
+    } else {
+      super(PdErrorCode.RATE_LIMITED, retryAfterOrMessage, 429);
+    }
   }
 }
 

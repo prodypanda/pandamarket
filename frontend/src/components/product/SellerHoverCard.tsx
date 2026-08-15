@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2, ExternalLink, Globe2, Mail, MapPin, Package
 import Link from 'next/link';
 import { getSellerTypeLabel } from '../../lib/seller-type';
 import { useLocale } from '../../contexts/LocaleContext';
+import { StoreFollowButton } from '../store/StoreFollowButton';
 
 interface SellerSettings {
   logo_url?: string;
@@ -74,6 +75,7 @@ export function SellerHoverCard({
   createdAt,
   productCount,
   settings,
+  storeId,
   accentColor = '#16C784',
 }: SellerHoverCardProps) {
   const { locale, t } = useLocale();
@@ -205,6 +207,17 @@ export function SellerHoverCard({
               </div>
             )}
           </div>
+
+          {storeId && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <StoreFollowButton
+                storeId={storeId}
+                storeName={name}
+                variant="pdp_card"
+                size="sm"
+              />
+            </div>
+          )}
 
           {(marketplaceHref || externalWebsiteHref) && (
             <div className="mt-4 grid gap-2">

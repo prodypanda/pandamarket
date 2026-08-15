@@ -7,7 +7,7 @@ import { storeService, type StoreRow } from '../services/store.service';
 import { categoryService } from '../services/category.service';
 import { productService } from '../services/product.service';
 import { imageVariantService } from '../services/image-variant.service';
-import { asyncHandler, validate, requireAuth, requireStore } from '../middlewares';
+import { asyncHandler, validate, requireAuth, requireStore, optionalAuth } from '../middlewares';
 import { SubscriptionPlan, SellerType, ShippingMode, IStorePaymentConfig, ProductStatus, ProductType, StoreStatus, PdErrorCode } from '@pandamarket/types';
 import { config } from '../config';
 import { PdValidationError, PdForbiddenError } from '../errors';
@@ -21,6 +21,8 @@ import { platformConfigService } from '../services/platform-config.service';
 import { menuService, draftNavigationInputSchema, draftFooterInputSchema } from '../services/menu.service';
 import { domainVerificationService } from '../services/domain-verification.service';
 import { outboxService } from '../services/outbox.service';
+import { storeSubscriptionService } from '../services/store-subscription.service';
+import { calculateSellerTrustScore } from '../services/seller-trust.service';
 
 const router = Router();
 
@@ -1389,4 +1391,163 @@ router.get(
   }),
 );
 
+// =====================================================
+// Store Subscriptions & Seller Trust Endpoints (Feature 20)
+// =====================================================
+
+/**
+ * POST /api/pd/stores/:id/subscribe
+ * Subscribe authenticated buyer to a store
+ */
+router.post(
+  '/:id/subscribe',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeSubscriptionService.subscribe(
+      req.user!.id,
+      req.params.id,
+      req.body,
+    );
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * DELETE /api/pd/stores/:id/subscribe
+ * Unsubscribe authenticated buyer from a store
+ */
+router.delete(
+  '/:id/subscribe',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeSubscriptionService.unsubscribe(
+      req.user!.id,
+      req.params.id,
+    );
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:id/subscription-status
+ * Get subscription status (works for authenticated or guest visitors)
+ */
+router.get(
+  '/:id/subscription-status',
+  optionalAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeSubscriptionService.getSubscriptionStatus(
+      req.user?.id,
+      req.params.id,
+    );
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * PUT /api/pd/stores/:id/subscription-preferences
+ * Update notification preferences for a store subscription
+ */
+router.put(
+  '/:id/subscription-preferences',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await storeSubscriptionService.updatePreferences(
+      req.user!.id,
+      req.params.id,
+      req.body,
+    );
+    res.status(200).json({ success: true, subscription: result });
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:id/trust-score
+ * Calculate and return seller logarithmic trust score
+ */
+router.get(
+  '/:id/trust-score',
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await calculateSellerTrustScore(req.params.id);
+    res.status(200).json(result);
+  }),
+);
+
+// =====================================================
+// Seller Loyalty & Broadcast Endpoints (Feature 20 - R5)
+// =====================================================
+
+/**
+ * POST /api/pd/stores/:id/broadcast
+ * Send a private broadcast coupon/message to store subscribers (max 2/week)
+ */
+router.post(
+  '/:id/broadcast',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.params.id;
+    if (req.user!.store_id !== storeId && req.user!.role !== 'super_admin') {
+      res.status(403).json({ error: { code: 'PD_FORBIDDEN', message: 'Unauthorized for this store' } });
+      return;
+    }
+
+    const { message, coupon_code, discount_type, discount_value } = req.body;
+    const coupon = coupon_code
+      ? {
+          code: coupon_code,
+          discountType: discount_type || 'percentage',
+          discountValue: Number(discount_value) || 0,
+        }
+      : undefined;
+
+    const { sellerBroadcastService } = await import('../services/seller-broadcast.service');
+    const result = await sellerBroadcastService.sendBroadcast(storeId, message, coupon);
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:id/subscribers/analytics
+ * Get subscriber growth KPIs and Tunisian governorate audience distribution
+ */
+router.get(
+  '/:id/subscribers/analytics',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.params.id;
+    if (req.user!.store_id !== storeId && req.user!.role !== 'super_admin') {
+      res.status(403).json({ error: { code: 'PD_FORBIDDEN', message: 'Unauthorized for this store' } });
+      return;
+    }
+
+    const { sellerBroadcastService } = await import('../services/seller-broadcast.service');
+    const result = await sellerBroadcastService.getSubscriberAnalytics(storeId);
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * GET /api/pd/stores/:id/subscribers/history
+ * Get broadcast history for the seller
+ */
+router.get(
+  '/:id/subscribers/history',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.params.id;
+    if (req.user!.store_id !== storeId && req.user!.role !== 'super_admin') {
+      res.status(403).json({ error: { code: 'PD_FORBIDDEN', message: 'Unauthorized for this store' } });
+      return;
+    }
+
+    const { sellerBroadcastService } = await import('../services/seller-broadcast.service');
+    const history = await sellerBroadcastService.getBroadcastHistory(storeId);
+    res.status(200).json({ broadcasts: history });
+  }),
+);
+
 export default router;
+
