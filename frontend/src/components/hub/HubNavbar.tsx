@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Heart, MessageSquare, ShoppingBag, User } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Heart, MessageSquare, Rss, ShoppingBag, User } from 'lucide-react';
 import { SearchBar } from './SearchBar';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LocaleSwitcher } from '../LocaleSwitcher';
@@ -13,8 +14,8 @@ import { InstantChatLauncher } from '../chat/InstantChatLauncher';
 import { MarketplaceBrand } from '../MarketplaceBrand';
 import { BuyerWelcomeModal } from './BuyerWelcomeModal';
 import { fetchOnboardingState, type OnboardingState } from '../../lib/onboarding';
-
 import { CategoryMegaMenu } from './CategoryMegaMenu';
+import { NotificationBell } from './NotificationBell';
 
 interface CurrentUser {
   role?: string;
@@ -52,6 +53,8 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [showBuyerWelcome, setShowBuyerWelcome] = useState(false);
+  const pathname = usePathname();
+  const isFeedActive = pathname === '/hub/my-followed-feed' || pathname === '/my-followed-feed';
   const cartCount = getItemCount();
   const role = currentUser?.role?.toLowerCase();
   const dashboardHref =
@@ -204,6 +207,25 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
             >
               <Heart className="w-5 h-5" strokeWidth={1.75} />
             </Link>
+            <Link
+              href="/hub/my-followed-feed"
+              aria-label={t('nav.myFeed') || 'Mon Fil'}
+              className={`flex items-center transition-colors ${
+                isFeedActive
+                  ? isAliExpress ? 'text-[#ff4747] font-bold' : 'text-[#16C784] font-bold'
+                  : isAliExpress2
+                    ? 'text-white/60 hover:text-[#ff6b6b]'
+                    : isAliExpress
+                      ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'
+              }`}
+            >
+              <Rss className="w-5 h-5" strokeWidth={1.75} />
+              <span className="ms-1.5 text-sm font-medium hidden xl:inline">
+                {t('nav.myFeed') || 'Mon Fil'}
+              </span>
+            </Link>
+            <NotificationBell marketplaceTheme={resolvedMarketplaceTheme} />
             <Link
               href="/hub/messages"
               aria-label={t('nav.messages') || 'Messages'}

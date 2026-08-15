@@ -5,11 +5,15 @@
 import { eventBus, PdEvent } from '../events/event-bus';
 import { logger } from '../utils/logger';
 import { searchService } from '../services/search.service';
+import { aiProductTaggerService } from '../services/ai-product-tagger.service';
 import { query } from '../db/pool';
 
 export function registerProductSubscribers(): void {
   eventBus.on(PdEvent.PRODUCT_PUBLISHED, async (payload: { product_id: string; store_id: string }) => {
     try {
+      // Queue AI product tagging
+      await aiProductTaggerService.queueProductTagging(payload.product_id, payload.store_id);
+
       const { rows } = await query<{
         id: string; store_id: string; title: string; slug: string;
         description: string | null; category: string | null;
@@ -38,3 +42,4 @@ export function registerProductSubscribers(): void {
     }
   });
 }
+

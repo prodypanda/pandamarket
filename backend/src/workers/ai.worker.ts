@@ -18,15 +18,17 @@ import { AiJobType } from '@pandamarket/types';
 import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { aiConfigService } from '../services/ai-config.service';
+import { aiProductTaggerService } from '../services/ai-product-tagger.service';
 
 interface AiJobData {
   job_id: string;
   store_id: string;
-  type: AiJobType;
+  type: AiJobType | string;
   input_url?: string | null;
   product_id?: string;
   language?: 'fr' | 'ar' | 'en';
 }
+
 
 async function streamToBuffer(body: unknown): Promise<Buffer> {
   if (body instanceof Uint8Array) return Buffer.from(body);
@@ -217,6 +219,14 @@ export function startAiWorker(): Worker<AiJobData> {
 
       try {
         let output: Record<string, unknown>;
+        const jobType = job.data.type || job.name;
+        if (jobType === 'product_tagging' || jobType === 'tag_product') {
+          const productId = job.data.product_id || (job.data as any).productId;
+          if (!productId) throw new Error('Missing product_id for product_tagging');
+          const taggingResult = await aiProductTaggerService.tagProduct(productId, { storeId: job.data.store_id });
+          return taggingResult as any;
+        }
+
         switch (job.data.type) {
           case AiJobType.ImageCompression:
             output = await compressImage(job);
@@ -229,7 +239,8 @@ export function startAiWorker(): Worker<AiJobData> {
           default:
             throw new Error(`Unknown job type: ${job.data.type}`);
         }
-        const cost = await aiConfigService.getFeaturePrice(job.data.type);
+        const cost = await aiConfigService.getFeaturePrice(job.data.type as AiJobType);
+
         await creditsService.consume(job.data.store_id, cost);
         await aiService.markCompleted(job.data.job_id, output, cost);
         eventBus.emit(PdEvent.AI_JOB_COMPLETED, {

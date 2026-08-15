@@ -304,6 +304,7 @@ export default function DashboardLayout({
       items: [
         { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
         { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
+        { name: t('dashboard.sidebar.loyalty') || 'Abonnés & Fidélité', href: '/hub/dashboard/loyalty', icon: Users },
         { name: t('dashboard.sidebar.media'), href: '/hub/dashboard/media', icon: ImageIcon },
         { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
         { name: t('dashboard.sidebar.messages'), href: '/hub/dashboard/messages', icon: MessageSquare },

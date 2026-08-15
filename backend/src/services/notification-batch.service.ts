@@ -15,6 +15,7 @@ import { logger } from '../utils/logger';
 import { socketGateway } from '../realtime/socket-gateway';
 import { notificationBatchQueue } from '../queues/notification-batch-queue';
 import { emailQueue } from '../queues/email-queue';
+import { PdValidationError } from '../errors';
 
 export interface ProductBatchEvent {
   storeId: string;
@@ -25,26 +26,94 @@ export interface ProductBatchEvent {
   price: number;
   oldPrice?: number;
   discountPct?: number;
-  timestamp: number;
+  timestamp?: number;
 }
 
 export class NotificationBatchService {
-  public static readonly BUFFER_TTL_SECONDS = 15 * 60; // 15 minutes
+  public static readonly BUFFER_TTL_SECONDS = 15 * 60; // 15 minutes (900 seconds)
+  public static readonly BUFFER_WINDOW_MS = 15 * 60 * 1000; // 15 minutes in ms
 
   /**
-   * Record a product price drop or new arrival into the store's 15-minute sliding buffer
+   * Helper to format consolidated notification title and message
    */
-  public async recordEvent(event: ProductBatchEvent): Promise<void> {
+  public formatConsolidatedAlert(
+    storeName: string,
+    type: 'price_drop' | 'new_product',
+    items: Array<{ productId: string; productTitle: string; price: number; oldPrice?: number }>
+  ): { title: string; message: string } {
+    const count = items.length;
+    const name = storeName || 'Boutique';
+
+    if (type === 'price_drop') {
+      if (count === 1) {
+        return {
+          title: `🏷️ Baisse de prix chez ${name}`,
+          message: `${name} a baissé le prix de « ${items[0].productTitle} » à ${items[0].price} TND !`,
+        };
+      }
+      return {
+        title: `🏷️ ${count} baisses de prix chez ${name}`,
+        message: `${name} a baissé le prix de ${count} articles ! Ne manquez pas ces offres exclusives.`,
+      };
+    } else {
+      if (count === 1) {
+        return {
+          title: `✨ Nouveauté chez ${name}`,
+          message: `${name} a publié un nouveau produit : « ${items[0].productTitle} » à ${items[0].price} TND !`,
+        };
+      }
+      return {
+        title: `✨ ${count} nouveaux produits chez ${name}`,
+        message: `${name} a ajouté ${count} nouveaux articles à son catalogue ! Venez les découvrir.`,
+      };
+    }
+  }
+
+  /**
+   * Ingest and buffer a product change event into the 15-minute sliding buffer.
+   */
+  public async ingestEvent(
+    event: ProductBatchEvent,
+    currentTime = Date.now()
+  ): Promise<{ jobId: string; bufferSize: number }> {
+    if (!event.storeId || !event.productId) {
+      throw new PdValidationError('Invalid event: storeId and productId are required');
+    }
+
+    // Validate price drop semantics
+    if (event.type === 'price_drop') {
+      if (event.oldPrice === undefined || event.price >= event.oldPrice) {
+        // Not a genuine price drop
+        return { jobId: '', bufferSize: 0 };
+      }
+      event.discountPct = Math.round(((event.oldPrice - event.price) / event.oldPrice) * 100);
+    }
+
     const redis = getRedis();
     const bufferKey = `notif_buffer:store:${event.storeId}:type:${event.type}`;
     const jobId = `batch:${event.storeId}:${event.type}`;
 
     try {
-      // 1. Push event to Redis buffer with 15-min TTL
-      await redis.rpush(bufferKey, JSON.stringify(event));
-      await redis.expire(bufferKey, NotificationBatchService.BUFFER_TTL_SECONDS);
+      // 1. Read existing buffer for deduplication (same product updated multiple times)
+      const existingRaw = await redis.lrange(bufferKey, 0, -1);
+      const existingEvents: ProductBatchEvent[] = existingRaw.map((raw) => JSON.parse(raw));
 
-      // 2. Schedule or replace delayed job (15 min from now)
+      const existingIdx = existingEvents.findIndex((e) => e.productId === event.productId);
+      if (existingIdx >= 0) {
+        existingEvents[existingIdx] = event;
+      } else {
+        existingEvents.push(event);
+      }
+
+      // Rewrite buffer atomically in Redis
+      await redis.del(bufferKey);
+      if (existingEvents.length > 0) {
+        const serialized = existingEvents.map((e) => JSON.stringify(e));
+        await redis.rpush(bufferKey, ...serialized);
+        await redis.expire(bufferKey, NotificationBatchService.BUFFER_TTL_SECONDS);
+      }
+
+      // 2. Schedule or slide the 15-minute BullMQ job
       const existingJob = await notificationBatchQueue.getJob(jobId);
       if (existingJob) {
         await existingJob.remove();
@@ -52,17 +121,35 @@ export class NotificationBatchService {
 
       await notificationBatchQueue.add(
         'process-store-batch',
-        event,
+        {
+          storeId: event.storeId,
+          storeName: event.storeName,
+          type: event.type,
+          timestamp: currentTime,
+        },
         {
           jobId,
-          delay: NotificationBatchService.BUFFER_TTL_SECONDS * 1000,
+          delay: NotificationBatchService.BUFFER_WINDOW_MS,
         }
       );
 
-      logger.info({ storeId: event.storeId, type: event.type, productId: event.productId }, 'Product batch event recorded');
+      logger.info(
+        { storeId: event.storeId, type: event.type, productId: event.productId, bufferSize: existingEvents.length },
+        'Product batch event buffered in Redis'
+      );
+
+      return { jobId, bufferSize: existingEvents.length };
     } catch (err) {
-      logger.error({ err, event }, 'Failed to record notification batch event');
+      logger.error({ err, event }, 'Failed to ingest notification batch event');
+      throw err;
     }
+  }
+
+  /**
+   * Alias for recordEvent to match interface
+   */
+  public async recordEvent(event: ProductBatchEvent): Promise<{ jobId: string; bufferSize: number }> {
+    return this.ingestEvent(event);
   }
 
   /**
@@ -77,13 +164,13 @@ export class NotificationBatchService {
       return 0;
     }
 
-    // Clear buffer
+    // Atomic drain
     await redis.del(bufferKey);
 
     const events: ProductBatchEvent[] = rawItems.map((item) => JSON.parse(item));
     const storeName = events[0]?.storeName || 'Boutique';
 
-    // Deduplicate by productId, keeping latest price
+    // Deduplicate by productId, keeping latest price/entry
     const uniqueProductsMap = new Map<string, ProductBatchEvent>();
     for (const ev of events) {
       uniqueProductsMap.set(ev.productId, ev);
@@ -91,27 +178,12 @@ export class NotificationBatchService {
     const uniqueItems = Array.from(uniqueProductsMap.values());
     const count = uniqueItems.length;
 
-    // Build consolidated message
-    let title = '';
-    let message = '';
-
-    if (type === 'price_drop') {
-      if (count === 1) {
-        title = `🏷️ Baisse de prix chez ${storeName}`;
-        message = `${storeName} a baissé le prix de « ${uniqueItems[0].productTitle} » à ${uniqueItems[0].price} TND !`;
-      } else {
-        title = `🏷️ ${count} baisses de prix chez ${storeName}`;
-        message = `${storeName} a baissé le prix de ${count} articles ! Ne manquez pas ces offres exclusives.`;
-      }
-    } else {
-      if (count === 1) {
-        title = `✨ Nouveauté chez ${storeName}`;
-        message = `${storeName} a publié un nouveau produit : « ${uniqueItems[0].productTitle} » à ${uniqueItems[0].price} TND !`;
-      } else {
-        title = `✨ ${count} nouveaux produits chez ${storeName}`;
-        message = `${storeName} a ajouté ${count} nouveaux articles à son catalogue ! Venez les découvrir.`;
-      }
+    if (count === 0) {
+      return 0;
     }
+
+    // Build consolidated alert
+    const alert = this.formatConsolidatedAlert(storeName, type, uniqueItems);
 
     // Find all subscribers with preference enabled
     const prefCol = type === 'price_drop' ? 'notify_price_drops' : 'notify_new_products';
@@ -122,6 +194,7 @@ export class NotificationBatchService {
 
     const subscribers = subRes.rows;
     if (subscribers.length === 0) {
+      logger.info({ storeId, type, itemsCount: count }, 'No matching subscribers for store notification batch');
       return 0;
     }
 
@@ -131,7 +204,7 @@ export class NotificationBatchService {
       store_id: storeId,
       store_name: storeName,
       items_count: count,
-      products: uniqueItems.slice(0, 5).map((p) => ({
+      products: uniqueItems.slice(0, 10).map((p) => ({
         id: p.productId,
         title: p.productTitle,
         price: p.price,
@@ -139,35 +212,43 @@ export class NotificationBatchService {
       })),
     };
 
+    const now = new Date();
     for (const sub of subscribers) {
       const notifId = pdId('notif');
-      await query(
-        `INSERT INTO pd_notifications (id, user_id, type, title, message, data, is_read, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())`,
-        [notifId, sub.buyer_id, notifType, title, message, JSON.stringify(payloadData)]
-      );
+      try {
+        await query(
+          `INSERT INTO pd_notifications (id, user_id, type, title, message, data, is_read, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())`,
+          [notifId, sub.buyer_id, notifType, alert.title, alert.message, JSON.stringify(payloadData)]
+        );
+      } catch (err) {
+        logger.warn({ err, userId: sub.buyer_id }, 'Failed to persist in-app notification');
+      }
 
       // Emit real-time WebSocket push
       socketGateway.emitToUser(sub.buyer_id, 'notification', {
         id: notifId,
         user_id: sub.buyer_id,
         type: notifType,
-        title,
-        message,
+        title: alert.title,
+        message: alert.message,
         data: payloadData,
         is_read: false,
-        created_at: new Date().toISOString(),
+        created_at: now.toISOString(),
       });
     }
 
-    logger.info({ storeId, type, recipientsCount: subscribers.length, itemsCount: count }, 'Consolidated notification dispatched');
+    logger.info(
+      { storeId, type, recipientsCount: subscribers.length, itemsCount: count },
+      'Consolidated store notification batch dispatched'
+    );
     return subscribers.length;
   }
 
   /**
    * Daily 7:00 PM Email Digest worker
    */
-  public async dispatchDailyDigest(): Promise<number> {
+  public async dispatchDailyDigest(currentTime = new Date()): Promise<number> {
     // Find all buyers who follow stores
     const buyersRes = await query<{ buyer_id: string; email: string; first_name: string }>(
       `SELECT DISTINCT u.id AS buyer_id, u.email, u.first_name 
@@ -194,10 +275,10 @@ export class NotificationBatchService {
          JOIN pd_product p ON p.store_id = s.id
          WHERE sub.buyer_id = $1 
            AND p.status = 'published'
-           AND (p.updated_at >= NOW() - INTERVAL '24 hours' OR p.created_at >= NOW() - INTERVAL '24 hours')
+           AND (p.updated_at >= $2::timestamptz - INTERVAL '24 hours' OR p.created_at >= $2::timestamptz - INTERVAL '24 hours')
          ORDER BY p.updated_at DESC
          LIMIT 6`,
-        [buyer.buyer_id]
+        [buyer.buyer_id, currentTime]
       );
 
       if (updatesRes.rows.length > 0) {
@@ -216,9 +297,10 @@ export class NotificationBatchService {
       }
     }
 
-    logger.info({ totalDigestsEnqueued: sentCount }, 'Daily digest dispatched');
+    logger.info({ totalDigestsEnqueued: sentCount }, 'Daily email digest dispatched');
     return sentCount;
   }
 }
 
 export const notificationBatchService = new NotificationBatchService();
+

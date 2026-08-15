@@ -34,16 +34,7 @@ if (!process.env.PD_ENCRYPTION_KEY) {
   process.env.PD_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
 
-import { query, closePool } from '../db/pool';
-import { pdId } from '../utils/crypto';
-import {
-  computeSellerTrustScore,
-  calculateBatchSellerTrustScores,
-  SellerLoyaltyService,
-} from '../services/seller-trust.service';
-import { BuyerInterestService, type InteractionEvent } from '../services/buyer-interest.service';
-import { storeSubscriptionService } from '../services/store-subscription.service';
-import { PdForbiddenError, PdRateLimitError } from '../errors';
+import type { InteractionEvent } from '../services/buyer-interest.service';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -63,6 +54,17 @@ function assert(condition: boolean, msg: string) {
 }
 
 async function runAdversarialTests() {
+  const { query, closePool } = await import('../db/pool');
+  const { pdId } = await import('../utils/crypto');
+  const {
+    computeSellerTrustScore,
+    calculateBatchSellerTrustScores,
+    SellerLoyaltyService,
+  } = await import('../services/seller-trust.service');
+  const { BuyerInterestService } = await import('../services/buyer-interest.service');
+  const { storeSubscriptionService } = await import('../services/store-subscription.service');
+  const { PdForbiddenError, PdRateLimitError } = await import('../errors');
+
   console.log('================================================================');
   console.log('  EMPIRICAL CHALLENGER: FEATURE 20 ADVERSARIAL STRESS HARNESS   ');
   console.log('================================================================\n');
@@ -279,6 +281,9 @@ async function runAdversarialTests() {
       );
     }
 
+    // Pre-clean any leftover test users if needed
+    await query(`DELETE FROM pd_user WHERE email LIKE 'bcast_owner%' OR email LIKE 'owner_concurrency%' OR email LIKE 'buyer_conc_%' OR email LIKE 'antibot_probe%' OR email LIKE 'batch_vendor_%'`);
+
     // =========================================================================
     // SECTION 3: SELLER BROADCAST CONCURRENCY & 2/WEEK RATE LIMITING
     // =========================================================================
@@ -290,14 +295,14 @@ async function runAdversarialTests() {
       const storeB = pdId('str');
       await query(
         `INSERT INTO pd_user (id, email, role, first_name, last_name, is_active, password_hash)
-         VALUES ($1, 'bcast_owner@test.com', 'vendor', 'Broadcast', 'Owner', true, 'hash')`,
-        [testBroadcastOwnerId]
+         VALUES ($1, $2, 'vendor', 'Broadcast', 'Owner', true, 'hash')`,
+        [testBroadcastOwnerId, `bcast_owner_${testBroadcastOwnerId}@test.com`]
       );
       await query(
         `INSERT INTO pd_store (id, owner_id, name, subdomain, status)
-         VALUES ($1, $2, 'Broadcast Store A', 'bcast-a', 'verified'),
-                ($3, $2, 'Broadcast Store B', 'bcast-b', 'verified')`,
-        [storeA, testBroadcastOwnerId, storeB]
+         VALUES ($1, $2, 'Broadcast Store A', $3, 'verified'),
+                ($4, $2, 'Broadcast Store B', $5, 'verified')`,
+        [storeA, testBroadcastOwnerId, `bcast-a-${storeA.slice(-6)}`, storeB, `bcast-b-${storeB.slice(-6)}`]
       );
 
       try {
@@ -437,14 +442,14 @@ async function runAdversarialTests() {
       // Setup store and buyers in DB
       await query(
         `INSERT INTO pd_user (id, email, role, first_name, last_name, is_active, password_hash)
-         VALUES ($1, 'owner_concurrency@test.com', 'vendor', 'Vendor', 'Concurrency', true, 'hash')`,
-        [testOwnerId]
+         VALUES ($1, $2, 'vendor', 'Vendor', 'Concurrency', true, 'hash')`,
+        [testOwnerId, `owner_concurrency_${testOwnerId}@test.com`]
       );
 
       await query(
         `INSERT INTO pd_store (id, owner_id, name, subdomain, status, subscribers_count, verified_subscribers_count)
-         VALUES ($1, $2, 'Concurrency Stress Store', 'conc-store', 'verified', 0, 0)`,
-        [testStoreId, testOwnerId]
+         VALUES ($1, $2, 'Concurrency Stress Store', $3, 'verified', 0, 0)`,
+        [testStoreId, testOwnerId, `conc-store-${testStoreId.slice(-6)}`]
       );
 
       // Create 40 buyers: 20 verified (with delivered orders) and 20 unverified
@@ -454,7 +459,7 @@ async function runAdversarialTests() {
         await query(
           `INSERT INTO pd_user (id, email, role, first_name, last_name, is_active, password_hash)
            VALUES ($1, $2, 'customer', 'Buyer', $3, true, 'hash')`,
-          [bId, `buyer_conc_${i}@test.com`, `${i}`]
+          [bId, `buyer_conc_${bId}@test.com`, `${i}`]
         );
 
         if (i < 20) {
@@ -550,8 +555,8 @@ async function runAdversarialTests() {
       const bTestFresh = pdId('usr');
       await query(
         `INSERT INTO pd_user (id, email, role, first_name, last_name, is_active, password_hash)
-         VALUES ($1, 'antibot_probe@test.com', 'customer', 'AntiBot', 'Probe', true, 'hash')`,
-        [bTestFresh]
+         VALUES ($1, $2, 'customer', 'AntiBot', 'Probe', true, 'hash')`,
+        [bTestFresh, `antibot_${bTestFresh}@test.com`]
       );
 
       try {
@@ -621,13 +626,13 @@ async function runAdversarialTests() {
         await query(
           `INSERT INTO pd_user (id, email, role, first_name, last_name, is_active, password_hash)
            VALUES ($1, $2, 'vendor', 'Vendor', $3, true, 'hash')`,
-          [oId, `batch_vendor_${i}@test.com`, `${i}`]
+          [oId, `batch_vendor_${oId}@test.com`, `${i}`]
         );
 
         await query(
           `INSERT INTO pd_store (id, owner_id, name, subdomain, status, subscribers_count, verified_subscribers_count)
            VALUES ($1, $2, $3, $4, 'verified', $5, $6)`,
-          [sId, oId, `Batch Store ${i}`, `batch-${i}`, (i + 1) * 20, (i + 1) * 10]
+          [sId, oId, `Batch Store ${i}`, `batch-${sId.slice(-6)}`, (i + 1) * 20, (i + 1) * 10]
         );
       }
 

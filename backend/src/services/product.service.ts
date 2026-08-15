@@ -24,10 +24,13 @@ import { subscriptionService } from './subscription.service';
 import { categoryService } from './category.service';
 import { imageVariantService } from './image-variant.service';
 import { fileAssetService } from './file-asset.service';
+import { aiProductTaggerService } from './ai-product-tagger.service';
+import { eventBus, PdEvent } from '../events/event-bus';
 import { logger } from '../utils/logger';
 import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
 import { sanitizeProductDescription } from '../utils/sanitize-html';
 import type { PoolClient } from 'pg';
+
 
 export interface ProductAttribute {
   name: string;
@@ -494,6 +497,8 @@ export class ProductService {
         category_id: input.marketplace_category_id || undefined,
         source: 'backend',
       });
+      eventBus.emit(PdEvent.PRODUCT_PUBLISHED, { product_id: id, store_id: input.store_id });
+      aiProductTaggerService.queueProductTagging(id, input.store_id).catch(() => {});
     }
     return this.getById(productId);
   }
@@ -680,6 +685,11 @@ export class ProductService {
       }
       return id;
     });
+    if (patch.title !== undefined || patch.description !== undefined || patch.category !== undefined) {
+      if (current?.status === ProductStatus.Published) {
+        aiProductTaggerService.queueProductTagging(id, current.store_id).catch(() => {});
+      }
+    }
     return this.getById(productId);
   }
 
@@ -1356,7 +1366,10 @@ export class ProductService {
         'Product not found or not pending',
       );
     }
-    return rows[0];
+    const product = rows[0];
+    eventBus.emit(PdEvent.PRODUCT_PUBLISHED, { product_id: id, store_id: product.store_id });
+    aiProductTaggerService.queueProductTagging(id, product.store_id).catch(() => {});
+    return product;
   }
 
   /**

@@ -54,6 +54,7 @@ import supportRouter from './api/support.route';
 import adsRouter from './api/ads.route';
 import cartRouter from './api/cart.route';
 import buyerRouter from './api/buyer.route';
+import { sellerRouter } from './api/seller.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -64,6 +65,8 @@ import { startPayoutWorker } from './workers/payout.worker';
 import { startSearchWorker } from './workers/search.worker';
 import { startSubscriptionWorker } from './workers/subscription.worker';
 import { startWebhookWorker } from './workers/webhook.worker';
+import { startNotificationBatchWorker } from './workers/notification-batch.worker';
+import { startDailyDigestWorker, scheduleDailyDigestCron } from './workers/daily-digest.worker';
 import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { adsService } from './services/ads.service';
@@ -294,6 +297,7 @@ async function bootstrap() {
   apiRouter.use('/ads', adsRouter);
   apiRouter.use('/cart', cartRouter);
   apiRouter.use('/buyer', buyerRouter);
+  apiRouter.use('/seller', sellerRouter);
 
   app.use('/api/pd', apiRouter);
 
@@ -489,6 +493,8 @@ async function bootstrap() {
         startSearchWorker(),
         startSubscriptionWorker(),
         startWebhookWorker(),
+        startNotificationBatchWorker(),
+        startDailyDigestWorker(),
       ];
 
       const shutdownWorkers = async () => {
@@ -502,12 +508,16 @@ async function bootstrap() {
       process.on('SIGINT', async () => {
         await shutdownWorkers();
       });
-      logger.info('🤖 All 6 background workers successfully started in-process.');
+      logger.info('🤖 All 8 background workers successfully started in-process.');
 
       // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
       // Non-blocking: don't let Redis queue scheduling hang the bootstrap.
-      void Promise.all([scheduleRecurringPayoutJobs(), scheduleRecurringSubscriptionJobs()])
-        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout release every 15min, subscription daily).'))
+      void Promise.all([
+        scheduleRecurringPayoutJobs(),
+        scheduleRecurringSubscriptionJobs(),
+        scheduleDailyDigestCron(),
+      ])
+        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout release every 15min, subscription daily, daily digest 7pm).'))
         .catch((err) => logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.'));
     } catch (err) {
       logger.error({ err }, 'Failed to start background workers in-process.');
