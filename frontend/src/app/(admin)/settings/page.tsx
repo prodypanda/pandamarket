@@ -1042,6 +1042,14 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
         : payload.catalog_default_sort === 'title_asc'
           ? 'title_asc'
           : 'newest';
+  payload.hub_feed_base_sort = payload.hub_feed_base_sort === 'alphabetical'
+    ? 'alphabetical'
+    : payload.hub_feed_base_sort === 'best_sellers'
+      ? 'best_sellers'
+      : payload.hub_feed_base_sort === 'newest'
+        ? 'newest'
+        : 'random';
+  payload.hub_feed_personalization_pct = Math.min(50, Math.max(0, Number(payload.hub_feed_personalization_pct ?? 30)));
   payload.hub_homepage_layout = payload.hub_homepage_layout === 'classic'
     ? 'classic'
     : payload.hub_homepage_layout === 'deals'
@@ -2886,17 +2894,26 @@ export default function SuperAdminSettingsPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Default Product Sort</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Tri par Défaut du Catalogue</label>
+              <button
+                type="button"
+                onClick={() => handleTabClick('algorithm')}
+                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+              >
+                🤖 Algorithme Hub Feed →
+              </button>
+            </div>
             <select
               value={settings.catalog_default_sort}
               onChange={(e) => updateSetting('catalog_default_sort', e.target.value as PlatformSettings['catalog_default_sort'])}
               className="w-full rounded-xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#B91C1C] focus:bg-white focus:ring-2 focus:ring-[#B91C1C]/15"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="price_asc">Price: low to high</option>
-              <option value="price_desc">Price: high to low</option>
-              <option value="title_asc">Title A-Z</option>
+              <option value="newest">✨ Nouveautés d’abord (Date DESC)</option>
+              <option value="oldest">⏳ Plus anciens d’abord (Date ASC)</option>
+              <option value="price_asc">💵 Prix : Moins cher au plus cher</option>
+              <option value="price_desc">💎 Prix : Plus cher au moins cher</option>
+              <option value="title_asc">🔤 Alphabétique (Titre A-Z)</option>
             </select>
           </div>
           {renderTextInput('hub_homepage_banner_title', 'Banner Title', 'Your marketplace headline')}

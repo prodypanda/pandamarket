@@ -37,7 +37,9 @@ export interface MarketplaceSettings {
   marketplace_cookie_policy_url?: string;
   marketplace_contact_url?: string;
   catalog_featured_category_slugs?: string;
-  catalog_default_sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc' | string;
+  catalog_default_sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'title_asc' | 'alphabetical' | 'best_sellers' | 'random' | string;
+  hub_feed_base_sort?: 'random' | 'newest' | 'alphabetical' | 'best_sellers' | string;
+  hub_feed_personalization_pct?: number;
   hub_homepage_layout?: 'theme_default' | 'classic' | 'deals' | 'premium_deals' | string;
   hub_homepage_pagination_style?: 'infinite' | 'load_more' | 'pagination' | 'none' | string;
   hub_megamenu_style?: 'standard' | 'visual_rich' | 'ultra_rich' | 'ultra_rich_deep' | string;

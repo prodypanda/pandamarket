@@ -444,7 +444,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
         initialProducts={gridProducts}
         initialTotalPages={trendingTotalPages}
         style={marketplaceSettings.hub_homepage_pagination_style}
-        sortBy={marketplaceSettings.catalog_default_sort}
+        sortBy={marketplaceSettings.hub_feed_base_sort || marketplaceSettings.catalog_default_sort}
         gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5"
         renderCard={(product: any) => (
           <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">

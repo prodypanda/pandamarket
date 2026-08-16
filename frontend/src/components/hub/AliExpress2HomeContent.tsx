@@ -46,6 +46,8 @@ interface MarketplaceSettings {
   hub_homepage_banner_image_url?: string;
   hub_homepage_pagination_style?: string;
   catalog_default_sort?: string;
+  hub_feed_base_sort?: string;
+  hub_feed_personalization_pct?: number;
 }
 
 interface AliExpress2HomeContentProps {
@@ -371,7 +373,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
 
           <HubProductPagination
             style={marketplaceSettings?.hub_homepage_pagination_style}
-            sortBy={marketplaceSettings?.catalog_default_sort}
+            sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
             gridClassName="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
             renderCard={(product) => (
               <SuperDealCard key={product.id} product={product as Product} currency={currency} />

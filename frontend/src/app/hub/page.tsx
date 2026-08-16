@@ -185,8 +185,10 @@ export default async function HubHomepage({
   const cookieLocale = cookieStore.get('pd_locale')?.value;
   const activeLocale = sp.locale || cookieLocale || marketplaceSettings.marketplace_default_locale || 'fr';
 
+  const activeFeedSort = marketplaceSettings.hub_feed_base_sort || marketplaceSettings.catalog_default_sort;
+
   const [{ products: trendingProducts, totalPages: trendingTotalPages, totalProducts, hasFetchError }, categories] = await Promise.all([
-    getTrendingProducts(marketplaceSettings.catalog_default_sort),
+    getTrendingProducts(activeFeedSort),
     getMarketplaceCategories(activeLocale),
   ]);
   const orderedCategories = prioritizeFeaturedCategories(categories, marketplaceSettings);

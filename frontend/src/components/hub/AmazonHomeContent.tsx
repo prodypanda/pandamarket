@@ -343,7 +343,7 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
       <div className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
         <HubProductPagination
           style={marketplaceSettings.hub_homepage_pagination_style}
-          sortBy={marketplaceSettings.catalog_default_sort}
+          sortBy={marketplaceSettings.hub_feed_base_sort || marketplaceSettings.catalog_default_sort}
           gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
           renderCard={(product) => (
             <Link key={product.id} href={getProductHref(product as HomeProduct)} className="group overflow-hidden rounded-lg border border-gray-200 bg-white p-3 transition hover:shadow-lg">

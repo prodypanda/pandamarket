@@ -300,6 +300,8 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'hub_hero_seller_rail_cta_label',
   'hub_hero_seller_rail_cta_url',
   'hub_hero_seller_rail_badge_text',
+  'hub_feed_base_sort',
+  'hub_feed_personalization_pct',
   'analytics_ga4_enabled',
   'analytics_ga4_measurement_id',
   'analytics_gtm_enabled',

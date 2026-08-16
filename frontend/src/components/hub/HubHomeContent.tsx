@@ -51,6 +51,8 @@ interface MarketplaceSettings {
   default_currency?: string;
   hub_homepage_pagination_style?: string;
   catalog_default_sort?: string;
+  hub_feed_base_sort?: string;
+  hub_feed_personalization_pct?: number;
   hub_hero_show_seller_rail?: boolean | string;
   hub_hero_seller_rail_title?: string;
   hub_hero_seller_rail_subtitle?: string;
@@ -363,7 +365,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
           <HubProductPagination
             initialProducts={trendingProducts}
             style={marketplaceSettings?.hub_homepage_pagination_style}
-            sortBy={marketplaceSettings?.catalog_default_sort}
+            sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
             gridClassName="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
             renderCard={(product) => (
               <ProductCard key={product.id} product={product as Product} currency={currency} />
