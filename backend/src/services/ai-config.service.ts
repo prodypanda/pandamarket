@@ -452,7 +452,7 @@ export class AiConfigService {
        ORDER BY r.purpose ASC`,
     );
 
-    const defaultPurposes = ['text_summarization', 'content_generation', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const defaultPurposes = ['text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
     const map = new Map(rows.map((r) => [r.purpose, r]));
 
     return defaultPurposes.map((purpose) => {
@@ -469,7 +469,7 @@ export class AiConfigService {
   }
 
   async setPurposeRouting(purpose: string, providerConfigId: string | null) {
-    const validPurposes = ['text_summarization', 'content_generation', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const validPurposes = ['text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
     if (!validPurposes.includes(purpose)) {
       throw new PdValidationError(`Invalid AI purpose: ${purpose}`);
     }
@@ -512,7 +512,7 @@ export class AiConfigService {
   }
 
   async getPromptTemplate(key: string) {
-    const { rows } = await query<{
+    let { rows } = await query<{
       prompt_key: string;
       title: string;
       description: string | null;
@@ -520,6 +520,34 @@ export class AiConfigService {
       default_prompt: string;
       updated_at: Date;
     }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+
+    if (!rows[0] && key === 'product_tagging') {
+      try {
+        await query(
+          `INSERT INTO pd_ai_prompt_templates (prompt_key, title, description, system_prompt, default_prompt, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (prompt_key) DO NOTHING`,
+          [
+            'product_tagging',
+            'Auto-Tagging Sémantique Catalogue & Intérêts',
+            'Extrait 4 à 8 tags d’intérêt sémantiques normalisés pour chaque produit afin d’alimenter l’algorithme de recommandation.',
+            'Vous êtes un expert en classification et tagging sémantique e-commerce pour PandaMarket. Analysez chaque produit et générez 4 à 8 tags normalisés en minuscules sans accents.',
+            'Analysez le produit suivant et retournez EXCLUSIVEMENT un JSON: { "tags": string[] }\nTitre: {title}\nCatégorie: {category}\nDescription: {description}',
+          ],
+        );
+        const refetched = await query<{
+          prompt_key: string;
+          title: string;
+          description: string | null;
+          system_prompt: string;
+          default_prompt: string;
+          updated_at: Date;
+        }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+        rows = refetched.rows;
+      } catch (err: any) {
+        logger.warn({ err: err?.message }, 'Failed to auto-seed product_tagging prompt template');
+      }
+    }
 
     if (!rows[0]) {
       throw new PdNotFoundError(PdErrorCode.NOT_FOUND, `Prompt template not found: ${key}`);

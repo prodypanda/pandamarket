@@ -277,9 +277,33 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 }`,
     variables: ['{page_title}', '{language}'],
   },
+  {
+    prompt_key: 'product_tagging',
+    title: 'Auto-Tagging Sémantique Catalogue & Intérêts',
+    tag: 'NLP & Semantic Tags',
+    description: "Extrait 4 à 8 tags d'intérêt sémantiques normalisés pour chaque produit afin d'alimenter l'algorithme de recommandation et le flux d'intérêt acheteur.",
+    system_prompt: `Vous êtes un expert en classification et tagging sémantique e-commerce pour la marketplace PandaMarket. Votre rôle est d'analyser chaque produit et de générer entre 4 et 8 tags d'intérêt pertinents en minuscules sans accents.`,
+    default_prompt: `Analysez le produit suivant et générez 4 à 8 tags d'intérêt sémantiques (normalisés en minuscules, séparés par des tirets pour les mots composés) :
+Titre : {title}
+Catégorie : {category}
+Description : {description}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "tags": ["tag1", "tag2", "tag3", "tag4"]
+}`,
+    variables: ['{title}', '{category}', '{description}'],
+  },
 ];
 
 const PURPOSE_MODULES = [
+  {
+    key: 'product_tagging',
+    icon: Tag,
+    label: 'Auto-Tagging Sémantique Catalogue',
+    badge: 'Gemini NLP / Tags Intérêts',
+    desc: 'Extraction sémantique automatique de 4 à 8 tags d’intérêt pour chaque produit publié et le flux personnalisé.',
+  },
   {
     key: 'text_summarization',
     icon: Sparkles,

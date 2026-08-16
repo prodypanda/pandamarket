@@ -658,10 +658,12 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'ads_click_attribution_days',
   'ads_view_attribution_days',
   'ads_max_creative_description_length',
+  'hub_feed_personalization_pct',
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {
   return value === 'marketplace'
+    || value === 'algorithm'
     || value === 'commerce'
     || value === 'finance'
     || value === 'shipping'

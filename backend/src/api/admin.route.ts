@@ -5766,33 +5766,15 @@ router.get(
   requireAuth,
   requireAdmin,
   asyncHandler(async (_req: Request, res: Response) => {
-    const totalRes = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published'`
-    );
-    const taggedRes = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published' AND array_length(interest_tags, 1) > 0`
-    );
-
-    const total = parseInt(totalRes.rows[0]?.count || '0', 10);
-    const tagged = parseInt(taggedRes.rows[0]?.count || '0', 10);
-    const coveragePct = total > 0 ? Math.round((tagged / total) * 100) : 100;
-
-    const topTagsRes = await query<{ tag: string; count: string }>(
-      `SELECT unnest(interest_tags) AS tag, COUNT(*)::text AS count 
-       FROM pd_product 
-       WHERE status = 'published'
-       GROUP BY tag 
-       ORDER BY count DESC 
-       LIMIT 10`
-    );
-
+    const { aiProductTaggerService } = await import('../services/ai-product-tagger.service');
+    const health = await aiProductTaggerService.getTaggingHealth();
     res.status(200).json({
-      status: coveragePct >= 80 ? 'healthy' : 'degraded',
-      total_products: total,
-      tagged_products: tagged,
-      tag_coverage_pct: coveragePct,
-      top_tags: topTagsRes.rows.map((r) => ({ tag: r.tag, count: parseInt(r.count, 10) })),
-      last_sweep_at: new Date().toISOString(),
+      status: health.status,
+      total_products: health.totalProducts,
+      tagged_products: health.taggedProducts,
+      tag_coverage_pct: health.tagCoveragePct,
+      top_tags: health.topTags,
+      last_sweep_at: health.lastSweepAt,
     });
   }),
 );

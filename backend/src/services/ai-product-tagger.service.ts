@@ -201,7 +201,12 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
       );
       logger.info({ productId, storeId }, 'Product tagging job queued');
     } catch (err: any) {
-      logger.error({ productId, err: err?.message }, 'Failed to enqueue product tagging job');
+      logger.warn({ productId, err: err?.message }, 'Failed to enqueue to BullMQ, triggering background task fallback');
+      setImmediate(() => {
+        this.tagProduct(productId, { storeId }).catch((tagErr) => {
+          logger.error({ productId, err: tagErr?.message }, 'Direct async tagging fallback failed');
+        });
+      });
     }
   }
 
@@ -262,34 +267,50 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
     topTags: Array<{ tag: string; count: number }>;
     lastSweepAt: string;
   }> {
-    const totalRes = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published'`
-    );
-    const taggedRes = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published' AND array_length(interest_tags, 1) > 0`
-    );
+    try {
+      const totalRes = await query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published'`
+      );
+      const taggedRes = await query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published' AND interest_tags IS NOT NULL AND cardinality(interest_tags) > 0`
+      );
 
-    const total = parseInt(totalRes.rows[0]?.count || '0', 10);
-    const tagged = parseInt(taggedRes.rows[0]?.count || '0', 10);
-    const coveragePct = total > 0 ? Math.round((tagged / total) * 100) : 100;
+      const total = parseInt(totalRes.rows[0]?.count || '0', 10);
+      const tagged = parseInt(taggedRes.rows[0]?.count || '0', 10);
+      const coveragePct = total > 0 ? Math.round((tagged / total) * 100) : 100;
 
-    const topTagsRes = await query<{ tag: string; count: string }>(
-      `SELECT unnest(interest_tags) AS tag, COUNT(*)::text AS count
-       FROM pd_product
-       WHERE status = 'published'
-       GROUP BY tag
-       ORDER BY count DESC
-       LIMIT 10`
-    );
+      const topTagsRes = await query<{ tag: string; count: number }>(
+        `SELECT tag, COUNT(*)::int AS count
+         FROM (
+           SELECT unnest(interest_tags) AS tag
+           FROM pd_product
+           WHERE status = 'published' AND interest_tags IS NOT NULL
+         ) sub
+         WHERE tag IS NOT NULL AND trim(tag) != ''
+         GROUP BY tag
+         ORDER BY count DESC
+         LIMIT 10`
+      );
 
-    return {
-      status: coveragePct >= 80 ? 'healthy' : 'degraded',
-      totalProducts: total,
-      taggedProducts: tagged,
-      tagCoveragePct: coveragePct,
-      topTags: topTagsRes.rows.map((r) => ({ tag: r.tag, count: parseInt(r.count, 10) })),
-      lastSweepAt: new Date().toISOString(),
-    };
+      return {
+        status: coveragePct >= 80 ? 'healthy' : 'degraded',
+        totalProducts: total,
+        taggedProducts: tagged,
+        tagCoveragePct: coveragePct,
+        topTags: topTagsRes.rows.map((r) => ({ tag: r.tag, count: Number(r.count) })),
+        lastSweepAt: new Date().toISOString(),
+      };
+    } catch (err: any) {
+      logger.error({ err: err?.message }, 'Failed to compute AI tagging health stats');
+      return {
+        status: 'degraded',
+        totalProducts: 0,
+        taggedProducts: 0,
+        tagCoveragePct: 0,
+        topTags: [],
+        lastSweepAt: new Date().toISOString(),
+      };
+    }
   }
 }
 
