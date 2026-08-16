@@ -195,7 +195,7 @@ export interface PlatformSettings {
   mandat_proof_email: string;
 }
 
-export type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
+export type SettingsTab = 'marketplace' | 'commerce' | 'algorithm' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 export type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 export interface SmtpConfigPublic {

@@ -714,10 +714,13 @@ export class ProductService {
     }
 
     // Price drop detection for published products
+    const oldPriceNum = parseFloat(String(previousProduct?.price ?? '0'));
+    const newPriceNum = patch.price !== undefined ? parseFloat(String(patch.price)) : NaN;
+
     if (
-      patch.price !== undefined &&
-      previousProduct &&
-      Number(patch.price) < Number(previousProduct.price) &&
+      !isNaN(newPriceNum) &&
+      !isNaN(oldPriceNum) &&
+      newPriceNum < oldPriceNum &&
       updatedProduct.status === ProductStatus.Published
     ) {
       notificationBatchService.ingestEvent({
@@ -726,8 +729,8 @@ export class ProductService {
         type: 'price_drop',
         productId: id,
         productTitle: updatedProduct.title,
-        price: Number(patch.price),
-        oldPrice: Number(previousProduct.price),
+        price: newPriceNum,
+        oldPrice: oldPriceNum,
       }).catch((err) => {
         logger.warn({ err, productId: id }, 'Failed to ingest price drop notification batch event');
       });
@@ -738,13 +741,14 @@ export class ProductService {
       patch.status === ProductStatus.Published &&
       previousProduct.status !== ProductStatus.Published
     ) {
+      const publishPriceNum = parseFloat(String(updatedProduct.price ?? '0'));
       notificationBatchService.ingestEvent({
         storeId: updatedProduct.store_id,
         storeName: updatedProduct.store_name || 'Boutique',
         type: 'new_product',
         productId: id,
         productTitle: updatedProduct.title,
-        price: Number(updatedProduct.price),
+        price: !isNaN(publishPriceNum) ? publishPriceNum : 0,
       }).catch((err) => {
         logger.warn({ err, productId: id }, 'Failed to ingest new product notification batch event');
       });

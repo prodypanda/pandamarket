@@ -53,6 +53,31 @@ export const SellerLoyaltyDashboard: React.FC<{
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [composerSuccess, setComposerSuccess] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<string | null>(null);
+  const [flushing, setFlushing] = useState(false);
+  const [flushStatus, setFlushStatus] = useState<string | null>(null);
+
+  const handleFlush = async () => {
+    setFlushing(true);
+    setFlushStatus(null);
+    try {
+      const res = await fetchWithCsrf('/api/pd/notifications/flush-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setFlushStatus(`✓ Alertes envoyées (${json.priceDropCount ?? 0} baisses, ${json.newProductCount ?? 0} nouveautés).`);
+        setTimeout(() => setFlushStatus(null), 5000);
+      } else {
+        setFlushStatus('Erreur de déclenchement.');
+      }
+    } catch {
+      setFlushStatus('Erreur réseau.');
+    } finally {
+      setFlushing(false);
+    }
+  };
 
   const fetchLoyaltyData = async () => {
     setLoading(true);
@@ -206,7 +231,22 @@ export const SellerLoyaltyDashboard: React.FC<{
             Suivez votre communauté d'acheteurs fidèles et envoyez des coupons de réduction privés.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {flushStatus && (
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+              {flushStatus}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleFlush}
+            disabled={flushing}
+            data-testid="btn-flush-notifications"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 transition disabled:opacity-50"
+            title="Envoyer immédiatement toutes les alertes de baisse de prix ou nouveautés en attente dans le buffer 15min"
+          >
+            {flushing ? 'Envoi en cours...' : '⚡ Forcer l’envoi des alertes'}
+          </button>
           <span
             data-testid="broadcast-quota-badge"
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${

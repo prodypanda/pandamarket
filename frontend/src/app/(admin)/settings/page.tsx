@@ -11,7 +11,7 @@ import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -221,7 +221,7 @@ interface PlatformSettings {
   mandat_proof_email: string;
 }
 
-type SettingsTab = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
+type SettingsTab = 'marketplace' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 interface SmtpConfigPublic {
@@ -459,7 +459,7 @@ const DEFAULT_SMTP_FORM: SmtpFormData = {
 const SMTP_PROVIDER_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
   brevo: { host: 'smtp-relay.brevo.com', port: 587, secure: false, label: 'Brevo' },
   resend: { host: 'smtp.resend.com', port: 465, secure: true, label: 'Resend' },
-  gmail: { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail' },
+  gmail: { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail (App Password)' },
   outlook: { host: 'smtp-mail.outlook.com', port: 587, secure: false, label: 'Outlook' },
   mailgun: { host: 'smtp.mailgun.org', port: 587, secure: false, label: 'Mailgun' },
   sendgrid: { host: 'smtp.sendgrid.net', port: 587, secure: false, label: 'SendGrid' },
@@ -468,6 +468,7 @@ const SMTP_PROVIDER_PRESETS: Record<string, { host: string; port: number; secure
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; description: string; icon: typeof Store }> = [
   { id: 'marketplace', label: 'Marketplace & Hero', description: 'Identity, branding, themes, megamenu & hero builder', icon: Globe2 },
+  { id: 'algorithm', label: '🤖 Algorithme & Flux Hub', description: 'Tri du catalogue, personnalisation IA & santé du tagging sémantique', icon: Sparkles },
   { id: 'commerce', label: 'Commerce & Catalog', description: 'Product rules, moderation, reviews, AI & builder', icon: SlidersHorizontal },
   { id: 'finance', label: 'Finance & Payments', description: 'Gateways, Flouci, Konnect, commissions & payouts', icon: CreditCard },
   { id: 'shipping', label: 'Shipping & Delivery', description: 'Aramex, La Poste, platform delivery & zone rates', icon: Truck },
@@ -746,6 +747,10 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_seller_rail_cta_url',
     'hub_hero_seller_rail_badge_text',
   ],
+  algorithm: [
+    'hub_feed_base_sort',
+    'hub_feed_personalization_pct',
+  ],
   commerce: [
     'marketplace_enabled',
     'vendor_registration_enabled',
@@ -905,6 +910,10 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_hero_show_seller_rail', tab: 'marketplace', label: 'Hero Seller Onboarding Rail', description: 'Promotional right-side widget encouraging new seller signups', keywords: ['seller', 'rail', 'onboarding', 'signup', 'vendor'] },
   { key: 'hub_homepage_banner_title', tab: 'marketplace', label: 'Promotional Banner Title', description: 'Headline for the secondary homepage promotional banner', keywords: ['banner', 'title', 'promo', 'headline'] },
   { key: 'hub_homepage_banner_image_url', tab: 'marketplace', label: 'Promotional Banner Image', description: 'Background asset for homepage banner', keywords: ['banner', 'image', 'promo'] },
+
+  // Algorithme & Flux Hub
+  { key: 'hub_feed_base_sort', tab: 'algorithm', label: 'Tri de Base du Hub Feed', description: 'Stratégie de tri par défaut du catalogue (Aléatoire, Nouveautés, Alphabétique, Meilleures Ventes)', keywords: ['tri', 'sort', 'feed', 'hub', 'catalogue', 'ordre', 'random', 'newest', 'best_sellers', 'alphabetical', 'algorithm'] },
+  { key: 'hub_feed_personalization_pct', tab: 'algorithm', label: 'Injection Personnalisée par Centres d’Intérêt IA', description: 'Pourcentage de produits personnalisés par IA injectés dans le flux Hub pour acheteurs connectés (0% à 50%)', keywords: ['ia', 'ai', 'personalisation', 'recommandation', 'slider', 'interet', 'centres', 'pourcentage', 'feed', 'hub', 'gemini', 'algorithm'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -2980,7 +2989,7 @@ export default function SuperAdminSettingsPage() {
       </section>
 
       {/* Feature 20: Hub Feed & Algorithm Tuning Section */}
-      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`} data-testid="hub-feed-tuning-section">
+      <section className={`${activeTab === 'algorithm' || activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`} data-testid="hub-feed-tuning-section">
         <SectionHeader
           icon={<SlidersHorizontal className="h-5 w-5 text-emerald-600" />}
           title="Hub Feed & Algorithm Tuning"

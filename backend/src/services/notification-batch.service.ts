@@ -33,6 +33,19 @@ export class NotificationBatchService {
   public static readonly BUFFER_TTL_SECONDS = 15 * 60; // 15 minutes (900 seconds)
   public static readonly BUFFER_WINDOW_MS = 15 * 60 * 1000; // 15 minutes in ms
 
+  private static inMemoryBuffers = new Map<string, ProductBatchEvent[]>();
+  private static inMemoryTimers = new Map<string, NodeJS.Timeout>();
+
+  public static getBufferWindowMs(): number {
+    if (process.env.NOTIFICATION_BATCH_WINDOW_MS) {
+      return Math.max(1000, parseInt(process.env.NOTIFICATION_BATCH_WINDOW_MS, 10));
+    }
+    if (process.env.NOTIFICATION_BATCH_WINDOW_SECONDS) {
+      return Math.max(1000, parseInt(process.env.NOTIFICATION_BATCH_WINDOW_SECONDS, 10) * 1000);
+    }
+    return NotificationBatchService.BUFFER_WINDOW_MS;
+  }
+
   /**
    * Helper to format consolidated notification title and message
    */
@@ -70,7 +83,7 @@ export class NotificationBatchService {
   }
 
   /**
-   * Ingest and buffer a product change event into the 15-minute sliding buffer.
+   * Ingest and buffer a product change event into the sliding buffer.
    */
   public async ingestEvent(
     event: ProductBatchEvent,
@@ -89,11 +102,13 @@ export class NotificationBatchService {
       event.discountPct = Math.round(((event.oldPrice - event.price) / event.oldPrice) * 100);
     }
 
-    const redis = getRedis();
     const bufferKey = `notif_buffer:store:${event.storeId}:type:${event.type}`;
     const jobId = `batch:${event.storeId}:${event.type}`;
+    const windowMs = NotificationBatchService.getBufferWindowMs();
 
     try {
+      const redis = getRedis();
+
       // 1. Read existing buffer for deduplication (same product updated multiple times)
       const existingRaw = await redis.lrange(bufferKey, 0, -1);
       const existingEvents: ProductBatchEvent[] = existingRaw.map((raw) => JSON.parse(raw));
@@ -113,25 +128,36 @@ export class NotificationBatchService {
         await redis.expire(bufferKey, NotificationBatchService.BUFFER_TTL_SECONDS);
       }
 
-      // 2. Schedule or slide the 15-minute BullMQ job
-      const existingJob = await notificationBatchQueue.getJob(jobId);
-      if (existingJob) {
-        await existingJob.remove();
-      }
-
-      await notificationBatchQueue.add(
-        'process-store-batch',
-        {
-          storeId: event.storeId,
-          storeName: event.storeName,
-          type: event.type,
-          timestamp: currentTime,
-        },
-        {
-          jobId,
-          delay: NotificationBatchService.BUFFER_WINDOW_MS,
+      // 2. Schedule or slide the BullMQ job
+      try {
+        const existingJob = await notificationBatchQueue.getJob(jobId);
+        if (existingJob) {
+          await existingJob.remove();
         }
-      );
+
+        await notificationBatchQueue.add(
+          'process-store-batch',
+          {
+            storeId: event.storeId,
+            storeName: event.storeName,
+            type: event.type,
+            timestamp: currentTime,
+          },
+          {
+            jobId,
+            delay: windowMs,
+          }
+        );
+      } catch (queueErr) {
+        // BullMQ error: fallback to timer
+        logger.warn({ queueErr }, 'BullMQ unavailable for notification batch, scheduling timer fallback');
+        const existingTimer = NotificationBatchService.inMemoryTimers.get(jobId);
+        if (existingTimer) clearTimeout(existingTimer);
+        const timer = setTimeout(() => {
+          this.processBatch(event.storeId, event.type).catch((err) => logger.error({ err }, 'Timer batch failed'));
+        }, windowMs);
+        NotificationBatchService.inMemoryTimers.set(jobId, timer);
+      }
 
       logger.info(
         { storeId: event.storeId, type: event.type, productId: event.productId, bufferSize: existingEvents.length },
@@ -140,8 +166,26 @@ export class NotificationBatchService {
 
       return { jobId, bufferSize: existingEvents.length };
     } catch (err) {
-      logger.error({ err, event }, 'Failed to ingest notification batch event');
-      throw err;
+      logger.warn({ err, event }, 'Redis error during notification ingest, using in-memory buffer fallback');
+
+      // In-Memory Fallback
+      const memEvents = NotificationBatchService.inMemoryBuffers.get(bufferKey) || [];
+      const existingIdx = memEvents.findIndex((e) => e.productId === event.productId);
+      if (existingIdx >= 0) {
+        memEvents[existingIdx] = event;
+      } else {
+        memEvents.push(event);
+      }
+      NotificationBatchService.inMemoryBuffers.set(bufferKey, memEvents);
+
+      const existingTimer = NotificationBatchService.inMemoryTimers.get(jobId);
+      if (existingTimer) clearTimeout(existingTimer);
+      const timer = setTimeout(() => {
+        this.processBatch(event.storeId, event.type).catch((batchErr) => logger.error({ batchErr }, 'In-memory batch failed'));
+      }, windowMs);
+      NotificationBatchService.inMemoryTimers.set(jobId, timer);
+
+      return { jobId, bufferSize: memEvents.length };
     }
   }
 
@@ -153,21 +197,47 @@ export class NotificationBatchService {
   }
 
   /**
+   * Flush and process all pending notification batches for a store immediately
+   */
+  public async flushStoreBatches(storeId: string): Promise<{ priceDropCount: number; newProductCount: number }> {
+    const [priceDropCount, newProductCount] = await Promise.all([
+      this.processBatch(storeId, 'price_drop'),
+      this.processBatch(storeId, 'new_product'),
+    ]);
+    return { priceDropCount, newProductCount };
+  }
+
+  /**
    * Process and flush the buffered events for a store into a single consolidated notification
    */
   public async processBatch(storeId: string, type: 'price_drop' | 'new_product'): Promise<number> {
-    const redis = getRedis();
     const bufferKey = `notif_buffer:store:${storeId}:type:${type}`;
+    let rawItems: string[] = [];
+    let memEvents: ProductBatchEvent[] = [];
 
-    const rawItems = await redis.lrange(bufferKey, 0, -1);
-    if (!rawItems || rawItems.length === 0) {
-      return 0;
+    try {
+      const redis = getRedis();
+      rawItems = await redis.lrange(bufferKey, 0, -1);
+      if (rawItems && rawItems.length > 0) {
+        await redis.del(bufferKey);
+      }
+    } catch {
+      // Redis unavailable
     }
 
-    // Atomic drain
-    await redis.del(bufferKey);
+    if (NotificationBatchService.inMemoryBuffers.has(bufferKey)) {
+      memEvents = NotificationBatchService.inMemoryBuffers.get(bufferKey) || [];
+      NotificationBatchService.inMemoryBuffers.delete(bufferKey);
+    }
 
-    const events: ProductBatchEvent[] = rawItems.map((item) => JSON.parse(item));
+    const events: ProductBatchEvent[] = [
+      ...rawItems.map((item) => JSON.parse(item) as ProductBatchEvent),
+      ...memEvents,
+    ];
+
+    if (events.length === 0) {
+      return 0;
+    }
     const storeName = events[0]?.storeName || 'Boutique';
 
     // Deduplicate by productId, keeping latest price/entry

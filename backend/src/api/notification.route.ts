@@ -148,4 +148,22 @@ router.delete(
   }),
 );
 
+/**
+ * POST /api/pd/notifications/flush-batch
+ * Manually flush pending price drop and new product notification batches for a store (for testing or instant push).
+ */
+router.post(
+  '/flush-batch',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { notificationBatchService } = await import('../services/notification-batch.service');
+    const storeId = (req.body.store_id as string) || req.user?.store_id || (await getSelectedNotificationStoreId(req));
+    if (!storeId) {
+      res.status(400).json({ success: false, message: 'store_id is required' });
+      return;
+    }
+    const result = await notificationBatchService.flushStoreBatches(storeId);
+    res.status(200).json({ success: true, ...result });
+  }),
+);
+
 export default router;
