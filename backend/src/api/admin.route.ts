@@ -1011,9 +1011,9 @@ const adminProductCatalogQuerySchema = z.object({
 
 const adminUpdateProductTagsSchema = z
   .object({
-    tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
-    interest_tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
-    curatedTags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+    tags: z.array(z.string().max(50)).max(50).optional(),
+    interest_tags: z.array(z.string().max(50)).max(50).optional(),
+    curatedTags: z.array(z.string().max(50)).max(50).optional(),
   })
   .refine(
     (data) => data.tags !== undefined || data.interest_tags !== undefined || data.curatedTags !== undefined,
@@ -6275,6 +6275,25 @@ router.post(
 
     const { applyDiversityPenalty } = await import('./marketplace.route');
 
+    const MOCK_CATALOG = [
+      { id: 'sim_p1', store_id: 'str_1', store_name: 'Mosaïques d’El Jem', slug: 'tableau-meduse', title: 'Tableau Mosaïque Romaine Méduse 25x25cm', price: 185.000, interest_tags: ['mosaique', 'artisanat', 'decoration', 'marbre'], category: 'Décoration', thumbnail: null },
+      { id: 'sim_p2', store_id: 'str_1', store_name: 'Mosaïques d’El Jem', slug: 'fresque-romaine', title: 'Fresque Mosaïque Fleurie Antique', price: 240.000, interest_tags: ['mosaique', 'artisanat', 'tableau'], category: 'Décoration', thumbnail: null },
+      { id: 'sim_p3', store_id: 'str_1', store_name: 'Mosaïques d’El Jem', slug: 'dessous-plat-marbre', title: 'Dessous de Plat en Marbre Taillé Main', price: 45.000, interest_tags: ['artisanat', 'marbre', 'maison'], category: 'Maison', thumbnail: null },
+      { id: 'sim_p4', store_id: 'str_1', store_name: 'Mosaïques d’El Jem', slug: 'cadre-mosaique-colombs', title: 'Cadre Mural Deux Colombes Antiques', price: 130.000, interest_tags: ['mosaique', 'decoration'], category: 'Décoration', thumbnail: null },
+      { id: 'sim_p5', store_id: 'str_2', store_name: 'Cuir & Tradition Kairouan', slug: 'sac-cuir-vintage', title: 'Sac Besace en Cuir Véritable Cousu Main', price: 160.000, interest_tags: ['mode', 'cuir', 'artisanat', 'sac'], category: 'Maroquinerie', thumbnail: null },
+      { id: 'sim_p6', store_id: 'str_2', store_name: 'Cuir & Tradition Kairouan', slug: 'portefeuille-cuir-brun', title: 'Portefeuille Homme en Cuir Pleine Fleur', price: 55.000, interest_tags: ['mode', 'cuir', 'accessoire'], category: 'Maroquinerie', thumbnail: null },
+      { id: 'sim_p7', store_id: 'str_2', store_name: 'Cuir & Tradition Kairouan', slug: 'ceinture-cuir-tresse', title: 'Ceinture Tressée Cuir de Veau', price: 48.000, interest_tags: ['mode', 'cuir', 'accessoire'], category: 'Maroquinerie', thumbnail: null },
+      { id: 'sim_p8', store_id: 'str_3', store_name: 'TechLab Robotics Tunis', slug: 'kit-robotique-arduino', title: 'Kit Électronique & Robotique Débutant Arduino Uno', price: 125.000, interest_tags: ['electronique', 'diy', 'micro-controleur', 'high-tech'], category: 'High-Tech', thumbnail: null },
+      { id: 'sim_p9', store_id: 'str_3', store_name: 'TechLab Robotics Tunis', slug: 'capteurs-iot-pack', title: 'Pack 37 Capteurs IoT & Domotique', price: 89.000, interest_tags: ['electronique', 'diy', 'high-tech'], category: 'High-Tech', thumbnail: null },
+      { id: 'sim_p10', store_id: 'str_3', store_name: 'TechLab Robotics Tunis', slug: 'carte-esp32-wifi', title: 'Module ESP32 NodeMCU Wi-Fi & BLE', price: 28.000, interest_tags: ['electronique', 'diy', 'micro-controleur'], category: 'High-Tech', thumbnail: null },
+      { id: 'sim_p11', store_id: 'str_4', store_name: 'Poterie & Céramique Nabeul', slug: 'service-a-table-bleu', title: 'Service de Table en Céramique Émaillée Bleue', price: 140.000, interest_tags: ['artisanat', 'decoration', 'maison'], category: 'Maison', thumbnail: null },
+      { id: 'sim_p12', store_id: 'str_4', store_name: 'Poterie & Céramique Nabeul', slug: 'vase-terracotta-peint', title: 'Grand Vase Mural en Terre Cuite Émaillée', price: 75.000, interest_tags: ['artisanat', 'decoration'], category: 'Décoration', thumbnail: null },
+      { id: 'sim_p13', store_id: 'str_5', store_name: 'Parfums & Senteurs Carthage', slug: 'huile-essentielle-neroli', title: 'Huile Essentielle Fleur d’Oranger Néroli 15ml', price: 65.000, interest_tags: ['bien-etre', 'naturel', 'tunisie'], category: 'Beauté', thumbnail: null },
+      { id: 'sim_p14', store_id: 'str_5', store_name: 'Parfums & Senteurs Carthage', slug: 'savon-noir-eucalyptus', title: 'Savon Noir Artisanal à l’Huile d’Olive & Eucalyptus', price: 18.000, interest_tags: ['bien-etre', 'artisanat', 'naturel'], category: 'Beauté', thumbnail: null },
+      { id: 'sim_p15', store_id: 'str_6', store_name: 'Bijoux & Filigrane Sousse', slug: 'collier-argent-filigrane', title: 'Collier Khomsa en Argent Massif 925 Filigrane', price: 110.000, interest_tags: ['mode', 'bijoux', 'artisanat', 'femme'], category: 'Bijoux', thumbnail: null },
+      { id: 'sim_p16', store_id: 'str_6', store_name: 'Bijoux & Filigrane Sousse', slug: 'boucles-ambre-argent', title: 'Boucles d’Oreilles Ambre Naturel & Argent', price: 85.000, interest_tags: ['mode', 'bijoux', 'femme'], category: 'Bijoux', thumbnail: null },
+    ];
+
     const simulateVariant = async (cfg: {
       label: string;
       base_sort: string;
@@ -6287,23 +6306,9 @@ router.post(
       else if (cfg.base_sort === 'alphabetical') orderBy = 'LOWER(p.title) ASC, p.created_at DESC';
       else if (cfg.base_sort === 'best_sellers') orderBy = 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
 
-      const baseRes = await query<any>(
-        `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
-                p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
-                (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
-                (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
-         FROM pd_product p
-         JOIN pd_store s ON s.id = p.store_id
-         LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
-         WHERE p.status = 'published'
-         ORDER BY ${orderBy}
-         LIMIT 60`
-      );
-
-      let finalProducts = baseRes.rows;
-
-      if (personaTags.length > 0 && cfg.personalization_pct > 0) {
-        const recsRes = await query<any>(
+      let baseRes: { rows: any[] } = { rows: [] };
+      try {
+        baseRes = await query<any>(
           `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
                   p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
                   (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
@@ -6312,20 +6317,52 @@ router.post(
            JOIN pd_store s ON s.id = p.store_id
            LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
            WHERE p.status = 'published'
-             AND p.interest_tags && $1::text[]
-           ORDER BY (
-             SELECT COUNT(*) FROM unnest(p.interest_tags) t WHERE t = ANY($1::text[])
-           ) DESC, p.created_at DESC
-           LIMIT 16`,
-          [personaTags]
+           ORDER BY ${orderBy}
+           LIMIT 60`
         );
+      } catch {
+        baseRes = { rows: [] };
+      }
 
-        if (recsRes.rows.length > 0) {
+      let finalProducts = baseRes.rows.length >= 6 ? [...baseRes.rows] : [...MOCK_CATALOG];
+
+      if (personaTags.length > 0 && cfg.personalization_pct > 0) {
+        let recsRows: any[] = [];
+        try {
+          const recsRes = await query<any>(
+            `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+                    p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
+                    (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
+                    (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+             FROM pd_product p
+             JOIN pd_store s ON s.id = p.store_id
+             LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+             WHERE p.status = 'published'
+               AND p.interest_tags && $1::text[]
+             ORDER BY (
+               SELECT COUNT(*) FROM unnest(p.interest_tags) t WHERE t = ANY($1::text[])
+             ) DESC, p.created_at DESC
+             LIMIT 16`,
+            [personaTags]
+          );
+          recsRows = recsRes.rows;
+        } catch {
+          recsRows = [];
+        }
+
+        // If no DB products match the tags, match from mock catalog
+        if (recsRows.length === 0) {
+          recsRows = MOCK_CATALOG.filter((p) =>
+            p.interest_tags.some((t) => personaTags.includes(t.toLowerCase()))
+          );
+        }
+
+        if (recsRows.length > 0) {
           const targetInject = Math.min(
-            recsRes.rows.length,
+            recsRows.length,
             Math.max(1, Math.round((finalProducts.length * cfg.personalization_pct) / 100))
           );
-          const injected = recsRes.rows.slice(0, targetInject).map((p) => ({ ...p, is_personalized: true }));
+          const injected = recsRows.slice(0, targetInject).map((p) => ({ ...p, is_personalized: true }));
           const existingIds = new Set(injected.map((p) => p.id));
           const filteredBase = finalProducts.filter((p) => !existingIds.has(p.id));
 

@@ -624,6 +624,9 @@ const NUMBER_SETTING_KEYS = [
   'security_login_max_attempts',
   'security_login_lockout_minutes',
   'security_password_min_length',
+  'hub_feed_personalization_pct',
+  'hub_feed_diversity_strength',
+  'hub_feed_max_items_per_store',
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
@@ -678,6 +681,8 @@ const BOOLEAN_SETTING_KEYS = [
   'analytics_meta_pixel_enabled',
   'cloudflare_integration_enabled',
   'cloudflare_custom_hostnames_enabled',
+  'hub_feed_diversity_enabled',
+  'hub_feed_ab_testing_enabled',
   'hub_hero_show_category_sidebar',
   'hub_hero_show_carousel',
   'hub_hero_show_seller_rail',
@@ -758,6 +763,10 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
   algorithm: [
     'hub_feed_base_sort',
     'hub_feed_personalization_pct',
+    'hub_feed_diversity_enabled',
+    'hub_feed_diversity_strength',
+    'hub_feed_max_items_per_store',
+    'hub_feed_ab_testing_enabled',
   ],
   commerce: [
     'marketplace_enabled',
@@ -922,6 +931,9 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   // Algorithme & Flux Hub
   { key: 'hub_feed_base_sort', tab: 'algorithm', label: 'Tri de Base du Hub Feed', description: 'Stratégie de tri par défaut du catalogue (Aléatoire, Nouveautés, Alphabétique, Meilleures Ventes)', keywords: ['tri', 'sort', 'feed', 'hub', 'catalogue', 'ordre', 'random', 'newest', 'best_sellers', 'alphabetical', 'algorithm'] },
   { key: 'hub_feed_personalization_pct', tab: 'algorithm', label: 'Injection Personnalisée par Centres d’Intérêt IA', description: 'Pourcentage de produits personnalisés par IA injectés dans le flux Hub pour acheteurs connectés (0% à 50%)', keywords: ['ia', 'ai', 'personalisation', 'recommandation', 'slider', 'interet', 'centres', 'pourcentage', 'feed', 'hub', 'gemini', 'algorithm'] },
+  { key: 'hub_feed_diversity_enabled', tab: 'algorithm', label: 'Pénalité de Diversité & Anti-Bulle', description: 'Empêche un vendeur ou un monopole algorithmique de saturer le flux Hub', keywords: ['diversite', 'anti-bulle', 'filtre', 'vendeurs', 'equite', 'monopole', 'penalty', 'diversity', 'algorithm'] },
+  { key: 'hub_feed_max_items_per_store', tab: 'algorithm', label: 'Max Articles par Vendeur dans le Flux', description: 'Nombre maximum de produits consécutifs autorisés pour une même boutique par page', keywords: ['max', 'vendeur', 'articles', 'boutique', 'limite', 'consecutifs', 'store', 'items', 'algorithm'] },
+  { key: 'hub_feed_diversity_strength', tab: 'algorithm', label: 'Intensité de la Diversité', description: 'Force de rejet des produits redondants du même vendeur vers le bas du flux', keywords: ['intensite', 'force', 'diversite', 'rejet', 'strength', 'algorithm'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -1709,6 +1721,7 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
   const [persona, setPersona] = useState<'cold_start' | 'home_decor' | 'tech_diy' | 'fashion' | 'custom'>('home_decor');
   const [customTags, setCustomTags] = useState('artisanat, mosaique, deco');
   const [simulating, setSimulating] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
   const [simData, setSimData] = useState<{
     persona: string;
     persona_tags: string[];
@@ -1716,14 +1729,15 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
     variant_b: any;
   } | null>(null);
 
-  const runSimulation = async () => {
+  const runSimulation = async (selectedPersona = persona) => {
     setSimulating(true);
+    setSimError(null);
     try {
       const res = await fetchWithCsrf('/api/pd/admin/analytics/feed-simulator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          persona,
+          persona: selectedPersona,
           custom_tags: customTags.split(',').map((s) => s.trim()).filter(Boolean),
           variant_a: {
             label: 'Variation A (Contrôle / Sans IA)',
@@ -1744,19 +1758,22 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
       if (res.ok) {
         const data = await res.json();
         setSimData(data);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setSimError(errJson?.error?.message || errJson?.message || `Erreur serveur ${res.status}`);
       }
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setSimError(err?.message || 'Erreur de connexion au serveur');
     } finally {
       setSimulating(false);
     }
   };
 
   useEffect(() => {
-    if (isOpen && !simData) {
-      runSimulation();
+    if (isOpen) {
+      runSimulation(persona);
     }
-  }, [isOpen, persona]);
+  }, [isOpen, persona, currentSettings.hub_feed_base_sort, currentSettings.hub_feed_personalization_pct, currentSettings.hub_feed_diversity_enabled, currentSettings.hub_feed_max_items_per_store]);
 
   return (
     <div className="mt-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/30 p-5 space-y-4" data-testid="feed-simulator-card">
@@ -1772,16 +1789,29 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
             Testez et visualisez en temps réel l'impact de vos réglages (tri, ratio IA, pénalité anti-bulle) selon différents profils d'acheteurs.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setIsOpen(!isOpen);
-            if (!isOpen && !simData) runSimulation();
-          }}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
-        >
-          {isOpen ? 'Masquer le Simulateur ▲' : 'Ouvrir le Simulateur A/B ▼'}
-        </button>
+        <div className="flex items-center gap-2">
+          {isOpen && (
+            <button
+              type="button"
+              disabled={simulating}
+              onClick={() => runSimulation(persona)}
+              className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1 disabled:opacity-50"
+            >
+              <RotateCcw className={`h-3.5 w-3.5 ${simulating ? 'animate-spin text-indigo-600' : ''}`} />
+              Re-simuler
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(!isOpen);
+              if (!isOpen) runSimulation(persona);
+            }}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+          >
+            {isOpen ? 'Masquer le Simulateur ▲' : 'Ouvrir le Simulateur A/B ▼'}
+          </button>
+        </div>
       </div>
 
       {isOpen && (
@@ -1802,6 +1832,7 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
                   type="button"
                   onClick={() => {
                     setPersona(p.id as any);
+                    runSimulation(p.id as any);
                   }}
                   className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all ${
                     persona === p.id
@@ -1828,7 +1859,7 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
                 />
                 <button
                   type="button"
-                  onClick={runSimulation}
+                  onClick={() => runSimulation()}
                   disabled={simulating}
                   className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
@@ -1852,10 +1883,28 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
             </div>
           )}
 
+          {/* Error Banner */}
+          {simError && !simulating && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{simError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => runSimulation(persona)}
+                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors shrink-0"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
+
           {/* Simulation Split Screen */}
           {simulating && (
-            <div className="py-12 text-center text-xs font-semibold text-slate-400">
-              Calcul des 2 flux en cours d'exécution...
+            <div className="py-12 text-center text-xs font-semibold text-slate-400 flex flex-col items-center justify-center gap-2">
+              <RotateCcw className="h-5 w-5 animate-spin text-indigo-600" />
+              <span>Calcul des 2 flux en direct selon vos réglages et le persona...</span>
             </div>
           )}
 
