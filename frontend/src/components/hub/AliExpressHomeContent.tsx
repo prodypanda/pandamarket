@@ -18,6 +18,7 @@ interface Product {
   id: string;
   title: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
@@ -121,8 +122,17 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
   const heroCategories = publicCategories.slice(0, 12);
   const featuredCategories = publicCategories.slice(0, blockLimit('category_tiles', 8));
   const flashLimit = blockLimit('flash_deals', 6);
-  const flashProducts = trendingProducts.slice(0, flashLimit);
-  const recommendedProducts = trendingProducts.slice(flashLimit, flashLimit + blockLimit('recommended', 10));
+  const discountedProducts = trendingProducts.filter(
+    (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+  );
+  const flashProducts = (
+    discountedProducts.length >= 3
+      ? discountedProducts.slice(0, flashLimit)
+      : trendingProducts.slice(0, flashLimit)
+  );
+  const flashIds = new Set(flashProducts.map((p) => p.id));
+  const nonFlashProducts = trendingProducts.filter((p) => !flashIds.has(p.id));
+  const recommendedProducts = (nonFlashProducts.length > 0 ? nonFlashProducts : trendingProducts).slice(0, blockLimit('recommended', 20));
   const currency = marketplaceSettings?.default_currency || 'TND';
   const marketplaceName = marketplaceSettings?.marketplace_name || 'PandaMarket';
   const tagline = marketplaceSettings?.marketplace_tagline || 'Des milliers de produits, prix malins, vendeurs tunisiens.';

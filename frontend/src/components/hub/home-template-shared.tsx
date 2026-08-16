@@ -10,6 +10,7 @@ export interface HomeProduct {
   title: string;
   slug?: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
   images?: { url: string }[];

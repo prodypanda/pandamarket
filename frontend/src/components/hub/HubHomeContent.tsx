@@ -17,6 +17,7 @@ interface Product {
   id: string;
   title: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
@@ -186,8 +187,18 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const publicCategories = categories.filter((category) => !category.is_default);
   const featuredCategories = publicCategories.slice(0, blockLimit('categories', 8));
   const heroCategories = publicCategories.slice(0, 10);
-  const dealProducts = trendingProducts.slice(0, blockLimit('deals_spotlight', 4));
-  const heroProducts = trendingProducts.slice(0, 3);
+  const dealsLimit = blockLimit('deals_spotlight', 4);
+  const discountedProducts = trendingProducts.filter(
+    (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+  );
+  const dealProducts = (
+    discountedProducts.length >= 2
+      ? discountedProducts.slice(0, dealsLimit)
+      : trendingProducts.slice(0, dealsLimit)
+  );
+  const dealIds = new Set(dealProducts.map((p) => p.id));
+  const nonDealProducts = trendingProducts.filter((p) => !dealIds.has(p.id));
+  const heroProducts = (nonDealProducts.length >= 3 ? nonDealProducts : trendingProducts).slice(0, 3);
   const categoryShowcase = publicCategories.slice(0, blockLimit('category_showcase', 3));
   const currency = marketplaceSettings?.default_currency || t('common.currency');
   const tagline = marketplaceSettings?.marketplace_tagline || t('common.tagline');
@@ -363,7 +374,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
         </div>
         {trendingProducts.length > 0 ? (
           <HubProductPagination
-            initialProducts={trendingProducts}
+            initialProducts={nonDealProducts.length > 0 ? nonDealProducts : trendingProducts}
             style={marketplaceSettings?.hub_homepage_pagination_style}
             sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
             gridClassName="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"

@@ -384,8 +384,20 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
   }, [trendingProducts]);
 
   const sponsoredBrands = topSellers.slice(0, blockLimit('sponsored_brands', 4));
-  const dealProducts = trendingProducts.slice(0, blockLimit('deals', 6));
-  const gridProducts = trendingProducts.slice(0, blockLimit('product_grid', 12));
+  const dealsLimit = blockLimit('deals', 6);
+  const discountedProducts = trendingProducts.filter(
+    (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+  );
+  const dealProducts = (
+    discountedProducts.length >= 3
+      ? discountedProducts.slice(0, dealsLimit)
+      : trendingProducts.slice(0, dealsLimit)
+  );
+  const dealProductIds = new Set(dealProducts.map((p) => p.id));
+  const nonDealProducts = trendingProducts.filter((p) => !dealProductIds.has(p.id));
+  const gridProducts = nonDealProducts.length > 0
+    ? nonDealProducts.slice(0, blockLimit('product_grid', 24))
+    : trendingProducts.slice(0, blockLimit('product_grid', 24));
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
 
   const renderDeals = (): ReactNode => (

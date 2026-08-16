@@ -46,6 +46,7 @@ interface Product {
   title: string;
   slug?: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
   images?: { url: string }[];
@@ -101,7 +102,7 @@ function prioritizeFeaturedCategories(categories: MarketplaceCategory[], setting
 async function getTrendingProducts(sortBy?: string): Promise<{ products: Product[], totalPages: number, totalProducts: number, hasFetchError?: boolean }> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const params = new URLSearchParams({ page: '1', limit: '16' });
+    const params = new URLSearchParams({ page: '1', limit: '36' });
     const resolvedSort = sortBy ? resolveCatalogSort(sortBy) : undefined;
     if (resolvedSort) {
       params.set('sort', resolvedSort);
@@ -130,6 +131,7 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
       title: p.title,
       slug: p.slug,
       price: p.price,
+      compare_at_price: p.compare_at_price,
       store_name: p.store_name,
       store_subdomain: p.store_subdomain,
       category: p.category,
