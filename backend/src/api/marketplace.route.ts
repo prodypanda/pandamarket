@@ -53,6 +53,31 @@ router.get(
   }),
 );
 
+export function applyDiversityPenalty<T extends { store_id?: string }>(
+  products: T[],
+  maxItemsPerStore: number = 3,
+  diversityEnabled: boolean = true
+): T[] {
+  if (!products.length || !diversityEnabled || maxItemsPerStore <= 0) return products;
+
+  const result: T[] = [];
+  const overflow: T[] = [];
+  const storeCounts: Record<string, number> = {};
+
+  for (const product of products) {
+    const storeId = product.store_id || 'unknown';
+    const count = storeCounts[storeId] || 0;
+    if (count >= maxItemsPerStore) {
+      overflow.push(product);
+    } else {
+      storeCounts[storeId] = count + 1;
+      result.push(product);
+    }
+  }
+
+  return [...result, ...overflow];
+}
+
 function interleaveFeed<T>(baseItems: T[], injectedItems: T[]): T[] {
   if (!injectedItems.length) return baseItems;
   if (!baseItems.length) return injectedItems;
@@ -78,7 +103,7 @@ function interleaveFeed<T>(baseItems: T[], injectedItems: T[]): T[] {
 
 /**
  * GET /api/pd/marketplace/feed
- * Blended feed with configurable interest injection ratio and base catalog sorting
+ * Blended feed with configurable interest injection ratio, diversity penalty, and base catalog sorting
  */
 router.get(
   '/feed',
@@ -88,6 +113,8 @@ router.get(
     const querySort = req.query.sort as string | undefined;
     const baseSort = querySort || (settings as any).hub_feed_base_sort || 'random';
     const personalizationPct = Math.min(50, Math.max(0, Number((settings as any).hub_feed_personalization_pct ?? 30)));
+    const diversityEnabled = (settings as any).hub_feed_diversity_enabled !== false;
+    const maxItemsPerStore = Math.min(10, Math.max(1, Number((settings as any).hub_feed_max_items_per_store ?? 3)));
     const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
     const categorySlug = req.query.category as string | undefined;
     const searchQuery = req.query.q as string | undefined;
@@ -146,11 +173,18 @@ router.get(
       }
     }
 
+    // Apply Diversity Penalty (Anti-Filter Bubble) to avoid vendor clustering
+    if (diversityEnabled) {
+      finalProducts = applyDiversityPenalty(finalProducts, maxItemsPerStore, true);
+    }
+
     res.status(200).json({
       products: finalProducts,
       feed_settings: {
         base_sort: baseSort,
         personalization_pct: personalizationPct,
+        diversity_enabled: diversityEnabled,
+        max_items_per_store: maxItemsPerStore,
         total_items: finalProducts.length,
       },
     });

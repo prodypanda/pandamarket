@@ -77,6 +77,10 @@ interface PlatformSettings {
   hub_homepage_blocks: string;
   hub_feed_base_sort: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
   hub_feed_personalization_pct: number;
+  hub_feed_diversity_enabled: boolean;
+  hub_feed_diversity_strength: number;
+  hub_feed_max_items_per_store: number;
+  hub_feed_ab_testing_enabled: boolean;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -301,6 +305,10 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_blocks: '',
   hub_feed_base_sort: 'random',
   hub_feed_personalization_pct: 30,
+  hub_feed_diversity_enabled: true,
+  hub_feed_diversity_strength: 50,
+  hub_feed_max_items_per_store: 3,
+  hub_feed_ab_testing_enabled: true,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -1690,6 +1698,320 @@ function AiTaggingHealthCard() {
               <span className="text-xs text-slate-400 italic py-2">Aucun centre d'intérêt ne correspond à votre filtre "{tagQuery}".</span>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSettings }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [persona, setPersona] = useState<'cold_start' | 'home_decor' | 'tech_diy' | 'fashion' | 'custom'>('home_decor');
+  const [customTags, setCustomTags] = useState('artisanat, mosaique, deco');
+  const [simulating, setSimulating] = useState(false);
+  const [simData, setSimData] = useState<{
+    persona: string;
+    persona_tags: string[];
+    variant_a: any;
+    variant_b: any;
+  } | null>(null);
+
+  const runSimulation = async () => {
+    setSimulating(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/analytics/feed-simulator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona,
+          custom_tags: customTags.split(',').map((s) => s.trim()).filter(Boolean),
+          variant_a: {
+            label: 'Variation A (Contrôle / Sans IA)',
+            base_sort: currentSettings.hub_feed_base_sort || 'random',
+            personalization_pct: 0,
+            diversity_enabled: false,
+            max_items_per_store: 10,
+          },
+          variant_b: {
+            label: 'Variation B (Live Config : IA + Diversité)',
+            base_sort: currentSettings.hub_feed_base_sort || 'random',
+            personalization_pct: currentSettings.hub_feed_personalization_pct ?? 30,
+            diversity_enabled: currentSettings.hub_feed_diversity_enabled !== false,
+            max_items_per_store: currentSettings.hub_feed_max_items_per_store ?? 3,
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSimData(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && !simData) {
+      runSimulation();
+    }
+  }, [isOpen, persona]);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/30 p-5 space-y-4" data-testid="feed-simulator-card">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+            <span>🔬</span> Simulateur A/B de Flux & Profils Acheteurs en Direct
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800">
+              Lab Algorithmique
+            </span>
+          </h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Testez et visualisez en temps réel l'impact de vos réglages (tri, ratio IA, pénalité anti-bulle) selon différents profils d'acheteurs.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (!isOpen && !simData) runSimulation();
+          }}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+        >
+          {isOpen ? 'Masquer le Simulateur ▲' : 'Ouvrir le Simulateur A/B ▼'}
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="pt-3 border-t border-indigo-100/80 space-y-5">
+          {/* Persona selector bar */}
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-slate-700">Sélectionnez le Persona de Test :</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'cold_start', label: '👤 Visiteur Anonyme (Cold Start)', tags: 'Aucun historique' },
+                { id: 'home_decor', label: '🏺 Maison & Déco', tags: 'mosaique, marbre, artisanat' },
+                { id: 'tech_diy', label: '⚡ Tech & DIY', tags: 'electronique, gaming, diy' },
+                { id: 'fashion', label: '👜 Mode & Cuir', tags: 'mode, cuir, bijoux' },
+                { id: 'custom', label: '🎯 Profil Personnalisé', tags: 'Tags au choix' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setPersona(p.id as any);
+                  }}
+                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    persona === p.id
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div>{p.label}</div>
+                  <div className={`text-[10px] font-normal ${persona === p.id ? 'text-slate-300' : 'text-slate-400'}`}>
+                    {p.tags}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {persona === 'custom' && (
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="text"
+                  placeholder="Entrez vos tags séparés par des virgules (ex: mosaique, cuir, miel)..."
+                  value={customTags}
+                  onChange={(e) => setCustomTags(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={runSimulation}
+                  disabled={simulating}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {simulating ? 'Calcul...' : 'Re-simuler'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Active Tags Badge */}
+          {simData?.persona_tags && simData.persona_tags.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100">
+              <span className="font-bold text-indigo-900">Tags d'Intérêt du Persona simulé :</span>
+              <div className="flex flex-wrap gap-1">
+                {simData.persona_tags.map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-800 text-[11px] font-semibold">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Simulation Split Screen */}
+          {simulating && (
+            <div className="py-12 text-center text-xs font-semibold text-slate-400">
+              Calcul des 2 flux en cours d'exécution...
+            </div>
+          )}
+
+          {!simulating && simData && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Variant A Card */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-slate-100 text-slate-700 uppercase">
+                      Variation A (Contrôle)
+                    </span>
+                    <h5 className="text-sm font-black text-slate-800 mt-1">Flux Sans Personnalisation</h5>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Score Diversité</div>
+                    <div className="text-sm font-black text-slate-700">
+                      {simData.variant_a.metrics.store_diversity_score}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics ribbon */}
+                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400">Items Taggés IA</div>
+                    <div className="text-xs font-black text-slate-700">
+                      {simData.variant_a.metrics.personalized_items} / {simData.variant_a.metrics.total_items}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400">Boutiques Représentées</div>
+                    <div className="text-xs font-black text-slate-700">
+                      {simData.variant_a.metrics.distinct_stores}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400">Part Max / Vendeur</div>
+                    <div className="text-xs font-black text-slate-700">
+                      {simData.variant_a.metrics.max_store_share} articles
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product stream grid preview */}
+                <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                  {simData.variant_a.products.map((prod: any, idx: number) => (
+                    <div
+                      key={`${prod.id}-${idx}`}
+                      className="flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[11px] font-bold text-slate-400 w-5">#{idx + 1}</span>
+                        {prod.thumbnail ? (
+                          <img src={prod.thumbnail} alt="" className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] shrink-0">🛍️</div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 truncate">{prod.title}</div>
+                          <div className="text-[10px] text-slate-400 truncate">{prod.store_name}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-black text-slate-700 shrink-0">
+                        {prod.price?.toFixed(3)} DT
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Variant B Card */}
+              <div className="rounded-2xl border-2 border-indigo-300 bg-white p-4 shadow-md shadow-indigo-100 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-indigo-100 text-indigo-800 uppercase">
+                      Variation B (Config Active)
+                    </span>
+                    <h5 className="text-sm font-black text-slate-800 mt-1">Flux Recommandé IA + Anti-Bulle</h5>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold text-indigo-500 uppercase">Score Diversité</div>
+                    <div className="text-sm font-black text-emerald-600">
+                      {simData.variant_b.metrics.store_diversity_score}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics ribbon */}
+                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-center">
+                  <div>
+                    <div className="text-[10px] font-bold text-indigo-600">Items Taggés IA</div>
+                    <div className="text-xs font-black text-indigo-900">
+                      🤖 {simData.variant_b.metrics.personalized_items} / {simData.variant_b.metrics.total_items}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-indigo-600">Boutiques Représentées</div>
+                    <div className="text-xs font-black text-indigo-900">
+                      {simData.variant_b.metrics.distinct_stores}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-indigo-600">Part Max / Vendeur</div>
+                    <div className="text-xs font-black text-emerald-700">
+                      &le; {simData.variant_b.metrics.max_store_share} articles
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product stream grid preview */}
+                <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                  {simData.variant_b.products.map((prod: any, idx: number) => (
+                    <div
+                      key={`${prod.id}-${idx}`}
+                      className={`flex items-center justify-between gap-2 p-2 rounded-xl border transition-colors ${
+                        prod.is_personalized
+                          ? 'border-indigo-200 bg-indigo-50/50 shadow-2xs'
+                          : 'border-slate-100 bg-slate-50/50 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[11px] font-bold text-slate-400 w-5">#{idx + 1}</span>
+                        {prod.thumbnail ? (
+                          <img src={prod.thumbnail} alt="" className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] shrink-0">🛍️</div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
+                            {prod.title}
+                            {prod.is_personalized && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-600 text-white shrink-0">
+                                🤖 Match IA
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                            <span>{prod.store_name}</span>
+                            {prod.interest_tags && prod.interest_tags.length > 0 && (
+                              <span className="text-indigo-600 font-semibold truncate">
+                                &bull; #{prod.interest_tags.slice(0, 2).join(' #')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-black text-slate-700 shrink-0">
+                        {prod.price?.toFixed(3)} DT
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -3184,6 +3506,98 @@ export default function SuperAdminSettingsPage() {
           </div>
         </div>
 
+        {/* Diversity Penalty & Anti-Filter Bubble Card */}
+        <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4" data-testid="diversity-penalty-card">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <span>🛡️</span> Pénalité de Diversité (Anti-Bulle de Filtre & Équité Vendeurs)
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Empêche un vendeur ou un monopole algorithmique de saturer le flux. Répartit équitablement l'exposition entre boutiques artisanales.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                data-testid="toggle-hub-feed-diversity"
+                checked={settings.hub_feed_diversity_enabled !== false}
+                onChange={(e) => updateSetting('hub_feed_diversity_enabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          {settings.hub_feed_diversity_enabled !== false && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200/60">
+              {/* Max items per store */}
+              <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700">Max Articles par Vendeur (par page) :</span>
+                  <span className="px-2 py-0.5 rounded-md text-xs font-black bg-emerald-100 text-emerald-800">
+                    {settings.hub_feed_max_items_per_store ?? 3} articles
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={6}
+                  step={1}
+                  data-testid="slider-hub-feed-max-items-per-store"
+                  value={settings.hub_feed_max_items_per_store ?? 3}
+                  onChange={(e) => updateSetting('hub_feed_max_items_per_store', Number(e.target.value))}
+                  className="w-full accent-emerald-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                />
+                <div className="flex items-center gap-1">
+                  {[
+                    { label: '1 (Ultra-diversifié)', val: 1 },
+                    { label: '2 (Équilibré)', val: 2 },
+                    { label: '3 (Défaut ⭐)', val: 3 },
+                    { label: '5 (Permissif)', val: 5 },
+                  ].map((p) => (
+                    <button
+                      key={p.val}
+                      type="button"
+                      onClick={() => updateSetting('hub_feed_max_items_per_store', p.val)}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded border transition-colors ${
+                        (settings.hub_feed_max_items_per_store ?? 3) === p.val
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Diversity Strength */}
+              <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700">Intensité de l'Anti-Bulle :</span>
+                  <span className="px-2 py-0.5 rounded-md text-xs font-black bg-blue-100 text-blue-800">
+                    {settings.hub_feed_diversity_strength ?? 50}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={10}
+                  data-testid="slider-hub-feed-diversity-strength"
+                  value={settings.hub_feed_diversity_strength ?? 50}
+                  onChange={(e) => updateSetting('hub_feed_diversity_strength', Number(e.target.value))}
+                  className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                />
+                <div className="text-[11px] text-slate-500">
+                  Repousse les produits redondants du même vendeur vers le bas du flux pour maximiser le taux de découverte.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Algorithm Math & Architecture Inspector */}
         <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3">
           <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
@@ -3199,17 +3613,20 @@ export default function SuperAdminSettingsPage() {
             <div className="p-3 bg-white rounded-xl border border-slate-200">
               <div className="font-bold text-slate-700">🎯 Matrice de Pondération</div>
               <p className="text-slate-500 mt-1 leading-relaxed">
-                <strong>Achat :</strong> +5.0 &bull; <strong>Panier :</strong> +3.0 &bull; <strong>Recherche :</strong> +1.5 &bull; <strong>Vue :</strong> +1.0.
+                <strong>Achat :</strong> +5.0 &bull; <strong>Abonnement Boutique :</strong> +4.0 &bull; <strong>Favori / Wishlist :</strong> +2.0 &bull; <strong>Vue :</strong> +1.0.
               </p>
             </div>
             <div className="p-3 bg-white rounded-xl border border-slate-200">
-              <div className="font-bold text-slate-700">🛡️ Résilience Cold-Start</div>
+              <div className="font-bold text-slate-700">🛡️ Isolation Storefront Privée</div>
               <p className="text-slate-500 mt-1 leading-relaxed">
-                Si un acheteur n'a pas encore d'historique, le flux bascule automatiquement à 100% sur le <strong>Tri de Base</strong> sans friction.
+                Sur les sous-domaines marchands privés, le moteur n'injecte <strong>aucun concurrent</strong> afin de protéger les conversions du vendeur.
               </p>
             </div>
           </div>
         </div>
+
+        {/* Feed A/B Testing Simulator */}
+        <FeedSimulatorPanel currentSettings={settings} />
 
         {/* AI Tagging Diagnostic Monitor */}
         <AiTaggingHealthCard />

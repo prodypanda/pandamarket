@@ -26,6 +26,7 @@ import { productService } from '../services/product.service';
 import { categoryService } from '../services/category.service';
 import { fileAssetService } from '../services/file-asset.service';
 import { subscriptionService } from '../services/subscription.service';
+import { cleanAndDedupeTags } from '../services/buyer-interest.service';
 import { query, transaction } from '../db/pool';
 import {
   VerificationStatus,
@@ -978,6 +979,440 @@ router.put(
     const product = await productService.reject(req.params.id, req.body.reason);
     logger.info({ product_id: req.params.id, admin_id: req.user!.id }, 'Admin rejected product');
     res.status(200).json({ success: true, product });
+  }),
+);
+
+// =====================================================
+// Superadmin Product Catalog & Tag Management
+// =====================================================
+
+const adminProductCatalogQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().max(200).optional(),
+  q: z.string().trim().max(200).optional(),
+  status: z
+    .enum(['all', 'published', 'draft', 'pending_approval', 'rejected', 'archived'])
+    .default('all'),
+  marketplace_category_id: z.string().trim().min(1).optional(),
+  categoryId: z.string().trim().min(1).optional(),
+  category_id: z.string().trim().min(1).optional(),
+  store_id: z.string().trim().min(1).optional(),
+  storeId: z.string().trim().min(1).optional(),
+  product_type: z.enum(['all', 'physical', 'digital', 'service', 'serial']).default('all'),
+  stock_status: z.enum(['all', 'in_stock', 'low_stock', 'out_of_stock']).default('all'),
+  ai_tagged: z.enum(['all', 'tagged', 'untagged']).default('all'),
+  tag: z.string().trim().max(100).optional(),
+  sort_by: z
+    .enum(['created_at', 'price', 'title', 'inventory_quantity', 'store_name'])
+    .default('created_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+});
+
+const adminUpdateProductTagsSchema = z
+  .object({
+    tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+    interest_tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+    curatedTags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+  })
+  .refine(
+    (data) => data.tags !== undefined || data.interest_tags !== undefined || data.curatedTags !== undefined,
+    {
+      message: 'At least one of tags, interest_tags, or curatedTags must be provided',
+    },
+  );
+
+interface AdminProductStore {
+  id: string;
+  name: string;
+  subdomain: string;
+  custom_domain: string | null;
+  is_verified: boolean;
+  status: string;
+  seller_type: string;
+}
+
+interface AdminProductCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface AdminProductImage {
+  id: string;
+  url: string;
+  alt_text: string | null;
+  position: number;
+  is_thumbnail: boolean;
+}
+
+interface AdminProductVariant {
+  id: string;
+  sku: string | null;
+  title: string;
+  price: number | string;
+  inventory_quantity: number;
+  options: Record<string, unknown>;
+  is_active: boolean;
+  created_at: Date | string;
+}
+
+interface AdminProductRecord {
+  id: string;
+  store_id: string;
+  product_type: string;
+  status: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  price: number | string;
+  inventory_quantity: number;
+  weight_grams: number | null;
+  thumbnail: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  tags: string[];
+  interest_tags: string[];
+  interest_tags_synced_at: Date | string | null;
+  attributes: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  rejection_reason: string | null;
+  product_reference: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+  store: AdminProductStore;
+  marketplace_category: AdminProductCategory | null;
+  storefront_category: AdminProductCategory | null;
+  images: AdminProductImage[];
+  variants: AdminProductVariant[];
+  variants_count: number;
+}
+
+router.get(
+  '/products',
+  validate(adminProductCatalogQuerySchema, 'query'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const {
+      page,
+      limit,
+      search,
+      q,
+      status,
+      marketplace_category_id,
+      categoryId,
+      category_id,
+      store_id,
+      storeId,
+      product_type,
+      stock_status,
+      ai_tagged,
+      tag,
+      sort_by,
+      sort_order,
+    } = req.query as unknown as z.infer<typeof adminProductCatalogQuerySchema>;
+
+    const effectiveSearch = (q && q.trim().length > 0) ? q.trim() : (search && search.trim().length > 0) ? search.trim() : undefined;
+    const effectiveStoreId = storeId || store_id;
+    const effectiveCategoryId = categoryId || category_id || marketplace_category_id;
+
+    const conditions: string[] = ['1=1'];
+    const params: unknown[] = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      conditions.push(`p.status = $${params.length}`);
+    }
+
+    if (effectiveCategoryId) {
+      params.push(effectiveCategoryId);
+      conditions.push(`p.marketplace_category_id = $${params.length}`);
+    }
+
+    if (effectiveStoreId) {
+      params.push(effectiveStoreId);
+      conditions.push(`p.store_id = $${params.length}`);
+    }
+
+    if (product_type && product_type !== 'all') {
+      params.push(product_type);
+      conditions.push(`p.type = $${params.length}`);
+    }
+
+    if (stock_status && stock_status !== 'all') {
+      if (stock_status === 'in_stock') {
+        conditions.push(`p.inventory_quantity > 5`);
+      } else if (stock_status === 'low_stock') {
+        conditions.push(`p.inventory_quantity > 0 AND p.inventory_quantity <= 5`);
+      } else if (stock_status === 'out_of_stock') {
+        conditions.push(`p.inventory_quantity <= 0`);
+      }
+    }
+
+    if (ai_tagged && ai_tagged !== 'all') {
+      if (ai_tagged === 'tagged') {
+        conditions.push(`(p.interest_tags IS NOT NULL AND cardinality(p.interest_tags) > 0)`);
+      } else if (ai_tagged === 'untagged') {
+        conditions.push(`(p.interest_tags IS NULL OR cardinality(p.interest_tags) = 0)`);
+      }
+    }
+
+    if (tag && tag.trim().length > 0) {
+      params.push(`%${tag.trim()}%`);
+      const tIdx = params.length;
+      conditions.push(`(
+        p.tags::text ILIKE $${tIdx} OR
+        array_to_string(p.interest_tags, ' ') ILIKE $${tIdx}
+      )`);
+    }
+
+    if (effectiveSearch) {
+      params.push(`%${effectiveSearch}%`);
+      const sIdx = params.length;
+      conditions.push(`(
+        p.title ILIKE $${sIdx} OR
+        p.description ILIKE $${sIdx} OR
+        p.product_reference ILIKE $${sIdx} OR
+        s.name ILIKE $${sIdx} OR
+        p.tags::text ILIKE $${sIdx} OR
+        array_to_string(p.interest_tags, ' ') ILIKE $${sIdx} OR
+        EXISTS (SELECT 1 FROM pd_product_variant pv WHERE pv.product_id = p.id AND pv.sku ILIKE $${sIdx})
+      )`);
+    }
+
+    const sortFieldMap: Record<string, string> = {
+      created_at: 'p.created_at',
+      price: 'p.price',
+      title: 'p.title',
+      inventory_quantity: 'p.inventory_quantity',
+      store_name: 's.name',
+    };
+
+    const orderCol = sortFieldMap[sort_by] || 'p.created_at';
+    const orderDir = sort_order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const orderByClause = `${orderCol} ${orderDir}`;
+
+    const whereClause = conditions.join(' AND ');
+    const offset = (page - 1) * limit;
+
+    const dataParams = [...params, limit, offset];
+    const countParams = [...params];
+
+    const dataSql = `
+      SELECT
+        p.id,
+        p.store_id,
+        p.type AS product_type,
+        p.status,
+        p.title,
+        p.slug,
+        p.description,
+        p.price,
+        p.inventory_quantity,
+        p.weight_grams,
+        p.thumbnail,
+        p.seo_title,
+        p.seo_description,
+        p.tags,
+        p.interest_tags,
+        p.interest_tags_synced_at,
+        p.attributes,
+        p.metadata,
+        p.rejection_reason,
+        p.product_reference,
+        p.created_at,
+        p.updated_at,
+        json_build_object(
+          'id', s.id,
+          'name', s.name,
+          'subdomain', s.subdomain,
+          'custom_domain', s.custom_domain,
+          'is_verified', COALESCE(s.is_verified, false),
+          'status', s.status,
+          'seller_type', s.seller_type
+        ) AS store,
+        CASE
+          WHEN mc.id IS NOT NULL THEN json_build_object('id', mc.id, 'name', mc.name, 'slug', mc.slug)
+          ELSE NULL
+        END AS marketplace_category,
+        CASE
+          WHEN sc.id IS NOT NULL THEN json_build_object('id', sc.id, 'name', sc.name, 'slug', sc.slug)
+          ELSE NULL
+        END AS storefront_category,
+        COALESCE(img.images, '[]'::json) AS images,
+        COALESCE(v.variants, '[]'::json) AS variants,
+        COALESCE(v.variants_count, 0)::int AS variants_count
+      FROM pd_product p
+      JOIN pd_store s ON s.id = p.store_id
+      LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+      LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+      LEFT JOIN LATERAL (
+        SELECT json_agg(
+          json_build_object(
+            'id', pi.id,
+            'url', pi.url,
+            'alt_text', pi.alt_text,
+            'position', pi.position,
+            'is_thumbnail', pi.is_thumbnail
+          )
+          ORDER BY pi.position ASC
+        ) AS images
+        FROM pd_product_image pi
+        WHERE pi.product_id = p.id
+      ) img ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          json_agg(
+            json_build_object(
+              'id', pv.id,
+              'sku', pv.sku,
+              'title', pv.title,
+              'price', pv.price,
+              'inventory_quantity', pv.inventory_quantity,
+              'options', pv.options,
+              'is_active', pv.is_active,
+              'created_at', pv.created_at
+            )
+            ORDER BY pv.created_at ASC
+          ) AS variants,
+          COUNT(pv.id)::int AS variants_count
+        FROM pd_product_variant pv
+        WHERE pv.product_id = p.id
+      ) v ON true
+      WHERE ${whereClause}
+      ORDER BY ${orderByClause}
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS total
+      FROM pd_product p
+      JOIN pd_store s ON s.id = p.store_id
+      LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+      LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+      WHERE ${whereClause}
+    `;
+
+    const metricsSql = `
+      SELECT
+        COUNT(*)::int AS total_products,
+        COUNT(*) FILTER (WHERE p.status = 'published')::int AS published_count,
+        COUNT(*) FILTER (WHERE p.status = 'pending_approval')::int AS pending_count,
+        COUNT(*) FILTER (WHERE p.status = 'draft')::int AS draft_count,
+        COUNT(*) FILTER (WHERE p.status = 'rejected')::int AS rejected_count,
+        COUNT(*) FILTER (WHERE p.status = 'archived')::int AS archived_count,
+        COUNT(*) FILTER (WHERE p.inventory_quantity <= 0)::int AS out_of_stock_count,
+        COUNT(*) FILTER (WHERE p.inventory_quantity > 0 AND p.inventory_quantity <= 5)::int AS low_stock_count,
+        COUNT(*) FILTER (WHERE p.interest_tags IS NOT NULL AND cardinality(p.interest_tags) > 0)::int AS ai_tagged_count
+      FROM pd_product p
+    `;
+
+    const [dataResult, countResult, metricsResult] = await Promise.all([
+      query<AdminProductRecord>(dataSql, dataParams),
+      query<{ total: number | string }>(countSql, countParams),
+      query<{
+        total_products: number | string;
+        published_count: number | string;
+        pending_count: number | string;
+        draft_count: number | string;
+        rejected_count: number | string;
+        archived_count: number | string;
+        out_of_stock_count: number | string;
+        low_stock_count: number | string;
+        ai_tagged_count: number | string;
+      }>(metricsSql),
+    ]);
+
+    const total = parseInt(String(countResult.rows[0]?.total ?? 0), 10);
+    const metricsRow = metricsResult.rows[0] || {};
+    const metrics = {
+      total_products: parseInt(String(metricsRow.total_products ?? 0), 10),
+      published_count: parseInt(String(metricsRow.published_count ?? 0), 10),
+      pending_count: parseInt(String(metricsRow.pending_count ?? 0), 10),
+      draft_count: parseInt(String(metricsRow.draft_count ?? 0), 10),
+      rejected_count: parseInt(String(metricsRow.rejected_count ?? 0), 10),
+      archived_count: parseInt(String(metricsRow.archived_count ?? 0), 10),
+      out_of_stock_count: parseInt(String(metricsRow.out_of_stock_count ?? 0), 10),
+      low_stock_count: parseInt(String(metricsRow.low_stock_count ?? 0), 10),
+      ai_tagged_count: parseInt(String(metricsRow.ai_tagged_count ?? 0), 10),
+    };
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      success: true,
+      data: dataResult.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        total_pages: totalPages,
+      },
+      metrics,
+    });
+  }),
+);
+
+router.patch(
+  '/products/:id/tags',
+  validate(adminUpdateProductTagsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { tags, interest_tags, curatedTags } = req.body as {
+      tags?: string[];
+      interest_tags?: string[];
+      curatedTags?: string[];
+    };
+    const effectiveTags = tags !== undefined ? tags : curatedTags;
+
+    const checkRes = await query<{ id: string }>('SELECT id FROM pd_product WHERE id = $1', [id]);
+    if (!checkRes.rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
+    }
+
+    const cleanVendorTags = effectiveTags !== undefined ? cleanAndDedupeTags(effectiveTags) : undefined;
+    const cleanInterestTags = interest_tags !== undefined ? cleanAndDedupeTags(interest_tags) : undefined;
+
+    const setClauses: string[] = ['updated_at = NOW()'];
+    const updateParams: unknown[] = [id];
+
+    if (cleanVendorTags !== undefined) {
+      updateParams.push(JSON.stringify(cleanVendorTags));
+      setClauses.push(`tags = $${updateParams.length}::jsonb`);
+    }
+
+    if (cleanInterestTags !== undefined) {
+      updateParams.push(cleanInterestTags);
+      setClauses.push(`interest_tags = $${updateParams.length}::text[]`);
+      setClauses.push(`interest_tags_synced_at = NOW()`);
+    }
+
+    const updateSql = `
+      UPDATE pd_product
+      SET ${setClauses.join(', ')}
+      WHERE id = $1
+      RETURNING id, tags, interest_tags, interest_tags_synced_at
+    `;
+
+    const { rows } = await query<{
+      id: string;
+      tags: unknown;
+      interest_tags: string[];
+      interest_tags_synced_at: Date | string | null;
+    }>(updateSql, updateParams);
+
+    const updated = rows[0];
+    logger.info({ product_id: id, admin_id: req.user?.id }, 'Admin updated product tags');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: updated.id,
+        tags: updated.tags,
+        interest_tags: updated.interest_tags,
+        interest_tags_synced_at: updated.interest_tags_synced_at,
+      },
+      message: 'Product tags updated successfully',
+    });
   }),
 );
 
@@ -1978,6 +2413,10 @@ const globalSettingsSchema = z.object({
   hub_hero_seller_rail_badge_text: z.coerce.string().trim().max(80).optional(),
   hub_feed_base_sort: z.enum(['random', 'newest', 'alphabetical', 'best_sellers']).optional(),
   hub_feed_personalization_pct: z.coerce.number().int().min(0).max(50).optional(),
+  hub_feed_diversity_enabled: z.boolean().optional(),
+  hub_feed_diversity_strength: z.coerce.number().int().min(0).max(100).optional(),
+  hub_feed_max_items_per_store: z.coerce.number().int().min(1).max(10).optional(),
+  hub_feed_ab_testing_enabled: z.boolean().optional(),
   analytics_ga4_enabled: z.boolean().optional(),
   analytics_ga4_measurement_id: ga4MeasurementIdSchema.optional(),
   analytics_gtm_enabled: z.boolean().optional(),
@@ -2355,6 +2794,10 @@ const algorithmSettingsSchema = globalSettingsSchema
   .pick({
     hub_feed_base_sort: true,
     hub_feed_personalization_pct: true,
+    hub_feed_diversity_enabled: true,
+    hub_feed_diversity_strength: true,
+    hub_feed_max_items_per_store: true,
+    hub_feed_ab_testing_enabled: true,
   })
   .strict();
 
@@ -5802,6 +6245,178 @@ router.post(
         result: { totalScanned: 0, tagged: 0, failed: 0, fallbackUsed: 0 },
       });
     }
+  }),
+);
+
+/**
+ * POST /api/pd/admin/analytics/feed-simulator
+ * Simulate and compare feed variations for Superadmin A/B Testing & Tuning
+ */
+router.post(
+  '/analytics/feed-simulator',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const persona = (req.body?.persona as string) || 'home_decor';
+    const customTags = Array.isArray(req.body?.custom_tags) ? req.body.custom_tags : [];
+
+    let personaTags: string[] = [];
+    if (persona === 'cold_start') {
+      personaTags = [];
+    } else if (persona === 'home_decor') {
+      personaTags = ['mosaique', 'artisanat', 'decoration', 'marbre', 'tableau', 'maison', 'tunisie'];
+    } else if (persona === 'tech_diy') {
+      personaTags = ['electronique', 'micro-controleur', 'diy', 'high-tech', 'gadget', 'gaming', 'arduino'];
+    } else if (persona === 'fashion') {
+      personaTags = ['mode', 'cuir', 'artisanat', 'bijoux', 'accessoire', 'femme', 'sac'];
+    } else if (persona === 'custom') {
+      personaTags = customTags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean);
+    }
+
+    const { applyDiversityPenalty } = await import('./marketplace.route');
+
+    const simulateVariant = async (cfg: {
+      label: string;
+      base_sort: string;
+      personalization_pct: number;
+      diversity_enabled: boolean;
+      max_items_per_store: number;
+    }) => {
+      let orderBy = 'RANDOM()';
+      if (cfg.base_sort === 'newest') orderBy = 'p.created_at DESC';
+      else if (cfg.base_sort === 'alphabetical') orderBy = 'LOWER(p.title) ASC, p.created_at DESC';
+      else if (cfg.base_sort === 'best_sellers') orderBy = 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
+
+      const baseRes = await query<any>(
+        `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+                p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
+                (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
+                (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+         FROM pd_product p
+         JOIN pd_store s ON s.id = p.store_id
+         LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+         WHERE p.status = 'published'
+         ORDER BY ${orderBy}
+         LIMIT 60`
+      );
+
+      let finalProducts = baseRes.rows;
+
+      if (personaTags.length > 0 && cfg.personalization_pct > 0) {
+        const recsRes = await query<any>(
+          `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+                  p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
+                  (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
+                  (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+           FROM pd_product p
+           JOIN pd_store s ON s.id = p.store_id
+           LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+           WHERE p.status = 'published'
+             AND p.interest_tags && $1::text[]
+           ORDER BY (
+             SELECT COUNT(*) FROM unnest(p.interest_tags) t WHERE t = ANY($1::text[])
+           ) DESC, p.created_at DESC
+           LIMIT 16`,
+          [personaTags]
+        );
+
+        if (recsRes.rows.length > 0) {
+          const targetInject = Math.min(
+            recsRes.rows.length,
+            Math.max(1, Math.round((finalProducts.length * cfg.personalization_pct) / 100))
+          );
+          const injected = recsRes.rows.slice(0, targetInject).map((p) => ({ ...p, is_personalized: true }));
+          const existingIds = new Set(injected.map((p) => p.id));
+          const filteredBase = finalProducts.filter((p) => !existingIds.has(p.id));
+
+          const interleaved: any[] = [];
+          const interval = Math.max(2, Math.floor(filteredBase.length / (injected.length || 1)));
+          let bIdx = 0;
+          let iIdx = 0;
+          while (bIdx < filteredBase.length || iIdx < injected.length) {
+            for (let k = 0; k < interval && bIdx < filteredBase.length; k++) {
+              interleaved.push(filteredBase[bIdx++]);
+            }
+            if (iIdx < injected.length) {
+              interleaved.push(injected[iIdx++]);
+            }
+          }
+          finalProducts = interleaved;
+        }
+      }
+
+      if (cfg.diversity_enabled) {
+        finalProducts = applyDiversityPenalty(finalProducts, cfg.max_items_per_store, true);
+      }
+
+      const sample = finalProducts.slice(0, 24);
+      const storeCounts: Record<string, number> = {};
+      const categoryCounts: Record<string, number> = {};
+      let personalizedInSample = 0;
+
+      for (const p of sample) {
+        if (p.is_personalized) personalizedInSample++;
+        storeCounts[p.store_name || 'Autre'] = (storeCounts[p.store_name || 'Autre'] || 0) + 1;
+        categoryCounts[p.category || 'Général'] = (categoryCounts[p.category || 'Général'] || 0) + 1;
+      }
+
+      const distinctStores = Object.keys(storeCounts).length;
+      const maxStoreShare = Math.max(0, ...Object.values(storeCounts));
+      const diversityScore = sample.length > 0 ? Math.round((distinctStores / sample.length) * 100) : 100;
+
+      return {
+        label: cfg.label,
+        config: cfg,
+        metrics: {
+          total_items: sample.length,
+          personalized_items: personalizedInSample,
+          base_catalog_items: sample.length - personalizedInSample,
+          distinct_stores: distinctStores,
+          store_diversity_score: diversityScore,
+          max_store_share: maxStoreShare,
+          store_distribution: storeCounts,
+          category_distribution: categoryCounts,
+        },
+        products: sample.map((p) => ({
+          id: p.id,
+          title: p.title,
+          store_name: p.store_name,
+          price: Number(p.price),
+          thumbnail: p.thumbnail,
+          interest_tags: p.interest_tags || [],
+          is_personalized: Boolean(p.is_personalized),
+          category: p.category,
+        })),
+      };
+    };
+
+    const variantAConfig = {
+      label: req.body?.variant_a?.label || 'Variation A (Base Standard)',
+      base_sort: req.body?.variant_a?.base_sort || 'random',
+      personalization_pct: Number(req.body?.variant_a?.personalization_pct ?? 0),
+      diversity_enabled: Boolean(req.body?.variant_a?.diversity_enabled ?? false),
+      max_items_per_store: Number(req.body?.variant_a?.max_items_per_store ?? 10),
+    };
+
+    const variantBConfig = {
+      label: req.body?.variant_b?.label || 'Variation B (Recommandation IA + Anti-Bulle)',
+      base_sort: req.body?.variant_b?.base_sort || 'random',
+      personalization_pct: Number(req.body?.variant_b?.personalization_pct ?? 30),
+      diversity_enabled: Boolean(req.body?.variant_b?.diversity_enabled ?? true),
+      max_items_per_store: Number(req.body?.variant_b?.max_items_per_store ?? 3),
+    };
+
+    const [simA, simB] = await Promise.all([
+      simulateVariant(variantAConfig),
+      simulateVariant(variantBConfig),
+    ]);
+
+    res.status(200).json({
+      persona,
+      persona_tags: personaTags,
+      variant_a: simA,
+      variant_b: simB,
+    });
   }),
 );
 

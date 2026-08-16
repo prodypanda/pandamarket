@@ -79,6 +79,10 @@ export const PLATFORM_SETTING_DEFAULTS = {
   hub_hero_seller_rail_badge_text: 'PandaMarket B2B',
   hub_feed_base_sort: 'random',
   hub_feed_personalization_pct: 30,
+  hub_feed_diversity_enabled: true,
+  hub_feed_diversity_strength: 50,
+  hub_feed_max_items_per_store: 3,
+  hub_feed_ab_testing_enabled: true,
   analytics_ga4_enabled: false,
   analytics_ga4_measurement_id: '',
   analytics_gtm_enabled: false,
@@ -418,6 +422,10 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
   algorithm: [
     'hub_feed_base_sort',
     'hub_feed_personalization_pct',
+    'hub_feed_diversity_enabled',
+    'hub_feed_diversity_strength',
+    'hub_feed_max_items_per_store',
+    'hub_feed_ab_testing_enabled',
   ],
   commerce: [
     'marketplace_enabled',
@@ -615,6 +623,8 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'ads_sponsored_content_enabled',
   'ads_creative_image_required',
   'rewards_widget_enabled',
+  'hub_feed_diversity_enabled',
+  'hub_feed_ab_testing_enabled',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
@@ -659,6 +669,8 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'ads_view_attribution_days',
   'ads_max_creative_description_length',
   'hub_feed_personalization_pct',
+  'hub_feed_diversity_strength',
+  'hub_feed_max_items_per_store',
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {

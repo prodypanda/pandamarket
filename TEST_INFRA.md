@@ -1,48 +1,81 @@
-# E2E Test Infra: PandaMarket Feature 20
+# E2E Test Infra: PandaMarket Superadmin Marketplace Products Management & Tagging Hub
 
 ## Test Philosophy
-- Opaque-box, requirement-driven, independently verifiable testing derived directly from `ORIGINAL_REQUEST.md`.
-- Methodology: Category-Partition + Boundary Value Analysis (BVA) + Pairwise Combinations + Real-World End-to-End Scenarios.
+- **Opaque-Box & Requirement-Driven**: Tests are designed directly from the user specifications in `ORIGINAL_REQUEST.md` and `PROJECT.md`, exercising the system through public API endpoints, CLI scripts, and browser interactions without reliance on private implementation details.
+- **Systematic 4-Tier Methodology**:
+  1. **Tier 1 (Feature Coverage)**: >=5 test cases per feature covering representative happy-path inputs (Category-Partition).
+  2. **Tier 2 (Boundary & Corner Cases)**: >=5 test cases per feature probing boundary conditions, 0 stock, extreme page sizes, invalid formats, and SQL injection safety (Boundary Value Analysis).
+  3. **Tier 3 (Cross-Feature Combinations)**: Pairwise combinatorial testing verifying interactions (e.g. search + category filter + sort + pagination, drawer tag edits reflected in table/grid).
+  4. **Tier 4 (Real-World Application Scenarios)**: High-level realistic operational workflows (Superadmin catalog audit, low-stock restock workflow, AI interest tagging workflow, Arabic RTL audit).
 
-## Feature Inventory & Test Matrix
-| # | Feature | Requirement | Tier 1 (Coverage) | Tier 2 (Boundary) | Tier 3 (Pairwise) | Tier 4 (E2E Scenario) |
-|---|---------|-------------|:-----------------:|:-----------------:|:-----------------:|:---------------------:|
-| 1 | Store Subscriptions & Anti-Bot Logic | R1 | 5 tests | 5 tests | ✓ | Scenario 1 |
-| 2 | Smart Batched Notifications | R2 | 5 tests | 5 tests | ✓ | Scenario 2 |
-| 3 | AI Interest Engine & Dynamic Profile | R3 | 5 tests | 5 tests | ✓ | Scenario 3 |
-| 4 | 'My Followed Feed' Page | R3 | 5 tests | 5 tests | ✓ | Scenario 3 |
-| 5 | Strict Seller Retention Boundary | R3 | 5 tests | 5 tests | ✓ | Scenario 4 |
-| 6 | Hub Feed 30% Injection & Algorithm Tuning | R4 | 5 tests | 5 tests | ✓ | Scenario 4 |
-| 7 | Seller Logarithmic Trust Score Formula | R5 | 5 tests | 5 tests | ✓ | Scenario 5 |
-| 8 | Seller Loyalty Dashboard & Broadcasts (2/wk limit) | R5 | 5 tests | 5 tests | ✓ | Scenario 5 |
-| 9 | Superadmin Admin-Notes Folder & 44 Checklist Items | R6 | 5 tests | 5 tests | ✓ | Scenario 6 |
+---
+
+## Feature Inventory & Test Coverage Matrix
+| # | Feature | Requirement Source | Tier 1 (Min 5) | Tier 2 (Min 5) | Tier 3 (Pairwise) | Tier 4 (Scenario) |
+|---|---------|---------------------|:--------------:|:--------------:|:-----------------:|:-----------------:|
+| F1 | Superadmin Auth & Role Enforcement | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F2 | Product Catalog Query & Pagination | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F3 | Multi-Axis Sorting | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F4 | Universal Text Search | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F5 | Multi-Faceted Filtering | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F6 | Entity Hydration & Detail Graphs | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F7 | Summary Metrics Aggregation | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F8 | Product Tag Management API | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| F9 | Dual View Modes (Table vs Grid) | ORIGINAL_REQUEST §R2 | 5 | 5 | ✓ | ✓ |
+| F10 | Visual Details, Badges & Store Links | ORIGINAL_REQUEST §R2 | 5 | 5 | ✓ | ✓ |
+| F11 | Interactive Inspection Drawer | ORIGINAL_REQUEST §R2 | 5 | 5 | ✓ | ✓ |
+| F12 | Navigation & Arabic RTL I18n | ORIGINAL_REQUEST §R3 | 5 | 5 | ✓ | ✓ |
+
+---
+
+## Test Architecture & Runners
+
+### 1. Browser End-to-End Test Suite (Playwright)
+- **File**: `frontend/e2e/admin-marketplace-products.spec.ts`
+- **Runner**: Playwright v1.60 with multi-browser support (Chromium, Firefox, Mobile Viewports)
+- **Invocation Commands**:
+  ```bash
+  cd frontend
+  npm run test:e2e:chromium -- e2e/admin-marketplace-products.spec.ts
+  ```
+- **Pass/Fail Semantics**: Exit code 0 indicates all browser navigation, view rendering, filter interactions, drawer inspections, tag updates, and RTL assertions passed.
+
+### 2. Frontend Component & Integration Test Suite (Vitest)
+- **File**: `frontend/src/__tests__/admin-products-page.test.tsx`
+- **Runner**: Vitest v2.0.5 with React Testing Library & JSDOM
+- **Invocation Commands**:
+  ```bash
+  cd frontend
+  npm run test -- src/__tests__/admin-products-page.test.tsx
+  ```
+- **Pass/Fail Semantics**: Exit code 0 indicates all 8 comprehensive suites (50+ assertions) passed.
+
+### 3. Backend API & Security Integration Test Suite (Vitest)
+- **File**: `backend/src/__tests__/admin-products.route.test.ts`
+- **Runner**: Vitest v2.1.9 with Supertest
+- **Invocation Commands**:
+  ```bash
+  cd backend
+  npm run test -- src/__tests__/admin-products.route.test.ts
+  ```
+- **Pass/Fail Semantics**: Exit code 0 indicates all authentication, SQL query building, tag sanitization, metrics, and security assertions passed.
+
+---
 
 ## Real-World Application Scenarios (Tier 4)
-1. **Scenario 1: Buyer Follow Lifecycle & Anti-Bot Classification**
-   - Unverified new buyer subscribes to Store A -> `subscribers_count` increments, `verified_subscribers_count` unchanged.
-   - Buyer completes an order -> subsequent subscription to Store B immediately increments both `subscribers_count` and `verified_subscribers_count`.
-2. **Scenario 2: Multi-Item Price Drop & 15-Minute Debounced Alert**
-   - Vendor updates 4 product prices within 5 minutes.
-   - BullMQ sliding buffer aggregates events -> exactly 1 consolidated notification created and pushed via WebSocket to subscribers.
-3. **Scenario 3: AI Tagging & Personalized Followed Feed Rendering**
-   - New products auto-tagged with Gemini Pro tags.
-   - Buyer browses, likes, and purchases items -> interest profile calculates dynamic tag weights with 60-day decay.
-   - `/my-followed-feed` renders followed stores carousel, chronological discount updates, and AI cross-seller recommendations.
-4. **Scenario 4: Hub 30% Personalization & Private Storefront Isolation**
-   - Hub home renders base catalog with 30% personalized injected items.
-   - Accessing private seller store (`store1.pandamarket.tn`) strictly renders only store1 products with zero competitor recommendations.
-5. **Scenario 5: Seller Loyalty Hub, Broadcast Rate Limiting & Trust Score**
-   - Seller checks Loyalty Dashboard KPIs and 24-governorate distribution map.
-   - Seller dispatches broadcast with coupon code.
-   - Seller attempts to dispatch 3rd broadcast in same week -> rejected with 429 / rate limit error.
-   - Seller trust score recalculates accurately with logarithmic verified subscriber proof.
-6. **Scenario 6: Superadmin Notes & Interactive Execution Checklists**
-   - Superadmin opens `/admin/notes` -> folder `ff32063c-baff-42ca-ad94-768b20c5e6d4` contains all 6 task cards.
-   - Superadmin toggles checklist items -> persistence verified in DB.
+| # | Scenario | Features Exercised | Verification Focus |
+|---|----------|--------------------|--------------------|
+| 1 | Superadmin Full Catalog Audit | F1, F2, F5, F7, F9, F10, F11 | Admin logs in, reviews metrics header, switches to Table view, filters by `published` and category, verifies total counts match metrics. |
+| 2 | Low-Stock & Out-of-Stock Restock Alert | F2, F5, F10, F11 | Admin applies `stock_status=out_of_stock` and `low_stock`, inspects product cards in Grid view, clicks card to verify variant breakdown stock levels. |
+| 3 | AI Interest Tagging & Catalog Enrichment Workflow | F4, F6, F8, F11 | Admin searches for untagged products, opens inspection drawer, adds new interest tags in AI Tag Studio, saves changes, and verifies instant persistence via PATCH API. |
+| 4 | Arabic Localization & RTL Layout Audit | F9, F10, F11, F12 | Admin switches locale to Arabic (`ar`), verifies RTL document direction (`dir="rtl"`), translated sidebar links, Arabic column headers, TND currency formatting, and drawer alignment. |
 
-## Test Runner Commands
-- Backend Test Runner: `npm --prefix backend test`
-- Frontend Test Runner: `npm --prefix frontend test`
-- Backend Type-Check: `npm run type-check -w backend`
-- Frontend Type-Check: `cd frontend && npx tsc --noEmit`
-- Full E2E Verification Script: `npx tsx backend/src/scripts/verify-feature20-full.ts`
+---
+
+## Coverage Thresholds & Minimums
+- **Identified Features ($N$)**: 12
+- **Tier 1 (Feature Coverage)**: $\ge 5 \times 12 = 60$ test cases
+- **Tier 2 (Boundary & Corner Cases)**: $\ge 5 \times 12 = 60$ test cases
+- **Tier 3 (Cross-Feature Combinations)**: $\ge 12$ pairwise test cases
+- **Tier 4 (Real-World Scenarios)**: $\ge \max(5, 12 \div 2) = 6$ scenario test cases
+- **Total Suite Minimum**: $\ge 138$ test cases across E2E, Frontend Integration, and Backend Integration suites.

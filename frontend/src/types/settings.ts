@@ -51,6 +51,10 @@ export interface PlatformSettings {
   hub_homepage_blocks: string;
   hub_feed_base_sort: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
   hub_feed_personalization_pct: number;
+  hub_feed_diversity_enabled: boolean;
+  hub_feed_diversity_strength: number;
+  hub_feed_max_items_per_store: number;
+  hub_feed_ab_testing_enabled: boolean;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -275,6 +279,10 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_blocks: '',
   hub_feed_base_sort: 'random',
   hub_feed_personalization_pct: 30,
+  hub_feed_diversity_enabled: true,
+  hub_feed_diversity_strength: 50,
+  hub_feed_max_items_per_store: 3,
+  hub_feed_ab_testing_enabled: true,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
