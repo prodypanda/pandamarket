@@ -278,6 +278,35 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
     variables: ['{page_title}', '{language}'],
   },
   {
+    prompt_key: 'product_description',
+    title: "Sublimer avec l'IA — Description Produit & Points Forts",
+    tag: 'Copywriting & HTML Vendeur',
+    description: "Rédige une description structurée en HTML avec points forts et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
+    system_prompt: `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite pour la marketplace PandaMarket. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive.`,
+    default_prompt: `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Rédigez une description produit vendeuse, structurée et persuasive en {language}.
+
+Consignes de format et de style :
+- Langue : {language}
+- Tonalité : {tone} (ton professionnel, crédible, séduisant sans exagération mensongère)
+- Produit : {title}
+- Catégorie : {category}
+- Attributs et spécifications : {attributes}
+- Description brute actuelle : {current_description}
+
+Structure HTML obligatoire :
+- Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
+- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
+- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
+- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
+  "summary": "Résumé percutant en une phrase pour la vitrine"
+}`,
+    variables: ['{title}', '{category}', '{attributes}', '{current_description}', '{language}', '{tone}'],
+  },
+  {
     prompt_key: 'product_tagging',
     title: 'Auto-Tagging Sémantique Catalogue & Intérêts',
     tag: 'NLP & Semantic Tags',
@@ -297,6 +326,13 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 ];
 
 const PURPOSE_MODULES = [
+  {
+    key: 'product_description',
+    icon: Sparkles,
+    label: "Sublimer avec l'IA (Description Produit)",
+    badge: 'Copywriting & HTML Vendeur',
+    desc: 'Génération automatique de descriptions structurées en HTML (<h3>, <ul>, points forts, réassurance) pour le bouton "Sublimer avec l\'IA" de la fiche produit.',
+  },
   {
     key: 'product_tagging',
     icon: Tag,

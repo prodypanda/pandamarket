@@ -421,7 +421,25 @@ router.post(
     });
     try {
       const cost = await aiConfigService.getFeaturePrice(AiJobType.ProductDescription);
-      const prompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
+
+      let template = null;
+      try {
+        template = await aiConfigService.getPromptTemplate('product_description');
+      } catch {
+        // use default prompt if template fetching failed
+      }
+
+      let prompt = '';
+      if (template) {
+        prompt = `${template.system_prompt}\n\n${template.default_prompt}`
+          .replace(/{title}/g, req.body.title || 'Produit')
+          .replace(/{category}/g, req.body.category || 'Non spécifiée')
+          .replace(/{attributes}/g, attributes)
+          .replace(/{current_description}/g, req.body.current_description || 'Aucune')
+          .replace(/{language}/g, langName)
+          .replace(/{tone}/g, tone);
+      } else {
+        prompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
 
 Consignes de format et de style :
 - Langue : ${langName}
@@ -442,7 +460,9 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
   "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
   "summary": "Résumé percutant en une phrase pour la vitrine"
 }`;
-      const result = await aiConfigService.generateText(prompt, storeId);
+      }
+
+      const result = await aiConfigService.generateTextForPurpose('product_description', prompt, storeId);
       const description = parseDescriptionResponse(result.text);
       await creditsService.consume(storeId, cost);
       await aiService.markCompleted(job.id, { ...description, provider: result.provider_label }, cost);

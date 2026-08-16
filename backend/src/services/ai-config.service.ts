@@ -523,7 +523,7 @@ export class AiConfigService {
        ORDER BY r.purpose ASC`,
     );
 
-    const defaultPurposes = ['text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const defaultPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
     const map = new Map(rows.map((r) => [r.purpose, r]));
 
     return defaultPurposes.map((purpose) => {
@@ -540,7 +540,7 @@ export class AiConfigService {
   }
 
   async setPurposeRouting(purpose: string, providerConfigId: string | null) {
-    const validPurposes = ['text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const validPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
     if (!validPurposes.includes(purpose)) {
       throw new PdValidationError(`Invalid AI purpose: ${purpose}`);
     }
@@ -591,6 +591,54 @@ export class AiConfigService {
       default_prompt: string;
       updated_at: Date;
     }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+
+    if (!rows[0] && key === 'product_description') {
+      try {
+        await query(
+          `INSERT INTO pd_ai_prompt_templates (prompt_key, title, description, system_prompt, default_prompt, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (prompt_key) DO NOTHING`,
+          [
+            'product_description',
+            "Sublimer avec l'IA — Description Produit & Points Forts",
+            "Rédige une description structurée en HTML avec points forts et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
+            `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite pour la marketplace PandaMarket. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive.`,
+            `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Rédigez une description produit vendeuse, structurée et persuasive en {language}.
+
+Consignes de format et de style :
+- Langue : {language}
+- Tonalité : {tone} (ton professionnel, crédible, séduisant sans exagération mensongère)
+- Produit : {title}
+- Catégorie : {category}
+- Attributs et spécifications : {attributes}
+- Description brute actuelle : {current_description}
+
+Structure HTML obligatoire :
+- Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
+- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
+- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
+- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
+  "summary": "Résumé percutant en une phrase pour la vitrine"
+}`,
+          ],
+        );
+        const refetched = await query<{
+          prompt_key: string;
+          title: string;
+          description: string | null;
+          system_prompt: string;
+          default_prompt: string;
+          updated_at: Date;
+        }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+        rows = refetched.rows;
+      } catch (err: any) {
+        logger.warn({ err: err?.message }, 'Failed to auto-seed product_description prompt template');
+      }
+    }
 
     if (!rows[0] && key === 'product_tagging') {
       try {
