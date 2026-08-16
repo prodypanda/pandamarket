@@ -196,24 +196,30 @@ export class BuyerInterestService {
 
     // 1. Recommended cross-seller products matching top tags
     const productsRes = await query<any>(
-      `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, p.interest_tags
+      `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+              p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
+              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
+              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
+       LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        WHERE p.status = 'published'
          AND p.interest_tags && $1::text[]
-       ORDER BY p.created_at DESC
-       LIMIT 8`,
+       ORDER BY (
+         SELECT COUNT(*) FROM unnest(p.interest_tags) t WHERE t = ANY($1::text[])
+       ) DESC, p.created_at DESC
+       LIMIT 16`,
       [topTags]
     );
 
     // 2. Similar Stores matching top tags
     const storesRes = await query<any>(
-      `SELECT DISTINCT s.id, s.name, s.subdomain, s.subscribers_count
+      `SELECT DISTINCT s.id, s.name, s.slug AS subdomain, s.subscribers_count
        FROM pd_store s
        JOIN pd_product p ON p.store_id = s.id
        WHERE p.status = 'published'
          AND p.interest_tags && $1::text[]
-       LIMIT 4`,
+       LIMIT 6`,
       [topTags]
     );
 
@@ -222,8 +228,15 @@ export class BuyerInterestService {
         id: p.id,
         store_id: p.store_id,
         store_name: p.store_name,
+        store_subdomain: p.store_subdomain,
         title: p.title,
+        slug: p.slug,
         price: Number(p.price),
+        compare_at_price: p.compare_at_price ? Number(p.compare_at_price) : null,
+        category: p.category,
+        marketplace_category_slug: p.marketplace_category_slug,
+        thumbnail: p.thumbnail,
+        image_url: p.image_url,
         matched_tag: topTags[0] || 'recommande',
         interest_tags: p.interest_tags || [],
       })),

@@ -53,9 +53,32 @@ router.get(
   }),
 );
 
+function interleaveFeed<T>(baseItems: T[], injectedItems: T[]): T[] {
+  if (!injectedItems.length) return baseItems;
+  if (!baseItems.length) return injectedItems;
+
+  const result: T[] = [];
+  const baseLen = baseItems.length;
+  const injLen = injectedItems.length;
+  const interval = Math.max(2, Math.floor(baseLen / injLen));
+
+  let baseIdx = 0;
+  let injIdx = 0;
+
+  while (baseIdx < baseLen || injIdx < injLen) {
+    for (let i = 0; i < interval && baseIdx < baseLen; i++) {
+      result.push(baseItems[baseIdx++]);
+    }
+    if (injIdx < injLen) {
+      result.push(injectedItems[injIdx++]);
+    }
+  }
+  return result;
+}
+
 /**
  * GET /api/pd/marketplace/feed
- * Blended feed with ~30% interest injection and configurable base sorting
+ * Blended feed with configurable interest injection ratio and base catalog sorting
  */
 router.get(
   '/feed',
@@ -65,6 +88,9 @@ router.get(
     const querySort = req.query.sort as string | undefined;
     const baseSort = querySort || (settings as any).hub_feed_base_sort || 'random';
     const personalizationPct = Math.min(50, Math.max(0, Number((settings as any).hub_feed_personalization_pct ?? 30)));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
+    const categorySlug = req.query.category as string | undefined;
+    const searchQuery = req.query.q as string | undefined;
 
     let orderBy = 'RANDOM()';
     if (baseSort === 'newest') orderBy = 'p.created_at DESC';
@@ -72,6 +98,22 @@ router.get(
     else if (baseSort === 'best_sellers') orderBy = 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
     else if (baseSort === 'price_asc') orderBy = 'p.price ASC, p.created_at DESC';
     else if (baseSort === 'price_desc') orderBy = 'p.price DESC, p.created_at DESC';
+
+    const conditions: string[] = [`p.status = 'published'`];
+    const params: any[] = [];
+
+    if (categorySlug) {
+      params.push(categorySlug);
+      conditions.push(`(mc.slug = $${params.length} OR p.category ILIKE $${params.length})`);
+    }
+
+    if (searchQuery) {
+      params.push(`%${searchQuery.trim()}%`);
+      conditions.push(`(p.title ILIKE $${params.length} OR p.description ILIKE $${params.length})`);
+    }
+
+    params.push(limit);
+    const limitPlaceholder = `$${params.length}`;
 
     const baseRes = await query<any>(
       `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
@@ -81,22 +123,26 @@ router.get(
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
-       WHERE p.status = 'published'
+       WHERE ${conditions.join(' AND ')}
        ORDER BY ${orderBy}
-       LIMIT 50`
+       LIMIT ${limitPlaceholder}`,
+      params
     );
 
     let finalProducts = baseRes.rows;
 
-    // Inject personalized interest recommendations if logged in and personalization > 0
+    // Inject personalized interest recommendations if buyer profile exists and personalization > 0
     if (buyerId && personalizationPct > 0) {
       const recs = await buyerInterestService.getRecommendations(buyerId);
       if (recs.recommended_products.length > 0) {
-        const injectCount = Math.round((finalProducts.length * personalizationPct) / 100);
+        const injectCount = Math.min(
+          recs.recommended_products.length,
+          Math.max(1, Math.round((finalProducts.length * personalizationPct) / 100))
+        );
         const injected = recs.recommended_products.slice(0, injectCount);
         const existingIds = new Set(injected.map((p) => p.id));
         const filteredBase = finalProducts.filter((p) => !existingIds.has(p.id));
-        finalProducts = [...injected, ...filteredBase];
+        finalProducts = interleaveFeed(filteredBase, injected);
       }
     }
 
@@ -105,6 +151,7 @@ router.get(
       feed_settings: {
         base_sort: baseSort,
         personalization_pct: personalizationPct,
+        total_items: finalProducts.length,
       },
     });
   }),
