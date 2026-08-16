@@ -25,6 +25,7 @@ import { categoryService } from './category.service';
 import { imageVariantService } from './image-variant.service';
 import { fileAssetService } from './file-asset.service';
 import { aiProductTaggerService } from './ai-product-tagger.service';
+import { notificationBatchService } from './notification-batch.service';
 import { eventBus, PdEvent } from '../events/event-bus';
 import { logger } from '../utils/logger';
 import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
@@ -82,6 +83,7 @@ export interface ProductRow {
   storefront_category_slug?: string | null;
   storefront_parent_category_name?: string | null;
   storefront_parent_category_slug?: string | null;
+  store_name?: string | null;
   store_subdomain?: string | null;
   store_custom_domain?: string | null;
   store_seller_type?: SellerType | null;
@@ -500,7 +502,23 @@ export class ProductService {
       eventBus.emit(PdEvent.PRODUCT_PUBLISHED, { product_id: id, store_id: input.store_id });
       aiProductTaggerService.queueProductTagging(id, input.store_id).catch(() => {});
     }
-    return this.getById(productId);
+
+    const createdProduct = await this.getById(productId);
+
+    if (status === ProductStatus.Published) {
+      notificationBatchService.ingestEvent({
+        storeId: input.store_id,
+        storeName: createdProduct.store_name || 'Boutique',
+        type: 'new_product',
+        productId: id,
+        productTitle: input.title,
+        price: Number(input.price),
+      }).catch((err) => {
+        logger.warn({ err, productId: id }, 'Failed to ingest new product notification batch event');
+      });
+    }
+
+    return createdProduct;
   }
 
   async getById(id: string): Promise<ProductRow> {
@@ -670,9 +688,10 @@ export class ProductService {
         values.push(k === 'tags' || k === 'attributes' ? JSON.stringify(patch[k]) : k === 'description' ? sanitizeProductDescription(patch[k] as string | null | undefined) : patch[k]);
       }
     }
-    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined) return this.getById(id);
+    const previousProduct = await this.getById(id);
+    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined) return previousProduct;
     const productId = await transaction(async (c) => {
-      current = current ?? (await this.getById(id));
+      current = current ?? previousProduct;
       if (fields.length > 0) {
         const sql = `UPDATE pd_product SET ${fields.join(', ')} WHERE id = $1 RETURNING *`;
         const { rows } = await c.query<ProductRow>(sql, [id, ...values]);
@@ -685,12 +704,53 @@ export class ProductService {
       }
       return id;
     });
+
+    const updatedProduct = await this.getById(productId);
+
     if (patch.title !== undefined || patch.description !== undefined || patch.category !== undefined) {
-      if (current?.status === ProductStatus.Published) {
-        aiProductTaggerService.queueProductTagging(id, current.store_id).catch(() => {});
+      if (updatedProduct?.status === ProductStatus.Published) {
+        aiProductTaggerService.queueProductTagging(id, updatedProduct.store_id).catch(() => {});
       }
     }
-    return this.getById(productId);
+
+    // Price drop detection for published products
+    if (
+      patch.price !== undefined &&
+      previousProduct &&
+      Number(patch.price) < Number(previousProduct.price) &&
+      updatedProduct.status === ProductStatus.Published
+    ) {
+      notificationBatchService.ingestEvent({
+        storeId: updatedProduct.store_id,
+        storeName: updatedProduct.store_name || 'Boutique',
+        type: 'price_drop',
+        productId: id,
+        productTitle: updatedProduct.title,
+        price: Number(patch.price),
+        oldPrice: Number(previousProduct.price),
+      }).catch((err) => {
+        logger.warn({ err, productId: id }, 'Failed to ingest price drop notification batch event');
+      });
+    }
+
+    // Status changed to Published detection
+    if (
+      patch.status === ProductStatus.Published &&
+      previousProduct.status !== ProductStatus.Published
+    ) {
+      notificationBatchService.ingestEvent({
+        storeId: updatedProduct.store_id,
+        storeName: updatedProduct.store_name || 'Boutique',
+        type: 'new_product',
+        productId: id,
+        productTitle: updatedProduct.title,
+        price: Number(updatedProduct.price),
+      }).catch((err) => {
+        logger.warn({ err, productId: id }, 'Failed to ingest new product notification batch event');
+      });
+    }
+
+    return updatedProduct;
   }
 
   async getPublicById(id: string): Promise<PublicProductRow> {

@@ -5786,5 +5786,22 @@ router.get(
   }),
 );
 
+/**
+ * POST /api/pd/admin/analytics/ai-tagging-sweep
+ * Trigger manual sweep to auto-tag untagged published products using Gemini Pro
+ */
+router.post(
+  '/analytics/ai-tagging-sweep',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const limit = Math.min(200, Math.max(1, Number(req.body.limit) || 100));
+    const forceAll = Boolean(req.body.force_all);
+    const { aiProductTaggerService } = await import('../services/ai-product-tagger.service');
+    const result = await aiProductTaggerService.sweepUntaggedProducts(limit, forceAll);
+    res.status(200).json({ success: true, result });
+  }),
+);
+
 export default router;
 

@@ -272,28 +272,57 @@ export class SellerBroadcastService {
         [storeId, limit, offset]
       );
 
-      return res.rows.map((row) => {
-        const discountType = (row.discount_type as 'percentage' | 'fixed') || 'percentage';
-        const rawVal = typeof row.discount_value === 'number' ? row.discount_value : parseFloat(String(row.discount_value || '0'));
-        const discountValStr = rawVal > 0 ? (discountType === 'percentage' ? `${rawVal}%` : `${rawVal} TND`) : '10%';
-        const title = row.message.length > 40 ? row.message.slice(0, 40) + '...' : row.message;
+      return await Promise.all(
+        res.rows.map(async (row) => {
+          const discountType = (row.discount_type as 'percentage' | 'fixed') || 'percentage';
+          const rawVal = typeof row.discount_value === 'number' ? row.discount_value : parseFloat(String(row.discount_value || '0'));
+          const discountValStr = rawVal > 0 ? (discountType === 'percentage' ? `${rawVal}%` : `${rawVal} TND`) : '10%';
+          const title = row.message.length > 40 ? row.message.slice(0, 40) + '...' : row.message;
 
-        return {
-          id: row.id,
-          created_at: (row.created_at || row.sent_at || new Date()).toISOString(),
-          sent_at: (row.sent_at || new Date()).toISOString(),
-          title,
-          message: row.message,
-          coupon_code: (row.coupon_code || 'AUCUN').toUpperCase(),
-          discount_value: discountValStr,
-          discount_type: discountType,
-          recipients_count: row.subscribers_count_at_send || 0,
-          claims_count: 0,
-          claim_rate_pct: 0,
-          generated_gmv_tnd: 0,
-          status: 'sent' as const,
-        };
-      });
+          let claimsCount = 0;
+          let generatedGmv = 0;
+
+          if (row.coupon_code && row.coupon_code.trim() !== '') {
+            try {
+              const code = row.coupon_code.trim().toUpperCase();
+              const orderStatsRes = await query<{ count: string; gmv: string }>(
+                `SELECT COUNT(DISTINCT o.id)::text AS count,
+                        COALESCE(SUM(oi.total), 0)::text AS gmv
+                 FROM pd_order o
+                 JOIN pd_order_item oi ON oi.order_id = o.id
+                 WHERE oi.store_id = $1
+                   AND o.created_at >= $2
+                   AND o.status IN ('paid', 'delivered', 'fulfilled', 'processing')
+                   AND (o.notes ILIKE '%' || $3 || '%' OR o.billing_address::text ILIKE '%' || $3 || '%')`,
+                [storeId, row.sent_at || row.created_at, code]
+              );
+              claimsCount = parseInt(orderStatsRes.rows[0]?.count || '0', 10);
+              generatedGmv = parseFloat(orderStatsRes.rows[0]?.gmv || '0');
+            } catch {
+              // fallback
+            }
+          }
+
+          const recipients = row.subscribers_count_at_send || 0;
+          const claimRatePct = recipients > 0 ? Number(((claimsCount / recipients) * 100).toFixed(1)) : 0;
+
+          return {
+            id: row.id,
+            created_at: (row.created_at || row.sent_at || new Date()).toISOString(),
+            sent_at: (row.sent_at || new Date()).toISOString(),
+            title,
+            message: row.message,
+            coupon_code: (row.coupon_code || 'AUCUN').toUpperCase(),
+            discount_value: discountValStr,
+            discount_type: discountType,
+            recipients_count: recipients,
+            claims_count: claimsCount,
+            claim_rate_pct: claimRatePct,
+            generated_gmv_tnd: Number(generatedGmv.toFixed(3)),
+            status: 'sent' as const,
+          };
+        })
+      );
     } catch {
       return [];
     }

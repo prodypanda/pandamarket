@@ -49,8 +49,8 @@ export interface PlatformSettings {
   hub_homepage_banner_cta_url: string;
   hub_homepage_banner_image_url: string;
   hub_homepage_blocks: string;
-  hub_feed_base_sort?: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
-  hub_feed_personalization_pct?: number;
+  hub_feed_base_sort: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
+  hub_feed_personalization_pct: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -273,6 +273,8 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_banner_cta_url: '/hub/search',
   hub_homepage_banner_image_url: '',
   hub_homepage_blocks: '',
+  hub_feed_base_sort: 'random',
+  hub_feed_personalization_pct: 30,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,

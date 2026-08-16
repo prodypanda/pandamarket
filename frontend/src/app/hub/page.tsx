@@ -98,25 +98,33 @@ function prioritizeFeaturedCategories(categories: MarketplaceCategory[], setting
 async function getTrendingProducts(sortBy?: string): Promise<{ products: Product[], totalPages: number, totalProducts: number, hasFetchError?: boolean }> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const params = new URLSearchParams({ page: '1', limit: '16', sort: resolveCatalogSort(sortBy) });
+    const params = new URLSearchParams({ page: '1', limit: '16' });
+    if (sortBy) {
+      params.set('sort', resolveCatalogSort(sortBy));
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
       const revalidateSec = parseInt(process.env.HUB_PRODUCT_REVALIDATE_SECONDS || '300', 10);
-      res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
+      res = await fetch(`${backendUrl}/api/pd/marketplace/feed?${params.toString()}`, {
         next: { revalidate: revalidateSec, tags: ['hub_products'] },
         signal: controller.signal,
       });
+      if (!res.ok) {
+        res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
+          next: { revalidate: revalidateSec, tags: ['hub_products'] },
+        });
+      }
     } finally {
       clearTimeout(timer);
     }
     if (!res.ok) return { products: [], totalPages: 1, totalProducts: 0, hasFetchError: true };
     const data = await res.json();
     return {
-      products: data.data || [],
+      products: data.data || data.products || [],
       totalPages: data.meta?.total_pages || 1,
-      totalProducts: typeof data.meta?.total === 'number' ? data.meta.total : (data.data?.length || 0),
+      totalProducts: typeof data.meta?.total === 'number' ? data.meta.total : (data.data?.length || data.products?.length || 0),
       hasFetchError: false,
     };
   } catch {

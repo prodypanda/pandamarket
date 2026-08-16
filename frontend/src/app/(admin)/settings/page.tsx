@@ -75,6 +75,8 @@ interface PlatformSettings {
   hub_homepage_banner_cta_url: string;
   hub_homepage_banner_image_url: string;
   hub_homepage_blocks: string;
+  hub_feed_base_sort: 'random' | 'newest' | 'alphabetical' | 'best_sellers';
+  hub_feed_personalization_pct: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -297,6 +299,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_homepage_banner_cta_url: '/hub/search',
   hub_homepage_banner_image_url: '',
   hub_homepage_blocks: '',
+  hub_feed_base_sort: 'random',
+  hub_feed_personalization_pct: 30,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -1466,6 +1470,136 @@ function CopyableField({ label, value }: { label: string; value: string }) {
       </div>
       {copied && (
         <p className="text-[10px] font-bold text-emerald-600 ml-1">Copied to clipboard!</p>
+      )}
+    </div>
+  );
+}
+
+function AiTaggingHealthCard() {
+  const [health, setHealth] = useState<{
+    status: string;
+    total_products: number;
+    tagged_products: number;
+    tag_coverage_pct: number;
+    top_tags: Array<{ tag: string; count: number }>;
+    last_sweep_at: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sweeping, setSweeping] = useState(false);
+  const [sweepResult, setSweepResult] = useState<string | null>(null);
+
+  const fetchHealth = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/analytics/ai-tagging-health');
+      if (res.ok) {
+        const data = await res.json();
+        setHealth(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHealth();
+  }, []);
+
+  const handleSweep = async () => {
+    setSweeping(true);
+    setSweepResult(null);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/analytics/ai-tagging-sweep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSweepResult(`✓ ${data.result?.tagged ?? 0} produit(s) analysé(s) et taggé(s) avec succès.`);
+        await fetchHealth();
+      } else {
+        setSweepResult('Erreur lors du balayage IA.');
+      }
+    } catch {
+      setSweepResult('Erreur réseau.');
+    } finally {
+      setSweeping(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4" data-testid="ai-tagging-health-card">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+            <span>🧠</span> Diagnostic du Tagging Sémantique IA (Gemini Pro)
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                health?.status === 'healthy'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {health?.status === 'healthy' ? '✓ Opérationnel' : '⚡ En cours de couverture'}
+            </span>
+          </h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Couverture des tags d'intérêt générés automatiquement pour alimenter le moteur de recommandation.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSweep}
+          disabled={sweeping}
+          data-testid="btn-trigger-ai-sweep"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition-colors disabled:opacity-50"
+        >
+          {sweeping ? 'Analyse en cours...' : '⚡ Lancer le scan IA'}
+        </button>
+      </div>
+
+      {sweepResult && (
+        <div className="p-3 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+          {sweepResult}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-[11px] font-bold text-slate-400 uppercase">Total Produits</div>
+          <div className="text-lg font-black text-slate-800 mt-1">{health?.total_products ?? '—'}</div>
+        </div>
+        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-[11px] font-bold text-slate-400 uppercase">Produits Taggés</div>
+          <div className="text-lg font-black text-emerald-600 mt-1">{health?.tagged_products ?? '—'}</div>
+        </div>
+        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-[11px] font-bold text-slate-400 uppercase">Taux de Couverture</div>
+          <div className="text-lg font-black text-purple-600 mt-1">{health?.tag_coverage_pct ?? '—'}%</div>
+        </div>
+        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-[11px] font-bold text-slate-400 uppercase">Tags Actifs</div>
+          <div className="text-lg font-black text-blue-600 mt-1">{health?.top_tags?.length ?? 0}</div>
+        </div>
+      </div>
+
+      {health?.top_tags && health.top_tags.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-600 mb-2">Principaux centres d'intérêt détectés :</div>
+          <div className="flex flex-wrap gap-1.5">
+            {health.top_tags.map((t) => (
+              <span
+                key={t.tag}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-xs"
+              >
+                #{t.tag} <span className="text-slate-400">({t.count})</span>
+              </span>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2843,6 +2977,82 @@ export default function SuperAdminSettingsPage() {
             {renderTextInput('catalog_featured_category_slugs', 'Featured Category Slugs', 'electronics,beauty,home')}
           </div>
         </div>
+      </section>
+
+      {/* Feature 20: Hub Feed & Algorithm Tuning Section */}
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`} data-testid="hub-feed-tuning-section">
+        <SectionHeader
+          icon={<SlidersHorizontal className="h-5 w-5 text-emerald-600" />}
+          title="Hub Feed & Algorithm Tuning"
+          description="Configurez le moteur de recommandation et l'algorithme d'affichage des produits sur la page d'accueil du Marketplace Hub : tri de base, ratio d'injection personnalisée par centres d'intérêt IA, et diagnostic du tagging automatique."
+        />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {/* Base Sorting Selector */}
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3">
+            <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+              <span>📋</span> Tri de Base du Catalogue
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Définit l'ordre de tri appliqué au flux standard des produits pour les visiteurs anonymes ou comme socle de base.
+            </p>
+            <select
+              data-testid="select-hub-feed-base-sort"
+              value={settings.hub_feed_base_sort || 'random'}
+              onChange={(e) => updateSetting('hub_feed_base_sort', e.target.value as any)}
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="random">🔀 Aléatoire (Mélange dynamique à chaque session)</option>
+              <option value="newest">✨ Nouveautés (Date de publication DESC)</option>
+              <option value="alphabetical">🔤 Alphabétique (Titre A-Z)</option>
+              <option value="best_sellers">🔥 Meilleures Ventes (Volume de commandes DESC)</option>
+            </select>
+          </div>
+
+          {/* Personalization Injection Slider */}
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <span>🤖</span> Injection par Centres d'Intérêt IA
+              </h4>
+              <span className="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
+                {settings.hub_feed_personalization_pct ?? 30}%
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Pourcentage de produits personnalisés injectés dans le flux pour les acheteurs connectés (0% à 50%).
+            </p>
+            <input
+              type="range"
+              min={0}
+              max={50}
+              step={5}
+              data-testid="slider-hub-feed-personalization"
+              value={settings.hub_feed_personalization_pct ?? 30}
+              onChange={(e) => updateSetting('hub_feed_personalization_pct', Number(e.target.value))}
+              className="w-full accent-emerald-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+            />
+            {/* Visual ratio preview */}
+            <div className="space-y-1 pt-1">
+              <div className="h-3 w-full rounded-full overflow-hidden flex bg-slate-200">
+                <div
+                  className="bg-emerald-500 transition-all duration-300"
+                  style={{ width: `${settings.hub_feed_personalization_pct ?? 30}%` }}
+                />
+                <div
+                  className="bg-blue-500 transition-all duration-300"
+                  style={{ width: `${100 - (settings.hub_feed_personalization_pct ?? 30)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                <span className="text-emerald-700">🤖 {settings.hub_feed_personalization_pct ?? 30}% Intérêts IA</span>
+                <span className="text-blue-700">📋 {100 - (settings.hub_feed_personalization_pct ?? 30)}% Tri Standard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Tagging Diagnostic Monitor */}
+        <AiTaggingHealthCard />
       </section>
 
       <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
