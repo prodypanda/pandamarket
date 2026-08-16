@@ -46,7 +46,12 @@
     "wishlist": "Wishlist",
     "notifications": "Notifications",
     "createStore": "Create My Store",
-    "pricing": "Pricing"
+    "pricing": "Pricing",
+    "myAccount": "My Account",
+    "myFeed": "My Feed",
+    "messages": "Messages",
+    "searchPlaceholder": "Search products...",
+    "startSelling": "Start Selling"
   },
   "hub": {
     "hero": {

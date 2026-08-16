@@ -46,7 +46,12 @@
     "wishlist": "Favoris",
     "notifications": "Notifications",
     "createStore": "Créer ma boutique",
-    "pricing": "Tarifs"
+    "pricing": "Tarifs",
+    "myAccount": "Mon compte",
+    "myFeed": "Mon fil",
+    "messages": "Messages",
+    "searchPlaceholder": "Rechercher des produits...",
+    "startSelling": "Commencer à vendre"
   },
   "hub": {
     "hero": {

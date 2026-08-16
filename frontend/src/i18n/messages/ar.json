@@ -46,7 +46,12 @@
     "wishlist": "المفضلة",
     "notifications": "الإشعارات",
     "createStore": "إنشاء متجري",
-    "pricing": "الأسعار"
+    "pricing": "الأسعار",
+    "myAccount": "حسابي",
+    "myFeed": "موجزي",
+    "messages": "الرسائل",
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "startSelling": "ابدأ البيع"
   },
   "hub": {
     "hero": {

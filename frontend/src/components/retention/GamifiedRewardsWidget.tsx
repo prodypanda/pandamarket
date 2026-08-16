@@ -117,8 +117,9 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   const [consent, setConsent] = useState(true);
   const [hasPlayedToday, setHasPlayedToday] = useState(false);
 
-  // Dynamic Settings
-  const [enabled, setEnabled] = useState(true);
+  // Dynamic Settings (defaults to false so disabled state NEVER flashes on page load)
+  const [enabled, setEnabled] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [buttonLabel, setButtonLabel] = useState("🎁 Gagnez jusqu'à 15 DT !");
   const [prizesList, setPrizesList] = useState<Prize[]>(DEFAULT_PRIZES);
 
@@ -165,6 +166,15 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
   // Load Marketplace Config Settings
   useEffect(() => {
     let cancelled = false;
+
+    // Check cached preference for instant render if enabled
+    try {
+      const cached = sessionStorage.getItem('pd_rewards_widget_enabled');
+      if (cached === 'true') {
+        setEnabled(true);
+      }
+    } catch {}
+
     async function loadWidgetSettings() {
       try {
         const res = await fetchWithCsrf('/api/pd/marketplace/settings');
@@ -179,6 +189,9 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
                 settings.rewards_widget_enabled === 1 ||
                 settings.rewards_widget_enabled === '1';
               setEnabled(isEnabled);
+              try {
+                sessionStorage.setItem('pd_rewards_widget_enabled', isEnabled ? 'true' : 'false');
+              } catch {}
             }
             if (settings.rewards_widget_button_label) {
               setButtonLabel(settings.rewards_widget_button_label);
@@ -195,7 +208,11 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
             }
           }
         }
-      } catch {}
+      } catch {} finally {
+        if (!cancelled) {
+          setIsLoaded(true);
+        }
+      }
     }
     loadWidgetSettings();
     return () => {
@@ -346,7 +363,7 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (isInternalOrAuthRoute || !enabled) return null;
+  if (isInternalOrAuthRoute || !isLoaded || !enabled) return null;
 
   const currentPrizes = prizesList.length > 0 ? prizesList : DEFAULT_PRIZES;
 
