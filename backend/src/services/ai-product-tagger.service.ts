@@ -32,6 +32,64 @@ export interface ExtractTagsInput {
 }
 
 export class AiProductTaggerService {
+  private schemaChecked = false;
+
+  /**
+   * Automatically ensure Feature 20 database schema (interest_tags, tables) exists
+   */
+  async ensureSchema(): Promise<void> {
+    if (this.schemaChecked || process.env.NODE_ENV === 'test') return;
+    try {
+      await query(`
+        ALTER TABLE pd_product
+          ADD COLUMN IF NOT EXISTS interest_tags TEXT[] NOT NULL DEFAULT '{}',
+          ADD COLUMN IF NOT EXISTS interest_tags_synced_at TIMESTAMPTZ;
+        CREATE INDEX IF NOT EXISTS idx_pd_product_interest_tags_gin ON pd_product USING GIN (interest_tags);
+        CREATE INDEX IF NOT EXISTS idx_pd_product_interest_tags_synced ON pd_product(interest_tags_synced_at) WHERE status = 'published';
+
+        ALTER TABLE pd_store
+          ADD COLUMN IF NOT EXISTS subscribers_count INT NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS verified_subscribers_count INT NOT NULL DEFAULT 0;
+
+        CREATE TABLE IF NOT EXISTS pd_store_subscription (
+          id                      VARCHAR(64) PRIMARY KEY,
+          buyer_id                VARCHAR(64) NOT NULL REFERENCES pd_user(id) ON DELETE CASCADE,
+          store_id                VARCHAR(64) NOT NULL REFERENCES pd_store(id) ON DELETE CASCADE,
+          notify_price_drops      BOOLEAN NOT NULL DEFAULT true,
+          notify_new_products     BOOLEAN NOT NULL DEFAULT true,
+          is_verified_buyer       BOOLEAN NOT NULL DEFAULT false,
+          created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT uq_buyer_store_subscription UNIQUE (buyer_id, store_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS pd_buyer_interest_profile (
+          buyer_id                VARCHAR(64) PRIMARY KEY REFERENCES pd_user(id) ON DELETE CASCADE,
+          tag_weights             JSONB NOT NULL DEFAULT '{}'::jsonb,
+          last_calculated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS pd_seller_broadcast (
+          id                         VARCHAR(64) PRIMARY KEY,
+          store_id                   VARCHAR(64) NOT NULL REFERENCES pd_store(id) ON DELETE CASCADE,
+          coupon_code                VARCHAR(64),
+          discount_type              VARCHAR(32) DEFAULT 'percentage',
+          discount_value             NUMERIC(10,2),
+          message                    TEXT NOT NULL,
+          sent_at                    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          subscribers_count_at_send  INT NOT NULL DEFAULT 0,
+          created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      this.schemaChecked = true;
+      logger.info('Feature 20 schema successfully verified in database');
+    } catch (err: any) {
+      logger.warn({ err: err?.message }, 'Feature 20 schema auto-ensure skipped');
+    }
+  }
+
   /**
    * Extract 4–8 normalized lowercase interest tags using Gemini Pro or heuristic fallback
    */
@@ -110,6 +168,7 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
    * Tag a single product by ID and save interest_tags to database
    */
   async tagProduct(productId: string, options?: AiTaggingOptions): Promise<AiTaggingResult> {
+    await this.ensureSchema();
     const { rows } = await query<{
       id: string;
       store_id: string;
@@ -223,6 +282,7 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
     fallbackUsed: number;
   }> {
     try {
+      await this.ensureSchema();
       const whereClause = forceAll
         ? `status = 'published'`
         : `status = 'published' AND (interest_tags IS NULL OR COALESCE(cardinality(interest_tags), 0) = 0 OR interest_tags_synced_at IS NULL)`;
@@ -278,6 +338,7 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
     lastSweepAt: string;
   }> {
     try {
+      await this.ensureSchema();
       const totalRes = await query<{ count: string }>(
         `SELECT COUNT(*)::text AS count FROM pd_product WHERE status = 'published'`
       );

@@ -68,6 +68,16 @@ function maskSecret(value: string | null): boolean {
   return Boolean(value);
 }
 
+function safeDecrypt(payload: string | null | undefined): string | null {
+  if (!payload || typeof payload !== 'string') return null;
+  try {
+    return decrypt(payload);
+  } catch (err: any) {
+    logger.warn({ err: err?.message }, 'Failed to decrypt AI provider API key (key mismatch or corrupted data), skipping');
+    return null;
+  }
+}
+
 function providerForResponse(row: ProviderRow) {
   return {
     id: row.id,
@@ -391,14 +401,17 @@ export class AiConfigService {
         [storeId],
       );
       if (rows[0]?.api_key_encrypted) {
-        attempts.push({
-          provider: rows[0].provider,
-          label: 'Seller AI provider',
-          model: rows[0].model,
-          base_url: rows[0].base_url,
-          api_key: decrypt(rows[0].api_key_encrypted),
-          source: 'seller',
-        });
+        const key = safeDecrypt(rows[0].api_key_encrypted);
+        if (key) {
+          attempts.push({
+            provider: rows[0].provider,
+            label: 'Seller AI provider',
+            model: rows[0].model,
+            base_url: rows[0].base_url,
+            api_key: key,
+            source: 'seller',
+          });
+        }
       }
     }
 
@@ -409,14 +422,17 @@ export class AiConfigService {
     );
     for (const row of rows) {
       if (!row.api_key_encrypted) continue;
-      attempts.push({
-        provider: row.provider,
-        label: row.label,
-        model: row.model,
-        base_url: row.base_url,
-        api_key: decrypt(row.api_key_encrypted),
-        source: 'platform',
-      });
+      const key = safeDecrypt(row.api_key_encrypted);
+      if (key) {
+        attempts.push({
+          provider: row.provider,
+          label: row.label,
+          model: row.model,
+          base_url: row.base_url,
+          api_key: key,
+          source: 'platform',
+        });
+      }
     }
 
     if (config.gemini.apiKey) {
@@ -595,24 +611,27 @@ export class AiConfigService {
       );
 
       if (rows[0] && rows[0].api_key_encrypted) {
-        try {
-          const text = await generateWithProvider({
-            provider: rows[0].provider,
-            model: rows[0].model,
-            base_url: rows[0].base_url,
-            api_key: decrypt(rows[0].api_key_encrypted),
-            prompt,
-          });
-          if (text.trim()) {
-            return {
-              text,
+        const apiKey = safeDecrypt(rows[0].api_key_encrypted);
+        if (apiKey) {
+          try {
+            const text = await generateWithProvider({
               provider: rows[0].provider,
-              provider_label: `${rows[0].label} (${purpose})`,
-              source: 'platform',
-            };
+              model: rows[0].model,
+              base_url: rows[0].base_url,
+              api_key: apiKey,
+              prompt,
+            });
+            if (text.trim()) {
+              return {
+                text,
+                provider: rows[0].provider,
+                provider_label: `${rows[0].label} (${purpose})`,
+                source: 'platform',
+              };
+            }
+          } catch (err) {
+            logger.warn({ purpose, provider: rows[0].provider, err }, 'Purpose-routed AI provider failed, falling back to priority stack');
           }
-        } catch (err) {
-          logger.warn({ purpose, provider: rows[0].provider, err }, 'Purpose-routed AI provider failed, falling back to priority stack');
         }
       }
     }
@@ -640,7 +659,10 @@ export class AiConfigService {
     }
 
     const providerConfig = rows[0];
-    const apiKey = decrypt(providerConfig.api_key_encrypted as string);
+    const apiKey = safeDecrypt(providerConfig.api_key_encrypted as string);
+    if (!apiKey) {
+      throw new Error(`Invalid or corrupt API key for AI provider on purpose: ${purpose}`);
+    }
 
     try {
       if (providerConfig.provider === 'replicate') {
