@@ -157,6 +157,8 @@ export interface PublicProductRow {
   store_settings?: Record<string, unknown> | null;
   store_created_at?: Date | string | null;
   store_product_count?: number | string | null;
+  average_rating?: number | null;
+  review_count?: number | null;
   price: string;
   in_stock: boolean;
   stock_status: 'in_stock' | 'out_of_stock';
@@ -223,6 +225,8 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     store_settings: row.store_settings ?? null,
     store_created_at: row.store_created_at ?? null,
     store_product_count: row.store_product_count !== undefined && row.store_product_count !== null ? Number(row.store_product_count) : null,
+    average_rating: row.average_rating !== undefined && row.average_rating !== null ? Number(row.average_rating) : 0,
+    review_count: row.review_count !== undefined && row.review_count !== null ? Number(row.review_count) : 0,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -767,7 +771,14 @@ export class ProductService {
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
               p.metadata, p.created_at, p.updated_at,
+              COALESCE(pr.average_rating, 0)::real AS average_rating, COALESCE(pr.review_count, 0)::int AS review_count,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              s.seller_type AS store_seller_type,
+              s.is_verified AS store_is_verified,
+              s.status AS store_status,
+              s.settings AS store_settings,
+              s.created_at AS store_created_at,
+              seller_stats.product_count AS store_product_count,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
@@ -776,6 +787,7 @@ export class ProductService {
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+       LEFT JOIN pd_product_rating pr ON pr.product_id = p.id
        LEFT JOIN LATERAL (
          SELECT json_agg(
            json_build_object(
@@ -806,6 +818,11 @@ export class ProductService {
          FROM pd_product_variant pv
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::text AS product_count
+         FROM pd_product sp
+         WHERE sp.store_id = s.id AND sp.status = $2
+       ) seller_stats ON true
        WHERE p.id = $1 AND p.status = $2 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
        LIMIT 1`,
       [id, ProductStatus.Published],
@@ -822,7 +839,14 @@ export class ProductService {
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
               p.metadata, p.created_at, p.updated_at,
+              COALESCE(pr.average_rating, 0)::real AS average_rating, COALESCE(pr.review_count, 0)::int AS review_count,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              s.seller_type AS store_seller_type,
+              s.is_verified AS store_is_verified,
+              s.status AS store_status,
+              s.settings AS store_settings,
+              s.created_at AS store_created_at,
+              seller_stats.product_count AS store_product_count,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
@@ -831,6 +855,7 @@ export class ProductService {
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+       LEFT JOIN pd_product_rating pr ON pr.product_id = p.id
        LEFT JOIN LATERAL (
          SELECT json_agg(
            json_build_object(
@@ -861,6 +886,11 @@ export class ProductService {
          FROM pd_product_variant pv
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::text AS product_count
+         FROM pd_product sp
+         WHERE sp.store_id = s.id AND sp.status = $3
+       ) seller_stats ON true
        WHERE p.store_id = $1 AND p.slug = $2 AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
        LIMIT 1`,
       [storeId, slug, ProductStatus.Published],
@@ -1212,6 +1242,7 @@ export class ProductService {
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
               p.metadata, p.created_at, p.updated_at,
+              COALESCE(pr.average_rating, 0)::real AS average_rating, COALESCE(pr.review_count, 0)::int AS review_count,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
@@ -1223,6 +1254,7 @@ export class ProductService {
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
+       LEFT JOIN pd_product_rating pr ON pr.product_id = p.id
        LEFT JOIN LATERAL (
          SELECT json_agg(
            json_build_object(

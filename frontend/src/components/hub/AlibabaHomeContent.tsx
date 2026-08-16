@@ -42,7 +42,9 @@ import { SponsoredAdsRail } from './SponsoredAdsRail';
 import { HubProductPagination } from './HubProductPagination';
 import {
   BlockBanner,
+  QuickAddToCartButton,
   RecentlyViewedRail,
+  StarRating,
   formatPrice,
   getProductHref,
   getProductImage,
@@ -427,7 +429,15 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
+              {marketplaceSettings.hub_card_show_rating !== false && (
+                <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="orange" className="mt-1" />
+              )}
+              <div className="mt-2 flex items-center justify-between gap-1">
+                <p className="text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
+                {marketplaceSettings.hub_card_show_add_to_cart !== false && (
+                  <QuickAddToCartButton product={product} style={marketplaceSettings.hub_card_add_to_cart_style || 'icon'} accentColor={ORANGE} />
+                )}
+              </div>
             </Link>
           ))}
           {dealProducts.length === 0 && <p className="col-span-full text-sm text-gray-400">{i18n.noDeals}</p>}
@@ -469,7 +479,15 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
             </div>
             <div className="p-3">
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
-              <p className="mt-2 text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
+              {marketplaceSettings.hub_card_show_rating !== false && (
+                <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="orange" className="mt-1" />
+              )}
+              <div className="mt-2 flex items-center justify-between gap-1">
+                <p className="text-sm font-black" style={{ color: ORANGE }}>{formatPrice(product.price)}</p>
+                {marketplaceSettings.hub_card_show_add_to_cart !== false && (
+                  <QuickAddToCartButton product={product} style={marketplaceSettings.hub_card_add_to_cart_style || 'icon'} accentColor={ORANGE} />
+                )}
+              </div>
             </div>
           </Link>
         )}

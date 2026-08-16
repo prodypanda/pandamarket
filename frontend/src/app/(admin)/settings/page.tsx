@@ -81,6 +81,9 @@ interface PlatformSettings {
   hub_feed_diversity_strength: number;
   hub_feed_max_items_per_store: number;
   hub_feed_ab_testing_enabled: boolean;
+  hub_card_show_rating: boolean;
+  hub_card_show_add_to_cart: boolean;
+  hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -309,6 +312,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_feed_diversity_strength: 50,
   hub_feed_max_items_per_store: 3,
   hub_feed_ab_testing_enabled: true,
+  hub_card_show_rating: true,
+  hub_card_show_add_to_cart: true,
+  hub_card_add_to_cart_style: 'icon',
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -683,6 +689,8 @@ const BOOLEAN_SETTING_KEYS = [
   'cloudflare_custom_hostnames_enabled',
   'hub_feed_diversity_enabled',
   'hub_feed_ab_testing_enabled',
+  'hub_card_show_rating',
+  'hub_card_show_add_to_cart',
   'hub_hero_show_category_sidebar',
   'hub_hero_show_carousel',
   'hub_hero_show_seller_rail',
@@ -767,6 +775,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_feed_diversity_strength',
     'hub_feed_max_items_per_store',
     'hub_feed_ab_testing_enabled',
+    'hub_card_show_rating',
+    'hub_card_show_add_to_cart',
+    'hub_card_add_to_cart_style',
   ],
   commerce: [
     'marketplace_enabled',
@@ -934,6 +945,9 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_feed_diversity_enabled', tab: 'algorithm', label: 'Pénalité de Diversité & Anti-Bulle', description: 'Empêche un vendeur ou un monopole algorithmique de saturer le flux Hub', keywords: ['diversite', 'anti-bulle', 'filtre', 'vendeurs', 'equite', 'monopole', 'penalty', 'diversity', 'algorithm'] },
   { key: 'hub_feed_max_items_per_store', tab: 'algorithm', label: 'Max Articles par Vendeur dans le Flux', description: 'Nombre maximum de produits consécutifs autorisés pour une même boutique par page', keywords: ['max', 'vendeur', 'articles', 'boutique', 'limite', 'consecutifs', 'store', 'items', 'algorithm'] },
   { key: 'hub_feed_diversity_strength', tab: 'algorithm', label: 'Intensité de la Diversité', description: 'Force de rejet des produits redondants du même vendeur vers le bas du flux', keywords: ['intensite', 'force', 'diversite', 'rejet', 'strength', 'algorithm'] },
+  { key: 'hub_card_show_rating', tab: 'algorithm', label: 'Étoiles d\'Avis sur Cartes Produit', description: 'Afficher les étoiles de notation et le nombre d\'avis sur les cartes produit du Hub', keywords: ['etoiles', 'stars', 'rating', 'avis', 'review', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
+  { key: 'hub_card_show_add_to_cart', tab: 'algorithm', label: 'Bouton Panier sur Cartes Produit', description: 'Afficher le bouton "Ajouter au panier" sur les cartes produit du Hub', keywords: ['panier', 'cart', 'bouton', 'button', 'ajouter', 'add', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
+  { key: 'hub_card_add_to_cart_style', tab: 'algorithm', label: 'Style du Bouton Panier', description: 'Style visuel du bouton panier: Icône seule, Compact ou Pleine largeur', keywords: ['style', 'panier', 'cart', 'bouton', 'icone', 'icon', 'compact', 'full', 'largeur', 'algorithm'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -3671,6 +3685,87 @@ export default function SuperAdminSettingsPage() {
                 Sur les sous-domaines marchands privés, le moteur n'injecte <strong>aucun concurrent</strong> afin de protéger les conversions du vendeur.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Hub Product Card Settings */}
+        <div className="mt-8 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50/60 to-white p-6">
+          <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-slate-800">
+            🛒 Cartes Produit du Hub
+          </h3>
+          <p className="mb-5 text-sm text-slate-500">
+            Configurez les éléments affichés sur les cartes produit dans les grilles du Hub (accueil, recherche, catégories).
+          </p>
+
+          <div className="space-y-4">
+            {/* Star Rating Toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+              <div>
+                <label htmlFor="hub_card_show_rating" className="block text-sm font-bold text-slate-800">
+                  ⭐ Étoiles d&apos;Avis &amp; Notation
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Affiche les étoiles de notation et le nombre d&apos;avis clients sur chaque carte produit
+                </p>
+              </div>
+              <input
+                id="hub_card_show_rating"
+                type="checkbox"
+                checked={settings.hub_card_show_rating !== false}
+                onChange={(e) => updateSetting('hub_card_show_rating', e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Add to Cart Toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+              <div>
+                <label htmlFor="hub_card_show_add_to_cart" className="block text-sm font-bold text-slate-800">
+                  🛍️ Bouton &quot;Ajouter au Panier&quot;
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Affiche un bouton d&apos;ajout rapide au panier sur chaque carte produit du Hub
+                </p>
+              </div>
+              <input
+                id="hub_card_show_add_to_cart"
+                type="checkbox"
+                checked={settings.hub_card_show_add_to_cart !== false}
+                onChange={(e) => updateSetting('hub_card_show_add_to_cart', e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Cart Button Style Selector */}
+            {settings.hub_card_show_add_to_cart !== false && (
+              <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+                <label className="block text-sm font-bold text-slate-800 mb-3">
+                  🎨 Style du Bouton Panier
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {([
+                    { value: 'icon', label: 'Icône', desc: 'Bouton rond discret', preview: '🛒' },
+                    { value: 'compact', label: 'Compact', desc: 'Pill avec texte court', preview: '🛒 Panier' },
+                    { value: 'full', label: 'Pleine Largeur', desc: 'Bouton large sous le prix', preview: '🛒 Ajouter au panier' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => updateSetting('hub_card_add_to_cart_style', opt.value)}
+                      className={`rounded-xl border-2 p-3 text-center transition-all ${
+                        (settings.hub_card_add_to_cart_style || 'icon') === opt.value
+                          ? 'border-emerald-500 bg-emerald-50 shadow-sm shadow-emerald-200/50'
+                          : 'border-slate-200/60 bg-slate-50/60 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="mb-1 text-lg">{opt.preview}</div>
+                      <div className="text-xs font-bold text-slate-800">{opt.label}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-500">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

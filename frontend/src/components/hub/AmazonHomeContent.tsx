@@ -24,6 +24,8 @@ import { HubProductPagination } from './HubProductPagination';
 import {
   BlockBanner,
   RecentlyViewedRail,
+  StarRating,
+  QuickAddToCartButton,
   formatPrice,
   getProductHref,
   getProductImage,
@@ -165,7 +167,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
-              <p className="mt-1 text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+              {(marketplaceSettings as any).hub_card_show_rating !== false && (
+                <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="amber" className="mt-1" />
+              )}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                {(marketplaceSettings as any).hub_card_show_add_to_cart !== false && (
+                  <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
+                )}
+              </div>
             </Link>
           ))}
           {lightningDeals.length === 0 && <p className="text-sm text-gray-400">No deals available yet.</p>}
@@ -355,7 +365,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
-              <p className="mt-1 text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+              {(marketplaceSettings as any).hub_card_show_rating !== false && (
+                <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="amber" className="mt-1" />
+              )}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                {(marketplaceSettings as any).hub_card_show_add_to_cart !== false && (
+                  <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
+                )}
+              </div>
             </Link>
           )}
         />

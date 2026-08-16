@@ -89,6 +89,9 @@ export interface MarketplaceSettings {
   maintenance_illustration_url?: string;
   maintenance_eta?: string;
   maintenance_block_storefronts?: string | boolean;
+  hub_card_show_rating?: boolean;
+  hub_card_show_add_to_cart?: boolean;
+  hub_card_add_to_cart_style?: 'icon' | 'compact' | 'full' | string;
 }
 
 export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';

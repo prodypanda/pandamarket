@@ -10,7 +10,7 @@ import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
-import { RecentlyViewedRail, isRtlLocale } from './home-template-shared';
+import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 
 interface Product {
@@ -18,6 +18,8 @@ interface Product {
   title: string;
   price: number | string;
   compare_at_price?: number | string | null;
+  average_rating?: number | string | null;
+  review_count?: number | string | null;
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
@@ -43,6 +45,8 @@ interface MarketplaceSettings {
   marketplace_tagline?: string;
   marketplace_default_locale?: 'fr' | 'en' | 'ar';
   marketplace_rtl_enabled?: string | boolean;
+  hub_card_show_rating?: boolean;
+  hub_card_show_add_to_cart?: boolean;
   hub_homepage_banner_title?: string;
   hub_homepage_banner_subtitle?: string;
   hub_homepage_banner_cta_label?: string;
@@ -82,7 +86,7 @@ function getProductImage(product: Product) {
   return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
-function ProductCard({ product, currency }: { product: Product; currency: string }) {
+function ProductCard({ product, currency, showRating, showCart }: { product: Product; currency: string; showRating?: boolean; showCart?: boolean }) {
   const image = getProductImage(product);
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
@@ -136,32 +140,37 @@ function ProductCard({ product, currency }: { product: Product; currency: string
           <p className="mb-1 truncate text-xs font-semibold text-[#16C784]">{product.store_name}</p>
         )}
         <h3 className="mb-3 line-clamp-2 min-h-[40px] font-bold text-gray-900 dark:text-white">{product.title}</h3>
+        {showRating && (
+          <StarRating rating={product.average_rating} count={product.review_count} size="xs" theme="emerald" className="mb-2" />
+        )}
         <div className="flex items-center justify-between gap-2">
           <span className="font-black text-[#16C784]">
             {formatPrice(product.price)} {currency}
           </span>
-          <button
-            type="button"
-            onClick={handleQuickAdd}
-            aria-label={`Ajouter ${product.title} au panier`}
-            className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-all shadow-sm ${
-              added
-                ? 'bg-emerald-600 text-white shadow-emerald-600/30'
-                : 'bg-[#16C784] text-white hover:bg-[#13b074] shadow-emerald-500/20'
-            }`}
-          >
-            {added ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                <span>Ajouté</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="h-3.5 w-3.5" />
-                <span>Panier</span>
-              </>
-            )}
-          </button>
+          {showCart && (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              aria-label={`Ajouter ${product.title} au panier`}
+              className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-all shadow-sm ${
+                added
+                  ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                  : 'bg-[#16C784] text-white hover:bg-[#13b074] shadow-emerald-500/20'
+              }`}
+            >
+              {added ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Ajouté</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  <span>Panier</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </Link>
@@ -379,7 +388,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
             sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
             gridClassName="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
             renderCard={(product) => (
-              <ProductCard key={product.id} product={product as Product} currency={currency} />
+              <ProductCard key={product.id} product={product as Product} currency={currency} showRating={marketplaceSettings?.hub_card_show_rating !== false} showCart={marketplaceSettings?.hub_card_show_add_to_cart !== false} />
             )}
           />
         ) : hasFetchError ? (

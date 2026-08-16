@@ -55,6 +55,9 @@ export interface PlatformSettings {
   hub_feed_diversity_strength: number;
   hub_feed_max_items_per_store: number;
   hub_feed_ab_testing_enabled: boolean;
+  hub_card_show_rating: boolean;
+  hub_card_show_add_to_cart: boolean;
+  hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -283,6 +286,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   hub_feed_diversity_strength: 50,
   hub_feed_max_items_per_store: 3,
   hub_feed_ab_testing_enabled: true,
+  hub_card_show_rating: true,
+  hub_card_show_add_to_cart: true,
+  hub_card_add_to_cart_style: 'icon',
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,

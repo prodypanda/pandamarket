@@ -47,6 +47,8 @@ interface Product {
   slug?: string | null;
   price: number | string;
   compare_at_price?: number | string | null;
+  average_rating?: number | string | null;
+  review_count?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
   images?: { url: string }[];
@@ -132,6 +134,8 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
       slug: p.slug,
       price: p.price,
       compare_at_price: p.compare_at_price,
+      average_rating: p.average_rating !== undefined && p.average_rating !== null ? Number(p.average_rating) : undefined,
+      review_count: p.review_count !== undefined && p.review_count !== null ? Number(p.review_count) : undefined,
       store_name: p.store_name,
       store_subdomain: p.store_subdomain,
       category: p.category,

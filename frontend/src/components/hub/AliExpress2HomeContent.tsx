@@ -8,7 +8,7 @@ import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { HubProductPagination } from './HubProductPagination';
 import { useLocale } from '../../contexts/LocaleContext';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
-import { BlockBanner, RecentlyViewedRail, isRtlLocale } from './home-template-shared';
+import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
 import { useMemo, useCallback } from 'react';
 interface Product {
   id: string;
@@ -69,7 +69,7 @@ function getProductImage(product: Product) {
 /* ──────────────────────────────────────────────
    SUPER DEAL product card — glass + dark overlay
    ────────────────────────────────────────────── */
-function SuperDealCard({ product, currency, rank }: { product: Product; currency: string; rank?: number }) {
+function SuperDealCard({ product, currency, rank, marketplaceSettings }: { product: Product; currency: string; rank?: number; marketplaceSettings?: any }) {
   const image = getProductImage(product);
 
   return (
@@ -101,14 +101,22 @@ function SuperDealCard({ product, currency, rank }: { product: Product; currency
 
       <div className="relative p-4">
         <h3 className="line-clamp-2 min-h-[40px] text-sm font-bold text-gray-900 dark:text-white/90 transition-colors group-hover:text-gray-900 dark:group-hover:text-white">{product.title}</h3>
+        {marketplaceSettings?.hub_card_show_rating !== false && (
+          <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="cyan" className="mt-2" />
+        )}
         <div className="mt-3 flex items-end justify-between gap-2">
           <div>
             <span className="text-xl font-black bg-gradient-to-r from-[#ff4747] to-[#ff8a00] bg-clip-text text-transparent">{formatPrice(product.price)}</span>
             <span className="ms-1.5 text-xs font-bold text-gray-500 dark:text-white/40">{currency}</span>
           </div>
-          <span className="flex items-center gap-1 rounded-lg bg-[#ff4747]/15 px-2 py-1 text-[10px] font-black text-[#ff6b6b] backdrop-blur">
-            <Flame className="h-3 w-3 fill-[#ff6b6b]" /> Hot
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 rounded-lg bg-[#ff4747]/15 px-2 py-1 text-[10px] font-black text-[#ff6b6b] backdrop-blur">
+              <Flame className="h-3 w-3 fill-[#ff6b6b]" /> Hot
+            </span>
+            {marketplaceSettings?.hub_card_show_add_to_cart !== false && (
+              <QuickAddToCartButton product={product} style={marketplaceSettings?.hub_card_add_to_cart_style || 'icon'} />
+            )}
+          </div>
         </div>
         {product.store_name && (
           <p className="mt-2 flex items-center gap-1.5 truncate text-[11px] font-medium text-gray-500 dark:text-white/30">
@@ -288,7 +296,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
             {/* Product grid */}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
               {flashProducts.map((product, i) => (
-                <SuperDealCard key={product.id} product={product} currency={currency} rank={i + 1} />
+                <SuperDealCard key={product.id} product={product} currency={currency} rank={i + 1} marketplaceSettings={marketplaceSettings} />
               ))}
             </div>
           </div>
@@ -378,7 +386,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {recommendedProducts.map((product) => (
-              <SuperDealCard key={product.id} product={product} currency={currency} />
+              <SuperDealCard key={product.id} product={product} currency={currency} marketplaceSettings={marketplaceSettings} />
             ))}
           </div>
 
@@ -387,7 +395,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
             sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
             gridClassName="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
             renderCard={(product) => (
-              <SuperDealCard key={product.id} product={product as Product} currency={currency} />
+              <SuperDealCard key={product.id} product={product as Product} currency={currency} marketplaceSettings={marketplaceSettings} />
             )}
           />
         </section>

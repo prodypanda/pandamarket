@@ -3,7 +3,8 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { History } from 'lucide-react';
+import { History, Star, ShoppingCart, Check } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
 
 export interface HomeProduct {
   id: string;
@@ -11,6 +12,8 @@ export interface HomeProduct {
   slug?: string | null;
   price: number | string;
   compare_at_price?: number | string | null;
+  average_rating?: number | string | null;
+  review_count?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
   images?: { url: string }[];
@@ -204,3 +207,193 @@ export function RecentlyViewedRail({ accentClass = 'text-[#16C784]' }: { accentC
     </section>
   );
 }
+
+export function StarRating({
+  rating = 0,
+  count = 0,
+  size = 'sm',
+  className = '',
+  showCount = true,
+  theme = 'amber',
+}: {
+  rating?: number | string | null;
+  count?: number | string | null;
+  size?: 'xs' | 'sm' | 'md';
+  className?: string;
+  showCount?: boolean;
+  theme?: 'amber' | 'emerald' | 'orange' | 'cyan';
+}) {
+  const numRating = typeof rating === 'number' ? rating : Number(rating) || 0;
+  const numCount = typeof count === 'number' ? count : Number(count) || 0;
+
+  if (numCount <= 0 && numRating <= 0) {
+    return null;
+  }
+
+  const iconSizes = {
+    xs: 'h-3 w-3',
+    sm: 'h-3.5 w-3.5',
+    md: 'h-4 w-4',
+  };
+
+  const textSizes = {
+    xs: 'text-[10px]',
+    sm: 'text-xs',
+    md: 'text-sm',
+  };
+
+  const themeColors = {
+    amber: 'text-amber-400 fill-amber-400',
+    emerald: 'text-emerald-500 fill-emerald-500',
+    orange: 'text-orange-500 fill-orange-500',
+    cyan: 'text-cyan-400 fill-cyan-400',
+  };
+
+  const clampedRating = Math.max(0, Math.min(5, numRating));
+
+  return (
+    <div className={`flex items-center gap-1 ${className}`}>
+      <div className="flex items-center">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const isFilled = i < Math.floor(clampedRating);
+          const isHalf = !isFilled && i < clampedRating;
+          return (
+            <Star
+              key={i}
+              className={`${iconSizes[size]} ${
+                isFilled
+                  ? themeColors[theme]
+                  : isHalf
+                  ? `${themeColors[theme]} opacity-70`
+                  : 'text-gray-300 dark:text-gray-600'
+              }`}
+            />
+          );
+        })}
+      </div>
+      <span className={`font-bold text-gray-700 dark:text-gray-300 ${textSizes[size]}`}>
+        {clampedRating > 0 ? clampedRating.toFixed(1) : ''}
+      </span>
+      {showCount && numCount > 0 && (
+        <span className={`text-gray-400 dark:text-gray-500 ${textSizes[size]}`}>
+          ({numCount})
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function QuickAddToCartButton({
+  product,
+  style = 'icon',
+  accentColor = '#16C784',
+  className = '',
+}: {
+  product: HomeProduct;
+  style?: 'icon' | 'compact' | 'full' | string;
+  accentColor?: string;
+  className?: string;
+}) {
+  const { addToCart } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const image = getProductImage(product);
+    addToCart({
+      product_id: product.id,
+      title: product.title,
+      slug: product.slug,
+      category: product.category,
+      marketplace_category_slug: product.marketplace_category_slug,
+      price: toNumber(product.price),
+      base_price: toNumber(product.price),
+      quantity: 1,
+      store_id: product.id,
+      store_name: product.store_name || 'PandaMarket Store',
+      store_subdomain: product.store_subdomain,
+      image_url: image || null,
+    });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  };
+
+  if (style === 'full') {
+    return (
+      <button
+        type="button"
+        onClick={handleAdd}
+        aria-label={`Ajouter ${product.title} au panier`}
+        className={`w-full flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-bold transition-all shadow-sm ${
+          added
+            ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+            : 'text-white hover:opacity-95 active:scale-95 shadow-sm'
+        } ${className}`}
+        style={!added ? { backgroundColor: accentColor } : undefined}
+      >
+        {added ? (
+          <>
+            <Check className="h-4 w-4 shrink-0" />
+            <span>Ajouté !</span>
+          </>
+        ) : (
+          <>
+            <ShoppingCart className="h-4 w-4 shrink-0" />
+            <span>Ajouter au panier</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  if (style === 'compact') {
+    return (
+      <button
+        type="button"
+        onClick={handleAdd}
+        aria-label={`Ajouter ${product.title} au panier`}
+        className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-all shadow-sm ${
+          added
+            ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+            : 'text-white hover:opacity-95 active:scale-95'
+        } ${className}`}
+        style={!added ? { backgroundColor: accentColor } : undefined}
+      >
+        {added ? (
+          <>
+            <Check className="h-3.5 w-3.5 shrink-0" />
+            <span>Ajouté</span>
+          </>
+        ) : (
+          <>
+            <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+            <span>Panier</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  // default: 'icon'
+  return (
+    <button
+      type="button"
+      onClick={handleAdd}
+      aria-label={`Ajouter ${product.title} au panier`}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all shadow-sm ${
+        added
+          ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+          : 'text-white hover:opacity-95 hover:scale-105 active:scale-90'
+      } ${className}`}
+      style={!added ? { backgroundColor: accentColor } : undefined}
+    >
+      {added ? (
+        <Check className="h-4 w-4" />
+      ) : (
+        <ShoppingCart className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
+
