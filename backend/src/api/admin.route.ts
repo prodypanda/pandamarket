@@ -3182,7 +3182,7 @@ router.get('/ai-costs', aiStatsHandler);
 router.get('/ai-stats', aiStatsHandler);
 
 const aiProviderConfigSchema = z.object({
-  provider: z.enum(['gemini', 'openai', 'claude', 'custom']),
+  provider: z.enum(['gemini', 'openai', 'claude', 'custom', 'replicate']),
   label: z.string().trim().min(1).max(120),
   model: z.string().trim().min(1).max(160),
   base_url: z.string().trim().max(2048).optional().nullable(),

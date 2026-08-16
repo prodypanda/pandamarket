@@ -1504,6 +1504,7 @@ function AiTaggingHealthCard() {
   const [loading, setLoading] = useState(false);
   const [sweeping, setSweeping] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+  const [tagQuery, setTagQuery] = useState('');
 
   const fetchHealth = async () => {
     setLoading(true);
@@ -1537,7 +1538,7 @@ function AiTaggingHealthCard() {
         const data = await res.json();
         const r = data.result || {};
         if (r.totalScanned === 0) {
-          setSweepResult('✓ Tous les produits du catalogue sont déjà taggés (100% à jour). Utilisez "Forcer le re-scan" pour ré-analyser.');
+          setSweepResult('✓ Tous les produits du catalogue sont déjà taggés (100% à jour). Utilisez "Forcer tout" pour ré-analyser.');
         } else {
           setSweepResult(`✓ ${r.tagged ?? 0} produit(s) analysé(s) et taggé(s) avec succès (${r.fallbackUsed ?? 0} via heuristique).`);
         }
@@ -1552,14 +1553,18 @@ function AiTaggingHealthCard() {
     }
   };
 
+  const filteredTags = (health?.top_tags || []).filter((t) =>
+    t.tag.toLowerCase().includes(tagQuery.toLowerCase().trim()),
+  );
+
   return (
     <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4" data-testid="ai-tagging-health-card">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-            <span>🧠</span> Diagnostic du Tagging Sémantique IA (Gemini Pro)
+          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 flex-wrap">
+            <span>🧠</span> Diagnostic du Tagging Sémantique IA
             <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                 health?.status === 'healthy'
                   ? 'bg-emerald-100 text-emerald-800'
                   : 'bg-amber-100 text-amber-800'
@@ -1569,10 +1574,16 @@ function AiTaggingHealthCard() {
             </span>
           </h4>
           <p className="text-xs text-slate-500 mt-0.5">
-            Couverture des tags d'intérêt générés automatiquement pour alimenter le moteur de recommandation.
+            Couverture des tags d'intérêt générés automatiquement pour alimenter le moteur de recommandation du Hub.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/ai-costs"
+            className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 text-xs font-bold rounded-xl transition-colors shadow-xs"
+          >
+            ⚙️ Moteurs & Prompts
+          </Link>
           <button
             type="button"
             onClick={() => handleSweep(false)}
@@ -1601,36 +1612,50 @@ function AiTaggingHealthCard() {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[11px] font-bold text-slate-400 uppercase">Total Produits</div>
-          <div className="text-lg font-black text-slate-800 mt-1">{health?.total_products ?? '—'}</div>
+          <div className="text-xl font-black text-slate-800 mt-1">{health?.total_products ?? '—'}</div>
         </div>
-        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[11px] font-bold text-slate-400 uppercase">Produits Taggés</div>
-          <div className="text-lg font-black text-emerald-600 mt-1">{health?.tagged_products ?? '—'}</div>
+          <div className="text-xl font-black text-emerald-600 mt-1">{health?.tagged_products ?? '—'}</div>
         </div>
-        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[11px] font-bold text-slate-400 uppercase">Taux de Couverture</div>
-          <div className="text-lg font-black text-purple-600 mt-1">{health?.tag_coverage_pct ?? '—'}%</div>
+          <div className="text-xl font-black text-purple-600 mt-1">{health?.tag_coverage_pct ?? '—'}%</div>
         </div>
-        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[11px] font-bold text-slate-400 uppercase">Tags Actifs</div>
-          <div className="text-lg font-black text-blue-600 mt-1">{health?.top_tags?.length ?? 0}</div>
+          <div className="text-xl font-black text-blue-600 mt-1">{health?.top_tags?.length ?? 0}</div>
         </div>
       </div>
 
       {health?.top_tags && health.top_tags.length > 0 && (
-        <div>
-          <div className="text-xs font-bold text-slate-600 mb-2">Principaux centres d'intérêt détectés :</div>
+        <div className="space-y-2 pt-1">
+          <div className="flex justify-between items-center gap-2">
+            <div className="text-xs font-bold text-slate-600">Principaux centres d'intérêt détectés :</div>
+            {health.top_tags.length > 5 && (
+              <input
+                type="text"
+                placeholder="Filtrer tags..."
+                value={tagQuery}
+                onChange={(e) => setTagQuery(e.target.value)}
+                className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 w-32 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+              />
+            )}
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {health.top_tags.map((t) => (
+            {filteredTags.map((t) => (
               <span
                 key={t.tag}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-xs"
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-xs hover:border-emerald-300 transition-colors"
               >
-                #{t.tag} <span className="text-slate-400">({t.count})</span>
+                #{t.tag} <span className="text-slate-400 font-normal">({t.count})</span>
               </span>
             ))}
+            {filteredTags.length === 0 && (
+              <span className="text-xs text-slate-400 italic">Aucun tag correspondant</span>
+            )}
           </div>
         </div>
       )}
@@ -3048,6 +3073,11 @@ export default function SuperAdminSettingsPage() {
               <option value="alphabetical">🔤 Alphabétique (Titre A-Z)</option>
               <option value="best_sellers">🔥 Meilleures Ventes (Volume de commandes DESC)</option>
             </select>
+
+            <div className="pt-2 text-[11px] text-slate-500 bg-white p-3 rounded-xl border border-slate-200">
+              <span className="font-bold text-slate-700">💡 Astuce : </span>
+              Le tri <strong>Aléatoire</strong> garantit une visibilité équitable pour tous les vendeurs à chaque nouvelle visite tout en préservant la pertinence.
+            </div>
           </div>
 
           {/* Personalization Injection Slider */}
@@ -3073,6 +3103,30 @@ export default function SuperAdminSettingsPage() {
               onChange={(e) => updateSetting('hub_feed_personalization_pct', Number(e.target.value))}
               className="w-full accent-emerald-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
             />
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1.5 pt-0.5">
+              {[
+                { label: '0% (Off)', val: 0 },
+                { label: '15% (Léger)', val: 15 },
+                { label: '30% (Équilibré ⭐)', val: 30 },
+                { label: '50% (Max)', val: 50 },
+              ].map((preset) => (
+                <button
+                  key={preset.val}
+                  type="button"
+                  onClick={() => updateSetting('hub_feed_personalization_pct', preset.val)}
+                  className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-colors border ${
+                    (settings.hub_feed_personalization_pct ?? 30) === preset.val
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
             {/* Visual ratio preview */}
             <div className="space-y-1 pt-1">
               <div className="h-3 w-full rounded-full overflow-hidden flex bg-slate-200">
@@ -3086,9 +3140,40 @@ export default function SuperAdminSettingsPage() {
                 />
               </div>
               <div className="flex justify-between text-[11px] font-bold text-slate-500">
-                <span className="text-emerald-700">🤖 {settings.hub_feed_personalization_pct ?? 30}% Intérêts IA</span>
-                <span className="text-blue-700">📋 {100 - (settings.hub_feed_personalization_pct ?? 30)}% Tri Standard</span>
+                <span className="text-emerald-700">
+                  🤖 {settings.hub_feed_personalization_pct ?? 30}% Intérêts IA (~{Math.round(24 * ((settings.hub_feed_personalization_pct ?? 30) / 100))} / 24 items)
+                </span>
+                <span className="text-blue-700">
+                  📋 {100 - (settings.hub_feed_personalization_pct ?? 30)}% Tri Standard (~{24 - Math.round(24 * ((settings.hub_feed_personalization_pct ?? 30) / 100))} / 24 items)
+                </span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Algorithm Math & Architecture Inspector */}
+        <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3">
+          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+            <span>⚙️</span> Modèle Mathématique & Pondération des Interactions
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 bg-white rounded-xl border border-slate-200">
+              <div className="font-bold text-slate-700">⏳ Décroissance Temporelle</div>
+              <p className="text-slate-500 mt-1 leading-relaxed">
+                Demi-vie de <strong>60 jours</strong> : $w(t) = w_0 \cdot 2^{'{-\\Delta t / 60}'}$. Les interactions récentes pèsent significativement plus que les anciennes.
+              </p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-slate-200">
+              <div className="font-bold text-slate-700">🎯 Matrice de Pondération</div>
+              <p className="text-slate-500 mt-1 leading-relaxed">
+                <strong>Achat :</strong> +5.0 &bull; <strong>Panier :</strong> +3.0 &bull; <strong>Recherche :</strong> +1.5 &bull; <strong>Vue :</strong> +1.0.
+              </p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-slate-200">
+              <div className="font-bold text-slate-700">🛡️ Résilience Cold-Start</div>
+              <p className="text-slate-500 mt-1 leading-relaxed">
+                Si un acheteur n'a pas encore d'historique, le flux bascule automatiquement à 100% sur le <strong>Tri de Base</strong> sans friction.
+              </p>
             </div>
           </div>
         </div>

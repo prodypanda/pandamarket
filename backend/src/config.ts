@@ -145,9 +145,13 @@ export const config = {
 
   // AI
   gemini: {
-    apiKey: optional('PD_GEMINI_API_KEY', '')!,
-    model: optional('PD_GEMINI_MODEL', 'gemini-1.5-flash')!,
+    apiKey: optional('PD_GEMINI_API_KEY', process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '')!,
+    model: optional('PD_GEMINI_MODEL', process.env.GEMINI_MODEL || 'gemini-1.5-flash')!,
     maxTokens: asInt('PD_GEMINI_MAX_TOKENS', 500),
+  },
+  openai: {
+    apiKey: optional('PD_OPENAI_API_KEY', process.env.OPENAI_API_KEY || '')!,
+    model: optional('PD_OPENAI_MODEL', process.env.OPENAI_MODEL || 'gpt-4o-mini')!,
   },
 
   // Mail
