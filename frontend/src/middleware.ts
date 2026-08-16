@@ -68,6 +68,7 @@ const PROTECTED_HUB_ROUTE_PREFIXES = [
 
 const ADMIN_ROUTE_PREFIXES = [
   '/dashboard',
+  '/products',
   '/kyc',
   '/mandats',
   '/messages',
@@ -92,6 +93,7 @@ const ADMIN_ROUTE_PREFIXES = [
   '/subscription-orders',
   '/fraud-radar',
   '/platform-analytics',
+  '/cms',
 ];
 
 function matchesRoutePrefix(pathname: string, prefixes: string[]) {
