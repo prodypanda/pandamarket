@@ -35,11 +35,11 @@ PandaMarket is a multi-tenant marketplace platform built with Node.js/Express/Po
 |---|------|-------|-------------|--------|
 | M1 | Database Migrations & Admin-Notes Seeding | Schema migration `073_store_subscriptions_and_ai_interest.sql`, seed folder `ff32063c-baff-42ca-ad94-768b20c5e6d4` with 6 task cards and 44 checklist items | none | DONE |
 | M2 | Store Subscriptions & Anti-Bot Verification | Backend subscription service, APIs, anti-bot purchase check, trust score formula, frontend `StoreFollowButton` & badges | M1 | DONE |
-| M3 | Smart Batched Notifications | 15-min BullMQ sliding buffer, consolidated in-app notifications, WebSocket push, 7:00 PM email digest, bell dropdown UI | M2 | IN_PROGRESS |
-| M4 | AI Interest Engine & 'My Followed Feed' Page | Gemini auto-tagging, dynamic buyer interest profile calculation with 60-day decay, `/my-followed-feed` page (3 sections), strict storefront isolation | M2 | PLANNED |
-| M5 | Marketplace Hub Algorithm Tuning & Superadmin | 30% feed injection, superadmin settings card in `/admin/settings`, base sorting selector, personalization slider, AI health monitor | M4 | PLANNED |
-| M6 | Seller Loyalty Dashboard & Broadcasts | Seller dashboard `/hub/dashboard/loyalty`, KPI cards, broadcast composer with 2/week limit, history table, Tunisian governorate map | M2 | PLANNED |
-| M7 | E2E Verification & Adversarial Hardening | Verification of 100% E2E test suite (Tiers 1-4) + Tier 5 adversarial testing + forensic integrity audit | M1, M2, M3, M4, M5, M6 | PLANNED |
+| M3 | Smart Batched Notifications | 15-min BullMQ sliding buffer, consolidated in-app notifications, WebSocket push, 7:00 PM email digest, bell dropdown UI | M2 | DONE |
+| M4 | AI Interest Engine & 'My Followed Feed' Page | Gemini auto-tagging, dynamic buyer interest profile calculation with 60-day decay, `/my-followed-feed` page (3 sections), strict storefront isolation | M2 | DONE |
+| M5 | Marketplace Hub Algorithm Tuning & Superadmin | 30% feed injection, superadmin settings card in `/admin/settings`, base sorting selector, personalization slider, AI health monitor | M4 | DONE |
+| M6 | Seller Loyalty Dashboard & Broadcasts | Seller dashboard `/hub/dashboard/loyalty`, KPI cards, broadcast composer with 2/week limit, history table, Tunisian governorate map | M2 | DONE |
+| M7 | E2E Verification & Adversarial Hardening | Verification of 100% E2E test suite (Tiers 1-4) + Tier 5 adversarial testing + forensic integrity audit | M1, M2, M3, M4, M5, M6 | DONE |
 
 ## Interface Contracts
 
