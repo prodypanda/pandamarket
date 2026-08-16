@@ -359,8 +359,8 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
          ) sub
          WHERE tag IS NOT NULL AND trim(tag) != ''
          GROUP BY tag
-         ORDER BY count DESC
-         LIMIT 10`
+         ORDER BY count DESC, tag ASC
+         LIMIT 1000`
       );
 
       return {

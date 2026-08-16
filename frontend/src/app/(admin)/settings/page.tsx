@@ -1553,9 +1553,17 @@ function AiTaggingHealthCard() {
     }
   };
 
-  const filteredTags = (health?.top_tags || []).filter((t) =>
-    t.tag.toLowerCase().includes(tagQuery.toLowerCase().trim()),
-  );
+  const [tagSort, setTagSort] = useState<'count' | 'alpha'>('count');
+
+  const filteredTags = useMemo(() => {
+    const list = (health?.top_tags || []).filter((t) =>
+      t.tag.toLowerCase().includes(tagQuery.toLowerCase().trim()),
+    );
+    return list.sort((a, b) => {
+      if (tagSort === 'count') return b.count - a.count || a.tag.localeCompare(b.tag);
+      return a.tag.localeCompare(b.tag);
+    });
+  }, [health?.top_tags, tagQuery, tagSort]);
 
   return (
     <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-4" data-testid="ai-tagging-health-card">
@@ -1625,36 +1633,61 @@ function AiTaggingHealthCard() {
           <div className="text-xl font-black text-purple-600 mt-1">{health?.tag_coverage_pct ?? '—'}%</div>
         </div>
         <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-400 uppercase">Tags Actifs</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase">Tags Actifs Détectés</div>
           <div className="text-xl font-black text-blue-600 mt-1">{health?.top_tags?.length ?? 0}</div>
         </div>
       </div>
 
       {health?.top_tags && health.top_tags.length > 0 && (
-        <div className="space-y-2 pt-1">
-          <div className="flex justify-between items-center gap-2">
-            <div className="text-xs font-bold text-slate-600">Principaux centres d'intérêt détectés :</div>
-            {health.top_tags.length > 5 && (
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span>🏷️</span> Tous les centres d'intérêt détectés ({health.top_tags.length}) :
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setTagSort('count')}
+                  className={`px-2 py-0.5 rounded font-bold transition-colors ${
+                    tagSort === 'count' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Fréquence
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTagSort('alpha')}
+                  className={`px-2 py-0.5 rounded font-bold transition-colors ${
+                    tagSort === 'alpha' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  A-Z
+                </button>
+              </div>
               <input
                 type="text"
                 placeholder="Filtrer tags..."
                 value={tagQuery}
                 onChange={(e) => setTagQuery(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 w-32 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 w-36 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
               />
-            )}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="max-h-60 overflow-y-auto pr-1 flex flex-wrap gap-1.5 rounded-xl bg-white p-3 border border-slate-200 shadow-inner">
             {filteredTags.map((t) => (
               <span
                 key={t.tag}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-xs hover:border-emerald-300 transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-50 border border-slate-200/80 text-slate-700 shadow-2xs hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 transition-colors"
               >
-                #{t.tag} <span className="text-slate-400 font-normal">({t.count})</span>
+                <span>#{t.tag}</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200/70 text-slate-600">
+                  {t.count}
+                </span>
               </span>
             ))}
             {filteredTags.length === 0 && (
-              <span className="text-xs text-slate-400 italic">Aucun tag correspondant</span>
+              <span className="text-xs text-slate-400 italic py-2">Aucun centre d'intérêt ne correspond à votre filtre "{tagQuery}".</span>
             )}
           </div>
         </div>

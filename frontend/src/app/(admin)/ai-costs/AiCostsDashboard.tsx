@@ -173,11 +173,87 @@ const emptyProviderForm = {
 
 const DEFAULT_PROMPT_TEMPLATES = [
   {
+    prompt_key: 'product_description',
+    title: "Sublimer avec l'IA — Description Produit & Points Forts",
+    tag: 'Copywriting & HTML Vendeur',
+    description: "Rédige une description structurée en HTML avec points forts, bénéfices et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
+    system_prompt: `Vous êtes l'Expert Copywriter E-commerce & Concepteur-Rédacteur Merchandising d'Élite de PandaMarket.
+Votre mission est de concevoir des fiches produits captivantes, vendeuses et hautement structurées, respectant les standards des plus grandes boutiques en ligne (Amazon A+, Shopify Plus, D2C).
+
+Principes directeurs de rédaction :
+1. Psychologie d'achat : Traduisez systématiquement chaque caractéristique technique en un bénéfice concret, émotionnel et rassurant pour l'acheteur.
+2. Clarté & Hiérarchie Visuelle : Structurez le texte avec des balises HTML sémantiques strictes (<h3>, <p>, <strong>, <em>, <ul>, <li>) pour une lecture fluide et immédiate.
+3. Authenticité & Confiance : Adoptez un ton raffiné, percutant et professionnel sans formulations creuses ni superlatifs mensongers.
+4. Réponse JSON Stricte : Répondez TOUJOURS exclusivement par un objet JSON valide sans aucun texte additionnel.`,
+    default_prompt: `Rédigez une description e-commerce hautement persuasive et structurée en HTML pour le produit suivant :
+
+📦 INFORMATIONS PRODUIT :
+- Titre : {title}
+- Catégorie : {category}
+- Attributs & Spécifications : {attributes}
+- Description brute actuelle : {current_description}
+- Langue ciblée : {language}
+- Tonalité : {tone} (professionnel, élégant, séduisant et orienté conversion)
+
+🎯 STRUCTURE HTML OBLIGATOIRE (pour "description_html") :
+1. <p><strong>Accroche engageante :</strong> Mise en valeur du produit et de son bénéfice principal.</p>
+2. <h3>✨ Points Forts & Avantages Clés</h3>
+   <ul>
+     <li><strong>Qualité & Conception :</strong> Confection soignée et matériaux de premier choix.</li>
+     <li><strong>Praticité & Design :</strong> Utilisation intuitive et esthétique irréprochable.</li>
+     <li><strong>Durabilité :</strong> Robuste et pensé pour durer dans le temps.</li>
+   </ul>
+3. <h3>📋 Spécifications & Détails Techniques</h3>
+   <ul>
+     <li>Spécifications précises issues des attributs et dimensions.</li>
+   </ul>
+4. <h3>💡 Conseils & Utilisation</h3>
+   <p>Recommandations d'entretien, de mise en valeur ou conseils d'usage pratique.</p>
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
+  "summary": "Une phrase d'accroche percutante et mémorable résumant l'essence du produit pour la vitrine."
+}`,
+    variables: ['{title}', '{category}', '{attributes}', '{current_description}', '{language}', '{tone}'],
+  },
+  {
+    prompt_key: 'product_tagging',
+    title: 'Auto-Tagging Sémantique Catalogue & Intérêts',
+    tag: 'NLP & Semantic Tags',
+    description: "Extrait 5 à 10 tags d'intérêt sémantiques normalisés pour chaque produit afin d'alimenter l'algorithme de recommandation et le flux d'intérêt acheteur du Hub.",
+    system_prompt: `Vous êtes l'IA Analyste Sémantique et Taxonomie E-commerce de PandaMarket.
+Votre rôle est d'analyser en profondeur les données des produits (titre, catégorie, description, matériaux, usage) et d'extraire entre 5 et 10 tags d'intérêt sémantiques normalisés pour alimenter l'algorithme de recommandation personnalisé et le flux d'intérêt acheteur.
+
+Règles de normalisation des tags :
+1. Format : Minuscules uniquement, sans accents, sans caractères spéciaux.
+2. Mots composés : Séparés par des tirets (ex: "decoration-interieure", "fait-main", "cuir-veritable").
+3. Couverture multi-dimensionnelle obligatoire : Nature du produit, matière/texture, usage/contexte, et style/thème.
+4. Longueur : 2 à 30 caractères par tag.
+5. Zéro redondance : Tags uniques, distincts et hautement pertinents.`,
+    default_prompt: `Analysez le produit suivant et extrayez entre 5 et 10 tags sémantiques d'intérêt acheteur normalisés :
+
+📦 PRODUIT :
+- Titre : {title}
+- Catégorie : {category}
+- Description : {description}
+
+RÈGLES STRICTES :
+- Tous les tags doivent être en minuscules, sans accents, séparés par un tiret pour les mots composés.
+- Couvrez : la nature du produit, le matériau, le domaine d'usage, et le style/thème.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"]
+}`,
+    variables: ['{title}', '{category}', '{description}'],
+  },
+  {
     prompt_key: 'product_smart_fill',
     title: 'Générateur Intelligent de Fiche Produit',
     tag: 'E-commerce & Merchandising',
     description: 'Génère le titre commercial, description HTML enrichie, atouts clés et catégorisation complète Hub & Boutique.',
-    system_prompt: `Vous êtes l'Assistant IA Expert en E-commerce et Merchandising de PandaMarket. Votre mission est de concevoir des fiches produits d'un niveau d'excellence digne des plus grands sites e-commerce mondiaux. Vous maîtrisez le SEO, la psychologie d'achat, le copywriting persuasif et la structuration sémantique HTML. Vous devez transformer les informations brutes fournies (titre, mots-clés, brouillon ou image) en une fiche produit complète, captivante, précise et parfaitement catégorisée.`,
+    system_prompt: `Vous êtes l'Assistant IA Expert en E-commerce et Merchandising de PandaMarket. Votre mission est de concevoir des fiches produits complètes, ultra-professionnelles et prêtes à la vente à partir de simples données brutes. Vous maîtrisez le SEO, la psychologie d'achat, le copywriting persuasif et la structuration sémantique HTML.`,
     default_prompt: `Analysez attentivement les données fournies et générez une fiche produit complète, vendeuse et prête à publier.
 
 Données du produit d'entrée :
@@ -187,14 +263,10 @@ Données du produit d'entrée :
 
 Consignes strictes de rédaction :
 1. Titre commercial : Vendeur, clair, optimisé pour la recherche, mentionnant les atouts majeurs (max 100 caractères).
-2. Description HTML : Riche, séduisante et bien structurée (max 3000 caractères). Utilisez EXCLUSIVEMENT les balises <h3>, <p>, <strong>, <em>, <ul>, <li>. Structure recommandée :
-   - Accroche percutante et bénéfice principal
-   - Caractéristiques et points forts sous forme de liste à puces (<ul><li>...</li></ul>)
-   - Conseils d'utilisation ou détails techniques
-   - Réassurance qualité / satisfaction client
+2. Description HTML : Riche, séduisante et bien structurée (max 3000 caractères). Utilisez EXCLUSIVEMENT les balises <h3>, <p>, <strong>, <em>, <ul>, <li>.
 3. Catégorisation intelligente : Associez le produit à la catégorie et sous-catégorie les plus pertinentes du PandaMarket Hub, ainsi qu'aux catégories recommandées pour la vitrine de la boutique.
 
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS AUCUN TEXTE AUTOUR, SELON CE FORMAT :
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS AUCUN TEXTE AUTOUR :
 {
   "suggested_title": "Titre commercial attractif et optimisé",
   "suggested_description": "<p>Description HTML structurée avec <h3>, <strong>, <ul> et <li>...</p>",
@@ -276,52 +348,6 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
   "cta": "Texte du bouton d'action"
 }`,
     variables: ['{page_title}', '{language}'],
-  },
-  {
-    prompt_key: 'product_description',
-    title: "Sublimer avec l'IA — Description Produit & Points Forts",
-    tag: 'Copywriting & HTML Vendeur',
-    description: "Rédige une description structurée en HTML avec points forts et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
-    system_prompt: `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite pour la marketplace PandaMarket. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive.`,
-    default_prompt: `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Rédigez une description produit vendeuse, structurée et persuasive en {language}.
-
-Consignes de format et de style :
-- Langue : {language}
-- Tonalité : {tone} (ton professionnel, crédible, séduisant sans exagération mensongère)
-- Produit : {title}
-- Catégorie : {category}
-- Attributs et spécifications : {attributes}
-- Description brute actuelle : {current_description}
-
-Structure HTML obligatoire :
-- Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
-- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
-- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
-- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
-
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
-{
-  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
-  "summary": "Résumé percutant en une phrase pour la vitrine"
-}`,
-    variables: ['{title}', '{category}', '{attributes}', '{current_description}', '{language}', '{tone}'],
-  },
-  {
-    prompt_key: 'product_tagging',
-    title: 'Auto-Tagging Sémantique Catalogue & Intérêts',
-    tag: 'NLP & Semantic Tags',
-    description: "Extrait 4 à 8 tags d'intérêt sémantiques normalisés pour chaque produit afin d'alimenter l'algorithme de recommandation et le flux d'intérêt acheteur.",
-    system_prompt: `Vous êtes un expert en classification et tagging sémantique e-commerce pour la marketplace PandaMarket. Votre rôle est d'analyser chaque produit et de générer entre 4 et 8 tags d'intérêt pertinents en minuscules sans accents.`,
-    default_prompt: `Analysez le produit suivant et générez 4 à 8 tags d'intérêt sémantiques (normalisés en minuscules, séparés par des tirets pour les mots composés) :
-Titre : {title}
-Catégorie : {category}
-Description : {description}
-
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
-{
-  "tags": ["tag1", "tag2", "tag3", "tag4"]
-}`,
-    variables: ['{title}', '{category}', '{description}'],
   },
 ];
 

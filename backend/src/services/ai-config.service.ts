@@ -601,28 +601,44 @@ export class AiConfigService {
           [
             'product_description',
             "Sublimer avec l'IA — Description Produit & Points Forts",
-            "Rédige une description structurée en HTML avec points forts et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
-            `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite pour la marketplace PandaMarket. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive.`,
-            `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Rédigez une description produit vendeuse, structurée et persuasive en {language}.
+            "Rédige une description structurée en HTML avec points forts, bénéfices et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
+            `Vous êtes l'Expert Copywriter E-commerce & Concepteur-Rédacteur Merchandising d'Élite de PandaMarket.
+Votre mission est de concevoir des fiches produits captivantes, vendeuses et hautement structurées, respectant les standards des plus grandes boutiques en ligne (Amazon A+, Shopify Plus, D2C).
 
-Consignes de format et de style :
-- Langue : {language}
-- Tonalité : {tone} (ton professionnel, crédible, séduisant sans exagération mensongère)
-- Produit : {title}
+Principes directeurs de rédaction :
+1. Psychologie d'achat : Traduisez systématiquement chaque caractéristique technique en un bénéfice concret, émotionnel et rassurant pour l'acheteur.
+2. Clarté & Hiérarchie Visuelle : Structurez le texte avec des balises HTML sémantiques strictes (<h3>, <p>, <strong>, <em>, <ul>, <li>) pour une lecture fluide et immédiate.
+3. Authenticité & Confiance : Adoptez un ton raffiné, percutant et professionnel sans formulations creuses ni superlatifs mensongers.
+4. Réponse JSON Stricte : Répondez TOUJOURS exclusivement par un objet JSON valide sans aucun texte additionnel.`,
+            `Rédigez une description e-commerce hautement persuasive et structurée en HTML pour le produit suivant :
+
+📦 INFORMATIONS PRODUIT :
+- Titre : {title}
 - Catégorie : {category}
-- Attributs et spécifications : {attributes}
+- Attributs & Spécifications : {attributes}
 - Description brute actuelle : {current_description}
+- Langue ciblée : {language}
+- Tonalité : {tone} (professionnel, élégant, séduisant et orienté conversion)
 
-Structure HTML obligatoire :
-- Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
-- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
-- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
-- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
+🎯 STRUCTURE HTML OBLIGATOIRE (pour "description_html") :
+1. <p><strong>Accroche engageante :</strong> Mise en valeur du produit et de son bénéfice principal.</p>
+2. <h3>✨ Points Forts & Avantages Clés</h3>
+   <ul>
+     <li><strong>Qualité & Conception :</strong> Confection soignée et matériaux de premier choix.</li>
+     <li><strong>Praticité & Design :</strong> Utilisation intuitive et esthétique irréprochable.</li>
+     <li><strong>Durabilité :</strong> Robuste et pensé pour durer dans le temps.</li>
+   </ul>
+3. <h3>📋 Spécifications & Détails Techniques</h3>
+   <ul>
+     <li>Spécifications précises issues des attributs et dimensions.</li>
+   </ul>
+4. <h3>💡 Conseils & Utilisation</h3>
+   <p>Recommandations d'entretien, de mise en valeur ou conseils d'usage pratique.</p>
 
 RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 {
   "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
-  "summary": "Résumé percutant en une phrase pour la vitrine"
+  "summary": "Une phrase d'accroche percutante et mémorable résumant l'essence du produit pour la vitrine."
 }`,
           ],
         );
@@ -649,9 +665,31 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
           [
             'product_tagging',
             'Auto-Tagging Sémantique Catalogue & Intérêts',
-            'Extrait 4 à 8 tags d’intérêt sémantiques normalisés pour chaque produit afin d’alimenter l’algorithme de recommandation.',
-            'Vous êtes un expert en classification et tagging sémantique e-commerce pour PandaMarket. Analysez chaque produit et générez 4 à 8 tags normalisés en minuscules sans accents.',
-            'Analysez le produit suivant et retournez EXCLUSIVEMENT un JSON: { "tags": string[] }\nTitre: {title}\nCatégorie: {category}\nDescription: {description}',
+            "Extrait 5 à 10 tags d'intérêt sémantiques normalisés pour chaque produit afin d'alimenter l'algorithme de recommandation et le flux d'intérêt acheteur du Hub.",
+            `Vous êtes l'IA Analyste Sémantique et Taxonomie E-commerce de PandaMarket.
+Votre rôle est d'analyser en profondeur les données des produits (titre, catégorie, description, matériaux, usage) et d'extraire entre 5 et 10 tags d'intérêt sémantiques normalisés pour alimenter l'algorithme de recommandation personnalisé et le flux d'intérêt acheteur.
+
+Règles de normalisation des tags :
+1. Format : Minuscules uniquement, sans accents, sans caractères spéciaux.
+2. Mots composés : Séparés par des tirets (ex: "decoration-interieure", "fait-main", "cuir-veritable").
+3. Couverture multi-dimensionnelle obligatoire : Nature du produit, matière/texture, usage/contexte, et style/thème.
+4. Longueur : 2 à 30 caractères par tag.
+5. Zéro redondance : Tags uniques, distincts et hautement pertinents.`,
+            `Analysez le produit suivant et extrayez entre 5 et 10 tags sémantiques d'intérêt acheteur normalisés :
+
+📦 PRODUIT :
+- Titre : {title}
+- Catégorie : {category}
+- Description : {description}
+
+RÈGLES STRICTES :
+- Tous les tags doivent être en minuscules, sans accents, séparés par un tiret pour les mots composés.
+- Couvrez : la nature du produit, le matériau, le domaine d'usage, et le style/thème.
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"]
+}`,
           ],
         );
         const refetched = await query<{
