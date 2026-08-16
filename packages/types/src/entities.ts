@@ -129,6 +129,7 @@ export interface IProductVariant {
   sku: string | null;
   title: string;
   price: number;
+  compare_at_price?: number | null;
   inventory_quantity: number;
   options: Record<string, string>; // { size: 'M', color: 'red' }
 }
@@ -144,6 +145,7 @@ export interface IProduct {
   category: string | null;
   product_reference: string | null;
   price: number;
+  compare_at_price?: number | null;
   inventory_quantity: number;
   weight_grams: number | null;
   thumbnail: string | null;

@@ -106,6 +106,7 @@ interface ProductVariant {
   sku?: string | null;
   title: string;
   price: string | number;
+  compare_at_price?: string | number | null;
   inventory_quantity: number;
   options?: Record<string, string>;
 }
@@ -115,6 +116,7 @@ interface ProductVariantForm {
   sku: string;
   title: string;
   price: string;
+  compare_at_price: string;
   inventory_quantity: string;
   option_name: string;
   option_value: string;
@@ -143,6 +145,7 @@ interface Product {
   storefront_category_name?: string | null;
   store_subdomain?: string | null;
   price: string | number;
+  compare_at_price?: string | number | null;
   status: string;
   inventory_quantity: number;
   thumbnail?: string | null;
@@ -189,6 +192,7 @@ interface ProductForm {
   slug: string;
   product_reference: string;
   price: string;
+  compare_at_price: string;
   marketplace_category_id: string;
   storefront_category_id: string;
   inventory_quantity: string;
@@ -223,6 +227,7 @@ const emptyForm: ProductForm = {
   slug: '',
   product_reference: '',
   price: '',
+  compare_at_price: '',
   marketplace_category_id: '',
   storefront_category_id: '',
   inventory_quantity: '10',
@@ -411,11 +416,13 @@ function parseProductVariants(variants: ProductVariantForm[]) {
       if (variant.option_name?.trim() && variant.option_value?.trim()) {
         options[variant.option_name.trim()] = variant.option_value.trim();
       }
+      const compareVal = variant.compare_at_price ? Number(variant.compare_at_price) : null;
       return {
         id: variant.id,
         sku: variant.sku.trim() || null,
         title: variant.title.trim(),
         price: Number(variant.price),
+        compare_at_price: Number.isFinite(compareVal) && (compareVal as number) > 0 ? compareVal : null,
         inventory_quantity: Number(variant.inventory_quantity || 0),
         options,
       };
@@ -525,6 +532,7 @@ export default function ProductsPage() {
     { id: '2', name: 'Couleur', values: ['Noir', 'Blanc'], inputValue: '' },
   ]);
   const [matrixDefaultPrice, setMatrixDefaultPrice] = useState('');
+  const [matrixDefaultComparePrice, setMatrixDefaultComparePrice] = useState('');
   const [matrixDefaultStock, setMatrixDefaultStock] = useState('5');
   const [matrixSkuPrefix, setMatrixSkuPrefix] = useState('');
   const [selectedVariantIndexes, setSelectedVariantIndexes] = useState<Set<number>>(new Set());
@@ -533,6 +541,7 @@ export default function ProductsPage() {
 
   // Batch Variant Editing in Tab 2
   const [batchVariantPrice, setBatchVariantPrice] = useState('');
+  const [batchVariantComparePrice, setBatchVariantComparePrice] = useState('');
   const [batchVariantStock, setBatchVariantStock] = useState('');
 
   // Filters & Search
@@ -585,6 +594,7 @@ export default function ProductsPage() {
 
   // Extended Bulk Actions & CSV Export State
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [bulkPriceActionType, setBulkPriceActionType] = useState<'apply_discount' | 'adjust_price' | 'clear_discount'>('apply_discount');
   const [bulkPriceMode, setBulkPriceMode] = useState<'percent' | 'fixed'>('percent');
   const [bulkPriceValue, setBulkPriceValue] = useState('-15');
   const [bulkPriceRoundToNine, setBulkPriceRoundToNine] = useState(false);
@@ -855,6 +865,7 @@ export default function ProductsPage() {
     const baseTitle = form.title.trim() || 'Produit';
     const baseRef = matrixSkuPrefix.trim() || form.product_reference.trim() || normalizePermalink(baseTitle).slice(0, 8).toUpperCase();
     const defaultPrice = matrixDefaultPrice.trim() || form.price || '0.000';
+    const defaultComparePrice = matrixDefaultComparePrice.trim() || form.compare_at_price || '';
     const defaultStock = matrixDefaultStock.trim() || '5';
 
     const newVariants: ProductVariantForm[] = combinations.map((combo) => {
@@ -868,6 +879,7 @@ export default function ProductsPage() {
         sku,
         title: `${baseTitle} - ${subTitle}`,
         price: defaultPrice,
+        compare_at_price: defaultComparePrice,
         inventory_quantity: defaultStock,
         option_name: firstEntry[0],
         option_value: firstEntry[1],
@@ -965,6 +977,15 @@ export default function ProductsPage() {
       variants: curr.variants.map((v, i) => (selectedVariantIndexes.has(i) ? { ...v, price: batchVariantPrice } : v)),
     }));
     setSuccess(`Prix appliqué à ${selectedVariantIndexes.size} variante(s).`);
+  };
+
+  const handleApplyBatchVariantComparePrice = () => {
+    if (selectedVariantIndexes.size === 0) return;
+    setForm((curr) => ({
+      ...curr,
+      variants: curr.variants.map((v, i) => (selectedVariantIndexes.has(i) ? { ...v, compare_at_price: batchVariantComparePrice } : v)),
+    }));
+    setSuccess(`Prix barré appliqué à ${selectedVariantIndexes.size} variante(s).`);
   };
 
   const handleApplyBatchVariantStock = () => {
@@ -1146,6 +1167,7 @@ export default function ProductsPage() {
             sku: '',
             title: `${val}`,
             price: defaultPrice,
+            compare_at_price: '',
             inventory_quantity: '10',
             option_name: axis.name,
             option_value: val,
@@ -1163,6 +1185,7 @@ export default function ProductsPage() {
                 sku: '',
                 title: `${v1} / ${v2}`,
                 price: defaultPrice,
+                compare_at_price: '',
                 inventory_quantity: '10',
                 option_name: ax1.name,
                 option_value: v1,
@@ -1771,6 +1794,8 @@ export default function ProductsPage() {
     action:
       | { type: 'set_status'; status: 'published' | 'draft' | 'archived' }
       | { type: 'adjust_price'; mode: 'percent' | 'fixed'; value: number; round_to_nearest_nine?: boolean }
+      | { type: 'apply_discount'; mode: 'percent' | 'fixed'; value: number }
+      | { type: 'clear_discount' }
       | { type: 'set_category'; marketplace_category_id?: string | null; storefront_category_id?: string | null }
       | { type: 'adjust_inventory'; mode: 'set' | 'delta'; value: number }
       | { type: 'delete' },
@@ -1844,6 +1869,7 @@ export default function ProductsPage() {
       slug: product.slug || '',
       product_reference: product.product_reference || '',
       price: String(product.price),
+      compare_at_price: product.compare_at_price ? String(product.compare_at_price) : '',
       marketplace_category_id: product.marketplace_category_id || '',
       storefront_category_id: product.storefront_category_id || '',
       inventory_quantity: String(product.inventory_quantity ?? 0),
@@ -1877,6 +1903,7 @@ export default function ProductsPage() {
           sku: variant.sku || '',
           title: variant.title,
           price: String(variant.price),
+          compare_at_price: variant.compare_at_price ? String(variant.compare_at_price) : '',
           inventory_quantity: String(variant.inventory_quantity ?? 0),
           option_name: firstOption?.[0] || '',
           option_value: firstOption?.[1] || '',
@@ -2045,6 +2072,37 @@ export default function ProductsPage() {
       return;
     }
 
+    const compareAtPrice = form.compare_at_price.trim() ? parseFloat(form.compare_at_price) : null;
+    if (compareAtPrice !== null) {
+      if (!Number.isFinite(compareAtPrice) || compareAtPrice <= 0) {
+        setError("Le prix d'origine (prix barré) doit être un nombre positif.");
+        setDrawerTab('pricing');
+        return;
+      }
+      if (compareAtPrice <= price) {
+        setError("Le prix d'origine (prix barré) doit être strictement supérieur au prix de vente.");
+        setDrawerTab('pricing');
+        return;
+      }
+    }
+
+    for (const v of form.variants) {
+      const vPrice = parseFloat(v.price) || 0;
+      const vCompare = v.compare_at_price.trim() ? parseFloat(v.compare_at_price) : null;
+      if (vCompare !== null) {
+        if (!Number.isFinite(vCompare) || vCompare <= 0) {
+          setError(`Le prix barré de la variante "${v.title}" doit être un nombre positif.`);
+          setDrawerTab('pricing');
+          return;
+        }
+        if (vCompare <= vPrice) {
+          setError(`Le prix barré de la variante "${v.title}" (${vCompare} TND) doit être supérieur au prix (${vPrice} TND).`);
+          setDrawerTab('pricing');
+          return;
+        }
+      }
+    }
+
     const attributes = form.attributes
       .map((attribute) => ({ name: attribute.name.trim(), value: attribute.value.trim() }))
       .filter((attribute) => attribute.name || attribute.value);
@@ -2065,6 +2123,7 @@ export default function ProductsPage() {
           marketplace_category_id: form.marketplace_category_id || null,
           storefront_category_id: form.storefront_category_id || null,
           price,
+          compare_at_price: compareAtPrice,
           inventory_quantity: Number.isFinite(inventory) && inventory >= 0 ? inventory : 0,
           thumbnail: form.thumbnail.trim() || null,
           seo_title: form.seo_title.trim() || null,
@@ -3051,10 +3110,11 @@ export default function ProductsPage() {
                 {drawerTab === 'pricing' && (
                   <div className="space-y-6 animate-in fade-in duration-150">
                     {/* Base Pricing & Inventory */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Selling Price */}
                       <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Prix Unitaire TTC (TND) *
+                          Prix de Vente TTC (TND) *
                         </label>
                         <input
                           type="number"
@@ -3065,8 +3125,60 @@ export default function ProductsPage() {
                           placeholder="0.000"
                           className="w-full px-4 py-2.5 text-sm font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
                         />
+                        <p className="text-[10px] text-slate-400 font-medium">Prix effectif payé par le client</p>
                       </div>
 
+                      {/* Compare-at Price / Discount */}
+                      <div className="p-4 rounded-2xl border border-rose-100 dark:border-rose-950/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Prix d'Origine / Barré (TND)
+                          </label>
+                          {(() => {
+                            const p = parseFloat(form.price);
+                            const cp = parseFloat(form.compare_at_price);
+                            if (p > 0 && cp > p) {
+                              const pct = Math.round(((cp - p) / cp) * 100);
+                              return (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-xs">
+                                  -{pct}%
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          value={form.compare_at_price}
+                          onChange={(e) => setForm((c) => ({ ...c, compare_at_price: e.target.value }))}
+                          placeholder="Optionnel (ex: 60.000)"
+                          className="w-full px-4 py-2.5 text-sm font-mono font-bold rounded-xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                        />
+                        {(() => {
+                          const p = parseFloat(form.price);
+                          const cp = parseFloat(form.compare_at_price);
+                          if (form.compare_at_price.trim() !== '') {
+                            if (isNaN(cp) || cp <= 0) {
+                              return <p className="text-[10px] text-red-500 font-bold">⚠️ Doit être un montant positif.</p>;
+                            }
+                            if (cp <= p) {
+                              return <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">⚠️ Doit être supérieur au prix ({p.toFixed(3)} TND).</p>;
+                            }
+                            const diff = cp - p;
+                            return (
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                ✓ Économie client : +{diff.toFixed(3)} TND
+                              </p>
+                            );
+                          }
+                          return <p className="text-[10px] text-slate-400 font-medium">Laissez vide si pas de réduction</p>;
+                        })()}
+                      </div>
+
+                      {/* Global Stock */}
                       <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                           Quantité en Stock Global
@@ -3574,6 +3686,7 @@ export default function ProductsPage() {
                                     sku: '',
                                     title: `${c.title || 'Produit'} - Variante`,
                                     price: c.price || '0.000',
+                                    compare_at_price: c.compare_at_price || '',
                                     inventory_quantity: '5',
                                     option_name: 'Taille',
                                     option_value: 'M',
@@ -3629,6 +3742,25 @@ export default function ProductsPage() {
                                 </button>
                               </div>
 
+                              {/* Batch Compare-at Price */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  placeholder="Prix barré groupé"
+                                  value={batchVariantComparePrice}
+                                  onChange={(e) => setBatchVariantComparePrice(e.target.value)}
+                                  className="w-28 px-2.5 py-1 text-xs font-bold rounded-lg border border-rose-200 bg-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleApplyBatchVariantComparePrice}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700 shadow-xs"
+                                >
+                                  Appliquer Barré
+                                </button>
+                              </div>
+
                               {/* Batch Stock */}
                               <div className="flex items-center gap-1">
                                 <input
@@ -3675,7 +3807,8 @@ export default function ProductsPage() {
                                 <th className="py-2.5 pl-3 pr-2 w-8">#</th>
                                 <th className="py-2.5 px-3">Déclinaison & Attributs</th>
                                 <th className="py-2.5 px-3">Code SKU</th>
-                                <th className="py-2.5 px-3 w-32">Prix Unitaire</th>
+                                <th className="py-2.5 px-3 w-28">Prix TTC</th>
+                                <th className="py-2.5 px-3 w-28">Prix Barré</th>
                                 <th className="py-2.5 px-3 w-28">Stock Dispo</th>
                                 <th className="py-2.5 pr-3 text-right w-10"></th>
                               </tr>
@@ -3763,6 +3896,39 @@ export default function ProductsPage() {
                                         }}
                                         className="w-full px-2.5 py-1 text-xs font-black rounded-lg border border-slate-200 bg-white"
                                       />
+                                    </td>
+
+                                    {/* Compare At Price (Old Price) */}
+                                    <td className="py-2.5 px-3">
+                                      <div className="space-y-0.5">
+                                        <input
+                                          type="number"
+                                          step="0.001"
+                                          placeholder="Ancien"
+                                          value={variant.compare_at_price || ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setForm((c) => ({
+                                              ...c,
+                                              variants: c.variants.map((v, i) => (i === idx ? { ...v, compare_at_price: val } : v)),
+                                            }));
+                                          }}
+                                          className="w-full px-2 py-1 text-xs font-mono rounded-lg border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 placeholder:text-slate-300"
+                                        />
+                                        {(() => {
+                                          const p = parseFloat(variant.price);
+                                          const cp = parseFloat(variant.compare_at_price || '0');
+                                          if (p > 0 && cp > p) {
+                                            const pct = Math.round(((cp - p) / cp) * 100);
+                                            return (
+                                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                                                -{pct}%
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </div>
                                     </td>
 
                                     {/* Stock with increment/decrement */}
@@ -5116,7 +5282,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Matrix Initial Parameters */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Prix Unitaire par Défaut
@@ -5128,6 +5294,20 @@ export default function ProductsPage() {
                   onChange={(e) => setMatrixDefaultPrice(e.target.value)}
                   placeholder={form.price || '0.000'}
                   className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Prix Barré (Optionnel)
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={matrixDefaultComparePrice}
+                  onChange={(e) => setMatrixDefaultComparePrice(e.target.value)}
+                  placeholder={form.compare_at_price || 'ex: 75.000'}
+                  className="w-full px-3 py-1.5 font-mono font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 />
               </div>
 
@@ -5865,10 +6045,10 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    Ajustement Groupé des Prix (Soldes & Tarifs)
+                    Ajustement & Promotions Groupées
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Appliquer une modification de prix sur <strong>{selectedIds.size}</strong> produit(s) sélectionné(s)
+                    Appliquer sur <strong>{selectedIds.size}</strong> produit(s) sélectionné(s)
                   </p>
                 </div>
               </div>
@@ -5881,98 +6061,163 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Adjustment Type Selector */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            {/* Action Type Tabs */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
               <button
                 type="button"
-                onClick={() => setBulkPriceMode('percent')}
-                className={`py-2 rounded-lg text-xs font-black transition-all ${
-                  bulkPriceMode === 'percent'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400'
+                onClick={() => {
+                  setBulkPriceActionType('apply_discount');
+                  if (bulkPriceValue.startsWith('-')) setBulkPriceValue(bulkPriceValue.replace('-', ''));
+                }}
+                className={`py-2 rounded-lg font-black transition-all ${
+                  bulkPriceActionType === 'apply_discount'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                Pourcentage (%)
+                🏷️ Soldes / Barré
               </button>
               <button
                 type="button"
-                onClick={() => setBulkPriceMode('fixed')}
-                className={`py-2 rounded-lg text-xs font-black transition-all ${
-                  bulkPriceMode === 'fixed'
+                onClick={() => setBulkPriceActionType('adjust_price')}
+                className={`py-2 rounded-lg font-black transition-all ${
+                  bulkPriceActionType === 'adjust_price'
                     ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                Montant Fixe (TND)
+                📊 Prix Catalogue
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkPriceActionType('clear_discount')}
+                className={`py-2 rounded-lg font-black transition-all ${
+                  bulkPriceActionType === 'clear_discount'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                ❌ Retirer Soldes
               </button>
             </div>
 
-            {/* Preset Strategy Chips */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                ⚡ Préréglages Rapides :
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: '-10% Soldes', mode: 'percent', val: '-10' },
-                  { label: '-20% Soldes', mode: 'percent', val: '-20' },
-                  { label: '-30% Déstockage', mode: 'percent', val: '-30' },
-                  { label: '-50% Flash', mode: 'percent', val: '-50' },
-                  { label: '+10% Inflation', mode: 'percent', val: '10' },
-                  { label: '+5.000 DT', mode: 'fixed', val: '5' },
-                  { label: '-5.000 DT', mode: 'fixed', val: '-5' },
-                ].map((chip, idx) => (
+            {bulkPriceActionType === 'clear_discount' ? (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 space-y-2">
+                <p className="font-bold">⚠️ Réinitialisation des prix barrés</p>
+                <p>
+                  Cette action supprimera le prix d'origine/barré sur les <strong>{selectedIds.size}</strong> produits sélectionnés.
+                  Les clients verront le prix catalogue normal sans badge promotionnel.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Unit / Mode Selector */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => {
-                      setBulkPriceMode(chip.mode as any);
-                      setBulkPriceValue(chip.val);
-                    }}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 hover:border-purple-300"
+                    onClick={() => setBulkPriceMode('percent')}
+                    className={`py-1.5 rounded-lg text-xs font-black transition-all ${
+                      bulkPriceMode === 'percent'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
                   >
-                    {chip.label}
+                    Pourcentage (%)
                   </button>
-                ))}
-              </div>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setBulkPriceMode('fixed')}
+                    className={`py-1.5 rounded-lg text-xs font-black transition-all ${
+                      bulkPriceMode === 'fixed'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Montant Fixe (TND)
+                  </button>
+                </div>
 
-            {/* Value Input */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Valeur d'ajustement ({bulkPriceMode === 'percent' ? '%' : 'TND'}) :
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step={bulkPriceMode === 'percent' ? '1' : '0.100'}
-                  value={bulkPriceValue}
-                  onChange={(e) => setBulkPriceValue(e.target.value)}
-                  placeholder={bulkPriceMode === 'percent' ? '-20' : '-5.000'}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-purple-600"
-                />
-                <span className="absolute right-3.5 top-3 text-xs font-black text-slate-400">
-                  {bulkPriceMode === 'percent' ? '%' : 'TND'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Utilisez un nombre négatif (ex: <code>-20</code>) pour réduire les prix, ou positif (ex: <code>10</code>) pour les augmenter.
-              </p>
-            </div>
+                {/* Strategy Presets */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    ⚡ Raccourcis Rapides :
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(bulkPriceActionType === 'apply_discount'
+                      ? [
+                          { label: '🏷️ -10% Soldes', mode: 'percent', val: '10' },
+                          { label: '🏷️ -20% Soldes', mode: 'percent', val: '20' },
+                          { label: '🔥 -30% Déstockage', mode: 'percent', val: '30' },
+                          { label: '⚡ -50% Flash', mode: 'percent', val: '50' },
+                          { label: '🏷️ -5.000 DT', mode: 'fixed', val: '5' },
+                          { label: '🏷️ -10.000 DT', mode: 'fixed', val: '10' },
+                        ]
+                      : [
+                          { label: '+10% Inflation', mode: 'percent', val: '10' },
+                          { label: '-10% Baisse', mode: 'percent', val: '-10' },
+                          { label: '+5.000 DT', mode: 'fixed', val: '5' },
+                          { label: '-5.000 DT', mode: 'fixed', val: '-5' },
+                        ]
+                    ).map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setBulkPriceMode(chip.mode as any);
+                          setBulkPriceValue(chip.val);
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-rose-300 hover:text-rose-600"
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Smart Rounding Checkbox */}
-            <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={bulkPriceRoundToNine}
-                onChange={(e) => setBulkPriceRoundToNine(e.target.checked)}
-                className="rounded text-purple-600 focus:ring-purple-500"
-              />
-              <div className="text-xs">
-                <span className="font-bold text-slate-800 dark:text-slate-200">Arrondir au 0.900 le plus proche</span>
-                <p className="text-[11px] text-slate-400">Ex: 19.450 DT deviendra 19.900 DT pour un effet psychologique de prix.</p>
-              </div>
-            </label>
+                {/* Value Input */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {bulkPriceActionType === 'apply_discount'
+                      ? `Taux de réduction (${bulkPriceMode === 'percent' ? '%' : 'TND'})`
+                      : `Valeur d'ajustement (${bulkPriceMode === 'percent' ? '%' : 'TND'})`} :
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step={bulkPriceMode === 'percent' ? '1' : '0.100'}
+                      value={bulkPriceValue}
+                      onChange={(e) => setBulkPriceValue(e.target.value)}
+                      placeholder={bulkPriceMode === 'percent' ? '20' : '5.000'}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-purple-600"
+                    />
+                    <span className="absolute right-3.5 top-3 text-xs font-black text-slate-400">
+                      {bulkPriceMode === 'percent' ? '%' : 'TND'}
+                    </span>
+                  </div>
+                  {bulkPriceActionType === 'apply_discount' && (
+                    <p className="text-[11px] text-slate-400">
+                      Le prix actuel sera conservé en <strong>prix barré d'origine</strong> et le nouveau prix réduit sera calculé automatiquement.
+                    </p>
+                  )}
+                </div>
+
+                {/* Smart Rounding Checkbox (for direct price adjust) */}
+                {bulkPriceActionType === 'adjust_price' && (
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bulkPriceRoundToNine}
+                      onChange={(e) => setBulkPriceRoundToNine(e.target.checked)}
+                      className="rounded text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Arrondir au 0.900 le plus proche</span>
+                      <p className="text-[11px] text-slate-400">Ex: 19.450 DT deviendra 19.900 DT pour un effet psychologique.</p>
+                    </div>
+                  </label>
+                )}
+              </>
+            )}
 
             {/* Live Simulation Preview */}
             <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2">
@@ -5984,22 +6229,52 @@ export default function ProductsPage() {
                   .filter((p) => selectedIds.has(p.id))
                   .slice(0, 3)
                   .map((p) => {
-                    const oldP = parseFloat(String(p.price)) || 0;
-                    const val = parseFloat(bulkPriceValue) || 0;
-                    let nextP = bulkPriceMode === 'percent' ? oldP * (1 + val / 100) : oldP + val;
+                    const currentP = parseFloat(String(p.price)) || 0;
+                    const rawVal = Math.abs(parseFloat(bulkPriceValue) || 0);
+
+                    if (bulkPriceActionType === 'clear_discount') {
+                      return (
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
+                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{formatPrice(String(p.price))} (Prix unique)</span>
+                        </div>
+                      );
+                    }
+
+                    if (bulkPriceActionType === 'apply_discount') {
+                      let nextP = bulkPriceMode === 'percent' ? currentP * (1 - rawVal / 100) : currentP - rawVal;
+                      nextP = Math.max(0.001, nextP);
+                      const discountPct = Math.round(((currentP - nextP) / currentP) * 100);
+
+                      return (
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
+                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{p.title}</span>
+                          <div className="flex items-center gap-1.5 font-mono text-xs">
+                            <span className="text-slate-400 line-through text-[11px]">{formatPrice(String(p.price))}</span>
+                            <span>→</span>
+                            <span className="font-black text-rose-600 dark:text-rose-400">{formatPrice(nextP.toString())}</span>
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                              -{discountPct}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Direct price adjust
+                    const signedVal = parseFloat(bulkPriceValue) || 0;
+                    let nextP = bulkPriceMode === 'percent' ? currentP * (1 + signedVal / 100) : currentP + signedVal;
                     nextP = Math.max(0.001, nextP);
                     if (bulkPriceRoundToNine) {
                       nextP = Math.max(0.9, Math.floor(nextP) + 0.9);
                     }
-                    const isReduction = nextP < oldP;
+                    const isReduction = nextP < currentP;
                     return (
                       <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
-                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
-                          {p.title}
-                        </span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
                         <div className="flex items-center gap-2 font-mono">
                           <span className="text-slate-400 line-through text-[11px]">{formatPrice(String(p.price))}</span>
-                          <span className="text-slate-400">→</span>
+                          <span>→</span>
                           <span className={`font-black ${isReduction ? 'text-emerald-600 dark:text-emerald-400' : 'text-purple-600 dark:text-purple-400'}`}>
                             {formatPrice(nextP.toString())}
                           </span>
@@ -6021,19 +6296,31 @@ export default function ProductsPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  void executeBatchAction({
-                    type: 'adjust_price',
-                    mode: bulkPriceMode,
-                    value: parseFloat(bulkPriceValue) || 0,
-                    round_to_nearest_nine: bulkPriceRoundToNine,
-                  })
-                }
-                disabled={bulkActionLoading || !bulkPriceValue}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs shadow-md shadow-purple-600/20 hover:scale-105 disabled:opacity-50 transition-all"
+                onClick={() => {
+                  if (bulkPriceActionType === 'clear_discount') {
+                    void executeBatchAction({ type: 'clear_discount' });
+                  } else if (bulkPriceActionType === 'apply_discount') {
+                    void executeBatchAction({
+                      type: 'apply_discount',
+                      mode: bulkPriceMode,
+                      value: Math.abs(parseFloat(bulkPriceValue) || 0),
+                    });
+                  } else {
+                    void executeBatchAction({
+                      type: 'adjust_price',
+                      mode: bulkPriceMode,
+                      value: parseFloat(bulkPriceValue) || 0,
+                      round_to_nearest_nine: bulkPriceRoundToNine,
+                    });
+                  }
+                }}
+                disabled={bulkActionLoading || (bulkPriceActionType !== 'clear_discount' && !bulkPriceValue)}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white font-black text-xs shadow-md shadow-purple-600/20 hover:scale-105 disabled:opacity-50 transition-all"
               >
                 {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
-                Appliquer à {selectedIds.size} produit(s)
+                {bulkPriceActionType === 'clear_discount'
+                  ? `Supprimer Soldes (${selectedIds.size} produits)`
+                  : `Appliquer (${selectedIds.size} produits)`}
               </button>
             </div>
           </div>

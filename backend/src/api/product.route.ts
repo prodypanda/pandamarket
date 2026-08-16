@@ -23,6 +23,7 @@ const createProductSchema = z.object({
   marketplace_category_id: z.string().nullable().optional(),
   storefront_category_id: z.string().nullable().optional(),
   price: z.number().min(0),
+  compare_at_price: z.number().min(0).nullable().optional(),
   inventory_quantity: z.number().min(0).optional(),
   weight_grams: z.number().min(0).optional(),
   thumbnail: urlOrPathSchema.nullable().optional(),
@@ -51,6 +52,7 @@ const createProductSchema = z.object({
     sku: z.string().max(100).nullable().optional(),
     title: z.string().min(1).max(200),
     price: z.number().min(0),
+    compare_at_price: z.number().min(0).nullable().optional(),
     inventory_quantity: z.number().int().min(0).optional(),
     options: z.record(z.string()).optional(),
   })).max(100).optional(),
@@ -76,6 +78,14 @@ const batchProductSchema = z.object({
       mode: z.enum(['percent', 'fixed']),
       value: z.number(),
       round_to_nearest_nine: z.boolean().optional(),
+    }),
+    z.object({
+      type: z.literal('apply_discount'),
+      mode: z.enum(['percent', 'fixed']),
+      value: z.number().min(0.01),
+    }),
+    z.object({
+      type: z.literal('clear_discount'),
     }),
     z.object({
       type: z.literal('set_category'),

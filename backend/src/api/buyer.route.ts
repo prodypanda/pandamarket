@@ -44,7 +44,7 @@ router.get(
 
     if (followedStoreIds.length > 0) {
       const prodRes = await query<any>(
-        `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, NULL::numeric AS compare_at_price,
+        `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, p.compare_at_price,
                 p.interest_tags, p.created_at, p.updated_at,
                 COALESCE(
                   (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1),

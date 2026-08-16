@@ -48,6 +48,7 @@ export interface ProductVariantInput {
   sku?: string | null;
   title: string;
   price: number;
+  compare_at_price?: number | null;
   inventory_quantity?: number;
   options?: Record<string, string>;
 }
@@ -58,6 +59,7 @@ export interface ProductVariantRow {
   sku: string | null;
   title: string;
   price: string;
+  compare_at_price?: string | number | null;
   inventory_quantity: number;
   options: Record<string, string>;
   is_active: boolean;
@@ -93,6 +95,7 @@ export interface ProductRow {
   store_created_at?: Date | null;
   store_product_count?: string | number | null;
   price: string;
+  compare_at_price?: string | number | null;
   inventory_quantity: number;
   weight_grams: number | null;
   thumbnail: string | null;
@@ -127,6 +130,7 @@ export interface PublicProductVariantRow {
   id: string;
   title: string;
   price: string;
+  compare_at_price?: string | number | null;
   sku: string | null;
   in_stock: boolean;
   inventory_quantity: number;
@@ -160,6 +164,7 @@ export interface PublicProductRow {
   average_rating?: number | null;
   review_count?: number | null;
   price: string;
+  compare_at_price?: string | number | null;
   in_stock: boolean;
   stock_status: 'in_stock' | 'out_of_stock';
   weight_grams: number | null;
@@ -191,6 +196,7 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     description: row.description,
     category: row.category,
     price: Number(row.price),
+    compare_at_price: row.compare_at_price ? Number(row.compare_at_price) : null,
     currency: 'TND',
     thumbnail: row.thumbnail,
     images: row.images ?? [],
@@ -198,6 +204,7 @@ export function formatPublicProductResponse(row: PublicProductRow) {
       id: v.id,
       title: v.title,
       price: Number(v.price),
+      compare_at_price: v.compare_at_price ? Number(v.compare_at_price) : null,
       sku: v.sku ?? null,
       in_stock: Boolean(v.in_stock),
       inventory_quantity: Number(v.inventory_quantity),
@@ -241,6 +248,12 @@ export type BatchProductAction =
       round_to_nearest_nine?: boolean;
     }
   | {
+      type: 'apply_discount';
+      mode: 'percent' | 'fixed';
+      value: number;
+    }
+  | { type: 'clear_discount' }
+  | {
       type: 'set_category';
       marketplace_category_id?: string | null;
       storefront_category_id?: string | null;
@@ -276,6 +289,7 @@ export interface CreateProductInput {
   marketplace_category_id?: string | null;
   storefront_category_id?: string | null;
   price: number;
+  compare_at_price?: number | null;
   inventory_quantity?: number;
   weight_grams?: number;
   thumbnail?: string | null;
@@ -325,12 +339,21 @@ function normalizeProductVariants(variants?: ProductVariantInput[]): ProductVari
   return (variants ?? []).map((variant) => {
     const title = variant.title.trim();
     const price = Number(variant.price);
+    const compareAtPrice = variant.compare_at_price !== undefined && variant.compare_at_price !== null ? Number(variant.compare_at_price) : null;
     const inventoryQuantity = Number(variant.inventory_quantity ?? 0);
     if (!title) {
       throw new PdValidationError('Variant title is required');
     }
     if (!Number.isFinite(price) || price < 0) {
       throw new PdValidationError('Variant price must be a valid positive number');
+    }
+    if (compareAtPrice !== null) {
+      if (!Number.isFinite(compareAtPrice) || compareAtPrice < 0) {
+        throw new PdValidationError('Variant old price must be a valid positive number');
+      }
+      if (compareAtPrice <= price) {
+        throw new PdValidationError('Variant old price must be strictly greater than variant price');
+      }
     }
     if (!Number.isInteger(inventoryQuantity) || inventoryQuantity < 0) {
       throw new PdValidationError('Variant inventory must be a non-negative integer');
@@ -347,6 +370,7 @@ function normalizeProductVariants(variants?: ProductVariantInput[]): ProductVari
       sku: variant.sku?.trim() || null,
       title,
       price,
+      compare_at_price: compareAtPrice,
       inventory_quantity: inventoryQuantity,
       options,
     };
@@ -401,6 +425,15 @@ export class ProductService {
     if (input.price < 0) {
       throw new PdValidationError('Price cannot be negative');
     }
+    const compareAtPrice = input.compare_at_price !== undefined && input.compare_at_price !== null ? Number(input.compare_at_price) : null;
+    if (compareAtPrice !== null) {
+      if (!Number.isFinite(compareAtPrice) || compareAtPrice < 0) {
+        throw new PdValidationError('Old price (compare-at price) must be a positive number');
+      }
+      if (compareAtPrice <= input.price) {
+        throw new PdValidationError('Old price (compare-at price) must be strictly greater than selling price');
+      }
+    }
     if (!input.title || input.title.trim().length < 2) {
       throw new PdValidationError('Title is required (min 2 chars)');
     }
@@ -449,11 +482,11 @@ export class ProductService {
       const { rows } = await c.query<ProductRow>(
         `INSERT INTO pd_product
           (id, store_id, type, status, title, slug, description, category,
-           marketplace_category_id, storefront_category_id, price, inventory_quantity,
+           marketplace_category_id, storefront_category_id, price, compare_at_price, inventory_quantity,
            weight_grams, thumbnail, seo_title, seo_description, tags, product_reference, attributes,
            max_downloads, download_expires_hours, digital_file_key, digital_file_name,
            digital_file_content_type, digital_file_size, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
          RETURNING *`,
         [
           id,
@@ -467,6 +500,7 @@ export class ProductService {
           input.marketplace_category_id ?? null,
           input.storefront_category_id ?? null,
           input.price,
+          compareAtPrice,
           input.inventory_quantity ?? 0,
           input.weight_grams ?? null,
           input.thumbnail ?? null,
@@ -577,6 +611,7 @@ export class ProductService {
              'sku', pv.sku,
              'title', pv.title,
              'price', pv.price,
+             'compare_at_price', pv.compare_at_price,
              'inventory_quantity', pv.inventory_quantity,
              'options', pv.options,
              'is_active', pv.is_active
@@ -643,6 +678,21 @@ export class ProductService {
         }
       }
     }
+    const previousProduct = await this.getById(id);
+    const effectivePrice = patch.price !== undefined ? Number(patch.price) : Number(previousProduct.price);
+    const effectiveCompareAt = patch.compare_at_price !== undefined
+      ? (patch.compare_at_price !== null ? Number(patch.compare_at_price) : null)
+      : (previousProduct.compare_at_price !== null && previousProduct.compare_at_price !== undefined ? Number(previousProduct.compare_at_price) : null);
+
+    if (effectiveCompareAt !== null) {
+      if (!Number.isFinite(effectiveCompareAt) || effectiveCompareAt < 0) {
+        throw new PdValidationError('Old price (compare-at price) must be a positive number');
+      }
+      if (effectiveCompareAt <= effectivePrice) {
+        throw new PdValidationError('Old price (compare-at price) must be strictly greater than selling price');
+      }
+    }
+
     const allowed: Array<keyof typeof patch> = [
       'type',
       'title',
@@ -652,6 +702,7 @@ export class ProductService {
       'marketplace_category_id',
       'storefront_category_id',
       'price',
+      'compare_at_price',
       'inventory_quantity',
       'weight_grams',
       'thumbnail',
@@ -694,7 +745,6 @@ export class ProductService {
         values.push(k === 'tags' || k === 'attributes' ? JSON.stringify(patch[k]) : k === 'description' ? sanitizeProductDescription(patch[k] as string | null | undefined) : patch[k]);
       }
     }
-    const previousProduct = await this.getById(id);
     if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined) return previousProduct;
     const productId = await transaction(async (c) => {
       current = current ?? previousProduct;
@@ -720,27 +770,26 @@ export class ProductService {
     }
 
     // Price drop detection for published products
-    const oldPriceNum = parseFloat(String(previousProduct?.price ?? '0'));
-    const newPriceNum = patch.price !== undefined ? parseFloat(String(patch.price)) : NaN;
+    const prevPriceNum = parseFloat(String(previousProduct?.price ?? '0'));
+    const currentPriceNum = parseFloat(String(updatedProduct?.price ?? '0'));
+    const currentCompareAtNum = updatedProduct?.compare_at_price ? parseFloat(String(updatedProduct.compare_at_price)) : null;
 
-    if (
-      !isNaN(newPriceNum) &&
-      !isNaN(oldPriceNum) &&
-      newPriceNum < oldPriceNum &&
-      updatedProduct.status === ProductStatus.Published
-    ) {
+    const isPriceReduced = !isNaN(currentPriceNum) && !isNaN(prevPriceNum) && currentPriceNum < prevPriceNum;
+    const isNewDiscountAdded = currentCompareAtNum !== null && currentCompareAtNum > currentPriceNum && (!previousProduct.compare_at_price || parseFloat(String(previousProduct.compare_at_price)) <= prevPriceNum);
+
+    if ((isPriceReduced || isNewDiscountAdded) && updatedProduct.status === ProductStatus.Published) {
       notificationBatchService.ingestEvent({
         storeId: updatedProduct.store_id,
         storeName: updatedProduct.store_name || 'Boutique',
         type: 'price_drop',
         productId: id,
         productTitle: updatedProduct.title,
-        price: newPriceNum,
-        oldPrice: oldPriceNum,
+        price: currentPriceNum,
+        oldPrice: isPriceReduced ? prevPriceNum : (currentCompareAtNum || prevPriceNum),
       }).catch((err) => {
         logger.warn({ err, productId: id }, 'Failed to ingest price drop notification batch event');
       });
-    }
+    };
 
     // Status changed to Published detection
     if (
@@ -766,7 +815,7 @@ export class ProductService {
   async getPublicById(id: string): Promise<PublicProductRow> {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
-              p.marketplace_category_id, p.storefront_category_id, p.price,
+              p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -808,6 +857,7 @@ export class ProductService {
              'id', pv.id,
              'title', pv.title,
              'price', pv.price,
+             'compare_at_price', pv.compare_at_price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
              'inventory_quantity', pv.inventory_quantity,
@@ -834,7 +884,7 @@ export class ProductService {
   async getPublishedByStoreSlug(storeId: string, slug: string): Promise<PublicProductRow> {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
-              p.marketplace_category_id, p.storefront_category_id, p.price,
+              p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -876,6 +926,7 @@ export class ProductService {
              'id', pv.id,
              'title', pv.title,
              'price', pv.price,
+             'compare_at_price', pv.compare_at_price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
              'inventory_quantity', pv.inventory_quantity,
@@ -964,6 +1015,59 @@ export class ProductService {
         return {
           affected_count: ownedIds.length,
           message: `Prix ajusté pour ${ownedIds.length} produit(s).`,
+        };
+      }
+
+      case 'apply_discount': {
+        const val = Number(action.value);
+        if (!Number.isFinite(val) || val <= 0) {
+          throw new PdValidationError('Invalid discount value: must be greater than 0');
+        }
+
+        const { rows: fullOwnedRows } = await query<{ id: string; price: string; compare_at_price: string | null }>(
+          'SELECT id, price, compare_at_price FROM pd_product WHERE store_id = $1 AND id = ANY($2::text[])',
+          [storeId, ownedIds],
+        );
+
+        await transaction(async (client) => {
+          for (const row of fullOwnedRows) {
+            const currentPrice = parseFloat(row.price) || 0;
+            const originalBase = row.compare_at_price ? parseFloat(row.compare_at_price) : currentPrice;
+            let discountedPrice = currentPrice;
+
+            if (action.mode === 'percent') {
+              if (val >= 100) throw new PdValidationError('Discount percent must be less than 100%');
+              discountedPrice = originalBase * (1 - val / 100);
+            } else {
+              discountedPrice = originalBase - val;
+            }
+
+            discountedPrice = Math.max(0.001, discountedPrice);
+            if (discountedPrice >= originalBase) {
+              continue;
+            }
+
+            await client.query(
+              'UPDATE pd_product SET price = $1, compare_at_price = $2, updated_at = NOW() WHERE id = $3',
+              [discountedPrice.toFixed(3), originalBase.toFixed(3), row.id],
+            );
+          }
+        });
+
+        return {
+          affected_count: ownedIds.length,
+          message: `Remise appliquée sur ${ownedIds.length} produit(s).`,
+        };
+      }
+
+      case 'clear_discount': {
+        await query(
+          'UPDATE pd_product SET compare_at_price = NULL, updated_at = NOW() WHERE store_id = $1 AND id = ANY($2::text[])',
+          [storeId, ownedIds],
+        );
+        return {
+          affected_count: ownedIds.length,
+          message: `Remises supprimées pour ${ownedIds.length} produit(s).`,
         };
       }
 
@@ -1237,7 +1341,7 @@ export class ProductService {
 
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
-              p.marketplace_category_id, p.storefront_category_id, p.price,
+              p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -1275,6 +1379,7 @@ export class ProductService {
              'id', pv.id,
              'title', pv.title,
              'price', pv.price,
+             'compare_at_price', pv.compare_at_price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
              'inventory_quantity', pv.inventory_quantity,
@@ -1378,7 +1483,7 @@ export class ProductService {
     params.push(limit, offset);
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
-              p.marketplace_category_id, p.storefront_category_id, p.price,
+              p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -1414,6 +1519,7 @@ export class ProductService {
              'id', pv.id,
              'title', pv.title,
              'price', pv.price,
+             'compare_at_price', pv.compare_at_price,
              'sku', pv.sku,
              'in_stock', (pv.inventory_quantity > 0),
              'inventory_quantity', pv.inventory_quantity,
@@ -1769,8 +1875,9 @@ export class ProductService {
            SET sku = $3,
                title = $4,
                price = $5,
-               inventory_quantity = $6,
-               options = $7::jsonb,
+               compare_at_price = $6,
+               inventory_quantity = $7,
+               options = $8::jsonb,
                is_active = true,
                updated_at = NOW()
            WHERE id = $1 AND product_id = $2`,
@@ -1780,6 +1887,7 @@ export class ProductService {
             variant.sku ?? null,
             variant.title,
             variant.price,
+            variant.compare_at_price !== undefined && variant.compare_at_price !== null ? variant.compare_at_price : null,
             variant.inventory_quantity ?? 0,
             JSON.stringify(variant.options ?? {}),
           ],
@@ -1789,14 +1897,15 @@ export class ProductService {
 
       await client.query(
         `INSERT INTO pd_product_variant
-          (id, product_id, sku, title, price, inventory_quantity, options, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, true)`,
+          (id, product_id, sku, title, price, compare_at_price, inventory_quantity, options, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, true)`,
         [
           pdId('var'),
           productId,
           variant.sku ?? null,
           variant.title,
           variant.price,
+          variant.compare_at_price !== undefined && variant.compare_at_price !== null ? variant.compare_at_price : null,
           variant.inventory_quantity ?? 0,
           JSON.stringify(variant.options ?? {}),
         ],

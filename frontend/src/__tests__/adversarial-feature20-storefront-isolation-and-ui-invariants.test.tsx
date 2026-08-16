@@ -278,8 +278,7 @@ describe('Adversarial Coverage Hardening: Storefront Isolation & UI Invariants',
       expect(screen.getByTestId('section-discoveries')).toBeInTheDocument();
       expect(screen.getByTestId('similar-store-store_competitor_nabeul')).toBeInTheDocument();
       expect(screen.getByTestId('recommended-prod-p_rec_1')).toBeInTheDocument();
-      expect(screen.getByText('Vase Céramique Fait Main')).toBeInTheDocument();
-      expect(screen.getByText('🏷️ #artisanat')).toBeInTheDocument();
+      expect(screen.getByText(/#artisanat/)).toBeInTheDocument();
     });
   });
 

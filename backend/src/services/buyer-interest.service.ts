@@ -197,7 +197,7 @@ export class BuyerInterestService {
     // 1. Recommended cross-seller products matching top tags
     const productsRes = await query<any>(
       `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain, p.title, p.slug, p.price,
-              NULL::numeric AS compare_at_price,
+              p.compare_at_price,
               p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
               COALESCE(
                 (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1),

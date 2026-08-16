@@ -1051,6 +1051,7 @@ interface AdminProductVariant {
   sku: string | null;
   title: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   inventory_quantity: number;
   options: Record<string, unknown>;
   is_active: boolean;
@@ -1066,6 +1067,7 @@ interface AdminProductRecord {
   slug: string;
   description: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   inventory_quantity: number;
   weight_grams: number | null;
   thumbnail: string | null;
@@ -1207,6 +1209,7 @@ router.get(
         p.slug,
         p.description,
         p.price,
+        p.compare_at_price,
         p.inventory_quantity,
         p.weight_grams,
         p.thumbnail,
@@ -1267,6 +1270,7 @@ router.get(
               'sku', pv.sku,
               'title', pv.title,
               'price', pv.price,
+              'compare_at_price', pv.compare_at_price,
               'inventory_quantity', pv.inventory_quantity,
               'options', pv.options,
               'is_active', pv.is_active,

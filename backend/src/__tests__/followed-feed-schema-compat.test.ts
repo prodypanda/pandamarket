@@ -113,9 +113,8 @@ describe('followed feed production schema compatibility', () => {
     expect(response.body.timeline_products[0].image_url).toBe('/pd-product-images/product-1.jpg');
 
     const sql = String(queryMock.mock.calls[0][0]);
-    expect(sql).toContain('NULL::numeric AS compare_at_price');
+    expect(sql).toContain('p.compare_at_price');
     expect(sql).toContain('SELECT url FROM pd_product_image');
-    expect(sql).not.toContain('p.compare_at_price');
     expect(sql).not.toContain('SELECT image_url FROM pd_product_image');
   });
 
@@ -177,10 +176,9 @@ describe('followed feed production schema compatibility', () => {
     const productSql = String(queryMock.mock.calls[1][0]);
     const storeSql = String(queryMock.mock.calls[2][0]);
     expect(productSql).toContain('s.subdomain AS store_subdomain');
-    expect(productSql).toContain('NULL::numeric AS compare_at_price');
+    expect(productSql).toContain('p.compare_at_price');
     expect(productSql).toContain('SELECT url FROM pd_product_image');
     expect(productSql).not.toContain('s.slug');
-    expect(productSql).not.toContain('p.compare_at_price');
     expect(storeSql).toContain('s.subdomain');
     expect(storeSql).not.toContain('s.slug');
   });

@@ -419,7 +419,7 @@ export class StoreSubscriptionService {
           price: string | number;
           compare_at_price: string | number | null;
         }>(
-          `SELECT id, title, price, NULL::numeric AS compare_at_price
+          `SELECT id, title, price, compare_at_price
            FROM pd_product
            WHERE store_id = $1 AND status = 'published'
            ORDER BY created_at DESC
