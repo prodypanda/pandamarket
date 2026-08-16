@@ -62,23 +62,28 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const buyerId = req.user?.id;
     const settings = await platformConfigService.getSettings();
-    const baseSort = (settings as any).hub_feed_base_sort || 'random';
+    const querySort = req.query.sort as string | undefined;
+    const baseSort = querySort || (settings as any).hub_feed_base_sort || 'random';
     const personalizationPct = Math.min(50, Math.max(0, Number((settings as any).hub_feed_personalization_pct ?? 30)));
 
     let orderBy = 'RANDOM()';
     if (baseSort === 'newest') orderBy = 'p.created_at DESC';
-    else if (baseSort === 'alphabetical') orderBy = 'p.title ASC';
-    else if (baseSort === 'best_sellers') orderBy = 's.subscribers_count DESC, p.created_at DESC';
+    else if (baseSort === 'alphabetical') orderBy = 'LOWER(p.title) ASC, p.created_at DESC';
+    else if (baseSort === 'best_sellers') orderBy = 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
+    else if (baseSort === 'price_asc') orderBy = 'p.price ASC, p.created_at DESC';
+    else if (baseSort === 'price_desc') orderBy = 'p.price DESC, p.created_at DESC';
 
     const baseRes = await query<any>(
-      `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, p.compare_at_price,
-              p.interest_tags, p.created_at,
+      `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+              p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
+              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
               (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
+       LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        WHERE p.status = 'published'
        ORDER BY ${orderBy}
-       LIMIT 30`
+       LIMIT 50`
     );
 
     let finalProducts = baseRes.rows;

@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 import { PdConflictError, PdErrorCode } from '../errors';
 
 export type PlatformSettingValue = string | number | boolean;
-export type PlatformSettingSection = 'marketplace' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
+export type PlatformSettingSection = 'marketplace' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
 const PLATFORM_CONFIG_CACHE_KEY = 'pd:platform-config:settings';
 const PLATFORM_CONFIG_CACHE_TTL_SECONDS = 60;
 const PLATFORM_CONFIG_INVALIDATION_CHANNEL = 'pd:platform-config:invalidate';
@@ -77,6 +77,8 @@ export const PLATFORM_SETTING_DEFAULTS = {
   hub_hero_seller_rail_cta_label: 'Espace Vendeur',
   hub_hero_seller_rail_cta_url: '/hub/dashboard',
   hub_hero_seller_rail_badge_text: 'PandaMarket B2B',
+  hub_feed_base_sort: 'random',
+  hub_feed_personalization_pct: 30,
   analytics_ga4_enabled: false,
   analytics_ga4_measurement_id: '',
   analytics_gtm_enabled: false,
@@ -332,6 +334,7 @@ export const PLATFORM_SETTING_SECTION_META: Array<{
   description: string;
 }> = [
   { id: 'marketplace', label: 'Marketplace & Hero', description: 'Identity, branding, themes, megamenu & hero builder' },
+  { id: 'algorithm', label: 'Algorithme & Flux Hub', description: 'Tri du catalogue, personnalisation IA & santé du tagging sémantique' },
   { id: 'commerce', label: 'Commerce & Catalog', description: 'Product rules, moderation, reviews, AI & builder' },
   { id: 'finance', label: 'Finance & Payments', description: 'Gateways, Flouci, Konnect, commissions & payouts' },
   { id: 'shipping', label: 'Shipping & Delivery', description: 'Aramex, La Poste, platform delivery & zone rates' },
@@ -409,6 +412,10 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_hero_seller_rail_cta_label',
     'hub_hero_seller_rail_cta_url',
     'hub_hero_seller_rail_badge_text',
+  ],
+  algorithm: [
+    'hub_feed_base_sort',
+    'hub_feed_personalization_pct',
   ],
   commerce: [
     'marketplace_enabled',
@@ -689,6 +696,7 @@ function pickSettings(settings: PlatformSettings, keys: readonly PlatformSetting
 function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
   return {
     marketplace: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.marketplace),
+    algorithm: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.algorithm),
     commerce: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.commerce),
     finance: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.finance),
     shipping: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.shipping),

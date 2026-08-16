@@ -379,9 +379,11 @@ function publicProductOrderBy(sortBy?: string) {
   if (sortBy === 'oldest') return 'p.created_at ASC';
   if (sortBy === 'price_asc') return 'p.price ASC, p.created_at DESC';
   if (sortBy === 'price_desc') return 'p.price DESC, p.created_at DESC';
-  if (sortBy === 'title_asc') return 'LOWER(p.title) ASC, p.created_at DESC';
+  if (sortBy === 'title_asc' || sortBy === 'alphabetical') return 'LOWER(p.title) ASC, p.created_at DESC';
   if (sortBy === 'title_desc') return 'LOWER(p.title) DESC, p.created_at DESC';
   if (sortBy === 'popular') return 'p.inventory_quantity DESC, p.created_at DESC';
+  if (sortBy === 'best_sellers') return 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
+  if (sortBy === 'random') return 'RANDOM()';
   return 'p.created_at DESC';
 }
 

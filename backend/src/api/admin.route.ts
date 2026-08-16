@@ -1976,6 +1976,8 @@ const globalSettingsSchema = z.object({
   hub_hero_seller_rail_cta_label: z.coerce.string().trim().max(80).optional(),
   hub_hero_seller_rail_cta_url: publicLinkSettingSchema.optional(),
   hub_hero_seller_rail_badge_text: z.coerce.string().trim().max(80).optional(),
+  hub_feed_base_sort: z.enum(['random', 'newest', 'alphabetical', 'best_sellers']).optional(),
+  hub_feed_personalization_pct: z.coerce.number().int().min(0).max(50).optional(),
   analytics_ga4_enabled: z.boolean().optional(),
   analytics_ga4_measurement_id: ga4MeasurementIdSchema.optional(),
   analytics_gtm_enabled: z.boolean().optional(),
@@ -2349,9 +2351,17 @@ const securitySettingsSchema = globalSettingsSchema
   })
   .strict();
 
+const algorithmSettingsSchema = globalSettingsSchema
+  .pick({
+    hub_feed_base_sort: true,
+    hub_feed_personalization_pct: true,
+  })
+  .strict();
+
 const settingsSectionParamSchema = z.object({
   section: z.enum([
     'marketplace',
+    'algorithm',
     'commerce',
     'finance',
     'shipping',
@@ -2363,6 +2373,7 @@ const settingsSectionParamSchema = z.object({
 
 const settingsSectionSchemas: Record<PlatformSettingSection, z.ZodTypeAny> = {
   marketplace: marketplaceSettingsSchema,
+  algorithm: algorithmSettingsSchema,
   commerce: commerceSettingsSchema,
   finance: financeSettingsSchema,
   shipping: shippingSettingsSchema,

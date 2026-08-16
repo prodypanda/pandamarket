@@ -150,7 +150,7 @@ router.get(
       ? (req.query.seller_type as SellerType)
       : undefined;
     const settings = await platformConfigService.getSettings();
-    const sortBy = (req.query.sort as string | undefined) || String(settings.catalog_default_sort || 'newest');
+    const sortBy = (req.query.sort as string | undefined) || (settings as any).hub_feed_base_sort || String(settings.catalog_default_sort || 'newest');
     const result = await productService.listPublished({
       page,
       limit,

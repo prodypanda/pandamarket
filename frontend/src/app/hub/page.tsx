@@ -70,7 +70,10 @@ function resolveCatalogSort(value?: string) {
   if (value === 'price_asc') return 'price_asc';
   if (value === 'price_desc') return 'price_desc';
   if (value === 'title_asc') return 'title_asc';
-  return 'newest';
+  if (value === 'alphabetical') return 'alphabetical';
+  if (value === 'best_sellers') return 'best_sellers';
+  if (value === 'random') return 'random';
+  return value ? value : undefined;
 }
 
 function resolveHomepageLayout(value?: string) {
@@ -99,21 +102,21 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const params = new URLSearchParams({ page: '1', limit: '16' });
-    if (sortBy) {
-      params.set('sort', resolveCatalogSort(sortBy));
+    const resolvedSort = sortBy ? resolveCatalogSort(sortBy) : undefined;
+    if (resolvedSort) {
+      params.set('sort', resolvedSort);
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
     let res: Response;
     try {
-      const revalidateSec = parseInt(process.env.HUB_PRODUCT_REVALIDATE_SECONDS || '300', 10);
       res = await fetch(`${backendUrl}/api/pd/marketplace/feed?${params.toString()}`, {
-        next: { revalidate: revalidateSec, tags: ['hub_products'] },
+        cache: 'no-store',
         signal: controller.signal,
       });
       if (!res.ok) {
         res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
-          next: { revalidate: revalidateSec, tags: ['hub_products'] },
+          cache: 'no-store',
         });
       }
     } finally {
@@ -121,10 +124,24 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
     }
     if (!res.ok) return { products: [], totalPages: 1, totalProducts: 0, hasFetchError: true };
     const data = await res.json();
+    const rawList: any[] = data.products || data.data || [];
+    const products: Product[] = rawList.map((p) => ({
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      price: p.price,
+      store_name: p.store_name,
+      store_subdomain: p.store_subdomain,
+      category: p.category,
+      marketplace_category_slug: p.marketplace_category_slug,
+      thumbnail: p.thumbnail || p.image_url,
+      images: p.images || (p.image_url ? [{ url: p.image_url }] : []),
+    }));
+
     return {
-      products: data.data || data.products || [],
+      products,
       totalPages: data.meta?.total_pages || 1,
-      totalProducts: typeof data.meta?.total === 'number' ? data.meta.total : (data.data?.length || data.products?.length || 0),
+      totalProducts: typeof data.meta?.total === 'number' ? data.meta.total : (products.length || 0),
       hasFetchError: false,
     };
   } catch {
