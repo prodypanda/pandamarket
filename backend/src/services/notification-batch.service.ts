@@ -339,7 +339,8 @@ export class NotificationBatchService {
         compare_at_price?: number;
         created_at: Date;
       }>(
-        `SELECT s.id AS store_id, s.name AS store_name, p.id AS product_id, p.title AS product_title, p.price, p.compare_at_price, p.created_at
+        `SELECT s.id AS store_id, s.name AS store_name, p.id AS product_id, p.title AS product_title,
+                p.price, NULL::numeric AS compare_at_price, p.created_at
          FROM pd_store_subscription sub
          JOIN pd_store s ON s.id = sub.store_id
          JOIN pd_product p ON p.store_id = s.id
@@ -373,4 +374,3 @@ export class NotificationBatchService {
 }
 
 export const notificationBatchService = new NotificationBatchService();
-

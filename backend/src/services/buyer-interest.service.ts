@@ -196,10 +196,17 @@ export class BuyerInterestService {
 
     // 1. Recommended cross-seller products matching top tags
     const productsRes = await query<any>(
-      `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+      `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain, p.title, p.slug, p.price,
+              NULL::numeric AS compare_at_price,
               p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
-              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
-              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+              COALESCE(
+                (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1),
+                p.thumbnail
+              ) AS thumbnail,
+              COALESCE(
+                (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1),
+                p.thumbnail
+              ) AS image_url
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
@@ -214,7 +221,7 @@ export class BuyerInterestService {
 
     // 2. Similar Stores matching top tags
     const storesRes = await query<any>(
-      `SELECT DISTINCT s.id, s.name, s.slug AS subdomain, s.subscribers_count
+      `SELECT DISTINCT s.id, s.name, s.subdomain, s.subscribers_count
        FROM pd_store s
        JOIN pd_product p ON p.store_id = s.id
        WHERE p.status = 'published'

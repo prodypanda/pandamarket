@@ -32,7 +32,7 @@ router.get(
     const followed_stores = result.subscriptions.map((s) => ({
       id: s.store_id,
       name: s.store_name,
-      subdomain: s.store_name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      subdomain: s.store_subdomain,
       logo_url: s.store_logo_url || null,
       unread_updates_count: s.unread_updates_count || 0,
       is_verified: s.is_verified_buyer,
@@ -44,9 +44,12 @@ router.get(
 
     if (followedStoreIds.length > 0) {
       const prodRes = await query<any>(
-        `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, p.compare_at_price,
+        `SELECT p.id, p.store_id, s.name AS store_name, p.title, p.price, NULL::numeric AS compare_at_price,
                 p.interest_tags, p.created_at, p.updated_at,
-                (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+                COALESCE(
+                  (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1),
+                  p.thumbnail
+                ) AS image_url
          FROM pd_product p
          JOIN pd_store s ON s.id = p.store_id
          WHERE p.store_id = ANY($1::text[]) AND p.status = 'published'

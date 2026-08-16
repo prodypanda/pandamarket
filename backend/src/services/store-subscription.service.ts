@@ -34,6 +34,7 @@ export interface BuyerSubscriptionItem {
   subscription_id: string;
   store_id: string;
   store_name: string;
+  store_subdomain: string;
   store_logo_url: string;
   notify_price_drops: boolean;
   notify_new_products: boolean;
@@ -378,6 +379,7 @@ export class StoreSubscriptionService {
       is_verified_buyer: boolean;
       subscribed_at: Date;
       store_name: string;
+      store_subdomain: string;
       store_settings: Record<string, unknown> | null;
       subscribers_count: number;
       verified_subscribers_count: number;
@@ -389,6 +391,7 @@ export class StoreSubscriptionService {
               s.is_verified_buyer,
               s.created_at AS subscribed_at,
               st.name AS store_name,
+              st.subdomain AS store_subdomain,
               st.settings AS store_settings,
               st.subscribers_count,
               st.verified_subscribers_count
@@ -414,9 +417,9 @@ export class StoreSubscriptionService {
           id: string;
           title: string;
           price: string | number;
-          compare_at_price?: string | number;
+          compare_at_price: string | number | null;
         }>(
-          `SELECT id, title, price, compare_at_price
+          `SELECT id, title, price, NULL::numeric AS compare_at_price
            FROM pd_product
            WHERE store_id = $1 AND status = 'published'
            ORDER BY created_at DESC
@@ -437,6 +440,7 @@ export class StoreSubscriptionService {
           subscription_id: row.subscription_id,
           store_id: row.store_id,
           store_name: row.store_name,
+          store_subdomain: row.store_subdomain,
           store_logo_url: logoUrl,
           notify_price_drops: row.notify_price_drops,
           notify_new_products: row.notify_new_products,

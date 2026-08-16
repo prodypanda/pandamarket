@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { asyncHandler } from '../middlewares';
+import { asyncHandler, optionalAuth } from '../middlewares';
 import { platformConfigService } from '../services/platform-config.service';
 import { buyerInterestService } from '../services/buyer-interest.service';
 import { getRequestIp, isMaintenanceAllowedIp } from '../middlewares/maintenance.middleware';
@@ -45,6 +45,7 @@ router.get(
  */
 router.get(
   '/recommendations/buyer-interests',
+  optionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const buyerId = req.user?.id;
     const isStorefront = Boolean(req.query.storefront === 'true');
