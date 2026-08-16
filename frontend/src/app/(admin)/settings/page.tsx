@@ -1524,18 +1524,23 @@ function AiTaggingHealthCard() {
     fetchHealth();
   }, []);
 
-  const handleSweep = async () => {
+  const handleSweep = async (forceAll: boolean = false) => {
     setSweeping(true);
     setSweepResult(null);
     try {
       const res = await fetchWithCsrf('/api/pd/admin/analytics/ai-tagging-sweep', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 100 }),
+        body: JSON.stringify({ limit: 100, force_all: forceAll }),
       });
       if (res.ok) {
         const data = await res.json();
-        setSweepResult(`✓ ${data.result?.tagged ?? 0} produit(s) analysé(s) et taggé(s) avec succès.`);
+        const r = data.result || {};
+        if (r.totalScanned === 0) {
+          setSweepResult('✓ Tous les produits du catalogue sont déjà taggés (100% à jour). Utilisez "Forcer le re-scan" pour ré-analyser.');
+        } else {
+          setSweepResult(`✓ ${r.tagged ?? 0} produit(s) analysé(s) et taggé(s) avec succès (${r.fallbackUsed ?? 0} via heuristique).`);
+        }
         await fetchHealth();
       } else {
         setSweepResult('Erreur lors du balayage IA.');
@@ -1567,15 +1572,26 @@ function AiTaggingHealthCard() {
             Couverture des tags d'intérêt générés automatiquement pour alimenter le moteur de recommandation.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleSweep}
-          disabled={sweeping}
-          data-testid="btn-trigger-ai-sweep"
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition-colors disabled:opacity-50"
-        >
-          {sweeping ? 'Analyse en cours...' : '⚡ Lancer le scan IA'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleSweep(false)}
+            disabled={sweeping}
+            data-testid="btn-trigger-ai-sweep"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition-colors disabled:opacity-50"
+          >
+            {sweeping ? 'Scan...' : '⚡ Scanner les non-taggés'}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSweep(true)}
+            disabled={sweeping}
+            title="Forcer la ré-analyse complète de tous les produits publiés avec le moteur configuré"
+            className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+          >
+            🔄 Forcer tout
+          </button>
+        </div>
       </div>
 
       {sweepResult && (
