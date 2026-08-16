@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, MessageSquare, Rss, ShoppingBag, User } from 'lucide-react';
+import { Heart, MessageSquare, Rss, ShoppingBag, User, Store } from 'lucide-react';
 import { SearchBar } from './SearchBar';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LocaleSwitcher } from '../LocaleSwitcher';
@@ -135,17 +135,21 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
     }`}>
       {isAliExpress2 ? (
         <div className="hidden bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white shadow-md shadow-orange-900/20 backdrop-blur-lg border-b border-white/20 md:block">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-[11px] font-bold sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-xs font-bold sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-black">
-                <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                Super Deals Active · Buyer Protection
-              </span>
-              <Link href="/hub/search" className="rounded-lg bg-white/20 px-3 py-0.5 hover:bg-white/30 transition-all text-[11px] font-black uppercase tracking-wider">
-                Shop Now
+              <Link
+                href={createStoreHref}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-1 text-xs font-black uppercase tracking-wider text-white backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all shadow-sm"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>
+                  {currentUser && (role === 'vendor' || currentUser.store_id)
+                    ? (t('nav.dashboard') || 'Tableau de bord')
+                    : (t('nav.createStore') || 'Créer ma boutique')}
+                </span>
               </Link>
             </div>
-            <div className="flex items-center gap-4 text-xs font-semibold">
+            <div className="flex items-center gap-3 text-xs font-semibold">
               <Link
                 href="/hub/my-followed-feed"
                 className={`flex items-center gap-1.5 hover:text-white/80 transition-colors ${isFeedActive ? 'underline font-black text-white' : ''}`}
@@ -161,6 +165,14 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
                 <User className="w-3.5 h-3.5" />
                 <span>{currentUser ? (t('nav.myAccount') || 'Mon compte') : (t('nav.login') || 'Connexion')}</span>
               </Link>
+              <span className="opacity-40">|</span>
+              <LocaleSwitcher
+                buttonClassName="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-white hover:bg-white/10 transition-colors"
+              />
+              <ThemeToggle
+                className="p-1 rounded text-xs text-white hover:bg-white/10 transition-colors"
+                iconClassName="h-3.5 w-3.5"
+              />
             </div>
           </div>
         </div>
@@ -168,12 +180,19 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
         <div className="hidden bg-gradient-to-r from-[#ff4747] via-[#ff5f2e] to-[#ff8a00] text-white md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-xs font-bold sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <span>AliExpress Style · Flash Deals · Buyer Protection</span>
-              <Link href="/hub/search" className="rounded-full bg-white/15 px-3 py-0.5 text-[11px] font-black hover:bg-white/25 transition">
-                Shop deals
+              <Link
+                href={createStoreHref}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-xs font-black text-white border border-white/25 hover:bg-white/30 transition-all shadow-sm"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>
+                  {currentUser && (role === 'vendor' || currentUser.store_id)
+                    ? (t('nav.dashboard') || 'Tableau de bord')
+                    : (t('nav.createStore') || 'Créer ma boutique')}
+                </span>
               </Link>
             </div>
-            <div className="flex items-center gap-4 text-xs font-medium">
+            <div className="flex items-center gap-3 text-xs font-medium">
               <Link
                 href="/hub/my-followed-feed"
                 className={`flex items-center gap-1.5 hover:text-white/80 transition-colors ${isFeedActive ? 'underline font-bold text-white' : ''}`}
@@ -189,22 +208,34 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
                 <User className="w-3.5 h-3.5" />
                 <span>{currentUser ? (t('nav.myAccount') || 'Mon compte') : (t('nav.login') || 'Connexion')}</span>
               </Link>
+              <span className="opacity-40">|</span>
+              <LocaleSwitcher
+                buttonClassName="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-white hover:bg-white/10 transition-colors"
+              />
+              <ThemeToggle
+                className="p-1 rounded text-xs text-white hover:bg-white/10 transition-colors"
+                iconClassName="h-3.5 w-3.5"
+              />
             </div>
           </div>
         </div>
       ) : (
         <div className="hidden bg-slate-900 text-slate-200 dark:bg-[#10101a] dark:text-slate-300 border-b border-slate-800 dark:border-white/5 md:block">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1 text-xs font-medium sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-xs font-medium sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#16C784] animate-pulse" />
-                PandaMarket · Authentic Tunisian Products & Guaranteed Delivery
-              </span>
-              <Link href="/hub/search" className="rounded-full bg-white/10 dark:bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-white/20 transition">
-                Shop deals
+              <Link
+                href={createStoreHref}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#16C784]/20 hover:bg-[#16C784]/30 text-[#16C784] dark:text-[#1EE69A] border border-[#16C784]/40 px-3 py-0.5 text-xs font-bold transition-all shadow-sm"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>
+                  {currentUser && (role === 'vendor' || currentUser.store_id)
+                    ? (t('nav.dashboard') || 'Tableau de bord')
+                    : (t('nav.createStore') || 'Créer ma boutique')}
+                </span>
               </Link>
             </div>
-            <div className="flex items-center gap-4 text-xs font-medium">
+            <div className="flex items-center gap-3 text-xs font-medium">
               <Link
                 href="/hub/my-followed-feed"
                 className={`flex items-center gap-1.5 text-slate-300 hover:text-white dark:hover:text-white transition-colors ${isFeedActive ? 'text-[#16C784] dark:text-[#16C784] font-bold' : ''}`}
@@ -220,6 +251,14 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
                 <User className="w-3.5 h-3.5" />
                 <span>{currentUser ? (t('nav.myAccount') || 'Mon compte') : (t('nav.login') || 'Connexion')}</span>
               </Link>
+              <span className="opacity-30">|</span>
+              <LocaleSwitcher
+                buttonClassName="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 dark:hover:bg-white/10 transition-colors"
+              />
+              <ThemeToggle
+                className="p-1 rounded text-xs text-slate-300 hover:text-white hover:bg-white/10 dark:hover:bg-white/10 transition-colors"
+                iconClassName="h-3.5 w-3.5"
+              />
             </div>
           </div>
         </div>
@@ -253,15 +292,15 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
           </div>
 
           {/* Navigation Items */}
-          <div className="flex items-center space-x-4 rtl:space-x-reverse">
-            <Link href={createStoreHref} className={`text-sm font-medium transition-colors hidden lg:block ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}>
-              {currentUser && (role === 'vendor' || currentUser.store_id)
-                ? (t('nav.dashboard') || 'Tableau de bord')
-                : (t('nav.createStore') || 'Créer ma boutique')}
+          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            {/* Mobile quick actions (visible only when top bar is hidden on mobile) */}
+            <Link
+              href={createStoreHref}
+              title={currentUser && (role === 'vendor' || currentUser.store_id) ? (t('nav.dashboard') || 'Tableau de bord') : (t('nav.createStore') || 'Créer ma boutique')}
+              className={`flex items-center transition-colors md:hidden ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}
+            >
+              <Store className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <div className={`h-6 w-px hidden lg:block ${isAliExpress2 ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`} />
-            <LocaleSwitcher />
-            <ThemeToggle />
             <Link
               href={accountHref}
               aria-label={currentUser ? (t('nav.myAccount') || 'Mon compte') : (t('nav.login') || 'Connexion')}
@@ -270,22 +309,11 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
             >
               <User className="w-5 h-5" strokeWidth={1.75} />
             </Link>
-            <Link
-              href="/hub/my-followed-feed"
-              aria-label={t('nav.myFeed') || 'Mon Fil'}
-              title={t('nav.myFeed') || 'Mon Fil'}
-              className={`flex items-center transition-colors md:hidden ${
-                isFeedActive
-                  ? isAliExpress ? 'text-[#ff4747] font-bold' : 'text-[#16C784] font-bold'
-                  : isAliExpress2
-                    ? 'text-white/60 hover:text-[#ff6b6b]'
-                    : isAliExpress
-                      ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'
-              }`}
-            >
-              <Rss className="w-5 h-5" strokeWidth={1.75} />
-            </Link>
+            <div className="md:hidden">
+              <LocaleSwitcher />
+            </div>
+
+            {/* Common Action Buttons */}
             <Link
               href="/hub/wishlist"
               aria-label={t('nav.wishlist') || 'Favoris'}

@@ -11,7 +11,12 @@ import { LOCALES, LOCALE_LABELS, LOCALE_FLAGS, type Locale } from '../i18n/confi
  * Renders a globe icon button that opens a dropdown with locale options.
  * Follows the PandaMarket design system (Panda Green accents, 20px icons).
  */
-export function LocaleSwitcher() {
+interface LocaleSwitcherProps {
+  className?: string;
+  buttonClassName?: string;
+}
+
+export function LocaleSwitcher({ className, buttonClassName }: LocaleSwitcherProps = {}) {
   const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,10 +42,10 @@ export function LocaleSwitcher() {
   }, []);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${className || ''}`}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors pd-focus"
+        className={buttonClassName || "flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors pd-focus"}
         aria-label="Change language"
         aria-expanded={open}
         aria-haspopup="listbox"

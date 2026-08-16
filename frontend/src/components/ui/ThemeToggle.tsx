@@ -11,7 +11,12 @@ type Theme = 'light' | 'dark' | 'system';
  * Persists preference to localStorage and applies the `dark` class to <html>.
  * Respects system preference when set to 'system'.
  */
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string;
+  iconClassName?: string;
+}
+
+export function ThemeToggle({ className, iconClassName }: ThemeToggleProps = {}) {
   const [theme, setTheme] = useState<Theme>('system');
   const [mounted, setMounted] = useState(false);
 
@@ -50,14 +55,14 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/10 transition-colors"
+      className={className || "p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/10 transition-colors"}
       title={`Theme: ${theme} (click to toggle)`}
       aria-label="Toggle dark mode"
     >
       {isDark ? (
-        <Moon className="h-5 w-5" strokeWidth={1.75} />
+        <Moon className={iconClassName || "h-5 w-5"} strokeWidth={1.75} />
       ) : (
-        <Sun className="h-5 w-5" strokeWidth={1.75} />
+        <Sun className={iconClassName || "h-5 w-5"} strokeWidth={1.75} />
       )}
     </button>
   );
