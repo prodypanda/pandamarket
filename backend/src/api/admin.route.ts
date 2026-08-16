@@ -5788,11 +5788,20 @@ router.post(
   requireAuth,
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
-    const limit = Math.min(200, Math.max(1, Number(req.body.limit) || 100));
-    const forceAll = Boolean(req.body.force_all);
+    const limit = Math.min(200, Math.max(1, Number(req.body?.limit) || 100));
+    const forceAll = Boolean(req.body?.force_all);
     const { aiProductTaggerService } = await import('../services/ai-product-tagger.service');
-    const result = await aiProductTaggerService.sweepUntaggedProducts(limit, forceAll);
-    res.status(200).json({ success: true, result });
+    try {
+      const result = await aiProductTaggerService.sweepUntaggedProducts(limit, forceAll);
+      res.status(200).json({ success: true, result });
+    } catch (err: any) {
+      logger.error({ err: err?.message }, 'AI tagging sweep route error');
+      res.status(200).json({
+        success: false,
+        message: err?.message || 'Sweep failed',
+        result: { totalScanned: 0, tagged: 0, failed: 0, fallbackUsed: 0 },
+      });
+    }
   }),
 );
 

@@ -222,38 +222,48 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
     failed: number;
     fallbackUsed: number;
   }> {
-    const whereClause = forceAll
-      ? `status = 'published'`
-      : `status = 'published' AND (interest_tags = '{}' OR interest_tags IS NULL OR interest_tags_synced_at IS NULL)`;
+    try {
+      const whereClause = forceAll
+        ? `status = 'published'`
+        : `status = 'published' AND (interest_tags IS NULL OR COALESCE(cardinality(interest_tags), 0) = 0 OR interest_tags_synced_at IS NULL)`;
 
-    const { rows } = await query<{ id: string; store_id: string }>(
-      `SELECT id, store_id FROM pd_product WHERE ${whereClause} ORDER BY created_at DESC LIMIT $1`,
-      [limit]
-    );
+      const { rows } = await query<{ id: string; store_id: string }>(
+        `SELECT id, store_id FROM pd_product WHERE ${whereClause} ORDER BY created_at DESC LIMIT $1`,
+        [limit]
+      );
 
-    let tagged = 0;
-    let failed = 0;
-    let fallbackUsed = 0;
+      let tagged = 0;
+      let failed = 0;
+      let fallbackUsed = 0;
 
-    for (const p of rows) {
-      try {
-        const result = await this.tagProduct(p.id, { force: true, storeId: p.store_id });
-        tagged++;
-        if (result.source === 'fallback') {
-          fallbackUsed++;
+      for (const p of rows) {
+        try {
+          const result = await this.tagProduct(p.id, { force: true, storeId: p.store_id });
+          tagged++;
+          if (result.source === 'fallback') {
+            fallbackUsed++;
+          }
+        } catch (err: any) {
+          failed++;
+          logger.error({ productId: p.id, err: err?.message }, 'Sweep failed to tag product');
         }
-      } catch (err: any) {
-        failed++;
-        logger.error({ productId: p.id, err: err?.message }, 'Sweep failed to tag product');
       }
-    }
 
-    return {
-      totalScanned: rows.length,
-      tagged,
-      failed,
-      fallbackUsed,
-    };
+      return {
+        totalScanned: rows.length,
+        tagged,
+        failed,
+        fallbackUsed,
+      };
+    } catch (err: any) {
+      logger.error({ err: err?.message }, 'Failed to execute sweepUntaggedProducts query');
+      return {
+        totalScanned: 0,
+        tagged: 0,
+        failed: 0,
+        fallbackUsed: 0,
+      };
+    }
   }
 
   /**
