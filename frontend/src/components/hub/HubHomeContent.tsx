@@ -64,6 +64,8 @@ interface MarketplaceSettings {
   hub_hero_seller_rail_cta_label?: string;
   hub_hero_seller_rail_cta_url?: string;
   hub_hero_seller_rail_badge_text?: string;
+  hub_grid_columns?: number;
+  hub_grid_items_per_load?: number;
 }
 
 interface HubHomeContentProps {
@@ -386,7 +388,8 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
             initialProducts={nonDealProducts.length > 0 ? nonDealProducts : trendingProducts}
             style={marketplaceSettings?.hub_homepage_pagination_style}
             sortBy={marketplaceSettings?.hub_feed_base_sort || marketplaceSettings?.catalog_default_sort}
-            gridClassName="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            columns={typeof marketplaceSettings?.hub_grid_columns === 'number' ? marketplaceSettings.hub_grid_columns : 5}
+            itemsPerLoad={typeof marketplaceSettings?.hub_grid_items_per_load === 'number' ? marketplaceSettings.hub_grid_items_per_load : 12}
             renderCard={(product) => (
               <ProductCard key={product.id} product={product as Product} currency={currency} showRating={marketplaceSettings?.hub_card_show_rating !== false} showCart={marketplaceSettings?.hub_card_show_add_to_cart !== false} />
             )}

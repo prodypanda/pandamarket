@@ -2414,6 +2414,8 @@ const globalSettingsSchema = z.object({
   hub_card_show_rating: z.boolean().optional(),
   hub_card_show_add_to_cart: z.boolean().optional(),
   hub_card_add_to_cart_style: z.enum(['icon', 'compact', 'full']).optional(),
+  hub_grid_columns: z.coerce.number().int().min(2).max(8).optional(),
+  hub_grid_items_per_load: z.coerce.number().int().min(6).max(48).optional(),
   hub_feed_base_sort: z.enum(['random', 'newest', 'alphabetical', 'best_sellers']).optional(),
   hub_feed_personalization_pct: z.coerce.number().int().min(0).max(50).optional(),
   hub_feed_diversity_enabled: z.boolean().optional(),
@@ -2623,6 +2625,8 @@ const marketplaceSettingsSchema = globalSettingsSchema
     hub_card_show_rating: true,
     hub_card_show_add_to_cart: true,
     hub_card_add_to_cart_style: true,
+    hub_grid_columns: true,
+    hub_grid_items_per_load: true,
   })
   .strict();
 

@@ -92,6 +92,8 @@ export interface MarketplaceSettings {
   hub_card_show_rating?: boolean;
   hub_card_show_add_to_cart?: boolean;
   hub_card_add_to_cart_style?: 'icon' | 'compact' | 'full' | string;
+  hub_grid_columns?: number;
+  hub_grid_items_per_load?: number;
 }
 
 export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';

@@ -354,7 +354,8 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
         <HubProductPagination
           style={marketplaceSettings.hub_homepage_pagination_style}
           sortBy={marketplaceSettings.hub_feed_base_sort || marketplaceSettings.catalog_default_sort}
-          gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          columns={typeof marketplaceSettings.hub_grid_columns === 'number' ? marketplaceSettings.hub_grid_columns : 5}
+          itemsPerLoad={typeof marketplaceSettings.hub_grid_items_per_load === 'number' ? marketplaceSettings.hub_grid_items_per_load : 12}
           renderCard={(product) => (
             <Link key={product.id} href={getProductHref(product as HomeProduct)} className="group overflow-hidden rounded-lg border border-gray-200 bg-white p-3 transition hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-gray-100">

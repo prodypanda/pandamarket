@@ -84,6 +84,8 @@ interface PlatformSettings {
   hub_card_show_rating: boolean;
   hub_card_show_add_to_cart: boolean;
   hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
+  hub_grid_columns: number;
+  hub_grid_items_per_load: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -315,6 +317,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_card_show_rating: true,
   hub_card_show_add_to_cart: true,
   hub_card_add_to_cart_style: 'icon',
+  hub_grid_columns: 5,
+  hub_grid_items_per_load: 12,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -633,6 +637,8 @@ const NUMBER_SETTING_KEYS = [
   'hub_feed_personalization_pct',
   'hub_feed_diversity_strength',
   'hub_feed_max_items_per_store',
+  'hub_grid_columns',
+  'hub_grid_items_per_load',
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
@@ -778,6 +784,8 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_card_show_rating',
     'hub_card_show_add_to_cart',
     'hub_card_add_to_cart_style',
+    'hub_grid_columns',
+    'hub_grid_items_per_load',
   ],
   commerce: [
     'marketplace_enabled',
@@ -948,6 +956,8 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_card_show_rating', tab: 'algorithm', label: 'Étoiles d\'Avis sur Cartes Produit', description: 'Afficher les étoiles de notation et le nombre d\'avis sur les cartes produit du Hub', keywords: ['etoiles', 'stars', 'rating', 'avis', 'review', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
   { key: 'hub_card_show_add_to_cart', tab: 'algorithm', label: 'Bouton Panier sur Cartes Produit', description: 'Afficher le bouton "Ajouter au panier" sur les cartes produit du Hub', keywords: ['panier', 'cart', 'bouton', 'button', 'ajouter', 'add', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
   { key: 'hub_card_add_to_cart_style', tab: 'algorithm', label: 'Style du Bouton Panier', description: 'Style visuel du bouton panier: Icône seule, Compact ou Pleine largeur', keywords: ['style', 'panier', 'cart', 'bouton', 'icone', 'icon', 'compact', 'full', 'largeur', 'algorithm'] },
+  { key: 'hub_grid_columns', tab: 'algorithm', label: 'Colonnes de la Grille Produit', description: 'Nombre de colonnes dans la grille de produits du Hub (desktop)', keywords: ['colonnes', 'columns', 'grille', 'grid', 'produit', 'hub', 'layout', 'algorithm'] },
+  { key: 'hub_grid_items_per_load', tab: 'algorithm', label: 'Produits par Chargement', description: 'Nombre de produits chargés à chaque scroll infini ou clic Load More', keywords: ['produits', 'items', 'chargement', 'load', 'scroll', 'page', 'infinite', 'per', 'algorithm'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -3766,6 +3776,91 @@ export default function SuperAdminSettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Hub Grid Layout Settings */}
+        <div className="mt-8 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50/60 to-white p-6">
+          <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-slate-800">
+            📐 Grille de Produits du Hub
+          </h3>
+          <p className="mb-5 text-sm text-slate-500">
+            Configurez la mise en page de la grille de produits et le nombre de produits chargés par scroll ou page.
+          </p>
+
+          <div className="space-y-5">
+            {/* Columns per row */}
+            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label htmlFor="hub_grid_columns" className="block text-sm font-bold text-slate-800">
+                    🏛️ Colonnes par Ligne
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Nombre de colonnes sur desktop (2 colonnes sur mobile)
+                  </p>
+                </div>
+                <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-sm font-black text-emerald-700">
+                  {settings.hub_grid_columns || 5}
+                </span>
+              </div>
+              <input
+                id="hub_grid_columns"
+                type="range"
+                min={2}
+                max={8}
+                step={1}
+                value={settings.hub_grid_columns || 5}
+                onChange={(e) => updateSetting('hub_grid_columns', Number(e.target.value))}
+                className="w-full accent-emerald-500"
+              />
+              <div className="mt-1.5 flex justify-between text-[10px] font-bold text-slate-400">
+                <span>2 cols</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5 (défaut)</span>
+                <span>6</span>
+                <span>7</span>
+                <span>8 cols</span>
+              </div>
+            </div>
+
+            {/* Items per load */}
+            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label htmlFor="hub_grid_items_per_load" className="block text-sm font-bold text-slate-800">
+                    📦 Produits par Chargement
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Nombre de produits chargés à chaque scroll infini ou clic &quot;Load More&quot;
+                  </p>
+                </div>
+                <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-sm font-black text-emerald-700">
+                  {settings.hub_grid_items_per_load || 12}
+                </span>
+              </div>
+              <input
+                id="hub_grid_items_per_load"
+                type="range"
+                min={6}
+                max={48}
+                step={6}
+                value={settings.hub_grid_items_per_load || 12}
+                onChange={(e) => updateSetting('hub_grid_items_per_load', Number(e.target.value))}
+                className="w-full accent-emerald-500"
+              />
+              <div className="mt-1.5 flex justify-between text-[10px] font-bold text-slate-400">
+                <span>6</span>
+                <span>12 (défaut)</span>
+                <span>18</span>
+                <span>24</span>
+                <span>30</span>
+                <span>36</span>
+                <span>42</span>
+                <span>48</span>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Product {
@@ -19,6 +19,25 @@ interface HubProductPaginationProps {
   gridClassName?: string;
   initialProducts?: Product[];
   initialTotalPages?: number;
+  /** Number of products to fetch per page/scroll load (default 12) */
+  itemsPerLoad?: number;
+  /** Number of columns at the largest breakpoint — used to build dynamic grid classes when provided */
+  columns?: number;
+}
+
+/**
+ * Map a columns number (2–8) to a responsive Tailwind grid class string.
+ * Mobile always starts at 2 cols, then scales up through sm/md/lg/xl breakpoints.
+ */
+function columnsToGridClass(cols: number, gap: number = 4): string {
+  const g = `gap-${gap}`;
+  if (cols <= 2) return `grid grid-cols-2 ${g}`;
+  if (cols === 3) return `grid grid-cols-2 ${g} sm:grid-cols-3`;
+  if (cols === 4) return `grid grid-cols-2 ${g} sm:grid-cols-3 lg:grid-cols-4`;
+  if (cols === 5) return `grid grid-cols-2 ${g} sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5`;
+  if (cols === 6) return `grid grid-cols-2 ${g} sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`;
+  if (cols === 7) return `grid grid-cols-2 ${g} sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7`;
+  return `grid grid-cols-2 ${g} sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8`;
 }
 
 export function HubProductPagination({
@@ -27,100 +46,122 @@ export function HubProductPagination({
   fetchUrl = '/api/pd/products/public',
   initialPage = 2,
   renderCard,
-  gridClassName = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
+  gridClassName,
   initialProducts = [],
   initialTotalPages = 1,
+  itemsPerLoad = 12,
+  columns,
 }: HubProductPaginationProps) {
-  const [pages, setPages] = useState<Product[][]>([]);
+  // Flatten all products into a single list to avoid grid gaps between pages
+  const [extraProducts, setExtraProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(false);
+  const currentPageRef = useRef(1);
+  const extraCountRef = useRef(0);
 
-  const fetchPage = async (pageNumber: number, replace: boolean = false) => {
-    if (loading) return;
+  // For pagination mode, we need to replace the entire displayed set
+  const [paginationProducts, setPaginationProducts] = useState<Product[]>([]);
+  const [isPaginationMode] = useState(style === 'pagination');
+
+  const resolvedGridClassName = columns
+    ? columnsToGridClass(columns)
+    : gridClassName || 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
+
+  const fetchPage = useCallback(async (pageNumber: number, replace: boolean = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(pageNumber),
-        limit: '12',
+        limit: String(itemsPerLoad),
         sort: sortBy,
       });
       const res = await fetch(`${fetchUrl}?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      const newProducts = data.data || [];
+      const newProducts: Product[] = data.data || [];
       const meta = data.meta || {};
       
       if (meta.total_pages) {
         setTotalPages(meta.total_pages);
       }
       
-      if (newProducts.length < 12) {
+      if (newProducts.length < itemsPerLoad) {
         setHasMore(false);
       } else {
         setHasMore(true);
       }
       
       if (replace) {
-        // Only keep the new products (for classic pagination)
-        setPages([newProducts]);
+        // Pagination mode: replace entire set
+        setPaginationProducts(newProducts);
         setCurrentPage(pageNumber);
+        currentPageRef.current = pageNumber;
       } else {
+        // Infinite / load_more: append to flat list
         if (newProducts.length > 0) {
-          setPages((prev) => [...prev, newProducts]);
+          setExtraProducts((prev) => {
+            const next = [...prev, ...newProducts];
+            extraCountRef.current = next.length;
+            return next;
+          });
           setCurrentPage(pageNumber);
+          currentPageRef.current = pageNumber;
         }
       }
     } catch (err) {
       console.error(err);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  };
+  }, [itemsPerLoad, sortBy, fetchUrl]);
 
-  const handleLoadMore = () => {
-    // If it's the first click and pages is empty, fetch initialPage (which defaults to 2)
-    // If pages is not empty, fetch next page.
-    const nextPageToFetch = pages.length === 0 ? initialPage : currentPage + 1;
+  const handleLoadMore = useCallback(() => {
+    const nextPageToFetch = extraCountRef.current === 0 ? initialPage : currentPageRef.current + 1;
     fetchPage(nextPageToFetch, false);
-  };
+  }, [initialPage, fetchPage]);
 
   const handlePageClick = (pageNum: number) => {
     fetchPage(pageNum, true);
-    // Optionally scroll to top of grid
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Intersection Observer for infinite scroll
   useEffect(() => {
-    if (style === 'infinite' && hasMore && !loading) {
-      const handleObserver = (entries: IntersectionObserverEntry[]) => {
-        const target = entries[0];
-        if (target.isIntersecting) {
-          handleLoadMore();
-        }
-      };
-      
-      const el = document.getElementById('infinite-scroll-trigger');
-      if (!el) return;
-      
-      observerRef.current = new IntersectionObserver(handleObserver, { threshold: 0.1 });
-      observerRef.current.observe(el);
-      
-      return () => {
-        if (observerRef.current) observerRef.current.disconnect();
-      };
-    }
-  }, [style, hasMore, loading, currentPage, pages]);
+    if (style !== 'infinite' || !hasMore || loading) return;
 
-  // Determine what to display for the FIRST page (initialProducts)
-  // If style is 'pagination' AND we have clicked a page (so pages.length > 0), we DO NOT display initialProducts.
-  const shouldDisplayInitial = !(style === 'pagination' && pages.length > 0);
+    const el = triggerRef.current;
+    if (!el) return;
+
+    const handleObserver = (entries: IntersectionObserverEntry[]) => {
+      if (entries[0]?.isIntersecting) {
+        handleLoadMore();
+      }
+    };
+
+    observerRef.current = new IntersectionObserver(handleObserver, { threshold: 0.1 });
+    observerRef.current.observe(el);
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [style, hasMore, loading, handleLoadMore]);
+
+  // Build the single flat product list
+  const allProducts: Product[] = isPaginationMode
+    ? (paginationProducts.length > 0 ? paginationProducts : initialProducts)
+    : [...initialProducts, ...extraProducts];
 
   if (!style || style === 'none') {
     return initialProducts.length > 0 ? (
-      <div className={gridClassName}>
+      <div className={resolvedGridClassName}>
         {initialProducts.map(renderCard)}
       </div>
     ) : null;
@@ -128,21 +169,14 @@ export function HubProductPagination({
 
   return (
     <div className="mt-4 w-full">
-      {/* 1. Initial Products (Page 1) */}
-      {initialProducts.length > 0 && shouldDisplayInitial && (
-        <div className={`${gridClassName} mt-4`}>
-          {initialProducts.map(renderCard)}
+      {/* Single unified grid — no separate containers per page */}
+      {allProducts.length > 0 && (
+        <div className={resolvedGridClassName}>
+          {allProducts.map(renderCard)}
         </div>
       )}
 
-      {/* 2. Fetched Pages */}
-      {pages.map((pageData, i) => (
-        <div key={i} className={`${gridClassName} mt-4`}>
-          {pageData.map(renderCard)}
-        </div>
-      ))}
-
-      {/* 3. Pagination Controls */}
+      {/* Pagination Controls */}
       {style === 'pagination' ? (
         <nav aria-label="Product pagination" className="mt-8 flex items-center justify-center gap-2">
           <button
@@ -192,7 +226,7 @@ export function HubProductPagination({
       ) : (
         /* Load More or Infinite */
         hasMore && (
-          <div className="mt-8 flex w-full justify-center" id={style === 'infinite' ? 'infinite-scroll-trigger' : undefined}>
+          <div className="mt-8 flex w-full justify-center" ref={style === 'infinite' ? triggerRef : undefined}>
             {loading ? (
               <div className="flex flex-col items-center gap-2 animate-pulse">
                 <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
@@ -211,9 +245,9 @@ export function HubProductPagination({
         )
       )}
       
-      {!hasMore && pages.length > 0 && style !== 'pagination' && (
+      {!hasMore && extraProducts.length > 0 && style !== 'pagination' && (
         <div className="mt-8 text-center text-sm font-bold text-slate-400">
-          You've reached the end of the catalog
+          You&apos;ve reached the end of the catalog
         </div>
       )}
     </div>

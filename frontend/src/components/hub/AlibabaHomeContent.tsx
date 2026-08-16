@@ -467,7 +467,8 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
         initialTotalPages={trendingTotalPages}
         style={marketplaceSettings.hub_homepage_pagination_style}
         sortBy={marketplaceSettings.hub_feed_base_sort || marketplaceSettings.catalog_default_sort}
-        gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5"
+        columns={typeof marketplaceSettings.hub_grid_columns === 'number' ? marketplaceSettings.hub_grid_columns : 5}
+        itemsPerLoad={typeof marketplaceSettings.hub_grid_items_per_load === 'number' ? marketplaceSettings.hub_grid_items_per_load : 12}
         renderCard={(product: any) => (
           <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
             <div className="aspect-square overflow-hidden bg-gray-100">
