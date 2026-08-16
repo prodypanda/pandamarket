@@ -2252,12 +2252,143 @@
       "withdrawals": "عمليات السحب",
       "plans": "الخطط",
       "marketplaceCategories": "فئات السوق",
+      "marketplaceProducts": "منتجات السوق",
       "auditLog": "سجل المراجعة",
       "settings": "الإعدادات",
       "aiCosts": "تكاليف الذكاء الاصطناعي",
       "smtpConfig": "إعدادات البريد",
       "notesReminders": "ملاحظات وتذكيرات",
       "platformAnalytics": "تحليلات المنصة"
+    },
+    "products": {
+      "title": "منتجات السوق",
+      "subtitle": "فحص كتالوج المدير العام، وتصفية المتاجر المتعددة، ووسوم اهتمامات الذكاء الاصطناعي.",
+      "metrics": {
+        "total": "الإجمالي",
+        "published": "منشور",
+        "pending": "قيد المراجعة",
+        "draft": "مسودة",
+        "rejected": "مرفوض",
+        "archived": "مؤرشف",
+        "outOfStock": "نفد المخزون",
+        "lowStock": "مخزون منخفض",
+        "aiTagged": "موسوم بالذكاء الاصطناعي"
+      },
+      "search": {
+        "placeholder": "البحث عن المنتجات، رمز SKU، الوسوم أو المتاجر..."
+      },
+      "statusTabs": {
+        "all": "الكل",
+        "published": "منشور",
+        "pending": "قيد المراجعة",
+        "rejected": "مرفوض",
+        "draft": "مسودة",
+        "archived": "مؤرشف"
+      },
+      "viewMode": {
+        "table": "الجدول",
+        "grid": "الشبكة"
+      },
+      "filters": {
+        "category": "الفئة",
+        "allCategories": "جميع الفئات",
+        "stockStatus": "حالة المخزون",
+        "allStock": "جميع مستويات المخزون",
+        "inStock": "متوفر بالمخزون",
+        "lowStock": "مخزون منخفض (≤5)",
+        "outOfStock": "نفد من المخزون",
+        "productType": "نوع المنتج",
+        "allTypes": "جميع الأنواع",
+        "physical": "مادي",
+        "digital": "رقمي",
+        "service": "خدمة",
+        "sortBy": "ترتيب حسب",
+        "newest": "الأحدث أولاً",
+        "priceAsc": "السعر: من الأقل للأعلى",
+        "priceDesc": "السعر: من الأعلى للأقل",
+        "clearFilters": "إعادة تعيين الفلاتر"
+      },
+      "table": {
+        "product": "المنتج",
+        "store": "المتجر",
+        "category": "الفئة",
+        "type": "النوع",
+        "price": "السعر",
+        "stock": "المخزون",
+        "status": "الحالة",
+        "actions": "الإجراءات",
+        "inspect": "معاينة",
+        "copyId": "نسخ",
+        "copied": "تم النسخ!",
+        "visitStore": "زيارة المتجر",
+        "noImage": "لا توجد صورة",
+        "noProducts": "لم يتم العثور على منتجات تطابق الفلاتر المحددة."
+      },
+      "drawer": {
+        "title": "معاينة المنتج",
+        "close": "إغلاق",
+        "tabs": {
+          "overview": "نظرة عامة",
+          "variants": "الأشكال",
+          "specs": "المواصفات",
+          "seo": "محركات البحث",
+          "store": "المتجر",
+          "tags": "استوديو الوسوم"
+        },
+        "overview": {
+          "description": "الوصف",
+          "gallery": "معرض الصور",
+          "price": "السعر",
+          "inventory": "الكمية في المخزون",
+          "productType": "نوع المنتج",
+          "rejectionReason": "سبب الرفض"
+        },
+        "variants": {
+          "title": "مصفوفة المتغيرات",
+          "thTitle": "العنوان",
+          "thSku": "رمز SKU",
+          "thPrice": "السعر",
+          "thInventory": "المخزون",
+          "noVariants": "لا توجد متغيرات محددة."
+        },
+        "specs": {
+          "title": "المواصفات والسمات",
+          "noSpecs": "لا توجد سمات مخصصة."
+        },
+        "seo": {
+          "seoTitle": "عنوان SEO",
+          "seoDescription": "وصف SEO",
+          "categorySlug": "الرابط الدائم للفئة",
+          "productSlug": "الرابط الدائم للمنتج",
+          "marketplaceCategory": "فئة السوق",
+          "storefrontCategory": "فئة المتجر"
+        },
+        "store": {
+          "merchantName": "اسم التاجر",
+          "email": "البريد الإلكتروني",
+          "subdomain": "النطاق الفرعي",
+          "customDomain": "النطاق المخصص",
+          "verifiedStatus": "حالة التوثيق",
+          "sellerType": "نوع البائع"
+        },
+        "tags": {
+          "vendorTags": "وسوم البائع",
+          "aiTags": "وسوم اهتمامات الذكاء الاصطناعي",
+          "addTagPlaceholder": "أضف وسمًا واضغط Enter...",
+          "saveTags": "حفظ الوسوم",
+          "saving": "جاري الحفظ...",
+          "saved": "تم الحفظ!",
+          "error": "فشل في حفظ الوسوم"
+        }
+      },
+      "pagination": {
+        "showing": "عرض {start} إلى {end} من أصل {total} سجلاً",
+        "pageOf": "صفحة {page} من {total_pages}",
+        "previous": "السابق",
+        "next": "التالي",
+        "pageSize": "حجم الصفحة",
+        "jumpToPage": "انتقال إلى"
+      }
     },
     "urgentActions": "إجراءات عاجلة",
     "kycPending": "{count} تحقق قيد الانتظار",

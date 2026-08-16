@@ -2252,12 +2252,143 @@
       "withdrawals": "Retraits",
       "plans": "Plans",
       "marketplaceCategories": "Catégories marketplace",
+      "marketplaceProducts": "Produits Marketplace",
       "auditLog": "Journal d'audit",
       "settings": "Paramètres",
       "aiCosts": "Coûts IA",
       "smtpConfig": "Config Email",
       "notesReminders": "Notes & Rappels",
       "platformAnalytics": "Analytique Plateforme"
+    },
+    "products": {
+      "title": "Catalogue des Produits",
+      "subtitle": "Inspection du catalogue superadmin, filtrage multi-boutiques et étiquetage d'intérêt IA.",
+      "metrics": {
+        "total": "Total",
+        "published": "Publiés",
+        "pending": "En attente",
+        "draft": "Brouillons",
+        "rejected": "Rejetés",
+        "archived": "Archivés",
+        "outOfStock": "Rupture de stock",
+        "lowStock": "Stock faible",
+        "aiTagged": "Étiquetés IA"
+      },
+      "search": {
+        "placeholder": "Rechercher des produits, SKU, tags ou boutiques..."
+      },
+      "statusTabs": {
+        "all": "Tous",
+        "published": "Publiés",
+        "pending": "En attente",
+        "rejected": "Rejetés",
+        "draft": "Brouillons",
+        "archived": "Archivés"
+      },
+      "viewMode": {
+        "table": "Tableau",
+        "grid": "Grille"
+      },
+      "filters": {
+        "category": "Catégorie",
+        "allCategories": "Toutes les catégories",
+        "stockStatus": "Niveau de stock",
+        "allStock": "Tous les niveaux",
+        "inStock": "En stock",
+        "lowStock": "Stock faible (≤5)",
+        "outOfStock": "Rupture de stock",
+        "productType": "Type de produit",
+        "allTypes": "Tous les types",
+        "physical": "Physique",
+        "digital": "Numérique",
+        "service": "Service",
+        "sortBy": "Trier par",
+        "newest": "Plus récents",
+        "priceAsc": "Prix : Croissant",
+        "priceDesc": "Prix : Décroissant",
+        "clearFilters": "Effacer les filtres"
+      },
+      "table": {
+        "product": "Produit",
+        "store": "Boutique",
+        "category": "Catégorie",
+        "type": "Type",
+        "price": "Prix",
+        "stock": "Stock",
+        "status": "Statut",
+        "actions": "Actions",
+        "inspect": "Inspecter",
+        "copyId": "Copier",
+        "copied": "Copié !",
+        "visitStore": "Visiter la boutique",
+        "noImage": "Pas d'img",
+        "noProducts": "Aucun produit trouvé correspondant à vos critères."
+      },
+      "drawer": {
+        "title": "Inspection du Produit",
+        "close": "Fermer",
+        "tabs": {
+          "overview": "Aperçu",
+          "variants": "Variantes",
+          "specs": "Spécifications",
+          "seo": "SEO & Taxonomie",
+          "store": "Boutique",
+          "tags": "Studio Tags"
+        },
+        "overview": {
+          "description": "Description",
+          "gallery": "Galerie d'images",
+          "price": "Prix",
+          "inventory": "Quantité en stock",
+          "productType": "Type de produit",
+          "rejectionReason": "Motif du rejet"
+        },
+        "variants": {
+          "title": "Matrice des Variantes",
+          "thTitle": "Titre",
+          "thSku": "SKU",
+          "thPrice": "Prix",
+          "thInventory": "Stock",
+          "noVariants": "Aucune variante définie."
+        },
+        "specs": {
+          "title": "Spécifications & Attributs",
+          "noSpecs": "Aucun attribut personnalisé."
+        },
+        "seo": {
+          "seoTitle": "Titre SEO",
+          "seoDescription": "Description SEO",
+          "categorySlug": "Slug de catégorie",
+          "productSlug": "Slug du produit",
+          "marketplaceCategory": "Catégorie Marketplace",
+          "storefrontCategory": "Catégorie Boutique"
+        },
+        "store": {
+          "merchantName": "Nom du marchand",
+          "email": "E-mail",
+          "subdomain": "Sous-domaine",
+          "customDomain": "Domaine personnalisé",
+          "verifiedStatus": "Statut de vérification",
+          "sellerType": "Type de vendeur"
+        },
+        "tags": {
+          "vendorTags": "Tags Vendeur",
+          "aiTags": "Tags d'intérêt IA",
+          "addTagPlaceholder": "Ajouter un tag et appuyer sur Entrée...",
+          "saveTags": "Enregistrer les tags",
+          "saving": "Enregistrement...",
+          "saved": "Enregistré !",
+          "error": "Échec de l'enregistrement des tags"
+        }
+      },
+      "pagination": {
+        "showing": "Affichage de {start} à {end} sur {total} enregistrements",
+        "pageOf": "Page {page} sur {total_pages}",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "pageSize": "Taille de page",
+        "jumpToPage": "Aller à"
+      }
     },
     "urgentActions": "Actions Urgentes",
     "kycPending": "{count} KYC en attente",

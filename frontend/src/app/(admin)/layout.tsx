@@ -26,6 +26,7 @@ import {
   LineChart,
   PanelLeftClose,
   PanelLeftOpen,
+  Package,
 } from 'lucide-react';
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
@@ -276,9 +277,10 @@ export default function AdminLayout({
       items: [
         {
           label: t('admin.sidebar.catalogAndContent') || 'Marketplace Content',
-          icon: Tags,
-          href: '/marketplace-categories',
+          icon: Package,
+          href: '/products',
           subItems: [
+            { href: '/products', label: t('admin.sidebar.marketplaceProducts') || 'Marketplace Products' },
             { href: '/marketplace-categories', label: t('admin.sidebar.marketplaceCategories') || 'Marketplace Categories' },
             { href: '/platform-media', label: t('admin.sidebar.platformMedia') || 'Platform Media' },
             { href: '/messages', label: t('admin.sidebar.customerMessages') || 'Customer Messages' },

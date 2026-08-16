@@ -2252,12 +2252,143 @@
       "withdrawals": "Withdrawals",
       "plans": "Plans",
       "marketplaceCategories": "Marketplace Categories",
+      "marketplaceProducts": "Marketplace Products",
       "auditLog": "Audit Log",
       "settings": "Settings",
       "aiCosts": "AI Costs",
       "smtpConfig": "Email Config",
       "notesReminders": "Notes & Reminders",
       "platformAnalytics": "Platform Analytics"
+    },
+    "products": {
+      "title": "Marketplace Products",
+      "subtitle": "Superadmin catalog inspection, multi-store filtering, and AI interest tagging.",
+      "metrics": {
+        "total": "Total",
+        "published": "Published",
+        "pending": "Pending",
+        "draft": "Draft",
+        "rejected": "Rejected",
+        "archived": "Archived",
+        "outOfStock": "Out of Stock",
+        "lowStock": "Low Stock",
+        "aiTagged": "AI Tagged"
+      },
+      "search": {
+        "placeholder": "Search products, SKU, tags, or stores..."
+      },
+      "statusTabs": {
+        "all": "All",
+        "published": "Published",
+        "pending": "Pending",
+        "rejected": "Rejected",
+        "draft": "Draft",
+        "archived": "Archived"
+      },
+      "viewMode": {
+        "table": "Table",
+        "grid": "Grid"
+      },
+      "filters": {
+        "category": "Category",
+        "allCategories": "All Categories",
+        "stockStatus": "Stock Status",
+        "allStock": "All Stock Levels",
+        "inStock": "In Stock",
+        "lowStock": "Low Stock (≤5)",
+        "outOfStock": "Out of Stock",
+        "productType": "Product Type",
+        "allTypes": "All Types",
+        "physical": "Physical",
+        "digital": "Digital",
+        "service": "Service",
+        "sortBy": "Sort By",
+        "newest": "Newest First",
+        "priceAsc": "Price: Low to High",
+        "priceDesc": "Price: High to Low",
+        "clearFilters": "Clear Filters"
+      },
+      "table": {
+        "product": "Product",
+        "store": "Store",
+        "category": "Category",
+        "type": "Type",
+        "price": "Price",
+        "stock": "Stock",
+        "status": "Status",
+        "actions": "Actions",
+        "inspect": "Inspect",
+        "copyId": "Copy",
+        "copied": "Copied!",
+        "visitStore": "Visit Store",
+        "noImage": "No Img",
+        "noProducts": "No products found matching your filters."
+      },
+      "drawer": {
+        "title": "Product Inspection",
+        "close": "Close",
+        "tabs": {
+          "overview": "Overview",
+          "variants": "Variants",
+          "specs": "Specs / Attributes",
+          "seo": "SEO & Taxonomy",
+          "store": "Store Info",
+          "tags": "Tag Studio"
+        },
+        "overview": {
+          "description": "Description",
+          "gallery": "Gallery Previews",
+          "price": "Price",
+          "inventory": "Inventory Quantity",
+          "productType": "Product Type",
+          "rejectionReason": "Rejection Reason"
+        },
+        "variants": {
+          "title": "Variants Matrix",
+          "thTitle": "Title",
+          "thSku": "SKU",
+          "thPrice": "Price",
+          "thInventory": "Inventory",
+          "noVariants": "No variants defined."
+        },
+        "specs": {
+          "title": "Specifications & Attributes",
+          "noSpecs": "No custom attributes."
+        },
+        "seo": {
+          "seoTitle": "SEO Title",
+          "seoDescription": "SEO Description",
+          "categorySlug": "Category Slug",
+          "productSlug": "Product Slug",
+          "marketplaceCategory": "Marketplace Category",
+          "storefrontCategory": "Storefront Category"
+        },
+        "store": {
+          "merchantName": "Merchant Name",
+          "email": "Email",
+          "subdomain": "Subdomain",
+          "customDomain": "Custom Domain",
+          "verifiedStatus": "Verification Status",
+          "sellerType": "Seller Type"
+        },
+        "tags": {
+          "vendorTags": "Vendor Tags",
+          "aiTags": "AI Interest Tags",
+          "addTagPlaceholder": "Add tag and press Enter...",
+          "saveTags": "Save Tags",
+          "saving": "Saving...",
+          "saved": "Saved!",
+          "error": "Failed to save tags"
+        }
+      },
+      "pagination": {
+        "showing": "Showing {start} to {end} of {total} records",
+        "pageOf": "Page {page} of {total_pages}",
+        "previous": "Previous",
+        "next": "Next",
+        "pageSize": "Page Size",
+        "jumpToPage": "Jump to"
+      }
     },
     "urgentActions": "Urgent Actions",
     "kycPending": "{count} KYC pending",
