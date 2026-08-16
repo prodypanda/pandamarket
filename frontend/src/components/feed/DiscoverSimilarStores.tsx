@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ArrowUpRight, Compass, Plus, Store, Tag } from 'lucide-react';
 
 export interface RecommendedProduct {
   id: string;
@@ -10,6 +11,8 @@ export interface RecommendedProduct {
   price: number;
   matched_tag: string;
   interest_tags: string[];
+  thumbnail?: string | null;
+  image_url?: string | null;
 }
 
 export interface SimilarStore {
@@ -27,74 +30,53 @@ export interface DiscoverSimilarStoresProps {
   onFollowStore: (store: SimilarStore) => void;
 }
 
-export const DiscoverSimilarStores: React.FC<DiscoverSimilarStoresProps> = ({
-  similarStores,
-  recommendedProducts,
-  onFollowStore,
-}) => {
-  return (
-    <section data-testid="section-discoveries" className="space-y-6">
-      <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-zinc-900 dark:to-zinc-900 border border-emerald-100 dark:border-zinc-800">
-        <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-4">
-          <span>🤖</span> Découvertes & Similaires
-        </h2>
+export const DiscoverSimilarStores: React.FC<DiscoverSimilarStoresProps> = ({ similarStores, recommendedProducts, onFollowStore }) => (
+  <aside data-testid="section-discoveries" aria-labelledby="discoveries-title" className="lg:border-l lg:border-[#c8ccbf] lg:pl-8 dark:lg:border-[#34382f]">
+    <div className="border-b-2 border-[#171a16] pb-4 dark:border-[#e7eadf]">
+      <Compass className="h-5 w-5 text-[#2456a6]" />
+      <h2 id="discoveries-title" className="mt-3 text-2xl font-black">Découvertes &amp; Similaires</h2>
+      <p className="mt-1 text-xs leading-5 text-[#697065] dark:text-[#aeb4a6]">Des pistes hors de vos abonnements, reliées à vos centres d’intérêt.</p>
+    </div>
 
-        {similarStores.length > 0 && (
-          <div className="space-y-3 mb-6" data-testid="similar-stores-list">
-            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Boutiques recommandées
+    {similarStores.length > 0 && (
+      <div className="mt-6" data-testid="similar-stores-list">
+        <h3 className="text-xs font-black text-[#087f5b]">Boutiques recommandées</h3>
+        <div className="mt-2 border-t border-[#c8ccbf] dark:border-[#34382f]">
+          {similarStores.map((store) => (
+            <div key={store.id} data-testid={`similar-store-${store.id}`} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#c8ccbf] py-3 dark:border-[#34382f]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-[#e4e7de] dark:bg-[#292d26]"><Store className="h-4 w-4" /></span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-black">{store.name}</span>
+                <span className="mt-1 block truncate text-[10px] text-[#747b70] dark:text-[#a9afa1]">@{store.subdomain} · {store.primary_category}</span>
+              </span>
+              <button type="button" data-testid={`btn-follow-similar-${store.id}`} onClick={() => onFollowStore(store)} aria-label={`Suivre ${store.name}`} className="inline-flex h-8 items-center gap-1 rounded-sm bg-[#087f5b] px-2.5 text-[10px] font-black text-white hover:bg-[#076b4d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b]"><Plus className="h-3 w-3" /> Suivre</button>
             </div>
-            {similarStores.map((s) => (
-              <div
-                key={s.id}
-                data-testid={`similar-store-${s.id}`}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
-              >
-                <div>
-                  <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{s.name}</div>
-                  <div className="text-[10px] text-zinc-400">{s.primary_category}</div>
-                </div>
-                <button
-                  type="button"
-                  data-testid={`btn-follow-similar-${s.id}`}
-                  onClick={() => onFollowStore(s)}
-                  className="px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-lg transition-colors"
-                >
-                  + Suivre
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {recommendedProducts.length > 0 && (
-          <div className="space-y-3" data-testid="recommended-products-list">
-            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Produits selon vos intérêts
-            </div>
-            {recommendedProducts.map((p) => (
-              <div
-                key={p.id}
-                data-testid={`recommended-prod-${p.id}`}
-                className="p-2.5 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 font-medium">
-                    🏷️ #{p.matched_tag}
-                  </span>
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                    {p.price.toFixed(3)} TND
-                  </span>
-                </div>
-                <div className="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                  {p.title}
-                </div>
-                <div className="text-[10px] text-zinc-400">{p.store_name}</div>
-              </div>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
       </div>
-    </section>
-  );
-};
+    )}
+
+    {recommendedProducts.length > 0 && (
+      <div className="mt-8" data-testid="recommended-products-list">
+        <h3 className="text-xs font-black text-[#2456a6]">Produits selon vos intérêts</h3>
+        <div className="mt-2 border-t border-[#c8ccbf] dark:border-[#34382f]">
+          {recommendedProducts.slice(0, 8).map((product) => {
+            const image = product.thumbnail || product.image_url;
+            return (
+              <div key={product.id} data-testid={`recommended-prod-${product.id}`} className="grid grid-cols-[52px_minmax(0,1fr)] gap-3 border-b border-[#c8ccbf] py-3 dark:border-[#34382f]">
+                <span className="flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-sm bg-[#e4e7de] dark:bg-[#292d26]">{image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <Tag className="h-4 w-4 text-[#697065]" />}</span>
+                <span className="min-w-0">
+                  <span className="flex items-start justify-between gap-2"><span className="line-clamp-2 text-xs font-black leading-4">{product.title}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[#2456a6]" /></span>
+                  <span className="mt-2 flex items-center justify-between gap-2"><span className="truncate text-[10px] text-[#747b70] dark:text-[#a9afa1]">{product.store_name}</span><strong className="shrink-0 text-[11px] tabular-nums">{product.price.toFixed(3)} TND</strong></span>
+                  <span className="mt-1 block text-[9px] font-bold text-[#2456a6]">#{product.matched_tag}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {similarStores.length === 0 && recommendedProducts.length === 0 && <div className="flex min-h-40 items-center gap-3 border-b border-[#c8ccbf] text-sm text-[#697065] dark:border-[#34382f] dark:text-[#aeb4a6]"><Compass className="h-6 w-6" /> De nouvelles découvertes apparaîtront à mesure que vous explorez le marché.</div>}
+  </aside>
+);

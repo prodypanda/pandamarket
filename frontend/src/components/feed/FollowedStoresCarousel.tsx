@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Check, Store, X } from 'lucide-react';
 
 export interface FollowedStoreItem {
   id: string;
@@ -17,80 +18,43 @@ export interface FollowedStoresCarouselProps {
   onSelectStore: (storeId: string | null) => void;
 }
 
-export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
-  followedStores,
-  selectedStoreId,
-  onSelectStore,
-}) => {
-  return (
-    <section data-testid="section-followed-stores" className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-          <span>🏪</span> Mes Boutiques Suivies
-          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold">
-            {followedStores.length}
-          </span>
-        </h2>
-        {selectedStoreId && (
-          <button
-            type="button"
-            onClick={() => onSelectStore(null)}
-            data-testid="clear-store-filter"
-            className="text-xs text-emerald-600 hover:underline font-medium"
-          >
-            Afficher toutes les boutiques
-          </button>
-        )}
+export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({ followedStores, selectedStoreId, onSelectStore }) => (
+  <section data-testid="section-followed-stores" aria-labelledby="followed-stores-title">
+    <div className="mb-4 flex items-end justify-between gap-4">
+      <div>
+        <h2 id="followed-stores-title" className="text-lg font-black">Mes Boutiques Suivies</h2>
+        <p className="mt-1 text-xs text-[#697065] dark:text-[#aeb4a6]">Sélectionnez une boutique pour isoler ses dernières publications.</p>
       </div>
-
-      {followedStores.length === 0 ? (
-        <div
-          className="p-6 text-center rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800"
-          data-testid="empty-followed-stores"
-        >
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Vous ne suivez aucune boutique pour le moment.
-          </p>
-        </div>
-      ) : (
-        <div
-          className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin"
-          data-testid="followed-stores-carousel"
-        >
-          {followedStores.map((store) => {
-            const isSelected = selectedStoreId === store.id;
-            return (
-              <button
-                key={store.id}
-                type="button"
-                data-testid={`store-chip-${store.id}`}
-                onClick={() => onSelectStore(isSelected ? null : store.id)}
-                className={`flex-shrink-0 flex items-center gap-2.5 p-2.5 pr-4 rounded-xl border transition-all select-none ${
-                  isSelected
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-900 dark:bg-emerald-950/40 dark:border-emerald-500 dark:text-emerald-200'
-                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 hover:border-zinc-300'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs">
-                  {store.name.charAt(0)}
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold text-xs leading-tight">{store.name}</div>
-                  <div className="text-[10px] text-zinc-400">@{store.subdomain}</div>
-                </div>
-                {store.unread_updates_count > 0 && (
-                  <span
-                    data-testid={`unread-badge-${store.id}`}
-                    className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse"
-                  >
-                    {store.unread_updates_count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {selectedStoreId && (
+        <button type="button" onClick={() => onSelectStore(null)} data-testid="clear-store-filter" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087f5b] underline decoration-1 underline-offset-4 hover:text-[#075e45]">
+          <X className="h-3.5 w-3.5" /> Afficher toutes les boutiques
+        </button>
       )}
-    </section>
-  );
-};
+    </div>
+
+    {followedStores.length === 0 ? (
+      <div className="flex min-h-24 items-center gap-4 border-y border-[#c8ccbf] py-5 dark:border-[#34382f]" data-testid="empty-followed-stores">
+        <Store className="h-7 w-7 text-[#087f5b]" />
+        <p className="text-sm text-[#596055] dark:text-[#b8bdae]">Vous ne suivez aucune boutique pour le moment.</p>
+      </div>
+    ) : (
+      <div className="flex gap-2 overflow-x-auto border-y border-[#c8ccbf] py-3 [scrollbar-color:#087f5b_transparent] dark:border-[#34382f]" data-testid="followed-stores-carousel">
+        {followedStores.map((store) => {
+          const selected = selectedStoreId === store.id;
+          return (
+            <button key={store.id} type="button" data-testid={`store-chip-${store.id}`} aria-pressed={selected} onClick={() => onSelectStore(selected ? null : store.id)} className={`group relative flex min-w-[210px] shrink-0 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${selected ? 'border-[#087f5b] bg-[#087f5b] text-white' : 'border-[#b9beb2] bg-white text-[#171a16] hover:border-[#087f5b] dark:border-[#3b4037] dark:bg-[#191c17] dark:text-[#f4f5ef]'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-sm ${selected ? 'bg-white/16' : 'bg-[#e4e7de] dark:bg-[#292d26]'}`}>
+                {store.logo_url ? <img src={store.logo_url} alt="" className="h-full w-full object-cover" /> : <Store className="h-5 w-5" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 truncate text-xs font-black">{store.name}{store.is_verified && <Check className="h-3.5 w-3.5" aria-label="Boutique vérifiée" />}</span>
+                <span className={`mt-1 block truncate text-[11px] ${selected ? 'text-white/75' : 'text-[#747b70] dark:text-[#a9afa1]'}`}>@{store.subdomain}</span>
+              </span>
+              {store.unread_updates_count > 0 && <span data-testid={`unread-badge-${store.id}`} className={`min-w-6 rounded-sm px-1.5 py-1 text-center text-[10px] font-black tabular-nums ${selected ? 'bg-white text-[#087f5b]' : 'bg-[#c2412d] text-white'}`}>{store.unread_updates_count}</span>}
+            </button>
+          );
+        })}
+      </div>
+    )}
+  </section>
+);

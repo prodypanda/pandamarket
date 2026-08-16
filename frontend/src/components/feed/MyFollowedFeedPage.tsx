@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { FollowedStoresCarousel, type FollowedStoreItem } from './FollowedStoresCarousel';
 import { FeedTimeline, type FeedTimelineProduct } from './FeedTimeline';
@@ -26,7 +27,7 @@ export const MyFollowedFeedPage: React.FC<{
   const [activeFilter, setActiveFilter] = useState<'all' | 'price_drops' | 'new_arrivals'>('all');
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
 
-  const loadFeedData = async () => {
+  const loadFeedData = useCallback(async () => {
     if (!isAuthenticated) return;
     setLoading(true);
     setError(null);
@@ -36,173 +37,140 @@ export const MyFollowedFeedPage: React.FC<{
         fetchWithCsrf('/api/pd/marketplace/recommendations/buyer-interests'),
       ]);
 
-      if (!subsRes.ok || !recsRes.ok) {
-        throw new Error('Erreur lors du chargement du fil personnalisé.');
-      }
+      if (!subsRes.ok || !recsRes.ok) throw new Error('Erreur lors du chargement du fil personnalisé.');
 
       const subsJson = await subsRes.json();
       const recsJson = await recsRes.json();
-
       setData({
         followed_stores: subsJson.followed_stores || [],
         timeline_products: subsJson.timeline_products || [],
         recommended_products: recsJson.recommended_products || [],
         similar_stores: recsJson.similar_stores || [],
       });
-    } catch (err: any) {
-      setError(err.message || 'Impossible de charger le fil.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger le fil.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!initialData && isAuthenticated) {
-      loadFeedData();
-    }
-  }, [isAuthenticated]);
+    if (!initialData && isAuthenticated) void loadFeedData();
+  }, [initialData, isAuthenticated, loadFeedData]);
 
   const handleSubscribeRecommended = async (store: SimilarStore) => {
     try {
       await fetchWithCsrf(`/api/pd/stores/${store.id}/subscribe`, { method: 'POST' });
-      setData((prev) => {
-        if (!prev) return prev;
-        const newStore: FollowedStoreItem = {
+      setData((prev) => prev ? {
+        ...prev,
+        followed_stores: [...prev.followed_stores, {
           id: store.id,
           name: store.name,
           subdomain: store.subdomain,
           logo_url: null,
           unread_updates_count: 0,
           is_verified: true,
-        };
-        return {
-          ...prev,
-          followed_stores: [...prev.followed_stores, newStore],
-          similar_stores: prev.similar_stores.filter((s) => s.id !== store.id),
-        };
-      });
+        }],
+        similar_stores: prev.similar_stores.filter((item) => item.id !== store.id),
+      } : prev);
     } catch {
       setError('Erreur lors de l’abonnement à la boutique.');
     }
   };
 
-  // Filter Timeline Products
-  const filteredProducts = useMemo(() => {
-    if (!data?.timeline_products) return [];
-    return data.timeline_products.filter((p) => {
-      if (selectedStoreId && p.store_id !== selectedStoreId) return false;
-      if (activeFilter === 'price_drops' && (!p.discount_percentage || p.discount_percentage <= 0)) return false;
-      if (activeFilter === 'new_arrivals' && !p.is_new_arrival) return false;
-      return true;
-    });
-  }, [data, activeFilter, selectedStoreId]);
+  const filteredProducts = useMemo(() => (data?.timeline_products || []).filter((product) => {
+    if (selectedStoreId && product.store_id !== selectedStoreId) return false;
+    if (activeFilter === 'price_drops' && (!product.discount_percentage || product.discount_percentage <= 0)) return false;
+    if (activeFilter === 'new_arrivals' && !product.is_new_arrival) return false;
+    return true;
+  }), [data, activeFilter, selectedStoreId]);
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-4xl mx-auto p-8 text-center" data-testid="guest-feed-teaser">
-        <div className="p-10 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <span className="text-4xl mb-4 inline-block">🛍️</span>
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-            Votre fil d'actualités exclusif
-          </h2>
-          <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto mb-6 text-sm">
-            Suivez vos boutiques préférées pour recevoir en temps réel les baisses de prix, les nouveaux arrivages et des recommandations IA sur mesure.
-          </p>
-          <a
-            href="/login"
-            className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
-          >
-            Se connecter pour voir mon fil
+      <main className="min-h-[70vh] bg-[#f4f5ef] px-4 py-12 dark:bg-[#111310]" data-testid="guest-feed-teaser">
+        <div className="mx-auto grid max-w-5xl gap-10 border-y border-[#171a16] py-10 dark:border-[#e7eadf] md:grid-cols-[1fr_auto] md:items-end">
+          <div className="max-w-2xl">
+            <Radio className="mb-6 h-9 w-9 text-[#087f5b]" aria-hidden="true" />
+            <h1 className="max-w-xl text-4xl font-black leading-[1.02] text-[#171a16] dark:text-[#f4f5ef] sm:text-5xl">
+              Votre marché, organisé autour des boutiques que vous suivez.
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#555c52] dark:text-[#b7bcae]">
+              Connectez-vous pour retrouver les nouveaux arrivages, les changements de prix et les découvertes adaptées à vos intérêts.
+            </p>
+          </div>
+          <a href="/login" className="inline-flex h-12 items-center justify-center gap-3 rounded-md bg-[#171a16] px-5 text-sm font-bold text-white transition-colors hover:bg-[#087f5b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#087f5b] dark:bg-[#f4f5ef] dark:text-[#171a16]">
+            <LogIn className="h-4 w-4" /> Se connecter <ArrowRight className="h-4 w-4" />
           </a>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-6 space-y-6" data-testid="feed-loading-state">
-        <div className="h-8 w-48 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-lg" />
-        <div className="h-28 bg-zinc-100 dark:bg-zinc-800/60 animate-pulse rounded-2xl" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-4">
-            <div className="h-44 bg-zinc-100 dark:bg-zinc-800/60 animate-pulse rounded-xl" />
-            <div className="h-44 bg-zinc-100 dark:bg-zinc-800/60 animate-pulse rounded-xl" />
+      <main className="min-h-screen bg-[#f4f5ef] px-4 py-8 dark:bg-[#111310]" data-testid="feed-loading-state">
+        <div className="mx-auto max-w-7xl animate-pulse">
+          <div className="h-28 border-y border-[#c8ccbf] dark:border-[#34382f]" />
+          <div className="mt-8 h-24 border-b border-[#c8ccbf] dark:border-[#34382f]" />
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <div className="space-y-0">{[1, 2, 3].map((item) => <div key={item} className="h-40 border-b border-[#c8ccbf] bg-white/55 dark:border-[#34382f] dark:bg-white/[0.03]" />)}</div>
+            <div className="h-96 border-y border-[#c8ccbf] dark:border-[#34382f]" />
           </div>
-          <div className="h-72 bg-zinc-100 dark:bg-zinc-800/60 animate-pulse rounded-xl" />
         </div>
-      </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6" role="alert" data-testid="feed-error-state">
-        <div className="p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl dark:bg-rose-950/40 dark:text-rose-300">
-          <h3 className="font-bold text-base mb-1">Erreur de chargement</h3>
-          <p className="text-sm mb-4">{error}</p>
-          <button
-            type="button"
-            onClick={loadFeedData}
-            className="px-4 py-2 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700"
-          >
-            Réessayer
+      <main className="min-h-[70vh] bg-[#f4f5ef] px-4 py-12 dark:bg-[#111310]" role="alert" data-testid="feed-error-state">
+        <div className="mx-auto max-w-5xl border-y border-[#b42318] py-8 text-[#78150f] dark:text-[#ffb4aa]">
+          <AlertTriangle className="h-8 w-8" aria-hidden="true" />
+          <h1 className="mt-5 text-3xl font-black">Erreur de chargement</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6">{error}</p>
+          <button type="button" onClick={loadFeedData} className="mt-6 inline-flex h-10 items-center gap-2 rounded-md bg-[#b42318] px-4 text-sm font-bold text-white hover:bg-[#8f1c13] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b42318]">
+            <RefreshCw className="h-4 w-4" /> Réessayer
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   const followedStores = data?.followed_stores || [];
   const recommendedProducts = data?.recommended_products || [];
   const similarStores = data?.similar_stores || [];
+  const updateCount = data?.timeline_products.length || 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8" data-testid="my-followed-feed-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <span>✨</span> Mon Fil Panda
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Nouveautés, remises exclusives et suggestions personnalisées de vos boutiques préférées.
-          </p>
+    <main className="min-h-screen bg-[#f4f5ef] text-[#171a16] selection:bg-[#087f5b] selection:text-white dark:bg-[#111310] dark:text-[#f4f5ef]" data-testid="my-followed-feed-page">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+        <header className="border-y border-[#171a16] py-5 dark:border-[#e7eadf]">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-xs font-bold text-[#087f5b]"><Radio className="h-4 w-4" /> Fil acheteur en direct</div>
+              <h1 className="text-4xl font-black leading-none sm:text-5xl">Mon Fil Panda</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#596055] dark:text-[#b8bdae]">Nouveautés, remises exclusives et suggestions personnalisées de vos boutiques préférées.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2 text-sm"><Store className="h-4 w-4 text-[#087f5b]" /><strong>{followedStores.length}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">boutiques</span></div>
+              <div className="flex items-center gap-2 text-sm"><PackageSearch className="h-4 w-4 text-[#c2412d]" /><strong>{updateCount}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">mises à jour</span></div>
+              <div className="flex items-center gap-2 text-sm"><Compass className="h-4 w-4 text-[#2456a6]" /><strong>{recommendedProducts.length}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">découvertes</span></div>
+              <button type="button" onClick={loadFeedData} data-testid="feed-refresh-btn" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#171a16] px-3 text-xs font-bold transition-colors hover:bg-[#171a16] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#087f5b] dark:border-[#e7eadf] dark:hover:bg-[#e7eadf] dark:hover:text-[#171a16]">
+                <RefreshCw className="h-4 w-4" /> Actualiser
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="mt-8">
+          <FollowedStoresCarousel followedStores={followedStores} selectedStoreId={selectedStoreId} onSelectStore={setSelectedStoreId} />
         </div>
-        <button
-          type="button"
-          onClick={loadFeedData}
-          data-testid="feed-refresh-btn"
-          className="px-3 py-2 text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
-        >
-          🔄 Actualiser
-        </button>
+
+        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(300px,0.86fr)]">
+          <FeedTimeline products={filteredProducts} activeFilter={activeFilter} onFilterChange={setActiveFilter} onAddToCart={onAddToCart} />
+          <DiscoverSimilarStores similarStores={similarStores} recommendedProducts={recommendedProducts} onFollowStore={handleSubscribeRecommended} />
+        </div>
       </div>
-
-      {/* SECTION 1: Mes Boutiques Suivies (Carousel / Strip) */}
-      <FollowedStoresCarousel
-        followedStores={followedStores}
-        selectedStoreId={selectedStoreId}
-        onSelectStore={setSelectedStoreId}
-      />
-
-      {/* Main Grid: Section 2 (Timeline) + Section 3 (Discoveries) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* SECTION 2: Nouveautés & Baisses de Prix Timeline */}
-        <FeedTimeline
-          products={filteredProducts}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          onAddToCart={onAddToCart}
-        />
-
-        {/* SECTION 3: Découvertes & Boutiques Similaires */}
-        <DiscoverSimilarStores
-          similarStores={similarStores}
-          recommendedProducts={recommendedProducts}
-          onFollowStore={handleSubscribeRecommended}
-        />
-      </div>
-    </div>
+    </main>
   );
 };
