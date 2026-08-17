@@ -4,6 +4,8 @@ import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useState, useEffect, useRef } from 'react';
 import { Wind } from 'lucide-react';
 
+import { ProductImagePlaceholder } from './ProductImagePlaceholder';
+
 export interface LazyBlurImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
@@ -21,12 +23,12 @@ export function LazyBlurImage({
   ...props
 }: LazyBlurImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [hasError, setHasError] = useState(!src || src.trim().length === 0);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setIsLoaded(false);
-    setHasError(false);
+    setHasError(!src || src.trim().length === 0);
 
     // Instant check for cached / preloaded images
     if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
@@ -66,9 +68,7 @@ export function LazyBlurImage({
           {...props}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800">
-          {fallbackIcon || <Wind className="h-5 w-5 opacity-40" />}
-        </div>
+        fallbackIcon || <ProductImagePlaceholder altText={alt} />
       )}
     </div>
   );
