@@ -77,7 +77,7 @@ export function extractFallbackTags(title: string, category: string, description
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !UNIT_REGEX.test(w));
 
   const unique = Array.from(new Set(rawWords));
-  return unique.slice(0, 8);
+  return unique.slice(0, 6);
 }
 
 export class BuyerInterestService {

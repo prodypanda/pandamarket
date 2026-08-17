@@ -98,4 +98,28 @@ describe('PlatformConfigService section saves', () => {
       expect.arrayContaining(['platform_commission_rate']),
     );
   });
+
+  it('correctly provides watermark defaults and updates watermark section settings', async () => {
+    mockRedis.get.mockResolvedValueOnce(null);
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { key: 'watermark_enabled', value: 'true' },
+        { key: 'watermark_text', value: 'PandaTN' },
+        { key: 'watermark_opacity', value: '75' },
+      ],
+    });
+
+    const settings = await platformConfigService.getSettings();
+    expect(settings.watermark_enabled).toBe(true);
+    expect(settings.watermark_text).toBe('PandaTN');
+    expect(settings.watermark_opacity).toBe(75);
+    expect(settings.watermark_type).toBe('text');
+    expect(settings.watermark_position).toBe('bottom-right');
+    expect(settings.watermark_copy_protection).toBe(false);
+
+    const publicSettings = await platformConfigService.getPublicSettings();
+    expect(publicSettings.watermark_enabled).toBe(true);
+    expect(publicSettings.watermark_text).toBe('PandaTN');
+  });
 });
+

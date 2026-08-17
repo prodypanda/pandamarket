@@ -41,6 +41,7 @@ import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 import {
   BlockBanner,
   QuickAddToCartButton,
@@ -429,6 +430,11 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                 ) : (
                   <ProductImagePlaceholder theme="alibaba" altText={product.title} />
                 )}
+                <WatermarkOverlay
+                  settings={marketplaceSettings}
+                  storeName={product.store_name}
+                  viewType="card"
+                />
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
               {marketplaceSettings.hub_card_show_rating !== false && (
@@ -482,12 +488,17 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
         itemsPerLoad={typeof marketplaceSettings.hub_grid_items_per_load === 'number' ? marketplaceSettings.hub_grid_items_per_load : 12}
         renderCard={(product: any) => (
           <Link key={product.id} href={getProductHref(product)} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div className="aspect-square overflow-hidden bg-gray-100">
+            <div className="relative aspect-square overflow-hidden bg-gray-100">
               {getProductImage(product) ? (
                 <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
               ) : (
                 <ProductImagePlaceholder theme="alibaba" altText={product.title} />
               )}
+              <WatermarkOverlay
+                settings={marketplaceSettings}
+                storeName={product.store_name}
+                viewType="card"
+              />
             </div>
             <div className="p-3">
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>

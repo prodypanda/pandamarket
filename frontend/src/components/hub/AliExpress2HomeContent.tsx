@@ -10,6 +10,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 import { useMemo, useCallback } from 'react';
 interface Product {
   id: string;
@@ -96,8 +97,13 @@ function SuperDealCard({ product, currency, rank, marketplaceSettings }: { produ
         ) : (
           <ProductImagePlaceholder theme="aliexpress" altText={product.title} />
         )}
+        <WatermarkOverlay
+          settings={marketplaceSettings}
+          storeName={product.store_name}
+          viewType="card"
+        />
         {/* Bottom gradient overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-gray-50 dark:from-[#18181b] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-gray-50 dark:from-[#18181b] to-transparent pointer-events-none" />
       </div>
 
       <div className="relative p-4">

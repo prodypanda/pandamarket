@@ -232,6 +232,18 @@ export const PLATFORM_SETTING_DEFAULTS = {
   rewards_widget_enabled: true,
   rewards_widget_button_label: "🎁 Gagnez jusqu'à 15 DT !",
   rewards_widget_prizes_json: '[{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EF4444","desc":"5.000 DT de remise immédiate sur votre panier"},{"label":"Livraison 0 DT","code":"LIVRAISON_ZERO","disc":7.0,"icon":"🚚","color":"#10B981","desc":"Frais de livraison 100% offerts"},{"label":"-10% Panier","code":"PANDA10","disc":10,"icon":"🔥","color":"#F59E0B","desc":"10% de réduction immédiate sur toute votre commande"},{"label":"15 DT Cadeau","code":"SUPER15","disc":15.0,"icon":"🎁","color":"#8B5CF6","desc":"15.000 DT de réduction dès 80 DT d’achat"},{"label":"-5% Fidélité","code":"FIDELITE5","disc":5,"icon":"⭐","color":"#3B82F6","desc":"5% de réduction exclusive client"},{"label":"5 DT Offerts","code":"CHANCE5DT","disc":5.0,"icon":"🎟️","color":"#EC4899","desc":"5.000 DT de remise immédiate"}]',
+  watermark_enabled: false,
+  watermark_type: 'text',
+  watermark_text: 'PandaMarket',
+  watermark_image_url: '',
+  watermark_position: 'bottom-right',
+  watermark_opacity: 40,
+  watermark_scale: 'medium',
+  watermark_style: 'subtle',
+  watermark_show_on_gallery: true,
+  watermark_show_on_cards: true,
+  watermark_show_on_lightbox: true,
+  watermark_copy_protection: false,
 } satisfies Record<string, PlatformSettingValue>;
 
 export type PlatformSettingKey = keyof typeof PLATFORM_SETTING_DEFAULTS;
@@ -342,6 +354,18 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'maintenance_illustration_url',
   'maintenance_eta',
   'maintenance_block_storefronts',
+  'watermark_enabled',
+  'watermark_type',
+  'watermark_text',
+  'watermark_image_url',
+  'watermark_position',
+  'watermark_opacity',
+  'watermark_scale',
+  'watermark_style',
+  'watermark_show_on_gallery',
+  'watermark_show_on_cards',
+  'watermark_show_on_lightbox',
+  'watermark_copy_protection',
 ] as const satisfies readonly PlatformSettingKey[];
 
 export const PLATFORM_SETTING_SECTION_META: Array<{
@@ -433,6 +457,18 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_card_add_to_cart_style',
     'hub_grid_columns',
     'hub_grid_items_per_load',
+    'watermark_enabled',
+    'watermark_type',
+    'watermark_text',
+    'watermark_image_url',
+    'watermark_position',
+    'watermark_opacity',
+    'watermark_scale',
+    'watermark_style',
+    'watermark_show_on_gallery',
+    'watermark_show_on_cards',
+    'watermark_show_on_lightbox',
+    'watermark_copy_protection',
   ],
   algorithm: [
     'hub_feed_base_sort',
@@ -647,6 +683,11 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'hub_card_show_add_to_cart',
   'hub_feed_diversity_enabled',
   'hub_feed_ab_testing_enabled',
+  'watermark_enabled',
+  'watermark_show_on_gallery',
+  'watermark_show_on_cards',
+  'watermark_show_on_lightbox',
+  'watermark_copy_protection',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
@@ -693,6 +734,7 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'hub_feed_personalization_pct',
   'hub_feed_diversity_strength',
   'hub_feed_max_items_per_store',
+  'watermark_opacity',
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {

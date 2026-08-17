@@ -202,6 +202,18 @@ export interface PlatformSettings {
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
   mandat_proof_email: string;
+  watermark_enabled: boolean;
+  watermark_type: 'text' | 'image' | 'both';
+  watermark_text: string;
+  watermark_image_url: string;
+  watermark_position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'diagonal_repeat';
+  watermark_opacity: number;
+  watermark_scale: 'small' | 'medium' | 'large';
+  watermark_style: 'subtle' | 'badge' | 'glassmorphism';
+  watermark_show_on_gallery: boolean;
+  watermark_show_on_cards: boolean;
+  watermark_show_on_lightbox: boolean;
+  watermark_copy_protection: boolean;
 }
 
 export type SettingsTab = 'marketplace' | 'commerce' | 'algorithm' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
@@ -435,6 +447,18 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   maintenance_eta: '',
   maintenance_allowed_ips: '',
   maintenance_block_storefronts: false,
+  watermark_enabled: false,
+  watermark_type: 'text',
+  watermark_text: 'PandaMarket',
+  watermark_image_url: '',
+  watermark_position: 'bottom-right',
+  watermark_opacity: 40,
+  watermark_scale: 'medium',
+  watermark_style: 'subtle',
+  watermark_show_on_gallery: true,
+  watermark_show_on_cards: true,
+  watermark_show_on_lightbox: true,
+  watermark_copy_protection: false,
 };
 
 export const DEFAULT_SMTP_FORM: SmtpFormData = {

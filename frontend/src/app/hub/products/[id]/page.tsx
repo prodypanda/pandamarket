@@ -285,7 +285,14 @@ export default async function ProductDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 mb-16">
           {/* Images */}
           <div className={isAliExpress ? 'rounded-[2rem] bg-white p-3 shadow-xl shadow-orange-900/5' : ''}>
-            <ProductGallery title={product.title} thumbnail={product.thumbnail} images={product.images} accentColor={accentHex} />
+            <ProductGallery
+              title={product.title}
+              thumbnail={product.thumbnail}
+              images={product.images}
+              accentColor={accentHex}
+              watermarkSettings={marketplaceSettings}
+              storeName={product.store_name}
+            />
           </div>
 
           {/* Product Info */}

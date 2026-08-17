@@ -12,6 +12,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 
 type MarketplaceThemeClasses = ReturnType<typeof getMarketplaceThemeClasses>;
 
@@ -91,6 +92,11 @@ function DealCard({ product, currency, themeClasses, isAliExpress2, marketplaceS
         ) : (
           <ProductImagePlaceholder theme="aliexpress" altText={product.title} />
         )}
+        <WatermarkOverlay
+          settings={marketplaceSettings}
+          storeName={product.store_name}
+          viewType="card"
+        />
       </div>
       <div className="p-3">
         <h3 className="line-clamp-2 min-h-[40px] text-sm font-bold text-gray-900">{product.title}</h3>

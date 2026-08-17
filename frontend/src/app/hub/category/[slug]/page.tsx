@@ -35,6 +35,7 @@ import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 import { LazyBlurImage } from '../../../../components/ui/LazyBlurImage';
 import { ProductImagePlaceholder } from '../../../../components/ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../../../../components/watermark/MarketplaceWatermark';
 
 import { CategoryBreadcrumbs } from '../../../../components/hub/CategoryBreadcrumbs';
 import { SubcategoryGrid } from '../../../../components/hub/SubcategoryGrid';
@@ -503,6 +504,11 @@ export default async function CategoryPage({
                     ) : (
                       <ProductImagePlaceholder theme={isAliExpress ? 'aliexpress' : 'default'} altText={product.title} />
                     )}
+                    <WatermarkOverlay
+                      settings={marketplaceSettings}
+                      storeName={product.store_name}
+                      viewType="card"
+                    />
                   </div>
                   <div className="p-3.5">
                     {product.category && (

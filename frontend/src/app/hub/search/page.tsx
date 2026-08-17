@@ -15,6 +15,7 @@ import { isAliExpressTheme } from '../../../lib/marketplace-theme';
 import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
 import { trackSearchPerformed } from '../../../lib/marketplace-analytics';
 import { ProductImagePlaceholder } from '../../../components/ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../../../components/watermark/MarketplaceWatermark';
 
 interface SearchProduct {
   id: string;
@@ -451,6 +452,11 @@ function SearchContent() {
                         ) : (
                           <ProductImagePlaceholder theme={isAliExpress ? 'aliexpress' : 'default'} altText={product.title} />
                         )}
+                        <WatermarkOverlay
+                          settings={marketplaceSettings}
+                          storeName={product.store_name}
+                          viewType="card"
+                        />
                       </div>
                       <div className="p-4">
                         <h3 className={`font-bold text-gray-900 text-sm mb-1 line-clamp-2 transition-colors ${isAliExpress ? 'group-hover:text-[#ff4747]' : 'group-hover:text-[#16C784]'}`}>

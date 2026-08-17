@@ -22,6 +22,7 @@ import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 import {
   BlockBanner,
   RecentlyViewedRail,
@@ -172,6 +173,11 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 ) : (
                   <ProductImagePlaceholder theme="amazon" altText={product.title} />
                 )}
+                <WatermarkOverlay
+                  settings={marketplaceSettings}
+                  storeName={product.store_name}
+                  viewType="card"
+                />
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
               {(marketplaceSettings as any).hub_card_show_rating !== false && (
@@ -380,6 +386,11 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 ) : (
                   <ProductImagePlaceholder theme="amazon" altText={product.title} />
                 )}
+                <WatermarkOverlay
+                  settings={marketplaceSettings}
+                  storeName={product.store_name}
+                  viewType="card"
+                />
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
               {(marketplaceSettings as any).hub_card_show_rating !== false && (

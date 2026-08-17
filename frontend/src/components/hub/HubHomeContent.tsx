@@ -13,6 +13,7 @@ import { LazyBlurImage } from '../ui/LazyBlurImage';
 import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
+import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 
 interface Product {
   id: string;
@@ -89,7 +90,19 @@ function getProductImage(product: Product) {
   return normalizePublicAssetUrl(product.images?.[0]?.url || product.thumbnail || '');
 }
 
-function ProductCard({ product, currency, showRating, showCart }: { product: Product; currency: string; showRating?: boolean; showCart?: boolean }) {
+function ProductCard({
+  product,
+  currency,
+  showRating,
+  showCart,
+  marketplaceSettings,
+}: {
+  product: Product;
+  currency: string;
+  showRating?: boolean;
+  showCart?: boolean;
+  marketplaceSettings?: MarketplaceSettings;
+}) {
   const image = getProductImage(product);
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
@@ -135,6 +148,11 @@ function ProductCard({ product, currency, showRating, showCart }: { product: Pro
         ) : (
           <ProductImagePlaceholder altText={product.title} />
         )}
+        <WatermarkOverlay
+          settings={marketplaceSettings}
+          storeName={product.store_name}
+          viewType="card"
+        />
       </div>
       <div className="p-4">
         {product.store_name && (
@@ -405,7 +423,14 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
             columns={typeof marketplaceSettings?.hub_grid_columns === 'number' ? marketplaceSettings.hub_grid_columns : 5}
             itemsPerLoad={typeof marketplaceSettings?.hub_grid_items_per_load === 'number' ? marketplaceSettings.hub_grid_items_per_load : 12}
             renderCard={(product) => (
-              <ProductCard key={product.id} product={product as Product} currency={currency} showRating={marketplaceSettings?.hub_card_show_rating !== false} showCart={marketplaceSettings?.hub_card_show_add_to_cart !== false} />
+              <ProductCard
+                key={product.id}
+                product={product as Product}
+                currency={currency}
+                showRating={marketplaceSettings?.hub_card_show_rating !== false}
+                showCart={marketplaceSettings?.hub_card_show_add_to_cart !== false}
+                marketplaceSettings={marketplaceSettings}
+              />
             )}
           />
         ) : hasFetchError ? (
