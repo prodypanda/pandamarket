@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store, Sparkles } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useCart } from '@/contexts/CartContext';
+import { HubNavbar } from '@/components/hub/HubNavbar';
+import { HubFooter } from '@/components/hub/HubFooter';
 import { FollowedStoresCarousel, type FollowedStoreItem } from './FollowedStoresCarousel';
 import { FeedTimeline, type FeedTimelineProduct } from './FeedTimeline';
 import { DiscoverSimilarStores, type SimilarStore, type RecommendedProduct } from './DiscoverSimilarStores';
@@ -20,16 +23,43 @@ export const MyFollowedFeedPage: React.FC<{
   initialData?: MyFollowedFeedData | null;
   isAuthenticated?: boolean;
   onAddToCart?: (product: FeedTimelineProduct) => void;
-}> = ({ initialData = null, isAuthenticated = true, onAddToCart }) => {
+  showNavAndFooter?: boolean;
+}> = ({ initialData = null, isAuthenticated = true, onAddToCart, showNavAndFooter = true }) => {
+  let cartContext: ReturnType<typeof useCart> | undefined;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    cartContext = useCart();
+  } catch {
+    cartContext = undefined;
+  }
+
   const [data, setData] = useState<MyFollowedFeedData | null>(initialData);
   const [loading, setLoading] = useState<boolean>(!initialData && isAuthenticated);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'price_drops' | 'new_arrivals'>('all');
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
 
-  const loadFeedData = useCallback(async () => {
+  const handleAddToCart = useCallback((product: FeedTimelineProduct) => {
+    if (onAddToCart) {
+      onAddToCart(product);
+    } else if (cartContext?.addToCart) {
+      cartContext.addToCart({
+        product_id: product.id,
+        title: product.title,
+        price: product.price,
+        quantity: 1,
+        store_id: product.store_id,
+        store_name: product.store_name,
+        image_url: product.image_url,
+      });
+    }
+  }, [cartContext, onAddToCart]);
+
+  const loadFeedData = useCallback(async (refreshing = false) => {
     if (!isAuthenticated) return;
-    setLoading(true);
+    if (refreshing) setIsRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const [subsRes, recsRes] = await Promise.all([
@@ -51,6 +81,7 @@ export const MyFollowedFeedPage: React.FC<{
       setError(err instanceof Error ? err.message : 'Impossible de charger le fil.');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [isAuthenticated]);
 
@@ -85,92 +116,169 @@ export const MyFollowedFeedPage: React.FC<{
     return true;
   }), [data, activeFilter, selectedStoreId]);
 
-  if (!isAuthenticated) {
-    return (
-      <main className="min-h-[70vh] bg-[#f4f5ef] px-4 py-12 dark:bg-[#111310]" data-testid="guest-feed-teaser">
-        <div className="mx-auto grid max-w-5xl gap-10 border-y border-[#171a16] py-10 dark:border-[#e7eadf] md:grid-cols-[1fr_auto] md:items-end">
-          <div className="max-w-2xl">
-            <Radio className="mb-6 h-9 w-9 text-[#087f5b]" aria-hidden="true" />
-            <h1 className="max-w-xl text-4xl font-black leading-[1.02] text-[#171a16] dark:text-[#f4f5ef] sm:text-5xl">
-              Votre marché, organisé autour des boutiques que vous suivez.
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-[#555c52] dark:text-[#b7bcae]">
-              Connectez-vous pour retrouver les nouveaux arrivages, les changements de prix et les découvertes adaptées à vos intérêts.
-            </p>
-          </div>
-          <a href="/login" className="inline-flex h-12 items-center justify-center gap-3 rounded-md bg-[#171a16] px-5 text-sm font-bold text-white transition-colors hover:bg-[#087f5b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#087f5b] dark:bg-[#f4f5ef] dark:text-[#171a16]">
-            <LogIn className="h-4 w-4" /> Se connecter <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
-      </main>
-    );
-  }
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#f4f5ef] px-4 py-8 dark:bg-[#111310]" data-testid="feed-loading-state">
-        <div className="mx-auto max-w-7xl animate-pulse">
-          <div className="h-28 border-y border-[#c8ccbf] dark:border-[#34382f]" />
-          <div className="mt-8 h-24 border-b border-[#c8ccbf] dark:border-[#34382f]" />
-          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-            <div className="space-y-0">{[1, 2, 3].map((item) => <div key={item} className="h-40 border-b border-[#c8ccbf] bg-white/55 dark:border-[#34382f] dark:bg-white/[0.03]" />)}</div>
-            <div className="h-96 border-y border-[#c8ccbf] dark:border-[#34382f]" />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="min-h-[70vh] bg-[#f4f5ef] px-4 py-12 dark:bg-[#111310]" role="alert" data-testid="feed-error-state">
-        <div className="mx-auto max-w-5xl border-y border-[#b42318] py-8 text-[#78150f] dark:text-[#ffb4aa]">
-          <AlertTriangle className="h-8 w-8" aria-hidden="true" />
-          <h1 className="mt-5 text-3xl font-black">Erreur de chargement</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6">{error}</p>
-          <button type="button" onClick={loadFeedData} className="mt-6 inline-flex h-10 items-center gap-2 rounded-md bg-[#b42318] px-4 text-sm font-bold text-white hover:bg-[#8f1c13] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b42318]">
-            <RefreshCw className="h-4 w-4" /> Réessayer
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   const followedStores = data?.followed_stores || [];
   const recommendedProducts = data?.recommended_products || [];
   const similarStores = data?.similar_stores || [];
   const updateCount = data?.timeline_products.length || 0;
 
-  return (
-    <main className="min-h-screen bg-[#f4f5ef] text-[#171a16] selection:bg-[#087f5b] selection:text-white dark:bg-[#111310] dark:text-[#f4f5ef]" data-testid="my-followed-feed-page">
-      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
-        <header className="border-y border-[#171a16] py-5 dark:border-[#e7eadf]">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-xs font-bold text-[#087f5b]"><Radio className="h-4 w-4" /> Fil acheteur en direct</div>
-              <h1 className="text-4xl font-black leading-none sm:text-5xl">Mon Fil Panda</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#596055] dark:text-[#b8bdae]">Nouveautés, remises exclusives et suggestions personnalisées de vos boutiques préférées.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <div className="flex items-center gap-2 text-sm"><Store className="h-4 w-4 text-[#087f5b]" /><strong>{followedStores.length}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">boutiques</span></div>
-              <div className="flex items-center gap-2 text-sm"><PackageSearch className="h-4 w-4 text-[#c2412d]" /><strong>{updateCount}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">mises à jour</span></div>
-              <div className="flex items-center gap-2 text-sm"><Compass className="h-4 w-4 text-[#2456a6]" /><strong>{recommendedProducts.length}</strong><span className="text-[#697065] dark:text-[#aeb4a6]">découvertes</span></div>
-              <button type="button" onClick={loadFeedData} data-testid="feed-refresh-btn" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#171a16] px-3 text-xs font-bold transition-colors hover:bg-[#171a16] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#087f5b] dark:border-[#e7eadf] dark:hover:bg-[#e7eadf] dark:hover:text-[#171a16]">
-                <RefreshCw className="h-4 w-4" /> Actualiser
-              </button>
+  const content = (
+    <>
+      {!isAuthenticated && (
+        <main className="min-h-[70vh] bg-gradient-to-b from-gray-50 to-white px-4 py-16 dark:from-[#0b0f17] dark:to-[#12161f]" data-testid="guest-feed-teaser">
+          <div className="mx-auto max-w-4xl rounded-3xl border border-gray-200/80 bg-white/90 p-8 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161a22]/90 sm:p-12">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-[#087f5b] shadow-inner dark:bg-emerald-950/50 dark:text-emerald-400">
+                <Radio className="h-8 w-8 animate-pulse" />
+              </div>
+              <h1 className="mt-6 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl">
+                Votre marché, organisé autour des boutiques que vous suivez.
+              </h1>
+              <p className="mt-3 max-w-xl text-base text-gray-500 dark:text-gray-400">
+                Connectez-vous pour retrouver en temps réel les nouveaux arrivages, les baisses de prix et les découvertes adaptées à vos centres d&apos;intérêt.
+              </p>
+              <a
+                href="/login"
+                className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gray-900 px-7 text-sm font-bold text-white shadow-lg shadow-gray-900/20 transition hover:bg-[#087f5b] hover:shadow-emerald-900/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] dark:bg-emerald-500 dark:text-gray-900 dark:hover:bg-emerald-400"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Se connecter pour voir mon fil</span>
+                <ArrowRight className="h-4 w-4" />
+              </a>
             </div>
           </div>
-        </header>
+        </main>
+      )}
 
-        <div className="mt-8">
-          <FollowedStoresCarousel followedStores={followedStores} selectedStoreId={selectedStoreId} onSelectStore={setSelectedStoreId} />
-        </div>
+      {isAuthenticated && loading && (
+        <main className="min-h-screen bg-gray-50/50 px-4 py-8 dark:bg-[#0b0f17]" data-testid="feed-loading-state">
+          <div className="mx-auto max-w-7xl animate-pulse space-y-6">
+            <div className="h-28 rounded-2xl bg-gray-200/70 dark:bg-white/5" />
+            <div className="h-32 rounded-2xl bg-gray-200/70 dark:bg-white/5" />
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(300px,0.86fr)]">
+              <div className="space-y-4">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-36 rounded-2xl bg-gray-200/70 dark:bg-white/5" />
+                ))}
+              </div>
+              <div className="h-96 rounded-2xl bg-gray-200/70 dark:bg-white/5" />
+            </div>
+          </div>
+        </main>
+      )}
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(300px,0.86fr)]">
-          <FeedTimeline products={filteredProducts} activeFilter={activeFilter} onFilterChange={setActiveFilter} onAddToCart={onAddToCart} />
-          <DiscoverSimilarStores similarStores={similarStores} recommendedProducts={recommendedProducts} onFollowStore={handleSubscribeRecommended} />
-        </div>
-      </div>
-    </main>
+      {isAuthenticated && !loading && error && (
+        <main className="min-h-[70vh] bg-gray-50/50 px-4 py-12 dark:bg-[#0b0f17]" role="alert" data-testid="feed-error-state">
+          <div className="mx-auto max-w-2xl rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center text-red-900 shadow-lg dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+            <AlertTriangle className="mx-auto h-10 w-10 text-red-600 dark:text-red-400" aria-hidden="true" />
+            <h2 className="mt-4 text-2xl font-black">Erreur de chargement</h2>
+            <p className="mt-2 text-sm leading-6 text-red-700 dark:text-red-300">{error}</p>
+            <button
+              type="button"
+              onClick={() => void loadFeedData(false)}
+              className="mt-6 inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-bold text-white shadow-md transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            >
+              <RefreshCw className="h-4 w-4" /> Réessayer
+            </button>
+          </div>
+        </main>
+      )}
+
+      {isAuthenticated && !loading && !error && (
+        <main className="min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0b0f17] dark:text-white" data-testid="my-followed-feed-page">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            {/* Page Header */}
+            <header className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161a22]/90 sm:p-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-[#087f5b] dark:bg-emerald-950/50 dark:text-emerald-400">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    </span>
+                    <Radio className="h-3.5 w-3.5" />
+                    <span>Fil acheteur en direct</span>
+                  </div>
+
+                  <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">
+                    Mon Fil Panda
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                    Nouveautés, remises exclusives et suggestions personnalisées de vos boutiques préférées.
+                  </p>
+                </div>
+
+                {/* Stats & Actions */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-3.5 py-2 text-xs font-bold dark:border-white/10 dark:bg-white/5">
+                    <Store className="h-4 w-4 text-[#087f5b] dark:text-emerald-400" />
+                    <span className="font-black text-gray-900 dark:text-white">{followedStores.length}</span>
+                    <span className="text-gray-500 dark:text-gray-400">boutiques</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-3.5 py-2 text-xs font-bold dark:border-white/10 dark:bg-white/5">
+                    <PackageSearch className="h-4 w-4 text-[#c2412d] dark:text-red-400" />
+                    <span className="font-black text-gray-900 dark:text-white">{updateCount}</span>
+                    <span className="text-gray-500 dark:text-gray-400">mises à jour</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-3.5 py-2 text-xs font-bold dark:border-white/10 dark:bg-white/5">
+                    <Compass className="h-4 w-4 text-[#2456a6] dark:text-blue-400" />
+                    <span className="font-black text-gray-900 dark:text-white">{recommendedProducts.length}</span>
+                    <span className="text-gray-500 dark:text-gray-400">découvertes</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void loadFeedData(true)}
+                    disabled={isRefreshing}
+                    data-testid="feed-refresh-btn"
+                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-xs font-black text-gray-800 shadow-sm transition hover:bg-gray-50 hover:shadow dark:border-white/10 dark:bg-[#1f242e] dark:text-white dark:hover:bg-[#282e3b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] disabled:opacity-60"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-[#087f5b]' : ''}`} />
+                    <span>Actualiser</span>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Carousel / Store Selector Rail */}
+            <div className="mt-6">
+              <FollowedStoresCarousel
+                followedStores={followedStores}
+                selectedStoreId={selectedStoreId}
+                onSelectStore={setSelectedStoreId}
+              />
+            </div>
+
+            {/* Feed Timeline + Discovery Sidebar */}
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(300px,0.86fr)]">
+              <FeedTimeline
+                products={filteredProducts}
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+                onAddToCart={handleAddToCart}
+              />
+              <DiscoverSimilarStores
+                similarStores={similarStores}
+                recommendedProducts={recommendedProducts}
+                onFollowStore={handleSubscribeRecommended}
+              />
+            </div>
+          </div>
+        </main>
+      )}
+    </>
+  );
+
+  if (!showNavAndFooter) {
+    return content;
+  }
+
+  return (
+    <>
+      <HubNavbar />
+      {content}
+      <HubFooter />
+    </>
   );
 };

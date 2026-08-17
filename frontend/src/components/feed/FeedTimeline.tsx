@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, ListFilter, PackageOpen, ShoppingCart, Sparkles, TrendingDown } from 'lucide-react';
+import { Check, ListFilter, PackageOpen, ShoppingCart, Sparkles, TrendingDown, Store } from 'lucide-react';
+import { getResizedImageUrl } from '@/lib/image-url';
 
 export interface FeedTimelineProduct {
   id: string;
@@ -30,64 +31,213 @@ const filters = [
   { id: 'new_arrivals' as const, label: 'Nouveautés', icon: Sparkles },
 ];
 
-export const FeedTimeline: React.FC<FeedTimelineProps> = ({ products, activeFilter, onFilterChange, onAddToCart }) => {
+export const FeedTimeline: React.FC<FeedTimelineProps> = ({
+  products,
+  activeFilter,
+  onFilterChange,
+  onAddToCart,
+}) => {
   const [cartSuccessId, setCartSuccessId] = useState<string | null>(null);
 
   const handleAddToCartClick = (product: FeedTimelineProduct) => {
     onAddToCart?.(product);
     setCartSuccessId(product.id);
-    window.setTimeout(() => setCartSuccessId(null), 2000);
+    window.setTimeout(() => setCartSuccessId(null), 2200);
   };
 
   return (
     <section data-testid="section-feed-timeline" aria-labelledby="feed-timeline-title">
-      <div className="flex flex-col gap-4 border-b-2 border-[#171a16] pb-4 dark:border-[#e7eadf] sm:flex-row sm:items-end sm:justify-between">
+      {/* Header & Filter Controls */}
+      <div className="flex flex-col gap-4 border-b border-gray-200/90 pb-5 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="feed-timeline-title" className="text-2xl font-black">Nouveautés &amp; Baisses de Prix</h2>
-          <p className="mt-1 text-xs text-[#697065] dark:text-[#aeb4a6]">Le registre chronologique des boutiques que vous suivez.</p>
+          <h2 id="feed-timeline-title" className="text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
+            Nouveautés &amp; Baisses de Prix
+          </h2>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Le registre chronologique des publications de vos boutiques suivies.
+          </p>
         </div>
-        <div className="flex max-w-full gap-1 overflow-x-auto" data-testid="feed-filter-tabs" aria-label="Filtrer le fil">
-          {filters.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" data-testid={`filter-${id === 'price_drops' ? 'price-drops' : id === 'new_arrivals' ? 'new-arrivals' : 'all'}`} aria-pressed={activeFilter === id} onClick={() => onFilterChange(id)} className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm px-3 text-[11px] font-black transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${activeFilter === id ? 'bg-[#171a16] text-white dark:bg-[#e7eadf] dark:text-[#171a16]' : 'bg-transparent text-[#596055] hover:bg-[#e3e6dc] dark:text-[#b8bdae] dark:hover:bg-[#252922]'}`}>
-              <Icon className="h-3.5 w-3.5" /> {label}
-            </button>
-          ))}
+
+        {/* Filter Pills */}
+        <div
+          className="flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-gray-100/90 p-1 dark:bg-white/5"
+          data-testid="feed-filter-tabs"
+          aria-label="Filtrer le fil"
+        >
+          {filters.map(({ id, label, icon: Icon }) => {
+            const isActive = activeFilter === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                data-testid={`filter-${id === 'price_drops' ? 'price-drops' : id === 'new_arrivals' ? 'new-arrivals' : 'all'}`}
+                aria-pressed={isActive}
+                onClick={() => onFilterChange(id)}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-xs font-bold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${
+                  isActive
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-[#1f242e] dark:text-white'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                }`}
+              >
+                <Icon
+                  className={`h-3.5 w-3.5 ${
+                    isActive
+                      ? id === 'price_drops'
+                        ? 'text-red-500'
+                        : id === 'new_arrivals'
+                          ? 'text-blue-500'
+                          : 'text-[#087f5b]'
+                      : 'text-gray-400'
+                  }`}
+                />
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* Feed List or Empty State */}
       {products.length === 0 ? (
-        <div className="flex min-h-48 flex-col items-center justify-center border-b border-[#c8ccbf] text-center dark:border-[#34382f]" data-testid="empty-feed-timeline">
-          <PackageOpen className="h-8 w-8 text-[#087f5b]" />
-          <p className="mt-4 text-sm font-bold">Aucune nouveauté récente cette semaine dans ce filtre.</p>
-          <p className="mt-1 text-xs text-[#697065] dark:text-[#aeb4a6]">Essayez un autre filtre ou affichez toutes les boutiques.</p>
+        <div
+          className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300/80 p-8 text-center dark:border-white/10"
+          data-testid="empty-feed-timeline"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-gray-500">
+            <PackageOpen className="h-7 w-7" />
+          </div>
+          <p className="mt-4 text-sm font-black text-gray-800 dark:text-gray-200">
+            Aucune nouveauté récente cette semaine dans ce filtre.
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Essayez de sélectionner « Tous les flux » ou explorez d&apos;autres boutiques recommandées.
+          </p>
         </div>
       ) : (
-        <div data-testid="feed-timeline-list">
+        <div data-testid="feed-timeline-list" className="divide-y divide-gray-100 dark:divide-white/5">
           {products.map((product) => {
-            const added = cartSuccessId === product.id;
-            const formattedDate = Number.isNaN(new Date(product.published_at).getTime()) ? '' : new Intl.DateTimeFormat('fr-TN', { day: '2-digit', month: 'short' }).format(new Date(product.published_at));
+            const isAdded = cartSuccessId === product.id;
+            const hasDate = !Number.isNaN(new Date(product.published_at).getTime());
+            const formattedDate = hasDate
+              ? new Intl.DateTimeFormat('fr-TN', { day: '2-digit', month: 'short' }).format(
+                  new Date(product.published_at),
+                )
+              : '';
+            const isDiscounted = !!product.discount_percentage && product.discount_percentage > 0;
+            const imageUrl = product.image_url ? getResizedImageUrl(product.image_url, 'medium') : null;
+
             return (
-              <article key={product.id} data-testid={`timeline-item-${product.id}`} className="group grid gap-4 border-b border-[#c8ccbf] py-5 dark:border-[#34382f] sm:grid-cols-[96px_minmax(0,1fr)_auto] sm:items-center">
-                <div className="aspect-square w-24 overflow-hidden rounded-sm bg-[#e4e7de] dark:bg-[#292d26]">
-                  {product.image_url ? <img src={product.image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center"><PackageOpen className="h-7 w-7 text-[#697065]" /></div>}
+              <article
+                key={product.id}
+                data-testid={`timeline-item-${product.id}`}
+                className="group grid gap-4 py-5 transition-colors sm:grid-cols-[108px_minmax(0,1fr)_auto] sm:items-center sm:gap-6"
+              >
+                {/* Product Thumbnail */}
+                <div className="relative aspect-square w-full sm:w-[108px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50 shadow-sm dark:border-white/10 dark:bg-[#161a22]">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={product.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-gray-300 dark:text-gray-600">
+                      <PackageOpen className="h-8 w-8 stroke-[1.5]" />
+                    </div>
+                  )}
+
+                  {isDiscounted && (
+                    <span
+                      data-testid={`discount-badge-${product.id}`}
+                      className="absolute start-1.5 top-1.5 rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm"
+                    >
+                      -{product.discount_percentage}%
+                    </span>
+                  )}
                 </div>
+
+                {/* Details */}
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold">
-                    <span className="text-[#087f5b]">{product.store_name}</span>
-                    {formattedDate && <span className="text-[#858b80]">{formattedDate}</span>}
-                    {product.is_new_arrival && <span className="rounded-sm bg-[#2456a6] px-1.5 py-0.5 text-[9px] font-black text-white">NOUVEAU</span>}
-                    {!!product.discount_percentage && product.discount_percentage > 0 && <span data-testid={`discount-badge-${product.id}`} className="rounded-sm bg-[#c2412d] px-1.5 py-0.5 text-[9px] font-black text-white">-{product.discount_percentage}%</span>}
+                  {/* Meta Bar */}
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+                    <span className="inline-flex items-center gap-1 font-bold text-[#087f5b] dark:text-emerald-400">
+                      <Store className="h-3.5 w-3.5" />
+                      {product.store_name}
+                    </span>
+
+                    {formattedDate && (
+                      <span className="text-gray-400 dark:text-gray-500">· {formattedDate}</span>
+                    )}
+
+                    {product.is_new_arrival && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                        NOUVEAU
+                      </span>
+                    )}
                   </div>
-                  <h3 className="mt-2 max-w-2xl text-base font-black leading-snug text-[#171a16] dark:text-[#f4f5ef]">{product.title}</h3>
-                  <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                    <span className="text-lg font-black tabular-nums">{product.price.toFixed(3)} TND</span>
-                    {product.original_price && product.original_price > product.price && <span className="text-xs tabular-nums text-[#858b80] line-through">{product.original_price.toFixed(3)} TND</span>}
-                    {product.interest_tags?.slice(0, 2).map((tag) => <span key={tag} className="text-[10px] font-bold text-[#697065] dark:text-[#aeb4a6]">#{tag}</span>)}
+
+                  {/* Title */}
+                  <h3 className="mt-1.5 text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-[#087f5b] dark:text-white dark:group-hover:text-emerald-400 sm:text-lg">
+                    {product.title}
+                  </h3>
+
+                  {/* Price & Tags */}
+                  <div className="mt-2.5 flex flex-wrap items-baseline gap-2.5">
+                    <span className="text-lg font-black tabular-nums text-gray-900 dark:text-white">
+                      {product.price.toFixed(3)} TND
+                    </span>
+
+                    {product.original_price && product.original_price > product.price && (
+                      <span className="text-xs font-bold tabular-nums text-gray-400 line-through">
+                        {product.original_price.toFixed(3)} TND
+                      </span>
+                    )}
+
+                    {product.interest_tags && product.interest_tags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 ms-1">
+                        {product.interest_tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-white/5 dark:text-gray-400"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <button type="button" data-testid={`btn-add-to-cart-${product.id}`} onClick={() => handleAddToCartClick(product)} aria-label={added ? `${product.title} ajouté au panier` : `Ajouter ${product.title} au panier`} className={`inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-xs font-black transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] sm:min-w-[132px] ${added ? 'bg-[#087f5b] text-white' : 'bg-[#171a16] text-white hover:bg-[#087f5b] dark:bg-[#e7eadf] dark:text-[#171a16] dark:hover:bg-[#8ff0cb]'}`}>
-                  {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}{added ? 'Ajouté' : 'Ajouter au panier'}
-                </button>
+
+                {/* Action CTA */}
+                <div className="flex items-center justify-start sm:justify-end">
+                  <button
+                    type="button"
+                    data-testid={`btn-add-to-cart-${product.id}`}
+                    onClick={() => handleAddToCartClick(product)}
+                    aria-label={
+                      isAdded
+                        ? `${product.title} ajouté au panier`
+                        : `Ajouter ${product.title} au panier`
+                    }
+                    className={`inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl px-5 text-xs font-black transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] shadow-sm ${
+                      isAdded
+                        ? 'bg-emerald-600 text-white scale-[0.98]'
+                        : 'bg-gray-900 text-white hover:bg-[#087f5b] hover:shadow-md dark:bg-white dark:text-gray-900 dark:hover:bg-emerald-400'
+                    }`}
+                  >
+                    {isAdded ? (
+                      <>
+                        <Check className="h-4 w-4 stroke-[3]" />
+                        <span>Ajouté !</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="h-4 w-4" />
+                        <span>Ajouter au panier</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </article>
             );
           })}
