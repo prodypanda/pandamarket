@@ -139,8 +139,8 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
           parsedTags = lines.map((l) => l.trim()).filter((l) => l.length >= 2);
         }
 
-        const isRealAi = result?.source === 'platform' || (result?.provider && result.provider !== 'custom');
-        const resolvedSource = isRealAi ? 'gemini-pro' : 'fallback';
+        const isFallbackEngine = result?.provider === 'custom' && result?.source === 'env';
+        const resolvedSource = isFallbackEngine ? 'fallback' : 'gemini-pro';
 
         const cleaned = cleanAndDedupeTags(parsedTags);
         if (cleaned.length >= 4) {
