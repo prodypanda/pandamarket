@@ -9,6 +9,7 @@ import { HubProductPagination } from './HubProductPagination';
 import { useLocale } from '../../contexts/LocaleContext';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { useMemo, useCallback } from 'react';
 interface Product {
   id: string;
@@ -93,9 +94,7 @@ function SuperDealCard({ product, currency, rank, marketplaceSettings }: { produ
         {image ? (
           <img src={image ? getResizedImageUrl(image, 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-white/20">
-            <ShoppingBag className="h-10 w-10" />
-          </div>
+          <ProductImagePlaceholder theme="aliexpress" altText={product.title} />
         )}
         {/* Bottom gradient overlay */}
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-gray-50 dark:from-[#18181b] to-transparent" />

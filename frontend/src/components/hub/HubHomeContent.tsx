@@ -12,6 +12,7 @@ import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
 import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 
 interface Product {
   id: string;
@@ -132,9 +133,7 @@ function ProductCard({ product, currency, showRating, showCart }: { product: Pro
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-            <ShoppingBag className="h-8 w-8" />
-          </div>
+          <ProductImagePlaceholder altText={product.title} />
         )}
       </div>
       <div className="p-4">

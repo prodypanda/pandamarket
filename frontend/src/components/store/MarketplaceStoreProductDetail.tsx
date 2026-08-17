@@ -11,6 +11,7 @@ import { SellerHoverCard } from '../product/SellerHoverCard';
 import { ContactSellerButton } from '../chat/ContactSellerButton';
 import { StoreFollowButton } from './StoreFollowButton';
 import { InstantChatLauncher } from '../chat/InstantChatLauncher';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { getMarketplaceThemeClasses, type MarketplaceThemeSettings } from '../../lib/marketplace-theme';
 import { WhatsAppDirectOrderButton } from './WhatsAppDirectOrderButton';
 import { getStorefrontWebsiteHref } from '../../lib/storefront-url';
@@ -343,7 +344,7 @@ export function MarketplaceStoreProductDetail({
                           style={{ backgroundImage: `url(${getResizedImageUrl(imageUrl, 'large')})` }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400">No Image</div>
+                        <ProductImagePlaceholder theme={isAliExpress ? 'aliexpress' : 'default'} altText={relatedProduct.title} />
                       )}
                     </div>
                     <div className="p-4">

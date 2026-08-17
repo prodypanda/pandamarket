@@ -11,6 +11,7 @@ import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { useLocale } from '../../contexts/LocaleContext';
 import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 
 type MarketplaceThemeClasses = ReturnType<typeof getMarketplaceThemeClasses>;
 
@@ -84,13 +85,11 @@ function DealCard({ product, currency, themeClasses, isAliExpress2, marketplaceS
   return (
     <Link href={getHubProductHref(product)} className={`group overflow-hidden ${themeClasses.card} block`}>
       <div className={`relative aspect-square overflow-hidden ${isAliExpress2 ? 'bg-orange-50/30' : 'bg-orange-50'}`}>
-        <span className={`absolute start-2 top-2 z-10 px-2.5 py-1 text-[10px] ${themeClasses.dealPill}`}>{String('hub.deal') || 'Deal'}</span>
+        <span className={`absolute start-2 top-2 z-10 px-2.5 py-1 text-[10px] ${themeClasses.dealPill}`}>Offre</span>
         {image ? (
           <img loading="lazy" src={image ? getResizedImageUrl(image, 'medium') : ''} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-orange-300">
-            <ShoppingBag className="h-8 w-8" />
-          </div>
+          <ProductImagePlaceholder theme="aliexpress" altText={product.title} />
         )}
       </div>
       <div className="p-3">

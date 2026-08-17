@@ -139,11 +139,14 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
           parsedTags = lines.map((l) => l.trim()).filter((l) => l.length >= 2);
         }
 
+        const isRealAi = result?.source === 'platform' || (result?.provider && result.provider !== 'custom');
+        const resolvedSource = isRealAi ? 'gemini-pro' : 'fallback';
+
         const cleaned = cleanAndDedupeTags(parsedTags);
         if (cleaned.length >= 4) {
           return {
             tags: cleaned.slice(0, 8),
-            source: 'gemini-pro',
+            source: resolvedSource,
           };
         }
 
@@ -151,11 +154,11 @@ ${product.attributes && product.attributes.length > 0 ? `- Attributes: ${product
         const supplemented = cleanAndDedupeTags([...cleaned, ...fallback]);
         return {
           tags: supplemented.slice(0, 8),
-          source: 'gemini-pro',
+          source: resolvedSource,
         };
       }
     } catch (err: any) {
-      logger.warn({ title: product.title, err: err?.message }, 'Gemini AI tagging failed, falling back to heuristic tags');
+      logger.warn({ title: product.title, err: err?.message }, 'AI tagging failed, falling back to heuristic tags');
     }
 
     return {

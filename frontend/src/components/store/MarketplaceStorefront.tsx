@@ -11,6 +11,7 @@ import { StorefrontSocialLinks } from '../themes/StorefrontSocialLinks';
 import type { StoreBranding, StoreSocialLinks } from '../themes/shared';
 import { selectLogoForSurface } from '../../lib/public-assets';
 import { StoreFollowButton } from './StoreFollowButton';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 
 export interface MarketplaceStoreData {
   id: string;
@@ -371,7 +372,7 @@ export function MarketplaceSellerPage({
                           style={{ backgroundImage: `url(${getResizedImageUrl(imageUrl, 'large')})` }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400"><Package className="h-9 w-9" /></div>
+                        <ProductImagePlaceholder altText={product.title} />
                       )}
                     </div>
                     <div className="p-4">

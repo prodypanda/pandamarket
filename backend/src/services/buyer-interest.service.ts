@@ -50,16 +50,34 @@ export function cleanAndDedupeTags(rawTags: string[]): string[] {
   return result.slice(0, 10);
 }
 
+const STOP_WORDS = new Set([
+  'les', 'des', 'pour', 'avec', 'sans', 'dans', 'sur', 'the', 'and', 'for', 'une', 'un', 'par', 'est', 'sont',
+  'que', 'qui', 'aux', 'mon', 'son', 'ton', 'nos', 'vos', 'leur', 'leurs', 'ces', 'cet', 'cette', 'plus',
+  'tout', 'tous', 'toute', 'toutes', 'tres', 'bien', 'fait', 'faire', 'modele', 'taille', 'ref', 'unit',
+  'pack', 'lot', 'offre', 'promo', 'prix', 'tnd', 'dinars', 'eur', 'usd', 'new', 'top', 'bon', 'super',
+  'qualite', 'haute', 'haut', 'bas', 'grand', 'petit', 'moyenne', 'moyen', 'piece', 'produit', 'article',
+  'description', 'none', 'null', 'undefined', 'general', 'non', 'specifiee', 'sans', 'avec',
+  'from', 'with', 'without', 'under', 'over', 'into', 'about', 'your', 'their', 'this', 'that', 'these',
+]);
+
+const UNIT_REGEX = /^\d+([a-zA-Z%]+|\s*[a-zA-Z%]+)?$/;
+
 export function extractFallbackTags(title: string, category: string, description = ''): string[] {
-  const text = `${title} ${category} ${description}`.toLowerCase();
+  const cleanTitle = (title || '').trim();
+  const cleanCat = (category || '').trim();
+  const cleanDesc = (description || '').slice(0, 300).trim();
+  const text = `${cleanTitle} ${cleanCat} ${cleanDesc}`.toLowerCase();
+
   const rawWords = text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-_]/g, ' ')
     .split(/[\s,./\-_+&()]+/)
     .map((w) => w.trim())
-    .filter((w) => w.length >= 3 && !['les', 'des', 'pour', 'avec', 'sans', 'dans', 'sur', 'the', 'and', 'for', 'une', 'des'].includes(w));
+    .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !UNIT_REGEX.test(w));
 
-  return Array.from(new Set(rawWords)).slice(0, 6);
+  const unique = Array.from(new Set(rawWords));
+  return unique.slice(0, 8);
 }
 
 export class BuyerInterestService {

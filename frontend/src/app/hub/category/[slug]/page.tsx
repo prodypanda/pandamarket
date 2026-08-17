@@ -34,6 +34,7 @@ import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { SponsoredAdsRail } from '../../../../components/hub/SponsoredAdsRail';
 import { LazyBlurImage } from '../../../../components/ui/LazyBlurImage';
+import { ProductImagePlaceholder } from '../../../../components/ui/ProductImagePlaceholder';
 
 import { CategoryBreadcrumbs } from '../../../../components/hub/CategoryBreadcrumbs';
 import { SubcategoryGrid } from '../../../../components/hub/SubcategoryGrid';
@@ -500,9 +501,7 @@ export default async function CategoryPage({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-semibold">
-                        {i18n.noImage}
-                      </div>
+                      <ProductImagePlaceholder theme={isAliExpress ? 'aliexpress' : 'default'} altText={product.title} />
                     )}
                   </div>
                   <div className="p-3.5">

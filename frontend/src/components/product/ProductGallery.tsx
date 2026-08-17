@@ -3,6 +3,7 @@
 import { Maximize2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getResizedImageUrl } from '@/lib/image-url';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 
 type ProductImage = string | { id?: string; url: string; alt_text?: string | null; position?: number | null; is_thumbnail?: boolean | null };
 
@@ -84,9 +85,7 @@ export function ProductGallery({
             </span>
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-lg text-gray-400">
-            {emptyLabel}
-          </div>
+          <ProductImagePlaceholder altText={title} showText />
         )}
       </button>
 

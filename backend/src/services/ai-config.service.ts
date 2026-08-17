@@ -9,6 +9,7 @@ import { logger } from '../utils/logger';
 import { PdForbiddenError, PdNotFoundError, PdValidationError, PdErrorCode } from '../errors';
 import { storeService } from './store.service';
 import { subscriptionService } from './subscription.service';
+import { extractFallbackTags } from './buyer-interest.service';
 
 export type AiProvider = 'gemini' | 'openai' | 'claude' | 'custom' | 'replicate';
 
@@ -193,11 +194,16 @@ function generateFallbackCopywriting(prompt: string): string {
   }
 
   // If prompt is for semantic product tagging
-  if (prompt.includes('interest tags') || prompt.includes('tags d’intérêt') || prompt.includes('tags d\'intérêt')) {
-    const titleMatch = prompt.match(/Title\s*:\s*(.+)/i) || prompt.match(/Titre\s*:\s*(.+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'produit';
-    const words = title.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter((w) => w.length >= 3);
-    const tags = Array.from(new Set(['artisanat', 'qualite', 'tunisie', ...words])).slice(0, 6);
+  if (prompt.includes('interest tags') || prompt.includes('tags d’intérêt') || prompt.includes('tags d\'intérêt') || prompt.includes('semantic tagging')) {
+    const titleMatch = prompt.match(/Title\s*:\s*([^\n\r]+)/i) || prompt.match(/Titre\s*:\s*([^\n\r]+)/i) || prompt.match(/Produit\s*:\s*([^\n\r]+)/i);
+    const catMatch = prompt.match(/Category\s*:\s*([^\n\r]+)/i) || prompt.match(/Catégorie\s*:\s*([^\n\r]+)/i);
+    const descMatch = prompt.match(/Description\s*:\s*([^\n\r]+)/i) || prompt.match(/Description brute\s*:\s*([^\n\r]+)/i);
+
+    const title = titleMatch ? titleMatch[1].trim() : '';
+    const category = catMatch ? catMatch[1].trim() : '';
+    const description = descMatch ? descMatch[1].trim() : '';
+
+    const tags = extractFallbackTags(title, category, description);
     return JSON.stringify({ tags });
   }
 

@@ -40,6 +40,7 @@ import type { MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { SponsoredAdsRail } from './SponsoredAdsRail';
 import { HubProductPagination } from './HubProductPagination';
+import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import {
   BlockBanner,
   QuickAddToCartButton,
@@ -161,6 +162,7 @@ const TRANSLATIONS = {
     rfqSubtitle: 'Exprimez votre besoin et recevez des offres sur mesure.',
     rfqButton: 'Publier une demande',
     endsIn: 'Se termine dans',
+    deal: 'Offre',
     noDeals: 'Aucune offre pour le moment',
     justForYou: 'Pour vous',
     viewAll: 'Voir tout',
@@ -184,6 +186,7 @@ const TRANSLATIONS = {
     rfqSubtitle: 'أخبر الموردين باحتياجاتك واحصل على أفضل العروض.',
     rfqButton: 'إرسال طلب',
     endsIn: 'ينتهي خلال',
+    deal: 'عرض',
     noDeals: 'لا توجد عروض حالياً',
     justForYou: 'خصيصاً لك',
     viewAll: 'عرض الكل',
@@ -207,6 +210,7 @@ const TRANSLATIONS = {
     rfqSubtitle: 'Tell sellers what you need and receive tailored offers.',
     rfqButton: 'Post a Request',
     endsIn: 'Ends in',
+    deal: 'Deal',
     noDeals: 'No deals available yet',
     justForYou: 'Just for you',
     viewAll: 'View all',
@@ -419,11 +423,11 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
           {dealProducts.map((product) => (
             <Link key={product.id} href={getProductHref(product)} className="group rounded-2xl border border-gray-100 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="relative mb-2 aspect-square overflow-hidden rounded-xl bg-gray-100">
-                <span className="absolute start-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>{String('hub.deal') || 'Deal'}</span>
+                <span className="absolute start-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: ORANGE }}>{i18n.deal}</span>
                 {getProductImage(product) ? (
                   <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
+                  <ProductImagePlaceholder theme="alibaba" altText={product.title} />
                 )}
               </div>
               <p className="line-clamp-2 text-xs font-bold text-gray-900">{product.title}</p>
@@ -482,7 +486,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
               {getProductImage(product) ? (
                 <div aria-label={product.title} role="img" className="h-full w-full bg-cover bg-center transition-transform group-hover:scale-105" style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }} />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">{String('hub.noImage') || 'No image'}</div>
+                <ProductImagePlaceholder theme="alibaba" altText={product.title} />
               )}
             </div>
             <div className="p-3">

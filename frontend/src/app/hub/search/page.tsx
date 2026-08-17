@@ -14,6 +14,7 @@ import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-ty
 import { isAliExpressTheme } from '../../../lib/marketplace-theme';
 import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
 import { trackSearchPerformed } from '../../../lib/marketplace-analytics';
+import { ProductImagePlaceholder } from '../../../components/ui/ProductImagePlaceholder';
 
 interface SearchProduct {
   id: string;
@@ -448,9 +449,7 @@ function SearchContent() {
                             style={{ backgroundImage: `url(${getResizedImageUrl(getProductImage(product), 'medium')})` }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Search className="w-8 h-8" />
-                          </div>
+                          <ProductImagePlaceholder theme={isAliExpress ? 'aliexpress' : 'default'} altText={product.title} />
                         )}
                       </div>
                       <div className="p-4">
