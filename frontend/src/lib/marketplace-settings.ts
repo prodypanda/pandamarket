@@ -94,6 +94,8 @@ export interface MarketplaceSettings {
   hub_card_add_to_cart_style?: 'icon_only' | 'text_icon' | 'rounded_pill' | 'minimal' | string;
   hub_grid_columns?: number;
   hub_grid_items_per_load?: number;
+  hub_search_grid_columns?: number;
+  hub_search_items_per_page?: number;
   watermark_enabled?: boolean | string;
   watermark_type?: 'text' | 'image' | 'both' | string;
   watermark_text?: string;

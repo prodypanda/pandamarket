@@ -87,6 +87,8 @@ interface PlatformSettings {
   hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
   hub_grid_columns: number;
   hub_grid_items_per_load: number;
+  hub_search_grid_columns: number;
+  hub_search_items_per_page: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -332,6 +334,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_card_add_to_cart_style: 'icon',
   hub_grid_columns: 5,
   hub_grid_items_per_load: 12,
+  hub_search_grid_columns: 5,
+  hub_search_items_per_page: 20,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -670,6 +674,8 @@ const NUMBER_SETTING_KEYS = [
   'hub_feed_max_items_per_store',
   'hub_grid_columns',
   'hub_grid_items_per_load',
+  'hub_search_grid_columns',
+  'hub_search_items_per_page',
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
@@ -810,6 +816,8 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_seller_rail_cta_label',
     'hub_hero_seller_rail_cta_url',
     'hub_hero_seller_rail_badge_text',
+    'hub_search_grid_columns',
+    'hub_search_items_per_page',
     'watermark_enabled',
     'watermark_type',
     'watermark_text',
@@ -835,6 +843,8 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_card_add_to_cart_style',
     'hub_grid_columns',
     'hub_grid_items_per_load',
+    'hub_search_grid_columns',
+    'hub_search_items_per_page',
   ],
   commerce: [
     'marketplace_enabled',
@@ -1009,6 +1019,8 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_card_add_to_cart_style', tab: 'algorithm', label: 'Style du Bouton Panier', description: 'Style visuel du bouton panier: Icône seule, Compact ou Pleine largeur', keywords: ['style', 'panier', 'cart', 'bouton', 'icone', 'icon', 'compact', 'full', 'largeur', 'algorithm'] },
   { key: 'hub_grid_columns', tab: 'algorithm', label: 'Colonnes de la Grille Produit', description: 'Nombre de colonnes dans la grille de produits du Hub (desktop)', keywords: ['colonnes', 'columns', 'grille', 'grid', 'produit', 'hub', 'layout', 'algorithm'] },
   { key: 'hub_grid_items_per_load', tab: 'algorithm', label: 'Produits par Chargement', description: 'Nombre de produits chargés à chaque scroll infini ou clic Load More', keywords: ['produits', 'items', 'chargement', 'load', 'scroll', 'page', 'infinite', 'per', 'algorithm'] },
+  { key: 'hub_search_grid_columns', tab: 'marketplace', label: 'Colonnes Grille Résultats de Recherche', description: 'Nombre de colonnes de produits affichées par ligne sur la page de recherche (/hub/search)', keywords: ['search', 'recherche', 'colonnes', 'columns', 'grille', 'grid', 'produits', 'layout'] },
+  { key: 'hub_search_items_per_page', tab: 'marketplace', label: 'Produits par Page de Recherche', description: 'Nombre de résultats de recherche chargés par page', keywords: ['search', 'recherche', 'items', 'page', 'limite', 'pagination'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -4230,6 +4242,64 @@ export default function SuperAdminSettingsPage() {
                 <span>36</span>
                 <span>42</span>
                 <span>48</span>
+              </div>
+            </div>
+
+            {/* Search Results Grid Configuration */}
+            <div className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/40 to-white px-5 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label htmlFor="hub_search_grid_columns" className="block text-sm font-black text-slate-800 flex items-center gap-2">
+                    🔍 Colonnes Résultats de Recherche (/hub/search)
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Nombre de produits par ligne sur la page de résultats de recherche
+                  </p>
+                </div>
+                <span className="rounded-lg bg-sky-100 px-3 py-1 text-sm font-black text-sky-700">
+                  {settings.hub_search_grid_columns || 5} colonnes
+                </span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {[2, 3, 4, 5, 6].map((col) => (
+                  <button
+                    key={col}
+                    type="button"
+                    onClick={() => updateSetting('hub_search_grid_columns', col)}
+                    className={`rounded-xl py-2.5 px-3 text-xs font-black transition-all flex flex-col items-center gap-1 ${
+                      (settings.hub_search_grid_columns || 5) === col
+                        ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30 ring-2 ring-sky-600 ring-offset-1'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-sm font-black">{col}</span>
+                    <span className="text-[10px] opacity-80">{col === 5 ? 'Standard' : col === 6 ? 'Compact' : col <= 3 ? 'Large' : 'Confort'}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <label htmlFor="hub_search_items_per_page" className="block text-xs font-bold text-slate-700">
+                    📄 Résultats par Page de Recherche
+                  </label>
+                  <p className="text-[11px] text-slate-400">Nombre de produits renvoyés par requête</p>
+                </div>
+                <select
+                  id="hub_search_items_per_page"
+                  value={settings.hub_search_items_per_page || 20}
+                  onChange={(e) => updateSetting('hub_search_items_per_page', Number(e.target.value))}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                >
+                  <option value={12}>12 produits</option>
+                  <option value={16}>16 produits</option>
+                  <option value={20}>20 produits (Défaut)</option>
+                  <option value={24}>24 produits</option>
+                  <option value={30}>30 produits</option>
+                  <option value={36}>36 produits</option>
+                  <option value={48}>48 produits</option>
+                </select>
               </div>
             </div>
           </div>

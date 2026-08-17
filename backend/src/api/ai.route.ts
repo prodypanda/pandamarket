@@ -775,7 +775,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         // Derive an elegant specific boutique category from title keywords
         const stopWords = new Set(['ensemble', 'pack', 'lot', 'avec', 'pour', 'sans', 'dans', 'sur', 'massif', 'taille', 'cm', 'noir', 'blanc']);
         const titleTokens = title.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
-        storefrontCategoryName = titleTokens.slice(0, 3).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || marketplaceCategoryName || 'Boutique';
+        storefrontCategoryName = titleTokens.slice(0, 3).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || marketplaceCategoryName || 'Boutique';
       }
 
       const normalizedSfTarget = storefrontCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
