@@ -84,6 +84,14 @@ async function bootstrap() {
     const client = await dbPool.connect();
     client.release();
     logger.info('Database connected successfully.');
+
+    // Automatically apply any pending database migrations on startup
+    try {
+      const { run: runMigrations } = await import('./migrations/run');
+      await runMigrations();
+    } catch (migErr) {
+      logger.warn({ err: migErr }, 'Automatic migration runner encountered an issue during bootstrap, continuing server startup');
+    }
   } catch (err) {
     logger.error({ err }, 'Failed to connect to database.');
     process.exit(1);

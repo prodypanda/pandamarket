@@ -3,6 +3,7 @@ import { query, transaction } from '../db/pool';
 import { PdConflictError, PdErrorCode, PdForbiddenError, PdNotFoundError, PdValidationError } from '../errors';
 import { pdId } from '../utils/crypto';
 import { slugify } from '../utils/subdomain';
+import { logger } from '../utils/logger';
 
 export interface MarketplaceCategoryRow {
   id: string;
@@ -192,7 +193,38 @@ export class CategoryService {
     return rows[0];
   }
 
+  private static storefrontColumnsEnsured = false;
+
+  async ensureStorefrontCategoryColumns(client?: PoolClient): Promise<void> {
+    if (CategoryService.storefrontColumnsEnsured) return;
+    const qFn = client ? client.query.bind(client) : query;
+    try {
+      await qFn(`
+        ALTER TABLE pd_storefront_category
+          ADD COLUMN IF NOT EXISTS icon VARCHAR(100),
+          ADD COLUMN IF NOT EXISTS banner_url TEXT,
+          ADD COLUMN IF NOT EXISTS seo_title VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS seo_description TEXT,
+          ADD COLUMN IF NOT EXISTS name_fr VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS name_ar VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS name_en VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS description_fr TEXT,
+          ADD COLUMN IF NOT EXISTS description_ar TEXT,
+          ADD COLUMN IF NOT EXISTS description_en TEXT,
+          ADD COLUMN IF NOT EXISTS show_in_megamenu BOOLEAN NOT NULL DEFAULT true;
+
+        UPDATE pd_storefront_category
+        SET name_fr = name
+        WHERE name_fr IS NULL AND name IS NOT NULL;
+      `);
+      CategoryService.storefrontColumnsEnsured = true;
+    } catch (err) {
+      logger.warn({ err }, 'Failed to self-heal pd_storefront_category columns');
+    }
+  }
+
   async ensureStorefrontDefault(storeId: string, client?: PoolClient): Promise<StorefrontCategoryRow> {
+    await this.ensureStorefrontCategoryColumns(client);
     const id = `cat_store_uncategorized_${storeId}`;
     if (client) {
       await client.query(

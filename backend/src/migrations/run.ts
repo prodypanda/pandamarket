@@ -11,7 +11,19 @@ import * as path from 'path';
 import { getPool, closePool } from '../db/pool';
 import { logger } from '../utils/logger';
 
-const MIGRATIONS_DIR = path.join(__dirname, 'sql');
+export function resolveMigrationsDir(): string {
+  const candidates = [
+    path.join(__dirname, 'sql'),
+    path.join(__dirname, '..', '..', 'src', 'migrations', 'sql'),
+    path.join(__dirname, '..', 'src', 'migrations', 'sql'),
+    path.join(process.cwd(), 'src', 'migrations', 'sql'),
+    path.join(process.cwd(), 'backend', 'src', 'migrations', 'sql'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return path.join(__dirname, 'sql');
+}
 
 async function ensureMigrationsTable(): Promise<void> {
   await getPool().query(`
@@ -27,8 +39,8 @@ async function getApplied(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.id));
 }
 
-async function applyMigration(file: string): Promise<void> {
-  const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+async function applyMigration(file: string, migrationsDir = resolveMigrationsDir()): Promise<void> {
+  const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
   const pool = getPool();
   const client = await pool.connect();
   try {
@@ -46,7 +58,8 @@ async function applyMigration(file: string): Promise<void> {
   }
 }
 
-export function getMigrationFiles(migrationsDir = MIGRATIONS_DIR): string[] {
+export function getMigrationFiles(migrationsDir = resolveMigrationsDir()): string[] {
+  if (!fs.existsSync(migrationsDir)) return [];
   return fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql'))
@@ -54,22 +67,23 @@ export function getMigrationFiles(migrationsDir = MIGRATIONS_DIR): string[] {
 }
 
 export async function run(): Promise<void> {
-  logger.info({ dir: MIGRATIONS_DIR }, 'Running migrations…');
+  const dir = resolveMigrationsDir();
+  logger.info({ dir }, 'Running migrations…');
 
-  if (!fs.existsSync(MIGRATIONS_DIR)) {
-    logger.warn('No migrations directory found. Nothing to do.');
+  if (!fs.existsSync(dir)) {
+    logger.warn({ dir }, 'No migrations directory found. Nothing to do.');
     return;
   }
 
   await ensureMigrationsTable();
   const applied = await getApplied();
 
-  const files = getMigrationFiles(MIGRATIONS_DIR);
+  const files = getMigrationFiles(dir);
 
   let count = 0;
   for (const file of files) {
     if (applied.has(file)) continue;
-    await applyMigration(file);
+    await applyMigration(file, dir);
     count++;
   }
 
