@@ -6,6 +6,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
 import { updateOnboardingStep } from '@/lib/onboarding';
 import { getHubProductHref } from '@/lib/product-links';
+import { CategorySearchableSelect } from '@/components/ui/CategorySearchableSelect';
+import { buildHierarchicalCategoryList } from '@/lib/category-tree';
 import {
   Activity,
   AlertCircle,
@@ -564,6 +566,8 @@ export default function ProductsPage() {
   const [newStorefrontCategory, setNewStorefrontCategory] = useState('');
   const [newStorefrontParent, setNewStorefrontParent] = useState('');
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const hierarchicalMarketplaceCategories = useMemo(() => buildHierarchicalCategoryList(marketplaceCategories), [marketplaceCategories]);
+  const hierarchicalStorefrontCategories = useMemo(() => buildHierarchicalCategoryList(storefrontCategories), [storefrontCategories]);
 
   // Media Picker
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -2453,9 +2457,9 @@ export default function ProductsPage() {
             className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:border-[#B91C1C]"
           >
             <option value="all">Toutes les Catégories</option>
-            {marketplaceCategories.map((c) => (
+            {hierarchicalMarketplaceCategories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {c.level > 0 ? `${'\u00A0\u00A0'.repeat(c.level)}└─ ${c.name}` : c.name}
               </option>
             ))}
           </select>
@@ -4030,39 +4034,25 @@ export default function ProductsPage() {
                   <div className="space-y-5 animate-in fade-in duration-150">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          🌐 Catégorie Principale PandaMarket Hub
-                        </label>
-                        <select
+                        <CategorySearchableSelect
+                          label="🌐 Catégorie Principale PandaMarket Hub"
+                          placeholder="Rechercher une catégorie Hub..."
+                          emptyOptionLabel="Non catégorisé sur le Hub"
+                          categories={marketplaceCategories}
                           value={form.marketplace_category_id}
-                          onChange={(e) => setForm((c) => ({ ...c, marketplace_category_id: e.target.value }))}
-                          className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
-                        >
-                          <option value="">Non catégorisé sur le Hub</option>
-                          {marketplaceCategories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.parent_name ? `└─ ${cat.name}` : cat.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(id) => setForm((c) => ({ ...c, marketplace_category_id: id }))}
+                        />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          🏪 Catégorie Vitrine de Votre Boutique
-                        </label>
-                        <select
+                        <CategorySearchableSelect
+                          label="🏪 Catégorie Vitrine de Votre Boutique"
+                          placeholder="Rechercher une catégorie boutique..."
+                          emptyOptionLabel="Non catégorisé sur la boutique"
+                          categories={storefrontCategories}
                           value={form.storefront_category_id}
-                          onChange={(e) => setForm((c) => ({ ...c, storefront_category_id: e.target.value }))}
-                          className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
-                        >
-                          <option value="">Non catégorisé sur la boutique</option>
-                          {storefrontCategories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(id) => setForm((c) => ({ ...c, storefront_category_id: id }))}
+                        />
                       </div>
                     </div>
 
@@ -6356,41 +6346,27 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  🌐 Catégorie Marketplace Hub :
-                </label>
-                <select
+                <CategorySearchableSelect
+                  label="🌐 Catégorie Marketplace Hub :"
+                  placeholder="Rechercher une catégorie Hub..."
+                  emptyOptionLabel="-- Conserver la catégorie Hub actuelle --"
+                  categories={marketplaceCategories}
                   value={bulkMarketplaceCategoryId}
-                  onChange={(e) => setBulkMarketplaceCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold outline-none focus:border-indigo-600"
-                >
-                  <option value="">-- Conserver la catégorie Hub actuelle --</option>
-                  {marketplaceCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setBulkMarketplaceCategoryId(id)}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  🏪 Catégorie Vitrine Boutique :
-                </label>
-                <select
+                <CategorySearchableSelect
+                  label="🏪 Catégorie Vitrine Boutique :"
+                  placeholder="Rechercher une catégorie vitrine..."
+                  emptyOptionLabel="-- Conserver la catégorie Vitrine actuelle --"
+                  categories={storefrontCategories}
                   value={bulkStorefrontCategoryId}
-                  onChange={(e) => setBulkStorefrontCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold outline-none focus:border-indigo-600"
-                >
-                  <option value="">-- Conserver la catégorie Vitrine actuelle --</option>
-                  {storefrontCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setBulkStorefrontCategoryId(id)}
+                />
               </div>
             </div>
 
