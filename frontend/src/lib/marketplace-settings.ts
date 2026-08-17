@@ -91,9 +91,21 @@ export interface MarketplaceSettings {
   maintenance_block_storefronts?: string | boolean;
   hub_card_show_rating?: boolean;
   hub_card_show_add_to_cart?: boolean;
-  hub_card_add_to_cart_style?: 'icon' | 'compact' | 'full' | string;
+  hub_card_add_to_cart_style?: 'icon_only' | 'text_icon' | 'rounded_pill' | 'minimal' | string;
   hub_grid_columns?: number;
   hub_grid_items_per_load?: number;
+  watermark_enabled?: boolean | string;
+  watermark_type?: 'text' | 'image' | 'both' | string;
+  watermark_text?: string;
+  watermark_image_url?: string;
+  watermark_position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'diagonal_repeat' | string;
+  watermark_opacity?: number;
+  watermark_scale?: 'small' | 'medium' | 'large' | string;
+  watermark_style?: 'subtle' | 'badge' | 'glassmorphism' | string;
+  watermark_show_on_gallery?: boolean | string;
+  watermark_show_on_cards?: boolean | string;
+  watermark_show_on_lightbox?: boolean | string;
+  watermark_copy_protection?: boolean | string;
 }
 
 export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';

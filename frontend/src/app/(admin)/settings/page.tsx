@@ -6,6 +6,7 @@ import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicke
 import { HomepageBlocksEditor } from '@/components/admin/HomepageBlocksEditor';
 import { HeroCarouselEditor } from '@/components/admin/HeroCarouselEditor';
 import { HubAppearancePreviewLab } from '@/components/admin/HubAppearancePreviewLab';
+import { WatermarkOverlay } from '@/components/watermark/MarketplaceWatermark';
 import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
@@ -228,6 +229,18 @@ interface PlatformSettings {
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
   mandat_proof_email: string;
+  watermark_enabled: boolean;
+  watermark_type: 'text' | 'image' | 'both';
+  watermark_text: string;
+  watermark_image_url: string;
+  watermark_position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'diagonal_repeat';
+  watermark_opacity: number;
+  watermark_scale: 'small' | 'medium' | 'large';
+  watermark_style: 'subtle' | 'badge' | 'glassmorphism';
+  watermark_show_on_gallery: boolean;
+  watermark_show_on_cards: boolean;
+  watermark_show_on_lightbox: boolean;
+  watermark_copy_protection: boolean;
 }
 
 type SettingsTab = 'marketplace' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
@@ -461,6 +474,18 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   maintenance_eta: '',
   maintenance_allowed_ips: '',
   maintenance_block_storefronts: false,
+  watermark_enabled: false,
+  watermark_type: 'text',
+  watermark_text: 'PandaMarket',
+  watermark_image_url: '',
+  watermark_position: 'bottom-right',
+  watermark_opacity: 40,
+  watermark_scale: 'medium',
+  watermark_style: 'subtle',
+  watermark_show_on_gallery: true,
+  watermark_show_on_cards: true,
+  watermark_show_on_lightbox: true,
+  watermark_copy_protection: false,
 };
 
 const DEFAULT_SMTP_FORM: SmtpFormData = {
@@ -2103,7 +2128,7 @@ export default function SuperAdminSettingsPage() {
   const [settingsLoadError, setSettingsLoadError] = useState<{ message: string; requestId: string; status?: number } | null>(null);
   const [settingsLoadAttempt, setSettingsLoadAttempt] = useState(0);
   const [sectionVersions, setSectionVersions] = useState<SettingsSectionVersions>({});
-  const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | 'hub_homepage_banner_image_url' | 'marketplace_og_image_url' | 'marketplace_favicon_url' | null>(null);
+  const [marketplaceLogoPickerTarget, setMarketplaceLogoPickerTarget] = useState<'marketplace_logo_url' | 'marketplace_logo_light_url' | 'marketplace_logo_dark_url' | 'maintenance_illustration_url' | 'hub_homepage_banner_image_url' | 'marketplace_og_image_url' | 'marketplace_favicon_url' | 'watermark_image_url' | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('marketplace');
   const [smtpLoaded, setSmtpLoaded] = useState(false);
   const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
@@ -3207,6 +3232,326 @@ export default function SuperAdminSettingsPage() {
           <div className="md:col-span-2 space-y-1.5 mt-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Marketplace Theme</label>
             {renderMarketplaceThemeSelector()}
+          </div>
+        </div>
+      </section>
+
+      {/* Watermark & Branding Protection Section */}
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40 space-y-6`}>
+        <SectionHeader
+          icon={<Shield className="h-5 w-5 text-emerald-600" />}
+          title="Filigrane & Protection d'Images du Marketplace"
+          description="Configurez l'apposition dynamique d'un filigrane (texte, logo ou combiné) et activez la protection contre la copie sur les images des produits du marketplace (exclusif au marketplace, n'affecte pas les boutiques storefronts indépendantes)."
+        />
+
+        {/* Master Toggle */}
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">
+          {renderToggle({
+            key: 'watermark_enabled',
+            label: 'Activer le Filigrane Marketplace',
+            description: 'Appose automatiquement un filigrane personnalisable sur les photos de produits affichées dans le marketplace PandaMarket.',
+          })}
+        </div>
+
+        {/* Configuration Controls & Live Preview Split */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          {/* Controls Column */}
+          <div className="space-y-6 lg:col-span-7">
+            {/* Watermark Type Selector */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Type de Filigrane
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'text', label: 'Texte seul', desc: 'Texte ou variables' },
+                  { value: 'image', label: 'Logo / Image', desc: 'Logo PNG ou WebP' },
+                  { value: 'both', label: 'Combiné', desc: 'Logo + Texte' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => updateSetting('watermark_type', item.value as any)}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      settings.watermark_type === item.value
+                        ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-600/20 text-emerald-950 font-bold'
+                        : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="text-sm">{item.label}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{item.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Text Input (if text or both) */}
+            {(settings.watermark_type === 'text' || settings.watermark_type === 'both') && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Texte du Filigrane
+                  </label>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span>Variables :</span>
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('watermark_text', (settings.watermark_text || '') + ' {marketplace_name}')}
+                      className="rounded bg-slate-100 px-1.5 py-0.5 font-mono hover:bg-slate-200"
+                    >
+                      {'{marketplace_name}'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('watermark_text', (settings.watermark_text || '') + ' {store_name}')}
+                      className="rounded bg-slate-100 px-1.5 py-0.5 font-mono hover:bg-slate-200"
+                    >
+                      {'{store_name}'}
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={settings.watermark_text}
+                  onChange={(e) => updateSetting('watermark_text', e.target.value)}
+                  placeholder="ex: PandaMarket"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+                />
+              </div>
+            )}
+
+            {/* Logo Image URL (if image or both) */}
+            {(settings.watermark_type === 'image' || settings.watermark_type === 'both') && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Logo ou Asset Filigrane (URL)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={settings.watermark_image_url}
+                    onChange={(e) => updateSetting('watermark_image_url', e.target.value)}
+                    placeholder="https://... ou /logo.png"
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMarketplaceLogoPickerTarget('watermark_image_url')}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Médiathèque
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Position Grid */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Positionnement sur l'Image
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'top-left', label: 'Haut Gauche' },
+                  { value: 'top-right', label: 'Haut Droite' },
+                  { value: 'center', label: 'Centre' },
+                  { value: 'bottom-left', label: 'Bas Gauche' },
+                  { value: 'bottom-right', label: 'Bas Droite' },
+                  { value: 'diagonal_repeat', label: 'Motif Répété (Diagonale)' },
+                ].map((pos) => (
+                  <button
+                    key={pos.value}
+                    type="button"
+                    onClick={() => updateSetting('watermark_position', pos.value as any)}
+                    className={`rounded-xl border p-3 text-center text-xs transition-all ${
+                      settings.watermark_position === pos.value
+                        ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-600/20 font-bold text-emerald-950'
+                        : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    {pos.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Opacity Slider */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Opacité du Filigrane
+                </label>
+                <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-mono font-bold text-emerald-700 border border-emerald-200">
+                  {settings.watermark_opacity}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={settings.watermark_opacity}
+                onChange={(e) => updateSetting('watermark_opacity', Number(e.target.value))}
+                className="w-full accent-emerald-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>Subtil (10%)</span>
+                <span>Moyen (50%)</span>
+                <span>Très visible (100%)</span>
+              </div>
+            </div>
+
+            {/* Scale & Style Row */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Taille / Échelle
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { value: 'small', label: 'Petite' },
+                    { value: 'medium', label: 'Moyenne' },
+                    { value: 'large', label: 'Grande' },
+                  ].map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => updateSetting('watermark_scale', s.value as any)}
+                      className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                        settings.watermark_scale === s.value
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-600/20 font-bold text-emerald-950'
+                          : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Style Visuel
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { value: 'subtle', label: 'Subtil' },
+                    { value: 'badge', label: 'Badge Pill' },
+                    { value: 'glassmorphism', label: 'Verre Flouté' },
+                  ].map((st) => (
+                    <button
+                      key={st.value}
+                      type="button"
+                      onClick={() => updateSetting('watermark_style', st.value as any)}
+                      className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                        settings.watermark_style === st.value
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-600/20 font-bold text-emerald-950'
+                          : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Display Scope Checkboxes & Anti-theft Toggle */}
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Périmètre d'affichage & Protection
+              </h4>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  {
+                    key: 'watermark_show_on_gallery' as const,
+                    label: 'Galerie principale du produit',
+                    description: "Afficher le filigrane sur l'image principale de la fiche produit (/hub/products/[id]).",
+                  },
+                  {
+                    key: 'watermark_show_on_lightbox' as const,
+                    label: 'Plein écran / Zoom Lightbox',
+                    description: "Afficher le filigrane lorsque le client ouvre la vue agrandie de l'image.",
+                  },
+                  {
+                    key: 'watermark_show_on_cards' as const,
+                    label: 'Cartes de produits (Catalogues & Recherches)',
+                    description: "Afficher le filigrane sur les vignettes des produits sur l'accueil, la recherche et les catégories.",
+                  },
+                  {
+                    key: 'watermark_copy_protection' as const,
+                    label: "Protection contre la copie (Anti-clic droit & Glisser-déposer)",
+                    description: "Empêche le clic droit 'Enregistrer sous' et le drag & drop des photos dans le marketplace.",
+                  },
+                ].map(renderToggle)}
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview Sandbox Column */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-24 rounded-2xl border border-slate-200/80 bg-slate-900 p-5 text-white shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+                    Aperçu en Direct (Live Sandbox)
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
+                  {settings.watermark_enabled ? 'Filigrane Actif' : 'Filigrane Inactif'}
+                </span>
+              </div>
+
+              {/* Sample Product Card Preview */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                  <span>Aperçu Carte Produit</span>
+                  <span className="text-[11px] text-slate-500">Vignette Catalogue</span>
+                </div>
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-800 border border-slate-700 shadow-inner group">
+                  <img
+                    src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80"
+                    alt="Sample Product"
+                    className="h-full w-full object-cover"
+                  />
+                  <WatermarkOverlay
+                    settings={settings}
+                    storeName="TechStore TN"
+                    viewType="preview"
+                  />
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 pointer-events-none">
+                    <div className="text-xs font-bold text-white truncate">Smartwatch Elite Pro X</div>
+                    <div className="text-[11px] text-emerald-400 font-black">189.000 TND</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sample Gallery Full Preview */}
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div className="text-xs font-semibold text-slate-400 flex items-center justify-between">
+                  <span>Aperçu Fiche Produit & Zoom</span>
+                  <span className="text-[11px] text-slate-500">Fiche détaillée</span>
+                </div>
+                <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-800 border border-slate-700 shadow-inner">
+                  <img
+                    src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
+                    alt="Sample Gallery Product"
+                    className="h-full w-full object-cover"
+                  />
+                  <WatermarkOverlay
+                    settings={settings}
+                    storeName="Sneakers Direct"
+                    viewType="preview"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed italic border-t border-slate-800 pt-3">
+                💡 Le filigrane s'applique dynamiquement dans le navigateur pour tous les visiteurs du marketplace, sans altérer vos fichiers sources d'origine ni impacter les boutiques storefronts privées.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -4879,15 +5224,17 @@ export default function SuperAdminSettingsPage() {
       <MarketplaceAssetPicker
         open={marketplaceLogoPickerTarget !== null}
         title={
-          marketplaceLogoPickerTarget === 'maintenance_illustration_url'
-            ? 'Maintenance illustration gallery'
-            : marketplaceLogoPickerTarget === 'hub_homepage_banner_image_url'
-              ? 'Banner image gallery'
-              : marketplaceLogoPickerTarget === 'marketplace_og_image_url'
-                ? 'Social sharing image gallery'
-                : marketplaceLogoPickerTarget === 'marketplace_favicon_url'
-                  ? 'Favicon gallery'
-                  : 'Marketplace logo gallery'
+          marketplaceLogoPickerTarget === 'watermark_image_url'
+            ? 'Watermark logo gallery'
+            : marketplaceLogoPickerTarget === 'maintenance_illustration_url'
+              ? 'Maintenance illustration gallery'
+              : marketplaceLogoPickerTarget === 'hub_homepage_banner_image_url'
+                ? 'Banner image gallery'
+                : marketplaceLogoPickerTarget === 'marketplace_og_image_url'
+                  ? 'Social sharing image gallery'
+                  : marketplaceLogoPickerTarget === 'marketplace_favicon_url'
+                    ? 'Favicon gallery'
+                    : 'Marketplace logo gallery'
         }
         type="image"
         onClose={() => setMarketplaceLogoPickerTarget(null)}
@@ -5023,7 +5370,7 @@ export default function SuperAdminSettingsPage() {
 
       {/* Hub Appearance & Accessibility Lab (PI-01, PI-03) */}
       <HubAppearancePreviewLab
-        settings={settings}
+        settings={settings as any}
         isOpen={isPreviewLabOpen}
         onClose={() => setIsPreviewLabOpen(false)}
         onPublishLive={handleSave}
