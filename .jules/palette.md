@@ -1,3 +1,6 @@
 ## 2024-05-27 - Icon-only Quantity Buttons in Cart Component
 **Learning:** Found an accessibility issue where quantity adjustment buttons (+ and -) lacked `aria-label`s. Screen reader users would just hear "button" without context of what it does, making quantity adjustment confusing.
 **Action:** Always add `aria-label="Decrease quantity"` and `aria-label="Increase quantity"` (or appropriate descriptive text) to icon-only buttons in interactive controls like quantity selectors or cart UI.
+## 2024-03-22 - Quantity Selector Accessibility and Boundary State
+**Learning:** Found that quantity selector icon buttons lack ARIA labels, making them invisible to screen readers. More importantly, the decrement button allowed clicks even at the minimum quantity threshold without visual/functional feedback that the boundary was reached.
+**Action:** Always add ARIA labels to icon-only buttons ("Increase/Decrease quantity"). Always explicitly disable the decrement button (`disabled={quantity <= min}`) and apply visual feedback (`disabled:opacity-40 disabled:cursor-not-allowed`) to prevent confusing interactions at boundary thresholds. Added `aria-live` to the quantity display so screen readers announce changes.
