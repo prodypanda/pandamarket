@@ -1450,9 +1450,14 @@ export default function ProductsPage() {
       // Auto-select or auto-create storefront category
       if (data.storefront_category_id) {
         if (data.created_new_storefront_category) {
-          // Prepend the newly created category to the local list
+          // Prepend the newly created category with parent_id to the local list
           setStorefrontCategories((cats) => [
-            { id: data.storefront_category_id, name: data.storefront_category_name, slug: data.storefront_category_name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+            {
+              id: data.storefront_category_id,
+              name: data.storefront_category_name,
+              parent_id: data.storefront_parent_id || null,
+              slug: data.storefront_category_name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            },
             ...cats,
           ]);
         }
@@ -1460,10 +1465,15 @@ export default function ProductsPage() {
       }
 
       const hubLabel = data.marketplace_category_name ? `Hub → ${data.marketplace_category_name}` : '';
-      const sfLabel = data.storefront_category_name ? `Vitrine → ${data.storefront_category_name}` : '';
+      const sfPath = data.storefront_parent_name
+        ? `${data.storefront_parent_name} › ${data.storefront_category_name}`
+        : data.storefront_category_name;
+      const sfLabel = sfPath ? `Vitrine → ${sfPath}` : '';
       const labels = [hubLabel, sfLabel].filter(Boolean).join(' • ');
       const newMsg = data.created_new_storefront_category
-        ? `✨ Nouvelle catégorie vitrine "${data.storefront_category_name}" créée et sélectionnée`
+        ? (data.storefront_parent_name
+          ? `✨ Nouvelle sous-catégorie vitrine "${data.storefront_category_name}" créée sous "${data.storefront_parent_name}" et sélectionnée`
+          : `✨ Nouvelle catégorie vitrine "${data.storefront_category_name}" créée et sélectionnée`)
         : '';
 
       setAiCategoryResult({

@@ -12,7 +12,7 @@ import { aiConfigService } from '../services/ai-config.service';
 import type { AiProvider } from '../services/ai-config.service';
 import { platformConfigService } from '../services/platform-config.service';
 
-import { categoryService, MarketplaceCategoryRow } from '../services/category.service';
+import { categoryService, MarketplaceCategoryRow, StorefrontCategoryRow } from '../services/category.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -620,15 +620,38 @@ router.post(
     }
 
     // Load storefront categories for this seller
-    let storefrontCategories: Array<{ id: string; name: string; slug: string }> = [];
+    let storefrontCategories: StorefrontCategoryRow[] = [];
     try {
-      const sfCats = await categoryService.listStorefrontCategories(storeId);
-      storefrontCategories = sfCats.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
+      storefrontCategories = await categoryService.listStorefrontCategories(storeId);
     } catch {}
 
-    const storefrontCatNames = storefrontCategories.length > 0
-      ? storefrontCategories.map((c) => `- ${c.name} (id: "${c.id}")`).join('\n')
-      : 'Aucune catégorie existante dans la boutique';
+    const formatStorefrontTree = (cats: StorefrontCategoryRow[]): string => {
+      const roots = cats.filter((c) => !c.parent_id && !c.is_default);
+      const childrenMap = new Map<string, StorefrontCategoryRow[]>();
+      cats.forEach((c) => {
+        if (c.parent_id) {
+          const list = childrenMap.get(c.parent_id) || [];
+          list.push(c);
+          childrenMap.set(c.parent_id, list);
+        }
+      });
+
+      if (roots.length === 0 && cats.filter((c) => !c.is_default).length === 0) {
+        return 'Aucune catégorie personnalisée dans la boutique';
+      }
+
+      const lines: string[] = [];
+      for (const root of roots) {
+        lines.push(`- ${root.name} (id: "${root.id}")`);
+        const subList = childrenMap.get(root.id) || [];
+        for (const sub of subList) {
+          lines.push(`  └─ ${sub.name} (id: "${sub.id}")`);
+        }
+      }
+      return lines.join('\n');
+    };
+
+    const storefrontCatNames = formatStorefrontTree(storefrontCategories);
 
     const job = await aiService.startInlineJob({
       type: AiJobType.CategoryClassification,
@@ -655,18 +678,18 @@ router.post(
           .replace(/{storefront_categories}/g, storefrontCatNames)
           .replace(/{language}/g, langName);
       } else {
-        prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce de PandaMarket.
-Votre rôle est d'analyser les données du produit (titre, description) et de déterminer deux taxonomies bien distinctes :
+        prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+Votre mission est d'analyser avec une précision chirurgicale le produit soumis (titre, description) et d'établir deux taxonomies distinctes :
 
-1. 🌐 CATÉGORIE MARKETPLACE HUB (Taxonomie globale & contrainte) :
-   - Vous devez OBLIGATOIREMENT choisir la catégorie ou sous-catégorie la plus spécifique parmi les catégories Marketplace Hub listées ci-dessous.
-   - Fournissez son "marketplace_category_id" exact et son "marketplace_category_name" exact.
+1. 🌐 TAXONOMIE MARKETPLACE HUB (Globale, standardisée & contrainte) :
+   - Vous devez OBLIGATOIREMENT choisir la catégorie ou sous-catégorie la plus spécifique parmi les catégories PandaMarket Hub fournies.
+   - Renvoyez son "marketplace_category_id" exact et son "marketplace_category_name" exact.
 
-2. 🏪 CATÉGORIE VITRINE BOUTIQUE (Merchandising libre & spécifique au vendeur) :
-   - La boutique du vendeur n'a AUCUNE limitation de structure.
-   - Vérifiez d'abord si l'une des catégories existantes du vendeur ci-dessous convient parfaitement. Si oui, indiquez son nom et "created_new": false.
-   - Si AUCUNE catégorie existante de la boutique ne convient précisément : NE CLONEZ PAS aveuglément la catégorie Marketplace Hub si elle est générique. Créez un nom de catégorie vitrine sur-mesure, élégant, précis et vendeur pour ce type de produit (ex: "Kits Vlogging & Vidéo", "Haltères & Musculation", "Machines à Café & Capsules", "Câpres & Condiments Sauvages", "Colliers & Pendentifs", etc.) et indiquez "created_new": true.
-   - N'utilisez le nom de la catégorie Marketplace pour la vitrine que s'il est véritablement le nom idéal pour la boutique du vendeur.
+2. 🏪 TAXONOMIE VITRINE BOUTIQUE (Merchandising libre, spécialisé & vendeur) :
+   - La boutique privée du vendeur n'a AUCUNE contrainte de taxonomie standard.
+   - Étape A : Examinez les catégories vitrine existantes du vendeur. Si l'une d'elles (catégorie ou sous-catégorie) correspond fidèlement au produit, réutilisez-la en indiquant son nom exact, son id et "created_new": false.
+   - Étape B : Si AUCUNE catégorie existante ne convient précisément : NE CLONEZ PAS aveuglément la catégorie Marketplace Hub si elle est générique (ex: "Chaussures", "Mode", "Alimentation", "Électronique"). Créez un nom de catégorie vitrine sur-mesure, élégant, attractif et spécifique au créneau du produit (ex: "Sneakers & Baskets Sportswear", "Huiles d'Olive & Terroir", "Vases & Céramiques Émaillées", "Sacs en Cuir Artisanal", "Robes de Soirée & Caftans", etc.) et indiquez "created_new": true.
+   - Étape C (Hiérarchie Vitrine) : Si le vendeur possède déjà une catégorie parente pertinente (ex: "Chaussures" ou "Maison"), vous pouvez définir "storefront_parent_category_id" avec l'ID de cette catégorie existante afin d'y imbriquer la nouvelle sous-catégorie créée.
 
 Produit à classifier :
 - Titre : ${title}
@@ -679,11 +702,13 @@ ${categoriesContext}
 Catégories Vitrine Boutique existantes du vendeur :
 ${storefrontCatNames}
 
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
 {
-  "marketplace_category_id": "id exact de la catégorie du Hub",
+  "marketplace_category_id": "id exact de la catégorie du Hub choisie",
   "marketplace_category_name": "Nom exact de la catégorie du Hub",
   "storefront_category_name": "Nom de catégorie vitrine spécifique (existante ou créée sur-mesure)",
+  "storefront_category_id": "id si catégorie vitrine existante, sinon null",
+  "storefront_parent_category_id": "id de la catégorie parente vitrine existante si applicable, sinon null",
   "created_new": false,
   "confidence": 0.95
 }`;
@@ -695,7 +720,10 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
       let parsed: {
         marketplace_category_id?: string;
         marketplace_category_name?: string;
+        storefront_category_id?: string | null;
         storefront_category_name?: string;
+        storefront_parent_category_id?: string | null;
+        storefront_parent_category_name?: string | null;
         created_new?: boolean;
         confidence?: number;
       } = {};
@@ -709,7 +737,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         logger.warn({ text: result.text, err: parseErr }, 'Failed to parse AI category classification JSON');
       }
 
-      // Match marketplace category by ID first, then by normalized token similarity
+      // 1. Match marketplace category by ID first, then by normalized token similarity
       let marketplaceCategoryId = '';
       let marketplaceCategoryName = '';
 
@@ -766,41 +794,66 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         }
       }
 
-      // Match or create storefront category
+      // 2. Match or create storefront category
       let storefrontCategoryId = '';
       let storefrontCategoryName = (parsed.storefront_category_name || '').trim();
+      let storefrontParentId: string | null = null;
+      let storefrontParentName: string | null = null;
       let createdNewStorefrontCategory = false;
 
-      if (!storefrontCategoryName || storefrontCategoryName.toLowerCase() === 'general' || storefrontCategoryName.toLowerCase() === 'général' || storefrontCategoryName.toLowerCase() === 'boutique') {
-        // Derive an elegant specific boutique category from title keywords
-        const stopWords = new Set(['ensemble', 'pack', 'lot', 'avec', 'pour', 'sans', 'dans', 'sur', 'massif', 'taille', 'cm', 'noir', 'blanc']);
-        const titleTokens = title.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
-        storefrontCategoryName = titleTokens.slice(0, 3).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || marketplaceCategoryName || 'Boutique';
+      // Handle storefront parent ID if specified by AI
+      if (parsed.storefront_parent_category_id) {
+        const parentMatch = storefrontCategories.find((c) => c.id === parsed.storefront_parent_category_id);
+        if (parentMatch) {
+          storefrontParentId = parentMatch.id;
+          storefrontParentName = parentMatch.name;
+        }
       }
 
-      const normalizedSfTarget = storefrontCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const sfMatch = storefrontCategories.find((c) => {
-        const normC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normC === normalizedSfTarget;
-      });
+      // Check if existing storefront category was matched by ID
+      let sfMatch: StorefrontCategoryRow | undefined;
+      if (parsed.storefront_category_id) {
+        sfMatch = storefrontCategories.find((c) => c.id === parsed.storefront_category_id && !c.is_default);
+      }
+
+      // If not matched by ID, check by name
+      if (!sfMatch && storefrontCategoryName) {
+        const normalizedSfTarget = storefrontCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        sfMatch = storefrontCategories.find((c) => {
+          if (c.is_default) return false;
+          const normC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return normC === normalizedSfTarget;
+        });
+      }
 
       if (sfMatch && !parsed.created_new) {
         storefrontCategoryId = sfMatch.id;
         storefrontCategoryName = sfMatch.name;
+        storefrontParentId = sfMatch.parent_id || null;
       } else {
+        // Fallback for blank or overly generic category names
+        if (!storefrontCategoryName || storefrontCategoryName.toLowerCase() === 'general' || storefrontCategoryName.toLowerCase() === 'général' || storefrontCategoryName.toLowerCase() === 'boutique') {
+          const stopWords = new Set(['ensemble', 'pack', 'lot', 'avec', 'pour', 'sans', 'dans', 'sur', 'massif', 'taille', 'cm', 'noir', 'blanc']);
+          const titleTokens = title.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
+          storefrontCategoryName = titleTokens.slice(0, 3).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || marketplaceCategoryName || 'Collection Produit';
+        }
+
         // Auto-create the storefront category
         try {
           const newCat = await categoryService.createStorefrontCategory(storeId, {
             name: storefrontCategoryName.slice(0, 100),
+            parent_id: storefrontParentId,
           });
           storefrontCategoryId = newCat.id;
           storefrontCategoryName = newCat.name;
+          storefrontParentId = newCat.parent_id || null;
           createdNewStorefrontCategory = true;
         } catch (catErr) {
           logger.warn({ err: catErr }, 'Failed to auto-create storefront category');
           if (sfMatch) {
             storefrontCategoryId = sfMatch.id;
             storefrontCategoryName = sfMatch.name;
+            storefrontParentId = sfMatch.parent_id || null;
           }
         }
       }
@@ -811,6 +864,8 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         marketplace_category_name: marketplaceCategoryName,
         storefront_category_id: storefrontCategoryId,
         storefront_category_name: storefrontCategoryName,
+        storefront_parent_id: storefrontParentId,
+        storefront_parent_name: storefrontParentName,
         created_new_storefront_category: createdNewStorefrontCategory,
         confidence: parsed.confidence,
         provider: result.provider_label,
@@ -821,6 +876,8 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         marketplace_category_name: marketplaceCategoryName,
         storefront_category_id: storefrontCategoryId,
         storefront_category_name: storefrontCategoryName,
+        storefront_parent_id: storefrontParentId,
+        storefront_parent_name: storefrontParentName,
         created_new_storefront_category: createdNewStorefrontCategory,
         confidence: parsed.confidence || 0.5,
         tokens_consumed: cost,
