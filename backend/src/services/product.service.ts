@@ -1286,10 +1286,21 @@ export class ProductService {
     }
 
     if (opts.category) {
-      const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);
-      params.push(subtreeIds);
-      params.push(opts.category);
-      where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length} OR p.storefront_category_id = $${params.length})`;
+      if (opts.storeId) {
+        const [mpSubtreeIds, sfSubtreeIds] = await Promise.all([
+          categoryService.getCategorySubtreeIds(opts.category),
+          categoryService.getStorefrontCategorySubtreeIds(opts.storeId, opts.category),
+        ]);
+        params.push(mpSubtreeIds);
+        params.push(sfSubtreeIds);
+        params.push(opts.category);
+        where += ` AND (p.marketplace_category_id = ANY($${params.length - 2}::text[]) OR p.category = ANY($${params.length - 2}::text[]) OR mc.slug = $${params.length} OR p.storefront_category_id = ANY($${params.length - 1}::text[]) OR sc.slug = $${params.length})`;
+      } else {
+        const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);
+        params.push(subtreeIds);
+        params.push(opts.category);
+        where += ` AND (p.marketplace_category_id = ANY($${params.length - 1}::text[]) OR p.category = ANY($${params.length - 1}::text[]) OR mc.slug = $${params.length} OR p.storefront_category_id = $${params.length})`;
+      }
     }
 
     if (opts.marketplaceCategoryId) {
@@ -1298,8 +1309,14 @@ export class ProductService {
     }
 
     if (opts.storefrontCategoryId) {
-      params.push(opts.storefrontCategoryId);
-      where += ` AND p.storefront_category_id = $${params.length}`;
+      if (opts.storeId) {
+        const sfSubtreeIds = await categoryService.getStorefrontCategorySubtreeIds(opts.storeId, opts.storefrontCategoryId);
+        params.push(sfSubtreeIds);
+        where += ` AND p.storefront_category_id = ANY($${params.length}::text[])`;
+      } else {
+        params.push(opts.storefrontCategoryId);
+        where += ` AND p.storefront_category_id = $${params.length}`;
+      }
     }
 
     if (opts.storeId) {
@@ -1406,6 +1423,7 @@ export class ProductService {
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+       LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        WHERE ${where}`,
       params.slice(0, -2),
     );
@@ -1545,6 +1563,7 @@ export class ProductService {
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
+       LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        WHERE ${where}`,
       params.slice(0, -2),
     );

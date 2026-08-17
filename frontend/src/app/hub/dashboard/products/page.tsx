@@ -4172,15 +4172,27 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
-                    {/* Add Storefront Category in 1-Click */}
-                    <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex items-center gap-3">
+                    {/* Add Storefront Category / Subcategory in 1-Click */}
+                    <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                       <input
                         type="text"
                         value={newStorefrontCategory}
                         onChange={(e) => setNewStorefrontCategory(e.target.value)}
-                        placeholder="Ajouter une nouvelle catégorie vitrine..."
-                        className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white"
+                        placeholder="Nom de la catégorie ou sous-catégorie..."
+                        className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700"
                       />
+                      <select
+                        value={newStorefrontParent}
+                        onChange={(e) => setNewStorefrontParent(e.target.value)}
+                        className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-300 max-w-[200px]"
+                      >
+                        <option value="">Rayon racine</option>
+                        {storefrontCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            Sous: {c.name}
+                          </option>
+                        ))}
+                      </select>
                       <button
                         type="button"
                         onClick={async () => {
@@ -4191,20 +4203,24 @@ export default function ProductsPage() {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               credentials: 'include',
-                              body: JSON.stringify({ name: newStorefrontCategory.trim() }),
+                              body: JSON.stringify({
+                                name: newStorefrontCategory.trim(),
+                                parent_id: newStorefrontParent || undefined,
+                              }),
                             });
                             const data = await res.json();
                             if (res.ok) {
                               setStorefrontCategories((curr) => [...curr, data.category]);
                               setForm((curr) => ({ ...curr, storefront_category_id: data.category.id }));
                               setNewStorefrontCategory('');
+                              setNewStorefrontParent('');
                               setSuccess('Catégorie vitrine créée et sélectionnée !');
                             }
                           } catch {}
                           setCreatingCategory(false);
                         }}
                         disabled={creatingCategory || !newStorefrontCategory.trim()}
-                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black disabled:opacity-50"
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black disabled:opacity-50 shrink-0 cursor-pointer"
                       >
                         {creatingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Créer'}
                       </button>

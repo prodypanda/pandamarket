@@ -11,6 +11,13 @@ import React, { useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { ResolvedColors } from '../../lib/themes';
 
+export interface ThemeCategoryItem {
+  id?: string;
+  name: string;
+  slug?: string;
+  children?: ThemeCategoryItem[];
+}
+
 interface ThemeLayoutProps {
   variation: string;
   layout: {
@@ -20,7 +27,7 @@ interface ThemeLayoutProps {
     mainWidth: string;
   };
   colors: ResolvedColors;
-  categories?: string[];
+  categories?: (string | ThemeCategoryItem)[];
   activeCategory?: string;
   onCategoryChange?: (cat: string) => void;
   children: React.ReactNode;
@@ -95,18 +102,49 @@ export function ThemeLayout({
                 updateParam('category', null);
               }}
             />
-            {categories.map((cat) => (
-              <SidebarLink
-                key={cat}
-                label={cat}
-                active={activeCategoryParam === cat}
-                colors={colors}
-                onClick={() => {
-                  if (onCategoryChange) onCategoryChange(cat);
-                  updateParam('category', cat);
-                }}
-              />
-            ))}
+            {categories.map((item) => {
+              const name = typeof item === 'string' ? item : item.name;
+              const slug = typeof item === 'string' ? item : item.slug || item.name;
+              const children = typeof item === 'object' && Array.isArray(item.children) ? item.children : [];
+              const isActive = activeCategoryParam === slug || activeCategoryParam === name;
+
+              return (
+                <div key={slug} className="flex flex-col">
+                  <SidebarLink
+                    label={name}
+                    active={isActive}
+                    colors={colors}
+                    onClick={() => {
+                      if (onCategoryChange) onCategoryChange(slug);
+                      updateParam('category', slug);
+                    }}
+                  />
+                  {children.length > 0 && (
+                    <div className="pl-4 border-l border-slate-200/60 ml-3 my-1 space-y-0.5">
+                      {children.map((sub) => {
+                        const subName = typeof sub === 'string' ? sub : sub.name;
+                        const subSlug = typeof sub === 'string' ? sub : sub.slug || sub.name;
+                        const isSubActive = activeCategoryParam === subSlug || activeCategoryParam === subName;
+
+                        return (
+                          <SidebarLink
+                            key={subSlug}
+                            label={subName}
+                            active={isSubActive}
+                            colors={colors}
+                            isSub
+                            onClick={() => {
+                              if (onCategoryChange) onCategoryChange(subSlug);
+                              updateParam('category', subSlug);
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
 
           {/* Price Range Filter */}
@@ -178,25 +216,29 @@ function SidebarLink({
   label,
   active,
   colors,
+  isSub = false,
   onClick,
 }: {
   label: string;
   active: boolean;
   colors: ResolvedColors;
+  isSub?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer"
+      className={`w-full text-left rounded-lg transition-colors cursor-pointer ${
+        isSub ? 'px-2.5 py-1 text-xs' : 'px-3 py-2 text-sm'
+      }`}
       style={{
         backgroundColor: active ? `${colors.primary}15` : 'transparent',
         color: active ? colors.primary : colors.text,
-        fontWeight: active ? 600 : 400,
+        fontWeight: active ? 600 : isSub ? 450 : 400,
       }}
     >
-      {label}
+      {isSub ? `↳ ${label}` : label}
     </button>
   );
 }

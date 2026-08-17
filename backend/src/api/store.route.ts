@@ -99,16 +99,38 @@ import { urlOrPathSchema } from '../validators';
 
 const storefrontCategorySchema = z.object({
   name: z.string().min(1).max(100),
-  slug: z.string().min(1).max(120),
+  name_fr: z.string().max(255).nullable().optional(),
+  name_ar: z.string().max(255).nullable().optional(),
+  name_en: z.string().max(255).nullable().optional(),
+  slug: z.string().min(1).max(120).optional(),
+  parent_id: z.string().nullable().optional(),
   description: z.string().max(1000).nullable().optional(),
+  description_fr: z.string().max(5000).nullable().optional(),
+  description_ar: z.string().max(5000).nullable().optional(),
+  description_en: z.string().max(5000).nullable().optional(),
   short_description: z.string().max(255).nullable().optional(),
   long_description: z.string().max(5000).nullable().optional(),
   image_url: urlOrPathSchema.nullable().optional(),
+  icon: z.string().max(100).nullable().optional(),
+  banner_url: urlOrPathSchema.nullable().optional(),
+  seo_title: z.string().max(255).nullable().optional(),
+  seo_description: z.string().max(1000).nullable().optional(),
   position: z.number().int().optional(),
+  show_in_megamenu: z.boolean().optional(),
 });
 
 const updateStorefrontCategorySchema = storefrontCategorySchema.partial().extend({
   is_active: z.boolean().optional(),
+});
+
+const reorderStorefrontCategorySchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string().min(1),
+      position: z.number().int(),
+      parent_id: z.string().nullable().optional(),
+    }),
+  ),
 });
 
 const storeProductSchema = z.object({
@@ -962,7 +984,14 @@ router.get(
   '/me/categories',
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
-    const categories = (await categoryService.listStorefrontCategories(req.user!.store_id!)).map((category) => ({
+    const isTree = req.query.tree === 'true';
+    const locale = typeof req.query.locale === 'string' ? req.query.locale : undefined;
+    const categories = (
+      await categoryService.listStorefrontCategories(req.user!.store_id!, {
+        tree: isTree,
+        locale,
+      })
+    ).map((category) => ({
       ...category,
       product_count: parseInt(category.product_count || '0', 10),
     }));
@@ -980,21 +1009,39 @@ router.post(
   }),
 );
 
-router.put(
-  '/me/categories/:id',
+router.post(
+  '/me/categories/reorder',
   requireStore,
-  validate(updateStorefrontCategorySchema),
+  validate(reorderStorefrontCategorySchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const category = await categoryService.updateStorefrontCategory(req.user!.store_id!, req.params.id, req.body);
-    res.status(200).json({ category });
+    await categoryService.reorderStorefrontCategories(req.user!.store_id!, req.body.items);
+    res.status(200).json({ success: true });
   }),
 );
+
+router.get(
+  '/me/categories/:id/delete-impact',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const impact = await categoryService.getStorefrontDeleteImpact(req.user!.store_id!, req.params.id);
+    res.status(200).json({ data: impact });
+  }),
+);
+
+const handleUpdateStorefrontCategory = asyncHandler(async (req: Request, res: Response) => {
+  const category = await categoryService.updateStorefrontCategory(req.user!.store_id!, req.params.id, req.body);
+  res.status(200).json({ category });
+});
+
+router.put('/me/categories/:id', requireStore, validate(updateStorefrontCategorySchema), handleUpdateStorefrontCategory);
+router.patch('/me/categories/:id', requireStore, validate(updateStorefrontCategorySchema), handleUpdateStorefrontCategory);
 
 router.delete(
   '/me/categories/:id',
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
-    const result = await categoryService.deleteStorefrontCategory(req.user!.store_id!, req.params.id);
+    const confirm = req.query.confirm === 'true' || req.body?.confirm === true;
+    const result = await categoryService.deleteStorefrontCategory(req.user!.store_id!, req.params.id, confirm);
     res.status(200).json({ success: true, ...result });
   }),
 );

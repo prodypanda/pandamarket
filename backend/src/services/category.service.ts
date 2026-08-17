@@ -85,17 +85,76 @@ export interface StorefrontCategoryRow {
   store_id: string;
   parent_id: string | null;
   name: string;
+  name_fr?: string | null;
+  name_ar?: string | null;
+  name_en?: string | null;
   slug: string;
   description: string | null;
+  description_fr?: string | null;
+  description_ar?: string | null;
+  description_en?: string | null;
   short_description: string | null;
   long_description: string | null;
   image_url: string | null;
+  icon?: string | null;
+  banner_url?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   is_default: boolean;
   is_active: boolean;
+  show_in_megamenu?: boolean;
   position: number;
   product_count?: string;
+  parent_name?: string | null;
+  parent_name_fr?: string | null;
+  parent_name_ar?: string | null;
+  parent_name_en?: string | null;
+  parent_slug?: string | null;
+  children?: StorefrontCategoryRow[];
   created_at: Date;
   updated_at: Date;
+}
+
+export function resolveStorefrontCategoryLocale(cat: StorefrontCategoryRow, locale?: string): StorefrontCategoryRow {
+  if (!cat) return cat;
+  const loc = (locale || 'fr').toLowerCase();
+
+  let resolvedName = cat.name;
+  let resolvedDesc = cat.description;
+
+  if (loc === 'ar' || loc.startsWith('ar')) {
+    resolvedName = (cat.name_ar && cat.name_ar.trim()) || (cat.name_fr && cat.name_fr.trim()) || (cat.name_en && cat.name_en.trim()) || cat.name;
+    resolvedDesc = (cat.description_ar && cat.description_ar.trim()) || (cat.description_fr && cat.description_fr.trim()) || (cat.description_en && cat.description_en.trim()) || cat.description;
+  } else if (loc === 'en' || loc.startsWith('en')) {
+    resolvedName = (cat.name_en && cat.name_en.trim()) || (cat.name_fr && cat.name_fr.trim()) || (cat.name_ar && cat.name_ar.trim()) || cat.name;
+    resolvedDesc = (cat.description_en && cat.description_en.trim()) || (cat.description_fr && cat.description_fr.trim()) || (cat.description_ar && cat.description_ar.trim()) || cat.description;
+  } else {
+    // default / fr
+    resolvedName = (cat.name_fr && cat.name_fr.trim()) || (cat.name_en && cat.name_en.trim()) || (cat.name_ar && cat.name_ar.trim()) || cat.name;
+    resolvedDesc = (cat.description_fr && cat.description_fr.trim()) || (cat.description_en && cat.description_en.trim()) || (cat.description_ar && cat.description_ar.trim()) || cat.description;
+  }
+
+  let resolvedParentName = cat.parent_name;
+  if (loc === 'ar' || loc.startsWith('ar')) {
+    resolvedParentName = (cat.parent_name_ar && cat.parent_name_ar.trim()) || (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
+  } else if (loc === 'en' || loc.startsWith('en')) {
+    resolvedParentName = (cat.parent_name_en && cat.parent_name_en.trim()) || (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
+  } else if (loc === 'fr' || loc.startsWith('fr')) {
+    resolvedParentName = (cat.parent_name_fr && cat.parent_name_fr.trim()) || cat.parent_name;
+  }
+
+  const result: StorefrontCategoryRow = {
+    ...cat,
+    name: resolvedName,
+    description: resolvedDesc,
+    parent_name: resolvedParentName || cat.parent_name,
+  };
+
+  if (cat.children && cat.children.length > 0) {
+    result.children = cat.children.map((c) => resolveStorefrontCategoryLocale(c, locale));
+  }
+
+  return result;
 }
 
 export class CategoryService {
@@ -607,46 +666,248 @@ export class CategoryService {
     return result;
   }
 
-  async listStorefrontCategories(storeId: string): Promise<StorefrontCategoryRow[]> {
-    await this.ensureStorefrontDefault(storeId);
-    const { rows } = await query<StorefrontCategoryRow>(
-      `SELECT c.*, COUNT(p.id)::text AS product_count
-       FROM pd_storefront_category c
-       LEFT JOIN pd_product p ON p.storefront_category_id = c.id
-       WHERE c.store_id = $1
-       GROUP BY c.id
-       ORDER BY c.is_default DESC, c.parent_id NULLS FIRST, c.position ASC, c.name ASC`,
-      [storeId],
-    );
-    return rows;
+  private buildStorefrontTree(nodes: StorefrontCategoryRow[]): StorefrontCategoryRow[] {
+    const map = new Map<string, StorefrontCategoryRow>();
+    const roots: StorefrontCategoryRow[] = [];
+
+    nodes.forEach((node) => {
+      map.set(node.id, {
+        ...node,
+        product_count: String(node.product_count || '0'),
+        children: [],
+      });
+    });
+
+    nodes.forEach((node) => {
+      const current = map.get(node.id)!;
+      if (node.parent_id && map.has(node.parent_id)) {
+        map.get(node.parent_id)!.children!.push(current);
+      } else {
+        roots.push(current);
+      }
+    });
+
+    const aggregateProductCount = (node: StorefrontCategoryRow): number => {
+      let total = parseInt(node.product_count || '0', 10);
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          total += aggregateProductCount(child);
+        }
+      }
+      node.product_count = String(total);
+      return total;
+    };
+
+    roots.forEach((root) => aggregateProductCount(root));
+
+    const sortTreeNodes = (list: StorefrontCategoryRow[]) => {
+      list.sort((a, b) => {
+        const posDiff = (a.position ?? 0) - (b.position ?? 0);
+        if (posDiff !== 0) return posDiff;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      list.forEach((n) => {
+        if (n.children && n.children.length > 0) sortTreeNodes(n.children);
+      });
+    };
+    sortTreeNodes(roots);
+
+    return roots;
   }
 
-  async createStorefrontCategory(storeId: string, input: { name: string; parent_id?: string | null; description?: string; short_description?: string; long_description?: string; image_url?: string | null; position?: number }): Promise<StorefrontCategoryRow> {
+  async listStorefrontCategories(
+    storeId: string,
+    options: { tree?: boolean; locale?: string; activeOnly?: boolean; megamenuOnly?: boolean } = {},
+  ): Promise<StorefrontCategoryRow[]> {
+    await this.ensureStorefrontDefault(storeId);
+    let whereClause = 'WHERE c.store_id = $1';
+    if (options.activeOnly) {
+      whereClause += ' AND c.is_active = true';
+    }
+    if (options.megamenuOnly) {
+      whereClause += ' AND (c.show_in_megamenu IS NULL OR c.show_in_megamenu = true)';
+    }
+
+    const { rows } = await query<StorefrontCategoryRow>(
+      `SELECT c.*,
+              parent.name AS parent_name,
+              parent.name_fr AS parent_name_fr,
+              parent.name_ar AS parent_name_ar,
+              parent.name_en AS parent_name_en,
+              parent.slug AS parent_slug,
+              COUNT(p.id)::text AS product_count
+       FROM pd_storefront_category c
+       LEFT JOIN pd_storefront_category parent ON parent.id = c.parent_id AND parent.store_id = c.store_id
+       LEFT JOIN pd_product p ON p.storefront_category_id = c.id
+       ${whereClause}
+       GROUP BY c.id, parent.name, parent.name_fr, parent.name_ar, parent.name_en, parent.slug
+       ORDER BY c.position ASC, c.name ASC`,
+      [storeId],
+    );
+
+    const resolvedRows = rows.map((r) => resolveStorefrontCategoryLocale(r, options.locale));
+    if (options.tree) {
+      return this.buildStorefrontTree(resolvedRows);
+    }
+    return resolvedRows;
+  }
+
+  async getStorefrontCategorySubtreeIds(storeId: string, idOrSlug: string): Promise<string[]> {
+    let rootId = idOrSlug;
+    const { rows: findRows } = await query<{ id: string }>(
+      'SELECT id FROM pd_storefront_category WHERE store_id = $1 AND (id = $2 OR slug = $2) LIMIT 1',
+      [storeId, idOrSlug],
+    );
+    if (findRows[0]) rootId = findRows[0].id;
+
+    const treeRes = await query<{ id: string }>(
+      `WITH RECURSIVE cat_tree AS (
+         SELECT id FROM pd_storefront_category WHERE store_id = $1 AND id = $2
+         UNION ALL
+         SELECT c.id FROM pd_storefront_category c
+         INNER JOIN cat_tree ct ON c.parent_id = ct.id AND c.store_id = $1
+       ) SELECT id FROM cat_tree`,
+      [storeId, rootId],
+    );
+    return treeRes.rows.map((r) => r.id);
+  }
+
+  private async assertNoCircularParentStorefront(storeId: string, categoryId: string, targetParentId: string): Promise<void> {
+    if (categoryId === targetParentId) {
+      throw new PdValidationError('A storefront category cannot be its own parent');
+    }
+    let curr: string | null = targetParentId;
+    const visited = new Set<string>([categoryId]);
+    while (curr) {
+      if (visited.has(curr)) {
+        throw new PdValidationError('Circular storefront category parent relationship detected');
+      }
+      visited.add(curr);
+      const parentCheckResult: { rows: Array<{ parent_id: string | null }> } = await query<{ parent_id: string | null }>(
+        'SELECT parent_id FROM pd_storefront_category WHERE store_id = $1 AND id = $2',
+        [storeId, curr],
+      );
+      curr = parentCheckResult.rows[0]?.parent_id || null;
+    }
+  }
+
+  async createStorefrontCategory(
+    storeId: string,
+    input: {
+      name: string;
+      name_fr?: string | null;
+      name_ar?: string | null;
+      name_en?: string | null;
+      parent_id?: string | null;
+      description?: string;
+      description_fr?: string | null;
+      description_ar?: string | null;
+      description_en?: string | null;
+      short_description?: string;
+      long_description?: string;
+      image_url?: string | null;
+      icon?: string | null;
+      banner_url?: string | null;
+      seo_title?: string | null;
+      seo_description?: string | null;
+      position?: number;
+      show_in_megamenu?: boolean;
+    },
+  ): Promise<StorefrontCategoryRow> {
     const name = input.name.trim();
     if (name.length < 2) throw new PdValidationError('Category name is required');
     if (input.parent_id) await this.assertStorefrontCategory(storeId, input.parent_id);
     const id = pdId('cat');
     const slug = await this.uniqueStorefrontSlug(storeId, slugify(name));
     const { rows } = await query<StorefrontCategoryRow>(
-      `INSERT INTO pd_storefront_category (id, store_id, parent_id, name, slug, description, position)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO pd_storefront_category (
+        id, store_id, parent_id, name, name_fr, name_ar, name_en, slug,
+        description, description_fr, description_ar, description_en, position, show_in_megamenu
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [id, storeId, input.parent_id || null, name, slug, input.description?.trim() || input.short_description?.trim() || null, input.position ?? 100],
+      [
+        id,
+        storeId,
+        input.parent_id || null,
+        name,
+        input.name_fr?.trim() || name,
+        input.name_ar?.trim() || null,
+        input.name_en?.trim() || null,
+        slug,
+        input.description?.trim() || input.short_description?.trim() || null,
+        input.description_fr?.trim() || null,
+        input.description_ar?.trim() || null,
+        input.description_en?.trim() || null,
+        input.position ?? 100,
+        input.show_in_megamenu ?? true,
+      ],
     );
-    if (input.short_description !== undefined || input.long_description !== undefined || input.image_url !== undefined) {
+
+    if (
+      input.short_description !== undefined ||
+      input.long_description !== undefined ||
+      input.image_url !== undefined ||
+      input.icon !== undefined ||
+      input.banner_url !== undefined ||
+      input.seo_title !== undefined ||
+      input.seo_description !== undefined
+    ) {
       return this.updateStorefrontCategory(storeId, rows[0].id, {
         short_description: input.short_description,
         long_description: input.long_description,
         image_url: input.image_url,
+        icon: input.icon,
+        banner_url: input.banner_url,
+        seo_title: input.seo_title,
+        seo_description: input.seo_description,
       });
     }
     return rows[0];
   }
 
-  async updateStorefrontCategory(storeId: string, id: string, patch: { name?: string; parent_id?: string | null; description?: string; short_description?: string; long_description?: string; image_url?: string | null; is_active?: boolean; position?: number }): Promise<StorefrontCategoryRow> {
+  async updateStorefrontCategory(
+    storeId: string,
+    id: string,
+    patch: {
+      name?: string;
+      name_fr?: string | null;
+      name_ar?: string | null;
+      name_en?: string | null;
+      parent_id?: string | null;
+      description?: string;
+      description_fr?: string | null;
+      description_ar?: string | null;
+      description_en?: string | null;
+      short_description?: string;
+      long_description?: string;
+      image_url?: string | null;
+      icon?: string | null;
+      banner_url?: string | null;
+      seo_title?: string | null;
+      seo_description?: string | null;
+      is_active?: boolean;
+      position?: number;
+      show_in_megamenu?: boolean;
+    },
+  ): Promise<StorefrontCategoryRow> {
     const current = await this.assertStorefrontCategory(storeId, id);
     const fields: string[] = [];
     const values: unknown[] = [id, storeId];
+
+    if (patch.parent_id !== undefined) {
+      if (current.is_default && patch.parent_id) {
+        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Default storefront category cannot be a subcategory');
+      }
+      if (patch.parent_id) {
+        await this.assertNoCircularParentStorefront(storeId, id, patch.parent_id);
+        await this.assertStorefrontCategory(storeId, patch.parent_id);
+        values.push(patch.parent_id);
+        fields.push(`parent_id = $${values.length}`);
+      } else {
+        fields.push('parent_id = NULL');
+      }
+    }
 
     if (patch.name !== undefined) {
       const name = patch.name.trim();
@@ -658,17 +919,33 @@ export class CategoryService {
         fields.push(`slug = $${values.length}`);
       }
     }
-    if (patch.parent_id !== undefined) {
-      if (current.is_default && patch.parent_id) {
-        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Default storefront category cannot be a subcategory');
-      }
-      if (patch.parent_id) await this.assertStorefrontCategory(storeId, patch.parent_id);
-      values.push(patch.parent_id || null);
-      fields.push(`parent_id = $${values.length}`);
+    if (patch.name_fr !== undefined) {
+      values.push(patch.name_fr?.trim() || null);
+      fields.push(`name_fr = $${values.length}`);
+    }
+    if (patch.name_ar !== undefined) {
+      values.push(patch.name_ar?.trim() || null);
+      fields.push(`name_ar = $${values.length}`);
+    }
+    if (patch.name_en !== undefined) {
+      values.push(patch.name_en?.trim() || null);
+      fields.push(`name_en = $${values.length}`);
     }
     if (patch.description !== undefined) {
       values.push(patch.description?.trim() || null);
       fields.push(`description = $${values.length}`);
+    }
+    if (patch.description_fr !== undefined) {
+      values.push(patch.description_fr?.trim() || null);
+      fields.push(`description_fr = $${values.length}`);
+    }
+    if (patch.description_ar !== undefined) {
+      values.push(patch.description_ar?.trim() || null);
+      fields.push(`description_ar = $${values.length}`);
+    }
+    if (patch.description_en !== undefined) {
+      values.push(patch.description_en?.trim() || null);
+      fields.push(`description_en = $${values.length}`);
     }
     if (patch.short_description !== undefined) {
       const shortDescription = patch.short_description?.trim() || null;
@@ -687,6 +964,22 @@ export class CategoryService {
       values.push(patch.image_url?.trim() || null);
       fields.push(`image_url = $${values.length}`);
     }
+    if (patch.icon !== undefined) {
+      values.push(patch.icon?.trim() || null);
+      fields.push(`icon = $${values.length}`);
+    }
+    if (patch.banner_url !== undefined) {
+      values.push(patch.banner_url?.trim() || null);
+      fields.push(`banner_url = $${values.length}`);
+    }
+    if (patch.seo_title !== undefined) {
+      values.push(patch.seo_title?.trim() || null);
+      fields.push(`seo_title = $${values.length}`);
+    }
+    if (patch.seo_description !== undefined) {
+      values.push(patch.seo_description?.trim() || null);
+      fields.push(`seo_description = $${values.length}`);
+    }
     if (patch.is_active !== undefined) {
       if (current.is_default && !patch.is_active) {
         throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Default storefront category cannot be disabled');
@@ -698,6 +991,10 @@ export class CategoryService {
       values.push(patch.position);
       fields.push(`position = $${values.length}`);
     }
+    if (patch.show_in_megamenu !== undefined) {
+      values.push(patch.show_in_megamenu);
+      fields.push(`show_in_megamenu = $${values.length}`);
+    }
 
     if (!fields.length) return current;
     fields.push('updated_at = NOW()');
@@ -708,7 +1005,60 @@ export class CategoryService {
     return rows[0];
   }
 
-  async deleteStorefrontCategory(storeId: string, id: string): Promise<{ reassigned_products: number }> {
+  async reorderStorefrontCategories(
+    storeId: string,
+    items: Array<{ id: string; position: number; parent_id?: string | null }>,
+  ): Promise<void> {
+    for (const item of items) {
+      if (item.parent_id !== undefined) {
+        if (item.parent_id) {
+          await this.assertNoCircularParentStorefront(storeId, item.id, item.parent_id);
+          await this.assertStorefrontCategory(storeId, item.parent_id);
+          await query(
+            'UPDATE pd_storefront_category SET position = $1, parent_id = $2, updated_at = NOW() WHERE id = $3 AND store_id = $4',
+            [item.position, item.parent_id, item.id, storeId],
+          );
+        } else {
+          await query(
+            'UPDATE pd_storefront_category SET position = $1, parent_id = NULL, updated_at = NOW() WHERE id = $2 AND store_id = $3',
+            [item.position, item.id, storeId],
+          );
+        }
+      } else {
+        await query(
+          'UPDATE pd_storefront_category SET position = $1, updated_at = NOW() WHERE id = $2 AND store_id = $3',
+          [item.position, item.id, storeId],
+        );
+      }
+    }
+  }
+
+  async getStorefrontDeleteImpact(storeId: string, id: string): Promise<{
+    category: StorefrontCategoryRow;
+    product_count: number;
+    subcategories_count: number;
+  }> {
+    const category = await this.assertStorefrontCategory(storeId, id);
+    const { rows: prodRows } = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM pd_product WHERE storefront_category_id = $1 AND store_id = $2',
+      [id, storeId],
+    );
+    const { rows: subRows } = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM pd_storefront_category WHERE parent_id = $1 AND store_id = $2',
+      [id, storeId],
+    );
+    return {
+      category,
+      product_count: parseInt(prodRows[0]?.count || '0', 10),
+      subcategories_count: parseInt(subRows[0]?.count || '0', 10),
+    };
+  }
+
+  async deleteStorefrontCategory(
+    storeId: string,
+    id: string,
+    confirm = false,
+  ): Promise<{ reassigned_products: number; reparented_subcategories: number }> {
     return transaction(async (client) => {
       const category = await this.getStorefrontCategoryInTx(client, storeId, id);
       if (category.is_default) {
@@ -719,19 +1069,45 @@ export class CategoryService {
         'SELECT COUNT(*)::text AS count FROM pd_product WHERE storefront_category_id = $1 AND store_id = $2',
         [id, storeId],
       );
-      const productCount = parseInt(countRows[0].count, 10);
+      const { rows: subRows } = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM pd_storefront_category WHERE parent_id = $1 AND store_id = $2',
+        [id, storeId],
+      );
+      const productCount = parseInt(countRows[0]?.count || '0', 10);
+      const subcategoriesCount = parseInt(subRows[0]?.count || '0', 10);
+
+      if ((productCount > 0 || subcategoriesCount > 0) && !confirm) {
+        throw new PdConflictError(
+          PdErrorCode.VALIDATION_ERROR,
+          'Category contains products or subcategories. Confirm deletion to reassign products and promote subcategories.',
+          {
+            product_count: productCount,
+            subcategories_count: subcategoriesCount,
+            fallback_category_id: fallback.id,
+          },
+        );
+      }
+
       await client.query(
         `UPDATE pd_product
          SET storefront_category_id = $1
          WHERE storefront_category_id = $2 AND store_id = $3`,
         [fallback.id, id, storeId],
       );
+
+      // Reparent children to this category's parent (or NULL if top-level)
       await client.query(
-        `UPDATE pd_storefront_category SET parent_id = NULL WHERE parent_id = $1 AND store_id = $2`,
-        [id, storeId],
+        `UPDATE pd_storefront_category
+         SET parent_id = $1, updated_at = NOW()
+         WHERE parent_id = $2 AND store_id = $3`,
+        [category.parent_id || null, id, storeId],
       );
+
       await client.query('DELETE FROM pd_storefront_category WHERE id = $1 AND store_id = $2', [id, storeId]);
-      return { reassigned_products: productCount };
+      return {
+        reassigned_products: productCount,
+        reparented_subcategories: subcategoriesCount,
+      };
     });
   }
 
