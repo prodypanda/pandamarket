@@ -13,7 +13,10 @@ type SearchSuggestionHit = {
   category?: string | null;
   marketplace_category_slug?: string | null;
   price: string | number;
+  compare_at_price?: string | number | null;
   thumbnail?: string | null;
+  images?: Array<{ url: string } | string>;
+  store_name?: string | null;
   store_subdomain?: string | null;
 };
 
@@ -63,16 +66,24 @@ router.get(
     }
 
     const results = await productService.searchPublished({ query: q, limit: 8 });
-    const suggestions = (results.hits || []).map((hit: SearchSuggestionHit) => ({
-      id: hit.id,
-      title: hit.title,
-      slug: hit.slug,
-      category: hit.category,
-      marketplace_category_slug: hit.marketplace_category_slug,
-      price: hit.price,
-      thumbnail: hit.thumbnail,
-      store_subdomain: hit.store_subdomain,
-    }));
+    const hits: SearchSuggestionHit[] = (results as any).hits || results.data || [];
+    const suggestions = hits.map((hit: SearchSuggestionHit) => {
+      const firstImage = hit.images && hit.images[0];
+      const imageUrl = typeof firstImage === 'string' ? firstImage : (firstImage?.url || null);
+      return {
+        id: hit.id,
+        title: hit.title,
+        slug: hit.slug,
+        category: hit.category,
+        marketplace_category_slug: hit.marketplace_category_slug,
+        price: hit.price,
+        compare_at_price: hit.compare_at_price ?? null,
+        thumbnail: hit.thumbnail || imageUrl,
+        images: hit.images || [],
+        store_name: hit.store_name ?? null,
+        store_subdomain: hit.store_subdomain ?? null,
+      };
+    });
 
     return res.status(200).json({ suggestions });
   }),

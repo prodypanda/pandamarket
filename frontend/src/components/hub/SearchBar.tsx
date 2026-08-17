@@ -1,21 +1,26 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Package } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '../../contexts/LocaleContext';
 import { getHubProductHref } from '../../lib/product-links';
 import { isAliExpressTheme } from '../../lib/marketplace-theme';
+import { getResizedImageUrl } from '../../lib/image-url';
 
 interface SearchResult {
   id: string;
   title: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   slug?: string | null;
   category?: string;
   marketplace_category_slug?: string | null;
+  store_name?: string | null;
   store_subdomain?: string | null;
+  thumbnail?: string | null;
+  images?: Array<{ url: string } | string>;
 }
 
 interface SearchBarProps {
@@ -25,6 +30,16 @@ interface SearchBarProps {
 function formatResultPrice(price: SearchResult['price'], currency: string) {
   const amount = Number(price);
   return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} ${currency}`;
+}
+
+function getResultImage(result: SearchResult): string | null {
+  if (result.thumbnail) return result.thumbnail;
+  if (result.images && result.images.length > 0) {
+    const first = result.images[0];
+    if (typeof first === 'string') return first;
+    return first?.url || null;
+  }
+  return null;
 }
 
 export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
@@ -175,15 +190,17 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
           id="hub-search-suggestions"
           role="listbox"
           aria-label="Suggestions de recherche"
-          className="absolute w-full mt-3 bg-white border border-gray-100 rounded-2xl shadow-2xl shadow-slate-900/10 z-50 overflow-hidden"
+          className="absolute w-full mt-3 bg-white dark:bg-[#1A1A2E] border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl shadow-slate-900/15 z-50 overflow-hidden"
         >
           {isSearching ? (
             <div className="p-4 text-center text-sm text-gray-500" role="status">{t('common.loading')}</div>
           ) : results.length > 0 ? (
             <>
-              <ul className="divide-y divide-gray-50">
+              <ul className="divide-y divide-gray-50 dark:divide-white/5 max-h-96 overflow-y-auto">
                 {results.map((r, index) => {
                   const isSelected = index === activeIndex;
+                  const imgUrl = getResultImage(r);
+                  const isDiscounted = Number(r.compare_at_price) > Number(r.price);
                   return (
                     <li
                       key={r.id}
@@ -197,19 +214,58 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
                           setShowDropdown(false);
                           setActiveIndex(-1);
                         }}
-                        className={`p-4 cursor-pointer transition-colors flex justify-between items-center gap-4 block ${
+                        className={`p-3 cursor-pointer transition-colors flex items-center gap-3.5 ${
                           isSelected
-                            ? isAliExpress ? 'bg-orange-100' : 'bg-[#16C784]/15'
-                            : isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-[#16C784]/5'
+                            ? isAliExpress ? 'bg-orange-50 dark:bg-orange-950/40' : 'bg-[#16C784]/15'
+                            : isAliExpress ? 'hover:bg-orange-50/70 dark:hover:bg-orange-950/20' : 'hover:bg-[#16C784]/5 dark:hover:bg-white/5'
                         }`}
                       >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                          {r.category && <p className="text-xs text-gray-500 truncate">{r.category}</p>}
+                        {/* Product Thumbnail Picture */}
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-100 dark:border-white/10">
+                          {imgUrl ? (
+                            <img
+                              src={getResizedImageUrl(imgUrl, 'small')}
+                              alt={r.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-gray-400">
+                              <Package className="h-5 w-5" />
+                            </div>
+                          )}
                         </div>
-                        <span className={`text-sm font-bold whitespace-nowrap ${isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'}`}>
-                          {formatResultPrice(r.price, t('common.currency'))}
-                        </span>
+
+                        {/* Title, Category & Store */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{r.title}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {r.category && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{r.category}</span>
+                            )}
+                            {r.store_name && (
+                              <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 truncate">
+                                · {r.store_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Price & Discount Badge */}
+                        <div className="text-end shrink-0">
+                          <span className={`text-sm font-black whitespace-nowrap block ${isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'}`}>
+                            {formatResultPrice(r.price, t('common.currency'))}
+                          </span>
+                          {isDiscounted && (
+                            <div className="flex items-center justify-end gap-1 mt-0.5">
+                              <span className="text-[10px] font-bold text-gray-400 line-through">
+                                {formatResultPrice(r.compare_at_price!, t('common.currency'))}
+                              </span>
+                              <span className="rounded bg-red-500 px-1 py-0.2 text-[9px] font-black text-white">
+                                -{Math.round(((Number(r.compare_at_price) - Number(r.price)) / Number(r.compare_at_price)) * 100)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </Link>
                     </li>
                   );
@@ -221,7 +277,7 @@ export function SearchBar({ marketplaceTheme = 'panda' }: SearchBarProps) {
                   setShowDropdown(false);
                   setActiveIndex(-1);
                 }}
-                className={`block p-3 text-center text-sm font-medium hover:bg-gray-50 border-t border-gray-100 ${
+                className={`block p-3 text-center text-sm font-bold hover:bg-gray-50 dark:hover:bg-white/5 border-t border-gray-100 dark:border-white/10 ${
                   isAliExpress ? 'text-[#ff4747]' : 'text-[#16C784]'
                 }`}
               >
