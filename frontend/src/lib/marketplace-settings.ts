@@ -96,6 +96,9 @@ export interface MarketplaceSettings {
   hub_grid_items_per_load?: number;
   hub_search_grid_columns?: number;
   hub_search_items_per_page?: number;
+  hub_search_sponsored_enabled?: boolean | string;
+  hub_search_sponsored_columns?: number;
+  hub_search_sponsored_count?: number;
   watermark_enabled?: boolean | string;
   watermark_type?: 'text' | 'image' | 'both' | string;
   watermark_text?: string;

@@ -80,6 +80,9 @@ interface MarketplaceSettings {
   hub_grid_columns?: number;
   hub_search_grid_columns?: number;
   hub_search_items_per_page?: number;
+  hub_search_sponsored_enabled?: boolean;
+  hub_search_sponsored_columns?: number;
+  hub_search_sponsored_count?: number;
   watermark_enabled?: boolean;
   watermark_type?: 'text' | 'image' | 'both';
   watermark_text?: string;
@@ -797,7 +800,16 @@ function SearchContent() {
 
           {/* Results Grid Area */}
           <div className="flex-1 min-w-0">
-            <SponsoredAdsRail placement="search.top_results" title="Sponsored results" locale="all" category={selectedCategories[0]} />
+            <SponsoredAdsRail
+              placement="search.top_results"
+              title="Sponsored results"
+              locale="all"
+              category={selectedCategories[0]}
+              columns={marketplaceSettings.hub_search_sponsored_columns || 4}
+              limit={marketplaceSettings.hub_search_sponsored_count || 6}
+              enabled={marketplaceSettings.hub_search_sponsored_enabled !== false}
+              compact={true}
+            />
 
             {loading ? (
               <div className={gridClasses}>

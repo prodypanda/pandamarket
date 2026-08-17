@@ -42,6 +42,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 // Mock HubNavbar, HubFooter, SponsoredAdsRail
+const mockSponsoredAdsRail = vi.fn();
 vi.mock('../components/hub/HubNavbar', () => ({
   HubNavbar: () => <div data-testid="mock-hub-navbar" />,
 }));
@@ -49,7 +50,10 @@ vi.mock('../components/hub/HubFooter', () => ({
   HubFooter: () => <div data-testid="mock-hub-footer" />,
 }));
 vi.mock('../components/hub/SponsoredAdsRail', () => ({
-  SponsoredAdsRail: () => <div data-testid="mock-sponsored-ads-rail" />,
+  SponsoredAdsRail: (props: any) => {
+    mockSponsoredAdsRail(props);
+    return <div data-testid="mock-sponsored-ads-rail" data-columns={props.columns} data-limit={props.limit} />;
+  },
 }));
 
 const mockCategories = [
@@ -218,6 +222,38 @@ describe('Marketplace Hub Search Page Enhancements', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/Catégorie: artisanat/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('passes configured sponsored columns and count settings to SponsoredAdsRail', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/api/pd/marketplace/settings')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: {
+              marketplace_name: 'PandaMarket TN',
+              hub_search_sponsored_enabled: true,
+              hub_search_sponsored_columns: 3,
+              hub_search_sponsored_count: 8,
+            },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    render(<SearchPage />);
+
+    await waitFor(() => {
+      expect(mockSponsoredAdsRail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          columns: 3,
+          limit: 8,
+          enabled: true,
+          compact: true,
+        }),
+      );
     });
   });
 });

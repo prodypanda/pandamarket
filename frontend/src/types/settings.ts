@@ -62,6 +62,9 @@ export interface PlatformSettings {
   hub_grid_items_per_load: number;
   hub_search_grid_columns: number;
   hub_search_items_per_page: number;
+  hub_search_sponsored_enabled: boolean;
+  hub_search_sponsored_columns: number;
+  hub_search_sponsored_count: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -309,6 +312,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   hub_grid_items_per_load: 12,
   hub_search_grid_columns: 5,
   hub_search_items_per_page: 20,
+  hub_search_sponsored_enabled: true,
+  hub_search_sponsored_columns: 4,
+  hub_search_sponsored_count: 6,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,

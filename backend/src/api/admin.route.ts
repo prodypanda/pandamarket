@@ -2422,6 +2422,9 @@ const globalSettingsSchema = z.object({
   hub_grid_items_per_load: z.coerce.number().int().min(6).max(48).optional(),
   hub_search_grid_columns: z.coerce.number().int().min(2).max(8).optional(),
   hub_search_items_per_page: z.coerce.number().int().min(6).max(100).optional(),
+  hub_search_sponsored_enabled: z.boolean().optional(),
+  hub_search_sponsored_columns: z.coerce.number().int().min(1).max(8).optional(),
+  hub_search_sponsored_count: z.coerce.number().int().min(1).max(24).optional(),
   watermark_enabled: z.boolean().optional(),
   watermark_type: z.enum(['text', 'image', 'both']).optional(),
   watermark_text: z.coerce.string().trim().max(100).optional(),
@@ -2649,6 +2652,9 @@ const marketplaceSettingsSchema = globalSettingsSchema
     hub_grid_items_per_load: true,
     hub_search_grid_columns: true,
     hub_search_items_per_page: true,
+    hub_search_sponsored_enabled: true,
+    hub_search_sponsored_columns: true,
+    hub_search_sponsored_count: true,
     watermark_enabled: true,
     watermark_type: true,
     watermark_text: true,
@@ -2849,6 +2855,9 @@ const algorithmSettingsSchema = globalSettingsSchema
     hub_grid_items_per_load: true,
     hub_search_grid_columns: true,
     hub_search_items_per_page: true,
+    hub_search_sponsored_enabled: true,
+    hub_search_sponsored_columns: true,
+    hub_search_sponsored_count: true,
   })
   .strict();
 

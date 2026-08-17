@@ -148,6 +148,35 @@ describe('PlatformConfigService section saves', () => {
     expect(updated).toContain('watermark_image_url');
     expect(updated).toContain('watermark_opacity');
   });
+
+  it('allows updating search grid and sponsored ads settings in marketplace section update', async () => {
+    const clientQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ updated_at: new Date('2026-08-17T12:00:00.000Z') }] })
+      .mockResolvedValue({ rows: [] });
+    mockTransaction.mockImplementation(async (callback: (client: { query: typeof clientQuery }) => Promise<unknown>) => (
+      callback({ query: clientQuery })
+    ));
+
+    const updated = await platformConfigService.updateSectionSettings(
+      'marketplace',
+      {
+        hub_search_grid_columns: 4,
+        hub_search_items_per_page: 24,
+        hub_search_sponsored_enabled: true,
+        hub_search_sponsored_columns: 3,
+        hub_search_sponsored_count: 8,
+      },
+      'admin_user_123',
+      '2026-08-17T12:00:00.000Z',
+    );
+
+    expect(updated).toContain('hub_search_grid_columns');
+    expect(updated).toContain('hub_search_items_per_page');
+    expect(updated).toContain('hub_search_sponsored_enabled');
+    expect(updated).toContain('hub_search_sponsored_columns');
+    expect(updated).toContain('hub_search_sponsored_count');
+  });
 });
 
 

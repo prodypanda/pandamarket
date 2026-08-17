@@ -3,7 +3,7 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { fetchWithCsrf } from '@/lib/api';
-import { ChevronLeft, ChevronRight, Megaphone } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Megaphone, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Ad = {
@@ -44,18 +44,35 @@ interface AdCacheItem {
 const adDeliveryCache = new Map<string, AdCacheItem>();
 const AD_DELIVERY_TTL_MS = 60_000;
 
+const SPONSORED_GRID_CLASSES: Record<number, string> = {
+  1: 'grid grid-cols-1 gap-3.5',
+  2: 'grid grid-cols-1 sm:grid-cols-2 gap-3.5',
+  3: 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5',
+  4: 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5',
+  5: 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5',
+  6: 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5',
+};
+
 export function SponsoredAdsRail({
   placement = 'hub.sponsored_products',
   title = 'Sponsored',
   locale = 'all',
   category,
   variant = 'cards',
+  columns = 6,
+  limit = 6,
+  enabled = true,
+  compact = false,
 }: {
   placement?: string;
   title?: string;
   locale?: 'all' | 'fr' | 'en' | 'ar';
   category?: string;
   variant?: 'cards' | 'banner';
+  columns?: number;
+  limit?: number;
+  enabled?: boolean;
+  compact?: boolean;
 }) {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,11 +81,19 @@ export function SponsoredAdsRail({
   const timers = useRef(new Map<string, number>());
   const railRef = useRef<HTMLDivElement>(null);
 
+  const effectiveCols = Math.max(1, Math.min(6, columns));
+  const gridClasses = SPONSORED_GRID_CLASSES[effectiveCols] || SPONSORED_GRID_CLASSES[6];
+
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     const device = window.matchMedia('(max-width: 767px)').matches ? 'mobile' : 'desktop';
     const audience = localStorage.getItem('pd_returning_visitor') === '1' ? 'returning' : 'new';
     localStorage.setItem('pd_returning_visitor', '1');
-    const params = new URLSearchParams({ placement, limit: '6', locale, device, audience });
+    const params = new URLSearchParams({ placement, limit: String(limit), locale, device, audience });
     if (category) params.set('category', category);
     
     const url = `/api/pd/ads/public/delivery?${params}`;
@@ -91,7 +116,7 @@ export function SponsoredAdsRail({
         setAds([]);
         setLoading(false);
       });
-  }, [placement, locale, category]);
+  }, [placement, locale, category, limit, enabled]);
 
   // Auto-rotate banner ads if multiple ads exist
   useEffect(() => {
@@ -144,18 +169,20 @@ export function SponsoredAdsRail({
     };
   }, [ads]);
 
+  if (!enabled) return null;
+
   if (loading) {
     return variant === 'banner' ? (
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <section className={compact ? 'mb-6' : 'mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'}>
         <div className="h-60 animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800" />
       </section>
     ) : (
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-4 h-6 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="overflow-hidden rounded-2xl border border-slate-100 dark:border-white/5">
-              <div className="aspect-square animate-pulse bg-slate-200 dark:bg-slate-800" />
+      <section className={compact ? 'mb-6' : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'}>
+        <div className="mb-3 h-5 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className={gridClasses}>
+          {Array.from({ length: limit }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-2xl border border-slate-100 dark:border-white/5 bg-white shadow-2xs">
+              <div className="aspect-square animate-pulse bg-slate-100 dark:bg-slate-800" />
               <div className="p-3 space-y-2">
                 <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                 <div className="h-4 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
@@ -172,7 +199,7 @@ export function SponsoredAdsRail({
   if (variant === 'banner') {
     const currentAd = ads[activeIndex % ads.length];
     return (
-      <section ref={railRef} className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <section ref={railRef} className={compact ? 'mb-6' : 'mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'}>
         <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
           <Link
             data-sponsored-ad
@@ -254,12 +281,17 @@ export function SponsoredAdsRail({
   }
 
   return (
-    <section ref={railRef} className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-4 flex items-center gap-2">
-        <Megaphone className="h-5 w-5 text-amber-600" />
-        <h2 className="text-xl font-black text-slate-900">{title}</h2>
+    <section ref={railRef} className={compact ? 'mb-6' : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'}>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-amber-500" />
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">{title}</h2>
+        </div>
+        <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[9px] font-black uppercase text-amber-800">
+          Sponsorisé
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className={gridClasses}>
         {ads.map((ad) => (
           <Link
             data-sponsored-ad
@@ -277,21 +309,23 @@ export function SponsoredAdsRail({
                 keepalive: true,
               }).catch(() => undefined);
             }}
-            className="group overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            className="group overflow-hidden rounded-2xl border border-amber-200/80 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-amber-400"
           >
-            <div className="aspect-square bg-slate-100">
+            <div className="aspect-square bg-slate-50 relative overflow-hidden">
               {ad.image_url ? (
-                <img src={ad.image_url ? getResizedImageUrl(ad.image_url, 'medium') : ''} alt={ad.title} className="h-full w-full object-cover" />
+                <img src={getResizedImageUrl(ad.image_url, 'medium')} alt={ad.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <Megaphone className="text-slate-300" />
+                  <Megaphone className="text-amber-300" />
                 </div>
               )}
+              <span className="absolute top-2 left-2 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase text-slate-950 shadow-xs">
+                Ad
+              </span>
             </div>
-            <div className="p-3">
-              <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black uppercase text-amber-800">Sponsored</span>
-              <p className="mt-2 line-clamp-2 text-sm font-black text-slate-900">{ad.title}</p>
-              <p className="mt-1 truncate text-xs text-slate-500">{ad.store_name}</p>
+            <div className="p-2.5">
+              <p className="line-clamp-1 text-xs font-black text-slate-900 group-hover:text-amber-600 transition-colors">{ad.title}</p>
+              <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{ad.store_name}</p>
             </div>
           </Link>
         ))}

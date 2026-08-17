@@ -89,6 +89,9 @@ interface PlatformSettings {
   hub_grid_items_per_load: number;
   hub_search_grid_columns: number;
   hub_search_items_per_page: number;
+  hub_search_sponsored_enabled: boolean;
+  hub_search_sponsored_columns: number;
+  hub_search_sponsored_count: number;
   hub_hero_show_category_sidebar: boolean;
   hub_hero_show_carousel: boolean;
   hub_hero_show_seller_rail: boolean;
@@ -336,6 +339,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_grid_items_per_load: 12,
   hub_search_grid_columns: 5,
   hub_search_items_per_page: 20,
+  hub_search_sponsored_enabled: true,
+  hub_search_sponsored_columns: 4,
+  hub_search_sponsored_count: 6,
   hub_hero_show_category_sidebar: true,
   hub_hero_show_carousel: true,
   hub_hero_show_seller_rail: true,
@@ -676,6 +682,8 @@ const NUMBER_SETTING_KEYS = [
   'hub_grid_items_per_load',
   'hub_search_grid_columns',
   'hub_search_items_per_page',
+  'hub_search_sponsored_columns',
+  'hub_search_sponsored_count',
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
@@ -745,6 +753,7 @@ const BOOLEAN_SETTING_KEYS = [
   'watermark_show_on_cards',
   'watermark_show_on_lightbox',
   'watermark_copy_protection',
+  'hub_search_sponsored_enabled',
 ] as const satisfies readonly BooleanSettingKey[];
 
 const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSettings)[]> = {
@@ -818,6 +827,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_seller_rail_badge_text',
     'hub_search_grid_columns',
     'hub_search_items_per_page',
+    'hub_search_sponsored_enabled',
+    'hub_search_sponsored_columns',
+    'hub_search_sponsored_count',
     'watermark_enabled',
     'watermark_type',
     'watermark_text',
@@ -845,6 +857,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_grid_items_per_load',
     'hub_search_grid_columns',
     'hub_search_items_per_page',
+    'hub_search_sponsored_enabled',
+    'hub_search_sponsored_columns',
+    'hub_search_sponsored_count',
   ],
   commerce: [
     'marketplace_enabled',
@@ -1021,6 +1036,9 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_grid_items_per_load', tab: 'algorithm', label: 'Produits par Chargement', description: 'Nombre de produits chargés à chaque scroll infini ou clic Load More', keywords: ['produits', 'items', 'chargement', 'load', 'scroll', 'page', 'infinite', 'per', 'algorithm'] },
   { key: 'hub_search_grid_columns', tab: 'marketplace', label: 'Colonnes Grille Résultats de Recherche', description: 'Nombre de colonnes de produits affichées par ligne sur la page de recherche (/hub/search)', keywords: ['search', 'recherche', 'colonnes', 'columns', 'grille', 'grid', 'produits', 'layout'] },
   { key: 'hub_search_items_per_page', tab: 'marketplace', label: 'Produits par Page de Recherche', description: 'Nombre de résultats de recherche chargés par page', keywords: ['search', 'recherche', 'items', 'page', 'limite', 'pagination'] },
+  { key: 'hub_search_sponsored_enabled', tab: 'marketplace', label: 'Afficher Résultats Sponsorisés Recherche', description: 'Afficher ou masquer le rail de produits sponsorisés en haut des résultats de recherche', keywords: ['sponsored', 'sponsorisé', 'ads', 'publicité', 'search', 'recherche'] },
+  { key: 'hub_search_sponsored_columns', tab: 'marketplace', label: 'Colonnes Sponsorisées Recherche', description: 'Nombre de colonnes dans la section de résultats sponsorisés de recherche', keywords: ['sponsored', 'sponsorisé', 'colonnes', 'columns', 'search', 'recherche'] },
+  { key: 'hub_search_sponsored_count', tab: 'marketplace', label: 'Nombre Produits Sponsorisés Recherche', description: 'Nombre maximal de produits sponsorisés affichés en haut de la recherche', keywords: ['sponsored', 'sponsorisé', 'items', 'count', 'search', 'recherche'] },
 
   // Commerce & Catalog
   { key: 'marketplace_enabled', tab: 'commerce', label: 'Marketplace Active State', description: 'Master switch to open or pause general marketplace transactions', keywords: ['marketplace', 'active', 'status', 'open', 'pause'] },
@@ -4301,6 +4319,82 @@ export default function SuperAdminSettingsPage() {
                   <option value={48}>48 produits</option>
                 </select>
               </div>
+            </div>
+
+            {/* Search Sponsored Results Configuration */}
+            <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/40 to-white px-5 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label htmlFor="hub_search_sponsored_enabled" className="block text-sm font-black text-slate-800 flex items-center gap-2">
+                    📢 Rail de Résultats Sponsorisés (Sponsored Ads Rail)
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Configuration de la section &quot;Sponsored results&quot; en haut de la page de recherche (/hub/search)
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    id="hub_search_sponsored_enabled"
+                    type="checkbox"
+                    checked={settings.hub_search_sponsored_enabled !== false}
+                    onChange={(e) => updateSetting('hub_search_sponsored_enabled', e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-amber-500 peer-checked:after:translate-x-full peer-checked:after:border-white" />
+                </label>
+              </div>
+
+              {settings.hub_search_sponsored_enabled !== false && (
+                <div className="mt-4 space-y-4 pt-3 border-t border-amber-100">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-700">Colonnes par Ligne (Sponsored Columns)</span>
+                      <span className="rounded-lg bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800">
+                        {settings.hub_search_sponsored_columns || 4} colonnes
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[2, 3, 4, 5, 6].map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => updateSetting('hub_search_sponsored_columns', col)}
+                          className={`rounded-xl py-2 px-2.5 text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                            (settings.hub_search_sponsored_columns || 4) === col
+                              ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 ring-2 ring-amber-500 ring-offset-1'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="text-sm font-black">{col}</span>
+                          <span className="text-[10px] opacity-80">{col === 4 ? 'Standard' : col === 6 ? 'Compact' : col <= 3 ? 'Large' : 'Confort'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-amber-100/60 flex items-center justify-between">
+                    <div>
+                      <label htmlFor="hub_search_sponsored_count" className="block text-xs font-bold text-slate-700">
+                        Nombre Maximal d&apos;Éléments Sponsorisés
+                      </label>
+                      <p className="text-[11px] text-slate-400">Nombre d&apos;annonces sponsorisées affichées au total</p>
+                    </div>
+                    <select
+                      id="hub_search_sponsored_count"
+                      value={settings.hub_search_sponsored_count || 6}
+                      onChange={(e) => updateSetting('hub_search_sponsored_count', Number(e.target.value))}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    >
+                      <option value={2}>2 annonces</option>
+                      <option value={3}>3 annonces</option>
+                      <option value={4}>4 annonces</option>
+                      <option value={6}>6 annonces (Défaut)</option>
+                      <option value={8}>8 annonces</option>
+                      <option value={12}>12 annonces</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

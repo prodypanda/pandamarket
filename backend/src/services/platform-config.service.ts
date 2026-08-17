@@ -84,6 +84,9 @@ export const PLATFORM_SETTING_DEFAULTS = {
   hub_grid_items_per_load: '12',
   hub_search_grid_columns: '5',
   hub_search_items_per_page: '20',
+  hub_search_sponsored_enabled: 'true',
+  hub_search_sponsored_columns: '4',
+  hub_search_sponsored_count: '6',
   hub_feed_base_sort: 'random',
   hub_feed_personalization_pct: 30,
   hub_feed_diversity_enabled: true,
@@ -330,6 +333,9 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'hub_grid_items_per_load',
   'hub_search_grid_columns',
   'hub_search_items_per_page',
+  'hub_search_sponsored_enabled',
+  'hub_search_sponsored_columns',
+  'hub_search_sponsored_count',
   'hub_feed_base_sort',
   'hub_feed_personalization_pct',
   'analytics_ga4_enabled',
@@ -463,6 +469,9 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_grid_items_per_load',
     'hub_search_grid_columns',
     'hub_search_items_per_page',
+    'hub_search_sponsored_enabled',
+    'hub_search_sponsored_columns',
+    'hub_search_sponsored_count',
     'watermark_enabled',
     'watermark_type',
     'watermark_text',
@@ -490,6 +499,9 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_grid_items_per_load',
     'hub_search_grid_columns',
     'hub_search_items_per_page',
+    'hub_search_sponsored_enabled',
+    'hub_search_sponsored_columns',
+    'hub_search_sponsored_count',
   ],
   commerce: [
     'marketplace_enabled',
@@ -696,6 +708,7 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'watermark_show_on_cards',
   'watermark_show_on_lightbox',
   'watermark_copy_protection',
+  'hub_search_sponsored_enabled',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
@@ -746,6 +759,8 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'hub_grid_items_per_load',
   'hub_search_grid_columns',
   'hub_search_items_per_page',
+  'hub_search_sponsored_columns',
+  'hub_search_sponsored_count',
   'watermark_opacity',
 ]);
 
