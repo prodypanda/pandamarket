@@ -297,6 +297,23 @@ export class AiConfigService {
   }
 
   async listPricing() {
+    const defaultPrices: Record<string, number> = {
+      [AiJobType.ImageCompression]: 1,
+      [AiJobType.SeoGeneration]: 2,
+      [AiJobType.PageCopy]: 1,
+      [AiJobType.ProductDescription]: 2,
+      [AiJobType.CategoryClassification]: 2,
+    };
+
+    for (const [jobType, defaultTokens] of Object.entries(defaultPrices)) {
+      await query(
+        `INSERT INTO pd_ai_feature_pricing (job_type, tokens_required, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (job_type) DO NOTHING`,
+        [jobType, defaultTokens],
+      ).catch(() => {});
+    }
+
     const { rows } = await query<{ job_type: AiJobType; tokens_required: number; updated_at: Date }>(
       'SELECT * FROM pd_ai_feature_pricing ORDER BY job_type ASC',
     );
@@ -710,6 +727,63 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         rows = refetched.rows;
       } catch (err: any) {
         logger.warn({ err: err?.message }, 'Failed to auto-seed product_tagging prompt template');
+      }
+    }
+
+    if (!rows[0] && key === 'category_classification') {
+      try {
+        await query(
+          `INSERT INTO pd_ai_prompt_templates (prompt_key, title, description, system_prompt, default_prompt, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (prompt_key) DO NOTHING`,
+          [
+            'category_classification',
+            'Classification Automatique de Catégories IA',
+            "Analyse le titre et la description pour sélectionner la catégorie Hub optimale et créer/assigner la catégorie vitrine boutique.",
+            `Vous êtes un Expert en Classification Taxonomique E-commerce de PandaMarket.
+Votre rôle est d'analyser les données d'un produit (titre, description) et de déterminer :
+1. La catégorie Marketplace Hub la plus précise parmi les catégories disponibles (avec son id exact).
+2. La catégorie Vitrine Boutique la plus appropriée pour le vendeur.
+
+Règles :
+- Choisissez toujours la sous-catégorie la plus spécifique possible parmi les catégories Marketplace Hub listées.
+- Renvoyez l'ID exact de la catégorie Marketplace ("marketplace_category_id") et son nom exact ("marketplace_category_name").
+- Pour la vitrine boutique ("storefront_category_name"), choisissez une catégorie existante du vendeur si elle correspond bien, ou proposez un nom de catégorie clair, court et pertinent.
+- Le champ "created_new" doit être true si la catégorie vitrine proposée n'existe pas encore dans la liste du vendeur.`,
+            `Analysez le produit suivant et déterminez ses catégories optimales :
+
+📦 PRODUIT :
+- Titre : {title}
+- Description : {description}
+- Langue : {language}
+
+🌐 Catégories Marketplace Hub disponibles :
+{marketplace_categories}
+
+🏪 Catégories Vitrine Boutique du vendeur :
+{storefront_categories}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "marketplace_category_id": "id exact de la catégorie",
+  "marketplace_category_name": "Nom exact de la catégorie marketplace",
+  "storefront_category_name": "Nom de la catégorie vitrine (existante ou nouvelle)",
+  "created_new": false,
+  "confidence": 0.95
+}`,
+          ],
+        );
+        const refetched = await query<{
+          prompt_key: string;
+          title: string;
+          description: string | null;
+          system_prompt: string;
+          default_prompt: string;
+          updated_at: Date;
+        }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+        rows = refetched.rows;
+      } catch (err: any) {
+        logger.warn({ err: err?.message }, 'Failed to auto-seed category_classification prompt template');
       }
     }
 

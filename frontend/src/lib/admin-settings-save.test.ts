@@ -87,4 +87,28 @@ describe('admin settings section saves', () => {
     expect(merged.current.marketplace_tagline).toBe('Fresh server tagline');
     expect(merged.saved.marketplace_tagline).toBe('Fresh server tagline');
   });
+
+  it('detects dirty state when watermark settings are edited', () => {
+    const saved = settings({ watermark_enabled: false, watermark_text: 'PandaMarket' });
+    const current = settings({ watermark_enabled: true, watermark_text: 'PandaMarket Exclusive' });
+
+    const dirtyKeys = getDirtySettingsKeys(current, saved, [
+      'watermark_enabled',
+      'watermark_text',
+      'watermark_opacity',
+    ]);
+
+    expect(dirtyKeys).toEqual(['watermark_enabled', 'watermark_text']);
+
+    const changed = pickChangedSettings(current, saved, [
+      'watermark_enabled',
+      'watermark_text',
+      'watermark_opacity',
+    ]);
+
+    expect(changed).toEqual({
+      watermark_enabled: true,
+      watermark_text: 'PandaMarket Exclusive',
+    });
+  });
 });

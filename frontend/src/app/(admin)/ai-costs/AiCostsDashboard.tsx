@@ -150,6 +150,7 @@ const typeLabels: Record<string, string> = {
   seo_generation: 'SEO produit',
   page_copy: 'Copywriting page',
   product_description: 'Description produit',
+  category_classification: 'Classification des catégories',
 };
 
 const providerLabels: Record<AiProvider, { name: string; color: string; badge: string }> = {

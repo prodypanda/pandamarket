@@ -58,7 +58,7 @@ const planTones = [
 const planIcons = [Store, Sparkles, Zap, Crown];
 
 const featureFields: Array<{ key: FeatureKey; label: string; description: string }> = [
-  { key: 'has_ai_seo', label: 'IA SEO', description: 'Génération SEO assistée par IA.' },
+  { key: 'has_ai_seo', label: 'Outils IA & Catégorisation', description: 'Génération SEO, descriptions enrichies et classification automatique de catégories par IA.' },
   { key: 'has_image_compression', label: 'Compression', description: 'Optimisation automatique des images.' },
   { key: 'has_custom_domain', label: 'Domaine', description: 'Connexion de domaine personnalisé.' },
   { key: 'has_page_builder', label: 'Builder', description: 'Accès au constructeur de pages.' },

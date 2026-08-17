@@ -549,9 +549,15 @@ type FreeTextSettingKey = Exclude<
   | 'price_rounding_mode'
   | 'payout_schedule'
   | 'payment_platform_credentials_source'
+  | 'watermark_type'
+  | 'watermark_position'
+  | 'watermark_scale'
+  | 'watermark_style'
 >;
 
 const TEXT_SETTING_KEYS = [
+  'watermark_text',
+  'watermark_image_url',
   'marketplace_name',
   'marketplace_tagline',
   'marketplace_logo_url',
@@ -667,6 +673,7 @@ const NUMBER_SETTING_KEYS = [
   'hub_hero_category_sidebar_max_items',
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
+  'watermark_opacity',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -727,6 +734,11 @@ const BOOLEAN_SETTING_KEYS = [
   'hub_hero_show_seller_rail',
   'hub_hero_carousel_autoplay',
   'hub_hero_carousel_show_arrows',
+  'watermark_enabled',
+  'watermark_show_on_gallery',
+  'watermark_show_on_cards',
+  'watermark_show_on_lightbox',
+  'watermark_copy_protection',
 ] as const satisfies readonly BooleanSettingKey[];
 
 const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSettings)[]> = {
@@ -798,6 +810,18 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_seller_rail_cta_label',
     'hub_hero_seller_rail_cta_url',
     'hub_hero_seller_rail_badge_text',
+    'watermark_enabled',
+    'watermark_type',
+    'watermark_text',
+    'watermark_image_url',
+    'watermark_position',
+    'watermark_opacity',
+    'watermark_scale',
+    'watermark_style',
+    'watermark_show_on_gallery',
+    'watermark_show_on_cards',
+    'watermark_show_on_lightbox',
+    'watermark_copy_protection',
   ],
   algorithm: [
     'hub_feed_base_sort',
@@ -971,6 +995,8 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_hero_show_seller_rail', tab: 'marketplace', label: 'Hero Seller Onboarding Rail', description: 'Promotional right-side widget encouraging new seller signups', keywords: ['seller', 'rail', 'onboarding', 'signup', 'vendor'] },
   { key: 'hub_homepage_banner_title', tab: 'marketplace', label: 'Promotional Banner Title', description: 'Headline for the secondary homepage promotional banner', keywords: ['banner', 'title', 'promo', 'headline'] },
   { key: 'hub_homepage_banner_image_url', tab: 'marketplace', label: 'Promotional Banner Image', description: 'Background asset for homepage banner', keywords: ['banner', 'image', 'promo'] },
+  { key: 'watermark_enabled', tab: 'marketplace', label: 'Filigrane & Protection d\'Images (Watermark)', description: 'Activer le filigrane dynamique et la protection d\'images sur le marketplace', keywords: ['watermark', 'filigrane', 'protection', 'logo', 'copyright', 'image'] },
+  { key: 'watermark_copy_protection', tab: 'marketplace', label: 'Protection contre le clic droit & glisser-déposer', description: 'Empêche le clic droit et le drag-and-drop des images de produits sur le marketplace', keywords: ['protection', 'clic droit', 'right click', 'copie', 'drag', 'copy'] },
 
   // Algorithme & Flux Hub
   { key: 'hub_feed_base_sort', tab: 'algorithm', label: 'Tri de Base du Hub Feed', description: 'Stratégie de tri par défaut du catalogue (Aléatoire, Nouveautés, Alphabétique, Meilleures Ventes)', keywords: ['tri', 'sort', 'feed', 'hub', 'catalogue', 'ordre', 'random', 'newest', 'best_sellers', 'alphabetical', 'algorithm'] },

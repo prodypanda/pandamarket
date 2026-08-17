@@ -12,22 +12,30 @@ describe('AI Category Picker & Feature Pricing Integration', () => {
   });
 
   it('verifies category_classification is accepted in setPurposeRouting', async () => {
-    // Should not throw invalid purpose error
     try {
       await aiConfigService.setPurposeRouting('category_classification', null);
     } catch (err: any) {
-      // If DB error (not running postgres in unit test), ensure it's not PdValidationError('Invalid AI purpose')
       expect(err?.message).not.toContain('Invalid AI purpose');
     }
   });
 
   it('provides default token price for CategoryClassification job type', async () => {
-    try {
-      const price = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
-      expect(price).toBeGreaterThanOrEqual(1);
-    } catch (err: any) {
-      // If DB is offline, test passes as long as code path doesn't throw unexpected error
-      expect(err).toBeDefined();
-    }
+    const price = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
+    expect(price).toBe(2);
+  });
+
+  it('verifies category_classification is present in listPricing', async () => {
+    const pricingList = await aiConfigService.listPricing();
+    const catPricing = pricingList.find((p) => p.job_type === AiJobType.CategoryClassification);
+    expect(catPricing).toBeDefined();
+    expect(catPricing?.tokens_required).toBeGreaterThanOrEqual(1);
+  });
+
+  it('auto-seeds and retrieves category_classification prompt template', async () => {
+    const template = await aiConfigService.getPromptTemplate('category_classification');
+    expect(template).toBeDefined();
+    expect(template.prompt_key).toBe('category_classification');
+    expect(template.system_prompt).toContain('PandaMarket');
+    expect(template.default_prompt).toContain('{marketplace_categories}');
   });
 });
