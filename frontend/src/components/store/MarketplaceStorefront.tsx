@@ -47,6 +47,7 @@ export interface MarketplaceStoreProduct {
   title: string;
   slug?: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   thumbnail?: string | null;
   images?: Array<string | { url: string }>;
   category?: string | null;

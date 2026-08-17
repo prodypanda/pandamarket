@@ -108,8 +108,16 @@ function SuperDealCard({ product, currency, rank, marketplaceSettings }: { produ
         )}
         <div className="mt-3 flex items-end justify-between gap-2">
           <div>
-            <span className="text-xl font-black bg-gradient-to-r from-[#ff4747] to-[#ff8a00] bg-clip-text text-transparent">{formatPrice(product.price)}</span>
-            <span className="ms-1.5 text-xs font-bold text-gray-500 dark:text-white/40">{currency}</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-black bg-gradient-to-r from-[#ff4747] to-[#ff8a00] bg-clip-text text-transparent">{formatPrice(product.price)}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-white/40">{currency}</span>
+            </div>
+            {Number(product.compare_at_price) > Number(product.price) && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs font-bold text-gray-400 dark:text-white/40 line-through">{formatPrice(product.compare_at_price!)}</span>
+                <span className="rounded bg-red-500 px-1 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 rounded-lg bg-[#ff4747]/15 px-2 py-1 text-[10px] font-black text-[#ff6b6b] backdrop-blur">

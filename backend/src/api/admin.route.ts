@@ -2812,6 +2812,11 @@ const algorithmSettingsSchema = globalSettingsSchema
     hub_feed_diversity_strength: true,
     hub_feed_max_items_per_store: true,
     hub_feed_ab_testing_enabled: true,
+    hub_card_show_rating: true,
+    hub_card_show_add_to_cart: true,
+    hub_card_add_to_cart_style: true,
+    hub_grid_columns: true,
+    hub_grid_items_per_load: true,
   })
   .strict();
 

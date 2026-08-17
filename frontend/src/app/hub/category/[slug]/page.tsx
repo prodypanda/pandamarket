@@ -43,6 +43,7 @@ interface Product {
   title: string;
   slug?: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   thumbnail?: string;
   images?: { url: string }[];
   category?: string;
@@ -513,9 +514,17 @@ export default async function CategoryPage({
                     <h3 className="font-extrabold text-slate-900 text-xs mb-1.5 line-clamp-2 leading-snug group-hover:text-[#ff6a00] transition-colors">
                       {product.title}
                     </h3>
-                    <p className="font-black text-[#ff6a00] text-sm">
-                      {formatPrice(product.price)}
-                    </p>
+                    <div>
+                      <p className="font-black text-[#ff6a00] text-sm">
+                        {formatPrice(product.price)}
+                      </p>
+                      {Number(product.compare_at_price) > Number(product.price) && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-bold text-slate-400 line-through">{formatPrice(product.compare_at_price!)}</span>
+                          <span className="rounded-full bg-red-500 px-1.5 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                        </div>
+                      )}
+                    </div>
                     {product.store_name && (
                       <p className="text-[11px] font-bold text-slate-500 mt-1.5 flex items-center gap-1 truncate">
                         <Store className="h-3 w-3 text-slate-400 shrink-0" />

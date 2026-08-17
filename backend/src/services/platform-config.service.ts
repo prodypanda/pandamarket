@@ -441,6 +441,11 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'hub_feed_diversity_strength',
     'hub_feed_max_items_per_store',
     'hub_feed_ab_testing_enabled',
+    'hub_card_show_rating',
+    'hub_card_show_add_to_cart',
+    'hub_card_add_to_cart_style',
+    'hub_grid_columns',
+    'hub_grid_items_per_load',
   ],
   commerce: [
     'marketplace_enabled',

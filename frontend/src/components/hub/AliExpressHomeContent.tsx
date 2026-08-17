@@ -99,9 +99,19 @@ function DealCard({ product, currency, themeClasses, isAliExpress2, marketplaceS
           <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="orange" className="mt-1" />
         )}
         <div className="mt-2 flex items-end justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className={`text-lg font-black ${themeClasses.primaryText}`}>{formatPrice(product.price)} {currency}</span>
-            <span className={`px-2 py-1 text-[10px] ${themeClasses.primarySoft}`}>Hot</span>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-2">
+              <span className={`text-lg font-black ${themeClasses.primaryText}`}>{formatPrice(product.price)} {currency}</span>
+              {Number(product.compare_at_price) > Number(product.price) && (
+                <span className="text-xs font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {Number(product.compare_at_price) > Number(product.price) && (
+                <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+              )}
+              <span className={`px-2 py-0.5 text-[10px] font-bold ${themeClasses.primarySoft}`}>Hot</span>
+            </div>
           </div>
           {marketplaceSettings?.hub_card_show_add_to_cart !== false && (
             <QuickAddToCartButton product={product} style={marketplaceSettings?.hub_card_add_to_cart_style || 'icon'} />

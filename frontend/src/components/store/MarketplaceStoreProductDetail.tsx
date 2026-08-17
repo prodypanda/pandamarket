@@ -157,7 +157,15 @@ export function MarketplaceStoreProductDetail({
 
             <div className={`mb-6 rounded-[1.75rem] p-5 ${isAliExpress ? 'border border-orange-100 bg-gradient-to-br from-[#fff7f2] via-white to-white' : 'border border-gray-100 bg-gray-50'}`}>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
-              <p className={`mt-1 text-4xl font-black sm:text-5xl ${classes.primaryText}`}>{formatPrice(product.price)}</p>
+              {Number(product.compare_at_price) > toNumber(product.price) ? (
+                <div className="mt-1 flex flex-wrap items-end gap-3">
+                  <p className={`text-4xl font-black sm:text-5xl ${classes.primaryText}`}>{formatPrice(product.price)}</p>
+                  <p className="text-lg font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price)}</p>
+                  <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-black text-white">-{Math.round(((Number(product.compare_at_price) - toNumber(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                </div>
+              ) : (
+                <p className={`mt-1 text-4xl font-black sm:text-5xl ${classes.primaryText}`}>{formatPrice(product.price)}</p>
+              )}
             </div>
 
             {wholesalePricing && (

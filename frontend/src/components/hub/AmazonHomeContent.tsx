@@ -171,7 +171,23 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="amber" className="mt-1" />
               )}
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                <div>
+                  <div>
+                  <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                  {Number(product.compare_at_price) > Number(product.price) && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[11px] font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
+                      <span className="rounded bg-[#cc0c39] px-1 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                    </div>
+                  )}
+                </div>
+                  {Number(product.compare_at_price) > Number(product.price) && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[11px] font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
+                      <span className="rounded bg-[#cc0c39] px-1 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                    </div>
+                  )}
+                </div>
                 {(marketplaceSettings as any).hub_card_show_add_to_cart !== false && (
                   <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
                 )}

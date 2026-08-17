@@ -146,9 +146,17 @@ function ProductCard({ product, currency, showRating, showCart }: { product: Pro
           <StarRating rating={product.average_rating} count={product.review_count} size="xs" theme="emerald" className="mb-2" />
         )}
         <div className="flex items-center justify-between gap-2">
-          <span className="font-black text-[#16C784]">
-            {formatPrice(product.price)} {currency}
-          </span>
+          <div>
+            <span className="font-black text-[#16C784]">
+              {formatPrice(product.price)} {currency}
+            </span>
+            {Number(product.compare_at_price) > Number(product.price) && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
+                <span className="rounded-full bg-red-500 px-1.5 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+              </div>
+            )}
+          </div>
           {showCart && (
             <button
               type="button"

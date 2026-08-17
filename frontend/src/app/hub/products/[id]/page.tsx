@@ -42,6 +42,7 @@ interface Product {
   slug?: string | null;
   description?: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   category?: string;
   product_reference?: string | null;
   marketplace_category_slug?: string | null;
@@ -318,9 +319,15 @@ export default async function ProductDetailPage({
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
-                  <p className={`mt-1 text-4xl sm:text-5xl font-black ${accentText}`}>
-                    {formatPrice(product.price)}
-                  </p>
+                  {Number(product.compare_at_price) > toNumber(product.price) ? (
+                    <div className="mt-1 flex flex-wrap items-end gap-3">
+                      <p className={`text-4xl sm:text-5xl font-black ${accentText}`}>{formatPrice(product.price)}</p>
+                      <p className="text-lg font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</p>
+                      <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-black text-white">-{Math.round(((Number(product.compare_at_price) - toNumber(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                    </div>
+                  ) : (
+                    <p className={`mt-1 text-4xl sm:text-5xl font-black ${accentText}`}>{formatPrice(product.price)}</p>
+                  )}
                 </div>
                 {isAliExpress && (
                   <span className="rounded-full bg-[#ff4747] px-4 py-2 text-xs font-black text-white shadow-lg shadow-orange-900/20">
