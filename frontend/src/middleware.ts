@@ -199,14 +199,6 @@ export async function middleware(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
 
-  // Priority Guard: Platform Admin Routes MUST NEVER be rewritten to storefront paths regardless of host domain
-  if (matchesRoutePrefix(url.pathname, ADMIN_ROUTE_PREFIXES)) {
-    if (!hasAuthCookie(req)) {
-      return redirectToLogin(req, '/login/admin');
-    }
-    return NextResponse.next();
-  }
-
   const hostType = classifyHost(hostname);
 
   // 1. Hub central (pandamarket.tn)

@@ -28,6 +28,7 @@ describe('Host Classification & Routing Helpers (GAP-P1-011)', () => {
     // Storefront Subdomains
     { host: 'my-store.pandamarket.tn', expectedType: 'storefront', expectedIsMarketplace: false, expectedIsAdmin: false, expectedSubdomain: 'my-store' },
     { host: 'artisans.garbage.team', expectedType: 'storefront', expectedIsMarketplace: false, expectedIsAdmin: false, expectedSubdomain: 'artisans' },
+    { host: 'mejrda.garbage.team', expectedType: 'storefront', expectedIsMarketplace: false, expectedIsAdmin: false, expectedSubdomain: 'mejrda' },
 
     // Custom Domains
     { host: 'ma-boutique.com', expectedType: 'storefront', expectedIsMarketplace: false, expectedIsAdmin: false, expectedSubdomain: null },
