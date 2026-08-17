@@ -51,6 +51,9 @@ interface Product {
   review_count?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   images?: { url: string }[];
   thumbnail?: string | null;
   category?: string;
@@ -138,6 +141,9 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
       review_count: p.review_count !== undefined && p.review_count !== null ? Number(p.review_count) : undefined,
       store_name: p.store_name,
       store_subdomain: p.store_subdomain,
+      store_seller_type: p.store_seller_type || p.seller_type || null,
+      store_is_verified: Boolean(p.store_is_verified || p.is_verified || p.store?.is_verified),
+      store_score: p.store_score !== undefined && p.store_score !== null ? Number(p.store_score) : (p.average_rating ? Number(p.average_rating) : null),
       category: p.category,
       marketplace_category_slug: p.marketplace_category_slug,
       thumbnail: p.thumbnail || p.image_url,
@@ -165,6 +171,9 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
               review_count: d.review_count !== undefined && d.review_count !== null ? Number(d.review_count) : undefined,
               store_name: d.store_name,
               store_subdomain: d.store_subdomain,
+              store_seller_type: d.store_seller_type || d.seller_type || null,
+              store_is_verified: Boolean(d.store_is_verified || d.is_verified || d.store?.is_verified),
+              store_score: d.store_score !== undefined && d.store_score !== null ? Number(d.store_score) : (d.average_rating ? Number(d.average_rating) : null),
               category: d.category,
               marketplace_category_slug: d.marketplace_category_slug,
               thumbnail: d.thumbnail || d.image_url,

@@ -80,6 +80,28 @@ describe('StoreInfoBadge component', () => {
     expect(screen.queryByText('4.9')).not.toBeInTheDocument();
   });
 
+  it('does not display a fake hardcoded score when score is 0 or undefined', () => {
+    render(
+      <StoreInfoBadge
+        product={{
+          ...sampleProduct,
+          store_score: null,
+          average_rating: 0,
+        }}
+        marketplaceSettings={{
+          hub_card_show_store_name: true,
+          hub_card_show_store_verified: true,
+          hub_card_show_store_score: true,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Medina Crafts TN')).toBeInTheDocument();
+    expect(screen.getByTitle('Boutique Vérifiée')).toBeInTheDocument();
+    expect(screen.queryByText('4.8')).not.toBeInTheDocument();
+    expect(screen.queryByText('4.9')).not.toBeInTheDocument();
+  });
+
   it('returns null when all store card options are disabled', () => {
     const { container } = render(
       <StoreInfoBadge

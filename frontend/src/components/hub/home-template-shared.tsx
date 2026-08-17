@@ -44,40 +44,47 @@ export function StoreInfoBadge({
   const showScore = marketplaceSettings?.hub_card_show_store_score !== false;
 
   if (!showStoreName && !showVerified && !showScore) return null;
-  if (!product.store_name && !product.store_is_verified && !product.store_score) return null;
 
-  const isVerified = Boolean(product.store_is_verified);
-  const scoreNum = product.store_score ? Number(product.store_score) : product.average_rating ? Number(product.average_rating) : 4.8;
-  const formattedScore = scoreNum > 0 ? scoreNum.toFixed(1) : null;
+  const isVerified = Boolean(
+    product.store_is_verified ||
+    (product as any).is_verified ||
+    (product as any).store_status === 'verified' ||
+    (product as any).store?.is_verified
+  );
+
+  const rawScore = product.store_score !== undefined && product.store_score !== null
+    ? Number(product.store_score)
+    : product.average_rating !== undefined && product.average_rating !== null
+      ? Number(product.average_rating)
+      : null;
+
+  const formattedScore = rawScore !== null && rawScore > 0 ? rawScore.toFixed(1) : null;
+
+  if (!product.store_name && !isVerified && !formattedScore) return null;
 
   return (
-    <div className={`flex items-center justify-between gap-1.5 min-w-0 ${className}`}>
-      {showStoreName && product.store_name ? (
-        <div className="flex items-center gap-1 min-w-0 flex-1">
+    <div className={`flex items-center gap-1.5 flex-wrap min-w-0 ${className}`}>
+      {showStoreName && product.store_name && (
+        <div className="flex items-center gap-1 min-w-0">
           <Store className={`h-3 w-3 shrink-0 ${storeIconColor}`} />
           <span className={`truncate text-xs font-semibold ${textColor || 'text-slate-600 dark:text-slate-300'}`}>
             {product.store_name}
           </span>
-          {showVerified && isVerified && (
-            <span title="Boutique Vérifiée" className="shrink-0 inline-flex items-center">
-              <ShieldCheck className="h-3.5 w-3.5 text-sky-500 fill-sky-500/15" />
-            </span>
-          )}
         </div>
-      ) : showVerified && isVerified ? (
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300">
-            <ShieldCheck className="h-3 w-3 text-sky-500 fill-sky-500/15" />
-            <span>Vérifié</span>
-          </span>
-        </div>
-      ) : <div />}
+      )}
+
+      {showVerified && isVerified && (
+        <span title="Boutique Vérifiée" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sky-50 dark:bg-sky-950/60 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 border border-sky-200/80 dark:border-sky-800/80">
+          <ShieldCheck className="h-3 w-3 text-sky-500 fill-sky-500/20" />
+          <span className="text-[9px] font-black uppercase">Vérifié</span>
+        </span>
+      )}
 
       {showScore && formattedScore && (
-        <div className="shrink-0 flex items-center gap-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-200/60">
+        <span title={`Score de la boutique: ${formattedScore}/5`} className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-200/60">
           <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
           <span>{formattedScore}</span>
-        </div>
+        </span>
       )}
     </div>
   );
