@@ -586,8 +586,6 @@ router.post(
   validate(categoryPickSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = req.user!.store_id!;
-    await assertAiFeature(storeId, 'has_ai_seo');
-
     const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
     const langName = { fr: 'French', ar: 'Arabic', en: 'English' }[language];
     const title = req.body.title;
@@ -662,7 +660,13 @@ router.post(
 
     try {
       const cost = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
-      await creditsService.assertEnough(storeId, cost);
+      let canDeductTokens = false;
+      try {
+        await creditsService.assertEnough(storeId, cost);
+        canDeductTokens = true;
+      } catch {
+        canDeductTokens = false;
+      }
 
       let template = null;
       try {
@@ -858,7 +862,10 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         }
       }
 
-      await creditsService.consume(storeId, cost);
+      const tokensConsumed = canDeductTokens ? cost : 0;
+      if (canDeductTokens && cost > 0) {
+        await creditsService.consume(storeId, cost);
+      }
       await aiService.markCompleted(job.id, {
         marketplace_category_id: marketplaceCategoryId,
         marketplace_category_name: marketplaceCategoryName,
@@ -869,7 +876,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         created_new_storefront_category: createdNewStorefrontCategory,
         confidence: parsed.confidence,
         provider: result.provider_label,
-      }, cost);
+      }, tokensConsumed);
 
       res.status(200).json({
         marketplace_category_id: marketplaceCategoryId,
@@ -880,7 +887,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         storefront_parent_name: storefrontParentName,
         created_new_storefront_category: createdNewStorefrontCategory,
         confidence: parsed.confidence || 0.5,
-        tokens_consumed: cost,
+        tokens_consumed: tokensConsumed,
         job_id: job.id,
         provider: result.provider_label,
       });

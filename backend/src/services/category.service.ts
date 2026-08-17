@@ -213,6 +213,39 @@ export class CategoryService {
        ON CONFLICT (store_id, slug) DO UPDATE SET is_default = true, is_active = true, updated_at = NOW()`,
       [id, storeId],
     );
+    const legacyProducts = await query<{ category: string }>(
+      `SELECT DISTINCT p.category
+       FROM pd_product p
+       WHERE p.store_id = $1
+         AND p.category IS NOT NULL
+         AND p.category != ''
+         AND p.category != 'Non categorized products'
+         AND (p.storefront_category_id IS NULL OR p.storefront_category_id = $2)`,
+      [storeId, id],
+    );
+
+    for (const legacy of legacyProducts.rows) {
+      const baseSlug = slugify(legacy.category) || 'categorie';
+      const catId = pdId('pd_cat');
+      await query(
+        `INSERT INTO pd_storefront_category (id, store_id, name, slug, position)
+         VALUES ($1, $2, $3, $4, 10)
+         ON CONFLICT (store_id, slug) DO NOTHING`,
+        [catId, storeId, legacy.category, baseSlug],
+      );
+      await query(
+        `UPDATE pd_product p
+         SET storefront_category_id = sc.id
+         FROM pd_storefront_category sc
+         WHERE p.store_id = $1
+           AND p.category = $2
+           AND sc.store_id = $1
+           AND sc.name = $2
+           AND (p.storefront_category_id IS NULL OR p.storefront_category_id = $3)`,
+        [storeId, legacy.category, id],
+      );
+    }
+
     const { rows } = await query<StorefrontCategoryRow>(
       'SELECT * FROM pd_storefront_category WHERE store_id = $1 AND is_default = true LIMIT 1',
       [storeId],

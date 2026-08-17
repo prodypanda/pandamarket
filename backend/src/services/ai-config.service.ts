@@ -207,6 +207,66 @@ function generateFallbackCopywriting(prompt: string): string {
     return JSON.stringify({ tags });
   }
 
+  // If prompt is for category classification
+  if (prompt.includes('Classification Taxonomique') || prompt.includes('category_classification') || prompt.includes('TAXONOMIE MARKETPLACE HUB')) {
+    const titleMatch = prompt.match(/Titre\s*:\s*([^\n\r]+)/i) || prompt.match(/Title\s*:\s*([^\n\r]+)/i);
+    const title = titleMatch ? titleMatch[1].trim() : 'Produit';
+
+    // Parse marketplace categories from prompt
+    const mpLines: Array<{ id: string; name: string }> = [];
+    const mpSection = prompt.split(/Catégories Marketplace Hub disponibles/i)[1] || '';
+    const mpRegex = /-\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = mpRegex.exec(mpSection)) !== null) {
+      mpLines.push({ name: match[1].trim(), id: match[2].trim() });
+    }
+
+    // Parse storefront categories from prompt
+    const sfLines: Array<{ id: string; name: string }> = [];
+    const sfSection = prompt.split(/Catégories Vitrine Boutique existantes/i)[1] || '';
+    const sfRegex = /(?:-|\└─)\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
+    while ((match = sfRegex.exec(sfSection)) !== null) {
+      sfLines.push({ name: match[1].trim(), id: match[2].trim() });
+    }
+
+    const normTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const titleWords = normTitle.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
+
+    let bestMp = mpLines[0] || { id: 'cat_market_uncategorized', name: 'Non catégorisé' };
+    let bestScore = 0;
+
+    for (const cat of mpLines) {
+      const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const catWords = normCat.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
+      let matchCount = 0;
+      for (const tw of titleWords) {
+        if (catWords.some((cw) => cw === tw || (cw.length >= 4 && tw.length >= 4 && (cw.startsWith(tw) || tw.startsWith(cw))))) {
+          matchCount++;
+        }
+      }
+      const score = matchCount / Math.max(catWords.length, 1);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMp = cat;
+      }
+    }
+
+    const matchedSf = sfLines.find((s) => {
+      const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return normSf === bestMp.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleWords.some((w) => normSf.includes(w));
+    });
+
+    return JSON.stringify({
+      marketplace_category_id: bestMp.id,
+      marketplace_category_name: bestMp.name,
+      storefront_category_name: matchedSf ? matchedSf.name : bestMp.name,
+      storefront_category_id: matchedSf ? matchedSf.id : null,
+      storefront_parent_category_id: null,
+      created_new: !matchedSf,
+      confidence: bestScore > 0 ? 0.9 : 0.65,
+    });
+  }
+
   // If prompt is for page copy / SEO
   if (prompt.includes('seo_title') || prompt.includes('seo_description')) {
     const titleMatch = prompt.match(/Page title\s*:\s*([^.]+)/i) || prompt.match(/Titre\s*:\s*(.+)/i);
