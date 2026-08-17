@@ -135,7 +135,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
 
   const topSellersList = topSellers.slice(0, blockLimit('top_sellers', 8));
   const sponsoredBrands = topSellers.slice(0, blockLimit('sponsored_brands', 3));
-  const lightningDeals = trendingProducts.slice(0, blockLimit('lightning_deals', 8));
+  const lightningLimit = blockLimit('lightning_deals', 8);
+  const discountedProducts = trendingProducts.filter(
+    (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+  );
+  const lightningDeals = (
+    discountedProducts.length >= 3
+      ? discountedProducts.slice(0, lightningLimit)
+      : trendingProducts.slice(0, lightningLimit)
+  );
   const stripCategories = categories.slice(0, blockLimit('category_strip', 10));
   const categoryCards = categories.slice(0, 4);
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
@@ -172,19 +180,11 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
               )}
               <div className="mt-1 flex items-center justify-between gap-2">
                 <div>
-                  <div>
                   <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
                   {Number(product.compare_at_price) > Number(product.price) && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <span className="text-[11px] font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
-                      <span className="rounded bg-[#cc0c39] px-1 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
-                    </div>
-                  )}
-                </div>
-                  {Number(product.compare_at_price) > Number(product.price) && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[11px] font-bold text-gray-400 line-through">{formatPrice(product.compare_at_price!)}</span>
-                      <span className="rounded bg-[#cc0c39] px-1 py-0.2 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                      <span className="rounded bg-[#cc0c39] px-1 py-0.5 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
                     </div>
                   )}
                 </div>
@@ -386,7 +386,15 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                 <StarRating rating={(product as any).average_rating} count={(product as any).review_count} size="xs" theme="amber" className="mt-1" />
               )}
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                <div>
+                  <p className="text-sm font-black text-[#b12704]">{formatPrice(product.price)}</p>
+                  {Number((product as any).compare_at_price) > Number(product.price) && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[11px] font-bold text-gray-400 line-through">{formatPrice((product as any).compare_at_price)}</span>
+                      <span className="rounded bg-[#cc0c39] px-1 py-0.5 text-[9px] font-black text-white">-{Math.round(((Number((product as any).compare_at_price) - Number(product.price)) / Number((product as any).compare_at_price)) * 100)}%</span>
+                    </div>
+                  )}
+                </div>
                 {(marketplaceSettings as any).hub_card_show_add_to_cart !== false && (
                   <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
                 )}
