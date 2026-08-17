@@ -177,6 +177,31 @@ describe('PlatformConfigService section saves', () => {
     expect(updated).toContain('hub_search_sponsored_columns');
     expect(updated).toContain('hub_search_sponsored_count');
   });
+
+  it('allows updating store card display settings in algorithm section update', async () => {
+    const clientQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ updated_at: new Date('2026-08-17T12:00:00.000Z') }] })
+      .mockResolvedValue({ rows: [] });
+    mockTransaction.mockImplementation(async (callback: (client: { query: typeof clientQuery }) => Promise<unknown>) => (
+      callback({ query: clientQuery })
+    ));
+
+    const updated = await platformConfigService.updateSectionSettings(
+      'algorithm',
+      {
+        hub_card_show_store_name: true,
+        hub_card_show_store_verified: true,
+        hub_card_show_store_score: true,
+      },
+      'admin_user_123',
+      '2026-08-17T12:00:00.000Z',
+    );
+
+    expect(updated).toContain('hub_card_show_store_name');
+    expect(updated).toContain('hub_card_show_store_verified');
+    expect(updated).toContain('hub_card_show_store_score');
+  });
 });
 
 

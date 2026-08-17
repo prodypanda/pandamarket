@@ -31,6 +31,7 @@ import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
 import { trackSearchPerformed } from '../../../lib/marketplace-analytics';
 import { ProductImagePlaceholder } from '../../../components/ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../../../components/watermark/MarketplaceWatermark';
+import { StoreInfoBadge } from '../../../components/hub/home-template-shared';
 
 interface SearchProduct {
   id: string;
@@ -49,6 +50,8 @@ interface SearchProduct {
   store_name?: string;
   store_subdomain?: string | null;
   store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   average_rating?: number;
   review_count?: number;
 }
@@ -78,6 +81,9 @@ interface MarketplaceSettings {
   marketplace_logo_dark_url?: string;
   marketplace_theme?: 'panda' | 'aliexpress' | 'aliexpress2';
   hub_grid_columns?: number;
+  hub_card_show_store_name?: boolean;
+  hub_card_show_store_verified?: boolean;
+  hub_card_show_store_score?: boolean;
   hub_search_grid_columns?: number;
   hub_search_items_per_page?: number;
   hub_search_sponsored_enabled?: boolean;
@@ -904,17 +910,11 @@ function SearchContent() {
                             {product.title}
                           </h3>
 
-                          {product.store_name && (
-                            <p className="text-[11px] text-slate-400 mb-1.5 truncate flex items-center gap-1">
-                              <Store className="h-3 w-3 shrink-0" />
-                              <span className="truncate">{product.store_name}</span>
-                              {product.store_seller_type && (
-                                <span className="text-[10px] opacity-70">
-                                  · {getSellerTypeLabel(product.store_seller_type, t)}
-                                </span>
-                              )}
-                            </p>
-                          )}
+                          <StoreInfoBadge
+                            product={product as any}
+                            marketplaceSettings={marketplaceSettings}
+                            className="mb-1.5"
+                          />
 
                           <div className="mb-2 flex flex-wrap items-center gap-1">
                             {product.type && (

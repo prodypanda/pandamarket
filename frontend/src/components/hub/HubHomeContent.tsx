@@ -10,7 +10,7 @@ import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
-import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton } from './home-template-shared';
+import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton, StoreInfoBadge } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
@@ -25,6 +25,9 @@ interface Product {
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   images?: { url: string }[];
   thumbnail?: string | null;
   category?: string;
@@ -155,9 +158,13 @@ function ProductCard({
         />
       </div>
       <div className="p-4">
-        {product.store_name && (
-          <p className="mb-1 truncate text-xs font-semibold text-[#16C784]">{product.store_name}</p>
-        )}
+        <StoreInfoBadge
+          product={product as any}
+          marketplaceSettings={marketplaceSettings as any}
+          className="mb-2"
+          textColor="text-[#16C784]"
+          storeIconColor="text-[#16C784]"
+        />
         <h3 className="mb-3 line-clamp-2 min-h-[40px] font-bold text-gray-900 dark:text-white">{product.title}</h3>
         {showRating && (
           <StarRating rating={product.average_rating} count={product.review_count} size="xs" theme="emerald" className="mb-2" />

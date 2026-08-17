@@ -28,6 +28,7 @@ import {
   Utensils,
   Watch,
 } from 'lucide-react';
+import { StoreInfoBadge } from '../../../../components/hub/home-template-shared';
 import { getHubProductHref } from '../../../../lib/product-links';
 import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { isAliExpressTheme } from '../../../../lib/marketplace-theme';
@@ -53,6 +54,9 @@ interface Product {
   store_id: string;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
 }
 
 interface CategoryData {
@@ -530,12 +534,13 @@ export default async function CategoryPage({
                         </div>
                       )}
                     </div>
-                    {product.store_name && (
-                      <p className="text-[11px] font-bold text-slate-500 mt-1.5 flex items-center gap-1 truncate">
-                        <Store className="h-3 w-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{product.store_name}</span>
-                      </p>
-                    )}
+                    <StoreInfoBadge
+                      product={product as any}
+                      marketplaceSettings={marketplaceSettings}
+                      className="mt-2 pt-1.5 border-t border-slate-100 dark:border-white/5"
+                      textColor="text-slate-500"
+                      storeIconColor="text-slate-400"
+                    />
                   </div>
                 </Link>
               );

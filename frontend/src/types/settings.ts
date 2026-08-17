@@ -58,6 +58,9 @@ export interface PlatformSettings {
   hub_card_show_rating: boolean;
   hub_card_show_add_to_cart: boolean;
   hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
+  hub_card_show_store_name: boolean;
+  hub_card_show_store_verified: boolean;
+  hub_card_show_store_score: boolean;
   hub_grid_columns: number;
   hub_grid_items_per_load: number;
   hub_search_grid_columns: number;
@@ -308,6 +311,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   hub_card_show_rating: true,
   hub_card_show_add_to_cart: true,
   hub_card_add_to_cart_style: 'icon',
+  hub_card_show_store_name: true,
+  hub_card_show_store_verified: true,
+  hub_card_show_store_score: true,
   hub_grid_columns: 5,
   hub_grid_items_per_load: 12,
   hub_search_grid_columns: 5,

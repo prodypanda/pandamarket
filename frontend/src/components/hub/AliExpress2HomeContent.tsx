@@ -8,7 +8,7 @@ import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { HubProductPagination } from './HubProductPagination';
 import { useLocale } from '../../contexts/LocaleContext';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
-import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
+import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale, StoreInfoBadge } from './home-template-shared';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 import { useMemo, useCallback } from 'react';
@@ -20,6 +20,9 @@ interface Product {
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   images?: { url: string }[];
   thumbnail?: string | null;
   category?: string;
@@ -133,11 +136,13 @@ function SuperDealCard({ product, currency, rank, marketplaceSettings }: { produ
             )}
           </div>
         </div>
-        {product.store_name && (
-          <p className="mt-2 flex items-center gap-1.5 truncate text-[11px] font-medium text-gray-500 dark:text-white/30">
-            <Store className="h-3 w-3" /> {product.store_name}
-          </p>
-        )}
+        <StoreInfoBadge
+          product={product as any}
+          marketplaceSettings={marketplaceSettings}
+          className="mt-2.5 pt-2 border-t border-gray-100 dark:border-white/5"
+          textColor="text-gray-500 dark:text-white/40"
+          storeIconColor="text-gray-400 dark:text-white/30"
+        />
       </div>
     </Link>
   );

@@ -3,8 +3,9 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { History, Star, ShoppingCart, Check } from 'lucide-react';
+import { History, Star, ShoppingCart, Check, Store, ShieldCheck } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import type { MarketplaceSettings } from '@/lib/marketplace-settings';
 
 export interface HomeProduct {
   id: string;
@@ -16,10 +17,70 @@ export interface HomeProduct {
   review_count?: number | string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   images?: { url: string }[];
   thumbnail?: string | null;
   category?: string;
   marketplace_category_slug?: string | null;
+}
+
+export function StoreInfoBadge({
+  product,
+  marketplaceSettings,
+  className = '',
+  textColor,
+  storeIconColor = 'text-slate-400',
+}: {
+  product: HomeProduct;
+  marketplaceSettings?: MarketplaceSettings | null;
+  className?: string;
+  textColor?: string;
+  storeIconColor?: string;
+}) {
+  const showStoreName = marketplaceSettings?.hub_card_show_store_name !== false;
+  const showVerified = marketplaceSettings?.hub_card_show_store_verified !== false;
+  const showScore = marketplaceSettings?.hub_card_show_store_score !== false;
+
+  if (!showStoreName && !showVerified && !showScore) return null;
+  if (!product.store_name && !product.store_is_verified && !product.store_score) return null;
+
+  const isVerified = Boolean(product.store_is_verified);
+  const scoreNum = product.store_score ? Number(product.store_score) : product.average_rating ? Number(product.average_rating) : 4.8;
+  const formattedScore = scoreNum > 0 ? scoreNum.toFixed(1) : null;
+
+  return (
+    <div className={`flex items-center justify-between gap-1.5 min-w-0 ${className}`}>
+      {showStoreName && product.store_name ? (
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          <Store className={`h-3 w-3 shrink-0 ${storeIconColor}`} />
+          <span className={`truncate text-xs font-semibold ${textColor || 'text-slate-600 dark:text-slate-300'}`}>
+            {product.store_name}
+          </span>
+          {showVerified && isVerified && (
+            <span title="Boutique Vérifiée" className="shrink-0 inline-flex items-center">
+              <ShieldCheck className="h-3.5 w-3.5 text-sky-500 fill-sky-500/15" />
+            </span>
+          )}
+        </div>
+      ) : showVerified && isVerified ? (
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300">
+            <ShieldCheck className="h-3 w-3 text-sky-500 fill-sky-500/15" />
+            <span>Vérifié</span>
+          </span>
+        </div>
+      ) : <div />}
+
+      {showScore && formattedScore && (
+        <div className="shrink-0 flex items-center gap-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-200/60">
+          <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+          <span>{formattedScore}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export interface HomeCategory {

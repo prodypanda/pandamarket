@@ -144,7 +144,11 @@ router.get(
     const limitPlaceholder = `$${params.length}`;
 
     const baseRes = await query<any>(
-      `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+      `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain,
+              COALESCE(s.is_verified, false) AS store_is_verified,
+              s.seller_type AS store_seller_type,
+              COALESCE(pr.average_rating, 4.8)::real AS store_score,
+              p.title, p.slug, p.price, p.compare_at_price,
               p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
               COALESCE(pr.average_rating, 0)::real AS average_rating, COALESCE(pr.review_count, 0)::int AS review_count,
               COALESCE(p.thumbnail, (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1)) AS thumbnail,

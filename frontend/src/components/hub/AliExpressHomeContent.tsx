@@ -9,7 +9,7 @@ import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { getMarketplaceThemeClasses, resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { useLocale } from '../../contexts/LocaleContext';
-import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale } from './home-template-shared';
+import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale, StoreInfoBadge } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
@@ -24,6 +24,9 @@ interface Product {
   slug?: string | null;
   store_name?: string;
   store_subdomain?: string | null;
+  store_seller_type?: string | null;
+  store_is_verified?: boolean | null;
+  store_score?: number | string | null;
   images?: { url: string }[];
   thumbnail?: string | null;
   category?: string;
@@ -122,7 +125,13 @@ function DealCard({ product, currency, themeClasses, isAliExpress2, marketplaceS
             <QuickAddToCartButton product={product} style={marketplaceSettings?.hub_card_add_to_cart_style || 'icon'} />
           )}
         </div>
-        {product.store_name && <p className="mt-1 truncate text-xs font-semibold text-gray-400">{product.store_name}</p>}
+        <StoreInfoBadge
+          product={product as any}
+          marketplaceSettings={marketplaceSettings}
+          className="mt-2 pt-1.5 border-t border-gray-100 dark:border-white/5"
+          textColor="text-gray-500"
+          storeIconColor="text-gray-400"
+        />
       </div>
     </Link>
   );

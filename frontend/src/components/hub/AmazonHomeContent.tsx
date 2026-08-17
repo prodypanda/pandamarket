@@ -33,6 +33,7 @@ import {
   getProductImage,
   isRtlLocale,
   useCountdown,
+  StoreInfoBadge,
   type HomeCategory,
   type HomeProduct,
 } from './home-template-shared';
@@ -197,6 +198,13 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                   <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
                 )}
               </div>
+              <StoreInfoBadge
+                product={product as any}
+                marketplaceSettings={marketplaceSettings}
+                className="mt-2 pt-1.5 border-t border-gray-100 dark:border-white/5"
+                textColor="text-gray-500"
+                storeIconColor="text-gray-400"
+              />
             </Link>
           ))}
           {lightningDeals.length === 0 && <p className="text-sm text-gray-400">No deals available yet.</p>}
@@ -410,6 +418,13 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
                   <QuickAddToCartButton product={product as any} style={(marketplaceSettings as any).hub_card_add_to_cart_style || 'icon'} accentColor="#b12704" />
                 )}
               </div>
+              <StoreInfoBadge
+                product={product as any}
+                marketplaceSettings={marketplaceSettings}
+                className="mt-2 pt-1.5 border-t border-gray-100 dark:border-white/5"
+                textColor="text-gray-500"
+                storeIconColor="text-gray-400"
+              />
             </Link>
           )}
         />

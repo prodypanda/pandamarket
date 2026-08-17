@@ -85,6 +85,9 @@ interface PlatformSettings {
   hub_card_show_rating: boolean;
   hub_card_show_add_to_cart: boolean;
   hub_card_add_to_cart_style: 'icon' | 'compact' | 'full';
+  hub_card_show_store_name: boolean;
+  hub_card_show_store_verified: boolean;
+  hub_card_show_store_score: boolean;
   hub_grid_columns: number;
   hub_grid_items_per_load: number;
   hub_search_grid_columns: number;
@@ -335,6 +338,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   hub_card_show_rating: true,
   hub_card_show_add_to_cart: true,
   hub_card_add_to_cart_style: 'icon',
+  hub_card_show_store_name: true,
+  hub_card_show_store_verified: true,
+  hub_card_show_store_score: true,
   hub_grid_columns: 5,
   hub_grid_items_per_load: 12,
   hub_search_grid_columns: 5,
@@ -743,6 +749,9 @@ const BOOLEAN_SETTING_KEYS = [
   'hub_feed_ab_testing_enabled',
   'hub_card_show_rating',
   'hub_card_show_add_to_cart',
+  'hub_card_show_store_name',
+  'hub_card_show_store_verified',
+  'hub_card_show_store_score',
   'hub_hero_show_category_sidebar',
   'hub_hero_show_carousel',
   'hub_hero_show_seller_rail',
@@ -825,6 +834,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_hero_seller_rail_cta_label',
     'hub_hero_seller_rail_cta_url',
     'hub_hero_seller_rail_badge_text',
+    'hub_card_show_store_name',
+    'hub_card_show_store_verified',
+    'hub_card_show_store_score',
     'hub_search_grid_columns',
     'hub_search_items_per_page',
     'hub_search_sponsored_enabled',
@@ -853,6 +865,9 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'hub_card_show_rating',
     'hub_card_show_add_to_cart',
     'hub_card_add_to_cart_style',
+    'hub_card_show_store_name',
+    'hub_card_show_store_verified',
+    'hub_card_show_store_score',
     'hub_grid_columns',
     'hub_grid_items_per_load',
     'hub_search_grid_columns',
@@ -1032,6 +1047,9 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'hub_card_show_rating', tab: 'algorithm', label: 'Étoiles d\'Avis sur Cartes Produit', description: 'Afficher les étoiles de notation et le nombre d\'avis sur les cartes produit du Hub', keywords: ['etoiles', 'stars', 'rating', 'avis', 'review', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
   { key: 'hub_card_show_add_to_cart', tab: 'algorithm', label: 'Bouton Panier sur Cartes Produit', description: 'Afficher le bouton "Ajouter au panier" sur les cartes produit du Hub', keywords: ['panier', 'cart', 'bouton', 'button', 'ajouter', 'add', 'carte', 'card', 'produit', 'hub', 'algorithm'] },
   { key: 'hub_card_add_to_cart_style', tab: 'algorithm', label: 'Style du Bouton Panier', description: 'Style visuel du bouton panier: Icône seule, Compact ou Pleine largeur', keywords: ['style', 'panier', 'cart', 'bouton', 'icone', 'icon', 'compact', 'full', 'largeur', 'algorithm'] },
+  { key: 'hub_card_show_store_name', tab: 'algorithm', label: 'Nom de Boutique sur Cartes Produit', description: 'Afficher le nom de la boutique avec icône sur toutes les cartes produits du Hub', keywords: ['store', 'boutique', 'vendeur', 'nom', 'carte', 'card', 'hub'] },
+  { key: 'hub_card_show_store_verified', tab: 'algorithm', label: 'Badge Vérifié sur Cartes Produit', description: 'Afficher le badge de boutique vérifiée sur les cartes produits du Hub', keywords: ['verifie', 'verified', 'badge', 'bouclier', 'carte', 'card', 'hub'] },
+  { key: 'hub_card_show_store_score', tab: 'algorithm', label: 'Score Boutique sur Cartes Produit', description: 'Afficher le score et la note de la boutique sur les cartes produits du Hub', keywords: ['score', 'note', 'rating', 'boutique', 'carte', 'card', 'hub'] },
   { key: 'hub_grid_columns', tab: 'algorithm', label: 'Colonnes de la Grille Produit', description: 'Nombre de colonnes dans la grille de produits du Hub (desktop)', keywords: ['colonnes', 'columns', 'grille', 'grid', 'produit', 'hub', 'layout', 'algorithm'] },
   { key: 'hub_grid_items_per_load', tab: 'algorithm', label: 'Produits par Chargement', description: 'Nombre de produits chargés à chaque scroll infini ou clic Load More', keywords: ['produits', 'items', 'chargement', 'load', 'scroll', 'page', 'infinite', 'per', 'algorithm'] },
   { key: 'hub_search_grid_columns', tab: 'marketplace', label: 'Colonnes Grille Résultats de Recherche', description: 'Nombre de colonnes de produits affichées par ligne sur la page de recherche (/hub/search)', keywords: ['search', 'recherche', 'colonnes', 'columns', 'grille', 'grid', 'produits', 'layout'] },
@@ -4124,6 +4142,63 @@ export default function SuperAdminSettingsPage() {
                 type="checkbox"
                 checked={settings.hub_card_show_rating !== false}
                 onChange={(e) => updateSetting('hub_card_show_rating', e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Store Name Toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+              <div>
+                <label htmlFor="hub_card_show_store_name" className="block text-sm font-bold text-slate-800">
+                  🏪 Nom de la Boutique (Store Name)
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Affiche le nom de la boutique avec icône sur chaque carte produit de la page d&apos;accueil du Hub
+                </p>
+              </div>
+              <input
+                id="hub_card_show_store_name"
+                type="checkbox"
+                checked={settings.hub_card_show_store_name !== false}
+                onChange={(e) => updateSetting('hub_card_show_store_name', e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Store Verified Badge Toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+              <div>
+                <label htmlFor="hub_card_show_store_verified" className="block text-sm font-bold text-slate-800">
+                  🛡️ Badge Boutique Vérifiée (Verified Store Badge)
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Affiche le badge &quot;Vérifié&quot; avec bouclier bleu si la boutique du vendeur a été vérifiée par la plateforme
+                </p>
+              </div>
+              <input
+                id="hub_card_show_store_verified"
+                type="checkbox"
+                checked={settings.hub_card_show_store_verified !== false}
+                onChange={(e) => updateSetting('hub_card_show_store_verified', e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Store Score / Rating Toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3">
+              <div>
+                <label htmlFor="hub_card_show_store_score" className="block text-sm font-bold text-slate-800">
+                  ⭐ Score & Note de la Boutique (Store Score)
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Affiche la note / score de confiance de la boutique vendeuse sur les cartes produit du Hub
+                </p>
+              </div>
+              <input
+                id="hub_card_show_store_score"
+                type="checkbox"
+                checked={settings.hub_card_show_store_score !== false}
+                onChange={(e) => updateSetting('hub_card_show_store_score', e.target.checked)}
                 className="h-5 w-5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
             </div>

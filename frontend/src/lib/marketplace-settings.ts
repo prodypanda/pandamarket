@@ -92,6 +92,9 @@ export interface MarketplaceSettings {
   hub_card_show_rating?: boolean;
   hub_card_show_add_to_cart?: boolean;
   hub_card_add_to_cart_style?: 'icon_only' | 'text_icon' | 'rounded_pill' | 'minimal' | string;
+  hub_card_show_store_name?: boolean;
+  hub_card_show_store_verified?: boolean;
+  hub_card_show_store_score?: boolean;
   hub_grid_columns?: number;
   hub_grid_items_per_load?: number;
   hub_search_grid_columns?: number;

@@ -52,6 +52,7 @@ import {
   getProductImage,
   isRtlLocale,
   useCountdown,
+  StoreInfoBadge,
   type HomeCategory,
   type HomeProduct,
 } from './home-template-shared';
@@ -454,6 +455,13 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                   <QuickAddToCartButton product={product} style={marketplaceSettings.hub_card_add_to_cart_style || 'icon'} accentColor={ORANGE} />
                 )}
               </div>
+              <StoreInfoBadge
+                product={product as any}
+                marketplaceSettings={marketplaceSettings}
+                className="mt-2 pt-1.5 border-t border-gray-100 dark:border-white/5"
+                textColor="text-gray-500"
+                storeIconColor="text-gray-400"
+              />
             </Link>
           ))}
           {dealProducts.length === 0 && <p className="col-span-full text-sm text-gray-400">{i18n.noDeals}</p>}
@@ -519,6 +527,13 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
                   <QuickAddToCartButton product={product} style={marketplaceSettings.hub_card_add_to_cart_style || 'icon'} accentColor={ORANGE} />
                 )}
               </div>
+              <StoreInfoBadge
+                product={product as any}
+                marketplaceSettings={marketplaceSettings}
+                className="mt-2 pt-1.5 border-t border-gray-100 dark:border-white/5"
+                textColor="text-gray-500"
+                storeIconColor="text-gray-400"
+              />
             </div>
           </Link>
         )}
