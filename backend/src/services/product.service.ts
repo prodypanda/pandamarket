@@ -1273,12 +1273,17 @@ export class ProductService {
     inStockOnly?: boolean;
     tag?: string;
     q?: string;
+    hasDiscount?: boolean;
   } = {}) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
     const offset = (page - 1) * limit;
     const params: unknown[] = [ProductStatus.Published];
     let where = "p.status = $1 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true";
+
+    if (opts.hasDiscount) {
+      where += ' AND (p.compare_at_price IS NOT NULL AND p.compare_at_price > p.price)';
+    }
 
     if (opts.category) {
       const subtreeIds = await categoryService.getCategorySubtreeIds(opts.category);

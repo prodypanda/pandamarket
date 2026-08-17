@@ -156,6 +156,7 @@ router.get(
     const inStockOnly = req.query.in_stock === 'true' || req.query.in_stock === '1';
     const tag = req.query.tag as string;
     const q = (req.query.q || req.query.search) as string;
+    const hasDiscount = req.query.discounted === 'true' || req.query.has_discount === 'true' || req.query.discounted === '1';
     const sellerType = Object.values(SellerType).includes(req.query.seller_type as SellerType)
       ? (req.query.seller_type as SellerType)
       : undefined;
@@ -176,6 +177,7 @@ router.get(
       inStockOnly,
       tag,
       q,
+      hasDiscount,
     });
     res.status(200).json(result);
   }),

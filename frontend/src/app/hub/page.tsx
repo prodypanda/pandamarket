@@ -144,6 +144,39 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
       images: p.images || (p.image_url ? [{ url: p.image_url }] : []),
     }));
 
+    // Ensure any active discounted products in the marketplace are always included
+    try {
+      const dealsRes = await fetch(`${backendUrl}/api/pd/products/public?discounted=true&limit=20`, {
+        cache: 'no-store',
+      });
+      if (dealsRes.ok) {
+        const dealsData = await dealsRes.json();
+        const dealsList: any[] = dealsData.products || dealsData.data || [];
+        const existingIds = new Set(products.map((p) => p.id));
+        for (const d of dealsList) {
+          if (!existingIds.has(d.id)) {
+            products.unshift({
+              id: d.id,
+              title: d.title,
+              slug: d.slug,
+              price: d.price,
+              compare_at_price: d.compare_at_price,
+              average_rating: d.average_rating !== undefined && d.average_rating !== null ? Number(d.average_rating) : undefined,
+              review_count: d.review_count !== undefined && d.review_count !== null ? Number(d.review_count) : undefined,
+              store_name: d.store_name,
+              store_subdomain: d.store_subdomain,
+              category: d.category,
+              marketplace_category_slug: d.marketplace_category_slug,
+              thumbnail: d.thumbnail || d.image_url,
+              images: d.images || (d.image_url ? [{ url: d.image_url }] : []),
+            });
+          }
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+
     return {
       products,
       totalPages: data.meta?.total_pages || 1,

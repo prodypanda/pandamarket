@@ -144,11 +144,11 @@ router.get(
     const limitPlaceholder = `$${params.length}`;
 
     const baseRes = await query<any>(
-      `SELECT p.id, p.store_id, s.name AS store_name, s.slug AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
+      `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain, p.title, p.slug, p.price, p.compare_at_price,
               p.interest_tags, p.created_at, p.category, mc.slug AS marketplace_category_slug,
               COALESCE(pr.average_rating, 0)::real AS average_rating, COALESCE(pr.review_count, 0)::int AS review_count,
-              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS thumbnail,
-              (SELECT image_url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+              COALESCE(p.thumbnail, (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1)) AS thumbnail,
+              COALESCE(p.thumbnail, (SELECT url FROM pd_product_image WHERE product_id = p.id ORDER BY position ASC LIMIT 1)) AS image_url
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
