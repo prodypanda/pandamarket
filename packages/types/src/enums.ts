@@ -194,6 +194,7 @@ export enum AiJobType {
   SeoGeneration = 'seo_generation',
   PageCopy = 'page_copy',
   ProductDescription = 'product_description',
+  CategoryClassification = 'category_classification',
 }
 
 export enum AiJobStatus {

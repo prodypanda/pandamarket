@@ -569,6 +569,10 @@ export default function ProductsPage() {
   const hierarchicalMarketplaceCategories = useMemo(() => buildHierarchicalCategoryList(marketplaceCategories), [marketplaceCategories]);
   const hierarchicalStorefrontCategories = useMemo(() => buildHierarchicalCategoryList(storefrontCategories), [storefrontCategories]);
 
+  // AI Category Picker
+  const [aiCategoryPicking, setAiCategoryPicking] = useState(false);
+  const [aiCategoryResult, setAiCategoryResult] = useState<{ message: string; isNew: boolean } | null>(null);
+
   // Media Picker
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
@@ -1409,6 +1413,68 @@ export default function ProductsPage() {
       setError(err instanceof Error ? err.message : "Échec d'enrichissement de la description");
     } finally {
       setEnhancingDescription(false);
+    }
+  };
+
+  const handleAiCategoryPick = async () => {
+    const title = form.title.trim();
+    if (!title) {
+      setError("Saisissez un titre de produit avant de détecter les catégories.");
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setAiCategoryPicking(true);
+    setAiCategoryResult(null);
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/category-pick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title,
+          description: form.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) || undefined,
+          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, "Échec de classification IA des catégories"));
+      }
+      const data = await res.json();
+
+      // Auto-select marketplace category
+      if (data.marketplace_category_id) {
+        setForm((c) => ({ ...c, marketplace_category_id: data.marketplace_category_id }));
+      }
+
+      // Auto-select or auto-create storefront category
+      if (data.storefront_category_id) {
+        if (data.created_new_storefront_category) {
+          // Prepend the newly created category to the local list
+          setStorefrontCategories((cats) => [
+            { id: data.storefront_category_id, name: data.storefront_category_name, slug: data.storefront_category_name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+            ...cats,
+          ]);
+        }
+        setForm((c) => ({ ...c, storefront_category_id: data.storefront_category_id }));
+      }
+
+      const hubLabel = data.marketplace_category_name ? `Hub → ${data.marketplace_category_name}` : '';
+      const sfLabel = data.storefront_category_name ? `Vitrine → ${data.storefront_category_name}` : '';
+      const labels = [hubLabel, sfLabel].filter(Boolean).join(' • ');
+      const newMsg = data.created_new_storefront_category
+        ? `✨ Nouvelle catégorie vitrine "${data.storefront_category_name}" créée et sélectionnée`
+        : '';
+
+      setAiCategoryResult({
+        message: `${labels}${newMsg ? ` — ${newMsg}` : ''}`,
+        isNew: Boolean(data.created_new_storefront_category),
+      });
+      setSuccess(`Catégories détectées par l'IA (${data.tokens_consumed || 0} jetons)`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de classification IA");
+    } finally {
+      setAiCategoryPicking(false);
     }
   };
 
@@ -4032,6 +4098,46 @@ export default function ProductsPage() {
                 {/* TAB 3: TAXONOMY & CATEGORIES */}
                 {drawerTab === 'taxonomy' && (
                   <div className="space-y-5 animate-in fade-in duration-150">
+                    {/* AI Auto-Classification Action Bar */}
+                    <div className="p-3.5 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-r from-amber-50/80 to-orange-50/60 dark:from-amber-900/20 dark:to-orange-900/10 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-amber-900 dark:text-amber-200">Détection Automatique IA</p>
+                          <p className="text-[10px] text-amber-700/70 dark:text-amber-400/60">Analyse le titre et la description pour sélectionner les catégories optimales.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAiCategoryPick}
+                        disabled={aiCategoryPicking || !form.title.trim()}
+                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white text-xs font-black shadow-sm transition-all flex items-center gap-2 shrink-0"
+                      >
+                        {aiCategoryPicking ? (
+                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Classification en cours...</>
+                        ) : (
+                          <><Zap className="w-3.5 h-3.5" /> Détecter et Classer avec l&apos;IA</>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* AI Category Result Badge */}
+                    {aiCategoryResult && (
+                      <div className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 animate-in slide-in-from-top-2 duration-200 ${
+                        aiCategoryResult.isNew
+                          ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/80 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300'
+                          : 'border-blue-200 dark:border-blue-800/50 bg-blue-50/80 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                      }`}>
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="flex-1">{aiCategoryResult.message}</span>
+                        <button type="button" onClick={() => setAiCategoryResult(null)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 shrink-0">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <CategorySearchableSelect

@@ -39,6 +39,7 @@ import {
   Trash2,
   TrendingUp,
   WalletCards,
+  FolderTree,
   Wand2,
   X,
   XCircle,
@@ -349,6 +350,42 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 }`,
     variables: ['{page_title}', '{language}'],
   },
+  {
+    prompt_key: 'category_classification',
+    title: 'Classification Automatique de Catégories IA',
+    tag: 'NLP & Taxonomie',
+    description: "Analyse le titre et la description pour sélectionner la catégorie Hub optimale et créer/assigner la catégorie vitrine boutique.",
+    system_prompt: `Vous êtes un Expert en Classification Taxonomique E-commerce de PandaMarket.
+Votre rôle est d'analyser les données d'un produit (titre, description) et de déterminer :
+1. La catégorie Marketplace Hub la plus précise parmi les catégories disponibles.
+2. La catégorie Vitrine Boutique la plus appropriée pour le vendeur.
+
+Règles :
+- Choisissez toujours la sous-catégorie la plus spécifique possible.
+- Si aucune catégorie vitrine existante ne correspond, proposez un nouveau nom court et pertinent.
+- Le champ "created_new" doit être true uniquement si la catégorie vitrine proposée n'existe pas dans la liste du vendeur.`,
+    default_prompt: `Analysez le produit suivant et déterminez ses catégories optimales :
+
+📦 PRODUIT :
+- Titre : {title}
+- Description : {description}
+- Langue : {language}
+
+🌐 Catégories Marketplace Hub disponibles :
+{marketplace_categories}
+
+🏪 Catégories Vitrine Boutique du vendeur :
+{storefront_categories}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "marketplace_category_name": "Nom exact de la catégorie marketplace",
+  "storefront_category_name": "Nom de la catégorie vitrine (existante ou nouvelle)",
+  "created_new": false,
+  "confidence": 0.95
+}`,
+    variables: ['{title}', '{description}', '{marketplace_categories}', '{storefront_categories}', '{language}'],
+  },
 ];
 
 const PURPOSE_MODULES = [
@@ -407,6 +444,13 @@ const PURPOSE_MODULES = [
     label: 'Détourage Intelligent',
     badge: 'Segmentation & Masque',
     desc: 'Détourage précis sans halo ni artefact pour intégration studio.',
+  },
+  {
+    key: 'category_classification',
+    icon: FolderTree,
+    label: 'Classification Automatique de Catégories (NLP & Taxonomie)',
+    badge: 'Classification & Taxonomie Multi-Niveaux',
+    desc: "Analyse le titre et la description pour sélectionner la catégorie Hub optimale et créer/assigner la catégorie vitrine boutique.",
   },
 ];
 

@@ -337,6 +337,7 @@ export class AiConfigService {
     );
     if (rows[0]) return rows[0].tokens_required;
     if (type === AiJobType.ImageCompression) return 1;
+    if (type === AiJobType.CategoryClassification) return 2;
     return 2;
   }
 
@@ -546,7 +547,7 @@ export class AiConfigService {
   }
 
   async setPurposeRouting(purpose: string, providerConfigId: string | null) {
-    const validPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const validPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal', 'category_classification'];
     if (!validPurposes.includes(purpose)) {
       throw new PdValidationError(`Invalid AI purpose: ${purpose}`);
     }

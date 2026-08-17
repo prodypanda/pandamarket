@@ -13,6 +13,7 @@ import type { AiProvider } from '../services/ai-config.service';
 import { platformConfigService } from '../services/platform-config.service';
 
 import { categoryService, MarketplaceCategoryRow } from '../services/category.service';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -74,6 +75,12 @@ const productDescriptionSchema = z.object({
 
 const buyTokenPackSchema = z.object({
   pack_id: z.string().min(1).max(64),
+});
+
+const categoryPickSchema = z.object({
+  title: z.string().trim().min(1, 'title is required').max(300),
+  description: z.string().trim().max(10000).optional(),
+  language: z.enum(['fr', 'ar', 'en']).optional(),
 });
 
 const aiProviderSchema = z.object({
@@ -565,6 +572,197 @@ RÉPONDEZ STRICTEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Smart product fill failed';
+      await aiService.markFailed(job.id, message);
+      throw err;
+    }
+  }),
+);
+
+// Vendor: AI Category Classification & Auto-Pick
+router.post(
+  '/category-pick',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(categoryPickSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_ai_seo');
+
+    const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
+    const langName = { fr: 'French', ar: 'Arabic', en: 'English' }[language];
+    const title = req.body.title;
+    const description = req.body.description || '';
+
+    // Load marketplace categories tree
+    let categoriesContext = '';
+    let flatCategories: MarketplaceCategoryRow[] = [];
+    try {
+      flatCategories = await categoryService.listPublicMarketplaceCategories({ locale: language });
+      const catTree = await categoryService.listMarketplaceCategories({ tree: true, locale: language });
+      categoriesContext = catTree.map((c: MarketplaceCategoryRow) => {
+        const children = c.children?.map((sub: MarketplaceCategoryRow) => sub.name).join(', ') || '';
+        return children ? `${c.name} > ${children}` : c.name;
+      }).join('\n');
+    } catch {
+      categoriesContext = 'Mode, Électronique, Maison, Beauté, Sport, Artisanat';
+    }
+
+    // Load storefront categories for this seller
+    let storefrontCategories: Array<{ id: string; name: string; slug: string }> = [];
+    try {
+      const sfCats = await categoryService.listStorefrontCategories(storeId);
+      storefrontCategories = sfCats.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
+    } catch {}
+
+    const storefrontCatNames = storefrontCategories.length > 0
+      ? storefrontCategories.map((c) => c.name).join(', ')
+      : 'Aucune catégorie existante';
+
+    const job = await aiService.startInlineJob({
+      type: AiJobType.CategoryClassification,
+      store_id: storeId,
+      user_id: req.user!.id,
+      input_meta: { title, description, language },
+    });
+
+    try {
+      const cost = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
+      await creditsService.assertEnough(storeId, cost);
+
+      let template = null;
+      try {
+        template = await aiConfigService.getPromptTemplate('category_classification');
+      } catch {}
+
+      let prompt = '';
+      if (template) {
+        prompt = `${template.system_prompt}\n\n${template.default_prompt}`
+          .replace(/{title}/g, title)
+          .replace(/{description}/g, description || 'Non fournie')
+          .replace(/{marketplace_categories}/g, categoriesContext)
+          .replace(/{storefront_categories}/g, storefrontCatNames)
+          .replace(/{language}/g, langName);
+      } else {
+        prompt = `Vous êtes un Expert en Classification Taxonomique E-commerce. Analysez le produit suivant et déterminez la catégorie marketplace la plus précise ET la catégorie vitrine boutique la plus appropriée.
+
+Produit à classifier :
+- Titre : ${title}
+- Description : ${description || 'Non fournie'}
+- Langue : ${langName}
+
+Catégories Marketplace Hub disponibles (choisissez la plus précise, y compris sous-catégories) :
+${categoriesContext}
+
+Catégories Vitrine Boutique existantes du vendeur :
+${storefrontCatNames}
+
+RÈGLES :
+1. Pour "marketplace_category_name", choisissez le NOM EXACT d'une catégorie ou sous-catégorie de la liste ci-dessus. Privilégiez la sous-catégorie la plus spécifique.
+2. Pour "storefront_category_name", soit choisissez une catégorie existante de la liste du vendeur si elle correspond bien, soit proposez un nouveau nom court et pertinent.
+3. Pour "created_new", indiquez true si vous proposez une nouvelle catégorie vitrine (non existante dans la liste du vendeur).
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+{
+  "marketplace_category_name": "Nom exact de la catégorie marketplace",
+  "storefront_category_name": "Nom de la catégorie vitrine (existante ou nouvelle)",
+  "created_new": false,
+  "confidence": 0.95
+}`;
+      }
+
+      const result = await aiConfigService.generateTextForPurpose('category_classification', prompt, storeId);
+
+      // Parse AI response
+      let parsed: { marketplace_category_name: string; storefront_category_name: string; created_new: boolean; confidence: number };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result.text);
+      } catch {
+        parsed = {
+          marketplace_category_name: 'Général',
+          storefront_category_name: title.split(' ').slice(0, 2).join(' '),
+          created_new: true,
+          confidence: 0.3,
+        };
+      }
+
+      // Match marketplace category by name (case-insensitive, partial match)
+      let marketplaceCategoryId = '';
+      let marketplaceCategoryName = parsed.marketplace_category_name || 'Général';
+      const normalizedTarget = marketplaceCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      let bestMatch: { id: string; name: string; score: number } | null = null;
+
+      for (const cat of flatCategories) {
+        const normalizedCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (normalizedCat === normalizedTarget) {
+          bestMatch = { id: cat.id, name: cat.name, score: 1 };
+          break;
+        }
+        if (normalizedCat.includes(normalizedTarget) || normalizedTarget.includes(normalizedCat)) {
+          const score = normalizedCat.length / normalizedTarget.length;
+          if (!bestMatch || score > bestMatch.score) {
+            bestMatch = { id: cat.id, name: cat.name, score: Math.min(score, 0.95) };
+          }
+        }
+      }
+
+      if (bestMatch) {
+        marketplaceCategoryId = bestMatch.id;
+        marketplaceCategoryName = bestMatch.name;
+      }
+
+      // Match or create storefront category
+      let storefrontCategoryId = '';
+      let storefrontCategoryName = parsed.storefront_category_name || 'Général';
+      let createdNewStorefrontCategory = false;
+
+      const normalizedSfTarget = storefrontCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const sfMatch = storefrontCategories.find((c) => {
+        const normalizedC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return normalizedC === normalizedSfTarget || normalizedC.includes(normalizedSfTarget) || normalizedSfTarget.includes(normalizedC);
+      });
+
+      if (sfMatch) {
+        storefrontCategoryId = sfMatch.id;
+        storefrontCategoryName = sfMatch.name;
+      } else {
+        // Auto-create the storefront category
+        try {
+          const newCat = await categoryService.createStorefrontCategory(storeId, {
+            name: storefrontCategoryName.slice(0, 100),
+          });
+          storefrontCategoryId = newCat.id;
+          storefrontCategoryName = newCat.name;
+          createdNewStorefrontCategory = true;
+        } catch (catErr) {
+          logger.warn({ err: catErr }, 'Failed to auto-create storefront category');
+        }
+      }
+
+      await creditsService.consume(storeId, cost);
+      await aiService.markCompleted(job.id, {
+        marketplace_category_id: marketplaceCategoryId,
+        marketplace_category_name: marketplaceCategoryName,
+        storefront_category_id: storefrontCategoryId,
+        storefront_category_name: storefrontCategoryName,
+        created_new_storefront_category: createdNewStorefrontCategory,
+        confidence: parsed.confidence,
+        provider: result.provider_label,
+      }, cost);
+
+      res.status(200).json({
+        marketplace_category_id: marketplaceCategoryId,
+        marketplace_category_name: marketplaceCategoryName,
+        storefront_category_id: storefrontCategoryId,
+        storefront_category_name: storefrontCategoryName,
+        created_new_storefront_category: createdNewStorefrontCategory,
+        confidence: parsed.confidence || 0.5,
+        tokens_consumed: cost,
+        job_id: job.id,
+        provider: result.provider_label,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI category classification failed';
       await aiService.markFailed(job.id, message);
       throw err;
     }
