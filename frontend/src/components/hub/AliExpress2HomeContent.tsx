@@ -159,11 +159,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
   const discountedProducts = trendingProducts.filter(
     (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   );
-  const flashProducts = (
-    discountedProducts.length >= 3
-      ? discountedProducts.slice(0, flashLimit)
-      : trendingProducts.slice(0, flashLimit)
-  );
+  const flashProducts = discountedProducts.slice(0, flashLimit);
   const flashIds = new Set(flashProducts.map((p) => p.id));
   const nonFlashProducts = trendingProducts.filter((p) => !flashIds.has(p.id));
   const recommendedProducts = (nonFlashProducts.length > 0 ? nonFlashProducts : trendingProducts).slice(0, blockLimit('recommended', 20));
@@ -284,7 +280,7 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
       {/* ═══════════════════════════════════════
           FLASH DEALS — Glowing section
          ═══════════════════════════════════════ */}
-      {blockById.get('flash_deals')?.enabled !== false && (
+      {blockById.get('flash_deals')?.enabled !== false && flashProducts.length > 0 && (
         <section className="relative mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-gray-200 dark:border-white/[0.06] bg-gradient-to-br from-gray-50 dark:from-white/[0.04] to-transparent p-6 backdrop-blur-xl">
             {/* Section header */}

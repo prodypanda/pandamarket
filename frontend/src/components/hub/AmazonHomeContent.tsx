@@ -139,16 +139,14 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
   const discountedProducts = trendingProducts.filter(
     (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   );
-  const lightningDeals = (
-    discountedProducts.length >= 3
-      ? discountedProducts.slice(0, lightningLimit)
-      : trendingProducts.slice(0, lightningLimit)
-  );
+  const lightningDeals = discountedProducts.slice(0, lightningLimit);
   const stripCategories = categories.slice(0, blockLimit('category_strip', 10));
   const categoryCards = categories.slice(0, 4);
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
 
-  const renderLightningDeals = (): ReactNode => (
+  const renderLightningDeals = (): ReactNode => {
+    if (lightningDeals.length === 0) return null;
+    return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <BlockBanner block={blockById.get('lightning_deals')} />
       <div className="rounded-lg bg-white p-5 shadow-md">
@@ -198,7 +196,8 @@ export function AmazonHomeContent({ trendingProducts, categories, marketplaceSet
         </div>
       </div>
     </section>
-  );
+    );
+  };
 
   const renderTopSellers = (): ReactNode => {
     if (topSellersList.length === 0) return null;

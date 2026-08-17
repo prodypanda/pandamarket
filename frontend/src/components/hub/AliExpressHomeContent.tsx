@@ -145,11 +145,7 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
   const discountedProducts = trendingProducts.filter(
     (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   );
-  const flashProducts = (
-    discountedProducts.length >= 3
-      ? discountedProducts.slice(0, flashLimit)
-      : trendingProducts.slice(0, flashLimit)
-  );
+  const flashProducts = discountedProducts.slice(0, flashLimit);
   const flashIds = new Set(flashProducts.map((p) => p.id));
   const nonFlashProducts = trendingProducts.filter((p) => !flashIds.has(p.id));
   const recommendedProducts = (nonFlashProducts.length > 0 ? nonFlashProducts : trendingProducts).slice(0, blockLimit('recommended', 20));
@@ -177,7 +173,9 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
 
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
 
-  const renderFlashDeals = (): ReactNode => (
+  const renderFlashDeals = (): ReactNode => {
+    if (flashProducts.length === 0) return null;
+    return (
     <section className="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
       <BlockBanner block={blockById.get('flash_deals')} />
       <div className={`${themeClasses.panel} p-5`}>
@@ -195,7 +193,8 @@ export function AliExpressHomeContent({ trendingProducts, categories, marketplac
         </div>
       </div>
     </section>
-  );
+    );
+  };
 
   const renderCategoryTiles = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">

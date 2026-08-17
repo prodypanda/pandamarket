@@ -210,11 +210,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   const discountedProducts = trendingProducts.filter(
     (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   );
-  const dealProducts = (
-    discountedProducts.length >= 2
-      ? discountedProducts.slice(0, dealsLimit)
-      : trendingProducts.slice(0, dealsLimit)
-  );
+  const dealProducts = discountedProducts.slice(0, dealsLimit);
   const dealIds = new Set(dealProducts.map((p) => p.id));
   const nonDealProducts = trendingProducts.filter((p) => !dealIds.has(p.id));
   const heroProducts = (nonDealProducts.length >= 3 ? nonDealProducts : trendingProducts).slice(0, 3);
@@ -333,7 +329,9 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
     </section>
   );
 
-  const renderDealsSpotlight = (): ReactNode => (
+  const renderDealsSpotlight = (): ReactNode => {
+    if (dealProducts.length === 0) return null;
+    return (
     <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-[2rem] bg-gradient-to-br from-[#16C784] to-[#0f9f6e] p-8 text-white shadow-xl shadow-[#16C784]/20">
@@ -365,7 +363,15 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                     Trending
                   </div>
                   <h3 className="line-clamp-2 font-bold text-gray-900 dark:text-white">{product.title}</h3>
-                  <p className="mt-2 font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
+                  <div>
+                    <p className="mt-2 font-black text-[#16C784]">{formatPrice(product.price)} {currency}</p>
+                    {Number(product.compare_at_price) > Number(product.price) && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs font-bold text-white/50 line-through">{formatPrice(product.compare_at_price!)}</span>
+                        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black text-white">-{Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Link>
             );
@@ -373,7 +379,8 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
         </div>
       </div>
     </section>
-  );
+    );
+  };
 
   const renderTrending = (): ReactNode => (
     <section className="bg-gray-50 py-20 dark:bg-[#0F0F23]">

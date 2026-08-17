@@ -390,11 +390,7 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
   const discountedProducts = trendingProducts.filter(
     (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   );
-  const dealProducts = (
-    discountedProducts.length >= 3
-      ? discountedProducts.slice(0, dealsLimit)
-      : trendingProducts.slice(0, dealsLimit)
-  );
+  const dealProducts = discountedProducts.slice(0, dealsLimit);
   const dealProductIds = new Set(dealProducts.map((p) => p.id));
   const nonDealProducts = trendingProducts.filter((p) => !dealProductIds.has(p.id));
   const gridProducts = nonDealProducts.length > 0
@@ -402,7 +398,9 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
     : trendingProducts.slice(0, blockLimit('product_grid', 24));
   const middleBlocks = blocks.filter((block) => MIDDLE_BLOCK_IDS.includes(block.id) && block.enabled);
 
-  const renderDeals = (): ReactNode => (
+  const renderDeals = (): ReactNode => {
+    if (dealProducts.length === 0) return null;
+    return (
     <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
       <BlockBanner block={blockById.get('deals')} />
       <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
@@ -452,7 +450,8 @@ export function AlibabaHomeContent({ trendingProducts, trendingTotalPages, categ
         </div>
       </div>
     </section>
-  );
+    );
+  };
 
   const renderSponsoredBrands = (): ReactNode => (
     <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
