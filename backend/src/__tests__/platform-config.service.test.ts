@@ -121,5 +121,33 @@ describe('PlatformConfigService section saves', () => {
     expect(publicSettings.watermark_enabled).toBe(true);
     expect(publicSettings.watermark_text).toBe('PandaTN');
   });
+
+  it('allows updating watermark fields in marketplace section update', async () => {
+    const clientQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ updated_at: new Date('2026-08-17T12:00:00.000Z') }] })
+      .mockResolvedValue({ rows: [] });
+    mockTransaction.mockImplementation(async (callback: (client: { query: typeof clientQuery }) => Promise<unknown>) => (
+      callback({ query: clientQuery })
+    ));
+
+    const updated = await platformConfigService.updateSectionSettings(
+      'marketplace',
+      {
+        watermark_enabled: true,
+        watermark_type: 'image',
+        watermark_image_url: '/pd-product-images/marketplace/branding/pd_user_123/logo.png',
+        watermark_opacity: 35,
+      },
+      'admin_user_123',
+      '2026-08-17T12:00:00.000Z',
+    );
+
+    expect(updated).toContain('watermark_enabled');
+    expect(updated).toContain('watermark_type');
+    expect(updated).toContain('watermark_image_url');
+    expect(updated).toContain('watermark_opacity');
+  });
 });
+
 

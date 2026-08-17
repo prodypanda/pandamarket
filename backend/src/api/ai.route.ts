@@ -655,30 +655,35 @@ router.post(
           .replace(/{storefront_categories}/g, storefrontCatNames)
           .replace(/{language}/g, langName);
       } else {
-        prompt = `Vous êtes un Expert en Classification Taxonomique E-commerce de PandaMarket. Analysez le produit suivant et déterminez la catégorie marketplace la plus précise (avec son id exact) ET la catégorie vitrine boutique la plus appropriée.
+        prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce de PandaMarket.
+Votre rôle est d'analyser les données du produit (titre, description) et de déterminer deux taxonomies bien distinctes :
+
+1. 🌐 CATÉGORIE MARKETPLACE HUB (Taxonomie globale & contrainte) :
+   - Vous devez OBLIGATOIREMENT choisir la catégorie ou sous-catégorie la plus spécifique parmi les catégories Marketplace Hub listées ci-dessous.
+   - Fournissez son "marketplace_category_id" exact et son "marketplace_category_name" exact.
+
+2. 🏪 CATÉGORIE VITRINE BOUTIQUE (Merchandising libre & spécifique au vendeur) :
+   - La boutique du vendeur n'a AUCUNE limitation de structure.
+   - Vérifiez d'abord si l'une des catégories existantes du vendeur ci-dessous convient parfaitement. Si oui, indiquez son nom et "created_new": false.
+   - Si AUCUNE catégorie existante de la boutique ne convient précisément : NE CLONEZ PAS aveuglément la catégorie Marketplace Hub si elle est générique. Créez un nom de catégorie vitrine sur-mesure, élégant, précis et vendeur pour ce type de produit (ex: "Kits Vlogging & Vidéo", "Haltères & Musculation", "Machines à Café & Capsules", "Câpres & Condiments Sauvages", "Colliers & Pendentifs", etc.) et indiquez "created_new": true.
+   - N'utilisez le nom de la catégorie Marketplace pour la vitrine que s'il est véritablement le nom idéal pour la boutique du vendeur.
 
 Produit à classifier :
 - Titre : ${title}
 - Description : ${description || 'Non fournie'}
 - Langue : ${langName}
 
-Catégories Marketplace Hub disponibles (choisissez la plus précise, y compris sous-catégories) :
+Catégories Marketplace Hub disponibles (choix contraint avec ID) :
 ${categoriesContext}
 
 Catégories Vitrine Boutique existantes du vendeur :
 ${storefrontCatNames}
 
-RÈGLES :
-1. Pour "marketplace_category_id", choisissez l'ID EXACT d'une catégorie ou sous-catégorie de la liste ci-dessus. Privilégiez la sous-catégorie la plus spécifique.
-2. Pour "marketplace_category_name", indiquez le NOM EXACT correspondant.
-3. Pour "storefront_category_name", soit choisissez une catégorie existante du vendeur si elle correspond bien, soit proposez un nouveau nom court, clair et vendeur.
-4. Pour "created_new", indiquez true si vous proposez une nouvelle catégorie vitrine (non existante dans la liste du vendeur).
-
 RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 {
-  "marketplace_category_id": "id exact de la catégorie",
-  "marketplace_category_name": "Nom exact de la catégorie marketplace",
-  "storefront_category_name": "Nom de la catégorie vitrine (existante ou nouvelle)",
+  "marketplace_category_id": "id exact de la catégorie du Hub",
+  "marketplace_category_name": "Nom exact de la catégorie du Hub",
+  "storefront_category_name": "Nom de catégorie vitrine spécifique (existante ou créée sur-mesure)",
   "created_new": false,
   "confidence": 0.95
 }`;
