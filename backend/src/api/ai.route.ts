@@ -709,7 +709,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
         logger.warn({ text: result.text, err: parseErr }, 'Failed to parse AI category classification JSON');
       }
 
-      // Match marketplace category by ID first, then by name/keywords
+      // Match marketplace category by ID first, then by normalized token similarity
       let marketplaceCategoryId = '';
       let marketplaceCategoryName = '';
 
@@ -730,24 +730,28 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
           const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
           if (normCat === targetName) {
             bestCat = cat;
+            bestScore = 1.0;
             break;
           }
-          if (normCat.includes(targetName) || targetName.includes(normCat)) {
-            const score = 0.9;
-            if (score > bestScore) {
+
+          const targetWords = targetName.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3);
+          const catWords = normCat.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3);
+
+          if (targetWords.length > 0 && catWords.length > 0) {
+            let matched = 0;
+            for (const tw of targetWords) {
+              const hasExactWord = catWords.some((cw: string) => {
+                if (cw === tw) return true;
+                if (tw.length >= 5 && cw.length >= 5 && (cw.startsWith(tw) || tw.startsWith(cw))) return true;
+                return false;
+              });
+              if (hasExactWord) matched++;
+            }
+
+            const score = matched / Math.max(targetWords.length, 1);
+            if (score > bestScore && score >= 0.3) {
               bestScore = score;
               bestCat = cat;
-            }
-          } else {
-            const targetWords = targetName.split(/[\s-_/]+/).filter((w: string) => w.length >= 3);
-            const catWords = normCat.split(/[\s-_/]+/).filter((w: string) => w.length >= 3);
-            const common = targetWords.filter((w: string) => catWords.some((cw: string) => cw.includes(w) || w.includes(cw)));
-            if (common.length > 0) {
-              const score = common.length / Math.max(targetWords.length, 1);
-              if (score > bestScore) {
-                bestScore = score;
-                bestCat = cat;
-              }
             }
           }
         }
@@ -767,14 +771,17 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
       let storefrontCategoryName = (parsed.storefront_category_name || '').trim();
       let createdNewStorefrontCategory = false;
 
-      if (!storefrontCategoryName || storefrontCategoryName.toLowerCase() === 'general' || storefrontCategoryName.toLowerCase() === 'général') {
-        storefrontCategoryName = marketplaceCategoryName || title.split(/[\s-_]+/).slice(0, 2).join(' ') || 'Boutique';
+      if (!storefrontCategoryName || storefrontCategoryName.toLowerCase() === 'general' || storefrontCategoryName.toLowerCase() === 'général' || storefrontCategoryName.toLowerCase() === 'boutique') {
+        // Derive an elegant specific boutique category from title keywords
+        const stopWords = new Set(['ensemble', 'pack', 'lot', 'avec', 'pour', 'sans', 'dans', 'sur', 'massif', 'taille', 'cm', 'noir', 'blanc']);
+        const titleTokens = title.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
+        storefrontCategoryName = titleTokens.slice(0, 3).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || marketplaceCategoryName || 'Boutique';
       }
 
       const normalizedSfTarget = storefrontCategoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const sfMatch = storefrontCategories.find((c) => {
         const normC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normC === normalizedSfTarget || normC.includes(normalizedSfTarget) || normalizedSfTarget.includes(normC);
+        return normC === normalizedSfTarget;
       });
 
       if (sfMatch && !parsed.created_new) {
