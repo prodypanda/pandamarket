@@ -2069,77 +2069,32 @@ export default function AiCostsDashboard() {
 
                 const handlePrimaryChange = (val: string) => {
                   const newPrimaryId = val || null;
-                  setPurposeRouting((prev) => {
-                    const idx = prev.findIndex((r) => r.purpose === item.key);
-                    const updated = {
-                      purpose: item.key,
-                      provider_config_id: newPrimaryId,
-                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
-                      model: primaryProvider?.model || null,
-                      fallback_provider_config_id_1: currentRoute?.fallback_provider_config_id_1 || null,
-                      fallback_label_1: fallback1Provider?.label || null,
-                      fallback_model_1: fallback1Provider?.model || null,
-                      fallback_provider_config_id_2: currentRoute?.fallback_provider_config_id_2 || null,
-                      fallback_label_2: fallback2Provider?.label || null,
-                      fallback_model_2: fallback2Provider?.model || null,
-                    };
-                    if (idx >= 0) {
-                      const next = [...prev];
-                      next[idx] = { ...next[idx], ...updated };
-                      return next;
-                    }
-                    return [...prev, updated];
-                  });
+                  void updatePurposeRouting(
+                    item.key,
+                    newPrimaryId,
+                    currentRoute?.fallback_provider_config_id_1 || null,
+                    currentRoute?.fallback_provider_config_id_2 || null,
+                  );
                 };
 
                 const handleFallback1Change = (val: string) => {
                   const newFallback1Id = val || null;
-                  setPurposeRouting((prev) => {
-                    const idx = prev.findIndex((r) => r.purpose === item.key);
-                    const updated = {
-                      purpose: item.key,
-                      provider_config_id: currentRoute?.provider_config_id || null,
-                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
-                      model: primaryProvider?.model || null,
-                      fallback_provider_config_id_1: newFallback1Id,
-                      fallback_label_1: fallback1Provider?.label || null,
-                      fallback_model_1: fallback1Provider?.model || null,
-                      fallback_provider_config_id_2: currentRoute?.fallback_provider_config_id_2 || null,
-                      fallback_label_2: fallback2Provider?.label || null,
-                      fallback_model_2: fallback2Provider?.model || null,
-                    };
-                    if (idx >= 0) {
-                      const next = [...prev];
-                      next[idx] = { ...next[idx], ...updated };
-                      return next;
-                    }
-                    return [...prev, updated];
-                  });
+                  void updatePurposeRouting(
+                    item.key,
+                    currentRoute?.provider_config_id || null,
+                    newFallback1Id,
+                    currentRoute?.fallback_provider_config_id_2 || null,
+                  );
                 };
 
                 const handleFallback2Change = (val: string) => {
                   const newFallback2Id = val || null;
-                  setPurposeRouting((prev) => {
-                    const idx = prev.findIndex((r) => r.purpose === item.key);
-                    const updated = {
-                      purpose: item.key,
-                      provider_config_id: currentRoute?.provider_config_id || null,
-                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
-                      model: primaryProvider?.model || null,
-                      fallback_provider_config_id_1: currentRoute?.fallback_provider_config_id_1 || null,
-                      fallback_label_1: fallback1Provider?.label || null,
-                      fallback_model_1: fallback1Provider?.model || null,
-                      fallback_provider_config_id_2: newFallback2Id,
-                      fallback_label_2: fallback2Provider?.label || null,
-                      fallback_model_2: fallback2Provider?.model || null,
-                    };
-                    if (idx >= 0) {
-                      const next = [...prev];
-                      next[idx] = { ...next[idx], ...updated };
-                      return next;
-                    }
-                    return [...prev, updated];
-                  });
+                  void updatePurposeRouting(
+                    item.key,
+                    currentRoute?.provider_config_id || null,
+                    currentRoute?.fallback_provider_config_id_1 || null,
+                    newFallback2Id,
+                  );
                 };
 
                 return (

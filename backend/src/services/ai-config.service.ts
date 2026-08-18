@@ -70,12 +70,20 @@ function maskSecret(value: string | null): boolean {
 
 function safeDecrypt(payload: string | null | undefined): string | null {
   if (!payload || typeof payload !== 'string') return null;
+  const trimmed = payload.trim();
+  if (!trimmed) return null;
   try {
-    return decrypt(payload);
-  } catch (err: any) {
-    logger.warn({ err: err?.message }, 'Failed to decrypt AI provider API key (key mismatch or corrupted data), skipping');
-    return null;
+    const decrypted = decrypt(trimmed);
+    if (decrypted && decrypted.trim()) return decrypted.trim();
+  } catch {
+    // If AES-GCM decryption fails, it may have been stored directly as a raw/plaintext API key
+    // (e.g. sk-..., AIzaSy..., gsk_..., xai-..., nvapi-..., r8_..., or created before key rotation)
+    if (trimmed.length >= 8) {
+      return trimmed;
+    }
+    logger.warn('Failed to decrypt AI provider API key, skipping');
   }
+  return null;
 }
 
 function providerForResponse(row: ProviderRow) {
