@@ -184,4 +184,48 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
       expect(c.marketplace_category_id).not.toBe('cat_market_headphones');
     }
   });
+
+  it('verifies listPurposeRouting includes category_classification', async () => {
+    const routing = await aiConfigService.listPurposeRouting();
+    const catRoute = routing.find((r) => r.purpose === 'category_classification');
+    expect(catRoute).toBeDefined();
+    expect(catRoute?.purpose).toBe('category_classification');
+  });
+
+  it('correctly classifies cat litter bentonite to pet care in fallback engine without matching stop-word false positives', async () => {
+    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+
+📦 PRODUIT À CLASSIFIER :
+- Titre : Bentonite Litière Agglomérante pour Chats, Contrôle des Odeurs & Haute Absorption 5L
+- Description : La litière agglomérante SamCat Clumping Cat Litter offre une solution pratique et hygiénique pour le confort de votre chat. Grâce à sa formule à forte absorption, elle forme des blocs compacts faciles à retirer, aidant ainsi à garder le bac propre plus longtemps. Elle neutralise efficacement les mauvaises odeurs.
+- Marque : SamCat
+- Attributs & Spécifications : Non spécifiés
+- Tags : litiere chat, bentonite
+- Prix indicatif : 79 TND
+- Langue : French
+
+Catégories Marketplace Hub disponibles (choix contraint avec ID) :
+- Électronique & High-Tech (id: "cat_market_electronics")
+  - Haut-parleurs & Barres de son (id: "cat_market_speakers")
+- Maison, Meubles & Déco (id: "cat_market_home")
+  - Jardinage & Animaux de Compagnie (id: "cat_sub_garden_pets")
+
+Catégories Vitrine Boutique existantes du vendeur :
+- Rayon Principal (id: "pd_cat_SSgrub7drUHvGAfx")
+  └─ Haut-parleurs & Barres de son (id: "pd_cat_5Arnw7r9vMWcS7kk")
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
+{
+  "candidates": []
+}`;
+
+    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
+    const parsed = JSON.parse(result.text);
+
+    expect(parsed.candidates).toBeDefined();
+    const top1 = parsed.candidates[0];
+    expect(top1.marketplace_category_id).toBe('cat_sub_garden_pets');
+    expect(top1.marketplace_category_id).not.toBe('cat_market_speakers');
+    expect(top1.storefront_parent_name).toContain('Animal');
+  });
 });

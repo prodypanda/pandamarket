@@ -394,13 +394,15 @@ function generateFallbackCopywriting(prompt: string): string {
         storefrontSuggestion: { fr: "Jouets, Éveil & Puériculture", ar: "ألعاب ومستلزمات أطفال", en: "Toys & Baby Essentials", icon: "Baby" },
       },
       {
-        clusterId: 'auto_tools',
-        categoryIds: ['cat_market_car_oils', 'cat_market_car_audio', 'cat_market_power_tools', 'cat_market_auto'],
-        keywords: ['voiture', 'auto', 'moto', 'moteur', 'huile moteur', 'liquide', 'frein', 'pneu', 'dashcam', 'ecran android', 'gps', 'outillage', 'perceuse', 'visseuse', 'cle', 'boite a outils', 'bricolage'],
-        parentSuggestion: { fr: "Auto, Moto & Bricolage", ar: "السيارات والعدد اليدوية", en: "Automotive & DIY", icon: "Wrench" },
-        storefrontSuggestion: { fr: "Entretien Auto & Outillage Pro", ar: "صيانة السيارات وأدوات احترافية", en: "Car Care & Power Tools", icon: "Wrench" },
+        clusterId: 'pets_animals',
+        categoryIds: ['cat_sub_garden_pets', 'cat_market_home'],
+        keywords: ['litiere', 'litières', 'chat', 'chats', 'chien', 'chiens', 'animal', 'animaux', 'croquette', 'croquettes', 'bentonite', 'agglomerante', 'absorption', 'odeur', 'odeurs', 'bac', 'samcat', 'litter', 'cat', 'cats', 'pet', 'pets', 'animalerie', 'collier', 'aquarium', 'oiseau', 'rongeur'],
+        parentSuggestion: { fr: "Animalerie & Soins Animaux", ar: "مستلزمات الحيوانات الأليفة", en: "Pet Supplies & Animal Care", icon: "Heart" },
+        storefrontSuggestion: { fr: "Litières & Hygiène Animaux", ar: "رمل ونظافة القطط والحيوانات", en: "Cat Litter & Pet Hygiene", icon: "Sparkles" },
       },
     ];
+
+    const STOP_WORDS = new Set(['pour', 'avec', 'sans', 'dans', 'sur', 'par', 'son', 'ses', 'des', 'les', 'une', 'aux', 'qui', 'que', 'est', 'sont', 'tout', 'tous', 'plus', 'tres', 'bien', 'fait', 'faire', 'apres', 'sous']);
 
     // Tokenize product fields with weights
     const cleanWords = (txt: string) =>
@@ -409,7 +411,7 @@ function generateFallbackCopywriting(prompt: string): string {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .split(/[\s-_/,&()]+/)
-        .filter((w) => w.length >= 3);
+        .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
 
     const titleTokens = cleanWords(title);
     const tagTokens = cleanWords(tags);
@@ -920,7 +922,17 @@ export class AiConfigService {
        ORDER BY r.purpose ASC`,
     );
 
-    const defaultPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal'];
+    const defaultPurposes = [
+      'product_description',
+      'text_summarization',
+      'content_generation',
+      'product_tagging',
+      'image_generation',
+      'image_upscaling',
+      'image_enhancement',
+      'image_background_removal',
+      'category_classification',
+    ];
     const map = new Map(rows.map((r) => [r.purpose, r]));
 
     return defaultPurposes.map((purpose) => {
