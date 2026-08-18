@@ -56,11 +56,6 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
 
-  // List of stores that have active stories
-  const storyStores = followedStores.filter(
-    (s) => s.has_active_story || (s.unread_updates_count > 0 && s.active_flash_drop)
-  );
-
   const activeStoryStore =
     activeStoryIndex !== null && activeStoryIndex >= 0 && activeStoryIndex < followedStores.length
       ? followedStores[activeStoryIndex]
@@ -239,7 +234,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
             }`}
           >
             <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border font-black transition-transform group-hover:scale-105 ${
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border font-black transition-transform group-hover:scale-105 ${
                 selectedStoreId === null
                   ? 'border-white/20 bg-white/20 text-white'
                   : 'border-gray-200/60 bg-gray-100 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300'
@@ -276,7 +271,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
                     : 'border-gray-200/90 bg-white text-gray-900 shadow-2xs hover:border-[#087f5b]/60 hover:shadow-xs dark:border-white/10 dark:bg-[#12161f] dark:text-white dark:hover:border-emerald-500/50'
                 }`}
               >
-                {/* Store Avatar with Story Gradient Ring */}
+                {/* Circular Story Ring & Avatar (Mathematically uniform 360° with NO corner clipping) */}
                 <button
                   type="button"
                   data-testid={`store-story-trigger-${store.id}`}
@@ -289,27 +284,31 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
                       onSelectStore(selected ? null : store.id);
                     }
                   }}
-                  className={`relative flex shrink-0 items-center justify-center rounded-2xl p-[2px] transition-transform hover:scale-105 ${
+                  className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full p-[2.5px] transition-transform hover:scale-105 ${
                     hasStory && !selected
-                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 animate-pulse'
-                      : ''
+                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 animate-pulse shadow-xs'
+                      : 'bg-transparent'
                   }`}
                 >
                   <div
-                    className={`relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] border font-black text-xs ${
+                    className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full border bg-white dark:bg-[#12161f] ${
                       selected
-                        ? 'border-white/20 bg-white/20 text-white'
-                        : 'border-gray-100 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-800 dark:border-white/10 dark:from-emerald-950/60 dark:to-teal-900/40 dark:text-emerald-300'
+                        ? 'border-white/30 bg-white/20 text-white'
+                        : hasStory
+                        ? 'border-white dark:border-gray-900'
+                        : 'border-gray-200/80 dark:border-white/10'
                     }`}
                   >
                     {store.logo_url ? (
                       <img
                         src={store.logo_url}
                         alt={store.name}
-                        className="h-full w-full object-contain p-0.5 bg-white dark:bg-gray-800 rounded-[12px]"
+                        className="h-full w-full rounded-full object-cover p-0.5"
                       />
                     ) : (
-                      <span>{getInitials(store.name)}</span>
+                      <span className="flex h-full w-full items-center justify-center font-black text-xs bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-950/60 dark:to-teal-900/40 text-emerald-800 dark:text-emerald-300">
+                        {getInitials(store.name)}
+                      </span>
                     )}
                   </div>
                 </button>
@@ -376,132 +375,193 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
         </div>
       )}
 
-      {/* Interactive Story & Flash Drop Reel Modal */}
+      {/* Interactive Story & Flash Drop Reel Modal (z-[99999] top-level overlay with clickable Left/Right chevrons) */}
       {activeStoryStore && (
         <div
           role="dialog"
           aria-modal="true"
           data-testid="story-reel-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fadeIn"
+          className="fixed inset-0 z-[99999] isolate flex items-center justify-center bg-black/85 p-4 sm:p-6 backdrop-blur-md overflow-y-auto animate-fadeIn"
           onClick={() => setActiveStoryIndex(null)}
         >
-          <div
-            className="relative w-full max-w-md overflow-hidden rounded-3xl bg-gradient-to-b from-gray-900 via-gray-900 to-black text-white shadow-2xl border border-white/10 p-6 space-y-6"
-            onClick={(e) => e.stopPropagation()}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
-            {/* Story Progress Indicators */}
-            <div className="flex items-center gap-1.5 w-full">
-              {followedStores.map((_, i) => {
-                let widthPercent = 0;
-                if (activeStoryIndex !== null) {
-                  if (i < activeStoryIndex) widthPercent = 100;
-                  else if (i === activeStoryIndex) widthPercent = storyProgress;
-                  else widthPercent = 0;
-                }
-                return (
-                  <div key={i} className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 transition-all duration-100 ease-linear"
-                      style={{ width: `${widthPercent}%` }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+          {/* Main Story Container with Left/Right Navigation Arrows */}
+          <div className="relative flex items-center gap-3 sm:gap-5 max-w-xl w-full justify-center">
+            {/* Desktop Left Clickable Chevron */}
+            <button
+              type="button"
+              data-testid="story-modal-prev-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                prevStory();
+              }}
+              disabled={activeStoryIndex === 0}
+              title="Story précédente (Flèche gauche)"
+              className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md border border-white/20 shadow-xl transition hover:bg-white/25 disabled:opacity-20 disabled:pointer-events-none hover:scale-110 active:scale-95"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
 
-            {/* Header with Store Info & Controls */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 overflow-hidden rounded-2xl border-2 border-emerald-500 bg-white/10 flex items-center justify-center font-black">
-                  {activeStoryStore.logo_url ? (
-                    <img
-                      src={activeStoryStore.logo_url}
-                      alt=""
-                      className="h-full w-full object-contain p-1 bg-white"
-                    />
-                  ) : (
-                    <span>{getInitials(activeStoryStore.name)}</span>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-base font-black text-white">{activeStoryStore.name}</h3>
-                    {activeStoryStore.is_verified && (
-                      <span className="rounded-full bg-emerald-500 p-0.5 text-black">
-                        <Check className="h-3 w-3 stroke-[3]" />
-                      </span>
+            {/* Story Card */}
+            <div
+              className="relative w-full max-w-md overflow-hidden rounded-3xl bg-gradient-to-b from-gray-900 via-gray-900 to-black text-white shadow-2xl border border-white/15 p-6 space-y-6 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+            >
+              {/* Story Progress Indicators */}
+              <div className="flex items-center gap-1.5 w-full">
+                {followedStores.map((_, i) => {
+                  let widthPercent = 0;
+                  if (activeStoryIndex !== null) {
+                    if (i < activeStoryIndex) widthPercent = 100;
+                    else if (i === activeStoryIndex) widthPercent = storyProgress;
+                    else widthPercent = 0;
+                  }
+                  return (
+                    <div key={i} className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 transition-all duration-100 ease-linear"
+                        style={{ width: `${widthPercent}%` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Header with Store Info & Controls */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-emerald-500 bg-white/10 flex items-center justify-center font-black">
+                    {activeStoryStore.logo_url ? (
+                      <img
+                        src={activeStoryStore.logo_url}
+                        alt=""
+                        className="h-full w-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <span className="font-black text-sm">{getInitials(activeStoryStore.name)}</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">
-                    @{activeStoryStore.subdomain} · {t('followedFeed.storyActive')}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveStoryIndex(null)}
-                className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Story Content / Flash Drop Highlight */}
-            <div className="rounded-2xl bg-gradient-to-br from-emerald-950/60 to-teal-950/60 border border-emerald-500/30 p-5 space-y-4">
-              <div className="flex items-center gap-2 text-xs font-black text-amber-400">
-                <Flame className="h-4 w-4 text-amber-400 animate-bounce" />
-                <span>{t('followedFeed.vipOffer')}</span>
-              </div>
-
-              <div>
-                <h4 className="text-xl font-black text-white">
-                  {activeStoryStore.active_flash_drop?.title || 'Nouvelle Vague de Produits Disponibles !'}
-                </h4>
-                <p className="mt-1 text-xs text-gray-300">
-                  Cette boutique vient de publier de nouvelles offres et promotions privées réservées à sa communauté Panda.
-                </p>
-              </div>
-
-              {activeStoryStore.active_flash_drop && (
-                <div className="flex items-center justify-between rounded-xl bg-black/40 border border-white/10 p-3.5">
                   <div>
-                    <span className="text-[11px] font-bold text-gray-400">Remise VIP</span>
-                    <p className="text-lg font-black text-emerald-400">
-                      {activeStoryStore.active_flash_drop.discount}
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-base font-black text-white">{activeStoryStore.name}</h3>
+                      {activeStoryStore.is_verified && (
+                        <span className="rounded-full bg-emerald-500 p-0.5 text-black">
+                          <Check className="h-3 w-3 stroke-[3]" />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      @{activeStoryStore.subdomain} · {t('followedFeed.storyActive')}
                     </p>
                   </div>
+                </div>
+
+                {/* Mobile Chevrons + Close button */}
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() =>
-                      handleCopyCoupon(`VIP_${activeStoryStore.subdomain.toUpperCase()}`)
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 transition active:scale-95"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevStory();
+                    }}
+                    disabled={activeStoryIndex === 0}
+                    aria-label="Story précédente"
+                    className="sm:hidden rounded-full bg-white/10 p-1.5 text-white disabled:opacity-20 hover:bg-white/20 transition"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>
-                      {copiedCoupon ? t('followedFeed.copied') : t('followedFeed.copyCode')}
-                    </span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextStory();
+                    }}
+                    aria-label="Story suivante"
+                    className="sm:hidden rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStoryIndex(null)}
+                    aria-label="Fermer"
+                    className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition ms-1"
+                  >
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
-              )}
+              </div>
+
+              {/* Story Content / Flash Drop Highlight */}
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-950/60 to-teal-950/60 border border-emerald-500/30 p-5 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-black text-amber-400">
+                  <Flame className="h-4 w-4 text-amber-400 animate-bounce" />
+                  <span>{t('followedFeed.vipOffer')}</span>
+                </div>
+
+                <div>
+                  <h4 className="text-xl font-black text-white">
+                    {activeStoryStore.active_flash_drop?.title || 'Nouvelle Vague de Produits Disponibles !'}
+                  </h4>
+                  <p className="mt-1 text-xs text-gray-300">
+                    Cette boutique vient de publier de nouvelles offres et promotions privées réservées à sa communauté Panda.
+                  </p>
+                </div>
+
+                {activeStoryStore.active_flash_drop && (
+                  <div className="flex items-center justify-between rounded-xl bg-black/40 border border-white/10 p-3.5">
+                    <div>
+                      <span className="text-[11px] font-bold text-gray-400">Remise VIP</span>
+                      <p className="text-lg font-black text-emerald-400">
+                        {activeStoryStore.active_flash_drop.discount}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopyCoupon(`VIP_${activeStoryStore.subdomain.toUpperCase()}`)
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 transition active:scale-95"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>
+                        {copiedCoupon ? t('followedFeed.copied') : t('followedFeed.copyCode')}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation & Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectStore(activeStoryStore.id);
+                    setActiveStoryIndex(null);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/40 active:scale-95"
+                >
+                  <span>{t('followedFeed.exploreFeed')}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Navigation & Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectStore(activeStoryStore.id);
-                  setActiveStoryIndex(null);
-                }}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/40 active:scale-95"
-              >
-                <span>{t('followedFeed.exploreFeed')}</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+            {/* Desktop Right Clickable Chevron */}
+            <button
+              type="button"
+              data-testid="story-modal-next-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                nextStory();
+              }}
+              title="Story suivante (Flèche droite)"
+              className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md border border-white/20 shadow-xl transition hover:bg-white/25 hover:scale-110 active:scale-95"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
           </div>
         </div>
       )}
