@@ -75,6 +75,10 @@ class SocketGateway {
   emitToAdmins(event: string, payload: unknown): void {
     this.io?.to('admin').emit(event, payload);
   }
+
+  emitToAll(event: string, payload: unknown): void {
+    this.io?.emit(event, payload);
+  }
 }
 
 export const socketGateway = new SocketGateway();

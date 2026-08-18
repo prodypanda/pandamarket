@@ -569,9 +569,64 @@ export default function ProductsPage() {
   const hierarchicalMarketplaceCategories = useMemo(() => buildHierarchicalCategoryList(marketplaceCategories), [marketplaceCategories]);
   const hierarchicalStorefrontCategories = useMemo(() => buildHierarchicalCategoryList(storefrontCategories), [storefrontCategories]);
 
-  // AI Category Picker
+  // AI Category Picker (Interactive Multi-Candidate Top 3)
+  interface AiCategoryCandidate {
+    rank: number;
+    marketplace_category_id: string;
+    marketplace_category_name: string;
+    marketplace_category_path: string;
+    storefront_category_name: string;
+    storefront_category_id: string | null;
+    storefront_parent_id: string | null;
+    storefront_parent_name: string | null;
+    storefront_category_path: string;
+    multilingual?: {
+      name_fr?: string | null;
+      name_ar?: string | null;
+      name_en?: string | null;
+    };
+    icon?: string;
+    seo_title?: string;
+    seo_description?: string;
+    is_existing_storefront?: boolean;
+    confidence: number;
+    reason?: string;
+  }
+
   const [aiCategoryPicking, setAiCategoryPicking] = useState(false);
   const [aiCategoryResult, setAiCategoryResult] = useState<{ message: string; isNew: boolean } | null>(null);
+  const [aiCategoryCandidates, setAiCategoryCandidates] = useState<AiCategoryCandidate[]>([]);
+  const [appliedCandidateIndex, setAppliedCandidateIndex] = useState<number | null>(null);
+  const [aiTokensBalance, setAiTokensBalance] = useState<number | null>(null);
+  const [loadingAiCredits, setLoadingAiCredits] = useState(false);
+
+  // Bulk AI Categorization State
+  const [showBulkAiCategoryModal, setShowBulkAiCategoryModal] = useState(false);
+  const [bulkAiLoading, setBulkAiLoading] = useState(false);
+  const [bulkAiAutoApply, setBulkAiAutoApply] = useState(true);
+  const [bulkAiProgress, setBulkAiProgress] = useState<{
+    total_requested: number;
+    total_processed: number;
+    tokens_consumed: number;
+    results: Array<{
+      product_id: string;
+      title: string;
+      status: 'success' | 'failed';
+      previous_marketplace_category_id: string | null;
+      previous_marketplace_category_name?: string | null;
+      previous_storefront_category_id: string | null;
+      previous_storefront_category_name?: string | null;
+      suggested_marketplace_category_id: string;
+      suggested_marketplace_category_name: string;
+      suggested_marketplace_category_path: string;
+      suggested_storefront_category_name: string;
+      suggested_storefront_category_id: string | null;
+      suggested_storefront_parent_id: string | null;
+      confidence: number;
+      reason?: string;
+      applied: boolean;
+    }>;
+  } | null>(null);
 
   // Media Picker
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -789,6 +844,22 @@ export default function ProductsPage() {
     } catch {}
   }, []);
 
+  const fetchAiCredits = useCallback(async () => {
+    setLoadingAiCredits(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/credits', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const bal = data.credits?.ai_tokens_balance ?? data.credits?.balance ?? null;
+        if (typeof bal === 'number') {
+          setAiTokensBalance(bal);
+        }
+      }
+    } catch {} finally {
+      setLoadingAiCredits(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -797,7 +868,8 @@ export default function ProductsPage() {
     fetchStore();
     fetchCategories();
     fetchMediaItems();
-  }, [fetchStore, fetchCategories, fetchMediaItems]);
+    fetchAiCredits();
+  }, [fetchStore, fetchCategories, fetchMediaItems, fetchAiCredits]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1416,6 +1488,53 @@ export default function ProductsPage() {
     }
   };
 
+  const handleApplyCandidate = async (candidate: AiCategoryCandidate, idx: number) => {
+    // 1. Set marketplace category
+    if (candidate.marketplace_category_id) {
+      setForm((c) => ({ ...c, marketplace_category_id: candidate.marketplace_category_id }));
+    }
+
+    // 2. Set or create storefront category
+    if (candidate.storefront_category_id) {
+      setForm((c) => ({ ...c, storefront_category_id: candidate.storefront_category_id! }));
+      setAppliedCandidateIndex(idx);
+      setSuccess(`Catégories appliquées : ${candidate.marketplace_category_name} & ${candidate.storefront_category_name}`);
+    } else {
+      // Create storefront category on demand with multilingual names and SEO
+      try {
+        const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: candidate.storefront_category_name,
+            name_fr: candidate.multilingual?.name_fr || candidate.storefront_category_name,
+            name_ar: candidate.multilingual?.name_ar || undefined,
+            name_en: candidate.multilingual?.name_en || undefined,
+            parent_id: candidate.storefront_parent_id || undefined,
+            icon: candidate.icon || undefined,
+            seo_title: candidate.seo_title || undefined,
+            seo_description: candidate.seo_description || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.category) {
+          const newCat = data.category;
+          setStorefrontCategories((curr) => [newCat, ...curr]);
+          setForm((c) => ({ ...c, storefront_category_id: newCat.id }));
+          candidate.storefront_category_id = newCat.id;
+          candidate.is_existing_storefront = true;
+          setAppliedCandidateIndex(idx);
+          setSuccess(`Nouvelle sous-catégorie vitrine "${newCat.name}" créée et assignée !`);
+        } else {
+          setAppliedCandidateIndex(idx);
+        }
+      } catch {
+        setAppliedCandidateIndex(idx);
+      }
+    }
+  };
+
   const handleAiCategoryPick = async () => {
     const title = form.title.trim();
     if (!title) {
@@ -1426,6 +1545,8 @@ export default function ProductsPage() {
     setSuccess('');
     setAiCategoryPicking(true);
     setAiCategoryResult(null);
+    setAiCategoryCandidates([]);
+    setAppliedCandidateIndex(null);
     try {
       const res = await fetchWithCsrf('/api/pd/ai/category-pick', {
         method: 'POST',
@@ -1434,6 +1555,12 @@ export default function ProductsPage() {
         body: JSON.stringify({
           title,
           description: form.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) || undefined,
+          brand: form.product_reference?.trim() || undefined,
+          attributes: form.attributes?.length
+            ? form.attributes.map((a) => ({ key: a.name, value: a.value }))
+            : undefined,
+          tags: form.tags?.trim() ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+          price: parseFloat(form.price) || undefined,
           language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
         }),
       });
@@ -1441,50 +1568,73 @@ export default function ProductsPage() {
         throw new Error(await getErrorMessage(res, "Échec de classification IA des catégories"));
       }
       const data = await res.json();
-
-      // Auto-select marketplace category
-      if (data.marketplace_category_id) {
-        setForm((c) => ({ ...c, marketplace_category_id: data.marketplace_category_id }));
-      }
-
-      // Auto-select or auto-create storefront category
-      if (data.storefront_category_id) {
-        if (data.created_new_storefront_category) {
-          // Prepend the newly created category with parent_id to the local list
-          setStorefrontCategories((cats) => [
+      const candidates: AiCategoryCandidate[] = Array.isArray(data.candidates) && data.candidates.length > 0
+        ? data.candidates
+        : [
             {
-              id: data.storefront_category_id,
-              name: data.storefront_category_name,
-              parent_id: data.storefront_parent_id || null,
-              slug: data.storefront_category_name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              rank: 1,
+              marketplace_category_id: data.marketplace_category_id,
+              marketplace_category_name: data.marketplace_category_name,
+              marketplace_category_path: data.marketplace_category_path || data.marketplace_category_name,
+              storefront_category_name: data.storefront_category_name,
+              storefront_category_id: data.storefront_category_id,
+              storefront_parent_id: data.storefront_parent_id,
+              storefront_parent_name: data.storefront_parent_name,
+              storefront_category_path: data.storefront_category_path || data.storefront_category_name,
+              multilingual: { name_fr: data.storefront_category_name },
+              icon: 'Tag',
+              seo_title: `${data.storefront_category_name} | Boutique`,
+              seo_description: `Découvrez nos articles ${data.storefront_category_name}.`,
+              is_existing_storefront: Boolean(data.storefront_category_id),
+              confidence: data.confidence || 0.9,
+              reason: "Classification optimale identifiée par l'IA.",
             },
-            ...cats,
-          ]);
-        }
-        setForm((c) => ({ ...c, storefront_category_id: data.storefront_category_id }));
+          ];
+
+      setAiCategoryCandidates(candidates);
+
+      // Auto-apply top candidate
+      if (candidates.length > 0) {
+        await handleApplyCandidate(candidates[0], 0);
       }
 
-      const hubLabel = data.marketplace_category_name ? `Hub → ${data.marketplace_category_name}` : '';
-      const sfPath = data.storefront_parent_name
-        ? `${data.storefront_parent_name} › ${data.storefront_category_name}`
-        : data.storefront_category_name;
-      const sfLabel = sfPath ? `Vitrine → ${sfPath}` : '';
-      const labels = [hubLabel, sfLabel].filter(Boolean).join(' • ');
-      const newMsg = data.created_new_storefront_category
-        ? (data.storefront_parent_name
-          ? `✨ Nouvelle sous-catégorie vitrine "${data.storefront_category_name}" créée sous "${data.storefront_parent_name}" et sélectionnée`
-          : `✨ Nouvelle catégorie vitrine "${data.storefront_category_name}" créée et sélectionnée`)
-        : '';
-
-      setAiCategoryResult({
-        message: `${labels}${newMsg ? ` — ${newMsg}` : ''}`,
-        isNew: Boolean(data.created_new_storefront_category),
-      });
-      setSuccess(`Catégories détectées par l'IA (${data.tokens_consumed || 0} jetons)`);
+      // Update tokens balance
+      void fetchAiCredits();
+      setSuccess(`3 suggestions taxonomiques générées avec succès (${data.tokens_consumed || 1} jeton IA consommé)`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de classification IA");
     } finally {
       setAiCategoryPicking(false);
+    }
+  };
+
+  const handleBulkAiCategorize = async (applyDirectly: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkAiLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithCsrf('/api/pd/ai/category-pick-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_ids: Array.from(selectedIds),
+          apply_automatically: applyDirectly,
+          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Erreur lors de la classification groupée');
+      setBulkAiProgress(data);
+      if (applyDirectly) {
+        setSuccess(`Classification appliquée à ${data.total_processed} produit(s) (${data.tokens_consumed || 0} jetons consommés)`);
+        await fetchProducts();
+      }
+      void fetchAiCredits();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec de la classification groupée');
+    } finally {
+      setBulkAiLoading(false);
     }
   };
 
@@ -2944,6 +3094,19 @@ export default function ProductsPage() {
 
           <button
             type="button"
+            onClick={() => {
+              setBulkAiProgress(null);
+              setShowBulkAiCategoryModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-amber-900/60 border border-amber-700/60 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Classifier automatiquement les produits sélectionnés avec l'IA"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Classifier IA</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowBulkCategoryModal(true)}
             className="px-3 py-1.5 rounded-xl bg-indigo-900/60 border border-indigo-700/60 hover:bg-indigo-800 text-indigo-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden lg:flex"
             title="Assigner une catégorie Marketplace ou Vitrine à la sélection"
@@ -4109,32 +4272,138 @@ export default function ProductsPage() {
                 {drawerTab === 'taxonomy' && (
                   <div className="space-y-5 animate-in fade-in duration-150">
                     {/* AI Auto-Classification Action Bar */}
-                    <div className="p-3.5 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-r from-amber-50/80 to-orange-50/60 dark:from-amber-900/20 dark:to-orange-900/10 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-                          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/40 bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 shadow-sm flex flex-wrap items-center justify-between gap-3.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300 dark:border-amber-700/50 flex items-center justify-center shrink-0 shadow-sm">
+                          <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-black text-amber-900 dark:text-amber-200">Détection Automatique IA</p>
-                          <p className="text-[10px] text-amber-700/70 dark:text-amber-400/60">Analyse le titre et la description pour sélectionner les catégories optimales.</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-black text-amber-950 dark:text-amber-100">Classification Automatique IA (NLP & Taxonomie)</p>
+                            {aiTokensBalance !== null && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60">
+                                ⚡ Solde : {aiTokensBalance} jetons
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-amber-800/80 dark:text-amber-300/70">Analyse le titre, la description, la marque et les attributs pour proposer le Top 3 des catégories optimales.</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleAiCategoryPick}
-                        disabled={aiCategoryPicking || !form.title.trim()}
-                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white text-xs font-black shadow-sm transition-all flex items-center gap-2 shrink-0"
-                      >
-                        {aiCategoryPicking ? (
-                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Classification en cours...</>
-                        ) : (
-                          <><Zap className="w-3.5 h-3.5" /> Détecter et Classer avec l&apos;IA</>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAiCategoryPick}
+                          disabled={aiCategoryPicking || !form.title.trim()}
+                          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-amber-300 disabled:to-orange-300 text-white text-xs font-black shadow-md shadow-amber-600/20 hover:shadow-lg hover:shadow-amber-600/30 active:scale-95 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+                        >
+                          {aiCategoryPicking ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" /> Classification en cours...</>
+                          ) : (
+                            <><Zap className="w-4 h-4" /> Détecter et Classer avec l&apos;IA (1 jeton)</>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* AI Category Result Badge */}
-                    {aiCategoryResult && (
+                    {/* AI Category Interactive Top-3 Suggestions Panel */}
+                    {aiCategoryCandidates.length > 0 && (
+                      <div className="space-y-3 p-4 rounded-2xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/40 dark:bg-amber-950/20 animate-in slide-in-from-top-2 duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                              Suggestions IA Recommandées (Top 3)
+                            </h4>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500">
+                            Cliquez sur une option pour l&apos;appliquer en 1 clic
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          {aiCategoryCandidates.map((candidate, idx) => {
+                            const isApplied = appliedCandidateIndex === idx || (
+                              form.marketplace_category_id === candidate.marketplace_category_id &&
+                              (form.storefront_category_id === candidate.storefront_category_id || (!candidate.storefront_category_id && form.storefront_category_id))
+                            );
+                            const confPct = Math.round(candidate.confidence * 100);
+                            const confBadge = confPct >= 85
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                              : confPct >= 65
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800';
+
+                            return (
+                              <div
+                                key={`candidate-${candidate.rank}-${idx}`}
+                                className={`p-3.5 rounded-xl border transition-all ${
+                                  isApplied
+                                    ? 'border-emerald-500/80 bg-white dark:bg-slate-900 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
+                                    : 'border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-700'
+                                }`}
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-900 text-white dark:bg-slate-700">
+                                      #{candidate.rank} {idx === 0 ? 'Recommandé' : idx === 1 ? 'Alternative' : 'Option Niche'}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${confBadge}`}>
+                                      🎯 {confPct}% Confiance
+                                    </span>
+                                    {!candidate.is_existing_storefront && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800">
+                                        ✨ Nouvelle sous-catégorie
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleApplyCandidate(candidate, idx)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                                      isApplied
+                                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 cursor-default'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 dark:border-slate-700'
+                                    }`}
+                                  >
+                                    {isApplied ? (
+                                      <><CheckCircle2 className="w-3.5 h-3.5 text-white" /> Sélectionné</>
+                                    ) : (
+                                      <><Check className="w-3.5 h-3.5" /> Appliquer</>
+                                    )}
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">🌐 Fil Hub PandaMarket</p>
+                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate" title={candidate.marketplace_category_path}>
+                                      {candidate.marketplace_category_path}
+                                    </p>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">🏪 Vitrine Boutique</p>
+                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate" title={candidate.storefront_category_path}>
+                                      {candidate.storefront_category_path}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {candidate.reason && (
+                                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                                    <span className="font-bold shrink-0">💡 Justification IA :</span>
+                                    <span>{candidate.reason}</span>
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Category Result Legacy Alert */}
+                    {aiCategoryResult && !aiCategoryCandidates.length && (
                       <div className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 animate-in slide-in-from-top-2 duration-200 ${
                         aiCategoryResult.isNew
                           ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/80 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300'
@@ -6444,6 +6713,168 @@ export default function ProductsPage() {
                   ? `Supprimer Soldes (${selectedIds.size} produits)`
                   : `Appliquer (${selectedIds.size} produits)`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 9.5. BULK AI CATEGORY CLASSIFICATION MODAL */}
+      {/* ========================================================================= */}
+      {showBulkAiCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-2xl rounded-3xl border border-amber-300/60 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-amber-100 dark:border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300 dark:border-amber-700/60 text-amber-600 dark:text-amber-400 shadow-sm">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    Classification IA en Masse des Produits
+                    {aiTokensBalance !== null && (
+                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">
+                        ⚡ {aiTokensBalance} jetons dispo
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    L&apos;IA va classifier <strong>{selectedIds.size}</strong> produit(s) sélectionné(s) dans le Hub & la Vitrine
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkAiCategoryModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+              {bulkAiProgress === null ? (
+                <>
+                  <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 text-xs space-y-2">
+                    <p className="font-bold text-amber-950 dark:text-amber-200">
+                      💡 Comment fonctionne la classification en masse :
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-amber-900/80 dark:text-amber-300/80">
+                      <li>Analyse individuelle du titre et des données de chaque produit sélectionné.</li>
+                      <li>Attribution automatique de la catégorie Marketplace Hub standardisée la plus précise.</li>
+                      <li>Création ou association intelligente à la catégorie et sous-catégorie Vitrine de votre boutique.</li>
+                      <li>Coût de l&apos;opération : <strong>{selectedIds.size} jeton(s) IA</strong> (1 jeton par produit).</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+                    <label className="flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bulkAiAutoApply}
+                        onChange={(e) => setBulkAiAutoApply(e.target.checked)}
+                        className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>Enregistrer et appliquer directement les nouvelles catégories en base de données</span>
+                    </label>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800/60 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      Produits inclus dans ce lot ({selectedIds.size}) :
+                    </div>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                      {products
+                        .filter((p) => selectedIds.has(p.id))
+                        .map((p) => (
+                          <div key={p.id} className="p-2.5 flex items-center justify-between gap-3">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
+                            <span className="text-[11px] text-slate-400 shrink-0">
+                              {p.marketplace_category_name || p.category || 'Non catégorisé'}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        Classification par lot terminée !
+                      </p>
+                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400">
+                        {bulkAiProgress.total_processed} produit(s) analysé(s) • {bulkAiProgress.tokens_consumed} jetons consommés
+                      </p>
+                    </div>
+                    {bulkAiProgress.results.every((r) => r.applied) && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-600 text-white">
+                        ✓ Enregistré
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800/60 text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                      <span>Rapport Détaillé Avant ➔ Après</span>
+                      <span>{bulkAiProgress.results.length} éléments</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                      {bulkAiProgress.results.map((res) => (
+                        <div key={res.product_id} className="p-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900 dark:text-white truncate">{res.title}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                              {Math.round(res.confidence * 100)}% Confiance
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div className="text-slate-500">
+                              <span className="font-semibold">🌐 Hub :</span> {res.suggested_marketplace_category_path}
+                            </div>
+                            <div className="text-slate-500">
+                              <span className="font-semibold">🏪 Vitrine :</span> {res.suggested_storefront_category_name}
+                            </div>
+                          </div>
+                          {res.reason && (
+                            <p className="text-[10px] text-slate-400 italic">💡 {res.reason}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2 border-t border-amber-100 dark:border-slate-800 pt-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowBulkAiCategoryModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                {bulkAiProgress ? 'Fermer' : 'Annuler'}
+              </button>
+
+              {bulkAiProgress === null && (
+                <button
+                  type="button"
+                  onClick={() => void handleBulkAiCategorize(bulkAiAutoApply)}
+                  disabled={bulkAiLoading}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md shadow-amber-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {bulkAiLoading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Traitement en cours...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4" /> Lancer la Classification ({selectedIds.size} produits)</>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

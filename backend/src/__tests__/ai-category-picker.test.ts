@@ -102,4 +102,37 @@ describe('AI Category Picker & Feature Pricing Integration', () => {
     // Should be 0 matches in coffee/beverages (bois must not match boissons)
     expect(matchedInCoffee).toBe(0);
   });
+
+  it('verifies Top 3 candidates generation and structure in fallback engine', async () => {
+    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+Produit à classifier :
+- Titre : Robe Caftan Artisanal Brodée Fil d'Or
+- Description : Caftan traditionnel en soie avec broderies dorées
+
+Catégories Marketplace Hub disponibles (choix contraint avec ID) :
+- Mode & Accessoires (id: "cat_market_fashion")
+- Robes & Caftans (id: "cat_market_caftans")
+- Artisanat Tunisien (id: "cat_market_crafts")
+- Électronique (id: "cat_market_elec")
+
+Catégories Vitrine Boutique existantes du vendeur :
+- Prêt-à-porter (id: "sf_fashion")
+  └─ Caftans de Fête (id: "sf_caftans")`;
+
+    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
+    expect(result.text).toBeDefined();
+
+    const parsed = JSON.parse(result.text);
+    expect(parsed.candidates).toBeDefined();
+    expect(Array.isArray(parsed.candidates)).toBe(true);
+    expect(parsed.candidates.length).toBeGreaterThanOrEqual(1);
+    expect(parsed.candidates.length).toBeLessThanOrEqual(3);
+
+    const top1 = parsed.candidates[0];
+    expect(top1.rank).toBe(1);
+    expect(top1.confidence).toBeGreaterThan(0.5);
+    expect(top1.marketplace_category_id).toBeDefined();
+    expect(top1.marketplace_category_name).toBeDefined();
+    expect(top1.storefront_category_name).toBeDefined();
+  });
 });

@@ -232,10 +232,7 @@ function generateFallbackCopywriting(prompt: string): string {
     const normTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const titleWords = normTitle.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
 
-    let bestMp = mpLines[0] || { id: 'cat_market_uncategorized', name: 'Non catégorisé' };
-    let bestScore = 0;
-
-    for (const cat of mpLines) {
+    const scoredMp = mpLines.map((cat) => {
       const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const catWords = normCat.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
       let matchCount = 0;
@@ -245,25 +242,53 @@ function generateFallbackCopywriting(prompt: string): string {
         }
       }
       const score = matchCount / Math.max(catWords.length, 1);
-      if (score > bestScore) {
-        bestScore = score;
-        bestMp = cat;
-      }
-    }
+      return { cat, score };
+    }).sort((a, b) => b.score - a.score);
 
-    const matchedSf = sfLines.find((s) => {
-      const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return normSf === bestMp.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleWords.some((w) => normSf.includes(w));
+    const top3 = scoredMp.slice(0, Math.min(3, scoredMp.length));
+    const topCandidates = top3.map((item, idx) => {
+      const mpCat = item.cat;
+      const matchedSf = sfLines.find((s) => {
+        const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return normSf === mpCat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleWords.some((w) => normSf.includes(w));
+      });
+      const confidence = Math.max(0.55, Math.min(0.98, item.score > 0 ? 0.95 - idx * 0.08 : 0.70 - idx * 0.1));
+      return {
+        rank: idx + 1,
+        marketplace_category_id: mpCat.id,
+        marketplace_category_name: mpCat.name,
+        storefront_category_name: matchedSf ? matchedSf.name : mpCat.name,
+        storefront_category_id: matchedSf ? matchedSf.id : null,
+        storefront_parent_category_id: null,
+        created_new: !matchedSf,
+        confidence: Number(confidence.toFixed(2)),
+        reason: item.score > 0
+          ? `Correspondance lexicale identifiée avec les termes clés du produit pour '${mpCat.name}'.`
+          : `Recommandation basée sur l'univers produit le plus proche.`,
+      };
     });
 
-    return JSON.stringify({
-      marketplace_category_id: bestMp.id,
-      marketplace_category_name: bestMp.name,
-      storefront_category_name: matchedSf ? matchedSf.name : bestMp.name,
-      storefront_category_id: matchedSf ? matchedSf.id : null,
+    const primary = topCandidates[0] || {
+      rank: 1,
+      marketplace_category_id: 'cat_market_uncategorized',
+      marketplace_category_name: 'Non catégorisé',
+      storefront_category_name: 'Collection Produit',
+      storefront_category_id: null,
       storefront_parent_category_id: null,
-      created_new: !matchedSf,
-      confidence: bestScore > 0 ? 0.9 : 0.65,
+      created_new: true,
+      confidence: 0.6,
+      reason: 'Classification par défaut.',
+    };
+
+    return JSON.stringify({
+      candidates: topCandidates.length > 0 ? topCandidates : [primary],
+      marketplace_category_id: primary.marketplace_category_id,
+      marketplace_category_name: primary.marketplace_category_name,
+      storefront_category_name: primary.storefront_category_name,
+      storefront_category_id: primary.storefront_category_id,
+      storefront_parent_category_id: primary.storefront_parent_category_id,
+      created_new: primary.created_new,
+      confidence: primary.confidence,
     });
   }
 
