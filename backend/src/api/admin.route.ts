@@ -6530,8 +6530,18 @@ router.put(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const { aiConfigService } = await import('../services/ai-config.service');
-    const { purpose, provider_config_id } = req.body;
-    const routing = await aiConfigService.setPurposeRouting(purpose, provider_config_id || null);
+    const {
+      purpose,
+      provider_config_id,
+      fallback_provider_config_id_1,
+      fallback_provider_config_id_2,
+    } = req.body;
+    const routing = await aiConfigService.setPurposeRouting(
+      purpose,
+      provider_config_id || null,
+      fallback_provider_config_id_1 || null,
+      fallback_provider_config_id_2 || null,
+    );
     res.status(200).json({ routing });
   }),
 );

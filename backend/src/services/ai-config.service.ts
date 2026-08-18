@@ -9,7 +9,6 @@ import { logger } from '../utils/logger';
 import { PdForbiddenError, PdNotFoundError, PdValidationError, PdErrorCode } from '../errors';
 import { storeService } from './store.service';
 import { subscriptionService } from './subscription.service';
-import { extractFallbackTags } from './buyer-interest.service';
 
 export type AiProvider = 'gemini' | 'openai' | 'claude' | 'custom' | 'replicate';
 
@@ -179,426 +178,7 @@ async function generateWithProvider(opts: {
   return parseOpenAiCompatibleResponse(data);
 }
 
-function generateFallbackCopywriting(prompt: string): string {
-  // If prompt is for product description
-  if (prompt.includes('description_html') || prompt.includes('Copywriter Expert')) {
-    const titleMatch = prompt.match(/Produit\s*:\s*(.+)/i) || prompt.match(/Titre\s*:\s*(.+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'Création Artisanale Authentique';
-    const catMatch = prompt.match(/Catégorie\s*:\s*(.+)/i);
-    const category = catMatch ? catMatch[1].trim() : 'Artisanat & Décoration';
 
-    return JSON.stringify({
-      description_html: `<h3>Découvrez ${title}</h3><p>Offrez-vous l'authenticité et l'élégance avec <strong>${title}</strong>, une pièce sélectionnée pour sa qualité supérieure et son design soigné dans l'univers ${category}.</p><h3>Points Forts</h3><ul><li><strong>Design & Finition :</strong> Confection minutieuse valorisant les matières nobles et le savoir-faire.</li><li><strong>Qualité & Durabilité :</strong> Matériaux robustes assurant une excellente longévité.</li><li><strong>Polyvalence & Charme :</strong> S'intègre avec distinction dans votre quotidien ou votre intérieur.</li></ul><h3>Caractéristiques & Conseils</h3><p>Idéal pour un usage personnel raffiné ou comme cadeau d'exception. Livraison soignée et garantie PandaMarket.</p>`,
-      summary: `Sublimez votre quotidien avec ${title}, alliant savoir-faire d'exception et qualité remarquable.`,
-    });
-  }
-
-  // If prompt is for semantic product tagging
-  if (prompt.includes('interest tags') || prompt.includes('tags d’intérêt') || prompt.includes('tags d\'intérêt') || prompt.includes('semantic tagging')) {
-    const titleMatch = prompt.match(/Title\s*:\s*([^\n\r]+)/i) || prompt.match(/Titre\s*:\s*([^\n\r]+)/i) || prompt.match(/Produit\s*:\s*([^\n\r]+)/i);
-    const catMatch = prompt.match(/Category\s*:\s*([^\n\r]+)/i) || prompt.match(/Catégorie\s*:\s*([^\n\r]+)/i);
-    const descMatch = prompt.match(/Description\s*:\s*([^\n\r]+)/i) || prompt.match(/Description brute\s*:\s*([^\n\r]+)/i);
-
-    const title = titleMatch ? titleMatch[1].trim() : '';
-    const category = catMatch ? catMatch[1].trim() : '';
-    const description = descMatch ? descMatch[1].trim() : '';
-
-    const tags = extractFallbackTags(title, category, description);
-    return JSON.stringify({ tags });
-  }
-
-  // If prompt is for category classification
-  if (prompt.includes('Classification Taxonomique') || prompt.includes('category_classification') || prompt.includes('TAXONOMIE MARKETPLACE HUB')) {
-    const titleMatch = prompt.match(/Titre\s*:\s*([^\n\r]+)/i) || prompt.match(/Title\s*:\s*([^\n\r]+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'Produit';
-
-    const descMatch = prompt.match(/Description\s*:\s*([^\n\r]+)/i);
-    const description = descMatch ? descMatch[1].trim() : '';
-
-    const brandMatch = prompt.match(/Marque\s*:\s*([^\n\r]+)/i);
-    const brand = brandMatch ? brandMatch[1].trim() : '';
-
-    const attrMatch = prompt.match(/Attributs & Spécifications\s*:\s*([^\n\r]+)/i);
-    const attributes = attrMatch ? attrMatch[1].trim() : '';
-
-    const tagsMatch = prompt.match(/Tags\s*:\s*([^\n\r]+)/i);
-    const tags = tagsMatch ? tagsMatch[1].trim() : '';
-
-    // Parse marketplace categories from prompt (only within marketplace section)
-    const mpLines: Array<{ id: string; name: string }> = [];
-    const mpFullSection = prompt.split(/Catégories Marketplace Hub disponibles/i)[1] || '';
-    const mpOnlySection = mpFullSection.split(/Catégories Vitrine Boutique existantes/i)[0] || '';
-    const mpRegex = /-\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
-    let match: RegExpExecArray | null;
-    while ((match = mpRegex.exec(mpOnlySection)) !== null) {
-      mpLines.push({ name: match[1].trim(), id: match[2].trim() });
-    }
-
-    // Parse storefront categories from prompt
-    const sfLines: Array<{ id: string; name: string }> = [];
-    const sfFullSection = prompt.split(/Catégories Vitrine Boutique existantes/i)[1] || '';
-    const sfOnlySection = sfFullSection.split(/RÉPONDEZ EXCLUSIVEMENT/i)[0] || '';
-    const sfRegex = /(?:-|\└─)\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
-    while ((match = sfRegex.exec(sfOnlySection)) !== null) {
-      sfLines.push({ name: match[1].trim(), id: match[2].trim() });
-    }
-
-    // Comprehensive semantic thesaurus & domain clusters
-    interface SemanticCluster {
-      clusterId: string;
-      categoryIds: string[];
-      keywords: string[];
-      parentSuggestion: { fr: string; ar: string; en: string; icon: string };
-      storefrontSuggestion: { fr: string; ar: string; en: string; icon: string };
-    }
-
-    const clusters: SemanticCluster[] = [
-      {
-        clusterId: 'olive_oil',
-        categoryIds: ['cat_market_olive_oil', 'cat_market_food', 'cat_market_harissa_spices'],
-        keywords: ['huile', 'olive', 'olives', 'zit', 'zitoun', 'vierge', 'extra', 'romarin', 'piment', 'baklouti', 'aromatisee', 'infusee', 'terroir', 'bouteille', 'pressage', 'froid', 'bio', 'vinaigre', 'condiment', 'sauce', 'culinaire', 'huiles'],
-        parentSuggestion: { fr: "Épicerie Fine & Terroir", ar: "البقالة الفاخرة والمنتجات المحلية", en: "Gourmet & Local Terroir", icon: "Utensils" },
-        storefrontSuggestion: { fr: "Huiles d'Olive Vierge Extra", ar: "زيت الزيتون البكر الممتاز", en: "Extra Virgin Olive Oils", icon: "Utensils" },
-      },
-      {
-        clusterId: 'harissa_spices',
-        categoryIds: ['cat_market_harissa_spices', 'cat_market_food', 'cat_market_olive_oil'],
-        keywords: ['harissa', 'epice', 'epices', 'tabil', 'carvi', 'coriandre', 'cumin', 'poivre', 'safran', 'felfel', 'piment', 'sauce', 'assaisonnement', 'paprika', 'curcuma'],
-        parentSuggestion: { fr: "Épicerie Fine & Terroir", ar: "البقالة الفاخرة والمنتجات المحلية", en: "Gourmet & Local Terroir", icon: "Flame" },
-        storefrontSuggestion: { fr: "Harissa Artisanale & Épices", ar: "هريسة وتوابل تقليدية", en: "Artisanal Harissa & Spices", icon: "Flame" },
-      },
-      {
-        clusterId: 'dates_honey',
-        categoryIds: ['cat_market_dates', 'cat_market_food'],
-        keywords: ['datte', 'dattes', 'deglet', 'nour', 'miel', 'asel', 'bsissa', 'patisserie', 'confiture', 'amande', 'noisette', 'pistache', 'zrir', 'douceur', 'miels'],
-        parentSuggestion: { fr: "Épicerie Sucrée & Miels", ar: "حلويات وعسل طبيعي", en: "Sweets & Natural Honey", icon: "Sparkles" },
-        storefrontSuggestion: { fr: "Dattes Deglet Nour & Miel", ar: "تمور دقلة النور وعسل طبيعي", en: "Deglet Nour Dates & Honey", icon: "Sparkles" },
-      },
-      {
-        clusterId: 'coffee_tea',
-        categoryIds: ['cat_market_coffee_tea', 'cat_market_food'],
-        keywords: ['cafe', 'coffee', 'the', 'tea', 'boisson', 'boissons', 'tisane', 'infusion', 'jus', 'syrup', 'sirop', 'menthe', 'grains', 'moulu', 'capsule', 'espresso', 'nespresso'],
-        parentSuggestion: { fr: "Boissons & Cafés", ar: "مشروبات وقهوة", en: "Beverages & Coffee", icon: "Coffee" },
-        storefrontSuggestion: { fr: "Café, Thé & Infusions", ar: "قهوة وشاي ومشروبات", en: "Coffee, Tea & Infusions", icon: "Coffee" },
-      },
-      {
-        clusterId: 'pottery_ceramics',
-        categoryIds: ['cat_market_nabeul_pottery', 'cat_market_handmade', 'cat_market_home'],
-        keywords: ['poterie', 'poteries', 'ceramique', 'ceramiques', 'nabeul', 'sejnane', 'argile', 'vase', 'plat', 'assiette', 'bol', 'tajine', 'artisanal', 'fait-main', 'sculpte', 'terrecuite'],
-        parentSuggestion: { fr: "Artisanat & Fait-Main", ar: "الصناعات التقليدية واليدوية", en: "Handicrafts & Handmade", icon: "Palette" },
-        storefrontSuggestion: { fr: "Poteries & Céramiques", ar: "فخار وخزف تقليدي", en: "Handmade Pottery & Ceramics", icon: "Palette" },
-      },
-      {
-        clusterId: 'margoum_carpets',
-        categoryIds: ['cat_market_margoum', 'cat_market_handmade', 'cat_market_decor', 'cat_market_home'],
-        keywords: ['tapis', 'margoum', 'klim', 'kilim', 'zarbia', 'laine', 'tissage', 'berbere', 'traditionnel', 'tapisserie'],
-        parentSuggestion: { fr: "Artisanat & Fait-Main", ar: "الصناعات التقليدية واليدوية", en: "Handicrafts & Handmade", icon: "Layers" },
-        storefrontSuggestion: { fr: "Tapis Margoum & Klim", ar: "زرابي ومرقوم تونسي", en: "Margoum & Klim Carpets", icon: "Layers" },
-      },
-      {
-        clusterId: 'fouta_linens',
-        categoryIds: ['cat_market_fouta', 'cat_market_handmade', 'cat_market_home'],
-        keywords: ['fouta', 'foutas', 'serviette', 'bain', 'plage', 'peignoir', 'drap', 'lin', 'coton', 'tissage', 'plaid', 'linge'],
-        parentSuggestion: { fr: "Linge de Maison & Bain", ar: "مفروشات ومستلزمات الحمام", en: "Home Linens & Bath", icon: "Sparkles" },
-        storefrontSuggestion: { fr: "Foutas Traditionnelles 100% Coton", ar: "فوطة تونسية قطن", en: "Tunisian Foutas & Throws", icon: "Sparkles" },
-      },
-      {
-        clusterId: 'mens_fashion',
-        categoryIds: ['cat_market_m_tops', 'cat_market_m_jeans', 'cat_market_m_suits', 'cat_market_m_jackets', 'cat_market_m_wallets', 'cat_market_mens_fashion'],
-        keywords: ['homme', 'hommes', 'men', 'chemise', 't-shirt', 'polo', 'pantalon', 'jean', 'costume', 'blazer', 'veste', 'manteau', 'blouson', 'pull', 'sweat', 'hoodie', 'ceinture', 'casquette'],
-        parentSuggestion: { fr: "Prêt-à-porter Homme", ar: "أزياء رجالية", en: "Men's Apparel", icon: "Shirt" },
-        storefrontSuggestion: { fr: "Hauts, Chemises & Polos", ar: "قمصان وبولو رجالي", en: "Men's Tops & Shirts", icon: "Shirt" },
-      },
-      {
-        clusterId: 'womens_fashion',
-        categoryIds: ['cat_market_w_dresses', 'cat_market_w_traditional', 'cat_market_w_tops', 'cat_market_womens_fashion'],
-        keywords: ['femme', 'femmes', 'women', 'robe', 'robes', 'caftan', 'jebba', 'abaya', 'jupe', 'chemisier', 'top', 'combinaison', 'manteau', 'veste', 'tailleur', 'broderie', 'soie'],
-        parentSuggestion: { fr: "Prêt-à-porter Femme", ar: "أزياء نسائية", en: "Women's Apparel", icon: "Sparkles" },
-        storefrontSuggestion: { fr: "Robes, Caftans & Tenues de Soirée", ar: "فساتين وقفاطين مناسبات", en: "Dresses & Evening Caftans", icon: "Sparkles" },
-      },
-      {
-        clusterId: 'shoes_sneakers',
-        categoryIds: ['cat_market_m_sneakers', 'cat_market_w_sneakers', 'cat_market_m_formal_shoes', 'cat_market_shoes', 'cat_market_sportswear'],
-        keywords: ['chaussure', 'chaussures', 'basket', 'baskets', 'sneaker', 'sneakers', 'sandale', 'sandales', 'talons', 'escarpin', 'mocassin', 'cuir', 'running', 'pointure'],
-        parentSuggestion: { fr: "Chaussures & Maroquinerie", ar: "الأحذية والمنتجات الجلدية", en: "Shoes & Leather Goods", icon: "Footprints" },
-        storefrontSuggestion: { fr: "Sneakers & Baskets Sportswear", ar: "سنيكرز وأحذية رياضية", en: "Sneakers & Casual Shoes", icon: "Footprints" },
-      },
-      {
-        clusterId: 'smartphones_telephony',
-        categoryIds: ['cat_market_smartphones', 'cat_market_iphones', 'cat_market_samsung', 'cat_market_electronics'],
-        keywords: ['smartphone', 'smartphones', 'telephone', 'telephonie', 'iphone', 'samsung', 'xiaomi', 'redmi', 'oppo', 'mobile', 'android', 'ios', '5g', 'dual sim', 'ecran oled'],
-        parentSuggestion: { fr: "High-Tech & Électronique", ar: "الإلكترونيات والتكنولوجيا", en: "High-Tech & Electronics", icon: "Smartphone" },
-        storefrontSuggestion: { fr: "Smartphones & Accessoires", ar: "الهواتف الذكية والإكسسوارات", en: "Smartphones & Accessories", icon: "Smartphone" },
-      },
-      {
-        clusterId: 'laptops_computers',
-        categoryIds: ['cat_market_laptops', 'cat_market_gaming_pc', 'cat_market_electronics'],
-        keywords: ['pc', 'ordinateur', 'ordinateurs', 'laptop', 'laptops', 'macbook', 'asus', 'dell', 'hp', 'lenovo', 'gamer', 'gaming', 'bureau', 'clavier', 'souris', 'ram', 'ssd', 'intel', 'ryzen'],
-        parentSuggestion: { fr: "Informatique & Bureautique", ar: "الحواسيب ومستلزمات المكتب", en: "Computers & Office", icon: "Laptop" },
-        storefrontSuggestion: { fr: "PC Portables & Ordinateurs", ar: "حواسيب محمولة ومكتبية", en: "Laptops & Computers", icon: "Laptop" },
-      },
-      {
-        clusterId: 'audio_tv',
-        categoryIds: ['cat_market_headphones', 'cat_market_audio_tv', 'cat_market_electronics'],
-        keywords: ['casque', 'casques', 'ecouteurs', 'earbuds', 'airpods', 'bluetooth', 'audio', 'enceinte', 'soundbar', 'tv', 'television', 'smart tv', '4k', 'oled', 'projecteur', 'camera'],
-        parentSuggestion: { fr: "Audio, TV & Multimédia", ar: "الصوتيات والتلفزيون", en: "Audio & Television", icon: "Headphones" },
-        storefrontSuggestion: { fr: "Casques, Écouteurs & Enceintes", ar: "سماعات ومكبرات صوت", en: "Headphones & Speakers", icon: "Headphones" },
-      },
-      {
-        clusterId: 'watches_jewelry',
-        categoryIds: ['cat_market_m_watches', 'cat_market_w_watches', 'cat_market_gold', 'cat_market_silver', 'cat_market_watches_jewelry'],
-        keywords: ['montre', 'montres', 'bijou', 'bijoux', 'bague', 'collier', 'bracelet', 'boucles', 'or', '18k', '24k', 'argent', 'silver', 'diamant', 'perle', 'horlogerie'],
-        parentSuggestion: { fr: "Bijouterie & Horlogerie", ar: "المجوهرات والساعات", en: "Jewelry & Watches", icon: "Watch" },
-        storefrontSuggestion: { fr: "Montres & Bijoux Précieux", ar: "ساعات ومجوهرات فاخرة", en: "Watches & Fine Jewelry", icon: "Watch" },
-      },
-      {
-        clusterId: 'beauty_perfumes',
-        categoryIds: ['cat_market_w_perfumes', 'cat_market_m_colognes', 'cat_market_skincare', 'cat_market_makeup', 'cat_market_haircare', 'cat_market_beauty'],
-        keywords: ['parfum', 'parfums', 'eau de parfum', 'oud', 'musk', 'fragrance', 'creme', 'serum', 'anti-age', 'hydratant', 'visage', 'peau', 'dermocosmetique', 'solaire', 'maquillage', 'rouge a levres', 'mascara', 'cheveux', 'shampoing'],
-        parentSuggestion: { fr: "Beauté, Parfums & Cosmétiques", ar: "الجمال والعطور ومستحضرات التجميل", en: "Beauty & Cosmetics", icon: "Heart" },
-        storefrontSuggestion: { fr: "Soins Visage & Parfumerie Fine", ar: "عناية بالبشرة وعطور فاخرة", en: "Skincare & Fine Fragrances", icon: "Heart" },
-      },
-      {
-        clusterId: 'home_furniture',
-        categoryIds: ['cat_market_sofas', 'cat_market_beds', 'cat_market_tables', 'cat_market_decor', 'cat_market_home'],
-        keywords: ['salon', 'canape', 'fauteuil', 'table', 'chaise', 'lit', 'matelas', 'armoire', 'commode', 'meuble', 'meubles', 'deco', 'decoration', 'luminaire', 'lampe', 'miroir', 'coussin'],
-        parentSuggestion: { fr: "Maison, Mobilier & Déco", ar: "المنزل والأثاث والديكور", en: "Home & Furniture", icon: "Home" },
-        storefrontSuggestion: { fr: "Mobilier & Décoration d'Intérieur", ar: "أثاث وديكور داخلي", en: "Furniture & Home Decor", icon: "Home" },
-      },
-      {
-        clusterId: 'kitchen_cookware',
-        categoryIds: ['cat_market_cookware', 'cat_market_home'],
-        keywords: ['cuisine', 'poele', 'casserole', 'marmite', 'ustensile', 'ustensiles', 'couteau', 'planche', 'tajine', 'vaisselle', 'verre', 'tasse', 'inox', 'antiadhesif', 'granite'],
-        parentSuggestion: { fr: "Maison & Cuisine", ar: "المنزل والمطبخ", en: "Home & Kitchen", icon: "Utensils" },
-        storefrontSuggestion: { fr: "Cuisine & Arts de la Table", ar: "أواني ومستلزمات المطبخ", en: "Kitchenware & Cookware", icon: "Utensils" },
-      },
-      {
-        clusterId: 'appliances',
-        categoryIds: ['cat_market_fridges', 'cat_market_washers', 'cat_market_air_fryers', 'cat_market_climatisation', 'cat_market_appliances'],
-        keywords: ['refrigerateur', 'frigo', 'congelateur', 'lave-linge', 'machine a laver', 'climatiseur', 'climatisation', 'chauffage', 'air fryer', 'friteuse', 'cafetiere', 'micro-ondes', 'four', 'aspirateur'],
-        parentSuggestion: { fr: "Électroménager", ar: "الأجهزة الكهرومنزلية", en: "Home Appliances", icon: "Tv" },
-        storefrontSuggestion: { fr: "Gros & Petit Électroménager", ar: "أجهزة كهرومنزلية متنوعة", en: "Major & Small Appliances", icon: "Tv" },
-      },
-      {
-        clusterId: 'sports_fitness',
-        categoryIds: ['cat_market_treadmills', 'cat_market_sportswear', 'cat_market_bicycles', 'cat_market_whey', 'cat_market_sports'],
-        keywords: ['sport', 'sports', 'fitness', 'musculation', 'tapis roulant', 'velo', 'haltere', 'trottinette', 'randonnee', 'camping', 'proteine', 'whey', 'creatine', 'survetement'],
-        parentSuggestion: { fr: "Sport & Fitness", ar: "الرياضة واللياقة البدنية", en: "Sports & Fitness", icon: "Activity" },
-        storefrontSuggestion: { fr: "Équipements Sport & Musculation", ar: "معدات رياضية وبناء أجسام", en: "Fitness Equipment & Gym", icon: "Activity" },
-      },
-      {
-        clusterId: 'baby_kids',
-        categoryIds: ['cat_market_strollers', 'cat_market_lego_toys', 'cat_market_kids_fashion', 'cat_market_kids'],
-        keywords: ['bebe', 'enfant', 'enfants', 'baby', 'kids', 'poussette', 'siege auto', 'lit bebe', 'biberon', 'jouet', 'jouets', 'lego', 'puzzle', 'peluche', 'vetement bebe'],
-        parentSuggestion: { fr: "Univers Bébé & Enfants", ar: "عالم الأطفال والرضع", en: "Baby & Kids", icon: "Baby" },
-        storefrontSuggestion: { fr: "Jouets, Éveil & Puériculture", ar: "ألعاب ومستلزمات أطفال", en: "Toys & Baby Essentials", icon: "Baby" },
-      },
-      {
-        clusterId: 'pets_animals',
-        categoryIds: ['cat_sub_garden_pets', 'cat_market_home'],
-        keywords: ['litiere', 'litières', 'chat', 'chats', 'chien', 'chiens', 'animal', 'animaux', 'croquette', 'croquettes', 'bentonite', 'agglomerante', 'absorption', 'odeur', 'odeurs', 'bac', 'samcat', 'litter', 'cat', 'cats', 'pet', 'pets', 'animalerie', 'collier', 'aquarium', 'oiseau', 'rongeur'],
-        parentSuggestion: { fr: "Animalerie & Soins Animaux", ar: "مستلزمات الحيوانات الأليفة", en: "Pet Supplies & Animal Care", icon: "Heart" },
-        storefrontSuggestion: { fr: "Litières & Hygiène Animaux", ar: "رمل ونظافة القطط والحيوانات", en: "Cat Litter & Pet Hygiene", icon: "Sparkles" },
-      },
-    ];
-
-    const STOP_WORDS = new Set(['pour', 'avec', 'sans', 'dans', 'sur', 'par', 'son', 'ses', 'des', 'les', 'une', 'aux', 'qui', 'que', 'est', 'sont', 'tout', 'tous', 'plus', 'tres', 'bien', 'fait', 'faire', 'apres', 'sous']);
-
-    // Tokenize product fields with weights
-    const cleanWords = (txt: string) =>
-      txt
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .split(/[\s-_/,&()]+/)
-        .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
-
-    const titleTokens = cleanWords(title);
-    const tagTokens = cleanWords(tags);
-    const attrTokens = cleanWords(attributes);
-    const descTokens = cleanWords(description);
-    const brandTokens = cleanWords(brand);
-
-    // Score semantic clusters first
-    let matchedCluster: SemanticCluster | null = null;
-    let highestClusterScore = 0;
-
-    for (const cluster of clusters) {
-      let clusterScore = 0;
-      for (const kw of cluster.keywords) {
-        if (titleTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 4.0;
-        if (tagTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 3.0;
-        if (attrTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 2.0;
-        if (descTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 1.0;
-        if (brandTokens.some((t) => t === kw)) clusterScore += 1.5;
-      }
-      if (clusterScore > highestClusterScore) {
-        highestClusterScore = clusterScore;
-        matchedCluster = cluster;
-      }
-    }
-
-    // Score each marketplace category
-    const scoredMp = mpLines.map((cat) => {
-      const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const catWords = normCat.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
-
-      let directScore = 0;
-      for (const tw of titleTokens) {
-        if (catWords.some((cw) => cw === tw || (cw.length >= 4 && tw.length >= 4 && (cw.startsWith(tw) || tw.startsWith(cw))))) {
-          directScore += 3.0;
-        }
-      }
-      for (const tag of tagTokens) {
-        if (catWords.some((cw) => cw === tag || (cw.length >= 4 && tag.length >= 4 && (cw.startsWith(tag) || tag.startsWith(cw))))) {
-          directScore += 2.0;
-        }
-      }
-      for (const dw of descTokens) {
-        if (catWords.some((cw) => cw === dw || (cw.length >= 4 && dw.length >= 4 && (cw.startsWith(dw) || dw.startsWith(cw))))) {
-          directScore += 0.8;
-        }
-      }
-
-      // If category belongs to the highest matching semantic cluster, boost significantly
-      let clusterBoost = 0;
-      if (matchedCluster) {
-        const clusterIndex = matchedCluster.categoryIds.indexOf(cat.id);
-        if (clusterIndex !== -1) {
-          // Specific subcategory (index 0) gets highest boost
-          clusterBoost = clusterIndex === 0 ? 10.0 : clusterIndex === 1 ? 6.0 : 4.0;
-        }
-      }
-
-      const totalScore = directScore + clusterBoost;
-      return { cat, score: totalScore, isSubcategory: cat.id.startsWith('cat_market_') && cat.id !== 'cat_market_food' && cat.id !== 'cat_market_electronics' && cat.id !== 'cat_market_home' };
-    });
-
-    // Only keep categories with meaningful score > 0
-    const matchedCategories = scoredMp.filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
-
-    // If no match found at all, fall back to general root
-    const top3 = matchedCategories.length > 0
-      ? matchedCategories.slice(0, Math.min(3, matchedCategories.length))
-      : [{ cat: mpLines[0] || { id: 'cat_market_uncategorized', name: 'Autres Produits' }, score: 0, isSubcategory: false }];
-
-    const topCandidates = top3.map((item, idx) => {
-      const mpCat = item.cat;
-      const matchedSf = sfLines.find((s) => {
-        const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normSf === mpCat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleTokens.some((w) => normSf.includes(w));
-      });
-
-      const confVal = item.score >= 8.0
-        ? Math.max(0.85, 0.96 - idx * 0.05)
-        : item.score >= 3.0
-        ? Math.max(0.70, 0.85 - idx * 0.08)
-        : Math.max(0.55, 0.65 - idx * 0.05);
-
-      const parentSug = matchedCluster?.parentSuggestion;
-      const sfSug = matchedCluster?.storefrontSuggestion;
-
-      const sfParentName = parentSug ? parentSug.fr : (idx === 0 ? 'Rayon Principal' : 'Boutique');
-      const matchedParent = sfLines.find((s) => {
-        const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normSf === sfParentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      });
-
-      // If matchedSf was found by name but equals the parent itself,
-      // invalidate it so the subcategory is generated as a child.
-      let resolvedSf = matchedSf;
-      if (resolvedSf && matchedParent && resolvedSf.id === matchedParent.id) {
-        resolvedSf = undefined;
-      }
-
-      const sfName = resolvedSf
-        ? resolvedSf.name
-        : (idx === 0 && sfSug)
-        ? sfSug.fr
-        : mpCat.name;
-
-      const reason = item.score > 0
-        ? (matchedCluster && matchedCluster.categoryIds.includes(mpCat.id))
-          ? `Classification sémantique optimale basée sur les termes clés détectés (${titleTokens.slice(0, 3).join(', ')}).`
-          : `Correspondance lexicale identifiée avec les termes clés du produit pour '${mpCat.name}'.`
-        : `Recommandation par défaut.`;
-
-      return {
-        rank: idx + 1,
-        marketplace_category_id: mpCat.id,
-        marketplace_category_name: mpCat.name,
-        storefront_parent_name: matchedParent ? matchedParent.name : sfParentName,
-        storefront_parent_id: matchedParent ? matchedParent.id : null,
-        parent_name_fr: parentSug?.fr || sfParentName,
-        parent_name_ar: parentSug?.ar || null,
-        parent_name_en: parentSug?.en || null,
-        storefront_category_name: sfName,
-        storefront_category_id: resolvedSf ? resolvedSf.id : null,
-        storefront_parent_category_id: matchedParent ? matchedParent.id : null,
-        created_new: !resolvedSf,
-        name_fr: sfSug?.fr || sfName,
-        name_ar: sfSug?.ar || null,
-        name_en: sfSug?.en || null,
-        icon: sfSug?.icon || 'Tag',
-        seo_title: `${sfName} | Boutique en Ligne`,
-        seo_description: `Découvrez nos articles dans la catégorie ${sfName}.`,
-        confidence: Number(confVal.toFixed(2)),
-        reason,
-      };
-    });
-
-    const primary = topCandidates[0] || {
-      rank: 1,
-      marketplace_category_id: 'cat_market_uncategorized',
-      marketplace_category_name: 'Autres Produits',
-      storefront_parent_name: 'Rayon Principal',
-      storefront_parent_id: null,
-      parent_name_fr: 'Rayon Principal',
-      parent_name_ar: null,
-      parent_name_en: null,
-      storefront_category_name: 'Collection Produit',
-      storefront_category_id: null,
-      storefront_parent_category_id: null,
-      created_new: true,
-      name_fr: 'Collection Produit',
-      name_ar: null,
-      name_en: null,
-      icon: 'Tag',
-      seo_title: 'Collection Produit | Boutique',
-      seo_description: 'Découvrez notre collection.',
-      confidence: 0.6,
-      reason: 'Classification par défaut.',
-    };
-
-    return JSON.stringify({
-      candidates: topCandidates.length > 0 ? topCandidates : [primary],
-      marketplace_category_id: primary.marketplace_category_id,
-      marketplace_category_name: primary.marketplace_category_name,
-      storefront_category_name: primary.storefront_category_name,
-      storefront_category_id: primary.storefront_category_id,
-      storefront_parent_category_id: primary.storefront_parent_category_id,
-      created_new: primary.created_new,
-      confidence: primary.confidence,
-    });
-  }
-
-  // If prompt is for page copy / SEO
-  if (prompt.includes('seo_title') || prompt.includes('seo_description')) {
-    const titleMatch = prompt.match(/Page title\s*:\s*([^.]+)/i) || prompt.match(/Titre\s*:\s*(.+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'PandaMarket';
-    return JSON.stringify({
-      seo_title: `${title} | Boutique Officielle PandaMarket Tunisie`,
-      seo_description: `Découvrez ${title} sur PandaMarket Tunisie. Qualité supérieure, meilleurs prix et livraison rapide à domicile.`,
-      hero_title: `Bienvenue dans l'univers ${title}`,
-      cta: 'Explorer la Collection',
-    });
-  }
-
-  return JSON.stringify({
-    success: true,
-    message: 'Contenu généré avec succès par le moteur intelligent PandaMarket.',
-  });
-}
 
 export class AiConfigService {
   async listProviders() {
@@ -766,19 +346,17 @@ export class AiConfigService {
     await query('DELETE FROM pd_store_ai_provider_config WHERE store_id = $1', [storeId]);
   }
 
-  async generateText(prompt: string, storeId?: string): Promise<TextGenerationResult> {
+  async generateText(prompt: string, storeId?: string, priorFailures: string[] = []): Promise<TextGenerationResult> {
     const attempts = await this.getGenerationAttempts(storeId);
     if (attempts.length === 0) {
-      logger.info('No external AI provider active, using high-quality local copywriting generator');
-      return {
-        text: generateFallbackCopywriting(prompt),
-        provider: 'custom',
-        provider_label: 'PandaMarket Smart Engine (Built-in)',
-        source: 'env',
-      };
+      const details = priorFailures.length > 0 ? ` Détails des échecs précédents : ${priorFailures.join(' | ')}.` : '';
+      logger.error('No functional AI providers configured or available');
+      throw new PdValidationError(
+        `Aucun fournisseur d'IA opérationnel n'est configuré sur la plateforme.${details} Veuillez configurer ou activer vos modèles IA (OpenAI, Gemini, Claude, Groq, etc.) dans l'onglet "Routage par Usage" du tableau de bord SuperAdmin.`,
+      );
     }
 
-    const failures: string[] = [];
+    const failures: string[] = [...priorFailures];
     for (const attempt of attempts) {
       try {
         const text = await generateWithProvider({
@@ -788,7 +366,7 @@ export class AiConfigService {
           api_key: attempt.api_key,
           prompt,
         });
-        if (!text.trim()) throw new Error('AI provider returned an empty response');
+        if (!text || !text.trim()) throw new Error(`Le fournisseur IA "${attempt.label}" a retourné une réponse vide.`);
         return {
           text,
           provider: attempt.provider,
@@ -798,17 +376,14 @@ export class AiConfigService {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         failures.push(`${attempt.label}: ${message}`);
-        logger.warn({ provider: attempt.provider, source: attempt.source, err: message }, 'AI provider attempt failed');
+        logger.warn({ provider: attempt.provider, source: attempt.source, err: message }, 'Tentative fournisseur IA échouée, basculement vers le modèle suivant');
       }
     }
 
-    logger.warn({ failures: failures.join(' | ') }, 'All configured AI providers failed, activating built-in smart fallback');
-    return {
-      text: generateFallbackCopywriting(prompt),
-      provider: 'custom',
-      provider_label: 'PandaMarket Smart Engine (Fallback)',
-      source: 'env',
-    };
+    logger.error({ failures: failures.join(' | ') }, 'Tous les fournisseurs d\'IA configurés ont échoué');
+    throw new PdValidationError(
+      `Échec de génération IA : Tous les modèles configurés (Principal, Secours 1, Secours 2 et pile générale) ont échoué (${failures.join(' | ')}). Veuillez vérifier la validité de vos clés API, vos quotas et consulter les journaux système dans le tableau de bord SuperAdmin.`,
+    );
   }
 
   private async clearDefault(client: PoolClient, exceptId?: string): Promise<void> {
@@ -907,18 +482,56 @@ export class AiConfigService {
   // Multi-Engine Purpose Routing & Prompt Templates
   // ----------------------------------------------------------------
 
+  private async ensurePurposeRoutingSchema(): Promise<void> {
+    try {
+      await query(`
+        ALTER TABLE pd_ai_purpose_routing
+        ADD COLUMN IF NOT EXISTS fallback_provider_config_id_1 TEXT REFERENCES pd_ai_provider_config(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS fallback_provider_config_id_2 TEXT REFERENCES pd_ai_provider_config(id) ON DELETE SET NULL;
+      `);
+    } catch {
+      // Ignored if already altered or table not created yet
+    }
+  }
+
   async listPurposeRouting() {
+    await this.ensurePurposeRoutingSchema();
+
     const { rows } = await query<{
       purpose: string;
       provider_config_id: string | null;
       provider_label: string | null;
       provider: string | null;
       model: string | null;
+      fallback_provider_config_id_1: string | null;
+      fallback_label_1: string | null;
+      fallback_provider_1: string | null;
+      fallback_model_1: string | null;
+      fallback_provider_config_id_2: string | null;
+      fallback_label_2: string | null;
+      fallback_provider_2: string | null;
+      fallback_model_2: string | null;
       updated_at: Date;
     }>(
-      `SELECT r.purpose, r.provider_config_id, c.label AS provider_label, c.provider, c.model, r.updated_at
+      `SELECT 
+        r.purpose, 
+        r.provider_config_id, 
+        c1.label AS provider_label, 
+        c1.provider, 
+        c1.model,
+        r.fallback_provider_config_id_1,
+        c2.label AS fallback_label_1,
+        c2.provider AS fallback_provider_1,
+        c2.model AS fallback_model_1,
+        r.fallback_provider_config_id_2,
+        c3.label AS fallback_label_2,
+        c3.provider AS fallback_provider_2,
+        c3.model AS fallback_model_2,
+        r.updated_at
        FROM pd_ai_purpose_routing r
-       LEFT JOIN pd_ai_provider_config c ON r.provider_config_id = c.id
+       LEFT JOIN pd_ai_provider_config c1 ON r.provider_config_id = c1.id
+       LEFT JOIN pd_ai_provider_config c2 ON r.fallback_provider_config_id_1 = c2.id
+       LEFT JOIN pd_ai_provider_config c3 ON r.fallback_provider_config_id_2 = c3.id
        ORDER BY r.purpose ASC`,
     );
 
@@ -939,33 +552,75 @@ export class AiConfigService {
       const existing = map.get(purpose);
       return {
         purpose,
+        // Primary (Choix 1)
         provider_config_id: existing?.provider_config_id || null,
-        provider_label: existing?.provider_label || 'Default Priority Stack',
+        provider_label: existing?.provider_label || 'Pile de Priorité Défaut',
         provider: existing?.provider || null,
         model: existing?.model || null,
+        // Fallback 1 (Choix 2)
+        fallback_provider_config_id_1: existing?.fallback_provider_config_id_1 || null,
+        fallback_label_1: existing?.fallback_label_1 || null,
+        fallback_provider_1: existing?.fallback_provider_1 || null,
+        fallback_model_1: existing?.fallback_model_1 || null,
+        // Fallback 2 (Choix 3)
+        fallback_provider_config_id_2: existing?.fallback_provider_config_id_2 || null,
+        fallback_label_2: existing?.fallback_label_2 || null,
+        fallback_provider_2: existing?.fallback_provider_2 || null,
+        fallback_model_2: existing?.fallback_model_2 || null,
         updated_at: existing?.updated_at ? existing.updated_at.toISOString() : new Date().toISOString(),
       };
     });
   }
 
-  async setPurposeRouting(purpose: string, providerConfigId: string | null) {
-    const validPurposes = ['product_description', 'text_summarization', 'content_generation', 'product_tagging', 'image_generation', 'image_upscaling', 'image_enhancement', 'image_background_removal', 'category_classification'];
+  async setPurposeRouting(
+    purpose: string,
+    providerConfigId: string | null,
+    fallbackProviderConfigId1?: string | null,
+    fallbackProviderConfigId2?: string | null,
+  ) {
+    await this.ensurePurposeRoutingSchema();
+
+    const validPurposes = [
+      'product_description',
+      'text_summarization',
+      'content_generation',
+      'product_tagging',
+      'image_generation',
+      'image_upscaling',
+      'image_enhancement',
+      'image_background_removal',
+      'category_classification',
+    ];
     if (!validPurposes.includes(purpose)) {
       throw new PdValidationError(`Invalid AI purpose: ${purpose}`);
     }
 
-    if (providerConfigId) {
-      const { rows } = await query('SELECT id FROM pd_ai_provider_config WHERE id = $1', [providerConfigId]);
-      if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'AI provider not found');
-    }
+    const validateProviderId = async (id: string | null | undefined) => {
+      if (id) {
+        const { rows } = await query('SELECT id FROM pd_ai_provider_config WHERE id = $1', [id]);
+        if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, `Fournisseur IA introuvable (ID: ${id})`);
+      }
+    };
+
+    await validateProviderId(providerConfigId);
+    await validateProviderId(fallbackProviderConfigId1);
+    await validateProviderId(fallbackProviderConfigId2);
 
     await query(
-      `INSERT INTO pd_ai_purpose_routing (id, purpose, provider_config_id, updated_at)
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO pd_ai_purpose_routing (id, purpose, provider_config_id, fallback_provider_config_id_1, fallback_provider_config_id_2, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
        ON CONFLICT (purpose) DO UPDATE
        SET provider_config_id = EXCLUDED.provider_config_id,
+           fallback_provider_config_id_1 = EXCLUDED.fallback_provider_config_id_1,
+           fallback_provider_config_id_2 = EXCLUDED.fallback_provider_config_id_2,
            updated_at = NOW()`,
-      [pdId('aipurp'), purpose, providerConfigId],
+      [
+        pdId('aipurp'),
+        purpose,
+        providerConfigId || null,
+        fallbackProviderConfigId1 || null,
+        fallbackProviderConfigId2 || null,
+      ],
     );
 
     return this.listPurposeRouting();
@@ -1221,16 +876,31 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
   }
 
   async generateTextForPurpose(purpose: string, prompt: string, storeId?: string): Promise<TextGenerationResult> {
-    const routingRes = await query<{ provider_config_id: string | null }>(
-      'SELECT provider_config_id FROM pd_ai_purpose_routing WHERE purpose = $1',
+    await this.ensurePurposeRoutingSchema();
+
+    const routingRes = await query<{
+      provider_config_id: string | null;
+      fallback_provider_config_id_1: string | null;
+      fallback_provider_config_id_2: string | null;
+    }>(
+      'SELECT provider_config_id, fallback_provider_config_id_1, fallback_provider_config_id_2 FROM pd_ai_purpose_routing WHERE purpose = $1',
       [purpose],
     );
 
-    const routedProviderId = routingRes.rows[0]?.provider_config_id;
-    if (routedProviderId) {
+    const routingRow = routingRes.rows[0];
+    const candidateTiers = [
+      { id: routingRow?.provider_config_id, label: 'Modèle Principal (Choix 1)' },
+      { id: routingRow?.fallback_provider_config_id_1, label: 'Modèle de Secours 1 (Choix 2)' },
+      { id: routingRow?.fallback_provider_config_id_2, label: 'Modèle de Secours 2 (Choix 3)' },
+    ].filter((item): item is { id: string; label: string } => Boolean(item.id));
+
+    const purposeFailures: string[] = [];
+
+    // Execute through the 3-tier cascade: Primary -> Fallback 1 -> Fallback 2
+    for (const { id: providerId, label: tierLabel } of candidateTiers) {
       const { rows } = await query<ProviderRow>(
         'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
-        [routedProviderId],
+        [providerId],
       );
 
       if (rows[0] && rows[0].api_key_encrypted) {
@@ -1244,93 +914,114 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
               api_key: apiKey,
               prompt,
             });
-            if (text.trim()) {
+            if (text && text.trim()) {
               return {
                 text,
                 provider: rows[0].provider,
-                provider_label: `${rows[0].label} (${purpose})`,
+                provider_label: `${rows[0].label} (${purpose} — ${tierLabel})`,
                 source: 'platform',
               };
             }
-          } catch (err) {
-            logger.warn({ purpose, provider: rows[0].provider, err }, 'Purpose-routed AI provider failed, falling back to priority stack');
+            throw new Error(`Le modèle "${rows[0].label}" a retourné une réponse vide.`);
+          } catch (err: any) {
+            const msg = err?.message || String(err);
+            purposeFailures.push(`[${tierLabel}: ${rows[0].label}]: ${msg}`);
+            logger.warn(
+              { purpose, tier: tierLabel, provider: rows[0].provider, model: rows[0].model, err: msg },
+              `Échec du ${tierLabel} pour '${purpose}'. Basculement automatique vers le modèle de secours suivant...`,
+            );
           }
         }
       }
     }
 
-    return this.generateText(prompt, storeId);
+    // If all configured tier models failed (or none were explicitly configured), fallback to general platform stack
+    return this.generateText(prompt, storeId, purposeFailures);
   }
+
   async generateImageForPurpose(purpose: string, prompt: string, imageUrl?: string, _storeId?: string): Promise<string> {
-    const routingRes = await query<{ provider_config_id: string | null }>(
-      'SELECT provider_config_id FROM pd_ai_purpose_routing WHERE purpose = $1',
+    await this.ensurePurposeRoutingSchema();
+
+    const routingRes = await query<{
+      provider_config_id: string | null;
+      fallback_provider_config_id_1: string | null;
+      fallback_provider_config_id_2: string | null;
+    }>(
+      'SELECT provider_config_id, fallback_provider_config_id_1, fallback_provider_config_id_2 FROM pd_ai_purpose_routing WHERE purpose = $1',
       [purpose],
     );
 
-    const routedProviderId = routingRes.rows[0]?.provider_config_id;
-    if (!routedProviderId) {
-      throw new Error(`No AI provider configured for purpose: ${purpose}`);
-    }
+    const routingRow = routingRes.rows[0];
+    const candidateTiers = [
+      { id: routingRow?.provider_config_id, label: 'Modèle Principal (Choix 1)' },
+      { id: routingRow?.fallback_provider_config_id_1, label: 'Modèle de Secours 1 (Choix 2)' },
+      { id: routingRow?.fallback_provider_config_id_2, label: 'Modèle de Secours 2 (Choix 3)' },
+    ].filter((item): item is { id: string; label: string } => Boolean(item.id));
 
-    const { rows } = await query<ProviderRow>(
-      'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
-      [routedProviderId],
-    );
+    const imageFailures: string[] = [];
 
-    if (!rows[0] || !rows[0].api_key_encrypted) {
-      throw new Error(`AI provider not found or disabled for purpose: ${purpose}`);
-    }
+    for (const { id: providerId, label: tierLabel } of candidateTiers) {
+      const { rows } = await query<ProviderRow>(
+        'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
+        [providerId],
+      );
 
-    const providerConfig = rows[0];
-    const apiKey = safeDecrypt(providerConfig.api_key_encrypted as string);
-    if (!apiKey) {
-      throw new Error(`Invalid or corrupt API key for AI provider on purpose: ${purpose}`);
-    }
-
-    try {
-      if (providerConfig.provider === 'replicate') {
-        // Mock Replicate API call for now to prevent breaking, as we don't have replicate SDK installed.
-        // In reality, this would hit https://api.replicate.com/v1/predictions
-        const url = `${(providerConfig.base_url || 'https://api.replicate.com').replace(/\/$/, '')}/v1/predictions`;
-        const { data } = await axios.post(
-          url,
-          {
-            version: providerConfig.model,
-            input: { prompt, image: imageUrl },
-          },
-          {
-            headers: {
-              Authorization: `Token ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-        // Wait for prediction to complete (simplified)
-        return data.output?.[0] || data.output || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80';
-      } else {
-        // Assume OpenAI compatible for everything else (custom, openai)
-        const url = `${(providerConfig.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/images/generations`;
-        const { data } = await axios.post(
-          url,
-          {
-            model: providerConfig.model,
-            prompt,
-            n: 1,
-            size: '1024x1024',
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-        return data.data?.[0]?.url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80';
+      if (rows[0] && rows[0].api_key_encrypted) {
+        const apiKey = safeDecrypt(rows[0].api_key_encrypted);
+        if (apiKey) {
+          const providerConfig = rows[0];
+          try {
+            if (providerConfig.provider === 'replicate') {
+              const url = `${(providerConfig.base_url || 'https://api.replicate.com').replace(/\/$/, '')}/v1/predictions`;
+              const { data } = await axios.post(
+                url,
+                {
+                  version: providerConfig.model,
+                  input: { prompt, image: imageUrl },
+                },
+                {
+                  headers: {
+                    Authorization: `Token ${apiKey}`,
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+              const resultUrl = data.output?.[0] || data.output;
+              if (resultUrl) return resultUrl;
+              throw new Error('Réponse vide du modèle Replicate');
+            } else {
+              const url = `${(providerConfig.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/images/generations`;
+              const { data } = await axios.post(
+                url,
+                {
+                  model: providerConfig.model,
+                  prompt,
+                  n: 1,
+                  size: '1024x1024',
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+              const resultUrl = data.data?.[0]?.url;
+              if (resultUrl) return resultUrl;
+              throw new Error('Réponse vide du modèle de génération d\'image');
+            }
+          } catch (err: any) {
+            const msg = err?.message || String(err);
+            imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: ${msg}`);
+            logger.warn({ purpose, tier: tierLabel, provider: providerConfig.provider, err: msg }, 'Échec génération image IA, basculement au secours');
+          }
+        }
       }
-    } catch (err) {
-      logger.error({ purpose, provider: providerConfig.provider, err }, 'Image generation failed');
-      throw new Error(`Image generation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    throw new PdValidationError(
+      `Échec de génération d'image IA : Tous les modèles configurés pour '${purpose}' ont échoué (${imageFailures.join(' | ')}). Veuillez vérifier vos clés API et les quotas dans le tableau de bord SuperAdmin.`,
+    );
   }
 }
 

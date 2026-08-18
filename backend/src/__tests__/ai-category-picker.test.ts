@@ -11,9 +11,15 @@ describe('AI Category Picker & Feature Pricing Integration', () => {
     expect(AiJobType.CategoryClassification).toBe('category_classification');
   });
 
-  it('verifies category_classification is accepted in setPurposeRouting', async () => {
+  it('verifies category_classification is accepted in setPurposeRouting with 3-tier fallbacks', async () => {
     try {
-      await aiConfigService.setPurposeRouting('category_classification', null);
+      const routing = await aiConfigService.setPurposeRouting('category_classification', null, null, null);
+      expect(Array.isArray(routing)).toBe(true);
+      const catRoute = routing.find((r) => r.purpose === 'category_classification');
+      expect(catRoute).toBeDefined();
+      expect(catRoute?.provider_config_id).toBeNull();
+      expect(catRoute?.fallback_provider_config_id_1).toBeNull();
+      expect(catRoute?.fallback_provider_config_id_2).toBeNull();
     } catch (err: any) {
       expect(err?.message).not.toContain('Invalid AI purpose');
     }
@@ -76,156 +82,20 @@ describe('AI Category Picker & Feature Pricing Integration', () => {
     expect(formatted).not.toContain('Non categorized products');
   });
 
-  it('verifies wood salad servers do not falsely match coffee/beverages due to "bois" in "boissons"', () => {
-    const title = "Ensemble Couverts à Salade Artisanal en Bois d'Olivier Massif (Cuillère & Fourchette)";
-    const categories = [
-      { id: 'cat_market_coffee_tea', name: 'Café, Thé & Boissons' },
-      { id: 'cat_market_handmade', name: 'Artisanat Tunisien' },
-      { id: 'cat_market_cookware', name: 'Cookware & Kitchen Utensils' },
-    ];
-
-    const targetWords = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
-    
-    // Beverage category words
-    const coffeeWords = 'Café, Thé & Boissons'.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
-    
-    let matchedInCoffee = 0;
-    for (const tw of targetWords) {
-      const hasExact = coffeeWords.some((cw) => {
-        if (cw === tw) return true;
-        if (tw.length >= 5 && cw.length >= 5 && (cw.startsWith(tw) || tw.startsWith(cw))) return true;
-        return false;
-      });
-      if (hasExact) matchedInCoffee++;
-    }
-
-    // Should be 0 matches in coffee/beverages (bois must not match boissons)
-    expect(matchedInCoffee).toBe(0);
-  });
-
-  it('verifies Top 3 candidates generation and structure in fallback engine', async () => {
-    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
-Produit à classifier :
-- Titre : Robe Caftan Artisanal Brodée Fil d'Or
-- Description : Caftan traditionnel en soie avec broderies dorées
-
-Catégories Marketplace Hub disponibles (choix contraint avec ID) :
-- Mode & Accessoires (id: "cat_market_fashion")
-- Robes & Caftans (id: "cat_market_caftans")
-- Artisanat Tunisien (id: "cat_market_crafts")
-- Électronique (id: "cat_market_elec")
-
-Catégories Vitrine Boutique existantes du vendeur :
-- Prêt-à-porter (id: "sf_fashion")
-  └─ Caftans de Fête (id: "sf_caftans")`;
-
-    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
-    expect(result.text).toBeDefined();
-
-    const parsed = JSON.parse(result.text);
-    expect(parsed.candidates).toBeDefined();
-    expect(Array.isArray(parsed.candidates)).toBe(true);
-    expect(parsed.candidates.length).toBeGreaterThanOrEqual(1);
-    expect(parsed.candidates.length).toBeLessThanOrEqual(3);
-
-    const top1 = parsed.candidates[0];
-    expect(top1.rank).toBe(1);
-    expect(top1.confidence).toBeGreaterThan(0.5);
-    expect(top1.marketplace_category_id).toBeDefined();
-    expect(top1.marketplace_category_name).toBeDefined();
-    expect(top1.storefront_category_name).toBeDefined();
-  });
-
-  it('correctly classifies Tunisian Extra Virgin Olive Oil with high confidence and no false electronics match', async () => {
-    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
-📦 PRODUIT À CLASSIFIER :
-- Titre : Huile d'Olive Vierge Extra Infusée au Piment Rouge & Romarin Sauvage 250ml
-- Description : Huile d'olive extra vierge de première pression à froid macérée artisanalement avec des piments rouges Baklouti séchés et du romarin sauvage de montagne. Idéale pour pizzas, grillades et pâtes.
-- Marque : MED-FOOD-012
-- Attributs & Spécifications : Contenance: 250 ml (Bouteille en verre avec verseur), Ingrédients: Huile d'olive extra vierge 97%, Piments rouges 2%, Romarin sauvage 1%
-- Tags : huile pimentée, huile aromatisée, romarin, terroir tunisie
-- Prix indicatif : 25 TND
-- Langue : French
-
-Catégories Marketplace Hub disponibles (choix contraint avec ID) :
-- Électronique & High-Tech (id: "cat_market_electronics")
-  - TV, Audio & Photo (id: "cat_market_audio_tv")
-    - Casques & Écouteurs (id: "cat_market_headphones")
-- Alimentation & Terroir Tunisien (id: "cat_market_food")
-  - Huile d'Olive Vierge Extra (id: "cat_market_olive_oil")
-  - Harissa Artisanale & Épices (id: "cat_market_harissa_spices")
-
-Catégories Vitrine Boutique existantes du vendeur :
-- Électronique & High-Tech (id: "pd_cat_4cvg9FCmEqkrAju7")
-
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
-{
-  "candidates": []
-}`;
-
-    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
-    const parsed = JSON.parse(result.text);
-
-    expect(parsed.candidates).toBeDefined();
-    expect(parsed.candidates.length).toBeGreaterThanOrEqual(1);
-
-    const top1 = parsed.candidates[0];
-    expect(top1.marketplace_category_id).toBe('cat_market_olive_oil');
-    expect(top1.confidence).toBeGreaterThanOrEqual(0.85);
-    expect(top1.storefront_parent_name).toBeDefined();
-    expect(top1.storefront_parent_name).toContain('Épicerie');
-    expect(top1.storefront_category_name).toContain('Huile');
-    expect(top1.storefront_category_id).toBeNull();
-    expect(top1.created_new).toBe(true);
-
-    for (const c of parsed.candidates) {
-      expect(c.marketplace_category_id).not.toBe('cat_market_electronics');
-      expect(c.marketplace_category_id).not.toBe('cat_market_audio_tv');
-      expect(c.marketplace_category_id).not.toBe('cat_market_headphones');
-    }
-  });
-
-  it('verifies listPurposeRouting includes category_classification', async () => {
+  it('verifies listPurposeRouting includes category_classification with 3 tiers', async () => {
     const routing = await aiConfigService.listPurposeRouting();
     const catRoute = routing.find((r) => r.purpose === 'category_classification');
     expect(catRoute).toBeDefined();
     expect(catRoute?.purpose).toBe('category_classification');
+    expect(catRoute).toHaveProperty('provider_config_id');
+    expect(catRoute).toHaveProperty('fallback_provider_config_id_1');
+    expect(catRoute).toHaveProperty('fallback_provider_config_id_2');
   });
 
-  it('correctly classifies cat litter bentonite to pet care in fallback engine without matching stop-word false positives', async () => {
-    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
-
-📦 PRODUIT À CLASSIFIER :
-- Titre : Bentonite Litière Agglomérante pour Chats, Contrôle des Odeurs & Haute Absorption 5L
-- Description : La litière agglomérante SamCat Clumping Cat Litter offre une solution pratique et hygiénique pour le confort de votre chat. Grâce à sa formule à forte absorption, elle forme des blocs compacts faciles à retirer, aidant ainsi à garder le bac propre plus longtemps. Elle neutralise efficacement les mauvaises odeurs.
-- Marque : SamCat
-- Attributs & Spécifications : Non spécifiés
-- Tags : litiere chat, bentonite
-- Prix indicatif : 79 TND
-- Langue : French
-
-Catégories Marketplace Hub disponibles (choix contraint avec ID) :
-- Électronique & High-Tech (id: "cat_market_electronics")
-  - Haut-parleurs & Barres de son (id: "cat_market_speakers")
-- Maison, Meubles & Déco (id: "cat_market_home")
-  - Jardinage & Animaux de Compagnie (id: "cat_sub_garden_pets")
-
-Catégories Vitrine Boutique existantes du vendeur :
-- Rayon Principal (id: "pd_cat_SSgrub7drUHvGAfx")
-  └─ Haut-parleurs & Barres de son (id: "pd_cat_5Arnw7r9vMWcS7kk")
-
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
-{
-  "candidates": []
-}`;
-
-    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
-    const parsed = JSON.parse(result.text);
-
-    expect(parsed.candidates).toBeDefined();
-    const top1 = parsed.candidates[0];
-    expect(top1.marketplace_category_id).toBe('cat_sub_garden_pets');
-    expect(top1.marketplace_category_id).not.toBe('cat_market_speakers');
-    expect(top1.storefront_parent_name).toContain('Animal');
+  it('throws descriptive PdValidationError when no active providers are available without using mock fallback', async () => {
+    // When no API keys or external providers are available in test environment, it must NOT use fake fallback
+    await expect(
+      aiConfigService.generateText('Produit test')
+    ).rejects.toThrow(/Aucun fournisseur d'IA opérationnel|Échec de génération IA/);
   });
 });

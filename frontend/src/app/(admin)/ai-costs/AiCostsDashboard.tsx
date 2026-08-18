@@ -548,9 +548,23 @@ export default function AiCostsDashboard() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Purpose Routing state
+  // Purpose Routing state (3-Tier Multi-Model Failover: Primary -> Fallback 1 -> Fallback 2)
   const [purposeRouting, setPurposeRouting] = useState<
-    Array<{ purpose: string; provider_config_id: string | null; provider_label: string; model: string | null }>
+    Array<{
+      purpose: string;
+      provider_config_id: string | null;
+      provider_label: string;
+      provider?: string | null;
+      model: string | null;
+      fallback_provider_config_id_1?: string | null;
+      fallback_label_1?: string | null;
+      fallback_provider_1?: string | null;
+      fallback_model_1?: string | null;
+      fallback_provider_config_id_2?: string | null;
+      fallback_label_2?: string | null;
+      fallback_provider_2?: string | null;
+      fallback_model_2?: string | null;
+    }>
   >([]);
   const [savingPurposeKey, setSavingPurposeKey] = useState<string | null>(null);
   const [savedPurposeKeys, setSavedPurposeKeys] = useState<Record<string, boolean>>({});
@@ -869,18 +883,31 @@ export default function AiCostsDashboard() {
     }
   };
 
-  // Purpose Routing Action with instant optimistic update
-  const updatePurposeRouting = async (purpose: string, providerConfigId: string | null) => {
-    const targetProvider = providers.find((p) => p.id === providerConfigId);
+  // Purpose Routing Action with instant optimistic update (3-Tier Multi-Model Failover)
+  const updatePurposeRouting = async (
+    purpose: string,
+    primaryId: string | null,
+    fallback1Id: string | null = null,
+    fallback2Id: string | null = null,
+  ) => {
+    const targetPrimary = providers.find((p) => p.id === primaryId);
+    const targetFallback1 = providers.find((p) => p.id === fallback1Id);
+    const targetFallback2 = providers.find((p) => p.id === fallback2Id);
 
     // Optimistic UI state update
     setPurposeRouting((prev) => {
       const idx = prev.findIndex((r) => r.purpose === purpose);
       const updatedItem = {
         purpose,
-        provider_config_id: providerConfigId,
-        provider_label: targetProvider ? `${targetProvider.label} (${providerLabels[targetProvider.provider].name} - ${targetProvider.model})` : 'Pile de Priorité Défaut',
-        model: targetProvider?.model || null,
+        provider_config_id: primaryId,
+        provider_label: targetPrimary ? `${targetPrimary.label} (${providerLabels[targetPrimary.provider].name} - ${targetPrimary.model})` : 'Pile de Priorité Défaut',
+        model: targetPrimary?.model || null,
+        fallback_provider_config_id_1: fallback1Id,
+        fallback_label_1: targetFallback1?.label || null,
+        fallback_model_1: targetFallback1?.model || null,
+        fallback_provider_config_id_2: fallback2Id,
+        fallback_label_2: targetFallback2?.label || null,
+        fallback_model_2: targetFallback2?.model || null,
       };
       if (idx >= 0) {
         const next = [...prev];
@@ -896,13 +923,18 @@ export default function AiCostsDashboard() {
       const res = await fetchWithCsrf('/api/pd/admin/ai/purpose-routing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purpose, provider_config_id: providerConfigId }),
+        body: JSON.stringify({
+          purpose,
+          provider_config_id: primaryId || null,
+          fallback_provider_config_id_1: fallback1Id || null,
+          fallback_provider_config_id_2: fallback2Id || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.routing)) {
         setPurposeRouting(data.routing);
         setSavedPurposeKeys((prev) => ({ ...prev, [purpose]: true }));
-        setConfigMessage(`Routage assigné avec succès pour "${purpose}".`);
+        setConfigMessage(`Routage 3-niveaux enregistré avec succès pour "${purpose}".`);
         setTimeout(() => {
           setSavedPurposeKeys((prev) => ({ ...prev, [purpose]: false }));
         }, 3000);
@@ -1108,7 +1140,7 @@ export default function AiCostsDashboard() {
           {[
             { id: 'overview', label: "Vue d'Ensemble & Métriques", icon: BarChart3, badge: `${stats.total_jobs} jobs` },
             { id: 'history', label: 'Historique des Requêtes & Logs', icon: History, badge: `${historySummary.total || stats.total_jobs} requêtes` },
-            { id: 'routing', label: 'Routage par Usage', icon: Sparkles, badge: `${configuredRoutesCount}/6 assignés` },
+            { id: 'routing', label: 'Routage par Usage', icon: Sparkles, badge: `${configuredRoutesCount}/${PURPOSE_MODULES.length} assignés` },
             { id: 'providers', label: 'Fournisseurs & Clés API', icon: Server, badge: `${providers.length} moteurs` },
             { id: 'prompts', label: 'Prompts Système & Studio', icon: FileCode, badge: `${promptTemplates.length} templates` },
             { id: 'pricing', label: 'Tarification & Wallets', icon: Coins, badge: `${pricing.length} modules` },
@@ -2006,7 +2038,7 @@ export default function AiCostsDashboard() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: MULTI-ENGINE PURPOSE ROUTING */}
+      {/* TAB 2: MULTI-ENGINE PURPOSE ROUTING (3-TIER MULTI-MODEL FAILOVER) */}
       {/* ========================================================================= */}
       {activeTab === 'routing' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -2014,13 +2046,13 @@ export default function AiCostsDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-black text-slate-900 dark:text-white">Routage Multi-Moteurs IA par Usage</h2>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">Routage Multi-Moteurs IA par Usage (Cascade à 3 Niveaux)</h2>
                   <span className="rounded-full bg-red-50 dark:bg-red-950/40 px-2.5 py-0.5 text-[10px] font-black text-[#B91C1C]">
-                    {configuredRoutesCount}/6 modules configurés
+                    {configuredRoutesCount}/{PURPOSE_MODULES.length} modules configurés
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500 font-medium leading-relaxed">
-                  Assignez le modèle d&apos;IA optimal à chaque tâche e-commerce spécifique (GPT-4o pour le copywriting, Gemini pour la vitesse, Nemotron ou Replicate pour la photo).
+                  Configurez jusqu&apos;à 3 modèles d&apos;IA pour chaque fonctionnalité e-commerce. PandaMarket tentera d&apos;abord le <strong>Modèle Principal</strong>. En cas d&apos;erreur ou de quota épuisé, le système basculera automatiquement et de manière transparente sur le <strong>Secours 1</strong>, puis le <strong>Secours 2</strong>.
                 </p>
               </div>
             </div>
@@ -2030,7 +2062,85 @@ export default function AiCostsDashboard() {
                 const currentRoute = purposeRouting.find((r) => r.purpose === item.key);
                 const isSaving = savingPurposeKey === item.key;
                 const isSaved = savedPurposeKeys[item.key];
-                const activeProvider = providers.find((p) => p.id === currentRoute?.provider_config_id);
+
+                const primaryProvider = providers.find((p) => p.id === currentRoute?.provider_config_id);
+                const fallback1Provider = providers.find((p) => p.id === currentRoute?.fallback_provider_config_id_1);
+                const fallback2Provider = providers.find((p) => p.id === currentRoute?.fallback_provider_config_id_2);
+
+                const handlePrimaryChange = (val: string) => {
+                  const newPrimaryId = val || null;
+                  setPurposeRouting((prev) => {
+                    const idx = prev.findIndex((r) => r.purpose === item.key);
+                    const updated = {
+                      purpose: item.key,
+                      provider_config_id: newPrimaryId,
+                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
+                      model: primaryProvider?.model || null,
+                      fallback_provider_config_id_1: currentRoute?.fallback_provider_config_id_1 || null,
+                      fallback_label_1: fallback1Provider?.label || null,
+                      fallback_model_1: fallback1Provider?.model || null,
+                      fallback_provider_config_id_2: currentRoute?.fallback_provider_config_id_2 || null,
+                      fallback_label_2: fallback2Provider?.label || null,
+                      fallback_model_2: fallback2Provider?.model || null,
+                    };
+                    if (idx >= 0) {
+                      const next = [...prev];
+                      next[idx] = { ...next[idx], ...updated };
+                      return next;
+                    }
+                    return [...prev, updated];
+                  });
+                };
+
+                const handleFallback1Change = (val: string) => {
+                  const newFallback1Id = val || null;
+                  setPurposeRouting((prev) => {
+                    const idx = prev.findIndex((r) => r.purpose === item.key);
+                    const updated = {
+                      purpose: item.key,
+                      provider_config_id: currentRoute?.provider_config_id || null,
+                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
+                      model: primaryProvider?.model || null,
+                      fallback_provider_config_id_1: newFallback1Id,
+                      fallback_label_1: fallback1Provider?.label || null,
+                      fallback_model_1: fallback1Provider?.model || null,
+                      fallback_provider_config_id_2: currentRoute?.fallback_provider_config_id_2 || null,
+                      fallback_label_2: fallback2Provider?.label || null,
+                      fallback_model_2: fallback2Provider?.model || null,
+                    };
+                    if (idx >= 0) {
+                      const next = [...prev];
+                      next[idx] = { ...next[idx], ...updated };
+                      return next;
+                    }
+                    return [...prev, updated];
+                  });
+                };
+
+                const handleFallback2Change = (val: string) => {
+                  const newFallback2Id = val || null;
+                  setPurposeRouting((prev) => {
+                    const idx = prev.findIndex((r) => r.purpose === item.key);
+                    const updated = {
+                      purpose: item.key,
+                      provider_config_id: currentRoute?.provider_config_id || null,
+                      provider_label: primaryProvider?.label || 'Pile de Priorité Défaut',
+                      model: primaryProvider?.model || null,
+                      fallback_provider_config_id_1: currentRoute?.fallback_provider_config_id_1 || null,
+                      fallback_label_1: fallback1Provider?.label || null,
+                      fallback_model_1: fallback1Provider?.model || null,
+                      fallback_provider_config_id_2: newFallback2Id,
+                      fallback_label_2: fallback2Provider?.label || null,
+                      fallback_model_2: fallback2Provider?.model || null,
+                    };
+                    if (idx >= 0) {
+                      const next = [...prev];
+                      next[idx] = { ...next[idx], ...updated };
+                      return next;
+                    }
+                    return [...prev, updated];
+                  });
+                };
 
                 return (
                   <div
@@ -2063,42 +2173,106 @@ export default function AiCostsDashboard() {
                       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{item.desc}</p>
                     </div>
 
-                    <div className="space-y-2.5 border-t border-slate-200/60 dark:border-slate-700/60 pt-3">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold uppercase text-slate-400 text-[10px]">Moteur Actif</span>
-                        {activeProvider ? (
-                          <span className="font-bold text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
-                            {activeProvider.label}
+                    {/* Failover Chain Preview Badge */}
+                    <div className="rounded-xl bg-slate-100/80 dark:bg-slate-900/60 p-2.5 border border-slate-200/50 dark:border-slate-800 text-[10px] space-y-1">
+                      <div className="font-black uppercase tracking-wider text-slate-400 text-[9px]">Ordre d&apos;Exécution IA :</div>
+                      <div className="flex flex-wrap items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
+                        <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded">
+                          1️⃣ {primaryProvider ? primaryProvider.label : 'Pile Défaut'}
+                        </span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                          2️⃣ {fallback1Provider ? fallback1Provider.label : 'Secours 1'}
+                        </span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded">
+                          3️⃣ {fallback2Provider ? fallback2Provider.label : 'Secours 2'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 border-t border-slate-200/60 dark:border-slate-700/60 pt-3">
+                      {/* 1. Primary Model */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-indigo-700 dark:text-indigo-400 text-[10px] flex items-center gap-1">
+                            <span>🥇</span> 1. Modèle Principal (1er Choix)
                           </span>
-                        ) : (
-                          <span className="font-bold text-[10px] text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md">
-                            Pile Défaut
-                          </span>
-                        )}
+                        </div>
+                        <select
+                          value={currentRoute?.provider_config_id || ''}
+                          disabled={isSaving}
+                          onChange={(e) => handlePrimaryChange(e.target.value)}
+                          className="w-full rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 disabled:opacity-50"
+                        >
+                          <option value="">Pile de Priorité Défaut</option>
+                          {providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label} ({providerLabels[p.provider]?.name || p.provider} - {p.model})
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
-                      <select
-                        value={currentRoute?.provider_config_id || ''}
-                        disabled={isSaving}
-                        onChange={(e) => void updatePurposeRouting(item.key, e.target.value || null)}
-                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-[#B91C1C] disabled:opacity-50"
-                      >
-                        <option value="">Pile de Priorité Défaut</option>
-                        {providers.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.label} ({providerLabels[p.provider].name} - {p.model})
-                          </option>
-                        ))}
-                      </select>
+                      {/* 2. Fallback Model 1 */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-amber-700 dark:text-amber-400 text-[10px] flex items-center gap-1">
+                            <span>🥈</span> 2. Modèle de Secours 1 (Si panne du 1er)
+                          </span>
+                        </div>
+                        <select
+                          value={currentRoute?.fallback_provider_config_id_1 || ''}
+                          disabled={isSaving}
+                          onChange={(e) => handleFallback1Change(e.target.value)}
+                          className="w-full rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-amber-600 disabled:opacity-50"
+                        >
+                          <option value="">Aucun / Inactif (passer au secours 2)</option>
+                          {providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label} ({providerLabels[p.provider]?.name || p.provider} - {p.model})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 3. Fallback Model 2 */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-rose-700 dark:text-rose-400 text-[10px] flex items-center gap-1">
+                            <span>🥉</span> 3. Modèle de Secours 2 (Si panne du 2ème)
+                          </span>
+                        </div>
+                        <select
+                          value={currentRoute?.fallback_provider_config_id_2 || ''}
+                          disabled={isSaving}
+                          onChange={(e) => handleFallback2Change(e.target.value)}
+                          className="w-full rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-rose-600 disabled:opacity-50"
+                        >
+                          <option value="">Aucun / Inactif (passer à la pile générale)</option>
+                          {providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label} ({providerLabels[p.provider]?.name || p.provider} - {p.model})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
                       <button
                         type="button"
                         disabled={isSaving}
-                        onClick={() => void updatePurposeRouting(item.key, currentRoute?.provider_config_id || null)}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 text-[11px] font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shadow-sm"
+                        onClick={() =>
+                          void updatePurposeRouting(
+                            item.key,
+                            currentRoute?.provider_config_id || null,
+                            currentRoute?.fallback_provider_config_id_1 || null,
+                            currentRoute?.fallback_provider_config_id_2 || null,
+                          )
+                        }
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2 text-[11px] font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shadow-sm"
                       >
-                        {isSaving ? <Loader2 className="w-3 h-3 animate-spin text-[#B91C1C]" /> : <Save className="w-3 h-3 text-[#B91C1C]" />}
-                        <span>{isSaved ? 'Enregistré avec succès !' : 'Enregistrer ce routage'}</span>
+                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B91C1C]" /> : <Save className="w-3.5 h-3.5 text-[#B91C1C]" />}
+                        <span>{isSaved ? 'Cascade enregistrée avec succès !' : 'Enregistrer la cascade (3 Niveaux)'}</span>
                       </button>
                     </div>
                   </div>
