@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check,
   ChevronLeft,
@@ -51,10 +52,15 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
 }) => {
   const { t, dir } = useLocale();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [storyProgress, setStoryProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const activeStoryStore =
     activeStoryIndex !== null && activeStoryIndex >= 0 && activeStoryIndex < followedStores.length
@@ -139,7 +145,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
       data-testid="section-followed-stores"
       aria-labelledby="followed-stores-title"
       dir={dir}
-      className="rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-xs backdrop-blur-xl dark:border-white/10 dark:bg-[#161a22]/90 sm:p-6"
+      className="rounded-3xl border border-gray-200/80 bg-white p-5 shadow-xs dark:border-white/10 dark:bg-[#161a22] sm:p-6"
     >
       {/* Header bar */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -375,13 +381,13 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
         </div>
       )}
 
-      {/* Interactive Story & Flash Drop Reel Modal (z-[99999] top-level overlay with clickable Left/Right chevrons) */}
-      {activeStoryStore && (
+      {/* Interactive Story & Flash Drop Reel Modal (Portaled directly to document.body so it overlays the entire screen cleanly) */}
+      {mounted && activeStoryStore && typeof document !== 'undefined' && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           data-testid="story-reel-modal"
-          className="fixed inset-0 z-[99999] isolate flex items-center justify-center bg-black/85 p-4 sm:p-6 backdrop-blur-md overflow-y-auto animate-fadeIn"
+          className="fixed inset-0 z-[999999] isolate flex items-center justify-center bg-black/85 p-4 sm:p-6 backdrop-blur-md overflow-y-auto animate-fadeIn"
           onClick={() => setActiveStoryIndex(null)}
         >
           {/* Main Story Container with Left/Right Navigation Arrows */}
@@ -563,7 +569,8 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
               <ChevronRight className="h-6 w-6" />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
