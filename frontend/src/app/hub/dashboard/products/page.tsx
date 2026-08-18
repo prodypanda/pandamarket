@@ -4399,10 +4399,7 @@ export default function ProductsPage() {
 
                         <div className="grid grid-cols-1 gap-3">
                           {aiCategoryCandidates.map((candidate, idx) => {
-                            const isApplied = appliedCandidateIndex === idx || (
-                              form.marketplace_category_id === candidate.marketplace_category_id &&
-                              (form.storefront_category_id === candidate.storefront_category_id || (!candidate.storefront_category_id && form.storefront_category_id))
-                            );
+                            const isApplied = appliedCandidateIndex === idx;
                             const confPct = Math.round(candidate.confidence * 100);
                             const confBadge = confPct >= 85
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
