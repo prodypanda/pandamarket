@@ -1587,7 +1587,7 @@ export default function ProductsPage() {
   const handleEnhanceDescription = async () => {
     const title = form.title.trim();
     if (!title) {
-      setError("Saisissez un titre de produit avant d'enrichir la description.");
+      setError("Saisissez un titre de produit avant de sublimer la description.");
       return;
     }
     setError('');
@@ -1617,8 +1617,34 @@ export default function ProductsPage() {
       const data = await res.json();
       const description = data.description?.description_html;
       if (!description) throw new Error("Aucune description HTML renvoyée par l'IA.");
-      setForm((current) => ({ ...current, description }));
-      setSuccess("Fiche produit enrichie par l'IA avec succès !");
+
+      setForm((current) => {
+        const next = { ...current, description };
+
+        // Auto-populate / merge technical attributes extracted by AI
+        if (Array.isArray(data.description?.attributes) && data.description.attributes.length > 0) {
+          const aiAttrs: Array<{ name: string; value: string }> = data.description.attributes;
+          const currentValidAttrs = current.attributes.filter((a) => a.name.trim() && a.value.trim());
+
+          if (currentValidAttrs.length === 0) {
+            next.attributes = aiAttrs;
+          } else {
+            const existingNames = new Set(currentValidAttrs.map((a) => a.name.trim().toLowerCase()));
+            const newAttrsToAdd = aiAttrs.filter((a) => !existingNames.has(a.name.trim().toLowerCase()));
+            next.attributes = [...currentValidAttrs, ...newAttrsToAdd];
+          }
+        }
+
+        // Auto-fill tags if empty
+        if (!current.tags.trim() && Array.isArray(data.description?.tags) && data.description.tags.length > 0) {
+          next.tags = data.description.tags.join(', ');
+        }
+
+        return next;
+      });
+
+      void fetchAiCredits();
+      setSuccess("✨ Description sublimée avec points forts et caractéristiques techniques complétées par l'IA !");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec d'enrichissement de la description");
     } finally {
@@ -2097,36 +2123,50 @@ export default function ProductsPage() {
     setSeoAiGenerating(true);
     setError('');
     try {
-      const res = await fetchWithCsrf('/api/pd/ai/smart-fill', {
+      const marketCategory = marketplaceCategories.find((c) => c.id === form.marketplace_category_id)?.name;
+      const res = await fetchWithCsrf('/api/pd/ai/seo-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          image_url: form.thumbnail,
-          language: smartFillLanguage,
+          title: rawTitle,
+          description: form.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) || undefined,
+          category: marketCategory || undefined,
+          brand: form.product_reference?.trim() || undefined,
+          price: parseFloat(form.price) || undefined,
+          attributes: form.attributes.filter((a) => a.name.trim() && a.value.trim()),
+          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+          current_slug: form.slug.trim() || undefined,
+          current_seo_title: form.seo_title.trim() || undefined,
+          current_seo_description: form.seo_description.trim() || undefined,
+          current_tags: form.tags.trim() || undefined,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Génération SEO échouée.');
 
-      const sug = data.suggestions;
-      setForm((curr) => ({
-        ...curr,
-        seo_title: sug.suggested_seo_title || curr.seo_title || `${rawTitle} | PandaMarket Tunisie`.slice(0, 60),
-        seo_description:
-          sug.suggested_seo_description ||
-          curr.seo_description ||
-          `Achetez ${rawTitle} au meilleur prix en Tunisie sur PandaMarket. Qualité garantie, livraison rapide et paiement sécurisé.`.slice(0, 160),
-        tags:
-          Array.isArray(sug.suggested_tags) && sug.suggested_tags.length > 0
-            ? sug.suggested_tags.join(', ')
-            : curr.tags,
-      }));
+      const seo = data.seo;
+      setForm((curr) => {
+        const defaultSlug = normalizePermalink(rawTitle);
+        const shouldUpdateSlug = !curr.slug.trim() || curr.slug === defaultSlug;
+        return {
+          ...curr,
+          seo_title: seo.seo_title || curr.seo_title || `${rawTitle} | PandaMarket Tunisie`.slice(0, 70),
+          seo_description:
+            seo.seo_description ||
+            curr.seo_description ||
+            `Achetez ${rawTitle} au meilleur prix en Tunisie sur PandaMarket. Qualité certifiée, paiement sécurisé et livraison rapide.`.slice(0, 160),
+          slug: shouldUpdateSlug && seo.slug ? normalizePermalink(seo.slug) : curr.slug,
+          tags:
+            Array.isArray(seo.tags) && seo.tags.length > 0
+              ? seo.tags.join(', ')
+              : curr.tags,
+        };
+      });
 
-      setSuccess('✨ Méta-titre, description et mots-clés SEO optimisés avec succès par l’IA !');
+      void fetchAiCredits();
+      setSuccess(`✨ Référencement SEO optimisé avec succès par l'IA (Score de visibilité: ${seo.seo_score || 95}/100) !`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la génération SEO par l’IA.');
     } finally {
@@ -5100,16 +5140,16 @@ export default function ProductsPage() {
                         <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
                           Description Commerciale & Fiche HTML
                         </h4>
-                        <p className="text-[11px] text-slate-400 font-medium">Structurez vos titres H3, paragraphes et listes à puces</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Structurez vos titres H3, paragraphes, listes et caractéristiques techniques</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => void handleEnhanceDescription()}
                         disabled={enhancingDescription || !form.title}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
                       >
-                        {enhancingDescription ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                        Sublimer avec l&apos;IA
+                        {enhancingDescription ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-600" />}
+                        <span>Sublimer avec l&apos;IA (Description & Attributs)</span>
                       </button>
                     </div>
 
@@ -5124,16 +5164,30 @@ export default function ProductsPage() {
                     {/* Attributes & Technical Specs */}
                     <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
-                          📋 Attributs & Caractéristiques Techniques
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setForm((c) => ({ ...c, attributes: [...c.attributes, { name: '', value: '' }] }))}
-                          className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300"
-                        >
-                          + Ajouter un attribut
-                        </button>
+                        <div>
+                          <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300 block">
+                            📋 Attributs & Caractéristiques Techniques
+                          </span>
+                          <p className="text-[10px] text-slate-400">Propriétés clés affichées dans la fiche produit (Matière, Origine, Dimensions, etc.)</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleEnhanceDescription()}
+                            disabled={enhancingDescription || !form.title}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            {enhancingDescription ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-purple-600" />}
+                            <span>Auto-Remplir par l'IA</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForm((c) => ({ ...c, attributes: [...c.attributes, { name: '', value: '' }] }))}
+                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
+                          >
+                            + Ajouter un attribut
+                          </button>
+                        </div>
                       </div>
 
                       {form.attributes.length > 0 && (

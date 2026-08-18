@@ -27,6 +27,20 @@ const seoGenerateSchema = z.object({
   language: z.enum(['fr', 'ar', 'en']).optional(),
 });
 
+const seoOptimizeSchema = z.object({
+  title: z.string().trim().min(2, 'title is required').max(300),
+  description: z.string().trim().max(10000).optional(),
+  category: z.string().trim().max(200).optional(),
+  brand: z.string().trim().max(150).optional(),
+  price: z.union([z.number(), z.string()]).optional(),
+  attributes: z.any().optional(),
+  language: z.enum(['fr', 'ar', 'en']).optional().default('fr'),
+  current_slug: z.string().trim().max(300).optional(),
+  current_seo_title: z.string().trim().max(300).optional(),
+  current_seo_description: z.string().trim().max(500).optional(),
+  current_tags: z.union([z.array(z.string()), z.string()]).optional(),
+});
+
 const smartFillSchema = z.object({
   prompt: z.string().trim().max(10000).optional(),
   raw_input: z.string().trim().max(10000).optional(),
@@ -139,21 +153,54 @@ function parsePageCopyResponse(text: string, fallbackTitle: string): {
   }
 }
 
-function parseDescriptionResponse(text: string): { description_html: string; summary: string } {
+function parseDescriptionResponse(text: string): {
+  description_html: string;
+  summary: string;
+  attributes: Array<{ name: string; value: string }>;
+  tags: string[];
+} {
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as Partial<{
       description_html: string;
       summary: string;
+      attributes: Array<{ name?: string; key?: string; value?: string; val?: string }>;
+      tags: string[] | string;
     }>;
+
+    let parsedAttributes: Array<{ name: string; value: string }> = [];
+    if (Array.isArray(parsed.attributes)) {
+      parsedAttributes = parsed.attributes
+        .map((a) => ({
+          name: String(a.name || a.key || '').trim(),
+          value: String(a.value || a.val || '').trim(),
+        }))
+        .filter((a) => a.name && a.value);
+    } else if (parsed.attributes && typeof parsed.attributes === 'object') {
+      parsedAttributes = Object.entries(parsed.attributes)
+        .map(([k, v]) => ({ name: k.trim(), value: String(v).trim() }))
+        .filter((a) => a.name && a.value);
+    }
+
+    let parsedTags: string[] = [];
+    if (Array.isArray(parsed.tags)) {
+      parsedTags = parsed.tags.map((t) => String(t).trim()).filter(Boolean);
+    } else if (typeof parsed.tags === 'string') {
+      parsedTags = parsed.tags.split(',').map((t) => t.trim()).filter(Boolean);
+    }
+
     return {
-      description_html: String(parsed.description_html || '').slice(0, 8000),
-      summary: String(parsed.summary || '').slice(0, 240),
+      description_html: String(parsed.description_html || '').slice(0, 10000),
+      summary: String(parsed.summary || '').slice(0, 300),
+      attributes: parsedAttributes,
+      tags: parsedTags,
     };
   } catch {
     return {
-      description_html: text.slice(0, 8000),
-      summary: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240),
+      description_html: text.slice(0, 10000),
+      summary: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300),
+      attributes: [],
+      tags: [],
     };
   }
 }
@@ -362,6 +409,135 @@ router.post(
   }),
 );
 
+// Vendor: Instant Inline AI SEO Optimizer (Title, Meta-Description, Keywords & Slug)
+router.post(
+  '/seo-optimize',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(seoOptimizeSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_ai_seo');
+
+    const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
+    const langName = { fr: 'French', ar: 'Arabic', en: 'English' }[language];
+    const title = req.body.title.trim();
+    const description = req.body.description ? req.body.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) : '';
+    const category = req.body.category?.trim() || '';
+    const brand = req.body.brand?.trim() || '';
+    const price = req.body.price ? `${req.body.price} TND` : '';
+
+    let attributesStr = '';
+    if (req.body.attributes) {
+      if (Array.isArray(req.body.attributes)) {
+        attributesStr = req.body.attributes.map((a: any) => `${a.name || a.key}: ${a.value || a.val}`).join(', ');
+      } else if (typeof req.body.attributes === 'object') {
+        attributesStr = Object.entries(req.body.attributes).map(([k, v]) => `${k}: ${v}`).join(', ');
+      }
+    }
+
+    const systemPrompt = `Vous êtes un Consultant Expert Senior en Référencement Naturel E-commerce (SEO On-Page, Google Search & Schema.org) et Spécialiste du Marché Tunisien (PandaMarket).
+Votre mission est de générer les métadonnées SEO parfaites pour positionner ce produit en tête des résultats Google en Tunisie et à l'international.
+
+Critères d'optimisation stricts :
+1. "seo_title" : Titre optimisé de 50 à 60 caractères maximum. Doit contenir le mot-clé principal + marque/atout + " | PandaMarket".
+2. "seo_description" : Méta-description séduisante de 140 à 160 caractères maximum. Doit inciter au clic (CTR élevé), mentionner les points forts (prix en dinars, qualité, livraison rapide en Tunisie).
+3. "slug" : URL permalien ultra-propre, courte, en minuscules sans accents, séparée par des tirets (ex: "huile-olive-vierge-extra-250ml-tunisie").
+4. "tags" : Tableau de 6 à 10 mots-clés sémantiques pertinents à fort volume de recherche.
+5. "focus_keywords" : Tableau des 3 mots-clés prioritaires.
+6. "seo_score" : Score SEO estimé entre 85 et 100.
+7. "seo_recommendations" : Tableau de 2 conseils actionnables pour maximiser les ventes.`;
+
+    const userPrompt = `📦 PRODUIT À OPTIMISER :
+- Titre : ${title}
+- Catégorie : ${category || 'Général'}
+- Marque / Réf : ${brand || 'Non spécifiée'}
+- Prix : ${price || 'Non spécifié'}
+- Attributs : ${attributesStr || 'Aucun'}
+- Description : ${description || 'Non fournie'}
+- Titre SEO actuel : ${req.body.current_seo_title || 'Aucun'}
+- Méta description actuelle : ${req.body.current_seo_description || 'Aucune'}
+- Langue : ${langName}
+
+RÉPONDEZ STRICTEMENT PAR UN OBJET JSON VALIDE :
+{
+  "seo_title": "Titre SEO percutant (50-60 car.)",
+  "seo_description": "Méta-description incitative avec appel à l'action et livraison Tunisie (140-160 car.)",
+  "slug": "url-propre-sans-accents",
+  "tags": ["motcle1", "motcle2", "motcle3", "motcle4", "motcle5", "motcle6"],
+  "focus_keywords": ["motcle1", "motcle2", "motcle3"],
+  "seo_score": 96,
+  "seo_recommendations": [
+    "Recommandation 1 pour améliorer le taux de conversion",
+    "Recommandation 2"
+  ]
+}`;
+
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    const job = await aiService.startInlineJob({
+      type: AiJobType.SeoGeneration,
+      store_id: storeId,
+      user_id: req.user!.id,
+      input_meta: {
+        title,
+        description,
+        category,
+        brand,
+        price,
+        language,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        prompt,
+      },
+    });
+
+    try {
+      const cost = await aiConfigService.getFeaturePrice(AiJobType.SeoGeneration);
+      const result = await aiConfigService.generateTextForPurpose('content_generation', prompt, storeId);
+
+      let parsedSeo: any = {};
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsedSeo = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseErr) {
+        logger.warn({ text: result.text, err: parseErr }, 'Failed to parse AI SEO JSON response');
+      }
+
+      const defaultSlug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      const seoResult = {
+        seo_title: String(parsedSeo.seo_title || `${title} | PandaMarket Tunisie`).slice(0, 70),
+        seo_description: String(parsedSeo.seo_description || `Achetez ${title} au meilleur prix en Tunisie sur PandaMarket. Qualité certifiée, paiement sécurisé et livraison rapide.`).slice(0, 160),
+        slug: String(parsedSeo.slug || defaultSlug).slice(0, 100),
+        tags: Array.isArray(parsedSeo.tags) ? parsedSeo.tags.map((t: any) => String(t).trim()).filter(Boolean) : [title],
+        focus_keywords: Array.isArray(parsedSeo.focus_keywords) ? parsedSeo.focus_keywords.map((k: any) => String(k).trim()).filter(Boolean) : [],
+        seo_score: typeof parsedSeo.seo_score === 'number' ? Math.min(100, Math.max(50, parsedSeo.seo_score)) : 95,
+        seo_recommendations: Array.isArray(parsedSeo.seo_recommendations) ? parsedSeo.seo_recommendations.map((r: any) => String(r).trim()).filter(Boolean) : [],
+      };
+
+      await creditsService.consume(storeId, cost);
+      await aiService.markCompleted(job.id, { ...seoResult, provider: result.provider_label }, cost, {
+        title,
+        language,
+        prompt,
+      });
+
+      res.status(200).json({
+        seo: seoResult,
+        tokens_consumed: cost,
+        job_id: job.id,
+        provider: result.provider_label,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI SEO generation failed';
+      await aiService.markFailed(job.id, message);
+      throw err;
+    }
+  }),
+);
+
 router.post(
   '/page-copy-helper',
   requireStore,
@@ -484,27 +660,38 @@ router.post(
           .replace(/{tone}/g, tone);
         prompt = `${systemPrompt}\n\n${userPrompt}`;
       } else {
-        systemPrompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
+        systemPrompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite de PandaMarket Tunisie. Votre rôle est de rédiger une description produit vendeuse, structurée, séduisante et complète en ${langName}.
 
-Consignes de format et de style :
-- Langue : ${langName}
-- Tonalité : ${tone} (adoptez un ton professionnel, crédible, séduisant sans exagération mensongère)
-
-Structure HTML obligatoire :
+Consignes de format et de style HTML obligatoire :
 - Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
-- Rédigez une accroche percutante mettant en valeur le bénéfice clé.
-- Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
-- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.`;
+- Rédigez un paragraphe d'accroche captivant (<p>...</p>) valorisant le produit et son usage.
+- Section <h3>⭐ Points Forts & Avantages Clés</h3> avec une liste à puces percutante (<ul><li>...</li></ul>).
+- Section <h3>📋 Attributs & Caractéristiques Techniques</h3> avec une liste détaillée des propriétés (<ul><li><strong>Matière / Composition :</strong> ...</li><li><strong>Origine :</strong> ...</li><li><strong>Dimensions / Contenance :</strong> ...</li><li><strong>Spécificités :</strong> ...</li></ul>).
+- Section <h3>💡 Conseils d'Utilisation & Entretien</h3> avec des recommandations pratiques.
 
-        userPrompt = `Produit : ${req.body.title}
-Catégorie : ${req.body.category || 'Non spécifiée'}
-Attributs et spécifications : ${attributes}
-Description brute actuelle : ${req.body.current_description || 'Aucune'}
+Extraction JSON des Données :
+- Fournissez un résumé percutant (summary) de 1 à 2 phrases.
+- Extrayez la liste des attributs techniques clés sous forme de tableau "attributes" avec "name" et "value".
+- Fournissez une liste de 5 à 8 "tags" e-commerce pertinents.`;
 
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+        userPrompt = `📦 PRODUIT À SUBLIMER :
+- Titre : ${req.body.title}
+- Catégorie : ${req.body.category || 'Non spécifiée'}
+- Attributs et spécifications actuels : ${attributes}
+- Description brute actuelle : ${req.body.current_description || 'Aucune'}
+- Langue : ${langName}
+- Tonalité : ${tone}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
 {
-  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
-  "summary": "Résumé percutant en une phrase pour la vitrine"
+  "description_html": "<p>Accroche...</p><h3>⭐ Points Forts & Avantages Clés</h3><ul><li>Avantage 1</li><li>Avantage 2</li></ul><h3>📋 Attributs & Caractéristiques Techniques</h3><ul><li><strong>Matière :</strong> ...</li><li><strong>Origine :</strong> ...</li></ul><h3>💡 Conseils d'Utilisation</h3><p>...</p>",
+  "summary": "Résumé percutant en une phrase pour la vitrine",
+  "attributes": [
+    { "name": "Matière", "value": "Composition détaillée" },
+    { "name": "Origine", "value": "Fabrication / Terroir" },
+    { "name": "Dimensions / Format", "value": "Valeur" }
+  ],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
 }`;
         prompt = `${systemPrompt}\n\n${userPrompt}`;
       }

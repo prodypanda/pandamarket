@@ -78,7 +78,7 @@ export class AiService {
   }
 
   async startInlineJob(opts: {
-    type: AiJobType.PageCopy | AiJobType.ProductDescription | AiJobType.CategoryClassification;
+    type: AiJobType;
     store_id: string;
     user_id: string;
     input_meta: Record<string, unknown>;
