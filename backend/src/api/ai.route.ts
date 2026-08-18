@@ -377,6 +377,10 @@ router.post(
     const outline = Array.isArray(req.body.section_outline)
       ? req.body.section_outline.join(' | ')
       : 'No outline';
+    const systemPrompt = `You are an e-commerce landing page copywriter. Generate concise page builder copy in ${langName}. Return ONLY JSON: { "seo_title": string, "seo_description": string, "hero_title": string, "cta": string }. Keep SEO title under 70 chars and description under 160 chars.`;
+    const userPrompt = `Page title: ${req.body.page_title || 'Untitled'}. Current SEO title: ${req.body.current_seo_title || 'none'}. Current SEO description: ${req.body.current_seo_description || 'none'}. Sections: ${outline}.`;
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
     const job = await aiService.startInlineJob({
       type: AiJobType.PageCopy,
       store_id: storeId,
@@ -387,19 +391,39 @@ router.post(
         current_seo_description: req.body.current_seo_description || null,
         section_outline: req.body.section_outline || [],
         language,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        prompt,
       },
     });
     try {
       const cost = await aiConfigService.getFeaturePrice(AiJobType.PageCopy);
-      const prompt = `You are an e-commerce landing page copywriter. Generate concise page builder copy in ${langName}. Return ONLY JSON: { "seo_title": string, "seo_description": string, "hero_title": string, "cta": string }. Page title: ${req.body.page_title || 'Untitled'}. Current SEO title: ${req.body.current_seo_title || 'none'}. Current SEO description: ${req.body.current_seo_description || 'none'}. Sections: ${outline}. Keep SEO title under 70 chars and description under 160 chars.`;
       const result = await aiConfigService.generateText(prompt, storeId);
       const suggestions = parsePageCopyResponse(result.text, fallbackTitle);
       await creditsService.consume(storeId, cost);
-      await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost);
+      await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost, {
+        page_title: req.body.page_title || null,
+        current_seo_title: req.body.current_seo_title || null,
+        current_seo_description: req.body.current_seo_description || null,
+        section_outline: req.body.section_outline || [],
+        language,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        prompt,
+      });
       res.status(200).json({ suggestions, tokens_consumed: cost, job_id: job.id, provider: result.provider_label });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI copy helper failed';
-      await aiService.markFailed(job.id, message);
+      await aiService.markFailed(job.id, message, {
+        page_title: req.body.page_title || null,
+        current_seo_title: req.body.current_seo_title || null,
+        current_seo_description: req.body.current_seo_description || null,
+        section_outline: req.body.section_outline || [],
+        language,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        prompt,
+      });
       throw err;
     }
   }),
@@ -447,42 +471,61 @@ router.post(
       }
 
       let prompt = '';
+      let systemPrompt = '';
+      let userPrompt = '';
       if (template) {
-        prompt = `${template.system_prompt}\n\n${template.default_prompt}`
+        systemPrompt = template.system_prompt;
+        userPrompt = template.default_prompt
           .replace(/{title}/g, req.body.title || 'Produit')
           .replace(/{category}/g, req.body.category || 'Non spécifiée')
           .replace(/{attributes}/g, attributes)
           .replace(/{current_description}/g, req.body.current_description || 'Aucune')
           .replace(/{language}/g, langName)
           .replace(/{tone}/g, tone);
+        prompt = `${systemPrompt}\n\n${userPrompt}`;
       } else {
-        prompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
+        systemPrompt = `Vous êtes un Copywriter Expert E-commerce et Merchandiser d'Élite. Votre rôle est de rédiger une description produit vendeuse, structurée et persuasive en ${langName}.
 
 Consignes de format et de style :
 - Langue : ${langName}
 - Tonalité : ${tone} (adoptez un ton professionnel, crédible, séduisant sans exagération mensongère)
-- Produit : ${req.body.title}
-- Catégorie : ${req.body.category || 'Non spécifiée'}
-- Attributs et spécifications : ${attributes}
-- Description brute actuelle : ${req.body.current_description || 'Aucune'}
 
 Structure HTML obligatoire :
 - Utilisez EXCLUSIVEMENT les balises sémantiques <h3>, <p>, <strong>, <em>, <ul>, <li>.
 - Rédigez une accroche percutante mettant en valeur le bénéfice clé.
 - Détaillez les points forts et caractéristiques dans une liste à puces claire <ul><li>...</li></ul>.
-- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.
+- Fournissez un résumé condensé (summary) de 1 à 2 phrases pour les aperçus rapides.`;
+
+        userPrompt = `Produit : ${req.body.title}
+Catégorie : ${req.body.category || 'Non spécifiée'}
+Attributs et spécifications : ${attributes}
+Description brute actuelle : ${req.body.current_description || 'Aucune'}
 
 RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 {
   "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
   "summary": "Résumé percutant en une phrase pour la vitrine"
 }`;
+        prompt = `${systemPrompt}\n\n${userPrompt}`;
       }
+
+      const inputMetaUpdated = {
+        product_id: req.body.product_id || null,
+        title: req.body.title,
+        current_description: req.body.current_description || null,
+        category: req.body.category || null,
+        attributes: req.body.attributes || [],
+        language,
+        tone,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        prompt,
+      };
 
       const result = await aiConfigService.generateTextForPurpose('product_description', prompt, storeId);
       const description = parseDescriptionResponse(result.text);
       await creditsService.consume(storeId, cost);
-      await aiService.markCompleted(job.id, { ...description, provider: result.provider_label }, cost);
+      await aiService.markCompleted(job.id, { ...description, provider: result.provider_label }, cost, inputMetaUpdated);
       res.status(200).json({ description, tokens_consumed: cost, job_id: job.id, provider: result.provider_label });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI product description failed';
@@ -568,11 +611,22 @@ RÉPONDEZ STRICTEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
 
+      const inputMetaUpdated = {
+        prompt: inputPrompt,
+        title: inputTitle,
+        description: inputDesc,
+        image_url: inputImage,
+        language,
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        full_prompt: prompt,
+      };
+
       const result = await aiConfigService.generateTextForPurpose('content_generation', prompt, storeId);
       const suggestions = parseSmartFillResponse(result.text, effectiveRawInput);
 
       await creditsService.consume(storeId, cost);
-      await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost);
+      await aiService.markCompleted(job.id, { ...suggestions, provider: result.provider_label }, cost, inputMetaUpdated);
 
       res.status(200).json({
         suggestions,
@@ -701,24 +755,7 @@ router.post(
 
     const storefrontCatNames = formatStorefrontTree(storefrontCategories);
 
-    const job = await aiService.startInlineJob({
-      type: AiJobType.CategoryClassification,
-      store_id: storeId,
-      user_id: req.user!.id,
-      input_meta: { title, description, brand, attributes: attributesStr, tags, language },
-    });
-
-    try {
-      const cost = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
-      let canDeductTokens = false;
-      try {
-        await creditsService.assertEnough(storeId, cost);
-        canDeductTokens = true;
-      } catch {
-        canDeductTokens = false;
-      }
-
-      const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+    const systemPrompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
 Votre mission est d'analyser le produit soumis (titre, description, marque, attributs, tags) et de proposer les 3 MEILLEURES OPTIONS DE CLASSIFICATION (Top 3 Candidates classées par pertinence).
 
 Pour chaque candidat :
@@ -731,9 +768,9 @@ Pour chaque candidat :
    - Sinon, créez un nom de catégorie vitrine sur-mesure, élégant, attractif et spécifique au créneau du produit (ex: "Sneakers & Baskets Sportswear", "Huiles d'Olive & Terroir", "Céramiques & Poteries").
    - Si le vendeur possède déjà une catégorie parente pertinente (ex: "Chaussures" ou "Maison"), spécifiez "storefront_parent_category_id".
    - Fournissez également les traductions ("name_fr", "name_ar", "name_en"), une icône suggérée ("icon": Lucide icon name comme "ShoppingBag", "Footprints", "Shirt", "Sparkles", "Utensils", etc.), un "seo_title" et une "seo_description".
-   - Donnez une explication concise du choix dans "reason".
+   - Donnez une explication concise du choix dans "reason".`;
 
-📦 PRODUIT À CLASSIFIER :
+    const userPrompt = `📦 PRODUIT À CLASSIFIER :
 - Titre : ${title}
 - Description : ${description || 'Non fournie'}
 - Marque : ${brand || 'Non spécifiée'}
@@ -769,6 +806,38 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
     }
   ]
 }`;
+
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    const inputMetaUpdated = {
+      title,
+      description,
+      brand,
+      attributes: attributesStr,
+      tags,
+      price,
+      language,
+      system_prompt: systemPrompt,
+      user_prompt: userPrompt,
+      prompt,
+    };
+
+    const job = await aiService.startInlineJob({
+      type: AiJobType.CategoryClassification,
+      store_id: storeId,
+      user_id: req.user!.id,
+      input_meta: inputMetaUpdated,
+    });
+
+    try {
+      const cost = await aiConfigService.getFeaturePrice(AiJobType.CategoryClassification);
+      let canDeductTokens = false;
+      try {
+        await creditsService.assertEnough(storeId, cost);
+        canDeductTokens = true;
+      } catch {
+        canDeductTokens = false;
+      }
 
       const result = await aiConfigService.generateTextForPurpose('category_classification', prompt, storeId);
 
@@ -818,15 +887,24 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
 
         // 2. Resolve storefront category & parent
         let sfMatch: StorefrontCategoryRow | undefined;
-        if (raw.storefront_category_id) {
-          sfMatch = storefrontCategories.find((c) => c.id === raw.storefront_category_id && !c.is_default);
-        }
         const sfName = (raw.storefront_category_name || raw.name_fr || mpCat.name).trim();
+        const normSfTarget = sfName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        if (raw.storefront_category_id) {
+          const byId = storefrontCategories.find((c) => c.id === raw.storefront_category_id && !c.is_default);
+          if (byId) {
+            const normById = byId.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (normById === normSfTarget || normById.includes(normSfTarget) || normSfTarget.includes(normById)) {
+              sfMatch = byId;
+            }
+          }
+        }
+
         if (!sfMatch && sfName) {
-          const normSfTarget = sfName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
           sfMatch = storefrontCategories.find((c) => {
             if (c.is_default) return false;
-            return c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === normSfTarget;
+            const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return normName === normSfTarget || normName.includes(normSfTarget) || normSfTarget.includes(normName);
           });
         }
 
@@ -868,17 +946,22 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         await creditsService.consume(storeId, cost);
       }
 
-      await aiService.markCompleted(job.id, {
-        candidates: resolvedCandidates,
-        marketplace_category_id: topPrimary.marketplace_category_id,
-        marketplace_category_name: topPrimary.marketplace_category_name,
-        storefront_category_id: topPrimary.storefront_category_id,
-        storefront_category_name: topPrimary.storefront_category_name,
-        storefront_parent_id: topPrimary.storefront_parent_id,
-        storefront_parent_name: topPrimary.storefront_parent_name,
-        confidence: topPrimary.confidence,
-        provider: result.provider_label,
-      }, tokensConsumed);
+      await aiService.markCompleted(
+        job.id,
+        {
+          candidates: resolvedCandidates,
+          marketplace_category_id: topPrimary.marketplace_category_id,
+          marketplace_category_name: topPrimary.marketplace_category_name,
+          storefront_category_id: topPrimary.storefront_category_id,
+          storefront_category_name: topPrimary.storefront_category_name,
+          storefront_parent_id: topPrimary.storefront_parent_id,
+          storefront_parent_name: topPrimary.storefront_parent_name,
+          confidence: topPrimary.confidence,
+          provider: result.provider_label,
+        },
+        tokensConsumed,
+        inputMetaUpdated,
+      );
 
       res.status(200).json({
         candidates: resolvedCandidates,
@@ -898,7 +981,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI category classification failed';
-      await aiService.markFailed(job.id, message);
+      await aiService.markFailed(job.id, message, inputMetaUpdated);
       throw err;
     }
   }),
@@ -959,37 +1042,70 @@ router.post(
 
     for (const prod of products) {
       try {
-        const normTitle = prod.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const titleWords = normTitle.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3);
+        const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+📦 PRODUIT À CLASSIFIER :
+- Titre : ${prod.title}
+- Description : ${prod.description || ''}
+- Marque : ${prod.brand || ''}
+- Attributs & Spécifications : ${(prod as any).attributes ? (typeof (prod as any).attributes === 'string' ? (prod as any).attributes : JSON.stringify((prod as any).attributes)) : ''}
+- Tags : ${Array.isArray(prod.tags) ? prod.tags.join(', ') : (prod.tags || '')}
+- Langue : ${language}
 
-        // Score marketplace categories
-        let bestMp = flatMarketplace[0] || { id: 'cat_market_uncategorized', name: 'Non catégorisé' };
-        let maxScore = 0;
-        for (const cat of flatMarketplace) {
-          const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          const catWords = normCat.split(/[\s-_/,&()]+/).filter((w: string) => w.length >= 3);
-          let matchCount = 0;
-          for (const tw of titleWords) {
-            if (catWords.some((cw: string) => cw === tw || (cw.length >= 4 && tw.length >= 4 && (cw.startsWith(tw) || tw.startsWith(cw))))) {
-              matchCount++;
+Catégories Marketplace Hub disponibles (choix contraint avec ID) :
+${flatMarketplace.map((c) => `- ${c.name} (id: "${c.id}")`).join('\n')}
+
+Catégories Vitrine Boutique existantes du vendeur :
+${storefrontCategories.map((c) => `- ${c.name} (id: "${c.id}")`).join('\n')}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
+{
+  "candidates": []
+}`;
+
+        const genRes = await aiConfigService.generateTextForPurpose('category_classification', prompt, storeId);
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(genRes.text);
+        } catch {
+          parsed = {};
+        }
+
+        const topCandidate = Array.isArray(parsed.candidates) && parsed.candidates[0] ? parsed.candidates[0] : null;
+        let bestMp = topCandidate ? flatMarketplace.find((c) => c.id === topCandidate.marketplace_category_id) : undefined;
+        if (!bestMp && topCandidate?.marketplace_category_name) {
+          const normTarget = topCandidate.marketplace_category_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          bestMp = flatMarketplace.find((c) => c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === normTarget);
+        }
+        if (!bestMp) {
+          bestMp = flatMarketplace[0] || { id: 'cat_market_uncategorized', name: 'Non catégorisé' } as any;
+        }
+
+        let sfName = (topCandidate?.storefront_category_name || topCandidate?.name_fr || bestMp.name).trim();
+        const normSfTarget = sfName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        let matchedSf: StorefrontCategoryRow | undefined;
+        if (topCandidate?.storefront_category_id) {
+          const byId = storefrontCategories.find((c) => c.id === topCandidate.storefront_category_id && !c.is_default);
+          if (byId) {
+            const normById = byId.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (normById === normSfTarget || normById.includes(normSfTarget) || normSfTarget.includes(normById)) {
+              matchedSf = byId;
             }
-          }
-          const score = matchCount / Math.max(catWords.length, 1);
-          if (score > maxScore) {
-            maxScore = score;
-            bestMp = cat;
           }
         }
 
-        // Match storefront category
-        let matchedSf = storefrontCategories.find((s) => {
-          if (s.is_default) return false;
-          const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          return normSf === bestMp.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleWords.some((w: string) => normSf.includes(w));
-        });
+        if (!matchedSf) {
+          matchedSf = storefrontCategories.find((s) => {
+            if (s.is_default) return false;
+            const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return normSf === normSfTarget || normSf.includes(normSfTarget) || normSfTarget.includes(normSf);
+          });
+        }
 
         let sfId = matchedSf ? matchedSf.id : null;
-        let sfName = matchedSf ? matchedSf.name : bestMp.name;
+        if (matchedSf) {
+          sfName = matchedSf.name;
+        }
         let sfParentId = matchedSf ? matchedSf.parent_id : null;
 
         if (applyAutomatically) {
@@ -1028,8 +1144,8 @@ router.post(
           suggested_storefront_category_name: sfName,
           suggested_storefront_category_id: sfId,
           suggested_storefront_parent_id: sfParentId,
-          confidence: maxScore > 0 ? 0.92 : 0.65,
-          reason: maxScore > 0 ? `Termes clés détectés pour '${bestMp.name}'.` : 'Recommandation globale par défaut.',
+          confidence: topCandidate ? topCandidate.confidence : 0.70,
+          reason: topCandidate ? topCandidate.reason : 'Recommandation globale par défaut.',
           applied: applyAutomatically,
         });
         processedCount++;

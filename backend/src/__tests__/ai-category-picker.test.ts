@@ -135,4 +135,51 @@ Catégories Vitrine Boutique existantes du vendeur :
     expect(top1.marketplace_category_name).toBeDefined();
     expect(top1.storefront_category_name).toBeDefined();
   });
+
+  it('correctly classifies Tunisian Extra Virgin Olive Oil with high confidence and no false electronics match', async () => {
+    const prompt = `Vous êtes un Expert en Classification Taxonomique & Merchandising E-commerce d'élite de PandaMarket.
+📦 PRODUIT À CLASSIFIER :
+- Titre : Huile d'Olive Vierge Extra Infusée au Piment Rouge & Romarin Sauvage 250ml
+- Description : Huile d'olive extra vierge de première pression à froid macérée artisanalement avec des piments rouges Baklouti séchés et du romarin sauvage de montagne. Idéale pour pizzas, grillades et pâtes.
+- Marque : MED-FOOD-012
+- Attributs & Spécifications : Contenance: 250 ml (Bouteille en verre avec verseur), Ingrédients: Huile d'olive extra vierge 97%, Piments rouges 2%, Romarin sauvage 1%
+- Tags : huile pimentée, huile aromatisée, romarin, terroir tunisie
+- Prix indicatif : 25 TND
+- Langue : French
+
+Catégories Marketplace Hub disponibles (choix contraint avec ID) :
+- Électronique & High-Tech (id: "cat_market_electronics")
+  - TV, Audio & Photo (id: "cat_market_audio_tv")
+    - Casques & Écouteurs (id: "cat_market_headphones")
+- Alimentation & Terroir Tunisien (id: "cat_market_food")
+  - Huile d'Olive Vierge Extra (id: "cat_market_olive_oil")
+  - Harissa Artisanale & Épices (id: "cat_market_harissa_spices")
+
+Catégories Vitrine Boutique existantes du vendeur :
+- Électronique & High-Tech (id: "pd_cat_4cvg9FCmEqkrAju7")
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
+{
+  "candidates": []
+}`;
+
+    const result = await aiConfigService.generateTextForPurpose('category_classification', prompt);
+    const parsed = JSON.parse(result.text);
+
+    expect(parsed.candidates).toBeDefined();
+    expect(parsed.candidates.length).toBeGreaterThanOrEqual(1);
+
+    const top1 = parsed.candidates[0];
+    expect(top1.marketplace_category_id).toBe('cat_market_olive_oil');
+    expect(top1.confidence).toBeGreaterThanOrEqual(0.85);
+    expect(top1.storefront_category_name).toContain('Huile');
+    expect(top1.storefront_category_id).toBeNull();
+    expect(top1.created_new).toBe(true);
+
+    for (const c of parsed.candidates) {
+      expect(c.marketplace_category_id).not.toBe('cat_market_electronics');
+      expect(c.marketplace_category_id).not.toBe('cat_market_audio_tv');
+      expect(c.marketplace_category_id).not.toBe('cat_market_headphones');
+    }
+  });
 });

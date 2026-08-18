@@ -145,23 +145,47 @@ export class AiService {
     jobId: string,
     output: Record<string, unknown>,
     tokensConsumed: number,
+    inputMeta?: Record<string, unknown>,
   ): Promise<void> {
-    await query(
-      `UPDATE pd_ai_jobs
-       SET status = 'completed', output = $2,
-           tokens_consumed = $3, completed_at = NOW()
-       WHERE id = $1`,
-      [jobId, JSON.stringify(output), tokensConsumed],
-    );
+    if (inputMeta) {
+      await query(
+        `UPDATE pd_ai_jobs
+         SET status = 'completed', output = $2,
+             tokens_consumed = $3, input_meta = $4, completed_at = NOW()
+         WHERE id = $1`,
+        [jobId, JSON.stringify(output), tokensConsumed, JSON.stringify(inputMeta)],
+      );
+    } else {
+      await query(
+        `UPDATE pd_ai_jobs
+         SET status = 'completed', output = $2,
+             tokens_consumed = $3, completed_at = NOW()
+         WHERE id = $1`,
+        [jobId, JSON.stringify(output), tokensConsumed],
+      );
+    }
   }
 
-  async markFailed(jobId: string, error: string): Promise<void> {
-    await query(
-      `UPDATE pd_ai_jobs
-       SET status = 'failed', error_message = $2, completed_at = NOW()
-       WHERE id = $1`,
-      [jobId, error],
-    );
+  async markFailed(
+    jobId: string,
+    error: string,
+    inputMeta?: Record<string, unknown>,
+  ): Promise<void> {
+    if (inputMeta) {
+      await query(
+        `UPDATE pd_ai_jobs
+         SET status = 'failed', error_message = $2, input_meta = $3, completed_at = NOW()
+         WHERE id = $1`,
+        [jobId, error, JSON.stringify(inputMeta)],
+      );
+    } else {
+      await query(
+        `UPDATE pd_ai_jobs
+         SET status = 'failed', error_message = $2, completed_at = NOW()
+         WHERE id = $1`,
+        [jobId, error],
+      );
+    }
   }
 
   // ----------------------------------------------------------------

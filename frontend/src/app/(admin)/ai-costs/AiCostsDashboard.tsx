@@ -1586,15 +1586,29 @@ export default function AiCostsDashboard() {
                               })}
                             </td>
                             <td className="py-3 text-right whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => openInspection(item)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
-                                title="Inspecter la requête et la réponse complète"
-                              >
-                                <Eye className="w-3 h-3 text-[#B91C1C]" />
-                                <span>Inspecter</span>
-                              </button>
+                              <div className="inline-flex items-center gap-1.5 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    openInspection(item);
+                                    setDrawerTab('input');
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 px-2 py-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-colors shadow-xs"
+                                  title="Inspecter le Prompt Complet (Système + Utilisateur)"
+                                >
+                                  <Terminal className="w-3 h-3 text-indigo-600" />
+                                  <span>Prompt</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openInspection(item)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                                  title="Inspecter la requête et la réponse complète"
+                                >
+                                  <Eye className="w-3 h-3 text-[#B91C1C]" />
+                                  <span>Inspecter</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2719,6 +2733,30 @@ export default function AiCostsDashboard() {
                     </div>
                   </div>
 
+                  {/* Prompt & Instructions Preview */}
+                  {((selectedJob.input_meta as any)?.prompt || (selectedJob.input_meta as any)?.system_prompt) && (
+                    <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-950/20 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                            Prompt Système & Instructions Envoyées
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDrawerTab('input')}
+                          className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>Voir le Prompt Complet →</span>
+                        </button>
+                      </div>
+                      <pre className="p-3 rounded-xl bg-slate-900 text-indigo-200 font-mono text-[11px] max-h-28 overflow-y-auto leading-relaxed line-clamp-3">
+                        {(selectedJob.input_meta as any).system_prompt || (selectedJob.input_meta as any).prompt}
+                      </pre>
+                    </div>
+                  )}
+
                   {/* Quick Summary of Output */}
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2">
                     <div className="flex items-center justify-between">
@@ -2750,68 +2788,146 @@ export default function AiCostsDashboard() {
               )}
 
               {/* TAB 2: REQUEST & PROMPT PAYLOAD (INPUT) */}
-              {drawerTab === 'input' && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  {/* Structured Parameters Breakdown */}
-                  {selectedJob.input_meta && Object.keys(selectedJob.input_meta).length > 0 && (
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
-                      <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">
-                        Paramètres d&apos;Entrée Extraits
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {Object.entries(selectedJob.input_meta)
-                          .filter(([k]) => !['prompt', 'system_prompt'].includes(k))
-                          .map(([key, val]) => (
-                            <div key={key} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-                              <span className="text-[10px] font-bold uppercase text-slate-400 block">{key}</span>
-                              <span className="font-medium text-slate-900 dark:text-white truncate block">
-                                {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+              {drawerTab === 'input' && (() => {
+                const meta = (selectedJob.input_meta || {}) as Record<string, any>;
+                const fullPrompt = meta.prompt || meta.full_prompt || '';
+                const systemPrompt = meta.system_prompt || (fullPrompt.includes('\n\n') ? fullPrompt.split('\n\n')[0] : '');
+                const userPrompt = meta.user_prompt || (fullPrompt.includes('\n\n') ? fullPrompt.slice(fullPrompt.indexOf('\n\n') + 2) : fullPrompt);
 
-                  {/* Raw Prompt Text if available */}
-                  {(selectedJob.input_meta as any)?.prompt && (
+                return (
+                  <div className="space-y-6 animate-in fade-in duration-150">
+                    {/* System Prompt Section */}
+                    {systemPrompt && (
+                      <div className="space-y-2 rounded-2xl border border-purple-200/80 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/20 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
+                              <Terminal className="w-3.5 h-3.5" />
+                            </span>
+                            <div>
+                              <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                                Prompt Système & Directives d&apos;Élite (System Prompt)
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                Rôle, persona, contraintes de formatage et schéma JSON imposés au modèle
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(systemPrompt, 'system_prompt_text')}
+                            className="inline-flex items-center gap-1 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 transition-colors"
+                          >
+                            {copiedKey === 'system_prompt_text' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedKey === 'system_prompt_text' ? 'Copié !' : 'Copier le Système'}</span>
+                          </button>
+                        </div>
+                        <pre className="p-3.5 rounded-xl bg-slate-900 text-purple-200 font-mono text-[11px] leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap">
+                          {systemPrompt}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* User Prompt / Task Context Section */}
+                    {userPrompt && userPrompt !== systemPrompt && (
+                      <div className="space-y-2 rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-950/20 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                              <FileCode className="w-3.5 h-3.5" />
+                            </span>
+                            <div>
+                              <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                                Prompt Utilisateur & Contexte Fourni (User Payload)
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                Données du produit, catégories disponibles et instructions spécifiques
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(userPrompt, 'user_prompt_text')}
+                            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 transition-colors"
+                          >
+                            {copiedKey === 'user_prompt_text' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedKey === 'user_prompt_text' ? 'Copié !' : 'Copier l\'Utilisateur'}</span>
+                          </button>
+                        </div>
+                        <pre className="p-3.5 rounded-xl bg-slate-900 text-cyan-200 font-mono text-[11px] leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap">
+                          {userPrompt}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Full Raw Prompt Sent to Engine */}
+                    {fullPrompt && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                              Prompt Complet Transmis au Moteur IA (Full Aggregated Prompt)
+                            </h4>
+                            <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                              {fullPrompt.length} caractères
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(fullPrompt, 'prompt_text')}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors"
+                          >
+                            {copiedKey === 'prompt_text' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedKey === 'prompt_text' ? 'Copié !' : 'Copier le Prompt Complet'}</span>
+                          </button>
+                        </div>
+                        <pre className="p-4 rounded-2xl bg-slate-950 text-slate-100 font-mono text-[11px] leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap">
+                          {fullPrompt}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Structured Parameters Breakdown */}
+                    {Object.keys(meta).length > 0 && (
+                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">
+                          Paramètres Structurés Extraits
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {Object.entries(meta)
+                            .filter(([k]) => !['prompt', 'system_prompt', 'user_prompt', 'full_prompt'].includes(k))
+                            .map(([key, val]) => (
+                              <div key={key} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-bold uppercase text-slate-400 block">{key}</span>
+                                <span className="font-medium text-slate-900 dark:text-white truncate block">
+                                  {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Raw Input JSON */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-black text-slate-900 dark:text-white">Prompt Système & Instruction Modèle</h4>
+                        <h4 className="font-black text-slate-900 dark:text-white">Payload d&apos;Entrée Brut (JSON)</h4>
                         <button
                           type="button"
-                          onClick={() => copyToClipboard((selectedJob.input_meta as any).prompt, 'prompt_text')}
+                          onClick={() => copyToClipboard(JSON.stringify(meta, null, 2), 'input_json')}
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
                         >
-                          {copiedKey === 'prompt_text' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                          <span>{copiedKey === 'prompt_text' ? 'Copié !' : 'Copier le Prompt'}</span>
+                          {copiedKey === 'input_json' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKey === 'input_json' ? 'Copié !' : 'Copier le JSON d\'Entrée'}</span>
                         </button>
                       </div>
-                      <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap">
-                        {(selectedJob.input_meta as any).prompt}
+                      <pre className="p-4 rounded-2xl bg-slate-950 text-indigo-300 font-mono text-[11px] leading-relaxed max-h-80 overflow-y-auto">
+                        {JSON.stringify(meta, null, 2)}
                       </pre>
                     </div>
-                  )}
-
-                  {/* Raw Input JSON */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-slate-900 dark:text-white">Payload d&apos;Entrée Complet (JSON)</h4>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(JSON.stringify(selectedJob.input_meta, null, 2), 'input_json')}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-                      >
-                        {copiedKey === 'input_json' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'input_json' ? 'Copié !' : 'Copier le JSON d\'Entrée'}</span>
-                      </button>
-                    </div>
-                    <pre className="p-4 rounded-2xl bg-slate-950 text-indigo-300 font-mono text-[11px] leading-relaxed max-h-80 overflow-y-auto">
-                      {JSON.stringify(selectedJob.input_meta, null, 2)}
-                    </pre>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB 3: MODEL RESPONSE (OUTPUT) */}
               {drawerTab === 'output' && (

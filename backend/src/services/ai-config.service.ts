@@ -212,70 +212,311 @@ function generateFallbackCopywriting(prompt: string): string {
     const titleMatch = prompt.match(/Titre\s*:\s*([^\n\r]+)/i) || prompt.match(/Title\s*:\s*([^\n\r]+)/i);
     const title = titleMatch ? titleMatch[1].trim() : 'Produit';
 
-    // Parse marketplace categories from prompt
+    const descMatch = prompt.match(/Description\s*:\s*([^\n\r]+)/i);
+    const description = descMatch ? descMatch[1].trim() : '';
+
+    const brandMatch = prompt.match(/Marque\s*:\s*([^\n\r]+)/i);
+    const brand = brandMatch ? brandMatch[1].trim() : '';
+
+    const attrMatch = prompt.match(/Attributs & Spécifications\s*:\s*([^\n\r]+)/i);
+    const attributes = attrMatch ? attrMatch[1].trim() : '';
+
+    const tagsMatch = prompt.match(/Tags\s*:\s*([^\n\r]+)/i);
+    const tags = tagsMatch ? tagsMatch[1].trim() : '';
+
+    // Parse marketplace categories from prompt (only within marketplace section)
     const mpLines: Array<{ id: string; name: string }> = [];
-    const mpSection = prompt.split(/Catégories Marketplace Hub disponibles/i)[1] || '';
+    const mpFullSection = prompt.split(/Catégories Marketplace Hub disponibles/i)[1] || '';
+    const mpOnlySection = mpFullSection.split(/Catégories Vitrine Boutique existantes/i)[0] || '';
     const mpRegex = /-\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
     let match: RegExpExecArray | null;
-    while ((match = mpRegex.exec(mpSection)) !== null) {
+    while ((match = mpRegex.exec(mpOnlySection)) !== null) {
       mpLines.push({ name: match[1].trim(), id: match[2].trim() });
     }
 
     // Parse storefront categories from prompt
     const sfLines: Array<{ id: string; name: string }> = [];
-    const sfSection = prompt.split(/Catégories Vitrine Boutique existantes/i)[1] || '';
+    const sfFullSection = prompt.split(/Catégories Vitrine Boutique existantes/i)[1] || '';
+    const sfOnlySection = sfFullSection.split(/RÉPONDEZ EXCLUSIVEMENT/i)[0] || '';
     const sfRegex = /(?:-|\└─)\s*([^(\n\r]+?)\s*\(id:\s*"([^"]+)"\)/g;
-    while ((match = sfRegex.exec(sfSection)) !== null) {
+    while ((match = sfRegex.exec(sfOnlySection)) !== null) {
       sfLines.push({ name: match[1].trim(), id: match[2].trim() });
     }
 
-    const normTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const titleWords = normTitle.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
+    // Comprehensive semantic thesaurus & domain clusters
+    interface SemanticCluster {
+      clusterId: string;
+      categoryIds: string[];
+      keywords: string[];
+      storefrontSuggestion: { fr: string; ar: string; en: string; icon: string };
+    }
 
+    const clusters: SemanticCluster[] = [
+      {
+        clusterId: 'olive_oil',
+        categoryIds: ['cat_market_olive_oil', 'cat_market_food', 'cat_market_harissa_spices'],
+        keywords: ['huile', 'olive', 'olives', 'zit', 'zitoun', 'vierge', 'extra', 'romarin', 'piment', 'baklouti', 'aromatisee', 'infusee', 'terroir', 'bouteille', 'pressage', 'froid', 'bio', 'vinaigre', 'condiment', 'sauce', 'culinaire', 'huiles'],
+        storefrontSuggestion: { fr: "Huiles d'Olive & Terroir", ar: "زيت الزيتون والمنتجات المحلية", en: "Olive Oils & Local Terroir", icon: "Utensils" },
+      },
+      {
+        clusterId: 'harissa_spices',
+        categoryIds: ['cat_market_harissa_spices', 'cat_market_food', 'cat_market_olive_oil'],
+        keywords: ['harissa', 'epice', 'epices', 'tabil', 'carvi', 'coriandre', 'cumin', 'poivre', 'safran', 'felfel', 'piment', 'sauce', 'assaisonnement', 'paprika', 'curcuma'],
+        storefrontSuggestion: { fr: "Harissa Artisanale & Épices", ar: "هريسة وتوابل تقليدية", en: "Artisanal Harissa & Spices", icon: "Flame" },
+      },
+      {
+        clusterId: 'dates_honey',
+        categoryIds: ['cat_market_dates', 'cat_market_food'],
+        keywords: ['datte', 'dattes', 'deglet', 'nour', 'miel', 'asel', 'bsissa', 'patisserie', 'confiture', 'amande', 'noisette', 'pistache', 'zrir', 'douceur', 'miels'],
+        storefrontSuggestion: { fr: "Dattes Deglet Nour & Miel", ar: "تمور دقلة النور وعسل طبيعي", en: "Deglet Nour Dates & Honey", icon: "Sparkles" },
+      },
+      {
+        clusterId: 'coffee_tea',
+        categoryIds: ['cat_market_coffee_tea', 'cat_market_food'],
+        keywords: ['cafe', 'coffee', 'the', 'tea', 'boisson', 'boissons', 'tisane', 'infusion', 'jus', 'syrup', 'sirop', 'menthe', 'grains', 'moulu', 'capsule', 'espresso', 'nespresso'],
+        storefrontSuggestion: { fr: "Café, Thé & Boissons", ar: "قهوة وشاي ومشروبات", en: "Coffee, Tea & Beverages", icon: "Coffee" },
+      },
+      {
+        clusterId: 'pottery_ceramics',
+        categoryIds: ['cat_market_nabeul_pottery', 'cat_market_handmade', 'cat_market_home'],
+        keywords: ['poterie', 'poteries', 'ceramique', 'ceramiques', 'nabeul', 'sejnane', 'argile', 'vase', 'plat', 'assiette', 'bol', 'tajine', 'artisanal', 'fait-main', 'sculpte', 'terrecuite'],
+        storefrontSuggestion: { fr: "Poteries & Céramiques Artisanales", ar: "فخار وخزف تقليدي", en: "Handmade Pottery & Ceramics", icon: "Palette" },
+      },
+      {
+        clusterId: 'margoum_carpets',
+        categoryIds: ['cat_market_margoum', 'cat_market_handmade', 'cat_market_decor', 'cat_market_home'],
+        keywords: ['tapis', 'margoum', 'klim', 'kilim', 'zarbia', 'laine', 'tissage', 'berbere', 'traditionnel', 'tapisserie'],
+        storefrontSuggestion: { fr: "Tapis Margoum & Klim", ar: "زرابي ومرقوم تونسي", en: "Margoum & Klim Carpets", icon: "Layers" },
+      },
+      {
+        clusterId: 'fouta_linens',
+        categoryIds: ['cat_market_fouta', 'cat_market_handmade', 'cat_market_home'],
+        keywords: ['fouta', 'foutas', 'serviette', 'bain', 'plage', 'peignoir', 'drap', 'lin', 'coton', 'tissage', 'plaid', 'linge'],
+        storefrontSuggestion: { fr: "Foutas & Linge de Maison", ar: "فوطة ونسيج تونسي", en: "Tunisian Foutas & Linens", icon: "Sparkles" },
+      },
+      {
+        clusterId: 'mens_fashion',
+        categoryIds: ['cat_market_m_tops', 'cat_market_m_jeans', 'cat_market_m_suits', 'cat_market_m_jackets', 'cat_market_m_wallets', 'cat_market_mens_fashion'],
+        keywords: ['homme', 'hommes', 'men', 'chemise', 't-shirt', 'polo', 'pantalon', 'jean', 'costume', 'blazer', 'veste', 'manteau', 'blouson', 'pull', 'sweat', 'hoodie', 'ceinture', 'casquette'],
+        storefrontSuggestion: { fr: "Mode Homme & Prêt-à-porter", ar: "أزياء رجالية", en: "Men's Fashion", icon: "Shirt" },
+      },
+      {
+        clusterId: 'womens_fashion',
+        categoryIds: ['cat_market_w_dresses', 'cat_market_w_traditional', 'cat_market_w_tops', 'cat_market_womens_fashion'],
+        keywords: ['femme', 'femmes', 'women', 'robe', 'robes', 'caftan', 'jebba', 'abaya', 'jupe', 'chemisier', 'top', 'combinaison', 'manteau', 'veste', 'tailleur', 'broderie', 'soie'],
+        storefrontSuggestion: { fr: "Mode Femme & Robes", ar: "أزياء نسائية وفساتين", en: "Women's Fashion & Dresses", icon: "Sparkles" },
+      },
+      {
+        clusterId: 'shoes_sneakers',
+        categoryIds: ['cat_market_m_sneakers', 'cat_market_w_sneakers', 'cat_market_m_formal_shoes', 'cat_market_shoes', 'cat_market_sportswear'],
+        keywords: ['chaussure', 'chaussures', 'basket', 'baskets', 'sneaker', 'sneakers', 'sandale', 'sandales', 'talons', 'escarpin', 'mocassin', 'cuir', 'running', 'pointure'],
+        storefrontSuggestion: { fr: "Chaussures & Baskets", ar: "أحذية وسنيكرز", en: "Shoes & Sneakers", icon: "Footprints" },
+      },
+      {
+        clusterId: 'smartphones_telephony',
+        categoryIds: ['cat_market_smartphones', 'cat_market_iphones', 'cat_market_samsung', 'cat_market_electronics'],
+        keywords: ['smartphone', 'smartphones', 'telephone', 'telephonie', 'iphone', 'samsung', 'xiaomi', 'redmi', 'oppo', 'mobile', 'android', 'ios', '5g', 'dual sim', 'ecran oled'],
+        storefrontSuggestion: { fr: "Smartphones & Téléphonie", ar: "الهواتف الذكية والإكسسوارات", en: "Smartphones & Telephony", icon: "Smartphone" },
+      },
+      {
+        clusterId: 'laptops_computers',
+        categoryIds: ['cat_market_laptops', 'cat_market_gaming_pc', 'cat_market_electronics'],
+        keywords: ['pc', 'ordinateur', 'ordinateurs', 'laptop', 'laptops', 'macbook', 'asus', 'dell', 'hp', 'lenovo', 'gamer', 'gaming', 'bureau', 'clavier', 'souris', 'ram', 'ssd', 'intel', 'ryzen'],
+        storefrontSuggestion: { fr: "Informatique & Ordinateurs", ar: "حواسيب وإلكترونيات", en: "Laptops & Computers", icon: "Laptop" },
+      },
+      {
+        clusterId: 'audio_tv',
+        categoryIds: ['cat_market_headphones', 'cat_market_audio_tv', 'cat_market_electronics'],
+        keywords: ['casque', 'casques', 'ecouteurs', 'earbuds', 'airpods', 'bluetooth', 'audio', 'enceinte', 'soundbar', 'tv', 'television', 'smart tv', '4k', 'oled', 'projecteur', 'camera'],
+        storefrontSuggestion: { fr: "Audio, Casques & TV", ar: "صوتيات وتلفزيونات", en: "Audio, Headphones & TV", icon: "Headphones" },
+      },
+      {
+        clusterId: 'watches_jewelry',
+        categoryIds: ['cat_market_m_watches', 'cat_market_w_watches', 'cat_market_gold', 'cat_market_silver', 'cat_market_watches_jewelry'],
+        keywords: ['montre', 'montres', 'bijou', 'bijoux', 'bague', 'collier', 'bracelet', 'boucles', 'or', '18k', '24k', 'argent', 'silver', 'diamant', 'perle', 'horlogerie'],
+        storefrontSuggestion: { fr: "Bijouterie & Horlogerie", ar: "مجوهرات وساعات", en: "Jewelry & Watches", icon: "Watch" },
+      },
+      {
+        clusterId: 'beauty_perfumes',
+        categoryIds: ['cat_market_w_perfumes', 'cat_market_m_colognes', 'cat_market_skincare', 'cat_market_makeup', 'cat_market_haircare', 'cat_market_beauty'],
+        keywords: ['parfum', 'parfums', 'eau de parfum', 'oud', 'musk', 'fragrance', 'creme', 'serum', 'anti-age', 'hydratant', 'visage', 'peau', 'dermocosmetique', 'solaire', 'maquillage', 'rouge a levres', 'mascara', 'cheveux', 'shampoing'],
+        storefrontSuggestion: { fr: "Beauté, Soins & Parfums", ar: "عطور وعناية وجمال", en: "Beauty, Skincare & Perfumes", icon: "Heart" },
+      },
+      {
+        clusterId: 'home_furniture',
+        categoryIds: ['cat_market_sofas', 'cat_market_beds', 'cat_market_tables', 'cat_market_decor', 'cat_market_home'],
+        keywords: ['salon', 'canape', 'fauteuil', 'table', 'chaise', 'lit', 'matelas', 'armoire', 'commode', 'meuble', 'meubles', 'deco', 'decoration', 'luminaire', 'lampe', 'miroir', 'coussin'],
+        storefrontSuggestion: { fr: "Mobilier & Décoration Maison", ar: "أثاث وديكور منزلي", en: "Home Furniture & Decor", icon: "Home" },
+      },
+      {
+        clusterId: 'kitchen_cookware',
+        categoryIds: ['cat_market_cookware', 'cat_market_home'],
+        keywords: ['cuisine', 'poele', 'casserole', 'marmite', 'ustensile', 'ustensiles', 'couteau', 'planche', 'tajine', 'vaisselle', 'verre', 'tasse', 'inox', 'antiadhesif', 'granite'],
+        storefrontSuggestion: { fr: "Cuisine & Arts de la Table", ar: "أواني ومستلزمات المطبخ", en: "Kitchenware & Tableware", icon: "Utensils" },
+      },
+      {
+        clusterId: 'appliances',
+        categoryIds: ['cat_market_fridges', 'cat_market_washers', 'cat_market_air_fryers', 'cat_market_climatisation', 'cat_market_appliances'],
+        keywords: ['refrigerateur', 'frigo', 'congelateur', 'lave-linge', 'machine a laver', 'climatiseur', 'climatisation', 'chauffage', 'air fryer', 'friteuse', 'cafetiere', 'micro-ondes', 'four', 'aspirateur'],
+        storefrontSuggestion: { fr: "Électroménager & Maison", ar: "أجهزة كهرومنزلية", en: "Home Appliances", icon: "Tv" },
+      },
+      {
+        clusterId: 'sports_fitness',
+        categoryIds: ['cat_market_treadmills', 'cat_market_sportswear', 'cat_market_bicycles', 'cat_market_whey', 'cat_market_sports'],
+        keywords: ['sport', 'sports', 'fitness', 'musculation', 'tapis roulant', 'velo', 'haltere', 'trottinette', 'randonnee', 'camping', 'proteine', 'whey', 'creatine', 'survetement'],
+        storefrontSuggestion: { fr: "Sport, Fitness & Nutrition", ar: "رياضة ولياقة بدنية", en: "Sports, Fitness & Nutrition", icon: "Activity" },
+      },
+      {
+        clusterId: 'baby_kids',
+        categoryIds: ['cat_market_strollers', 'cat_market_lego_toys', 'cat_market_kids_fashion', 'cat_market_kids'],
+        keywords: ['bebe', 'enfant', 'enfants', 'baby', 'kids', 'poussette', 'siege auto', 'lit bebe', 'biberon', 'jouet', 'jouets', 'lego', 'puzzle', 'peluche', 'vetement bebe'],
+        storefrontSuggestion: { fr: "Univers Bébé & Enfants", ar: "عالم الأطفال والرضع", en: "Baby & Kids", icon: "Baby" },
+      },
+      {
+        clusterId: 'auto_tools',
+        categoryIds: ['cat_market_car_oils', 'cat_market_car_audio', 'cat_market_power_tools', 'cat_market_auto'],
+        keywords: ['voiture', 'auto', 'moto', 'moteur', 'huile moteur', 'liquide', 'frein', 'pneu', 'dashcam', 'ecran android', 'gps', 'outillage', 'perceuse', 'visseuse', 'cle', 'boite a outils', 'bricolage'],
+        storefrontSuggestion: { fr: "Auto, Moto & Bricolage", ar: "لوازم السيارات والعدد", en: "Automotive & Tools", icon: "Wrench" },
+      },
+    ];
+
+    // Tokenize product fields with weights
+    const cleanWords = (txt: string) =>
+      txt
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .split(/[\s-_/,&()]+/)
+        .filter((w) => w.length >= 3);
+
+    const titleTokens = cleanWords(title);
+    const tagTokens = cleanWords(tags);
+    const attrTokens = cleanWords(attributes);
+    const descTokens = cleanWords(description);
+    const brandTokens = cleanWords(brand);
+
+    // Score semantic clusters first
+    let matchedCluster: SemanticCluster | null = null;
+    let highestClusterScore = 0;
+
+    for (const cluster of clusters) {
+      let clusterScore = 0;
+      for (const kw of cluster.keywords) {
+        if (titleTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 4.0;
+        if (tagTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 3.0;
+        if (attrTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 2.0;
+        if (descTokens.some((t) => t === kw || (t.length >= 4 && kw.length >= 4 && (t.startsWith(kw) || kw.startsWith(t))))) clusterScore += 1.0;
+        if (brandTokens.some((t) => t === kw)) clusterScore += 1.5;
+      }
+      if (clusterScore > highestClusterScore) {
+        highestClusterScore = clusterScore;
+        matchedCluster = cluster;
+      }
+    }
+
+    // Score each marketplace category
     const scoredMp = mpLines.map((cat) => {
       const normCat = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const catWords = normCat.split(/[\s-_/,&()]+/).filter((w) => w.length >= 3);
-      let matchCount = 0;
-      for (const tw of titleWords) {
+
+      let directScore = 0;
+      for (const tw of titleTokens) {
         if (catWords.some((cw) => cw === tw || (cw.length >= 4 && tw.length >= 4 && (cw.startsWith(tw) || tw.startsWith(cw))))) {
-          matchCount++;
+          directScore += 3.0;
         }
       }
-      const score = matchCount / Math.max(catWords.length, 1);
-      return { cat, score };
-    }).sort((a, b) => b.score - a.score);
+      for (const tag of tagTokens) {
+        if (catWords.some((cw) => cw === tag || (cw.length >= 4 && tag.length >= 4 && (cw.startsWith(tag) || tag.startsWith(cw))))) {
+          directScore += 2.0;
+        }
+      }
+      for (const dw of descTokens) {
+        if (catWords.some((cw) => cw === dw || (cw.length >= 4 && dw.length >= 4 && (cw.startsWith(dw) || dw.startsWith(cw))))) {
+          directScore += 0.8;
+        }
+      }
 
-    const top3 = scoredMp.slice(0, Math.min(3, scoredMp.length));
+      // If category belongs to the highest matching semantic cluster, boost significantly
+      let clusterBoost = 0;
+      if (matchedCluster) {
+        const clusterIndex = matchedCluster.categoryIds.indexOf(cat.id);
+        if (clusterIndex !== -1) {
+          // Specific subcategory (index 0) gets highest boost
+          clusterBoost = clusterIndex === 0 ? 10.0 : clusterIndex === 1 ? 6.0 : 4.0;
+        }
+      }
+
+      const totalScore = directScore + clusterBoost;
+      return { cat, score: totalScore, isSubcategory: cat.id.startsWith('cat_market_') && cat.id !== 'cat_market_food' && cat.id !== 'cat_market_electronics' && cat.id !== 'cat_market_home' };
+    });
+
+    // Only keep categories with meaningful score > 0
+    const matchedCategories = scoredMp.filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
+
+    // If no match found at all, fall back to general root
+    const top3 = matchedCategories.length > 0
+      ? matchedCategories.slice(0, Math.min(3, matchedCategories.length))
+      : [{ cat: mpLines[0] || { id: 'cat_market_uncategorized', name: 'Autres Produits' }, score: 0, isSubcategory: false }];
+
     const topCandidates = top3.map((item, idx) => {
       const mpCat = item.cat;
       const matchedSf = sfLines.find((s) => {
         const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normSf === mpCat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleWords.some((w) => normSf.includes(w));
+        return normSf === mpCat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || titleTokens.some((w) => normSf.includes(w));
       });
-      const confidence = Math.max(0.55, Math.min(0.98, item.score > 0 ? 0.95 - idx * 0.08 : 0.70 - idx * 0.1));
+
+      const confVal = item.score >= 8.0
+        ? Math.max(0.85, 0.96 - idx * 0.05)
+        : item.score >= 3.0
+        ? Math.max(0.70, 0.85 - idx * 0.08)
+        : Math.max(0.55, 0.65 - idx * 0.05);
+
+      const sfSug = matchedCluster?.storefrontSuggestion;
+      const sfName = matchedSf
+        ? matchedSf.name
+        : (idx === 0 && sfSug)
+        ? sfSug.fr
+        : mpCat.name;
+
+      const reason = item.score > 0
+        ? (matchedCluster && matchedCluster.categoryIds.includes(mpCat.id))
+          ? `Classification sémantique optimale basée sur les termes clés détectés (${titleTokens.slice(0, 3).join(', ')}).`
+          : `Correspondance lexicale identifiée avec les termes clés du produit pour '${mpCat.name}'.`
+        : `Recommandation par défaut.`;
+
       return {
         rank: idx + 1,
         marketplace_category_id: mpCat.id,
         marketplace_category_name: mpCat.name,
-        storefront_category_name: matchedSf ? matchedSf.name : mpCat.name,
+        storefront_category_name: sfName,
         storefront_category_id: matchedSf ? matchedSf.id : null,
         storefront_parent_category_id: null,
         created_new: !matchedSf,
-        confidence: Number(confidence.toFixed(2)),
-        reason: item.score > 0
-          ? `Correspondance lexicale identifiée avec les termes clés du produit pour '${mpCat.name}'.`
-          : `Recommandation basée sur l'univers produit le plus proche.`,
+        name_fr: sfSug?.fr || sfName,
+        name_ar: sfSug?.ar || null,
+        name_en: sfSug?.en || null,
+        icon: sfSug?.icon || 'Tag',
+        seo_title: `${sfName} | Boutique en Ligne`,
+        seo_description: `Découvrez nos articles dans la catégorie ${sfName}.`,
+        confidence: Number(confVal.toFixed(2)),
+        reason,
       };
     });
 
     const primary = topCandidates[0] || {
       rank: 1,
       marketplace_category_id: 'cat_market_uncategorized',
-      marketplace_category_name: 'Non catégorisé',
+      marketplace_category_name: 'Autres Produits',
       storefront_category_name: 'Collection Produit',
       storefront_category_id: null,
       storefront_parent_category_id: null,
       created_new: true,
+      name_fr: 'Collection Produit',
+      name_ar: null,
+      name_en: null,
+      icon: 'Tag',
+      seo_title: 'Collection Produit | Boutique',
+      seo_description: 'Découvrez notre collection.',
       confidence: 0.6,
       reason: 'Classification par défaut.',
     };
