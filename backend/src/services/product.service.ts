@@ -54,6 +54,54 @@ export interface ProductVariantInput {
   options?: Record<string, string>;
 }
 
+export interface ProductBundleItemInput {
+  product_id: string;
+  variant_id?: string | null;
+  quantity: number;
+  position?: number;
+}
+
+export interface ProductBundleItemRow {
+  id: string;
+  bundle_product_id: string;
+  product_id: string;
+  variant_id: string | null;
+  quantity: number;
+  position: number;
+  created_at: Date;
+  updated_at: Date;
+  product_title?: string;
+  product_slug?: string;
+  product_price?: string | number;
+  product_compare_at_price?: string | number | null;
+  product_thumbnail?: string | null;
+  product_inventory_quantity?: number;
+  product_type?: ProductType;
+  variant_title?: string | null;
+  variant_price?: string | number | null;
+  variant_compare_at_price?: string | number | null;
+  variant_inventory_quantity?: number;
+  variant_sku?: string | null;
+  variant_options?: Record<string, string>;
+  available_stock?: number;
+}
+
+export function computeBundleAvailableStock(bundleItems?: ProductBundleItemRow[]): number {
+  if (!bundleItems || bundleItems.length === 0) return 0;
+  let minStock = Infinity;
+  for (const item of bundleItems) {
+    const qty = Number(item.quantity) || 1;
+    const itemStock = item.variant_inventory_quantity !== undefined && item.variant_inventory_quantity !== null
+      ? Number(item.variant_inventory_quantity)
+      : Number(item.product_inventory_quantity || 0);
+    const possiblePacks = Math.floor(Math.max(0, itemStock) / qty);
+    if (possiblePacks < minStock) {
+      minStock = possiblePacks;
+    }
+  }
+  return Number.isFinite(minStock) ? minStock : 0;
+}
+
 export interface ProductVariantRow {
   id: string;
   product_id: string;
@@ -112,6 +160,9 @@ export interface ProductRow {
     is_thumbnail: boolean;
   }>;
   variants?: ProductVariantRow[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: ProductBundleItemRow[];
   metadata: Record<string, unknown>;
   rejection_reason: string | null;
   // Digital product fields
@@ -153,6 +204,8 @@ export interface PublicProductRow {
   marketplace_category_slug?: string | null;
   storefront_category_name?: string | null;
   storefront_category_slug?: string | null;
+  storefront_parent_category_name?: string | null;
+  storefront_parent_category_slug?: string | null;
   store_name?: string;
   store_subdomain?: string;
   store_custom_domain?: string | null;
@@ -183,6 +236,9 @@ export interface PublicProductRow {
     is_thumbnail: boolean;
   }>;
   variants?: PublicProductVariantRow[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: ProductBundleItemRow[];
   created_at: Date;
   updated_at: Date;
 }
@@ -241,6 +297,30 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     storefront_category_name: row.storefront_category_name ?? null,
     storefront_parent_category_slug: row.storefront_parent_category_slug ?? null,
     storefront_parent_category_name: row.storefront_parent_category_name ?? null,
+    bundle_pricing_type: row.bundle_pricing_type ?? null,
+    bundle_discount_value: row.bundle_discount_value !== undefined && row.bundle_discount_value !== null ? Number(row.bundle_discount_value) : null,
+    bundle_items: (row.bundle_items ?? []).map((bi) => ({
+      id: bi.id,
+      bundle_product_id: bi.bundle_product_id,
+      product_id: bi.product_id,
+      variant_id: bi.variant_id ?? null,
+      quantity: Number(bi.quantity || 1),
+      position: Number(bi.position || 0),
+      product_title: bi.product_title,
+      product_slug: bi.product_slug,
+      product_price: Number(bi.product_price || 0),
+      product_compare_at_price: bi.product_compare_at_price ? Number(bi.product_compare_at_price) : null,
+      product_thumbnail: bi.product_thumbnail || null,
+      product_inventory_quantity: Number(bi.product_inventory_quantity || 0),
+      product_type: bi.product_type,
+      variant_title: bi.variant_title ?? null,
+      variant_price: bi.variant_price ? Number(bi.variant_price) : null,
+      variant_compare_at_price: bi.variant_compare_at_price ? Number(bi.variant_compare_at_price) : null,
+      variant_inventory_quantity: bi.variant_inventory_quantity !== undefined ? Number(bi.variant_inventory_quantity) : undefined,
+      variant_sku: bi.variant_sku ?? null,
+      variant_options: bi.variant_options ?? {},
+      available_stock: bi.variant_inventory_quantity !== undefined ? Number(bi.variant_inventory_quantity) : Number(bi.product_inventory_quantity || 0),
+    })),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -315,6 +395,9 @@ export interface CreateProductInput {
   wholesale_min_quantity?: number | null;
   wholesale_price_tiers?: WholesalePriceTier[];
   variants?: ProductVariantInput[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: ProductBundleItemInput[];
   metadata?: Record<string, unknown>;
 }
 
@@ -492,8 +575,9 @@ export class ProductService {
            marketplace_category_id, storefront_category_id, price, compare_at_price, inventory_quantity,
            weight_grams, thumbnail, seo_title, seo_description, tags, product_reference, attributes,
            max_downloads, download_expires_hours, digital_file_key, digital_file_name,
-           digital_file_content_type, digital_file_size, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+           digital_file_content_type, digital_file_size, metadata,
+           bundle_pricing_type, bundle_discount_value)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
          RETURNING *`,
         [
           id,
@@ -523,10 +607,15 @@ export class ProductService {
           input.digital_file_content_type ?? null,
           input.digital_file_size ?? null,
           JSON.stringify(metadata),
+          input.bundle_pricing_type ?? null,
+          input.bundle_discount_value ?? null,
         ],
       );
       await this.addLicenseKeys(c, id, input.store_id, licenseKeys);
       await this.replaceVariants(c, id, variants);
+      if (input.bundle_items !== undefined) {
+        await this.replaceBundleItems(c, id, input.store_id, input.bundle_items);
+      }
       return rows[0].id;
     });
 
@@ -585,7 +674,8 @@ export class ProductService {
               parent_sc.name AS storefront_parent_category_name,
               parent_sc.slug AS storefront_parent_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
-              COALESCE(v.variants, '[]'::json) AS variants
+              COALESCE(v.variants, '[]'::json) AS variants,
+              COALESCE(b_items.bundle_items, '[]'::json) AS bundle_items
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
@@ -628,12 +718,46 @@ export class ProductService {
          FROM pd_product_variant pv
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', bi.id,
+             'bundle_product_id', bi.bundle_product_id,
+             'product_id', bi.product_id,
+             'variant_id', bi.variant_id,
+             'quantity', bi.quantity,
+             'position', bi.position,
+             'product_title', bp.title,
+             'product_slug', bp.slug,
+             'product_price', bp.price,
+             'product_compare_at_price', bp.compare_at_price,
+             'product_thumbnail', bp.thumbnail,
+             'product_inventory_quantity', bp.inventory_quantity,
+             'product_type', bp.type,
+             'variant_title', bpv.title,
+             'variant_price', bpv.price,
+             'variant_compare_at_price', bpv.compare_at_price,
+             'variant_inventory_quantity', bpv.inventory_quantity,
+             'variant_sku', bpv.sku,
+             'variant_options', bpv.options
+           )
+           ORDER BY bi.position ASC
+         ) AS bundle_items
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = p.id
+       ) b_items ON true
        WHERE p.id = $1
        LIMIT 1`,
       [id, ProductStatus.Published],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
-    return rows[0];
+    const product = rows[0];
+    if (product.type === ProductType.Bundle) {
+      product.inventory_quantity = computeBundleAvailableStock(product.bundle_items);
+    }
+    return product;
   }
 
   async update(id: string, patch: Partial<CreateProductInput> & { status?: ProductStatus }): Promise<ProductRow> {
@@ -723,6 +847,8 @@ export class ProductService {
       'digital_file_name',
       'digital_file_content_type',
       'digital_file_size',
+      'bundle_pricing_type',
+      'bundle_discount_value',
       'status',
     ];
     if (patch.wholesale_min_quantity !== undefined || patch.wholesale_price_tiers !== undefined) {
@@ -752,7 +878,7 @@ export class ProductService {
         values.push(k === 'tags' || k === 'attributes' ? JSON.stringify(patch[k]) : k === 'description' ? sanitizeProductDescription(patch[k] as string | null | undefined) : patch[k]);
       }
     }
-    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined) return previousProduct;
+    if (fields.length === 0 && licenseKeys.length === 0 && variants === undefined && patch.bundle_items === undefined) return previousProduct;
     const productId = await transaction(async (c) => {
       current = current ?? previousProduct;
       if (fields.length > 0) {
@@ -764,6 +890,9 @@ export class ProductService {
       await this.addLicenseKeys(c, id, current.store_id, licenseKeys);
       if (variants !== undefined) {
         await this.replaceVariants(c, id, variants);
+      }
+      if (patch.bundle_items !== undefined) {
+        await this.replaceBundleItems(c, id, current.store_id, patch.bundle_items);
       }
       return id;
     });
@@ -798,12 +927,9 @@ export class ProductService {
       });
     };
 
-    // Status changed to Published detection
-    if (
-      patch.status === ProductStatus.Published &&
-      previousProduct.status !== ProductStatus.Published
-    ) {
-      const publishPriceNum = parseFloat(String(updatedProduct.price ?? '0'));
+    const isNewlyPublished = previousProduct?.status !== ProductStatus.Published && updatedProduct.status === ProductStatus.Published;
+    if (isNewlyPublished) {
+      const publishPriceNum = parseFloat(String(updatedProduct.price));
       notificationBatchService.ingestEvent({
         storeId: updatedProduct.store_id,
         storeName: updatedProduct.store_name || 'Boutique',
@@ -832,6 +958,7 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -847,7 +974,8 @@ export class ProductService {
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
-              COALESCE(v.variants, '[]'::json) AS variants
+              COALESCE(v.variants, '[]'::json) AS variants,
+              COALESCE(b_items.bundle_items, '[]'::json) AS bundle_items
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
@@ -885,6 +1013,36 @@ export class ProductService {
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
        LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', bi.id,
+             'bundle_product_id', bi.bundle_product_id,
+             'product_id', bi.product_id,
+             'variant_id', bi.variant_id,
+             'quantity', bi.quantity,
+             'position', bi.position,
+             'product_title', bp.title,
+             'product_slug', bp.slug,
+             'product_price', bp.price,
+             'product_compare_at_price', bp.compare_at_price,
+             'product_thumbnail', bp.thumbnail,
+             'product_inventory_quantity', bp.inventory_quantity,
+             'product_type', bp.type,
+             'variant_title', bpv.title,
+             'variant_price', bpv.price,
+             'variant_compare_at_price', bpv.compare_at_price,
+             'variant_inventory_quantity', bpv.inventory_quantity,
+             'variant_sku', bpv.sku,
+             'variant_options', bpv.options
+           )
+           ORDER BY bi.position ASC
+         ) AS bundle_items
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = p.id
+       ) b_items ON true
+       LEFT JOIN LATERAL (
          SELECT COUNT(*)::text AS product_count
          FROM pd_product sp
          WHERE sp.store_id = s.id AND sp.status = $2
@@ -894,13 +1052,20 @@ export class ProductService {
       [id, ProductStatus.Published],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
-    return rows[0];
+    const product = rows[0];
+    if (product.type === ProductType.Bundle) {
+      const bundleStock = computeBundleAvailableStock(product.bundle_items);
+      product.in_stock = bundleStock > 0;
+      product.stock_status = bundleStock > 0 ? 'in_stock' : 'out_of_stock';
+    }
+    return product;
   }
 
   async getPublishedByStoreSlug(storeId: string, slug: string): Promise<PublicProductRow> {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -917,7 +1082,8 @@ export class ProductService {
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
-              COALESCE(v.variants, '[]'::json) AS variants
+              COALESCE(v.variants, '[]'::json) AS variants,
+              COALESCE(b_items.bundle_items, '[]'::json) AS bundle_items
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
@@ -956,6 +1122,36 @@ export class ProductService {
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
        LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', bi.id,
+             'bundle_product_id', bi.bundle_product_id,
+             'product_id', bi.product_id,
+             'variant_id', bi.variant_id,
+             'quantity', bi.quantity,
+             'position', bi.position,
+             'product_title', bp.title,
+             'product_slug', bp.slug,
+             'product_price', bp.price,
+             'product_compare_at_price', bp.compare_at_price,
+             'product_thumbnail', bp.thumbnail,
+             'product_inventory_quantity', bp.inventory_quantity,
+             'product_type', bp.type,
+             'variant_title', bpv.title,
+             'variant_price', bpv.price,
+             'variant_compare_at_price', bpv.compare_at_price,
+             'variant_inventory_quantity', bpv.inventory_quantity,
+             'variant_sku', bpv.sku,
+             'variant_options', bpv.options
+           )
+           ORDER BY bi.position ASC
+         ) AS bundle_items
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = p.id
+       ) b_items ON true
+       LEFT JOIN LATERAL (
          SELECT COUNT(*)::text AS product_count
          FROM pd_product sp
          WHERE sp.store_id = s.id AND sp.status = $3
@@ -965,7 +1161,13 @@ export class ProductService {
       [storeId, slug, ProductStatus.Published],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
-    return rows[0];
+    const product = rows[0];
+    if (product.type === ProductType.Bundle) {
+      const bundleStock = computeBundleAvailableStock(product.bundle_items);
+      product.in_stock = bundleStock > 0;
+      product.stock_status = bundleStock > 0 ? 'in_stock' : 'out_of_stock';
+    }
+    return product;
   }
   async archive(id: string): Promise<void> {
     await query(`UPDATE pd_product SET status = 'archived' WHERE id = $1`, [id]);
@@ -1382,6 +1584,7 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
@@ -1394,7 +1597,8 @@ export class ProductService {
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
-              COALESCE(v.variants, '[]'::json) AS variants
+              COALESCE(v.variants, '[]'::json) AS variants,
+              COALESCE(b_items.bundle_items, '[]'::json) AS bundle_items
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
@@ -1432,6 +1636,36 @@ export class ProductService {
          FROM pd_product_variant pv
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', bi.id,
+             'bundle_product_id', bi.bundle_product_id,
+             'product_id', bi.product_id,
+             'variant_id', bi.variant_id,
+             'quantity', bi.quantity,
+             'position', bi.position,
+             'product_title', bp.title,
+             'product_slug', bp.slug,
+             'product_price', bp.price,
+             'product_compare_at_price', bp.compare_at_price,
+             'product_thumbnail', bp.thumbnail,
+             'product_inventory_quantity', bp.inventory_quantity,
+             'product_type', bp.type,
+             'variant_title', bpv.title,
+             'variant_price', bpv.price,
+             'variant_compare_at_price', bpv.compare_at_price,
+             'variant_inventory_quantity', bpv.inventory_quantity,
+             'variant_sku', bpv.sku,
+             'variant_options', bpv.options
+           )
+           ORDER BY bi.position ASC
+         ) AS bundle_items
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = p.id
+       ) b_items ON true
        WHERE ${where}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -1854,26 +2088,156 @@ export class ProductService {
     const productIds = products.map((product) => product.id);
     if (productIds.length === 0) return products;
 
-    const { rows } = await query<ProductVariantRow>(
-      `SELECT *
-       FROM pd_product_variant
-       WHERE product_id = ANY($1::varchar[]) AND is_active = true
-       ORDER BY created_at ASC`,
-      [productIds],
-    );
+    const [variantsRes, bundleItemsRes] = await Promise.all([
+      query<ProductVariantRow>(
+        `SELECT *
+         FROM pd_product_variant
+         WHERE product_id = ANY($1::varchar[]) AND is_active = true
+         ORDER BY created_at ASC`,
+        [productIds],
+      ),
+      query<ProductBundleItemRow>(
+        `SELECT bi.*,
+                bp.title AS product_title, bp.slug AS product_slug, bp.price AS product_price,
+                bp.compare_at_price AS product_compare_at_price, bp.thumbnail AS product_thumbnail,
+                bp.inventory_quantity AS product_inventory_quantity, bp.type AS product_type,
+                bpv.title AS variant_title, bpv.price AS variant_price,
+                bpv.compare_at_price AS variant_compare_at_price, bpv.inventory_quantity AS variant_inventory_quantity,
+                bpv.sku AS variant_sku, bpv.options AS variant_options
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = ANY($1::varchar[])
+         ORDER BY bi.position ASC`,
+        [productIds],
+      ),
+    ]);
 
     const variantsByProduct = new Map<string, ProductVariantRow[]>();
-    for (const variant of rows) {
+    for (const variant of variantsRes.rows) {
       variantsByProduct.set(variant.product_id, [
         ...(variantsByProduct.get(variant.product_id) ?? []),
         variant,
       ]);
     }
 
-    return products.map((product) => ({
-      ...product,
-      variants: variantsByProduct.get(product.id) ?? product.variants ?? [],
-    }));
+    const bundleItemsByProduct = new Map<string, ProductBundleItemRow[]>();
+    for (const item of bundleItemsRes.rows) {
+      bundleItemsByProduct.set(item.bundle_product_id, [
+        ...(bundleItemsByProduct.get(item.bundle_product_id) ?? []),
+        item,
+      ]);
+    }
+
+    return products.map((product) => {
+      const bundleItems = bundleItemsByProduct.get(product.id) ?? product.bundle_items ?? [];
+      let inventoryQuantity = product.inventory_quantity;
+      if (product.type === ProductType.Bundle) {
+        inventoryQuantity = computeBundleAvailableStock(bundleItems);
+      }
+      return {
+        ...product,
+        inventory_quantity: inventoryQuantity,
+        variants: variantsByProduct.get(product.id) ?? product.variants ?? [],
+        bundle_items: bundleItems,
+      };
+    });
+  }
+
+  private async replaceBundleItems(
+    client: PoolClient,
+    bundleProductId: string,
+    storeId: string,
+    bundleItems?: ProductBundleItemInput[],
+  ): Promise<void> {
+    if (bundleItems === undefined) return;
+
+    await client.query('DELETE FROM pd_product_bundle_item WHERE bundle_product_id = $1', [bundleProductId]);
+
+    if (bundleItems.length === 0) return;
+
+    const productIds = Array.from(new Set(bundleItems.map((bi) => bi.product_id)));
+    if (productIds.includes(bundleProductId)) {
+      throw new PdValidationError('A pack cannot contain itself');
+    }
+
+    const { rows: componentProducts } = await client.query<{ id: string; store_id: string; type: ProductType; price: string; title: string }>(
+      'SELECT id, store_id, type, price, title FROM pd_product WHERE id = ANY($1)',
+      [productIds],
+    );
+
+    const compMap = new Map(componentProducts.map((p) => [p.id, p]));
+    for (const bi of bundleItems) {
+      const comp = compMap.get(bi.product_id);
+      if (!comp) {
+        throw new PdValidationError(`Component product ${bi.product_id} does not exist`);
+      }
+      if (comp.store_id !== storeId) {
+        throw new PdValidationError(`Component product "${comp.title}" belongs to another store`);
+      }
+      if (comp.type === ProductType.Bundle) {
+        throw new PdValidationError(`Component product "${comp.title}" is already a pack. Nested packs are not allowed.`);
+      }
+      if (bi.quantity <= 0) {
+        throw new PdValidationError('Quantity for each item in a pack must be at least 1');
+      }
+    }
+
+    for (let pos = 0; pos < bundleItems.length; pos++) {
+      const bi = bundleItems[pos];
+      const id = pdId('bitem');
+      await client.query(
+        `INSERT INTO pd_product_bundle_item (id, bundle_product_id, product_id, variant_id, quantity, position, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+        [id, bundleProductId, bi.product_id, bi.variant_id || null, bi.quantity || 1, bi.position ?? pos],
+      );
+    }
+  }
+
+  async getBundlesContainingProduct(productId: string, storeId?: string): Promise<PublicProductRow[]> {
+    const params: unknown[] = [productId, ProductStatus.Published, ProductType.Bundle];
+    let where = 'bi.product_id = $1 AND p.status = $2 AND p.type = $3 AND s.status = \'verified\' AND COALESCE(s.is_verified, false) = true';
+    if (storeId) {
+      params.push(storeId);
+      where += ` AND p.store_id = $${params.length}`;
+    }
+
+    const { rows } = await query<PublicProductRow>(
+      `SELECT DISTINCT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
+              p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.bundle_pricing_type, p.bundle_discount_value,
+              (p.inventory_quantity > 0) AS in_stock,
+              CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
+              p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
+              p.metadata, p.created_at, p.updated_at,
+              s.name AS store_name, s.subdomain AS store_subdomain,
+              s.custom_domain AS store_custom_domain, s.seller_type AS store_seller_type,
+              COALESCE(s.is_verified, false) AS store_is_verified,
+              COALESCE(img.images, '[]'::json) AS images
+       FROM pd_product p
+       JOIN pd_product_bundle_item bi ON bi.bundle_product_id = p.id
+       JOIN pd_store s ON s.id = p.store_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', pi.id,
+             'url', pi.url,
+             'alt_text', pi.alt_text,
+             'position', pi.position,
+             'is_thumbnail', pi.is_thumbnail
+           )
+           ORDER BY pi.position ASC
+         ) AS images
+         FROM pd_product_image pi
+         WHERE pi.product_id = p.id
+       ) img ON true
+       WHERE ${where}
+       ORDER BY p.created_at DESC
+       LIMIT 10`,
+      params,
+    );
+
+    return this.attachVariants(rows as any) as any;
   }
 
   private async addLicenseKeys(client: PoolClient, productId: string, storeId: string, keys: string[]): Promise<void> {
@@ -1959,5 +2323,6 @@ export class ProductService {
 }
 
 export const productService = new ProductService();
+
 
 

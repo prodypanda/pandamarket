@@ -59,6 +59,7 @@ export enum ProductType {
   Digital = 'digital',
   Serial = 'serial',
   Service = 'service',
+  Bundle = 'bundle',
 }
 
 export enum ProductStatus {

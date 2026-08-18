@@ -134,6 +134,32 @@ export interface IProductVariant {
   options: Record<string, string>; // { size: 'M', color: 'red' }
 }
 
+export interface IProductBundleItem {
+  id: string;
+  bundle_product_id: string;
+  product_id: string;
+  variant_id?: string | null;
+  quantity: number;
+  position: number;
+  created_at?: string;
+  updated_at?: string;
+  // Joined component details
+  product_title?: string;
+  product_slug?: string;
+  product_price?: number;
+  product_compare_at_price?: number | null;
+  product_thumbnail?: string | null;
+  product_inventory_quantity?: number;
+  product_type?: ProductType;
+  variant_title?: string | null;
+  variant_price?: number | null;
+  variant_compare_at_price?: number | null;
+  variant_inventory_quantity?: number;
+  variant_sku?: string | null;
+  variant_options?: Record<string, string>;
+  available_stock?: number;
+}
+
 export interface IProduct {
   id: string;
   store_id: string;
@@ -155,6 +181,9 @@ export interface IProduct {
   attributes: Array<{ name: string; value: string }>;
   images: IProductImage[];
   variants: IProductVariant[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: IProductBundleItem[];
   created_at: string;
   updated_at: string;
 }

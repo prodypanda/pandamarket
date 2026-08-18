@@ -20,6 +20,8 @@ import { getMarketplaceSettings } from '../../../../lib/marketplace-settings';
 import { getMarketplaceThemeClasses } from '../../../../lib/marketplace-theme';
 import { getStorefrontWebsiteHref } from '../../../../lib/storefront-url';
 import { getWholesalePricingFromMetadata } from '../../../../lib/cart-utils';
+import { ProductBundleDetails } from '../../../../components/product/ProductBundleDetails';
+import { BundleCrossPromotionWidget } from '../../../../components/product/BundleCrossPromotionWidget';
 import { t as translate } from '../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../i18n/config';
 import { cookies, headers } from 'next/headers';
@@ -63,6 +65,9 @@ interface Product {
   store_created_at?: string | null;
   store_product_count?: string | number | null;
   variants?: ProductVariant[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: any[];
   status: string;
 }
 
@@ -168,6 +173,7 @@ function getCategorySearchHref(product: Product): string {
 
 function formatProductType(type?: string | null): string {
   if (!type) return 'Physical';
+  if (type === 'bundle') return '📦 Pack Promo / Lot';
   return type.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -449,6 +455,18 @@ export default async function ProductDetailPage({
               </div>
             )}
 
+            {/* Pack / Bundle Content Breakdown */}
+            {product.type === 'bundle' && product.bundle_items && product.bundle_items.length > 0 && (
+              <ProductBundleDetails
+                bundleItems={product.bundle_items}
+                price={numericPrice}
+                compareAtPrice={product.compare_at_price ? Number(product.compare_at_price) : null}
+                bundlePricingType={product.bundle_pricing_type}
+                bundleDiscountValue={product.bundle_discount_value}
+                storeSubdomain={product.store_subdomain}
+              />
+            )}
+
             <div className="space-y-3">
               <ProductVariantPurchasePanel
                 productId={product.id}
@@ -494,6 +512,15 @@ export default async function ProductDetailPage({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Bundle Cross Promotion */}
+        {product.type !== 'bundle' && (
+          <BundleCrossPromotionWidget
+            productId={product.id}
+            storeSubdomain={product.store_subdomain}
+            storeId={product.store_id}
+          />
         )}
 
         {/* Reviews Section */}

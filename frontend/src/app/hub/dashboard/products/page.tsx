@@ -132,6 +132,21 @@ interface OptionDimension {
   inputValue?: string;
 }
 
+interface BundleItemForm {
+  id?: string;
+  product_id: string;
+  variant_id?: string | null;
+  quantity: number;
+  position?: number;
+  product_title?: string;
+  product_thumbnail?: string | null;
+  product_price?: number;
+  product_inventory_quantity?: number;
+  variant_title?: string | null;
+  variant_price?: number | null;
+  variant_inventory_quantity?: number;
+}
+
 interface Product {
   id: string;
   type?: string;
@@ -167,6 +182,9 @@ interface Product {
   digital_file_content_type?: string | null;
   digital_file_size?: string | number | null;
   variants?: ProductVariant[];
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: BundleItemForm[];
 }
 
 interface Category {
@@ -217,10 +235,13 @@ interface ProductForm {
   wholesale_price_tiers: WholesalePriceTierForm[];
   cost_price: string;
   variants: ProductVariantForm[];
+  bundle_pricing_type: 'fixed' | 'percentage';
+  bundle_discount_value: string;
+  bundle_items: BundleItemForm[];
   status: string;
 }
 
-type DrawerTab = 'general' | 'pricing' | 'taxonomy' | 'description' | 'media' | 'seo' | 'digital';
+type DrawerTab = 'general' | 'bundle' | 'pricing' | 'taxonomy' | 'description' | 'media' | 'seo' | 'digital';
 type ViewMode = 'table' | 'grid';
 
 const emptyForm: ProductForm = {
@@ -252,6 +273,9 @@ const emptyForm: ProductForm = {
   wholesale_price_tiers: [],
   cost_price: '',
   variants: [],
+  bundle_pricing_type: 'fixed',
+  bundle_discount_value: '',
+  bundle_items: [],
   status: 'published',
 };
 
@@ -469,6 +493,8 @@ function getStatusBadge(status: string) {
 
 function getTypeBadge(type?: string) {
   switch (type) {
+    case 'bundle':
+      return { label: '📦 Pack Promo', color: 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 border-purple-300 dark:from-purple-950/50 dark:to-indigo-950/50 dark:text-purple-300 dark:border-purple-800' };
     case 'digital':
       return { label: 'Numérique', color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300' };
     case 'serial':
@@ -686,6 +712,104 @@ export default function ProductsPage() {
 
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Bundle / Pack Builder State
+  const [selectedBundleProductId, setSelectedBundleProductId] = useState('');
+  const [selectedBundleVariantId, setSelectedBundleVariantId] = useState('');
+  const [bundleItemQuantity, setBundleItemQuantity] = useState(1);
+
+  const availableBundleProducts = useMemo(() => {
+    return products.filter((p) => p.id !== editingProduct?.id && (p.type || 'physical') !== 'bundle');
+  }, [products, editingProduct]);
+
+  const activeComponentProduct = useMemo(() => {
+    return availableBundleProducts.find((p) => p.id === selectedBundleProductId);
+  }, [availableBundleProducts, selectedBundleProductId]);
+
+  const handleAddBundleItem = () => {
+    if (!activeComponentProduct) return;
+    const selectedVariant = (activeComponentProduct.variants || []).find((v) => v.id === selectedBundleVariantId);
+
+    const alreadyIdx = form.bundle_items.findIndex(
+      (bi) => bi.product_id === activeComponentProduct.id && (bi.variant_id || '') === (selectedBundleVariantId || '')
+    );
+
+    if (alreadyIdx >= 0) {
+      setForm((curr) => {
+        const next = [...curr.bundle_items];
+        next[alreadyIdx].quantity += bundleItemQuantity;
+        return { ...curr, bundle_items: next };
+      });
+    } else {
+      const newItem: BundleItemForm = {
+        product_id: activeComponentProduct.id,
+        variant_id: selectedBundleVariantId || null,
+        quantity: bundleItemQuantity,
+        position: form.bundle_items.length,
+        product_title: activeComponentProduct.title,
+        product_thumbnail: activeComponentProduct.thumbnail || activeComponentProduct.images?.[0]?.url || null,
+        product_price: Number(activeComponentProduct.price || 0),
+        product_inventory_quantity: Number(activeComponentProduct.inventory_quantity || 0),
+        variant_title: selectedVariant?.title,
+        variant_price: selectedVariant ? Number(selectedVariant.price) : undefined,
+        variant_inventory_quantity: selectedVariant ? Number(selectedVariant.inventory_quantity) : undefined,
+      };
+      setForm((curr) => ({ ...curr, bundle_items: [...curr.bundle_items, newItem] }));
+    }
+
+    setSelectedBundleProductId('');
+    setSelectedBundleVariantId('');
+    setBundleItemQuantity(1);
+  };
+
+  const handleRemoveBundleItem = (idx: number) => {
+    setForm((curr) => ({
+      ...curr,
+      bundle_items: curr.bundle_items.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleBundleQtyChange = (idx: number, delta: number) => {
+    setForm((curr) => {
+      const next = [...curr.bundle_items];
+      const newQty = Math.max(1, (next[idx].quantity || 1) + delta);
+      next[idx].quantity = newQty;
+      return { ...curr, bundle_items: next };
+    });
+  };
+
+  const bundleMetrics = useMemo(() => {
+    if (form.type !== 'bundle' || !form.bundle_items.length) {
+      return { originalSum: 0, packStock: 0, savingsAmount: 0, savingsPct: 0 };
+    }
+    let originalSum = 0;
+    let minStock = Infinity;
+
+    for (const bi of form.bundle_items) {
+      const itemPrice = bi.variant_price !== undefined && bi.variant_price !== null ? bi.variant_price : (bi.product_price || 0);
+      const qty = bi.quantity || 1;
+      originalSum += itemPrice * qty;
+
+      const compStock = bi.variant_inventory_quantity !== undefined && bi.variant_inventory_quantity !== null
+        ? bi.variant_inventory_quantity
+        : (bi.product_inventory_quantity || 0);
+      const packs = Math.floor(Math.max(0, compStock) / qty);
+      if (packs < minStock) {
+        minStock = packs;
+      }
+    }
+
+    const currentPrice = parseFloat(form.price) || 0;
+    const savingsAmount = Math.max(0, originalSum - currentPrice);
+    const savingsPct = originalSum > 0 && savingsAmount > 0 ? Math.round((savingsAmount / originalSum) * 100) : 0;
+
+    return {
+      originalSum,
+      packStock: Number.isFinite(minStock) ? minStock : 0,
+      savingsAmount,
+      savingsPct,
+    };
+  }, [form.type, form.bundle_items, form.price]);
 
   // AI Smart Fill & Photo Studio (Assistant Magique IA)
   interface SmartFillExtractionResult {
@@ -2204,6 +2328,22 @@ export default function ProductsPage() {
           options: variant.options || {},
         };
       }),
+      bundle_pricing_type: product.bundle_pricing_type || 'fixed',
+      bundle_discount_value: product.bundle_discount_value ? String(product.bundle_discount_value) : '',
+      bundle_items: (product.bundle_items || []).map((bi, idx) => ({
+        id: bi.id,
+        product_id: bi.product_id,
+        variant_id: bi.variant_id || null,
+        quantity: Number(bi.quantity || 1),
+        position: bi.position ?? idx,
+        product_title: bi.product_title,
+        product_thumbnail: bi.product_thumbnail,
+        product_price: Number(bi.product_price || 0),
+        product_inventory_quantity: Number(bi.product_inventory_quantity || 0),
+        variant_title: bi.variant_title,
+        variant_price: bi.variant_price !== undefined ? Number(bi.variant_price) : undefined,
+        variant_inventory_quantity: bi.variant_inventory_quantity !== undefined ? Number(bi.variant_inventory_quantity) : undefined,
+      })),
       status: product.status,
     });
     setMatrixDefaultPrice(String(product.price));
@@ -2453,6 +2593,14 @@ export default function ProductsPage() {
             };
           })(),
           variants,
+          bundle_pricing_type: form.type === 'bundle' ? form.bundle_pricing_type : undefined,
+          bundle_discount_value: form.type === 'bundle' && form.bundle_pricing_type === 'percentage' && form.bundle_discount_value ? parseFloat(form.bundle_discount_value) : undefined,
+          bundle_items: form.type === 'bundle' ? form.bundle_items.map((bi, idx) => ({
+            product_id: bi.product_id,
+            variant_id: bi.variant_id || null,
+            quantity: Number(bi.quantity || 1),
+            position: idx,
+          })) : undefined,
           status: form.status,
         }),
       });
@@ -2747,6 +2895,7 @@ export default function ProductsPage() {
           >
             <option value="all">Tous les Types</option>
             <option value="physical">Physique</option>
+            <option value="bundle">📦 Pack Promo (Lot)</option>
             <option value="digital">Numérique</option>
             <option value="serial">Licence / Série</option>
             <option value="service">Prestation</option>
@@ -3315,12 +3464,17 @@ export default function ProductsPage() {
             <div className="flex items-center gap-1 overflow-x-auto px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 no-scrollbar">
               {[
                 { id: 'general', label: '1. Fiche & Type', icon: Package, done: Boolean(form.title) },
-                { id: 'pricing', label: '2. Prix & Variantes', icon: Coins, done: Boolean(form.price) },
-                { id: 'taxonomy', label: '3. Catégories', icon: Tag, done: Boolean(form.marketplace_category_id || form.storefront_category_id) },
-                { id: 'description', label: '4. Description HTML', icon: FileText, done: Boolean(form.description) },
-                { id: 'media', label: '5. Studio Photo IA', icon: ImageIcon, done: Boolean(form.thumbnail) },
-                { id: 'seo', label: '6. SEO & Tags', icon: GlobeIcon, done: Boolean(form.seo_title || form.tags) },
-                { id: 'digital', label: '7. Fichiers Digitaux', icon: Download, done: Boolean(form.digital_file_key) },
+                ...(form.type === 'bundle'
+                  ? [{ id: 'bundle', label: '2. Composants du Pack', icon: Layers, done: form.bundle_items.length > 0 }]
+                  : []),
+                { id: 'pricing', label: form.type === 'bundle' ? '3. Prix & Remise' : '2. Prix & Variantes', icon: Coins, done: Boolean(form.price) },
+                { id: 'taxonomy', label: form.type === 'bundle' ? '4. Catégories' : '3. Catégories', icon: Tag, done: Boolean(form.marketplace_category_id || form.storefront_category_id) },
+                { id: 'description', label: form.type === 'bundle' ? '5. Description HTML' : '4. Description HTML', icon: FileText, done: Boolean(form.description) },
+                { id: 'media', label: form.type === 'bundle' ? '6. Studio Photo IA' : '5. Studio Photo IA', icon: ImageIcon, done: Boolean(form.thumbnail) },
+                { id: 'seo', label: form.type === 'bundle' ? '7. SEO & Tags' : '6. SEO & Tags', icon: GlobeIcon, done: Boolean(form.seo_title || form.tags) },
+                ...(form.type !== 'bundle'
+                  ? [{ id: 'digital', label: '7. Fichiers Digitaux', icon: Download, done: Boolean(form.digital_file_key) }]
+                  : []),
               ].map((tab) => {
                 const isActive = drawerTab === tab.id;
                 return (
@@ -3397,10 +3551,21 @@ export default function ProductsPage() {
                         </label>
                         <select
                           value={form.type}
-                          onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            setForm((c) => ({
+                              ...c,
+                              type: newType,
+                              inventory_quantity: newType === 'bundle' ? String(bundleMetrics.packStock) : c.inventory_quantity,
+                            }));
+                            if (newType === 'bundle') {
+                              setDrawerTab('bundle');
+                            }
+                          }}
                           className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
                         >
                           <option value="physical">Physique (Colis & Livraison)</option>
+                          <option value="bundle">📦 Pack Promo / Bundle (Lot groupé)</option>
                           <option value="digital">Numérique (Téléchargement)</option>
                           <option value="serial">Licence / Numéro de série</option>
                           <option value="service">Prestation de service</option>
@@ -3422,6 +3587,359 @@ export default function ProductsPage() {
                         </select>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* TAB BUNDLE: PACK / BUNDLE BUILDER */}
+                {drawerTab === 'bundle' && (
+                  <div className="space-y-6 animate-in fade-in duration-150">
+                    {/* Intro Banner */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-transparent dark:from-purple-950/40 border border-purple-200 dark:border-purple-900/50 flex items-start gap-3.5">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white font-black shadow-sm shadow-purple-500/30">
+                        📦
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                          Constructeur de Pack Promotionnel & Offres Groupées
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Sélectionnez les articles de votre catalogue composant ce pack. PandaMarket calculera automatiquement la valeur totale, la remise accordée et le stock direct disponible.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Component Picker Card */}
+                    <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-4">
+                      <h5 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        1. Ajouter un composant depuis votre catalogue
+                      </h5>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        {/* Product Selector */}
+                        <div className="sm:col-span-6 space-y-1">
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                            Article du Catalogue *
+                          </label>
+                          <select
+                            value={selectedBundleProductId}
+                            onChange={(e) => {
+                              setSelectedBundleProductId(e.target.value);
+                              setSelectedBundleVariantId('');
+                            }}
+                            className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                          >
+                            <option value="">-- Choisir un produit ({availableBundleProducts.length} disponibles) --</option>
+                            {availableBundleProducts.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.title} ({Number(p.price).toFixed(3)} TND | Stock: {p.inventory_quantity})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Variant Selector (if product has variants) */}
+                        <div className="sm:col-span-3 space-y-1">
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                            Variante (Optionnelle)
+                          </label>
+                          <select
+                            value={selectedBundleVariantId}
+                            onChange={(e) => setSelectedBundleVariantId(e.target.value)}
+                            disabled={!activeComponentProduct || !activeComponentProduct.variants?.length}
+                            className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600 disabled:opacity-50"
+                          >
+                            <option value="">Produit standard / Défaut</option>
+                            {(activeComponentProduct?.variants || []).map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.title} ({Number(v.price).toFixed(3)} TND | Stock: {v.inventory_quantity})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Quantity */}
+                        <div className="sm:col-span-1 space-y-1">
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                            Qté
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={bundleItemQuantity}
+                            onChange={(e) => setBundleItemQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="w-full px-2 py-2.5 text-center text-xs font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                          />
+                        </div>
+
+                        {/* Add Button */}
+                        <div className="sm:col-span-2">
+                          <button
+                            type="button"
+                            onClick={handleAddBundleItem}
+                            disabled={!activeComponentProduct}
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 transition-colors disabled:opacity-50 shadow-sm"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Ajouter</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bundle Components List */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                          2. Composition du Pack ({form.bundle_items.length} article{form.bundle_items.length > 1 ? 's' : ''})
+                        </h5>
+                        {form.bundle_items.length > 0 && (
+                          <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+                            Valeur au détail : {bundleMetrics.originalSum.toFixed(3)} TND
+                          </span>
+                        )}
+                      </div>
+
+                      {form.bundle_items.length === 0 ? (
+                        <div className="text-center py-8 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                          <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                            Aucun composant dans ce pack pour le moment.
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Sélectionnez et ajoutez les articles ci-dessus pour composer votre pack promotionnel.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {form.bundle_items.map((item, idx) => {
+                            const unitPrice = item.variant_price !== undefined && item.variant_price !== null ? item.variant_price : (item.product_price || 0);
+                            const lineTotal = unitPrice * (item.quantity || 1);
+                            const stock = item.variant_inventory_quantity !== undefined && item.variant_inventory_quantity !== null
+                              ? item.variant_inventory_quantity
+                              : (item.product_inventory_quantity || 0);
+
+                            return (
+                              <div
+                                key={`${item.product_id}-${item.variant_id || 'base'}-${idx}`}
+                                className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs"
+                              >
+                                {/* Thumbnail */}
+                                <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700">
+                                  {item.product_thumbnail ? (
+                                    <img
+                                      src={getResizedImageUrl(item.product_thumbnail, 'small')}
+                                      alt={item.product_title || 'Article'}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                      <Package className="w-5 h-5" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Title & Variant */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                    {item.product_title || 'Article du catalogue'}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {item.variant_title && (
+                                      <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                        Variante: {item.variant_title}
+                                      </span>
+                                    )}
+                                    <span>Prix unitaire: {unitPrice.toFixed(3)} TND</span>
+                                    <span>• Stock dispo: {stock}</span>
+                                  </div>
+                                </div>
+
+                                {/* Quantity Counter */}
+                                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBundleQtyChange(idx, -1)}
+                                    className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-l-lg"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="px-2 py-1 text-xs font-black font-mono">
+                                    {item.quantity || 1}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBundleQtyChange(idx, 1)}
+                                    className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-r-lg"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {/* Subtotal */}
+                                <div className="text-right min-w-[75px]">
+                                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                                    {lineTotal.toFixed(3)} TND
+                                  </span>
+                                </div>
+
+                                {/* Delete */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveBundleItem(idx)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                                  title="Supprimer ce composant"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Real-time Pack Metrics & Discount Engine */}
+                    {form.bundle_items.length > 0 && (
+                      <div className="p-5 rounded-2xl border border-purple-200 dark:border-purple-900/50 bg-gradient-to-br from-purple-50/60 to-indigo-50/40 dark:from-purple-950/20 dark:to-indigo-950/20 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-200">
+                            3. Tarification & Remise Promotionnelle du Pack
+                          </h5>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
+                            📦 Stock Automatique : {bundleMetrics.packStock} packs
+                          </span>
+                        </div>
+
+                        {/* Discount Mode Selector */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div
+                            onClick={() => {
+                              setForm((c) => ({
+                                ...c,
+                                bundle_pricing_type: 'percentage',
+                                compare_at_price: bundleMetrics.originalSum > 0 ? bundleMetrics.originalSum.toFixed(3) : c.compare_at_price,
+                              }));
+                            }}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                              form.bundle_pricing_type === 'percentage'
+                                ? 'border-purple-600 bg-white dark:bg-slate-800 shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Tag className="w-3.5 h-3.5 text-purple-600" />
+                                Mode Remise en Pourcentage (%)
+                              </span>
+                              <input
+                                type="radio"
+                                checked={form.bundle_pricing_type === 'percentage'}
+                                onChange={() => {}}
+                                className="text-purple-600 focus:ring-purple-500"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  value={form.bundle_discount_value}
+                                  onChange={(e) => {
+                                    const pct = Math.max(0, Math.min(99, parseFloat(e.target.value) || 0));
+                                    const calcPrice = bundleMetrics.originalSum * (1 - pct / 100);
+                                    setForm((c) => ({
+                                      ...c,
+                                      bundle_discount_value: e.target.value,
+                                      price: calcPrice > 0 ? calcPrice.toFixed(3) : c.price,
+                                      compare_at_price: bundleMetrics.originalSum.toFixed(3),
+                                      inventory_quantity: String(bundleMetrics.packStock),
+                                    }));
+                                  }}
+                                  placeholder="Ex: 20"
+                                  className="w-24 px-3 py-1.5 text-xs font-black rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                                />
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">% de réduction</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">Le prix de vente est calculé automatiquement d'après le total.</p>
+                            </div>
+                          </div>
+
+                          <div
+                            onClick={() => {
+                              setForm((c) => ({
+                                ...c,
+                                bundle_pricing_type: 'fixed',
+                                compare_at_price: bundleMetrics.originalSum > 0 ? bundleMetrics.originalSum.toFixed(3) : c.compare_at_price,
+                              }));
+                            }}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                              form.bundle_pricing_type === 'fixed'
+                                ? 'border-purple-600 bg-white dark:bg-slate-800 shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Coins className="w-3.5 h-3.5 text-purple-600" />
+                                Mode Prix Fixe du Pack (TND)
+                              </span>
+                              <input
+                                type="radio"
+                                checked={form.bundle_pricing_type === 'fixed'}
+                                onChange={() => {}}
+                                className="text-purple-600 focus:ring-purple-500"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.001"
+                                  value={form.price}
+                                  onChange={(e) => {
+                                    const p = e.target.value;
+                                    setForm((c) => ({
+                                      ...c,
+                                      price: p,
+                                      compare_at_price: bundleMetrics.originalSum > parseFloat(p || '0') ? bundleMetrics.originalSum.toFixed(3) : '',
+                                      inventory_quantity: String(bundleMetrics.packStock),
+                                    }));
+                                  }}
+                                  placeholder="0.000"
+                                  className="w-28 px-3 py-1.5 text-xs font-black rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                                />
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">TND</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">Prix barré = Valeur totale des composants ({bundleMetrics.originalSum.toFixed(3)} TND).</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Summary Pill Bar */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Séparé</span>
+                            <span className="font-black text-slate-600 dark:text-slate-300 line-through">
+                              {bundleMetrics.originalSum.toFixed(3)} TND
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Prix du Pack Promo</span>
+                            <span className="font-black text-purple-700 dark:text-purple-300 text-sm">
+                              {parseFloat(form.price || '0').toFixed(3)} TND
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Économie Client</span>
+                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                              +{bundleMetrics.savingsAmount.toFixed(3)} TND ({bundleMetrics.savingsPct}%)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -56,6 +56,14 @@ const createProductSchema = z.object({
     inventory_quantity: z.number().int().min(0).optional(),
     options: z.record(z.string()).optional(),
   })).max(100).optional(),
+  bundle_pricing_type: z.enum(['fixed', 'percentage']).nullable().optional(),
+  bundle_discount_value: z.number().min(0).max(100).nullable().optional(),
+  bundle_items: z.array(z.object({
+    product_id: z.string().min(1),
+    variant_id: z.string().nullable().optional(),
+    quantity: z.number().int().min(1).default(1),
+    position: z.number().int().optional(),
+  })).max(50).optional(),
 });
 
 const updateProductSchema = createProductSchema.partial();
@@ -520,5 +528,20 @@ router.post(
   })
 );
 
+/**
+ * GET /api/pd/products/by-product/:id/bundles
+ * Retrieve published bundles that contain this component product (for cross-sell widget)
+ */
+router.get(
+  '/by-product/:id/bundles',
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = (req.query.store_id as string) || undefined;
+    const bundles = await productService.getBundlesContainingProduct(req.params.id, storeId);
+    res.status(200).json({ data: bundles.map(formatPublicProductResponse) });
+  })
+);
+
 export default router;
+
+
 

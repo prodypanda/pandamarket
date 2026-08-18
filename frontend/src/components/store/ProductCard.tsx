@@ -14,6 +14,7 @@ import { getResizedImageUrl } from '@/lib/image-url';
 
 export interface ProductCardProps {
   product: StoreProduct & {
+    type?: string | null;
     compare_at_price?: number | string | null;
     rating?: number;
     review_count?: number;
@@ -142,6 +143,11 @@ export function ProductCard({
             </span>
           ) : (
             <>
+              {product.type === 'bundle' && (
+                <span className="rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 py-1 text-[10px] font-extrabold uppercase text-white shadow-xs">
+                  📦 Pack Promo
+                </span>
+              )}
               {hasDiscount && (
                 <span className="rounded-lg bg-[#B91C1C] px-2.5 py-1 text-[10px] font-extrabold uppercase text-white shadow-xs">
                   -{discountPercent}%

@@ -16,6 +16,8 @@ import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } fro
 import { MarketplaceStoreProductDetail } from '../../../../../components/store/MarketplaceStoreProductDetail';
 import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
 import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
+import { ProductBundleDetails } from '../../../../../components/product/ProductBundleDetails';
+import { BundleCrossPromotionWidget } from '../../../../../components/product/BundleCrossPromotionWidget';
 import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
 import { cookies, headers } from 'next/headers';
@@ -30,6 +32,7 @@ interface Product {
   slug: string;
   description?: string;
   price: number | string;
+  compare_at_price?: number | string | null;
   category?: string;
   product_reference?: string | null;
   marketplace_category_slug?: string | null;
@@ -58,6 +61,9 @@ interface Product {
   store_settings?: Record<string, unknown> | null;
   store_created_at?: string | null;
   store_product_count?: string | number | null;
+  bundle_pricing_type?: 'fixed' | 'percentage' | null;
+  bundle_discount_value?: number | null;
+  bundle_items?: any[];
   status: string;
 }
 
@@ -360,6 +366,18 @@ export default async function StoreProductPage({
               />
             </div>
 
+            {/* Pack / Bundle Content Breakdown */}
+            {product.type === 'bundle' && product.bundle_items && product.bundle_items.length > 0 && (
+              <ProductBundleDetails
+                bundleItems={product.bundle_items}
+                price={cartPrice}
+                compareAtPrice={product.compare_at_price ? Number(product.compare_at_price) : null}
+                bundlePricingType={product.bundle_pricing_type}
+                bundleDiscountValue={product.bundle_discount_value}
+                storeSubdomain={store.subdomain}
+              />
+            )}
+
             {/* Price & Variant Selector */}
             <div className="mb-6">
               <ProductVariantSelector
@@ -393,6 +411,15 @@ export default async function StoreProductPage({
             )}
           </div>
         </div>
+
+        {/* Cross-Sell Bundle Promotion Widget */}
+        {product.type !== 'bundle' && (
+          <BundleCrossPromotionWidget
+            productId={product.id}
+            storeSubdomain={store.subdomain}
+            storeId={store.id}
+          />
+        )}
 
         {/* Customer Reviews Section */}
         <section className="border-t border-gray-200 pt-12 mb-16">

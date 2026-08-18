@@ -4,6 +4,7 @@
  */
 
 import { query, transaction } from '../db/pool';
+import type { PoolClient } from 'pg';
 import { pdId } from '../utils/crypto';
 import {
   PdConflictError,
@@ -262,6 +263,51 @@ function usesInventory(type: ProductType): boolean {
   return type === ProductType.Physical;
 }
 
+async function restoreOrderItemStock(
+  c: PoolClient,
+  item: { product_id: string; variant_id: string | null; quantity: number; product_type?: ProductType },
+): Promise<void> {
+  const type = item.product_type ?? (await (async () => {
+    const { rows } = await c.query<{ type: ProductType }>('SELECT type FROM pd_product WHERE id = $1', [item.product_id]);
+    return rows[0]?.type;
+  })());
+
+  if (type === ProductType.Bundle) {
+    const { rows: bundleItems } = await c.query<{
+      product_id: string;
+      variant_id: string | null;
+      quantity: number;
+    }>(
+      'SELECT product_id, variant_id, quantity FROM pd_product_bundle_item WHERE bundle_product_id = $1',
+      [item.product_id],
+    );
+    for (const bi of bundleItems) {
+      const qtyToRestore = bi.quantity * item.quantity;
+      await c.query(
+        'UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
+        [bi.product_id, qtyToRestore],
+      );
+      if (bi.variant_id) {
+        await c.query(
+          'UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
+          [bi.variant_id, qtyToRestore],
+        );
+      }
+    }
+  } else if (type && usesInventory(type)) {
+    await c.query(
+      'UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
+      [item.product_id, item.quantity],
+    );
+    if (item.variant_id) {
+      await c.query(
+        'UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
+        [item.variant_id, item.quantity],
+      );
+    }
+  }
+}
+
 function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
   return sellerType === SellerType.Wholesaler || sellerType === SellerType.Hybrid;
 }
@@ -391,7 +437,43 @@ export class OrderService {
             store_id: opts.store_id,
           });
         }
-        if (usesInventory(product.type) && product.inventory_quantity < line.quantity) {
+        if (product.type === ProductType.Bundle) {
+          const { rows: bundleItems } = await c.query<{
+            product_id: string;
+            variant_id: string | null;
+            quantity: number;
+            comp_title: string;
+            comp_stock: number;
+            var_stock: number | null;
+          }>(
+            `SELECT bi.product_id, bi.variant_id, bi.quantity,
+                    bp.title AS comp_title, bp.inventory_quantity AS comp_stock,
+                    bpv.inventory_quantity AS var_stock
+             FROM pd_product_bundle_item bi
+             JOIN pd_product bp ON bp.id = bi.product_id
+             LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+             WHERE bi.bundle_product_id = $1`,
+            [product.id],
+          );
+
+          if (bundleItems.length === 0) {
+            throw new PdValidationError('Pack promo indisponible (aucun composant configuré)', {
+              product_id: product.id,
+            });
+          }
+
+          for (const bi of bundleItems) {
+            const requiredQty = bi.quantity * line.quantity;
+            const availableStock = bi.var_stock !== null && bi.var_stock !== undefined ? bi.var_stock : bi.comp_stock;
+            if (availableStock < requiredQty) {
+              throw new PdValidationError(`Stock insuffisant pour le composant du pack: ${bi.comp_title}`, {
+                code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+                product_id: bi.product_id,
+                available: availableStock,
+              });
+            }
+          }
+        } else if (usesInventory(product.type) && product.inventory_quantity < line.quantity) {
           throw new PdValidationError('Insufficient stock', {
             code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
             product_id: line.product_id,
@@ -535,7 +617,50 @@ export class OrderService {
           ],
         );
         // Guarded atomic stock decrement
-        if (usesInventory(item.product_type)) {
+        if (item.product_type === ProductType.Bundle) {
+          const { rows: bundleItems } = await c.query<{
+            product_id: string;
+            variant_id: string | null;
+            quantity: number;
+          }>(
+            'SELECT product_id, variant_id, quantity FROM pd_product_bundle_item WHERE bundle_product_id = $1',
+            [item.product_id],
+          );
+
+          for (const bi of bundleItems) {
+            const requiredQty = bi.quantity * item.quantity;
+            const { rows: updatedComp } = await c.query<{ inventory_quantity: number }>(
+              `UPDATE pd_product
+               SET inventory_quantity = inventory_quantity - $2
+               WHERE id = $1 AND inventory_quantity >= $2
+               RETURNING inventory_quantity`,
+              [bi.product_id, requiredQty],
+            );
+            if (!updatedComp[0]) {
+              throw new PdValidationError('Insufficient stock for bundle component', {
+                code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+                product_id: bi.product_id,
+              });
+            }
+
+            if (bi.variant_id) {
+              const { rows: updatedCompVar } = await c.query<{ inventory_quantity: number }>(
+                `UPDATE pd_product_variant
+                 SET inventory_quantity = inventory_quantity - $2
+                 WHERE id = $1 AND inventory_quantity >= $2
+                 RETURNING inventory_quantity`,
+                [bi.variant_id, requiredQty],
+              );
+              if (!updatedCompVar[0]) {
+                throw new PdValidationError('Insufficient stock for bundle component variant', {
+                  code: PdErrorCode.PRODUCT_OUT_OF_STOCK,
+                  product_id: bi.product_id,
+                  variant_id: bi.variant_id,
+                });
+              }
+            }
+          }
+        } else if (usesInventory(item.product_type)) {
           const { rows: updatedProduct } = await c.query<{ inventory_quantity: number }>(
             `UPDATE pd_product
              SET inventory_quantity = inventory_quantity - $2
@@ -1489,18 +1614,7 @@ export class OrderService {
         [opts.order_id, opts.store_id],
       );
       for (const it of items) {
-        if (usesInventory(it.product_type)) {
-          await c.query(
-            `UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-            [it.product_id, it.quantity],
-          );
-          if (it.variant_id) {
-            await c.query(
-              `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-              [it.variant_id, it.quantity],
-            );
-          }
-        }
+        await restoreOrderItemStock(c, it);
       }
 
       const { rows } = await c.query<{
@@ -1658,18 +1772,8 @@ export class OrderService {
         orderId,
       ]);
       for (const it of items) {
-        if (usesInventory(it.product_type)) {
-          await c.query(
-            `UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-            [it.product_id, it.quantity],
-          );
-          if (it.variant_id) {
-            await c.query(
-              `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`,
-              [it.variant_id, it.quantity],
-            );
-          }
-        } else if (it.product_type === ProductType.Serial && order.payment_status !== PaymentStatus.Captured) {
+        await restoreOrderItemStock(c, it);
+        if (it.product_type === ProductType.Serial && order.payment_status !== PaymentStatus.Captured) {
           await c.query(
             `UPDATE pd_license_key
              SET order_id = NULL,
@@ -1956,10 +2060,7 @@ export class OrderService {
         [params.orderId, params.storeId],
       );
       for (const item of items) {
-        await c.query(`UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.product_id, item.quantity]);
-        if (item.variant_id) {
-          await c.query(`UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.variant_id, item.quantity]);
-        }
+        await restoreOrderItemStock(c, item);
       }
     });
 

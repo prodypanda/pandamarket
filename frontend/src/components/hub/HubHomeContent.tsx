@@ -17,6 +17,7 @@ import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 
 interface Product {
   id: string;
+  type?: string | null;
   store_id?: string;
   title: string;
   price: number | string;
@@ -138,11 +139,15 @@ function ProductCard({
       className="group overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-900/10 dark:border-white/10 dark:bg-[#1A1A2E]"
     >
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
-        {product.category && (
+        {product.type === 'bundle' ? (
+          <span className="absolute start-3 top-3 z-10 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1 text-[11px] font-black text-white shadow-sm">
+            📦 Pack Promo
+          </span>
+        ) : product.category ? (
           <span className="absolute start-3 top-3 z-10 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold text-gray-700 shadow-sm">
             {product.category}
           </span>
-        )}
+        ) : null}
         {image ? (
           <img
             src={image ? getResizedImageUrl(image, 'medium') : ''}
