@@ -1493,7 +1493,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleApplyCandidate = async (candidate: AiCategoryCandidate, idx: number) => {
+  const handleApplyCandidate = async (candidate: AiCategoryCandidate, idx: number): Promise<string | null> => {
     // 1. Set marketplace category
     if (candidate.marketplace_category_id) {
       setForm((c) => ({ ...c, marketplace_category_id: candidate.marketplace_category_id }));
@@ -1504,77 +1504,99 @@ export default function ProductsPage() {
       setForm((c) => ({ ...c, storefront_category_id: candidate.storefront_category_id! }));
       setAppliedCandidateIndex(idx);
       setSuccess(`Catégories appliquées : ${candidate.marketplace_category_name} & ${candidate.storefront_category_name}`);
-    } else {
-      // Create storefront category on demand with multilingual names, parent resolution, and SEO
-      try {
-        let parentId = candidate.storefront_parent_id || undefined;
+      return candidate.storefront_category_id;
+    }
 
-        // If parent category does not exist yet in store, create parent category first!
-        if (!parentId && candidate.storefront_parent_name && candidate.storefront_parent_name !== candidate.storefront_category_name) {
-          const existingParent = storefrontCategories.find((c) => {
-            if (c.is_default) return false;
-            const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            const normTarget = candidate.storefront_parent_name!.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return normName === normTarget;
-          });
+    // Check if storefront category already exists in store by exact name
+    const existingCat = storefrontCategories.find((c) => {
+      if (c.is_default) return false;
+      const n1 = c.name.toLowerCase().trim();
+      const n2 = candidate.storefront_category_name.toLowerCase().trim();
+      return n1 === n2;
+    });
 
-          if (existingParent) {
-            parentId = existingParent.id;
-          } else {
-            // Create the parent category on the fly
-            try {
-              const parentRes = await fetchWithCsrf('/api/pd/stores/me/categories', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                  name: candidate.storefront_parent_name,
-                  name_fr: candidate.parent_multilingual?.name_fr || candidate.storefront_parent_name,
-                  name_ar: candidate.parent_multilingual?.name_ar || undefined,
-                  name_en: candidate.parent_multilingual?.name_en || undefined,
-                  icon: candidate.icon || undefined,
-                }),
-              });
-              const parentData = await parentRes.json();
-              if (parentRes.ok && parentData.category) {
-                parentId = parentData.category.id;
-                setStorefrontCategories((curr) => [parentData.category, ...curr]);
-              }
-            } catch {}
-          }
-        }
+    if (existingCat) {
+      setForm((c) => ({ ...c, storefront_category_id: existingCat.id }));
+      candidate.storefront_category_id = existingCat.id;
+      candidate.is_existing_storefront = true;
+      setAppliedCandidateIndex(idx);
+      setSuccess(`Catégorie vitrine existante "${existingCat.name}" sélectionnée !`);
+      return existingCat.id;
+    }
 
-        // Create the specific subcategory under the parent!
-        const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            name: candidate.storefront_category_name,
-            name_fr: candidate.multilingual?.name_fr || candidate.storefront_category_name,
-            name_ar: candidate.multilingual?.name_ar || undefined,
-            name_en: candidate.multilingual?.name_en || undefined,
-            parent_id: parentId,
-            icon: candidate.icon || undefined,
-            seo_title: candidate.seo_title || undefined,
-            seo_description: candidate.seo_description || undefined,
-          }),
+    // Create storefront category on demand with multilingual names, parent resolution, and SEO
+    try {
+      let parentId = candidate.storefront_parent_id || undefined;
+
+      // If parent category does not exist yet in store, create parent category first!
+      if (!parentId && candidate.storefront_parent_name && candidate.storefront_parent_name.trim().toLowerCase() !== candidate.storefront_category_name.trim().toLowerCase()) {
+        const existingParent = storefrontCategories.find((c) => {
+          if (c.is_default) return false;
+          const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const normTarget = candidate.storefront_parent_name!.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          return normName === normTarget;
         });
-        const data = await res.json();
-        if (res.ok && data.category) {
-          const newCat = data.category;
-          setStorefrontCategories((curr) => [newCat, ...curr]);
-          setForm((c) => ({ ...c, storefront_category_id: newCat.id }));
-          candidate.storefront_category_id = newCat.id;
-          candidate.is_existing_storefront = true;
-          setAppliedCandidateIndex(idx);
-          setSuccess(`Arborescence vitrine "${candidate.storefront_parent_name ? candidate.storefront_parent_name + ' › ' : ''}${newCat.name}" créée et assignée !`);
+
+        if (existingParent) {
+          parentId = existingParent.id;
         } else {
-          setAppliedCandidateIndex(idx);
+          // Create the parent category on the fly
+          try {
+            const parentRes = await fetchWithCsrf('/api/pd/stores/me/categories', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                name: candidate.storefront_parent_name.trim(),
+                name_fr: candidate.parent_multilingual?.name_fr || candidate.storefront_parent_name.trim(),
+                name_ar: candidate.parent_multilingual?.name_ar || undefined,
+                name_en: candidate.parent_multilingual?.name_en || undefined,
+                icon: candidate.icon || undefined,
+              }),
+            });
+            const parentData = await parentRes.json();
+            if (parentRes.ok && parentData.category) {
+              parentId = parentData.category.id;
+              setStorefrontCategories((curr) => [parentData.category, ...curr]);
+            }
+          } catch {}
         }
-      } catch {
-        setAppliedCandidateIndex(idx);
       }
+
+      // Create the specific subcategory under the parent!
+      const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: candidate.storefront_category_name.trim(),
+          name_fr: candidate.multilingual?.name_fr || candidate.storefront_category_name.trim(),
+          name_ar: candidate.multilingual?.name_ar || undefined,
+          name_en: candidate.multilingual?.name_en || undefined,
+          parent_id: parentId || undefined,
+          icon: candidate.icon || undefined,
+          seo_title: candidate.seo_title || undefined,
+          seo_description: candidate.seo_description || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.category) {
+        const newCat = data.category;
+        setStorefrontCategories((curr) => [newCat, ...curr]);
+        setForm((c) => ({ ...c, storefront_category_id: newCat.id }));
+        candidate.storefront_category_id = newCat.id;
+        candidate.is_existing_storefront = true;
+        setAppliedCandidateIndex(idx);
+        setSuccess(`Arborescence vitrine "${candidate.storefront_parent_name ? candidate.storefront_parent_name + ' › ' : ''}${newCat.name}" créée et assignée !`);
+        return newCat.id;
+      } else {
+        const msg = data.error?.message || "Impossible de créer la catégorie vitrine";
+        setError(msg);
+        return null;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de création de la catégorie vitrine");
+      return null;
     }
   };
 
@@ -2382,6 +2404,18 @@ export default function ProductsPage() {
 
     setCreating(true);
     try {
+      let finalStorefrontCategoryId = form.storefront_category_id || null;
+      const finalMarketplaceCategoryId = form.marketplace_category_id || null;
+
+      // If storefront_category_id is empty, but an AI candidate was selected, auto-create and link it now!
+      if (!finalStorefrontCategoryId && appliedCandidateIndex !== null && aiCategoryCandidates[appliedCandidateIndex]) {
+        const candidate = aiCategoryCandidates[appliedCandidateIndex];
+        const createdId = await handleApplyCandidate(candidate, appliedCandidateIndex);
+        if (createdId) {
+          finalStorefrontCategoryId = createdId;
+        }
+      }
+
       const isEditing = Boolean(editingProduct);
       const res = await fetchWithCsrf(isEditing ? `/api/pd/stores/me/products/${editingProduct!.id}` : '/api/pd/stores/me/products', {
         method: isEditing ? 'PUT' : 'POST',
@@ -2393,8 +2427,8 @@ export default function ProductsPage() {
           slug: form.slug.trim(),
           description: form.description.trim() || undefined,
           product_reference: form.product_reference.trim() || null,
-          marketplace_category_id: form.marketplace_category_id || null,
-          storefront_category_id: form.storefront_category_id || null,
+          marketplace_category_id: finalMarketplaceCategoryId,
+          storefront_category_id: finalStorefrontCategoryId,
           price,
           compare_at_price: compareAtPrice,
           inventory_quantity: Number.isFinite(inventory) && inventory >= 0 ? inventory : 0,
@@ -4460,228 +4494,86 @@ export default function ProductsPage() {
                       </div>
                     )}
 
-                    {/* Dual-Level Cascading Manual Category Selectors */}
-                    <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                            Sélection Manuelle des Catégories & Sous-catégories
-                          </h4>
-                          <p className="text-[11px] text-slate-500">
-                            Configurez le rayon principal et la sous-catégorie pour le Hub et votre Vitrine Boutique
-                          </p>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <CategorySearchableSelect
+                          label="🌐 Catégorie Principale PandaMarket Hub"
+                          placeholder="Rechercher une catégorie Hub..."
+                          emptyOptionLabel="Non catégorisé sur le Hub"
+                          categories={marketplaceCategories}
+                          value={form.marketplace_category_id}
+                          onChange={(id) => setForm((c) => ({ ...c, marketplace_category_id: id }))}
+                        />
                       </div>
 
-                      {/* 1. Marketplace Hub Section (Parent + Subcategory) */}
-                      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                            <span>🌐 Catégorie PandaMarket Hub (Marketplace)</span>
-                          </label>
-                          {form.marketplace_category_id && (
-                            <button
-                              type="button"
-                              onClick={() => setForm((c) => ({ ...c, marketplace_category_id: '' }))}
-                              className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
-                            >
-                              Désassigner
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Parent Category Hub */}
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                              1. Rayon Principal Hub
-                            </label>
-                            <select
-                              value={(() => {
-                                const current = marketplaceCategories.find((c) => c.id === form.marketplace_category_id);
-                                if (!current) return '';
-                                if (current.parent_id) return current.parent_id;
-                                return current.id;
-                              })()}
-                              onChange={(e) => {
-                                const parentId = e.target.value;
-                                if (!parentId) {
-                                  setForm((c) => ({ ...c, marketplace_category_id: '' }));
-                                } else {
-                                  const children = marketplaceCategories.filter((c) => c.parent_id === parentId);
-                                  setForm((c) => ({
-                                    ...c,
-                                    marketplace_category_id: children.length > 0 ? children[0].id : parentId,
-                                  }));
-                                }
-                              }}
-                              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-200 cursor-pointer"
-                            >
-                              <option value="">-- Choisir un Rayon Principal Hub --</option>
-                              {marketplaceCategories
-                                .filter((c) => !c.parent_id)
-                                .map((parent) => (
-                                  <option key={parent.id} value={parent.id}>
-                                    {parent.name}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          {/* Subcategory Hub */}
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                              2. Sous-catégorie Hub Spécifique
-                            </label>
-                            <select
-                              value={form.marketplace_category_id}
-                              onChange={(e) => setForm((c) => ({ ...c, marketplace_category_id: e.target.value }))}
-                              disabled={!(() => {
-                                const current = marketplaceCategories.find((c) => c.id === form.marketplace_category_id);
-                                const parentId = current?.parent_id || current?.id;
-                                return Boolean(parentId && marketplaceCategories.some((c) => c.parent_id === parentId));
-                              })()}
-                              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-50 cursor-pointer"
-                            >
-                              {(() => {
-                                const current = marketplaceCategories.find((c) => c.id === form.marketplace_category_id);
-                                const parentId = current?.parent_id || current?.id;
-                                const subs = parentId ? marketplaceCategories.filter((c) => c.parent_id === parentId) : [];
-                                if (subs.length === 0) {
-                                  return <option value={form.marketplace_category_id || ''}>{current ? current.name : '-- Aucune sous-catégorie --'}</option>;
-                                }
-                                return (
-                                  <>
-                                    <option value={parentId}>-- Tout le rayon ({marketplaceCategories.find((c) => c.id === parentId)?.name}) --</option>
-                                    {subs.map((sub) => (
-                                      <option key={sub.id} value={sub.id}>
-                                        ↳ {sub.name}
-                                      </option>
-                                    ))}
-                                  </>
-                                );
-                              })()}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Direct Searchable Select in Entire Hierarchy */}
-                        <div className="pt-1">
-                          <CategorySearchableSelect
-                            label="Recherche directe dans toute l'arborescence Hub :"
-                            placeholder="Rechercher par mot-clé (ex: Sneakers, Huile d'olive, Robe)..."
-                            emptyOptionLabel="-- Conserver la sélection ci-dessus --"
-                            categories={marketplaceCategories}
-                            value={form.marketplace_category_id}
-                            onChange={(id) => setForm((c) => ({ ...c, marketplace_category_id: id }))}
-                          />
-                        </div>
+                      <div>
+                        <CategorySearchableSelect
+                          label="🏪 Catégorie Vitrine de Votre Boutique"
+                          placeholder="Rechercher une catégorie boutique..."
+                          emptyOptionLabel="Non catégorisé sur la boutique"
+                          categories={storefrontCategories}
+                          value={form.storefront_category_id}
+                          onChange={(id) => setForm((c) => ({ ...c, storefront_category_id: id }))}
+                        />
                       </div>
+                    </div>
 
-                      {/* 2. Storefront Boutique Section (Parent + Subcategory) */}
-                      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                            <span>🏪 Catégorie & Sous-catégorie Vitrine Boutique</span>
-                          </label>
-                          {form.storefront_category_id && (
-                            <button
-                              type="button"
-                              onClick={() => setForm((c) => ({ ...c, storefront_category_id: '' }))}
-                              className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
-                            >
-                              Désassigner
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Parent Category Storefront */}
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                              1. Rayon Principal Boutique
-                            </label>
-                            <select
-                              value={(() => {
-                                const current = storefrontCategories.find((c) => c.id === form.storefront_category_id);
-                                if (!current) return '';
-                                if (current.parent_id) return current.parent_id;
-                                return current.id;
-                              })()}
-                              onChange={(e) => {
-                                const parentId = e.target.value;
-                                if (!parentId) {
-                                  setForm((c) => ({ ...c, storefront_category_id: '' }));
-                                } else {
-                                  const children = storefrontCategories.filter((c) => c.parent_id === parentId);
-                                  setForm((c) => ({
-                                    ...c,
-                                    storefront_category_id: children.length > 0 ? children[0].id : parentId,
-                                  }));
-                                }
-                              }}
-                              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-200 cursor-pointer"
-                            >
-                              <option value="">-- Choisir un Rayon Principal --</option>
-                              {storefrontCategories
-                                .filter((c) => !c.parent_id && !c.is_default)
-                                .map((parent) => (
-                                  <option key={parent.id} value={parent.id}>
-                                    {parent.name}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          {/* Subcategory Storefront */}
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                              2. Sous-rayon Vitrine Spécifique
-                            </label>
-                            <select
-                              value={form.storefront_category_id}
-                              onChange={(e) => setForm((c) => ({ ...c, storefront_category_id: e.target.value }))}
-                              disabled={!(() => {
-                                const current = storefrontCategories.find((c) => c.id === form.storefront_category_id);
-                                const parentId = current?.parent_id || current?.id;
-                                return Boolean(parentId && storefrontCategories.some((c) => c.parent_id === parentId));
-                              })()}
-                              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-50 cursor-pointer"
-                            >
-                              {(() => {
-                                const current = storefrontCategories.find((c) => c.id === form.storefront_category_id);
-                                const parentId = current?.parent_id || current?.id;
-                                const subs = parentId ? storefrontCategories.filter((c) => c.parent_id === parentId) : [];
-                                if (subs.length === 0) {
-                                  return <option value={form.storefront_category_id || ''}>{current ? current.name : '-- Aucune sous-catégorie --'}</option>;
-                                }
-                                return (
-                                  <>
-                                    <option value={parentId}>-- Tout le rayon ({storefrontCategories.find((c) => c.id === parentId)?.name}) --</option>
-                                    {subs.map((sub) => (
-                                      <option key={sub.id} value={sub.id}>
-                                        ↳ {sub.name}
-                                      </option>
-                                    ))}
-                                  </>
-                                );
-                              })()}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Direct Searchable Select in Entire Storefront Hierarchy */}
-                        <div className="pt-1">
-                          <CategorySearchableSelect
-                            label="Recherche directe dans toute l'arborescence vitrine :"
-                            placeholder="Rechercher une catégorie boutique..."
-                            emptyOptionLabel="-- Conserver la sélection ci-dessus --"
-                            categories={storefrontCategories}
-                            value={form.storefront_category_id}
-                            onChange={(id) => setForm((c) => ({ ...c, storefront_category_id: id }))}
-                          />
-                        </div>
-                      </div>
+                    {/* Add Storefront Category / Subcategory in 1-Click */}
+                    <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                      <input
+                        type="text"
+                        value={newStorefrontCategory}
+                        onChange={(e) => setNewStorefrontCategory(e.target.value)}
+                        placeholder="Nom de la catégorie ou sous-catégorie..."
+                        className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700"
+                      />
+                      <select
+                        value={newStorefrontParent}
+                        onChange={(e) => setNewStorefrontParent(e.target.value)}
+                        className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-300 max-w-[200px]"
+                      >
+                        <option value="">Rayon racine</option>
+                        {storefrontCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            Sous: {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!newStorefrontCategory.trim()) return;
+                          setCreatingCategory(true);
+                          try {
+                            const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({
+                                name: newStorefrontCategory.trim(),
+                                parent_id: newStorefrontParent || undefined,
+                              }),
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.category) {
+                              setStorefrontCategories((curr) => [...curr, data.category]);
+                              setForm((curr) => ({ ...curr, storefront_category_id: data.category.id }));
+                              setNewStorefrontCategory('');
+                              setNewStorefrontParent('');
+                              setSuccess('Catégorie vitrine créée et sélectionnée !');
+                            } else {
+                              setError(data.error?.message || 'Échec de création');
+                            }
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : 'Erreur réseau');
+                          }
+                          setCreatingCategory(false);
+                        }}
+                        disabled={creatingCategory || !newStorefrontCategory.trim()}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black disabled:opacity-50 shrink-0 cursor-pointer"
+                      >
+                        {creatingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Créer'}
+                      </button>
                     </div>
                   </div>
                 )}
