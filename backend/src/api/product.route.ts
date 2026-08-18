@@ -476,7 +476,7 @@ router.post(
   '/:id/back-in-stock/subscribe',
   asyncHandler(async (req: Request, res: Response) => {
     const { backInStockService } = await import('../services/back-in-stock.service');
-    const email = req.body?.email || req.user?.email;
+    const email = req.body?.email || (req.user as any)?.email;
     const buyerId = req.user?.id || null;
 
     if (!email) {
@@ -496,7 +496,7 @@ router.get(
   '/:id/back-in-stock/status',
   asyncHandler(async (req: Request, res: Response) => {
     const { backInStockService } = await import('../services/back-in-stock.service');
-    const email = (req.query.email as string) || req.user?.email || null;
+    const email = (req.query.email as string) || (req.user as any)?.email || null;
     const buyerId = req.user?.id || null;
 
     const status = await backInStockService.getAlertStatus(req.params.id, email, buyerId);
@@ -512,7 +512,7 @@ router.post(
   '/:id/back-in-stock/unsubscribe',
   asyncHandler(async (req: Request, res: Response) => {
     const { backInStockService } = await import('../services/back-in-stock.service');
-    const email = req.body?.email || req.user?.email || null;
+    const email = req.body?.email || (req.user as any)?.email || null;
     const buyerId = req.user?.id || null;
 
     const result = await backInStockService.unsubscribeAlert(req.params.id, email, buyerId);

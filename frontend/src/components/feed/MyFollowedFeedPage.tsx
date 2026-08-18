@@ -60,7 +60,11 @@ export const MyFollowedFeedPage: React.FC<{
       navigator.clipboard.writeText(code).catch(() => {});
     }
     if (cartContext?.applyCoupon) {
-      cartContext.applyCoupon(code).catch(() => {});
+      try {
+        cartContext.applyCoupon(code);
+      } catch {
+        // ignore
+      }
     }
     setClaimedCouponToast(code);
     window.setTimeout(() => setClaimedCouponToast(null), 3000);

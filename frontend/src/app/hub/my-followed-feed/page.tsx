@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { MyFollowedFeedPage } from '@/components/feed/MyFollowedFeedPage';
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <MyFollowedFeedPage />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50/50 p-8 animate-pulse dark:bg-[#0b0f17]" />}>
+      <MyFollowedFeedPage />
+    </Suspense>
+  );
 }

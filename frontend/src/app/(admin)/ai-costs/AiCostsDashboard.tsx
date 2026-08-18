@@ -1,26 +1,37 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
   Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
+  Clock,
   Clock3,
+  Code2,
   Coins,
   Copy,
   Cpu,
+  Download,
+  ExternalLink,
   Eye,
   FileCode,
   FileText,
+  Filter,
+  FolderTree,
   HelpCircle,
+  History,
   Image as ImageIcon,
   Key,
   Layers,
+  Layers3,
   Link as LinkIcon,
   Loader2,
   Play,
@@ -33,13 +44,13 @@ import {
   Settings2,
   Shield,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
   Tag,
   Terminal,
   Trash2,
   TrendingUp,
   WalletCards,
-  FolderTree,
   Wand2,
   X,
   XCircle,
@@ -49,6 +60,46 @@ import {
 // ==========================================
 // TYPES & DATA STRUCTURES
 // ==========================================
+
+export interface RecentActivityItem {
+  id: string;
+  store_id: string;
+  store_name: string;
+  user_id: string | null;
+  type: string;
+  status: string;
+  tokens_consumed: number;
+  error_message: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  input_meta: Record<string, unknown>;
+  output: Record<string, unknown> | null;
+  provider_label: string | null;
+}
+
+export interface AiJobRecord {
+  id: string;
+  store_id: string;
+  store_name: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  type: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  input_url: string | null;
+  input_meta: Record<string, unknown>;
+  output: Record<string, unknown> | null;
+  tokens_consumed: number;
+  error_message: string | null;
+  bullmq_job_id: string | null;
+  duration_seconds: number | null;
+  provider_label: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
 
 interface AiStats {
   total_jobs: number;
@@ -86,6 +137,7 @@ interface AiStats {
     created_at: string;
     completed_at: string | null;
   }[];
+  recent_activity?: RecentActivityItem[];
   top_consumers: {
     store_id: string;
     store_name: string;
@@ -101,7 +153,7 @@ interface AiStats {
 
 type AiProvider = 'gemini' | 'openai' | 'claude' | 'custom' | 'replicate';
 type AiJobType = 'image_compression' | 'seo_generation' | 'page_copy' | 'product_description';
-type TabKey = 'overview' | 'routing' | 'providers' | 'prompts' | 'pricing';
+type TabKey = 'overview' | 'history' | 'routing' | 'providers' | 'prompts' | 'pricing';
 
 interface AiProviderConfig {
   id: string;
@@ -141,6 +193,7 @@ const DEFAULT_STATS: AiStats = {
   by_type: [],
   by_status: [],
   recent_failures: [],
+  recent_activity: [],
   top_consumers: [],
   daily_usage: [],
 };
@@ -151,6 +204,20 @@ const typeLabels: Record<string, string> = {
   page_copy: 'Copywriting page',
   product_description: 'Description produit',
   category_classification: 'Classification des catégories',
+  product_smart_fill: 'Remplissage intelligent',
+  product_tagging: 'Auto-tagging sémantique',
+  photo_studio: 'Studio photo IA',
+};
+
+const typeBadgeStyles: Record<string, { bg: string; text: string; border: string }> = {
+  category_classification: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800' },
+  product_description: { bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800' },
+  product_smart_fill: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800' },
+  product_tagging: { bg: 'bg-cyan-50 dark:bg-cyan-950/40', text: 'text-cyan-700 dark:text-cyan-300', border: 'border-cyan-200 dark:border-cyan-800' },
+  page_copy: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
+  seo_generation: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800' },
+  image_compression: { bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800' },
+  photo_studio: { bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/40', text: 'text-fuchsia-700 dark:text-fuchsia-300', border: 'border-fuchsia-200 dark:border-fuchsia-800' },
 };
 
 const providerLabels: Record<AiProvider, { name: string; color: string; badge: string }> = {
@@ -252,32 +319,32 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
   },
   {
     prompt_key: 'product_smart_fill',
-    title: 'Générateur Intelligent de Fiche Produit',
-    tag: 'E-commerce & Merchandising',
-    description: 'Génère le titre commercial, description HTML enrichie, atouts clés et catégorisation complète Hub & Boutique.',
-    system_prompt: `Vous êtes l'Assistant IA Expert en E-commerce et Merchandising de PandaMarket. Votre mission est de concevoir des fiches produits complètes, ultra-professionnelles et prêtes à la vente à partir de simples données brutes. Vous maîtrisez le SEO, la psychologie d'achat, le copywriting persuasif et la structuration sémantique HTML.`,
-    default_prompt: `Analysez attentivement les données fournies et générez une fiche produit complète, vendeuse et prête à publier.
+    title: 'Assistant Création Express — Smart Fill IA',
+    tag: 'Génération Multi-Champs 360°',
+    description: "À partir d'une simple photo, d'un titre brut ou de quelques mots-clés, génère l'intégralité des attributs, dimensions, tags, descriptions et spécifications en un seul appel.",
+    system_prompt: `Vous êtes l'IA Super-Assistante de PandaMarket pour la création et la publication express de produits e-commerce.
+À partir d'un ensemble minimal d'informations (une photo, un titre informel ou quelques mots-clés), votre rôle est d'inférer et de générer l'ensemble des champs d'une fiche produit complète, professionnelle et immédiatement publiable.`,
+    default_prompt: `Générez une fiche produit complète et optimisée à partir des éléments fournis ci-dessous :
 
-Données du produit d'entrée :
-- Titre / Mots-clés : {title}
-- Description brute : {description}
-- Langue ciblée : {language}
+📦 ÉLÉMENTS BRUTS FOURNIS :
+- Titre ou Mots-clés bruts : {raw_input}
+- Image : {image_url}
+- Catégorie suggérée : {category}
+- Langue : {language}
 
-Consignes strictes de rédaction :
-1. Titre commercial : Vendeur, clair, optimisé pour la recherche, mentionnant les atouts majeurs (max 100 caractères).
-2. Description HTML : Riche, séduisante et bien structurée (max 3000 caractères). Utilisez EXCLUSIVEMENT les balises <h3>, <p>, <strong>, <em>, <ul>, <li>.
-3. Catégorisation intelligente : Associez le produit à la catégorie et sous-catégorie les plus pertinentes du PandaMarket Hub, ainsi qu'aux catégories recommandées pour la vitrine de la boutique.
-
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS AUCUN TEXTE AUTOUR :
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
 {
-  "suggested_title": "Titre commercial attractif et optimisé",
-  "suggested_description": "<p>Description HTML structurée avec <h3>, <strong>, <ul> et <li>...</p>",
-  "suggested_hub_category_name": "Catégorie principale du Hub",
-  "suggested_hub_subcategory_name": "Sous-catégorie du Hub",
-  "suggested_storefront_category": "Catégorie vitrine boutique",
-  "suggested_storefront_subcategory": "Sous-catégorie vitrine boutique"
+  "optimized_title": "Titre Vendeur et Clair",
+  "summary": "Accroche vitrine en 1 phrase.",
+  "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
+  "attributes": {
+    "matiere": "Coton Bio / Acier / etc.",
+    "couleur": "Noir / Doré / etc.",
+    "style": "Moderne / Vintage"
+  },
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
 }`,
-    variables: ['{title}', '{description}', '{language}'],
+    variables: ['{raw_input}', '{image_url}', '{category}', '{language}'],
   },
   {
     prompt_key: 'photo_studio_background',
@@ -503,14 +570,47 @@ export default function AiCostsDashboard() {
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [testingAi, setTestingAi] = useState(false);
 
-  // Search in failures table
+  // Activity Log State (Overview)
+  const [activityFilter, setActivityFilter] = useState<'all' | 'completed' | 'failed'>('all');
+  const [activitySearch, setActivitySearch] = useState('');
   const [failureSearch, setFailureSearch] = useState('');
+
+  // History Tab state
+  const [historyJobs, setHistoryJobs] = useState<AiJobRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPagination, setHistoryPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    total_pages: 1,
+  });
+  const [historySummary, setHistorySummary] = useState({
+    total: 0,
+    completed_count: 0,
+    failed_count: 0,
+    active_count: 0,
+    total_tokens: 0,
+    avg_duration_seconds: 0,
+  });
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStatus, setHistoryStatus] = useState<string>('all');
+  const [historyType, setHistoryType] = useState<string>('all');
+  const [historyStoreId, setHistoryStoreId] = useState<string>('all');
+  const [historyStoreName, setHistoryStoreName] = useState<string>('');
+  const [historySortBy, setHistorySortBy] = useState<string>('created_at');
+  const [historySortOrder, setHistorySortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Inspection Drawer state
+  const [selectedJob, setSelectedJob] = useState<AiJobRecord | null>(null);
+  const [inspectionDrawerOpen, setInspectionDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'input' | 'output' | 'trace'>('overview');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Restore saved tab
   useEffect(() => {
     try {
       const saved = localStorage.getItem('pandamarket_admin_aicosts_tab');
-      if (saved && ['overview', 'routing', 'providers', 'prompts', 'pricing'].includes(saved)) {
+      if (saved && ['overview', 'history', 'routing', 'providers', 'prompts', 'pricing'].includes(saved)) {
         setActiveTab(saved as TabKey);
       }
     } catch {}
@@ -521,6 +621,41 @@ export default function AiCostsDashboard() {
     try {
       localStorage.setItem('pandamarket_admin_aicosts_tab', tab);
     } catch {}
+  };
+
+  const copyToClipboard = (text: string, key: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2500);
+    } catch {}
+  };
+
+  const openInspection = (job: AiJobRecord | RecentActivityItem) => {
+    const normalized: AiJobRecord = {
+      id: job.id,
+      store_id: job.store_id,
+      store_name: job.store_name,
+      user_id: (job as any).user_id || null,
+      user_email: (job as any).user_email || null,
+      user_name: (job as any).user_name || null,
+      type: job.type,
+      status: job.status as any,
+      input_url: (job as any).input_url || null,
+      input_meta: job.input_meta || {},
+      output: job.output || null,
+      tokens_consumed: Number(job.tokens_consumed) || 0,
+      error_message: job.error_message || null,
+      bullmq_job_id: (job as any).bullmq_job_id || null,
+      duration_seconds: job.duration_seconds !== null && job.duration_seconds !== undefined ? Number(job.duration_seconds) : null,
+      provider_label: (job as any).provider_label || ((job.output as any)?.provider) || ((job.input_meta as any)?.provider) || null,
+      created_at: job.created_at,
+      started_at: job.started_at || null,
+      completed_at: job.completed_at || null,
+    };
+    setSelectedJob(normalized);
+    setDrawerTab('overview');
+    setInspectionDrawerOpen(true);
   };
 
   const fetchConfig = useCallback(async () => {
@@ -570,6 +705,7 @@ export default function AiCostsDashboard() {
           by_type: Array.isArray(data.by_type) ? data.by_type : [],
           by_status: Array.isArray(data.by_status) ? data.by_status : [],
           recent_failures: Array.isArray(data.recent_failures) ? data.recent_failures : [],
+          recent_activity: Array.isArray(data.recent_activity) ? data.recent_activity : [],
           top_consumers: Array.isArray(data.top_consumers) ? data.top_consumers : [],
           daily_usage: Array.isArray(data.daily_usage) ? data.daily_usage : [],
         });
@@ -584,9 +720,73 @@ export default function AiCostsDashboard() {
     [fetchConfig],
   );
 
+  const fetchHistory = useCallback(
+    async (
+      page = 1,
+      overrides?: {
+        search?: string;
+        status?: string;
+        type?: string;
+        store_id?: string;
+        limit?: number;
+      },
+    ) => {
+      setHistoryLoading(true);
+      try {
+        const currentLimit = overrides?.limit || historyPagination.limit || 20;
+        const currentStatus = overrides?.status !== undefined ? overrides.status : historyStatus;
+        const currentType = overrides?.type !== undefined ? overrides.type : historyType;
+        const currentStoreId = overrides?.store_id !== undefined ? overrides.store_id : historyStoreId;
+        const currentSearch = overrides?.search !== undefined ? overrides.search : historySearch;
+
+        const queryParams = new URLSearchParams({
+          page: String(page),
+          limit: String(currentLimit),
+          status: currentStatus,
+          type: currentType,
+          store_id: currentStoreId,
+          search: currentSearch,
+          sort_by: historySortBy,
+          sort_order: historySortOrder,
+        });
+
+        const res = await fetchWithCsrf(`/api/pd/admin/ai-jobs?${queryParams.toString()}`, {
+          credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(data.data)) {
+          setHistoryJobs(data.data);
+          if (data.pagination) setHistoryPagination(data.pagination);
+          if (data.summary) setHistorySummary(data.summary);
+        }
+      } catch {
+        // Silent error
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    [historyPagination.limit, historyStatus, historyType, historyStoreId, historySearch, historySortBy, historySortOrder],
+  );
+
+  const openHistoryForStore = (storeId: string, storeName: string) => {
+    setHistoryStoreId(storeId);
+    setHistoryStoreName(storeName);
+    setHistorySearch('');
+    setHistoryStatus('all');
+    setHistoryType('all');
+    handleTabChange('history');
+    void fetchHistory(1, { store_id: storeId, search: '', status: 'all', type: 'all' });
+  };
+
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      void fetchHistory(historyPagination.page);
+    }
+  }, [activeTab, fetchHistory, historyPagination.page]);
 
   // Provider Actions
   const resetProviderForm = () => {
@@ -815,17 +1015,7 @@ export default function AiCostsDashboard() {
   const activeProvidersCount = useMemo(() => providers.filter((p) => p.is_enabled).length, [providers]);
   const configuredRoutesCount = useMemo(() => purposeRouting.filter((r) => r.provider_config_id).length, [purposeRouting]);
 
-  const filteredFailures = useMemo(() => {
-    if (!failureSearch.trim()) return stats.recent_failures;
-    const term = failureSearch.toLowerCase();
-    return stats.recent_failures.filter(
-      (f) =>
-        f.store_name.toLowerCase().includes(term) ||
-        (f.error_message && f.error_message.toLowerCase().includes(term)) ||
-        f.type.toLowerCase().includes(term) ||
-        f.id.toLowerCase().includes(term),
-    );
-  }, [stats.recent_failures, failureSearch]);
+
 
   const selectedTemplate = useMemo(
     () => promptTemplates.find((t) => t.prompt_key === selectedPromptKey) || promptTemplates[0],
@@ -917,6 +1107,7 @@ export default function AiCostsDashboard() {
         <div className="mt-6 flex flex-wrap items-center gap-1.5 border-t border-slate-100 dark:border-slate-800/80 pt-4">
           {[
             { id: 'overview', label: "Vue d'Ensemble & Métriques", icon: BarChart3, badge: `${stats.total_jobs} jobs` },
+            { id: 'history', label: 'Historique des Requêtes & Logs', icon: History, badge: `${historySummary.total || stats.total_jobs} requêtes` },
             { id: 'routing', label: 'Routage par Usage', icon: Sparkles, badge: `${configuredRoutesCount}/6 assignés` },
             { id: 'providers', label: 'Fournisseurs & Clés API', icon: Server, badge: `${providers.length} moteurs` },
             { id: 'prompts', label: 'Prompts Système & Studio', icon: FileCode, badge: `${promptTemplates.length} templates` },
@@ -1072,9 +1263,16 @@ export default function AiCostsDashboard() {
               )}
             </div>
 
-            {/* Top Store Consumers */}
+            {/* Top Store Consumers (Interactive & Clickable) */}
             <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
-              <h2 className="text-base font-black text-slate-900 dark:text-white">Boutiques les Plus Consommatrices</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-black text-slate-900 dark:text-white">Boutiques les Plus Consommatrices</h2>
+                  <p className="text-[11px] text-slate-400">Cliquez pour filtrer les requêtes IA</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase text-slate-400">Top {stats.top_consumers.length}</span>
+              </div>
+
               {stats.top_consumers.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-400 font-semibold">Aucune boutique active enregistrée.</div>
               ) : (
@@ -1082,20 +1280,40 @@ export default function AiCostsDashboard() {
                   {stats.top_consumers.slice(0, 6).map((consumer, i) => (
                     <div
                       key={consumer.store_id}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs"
+                      onClick={() => openHistoryForStore(consumer.store_id, consumer.store_name)}
+                      className="group flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-red-50/40 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-all text-xs"
+                      title={`Voir l'historique complet des requêtes de ${consumer.store_name}`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-200 dark:bg-slate-700 text-[10px] font-black text-slate-600 dark:text-slate-300">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-[10px] font-black text-slate-600 dark:text-slate-300 group-hover:bg-[#B91C1C] group-hover:text-white transition-colors">
                           {i + 1}
                         </span>
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-white truncate">{consumer.store_name}</p>
-                          <p className="text-[10px] text-slate-400">{consumer.job_count} requêtes</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-slate-900 dark:text-white group-hover:text-[#B91C1C] transition-colors truncate">
+                              {consumer.store_name}
+                            </p>
+                            <Link
+                              href={`/stores?search=${encodeURIComponent(consumer.store_name)}`}
+                              onClick={(e) => e.stopPropagation()}
+                              target="_blank"
+                              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+                              title="Ouvrir la fiche boutique"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            {consumer.job_count} requêtes · <span className="text-[#B91C1C] font-semibold">Filtrer logs</span>
+                          </p>
                         </div>
                       </div>
-                      <span className="font-black text-[#B91C1C] flex-shrink-0">
-                        {consumer.tokens_used.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">tok</span>
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-[#B91C1C] flex-shrink-0">
+                          {consumer.tokens_used.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">tok</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#B91C1C] transition-colors" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1172,60 +1390,601 @@ export default function AiCostsDashboard() {
             </div>
           </div>
 
-          {/* Recent Failures Log */}
+          {/* Unified Activity Log (Recent Successes & Failures) */}
           <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white">Journal des Échecs Récents</h3>
-                <p className="text-xs text-slate-500 font-medium">Suivi des erreurs de génération, timeouts et anomalies d&apos;API</p>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">Journal Récent des Opérations IA</h3>
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-600 dark:text-slate-400">
+                    Dernières exécutions
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">Flux en direct des requêtes IA, statut d&apos;exécution, tokens consommés et diagnostics</p>
               </div>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={failureSearch}
-                  onChange={(e) => setFailureSearch(e.target.value)}
-                  placeholder="Filtrer par boutique ou erreur..."
-                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-[#B91C1C]"
-                />
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Filter Pills */}
+                <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                  {(['all', 'completed', 'failed'] as const).map((filterKey) => {
+                    const isActive = activityFilter === filterKey;
+                    const count =
+                      filterKey === 'all'
+                        ? (stats.recent_activity || []).length
+                        : filterKey === 'completed'
+                          ? (stats.recent_activity || []).filter((j) => j.status === 'completed').length
+                          : (stats.recent_activity || []).filter((j) => j.status === 'failed').length;
+
+                    return (
+                      <button
+                        key={filterKey}
+                        type="button"
+                        onClick={() => setActivityFilter(filterKey)}
+                        className={`rounded-lg px-2.5 py-1 transition-all ${
+                          isActive
+                            ? filterKey === 'failed'
+                              ? 'bg-red-600 text-white shadow-sm'
+                              : filterKey === 'completed'
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        {filterKey === 'all' ? 'Tous' : filterKey === 'completed' ? 'Succès' : 'Échecs'} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Local Search Input */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={activitySearch}
+                    onChange={(e) => setActivitySearch(e.target.value)}
+                    placeholder="Filtrer ce journal..."
+                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-[#B91C1C]"
+                  />
+                </div>
+
+                {/* Switch to Full History Tab */}
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('history')}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 text-xs font-black text-slate-800 dark:text-slate-200 hover:bg-slate-100 transition-colors"
+                >
+                  <span>Consulter tout l&apos;historique</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#B91C1C]" />
+                </button>
               </div>
             </div>
 
-            {filteredFailures.length === 0 ? (
-              <div className="rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 p-6 text-center text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-emerald-600" />
-                Aucune erreur récente enregistrée. L&apos;infrastructure IA fonctionne de manière optimale.
+            {/* Activity Table */}
+            {(() => {
+              const baseList = stats.recent_activity && stats.recent_activity.length > 0 ? stats.recent_activity : stats.recent_failures.map((f) => ({
+                id: f.id,
+                store_id: f.store_id,
+                store_name: f.store_name,
+                user_id: null,
+                type: f.type,
+                status: 'failed',
+                tokens_consumed: 0,
+                error_message: f.error_message,
+                duration_seconds: null,
+                created_at: f.created_at,
+                started_at: null,
+                completed_at: f.completed_at,
+                input_meta: {},
+                output: null,
+                provider_label: null,
+              }));
+
+              const filtered = baseList.filter((item) => {
+                if (activityFilter === 'completed' && item.status !== 'completed') return false;
+                if (activityFilter === 'failed' && item.status !== 'failed') return false;
+                if (!activitySearch.trim()) return true;
+                const term = activitySearch.toLowerCase();
+                return (
+                  item.store_name.toLowerCase().includes(term) ||
+                  (item.error_message && item.error_message.toLowerCase().includes(term)) ||
+                  item.type.toLowerCase().includes(term) ||
+                  item.id.toLowerCase().includes(term) ||
+                  (item.status && item.status.toLowerCase().includes(term))
+                );
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 p-8 text-center text-xs font-semibold text-slate-400">
+                    <CheckCircle2 className="w-5 h-5 mx-auto mb-1.5 text-emerald-600" />
+                    Aucune opération correspondant aux filtres dans le journal récent.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-black tracking-wider text-[10px]">
+                        <th className="pb-3">Boutique</th>
+                        <th className="pb-3">Type d&apos;Usage</th>
+                        <th className="pb-3">Statut</th>
+                        <th className="pb-3">Tokens</th>
+                        <th className="pb-3">Durée</th>
+                        <th className="pb-3">Résumé / Diagnostic</th>
+                        <th className="pb-3 text-right">Date</th>
+                        <th className="pb-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {filtered.map((item) => {
+                        const style = typeBadgeStyles[item.type] || { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-200' };
+
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 font-bold text-slate-900 dark:text-white">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openHistoryForStore(item.store_id, item.store_name)}
+                                  className="hover:text-[#B91C1C] hover:underline text-left font-bold"
+                                  title="Filtrer toutes les requêtes de cette boutique"
+                                >
+                                  {item.store_name}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-3">
+                              <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${style.bg} ${style.text} ${style.border}`}>
+                                {typeLabels[item.type] || item.type}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              {item.status === 'completed' ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                  <Check className="w-3 h-3" /> Succès
+                                </span>
+                              ) : item.status === 'failed' ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-950/50 px-2 py-0.5 text-[10px] font-black text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                                  <X className="w-3 h-3" /> Échec
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 text-[10px] font-black text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> {item.status}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {item.tokens_consumed > 0 ? (
+                                <span className="text-[#B91C1C] font-black">{item.tokens_consumed} tok</span>
+                              ) : (
+                                <span className="text-slate-400">0</span>
+                              )}
+                            </td>
+                            <td className="py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                              {item.duration_seconds !== null ? `${item.duration_seconds}s` : '—'}
+                            </td>
+                            <td className="py-3 max-w-xs truncate">
+                              {item.status === 'failed' ? (
+                                <span className="text-red-600 dark:text-red-400 font-medium truncate block" title={item.error_message || 'Échec'}>
+                                  {item.error_message || 'Échec d’exécution IA'}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 dark:text-slate-400 truncate block">
+                                  {item.provider_label || 'Génération complétée avec succès'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 text-right text-slate-400 text-[11px] whitespace-nowrap">
+                              {new Date(item.created_at).toLocaleString('fr-TN', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </td>
+                            <td className="py-3 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => openInspection(item)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                                title="Inspecter la requête et la réponse complète"
+                              >
+                                <Eye className="w-3 h-3 text-[#B91C1C]" />
+                                <span>Inspecter</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: FULL REQUEST & RESPONSE HISTORY AUDIT STUDIO */}
+      {/* ========================================================================= */}
+      {activeTab === 'history' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Top KPI Metrics for Filtered History */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-1.5">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider">Total Requêtes</span>
+                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+                  <History className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">
+                {historySummary.total.toLocaleString()}
+              </div>
+              <p className="text-[11px] font-medium text-slate-400">
+                Sur les filtres actuellement actifs
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-1.5">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider">Taux de Réussite</span>
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {historySummary.total > 0
+                  ? ((historySummary.completed_count / historySummary.total) * 100).toFixed(1)
+                  : 100}%
+              </div>
+              <p className="text-[11px] font-medium text-slate-400">
+                {historySummary.completed_count} succès · {historySummary.failed_count} échecs
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-1.5">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider">Tokens Déduits</span>
+                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600">
+                  <Coins className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">
+                {historySummary.total_tokens.toLocaleString()}
+              </div>
+              <p className="text-[11px] font-medium text-slate-400">
+                Tokens de calcul consommés
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-1.5">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider">Latence Moyenne</span>
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">
+                {historySummary.avg_duration_seconds > 0 ? `${historySummary.avg_duration_seconds}s` : '—'}
+              </div>
+              <p className="text-[11px] font-medium text-slate-400">
+                Temps moyen de génération IA
+              </p>
+            </div>
+          </div>
+
+          {/* Main Filter & Data Table Card */}
+          <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">
+            {/* Header & Controls Bar */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                    Journal & Audit Détaillé des Requêtes IA
+                  </h2>
+                  <span className="rounded-full bg-red-50 dark:bg-red-950/40 px-2.5 py-0.5 text-[10px] font-black text-[#B91C1C]">
+                    {historySummary.total} requêtes enregistrées
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500 font-medium">
+                  Inspectez les prompts envoyés aux modèles, les réponses brutes JSON générées, les durées de calcul et les erreurs.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void fetchHistory(historyPagination.page)}
+                  disabled={historyLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${historyLoading ? 'animate-spin text-[#B91C1C]' : ''}`} />
+                  <span>Actualiser</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Text Search */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={historySearch}
+                  onChange={(e) => {
+                    setHistorySearch(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void fetchHistory(1, { search: historySearch });
+                  }}
+                  placeholder="Rechercher boutique, ID, erreur..."
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={historyStatus}
+                  onChange={(e) => {
+                    setHistoryStatus(e.target.value);
+                    void fetchHistory(1, { status: e.target.value });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-[#B91C1C]"
+                >
+                  <option value="all">Tous les Statuts</option>
+                  <option value="completed">Succès (Completed)</option>
+                  <option value="failed">Échecs (Failed)</option>
+                  <option value="processing">En Cours (Processing)</option>
+                  <option value="queued">En File (Queued)</option>
+                </select>
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <select
+                  value={historyType}
+                  onChange={(e) => {
+                    setHistoryType(e.target.value);
+                    void fetchHistory(1, { type: e.target.value });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-[#B91C1C]"
+                >
+                  <option value="all">Tous les Usages IA</option>
+                  <option value="category_classification">Classification des catégories</option>
+                  <option value="product_description">Description produit</option>
+                  <option value="product_smart_fill">Smart Fill (Création 360°)</option>
+                  <option value="product_tagging">Auto-tagging sémantique</option>
+                  <option value="page_copy">Copywriting vitrine</option>
+                  <option value="seo_generation">SEO & Meta Tags</option>
+                  <option value="image_compression">Compression d&apos;image</option>
+                </select>
+              </div>
+
+              {/* Store Filter / Reset */}
+              <div className="flex items-center gap-2">
+                {historyStoreId !== 'all' ? (
+                  <div className="flex-1 flex items-center justify-between px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs font-bold text-[#B91C1C]">
+                    <span className="truncate">Boutique: {historyStoreName || historyStoreId}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHistoryStoreId('all');
+                        setHistoryStoreName('');
+                        void fetchHistory(1, { store_id: 'all' });
+                      }}
+                      className="p-0.5 hover:bg-red-100 rounded text-red-700"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void fetchHistory(1)}
+                    className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 text-center"
+                  >
+                    Filtrer
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistorySearch('');
+                    setHistoryStatus('all');
+                    setHistoryType('all');
+                    setHistoryStoreId('all');
+                    setHistoryStoreName('');
+                    void fetchHistory(1, { search: '', status: 'all', type: 'all', store_id: 'all' });
+                  }}
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  title="Réinitialiser tous les filtres"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Table */}
+            {historyLoading ? (
+              <div className="py-20 flex flex-col items-center justify-center space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#B91C1C]" />
+                <p className="text-xs font-bold text-slate-400">Chargement de l&apos;historique des requêtes...</p>
+              </div>
+            ) : historyJobs.length === 0 ? (
+              <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-12 text-center space-y-2">
+                <History className="w-8 h-8 mx-auto text-slate-400" />
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Aucune requête trouvée</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Aucune exécution d&apos;IA ne correspond aux critères de recherche actuels.
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-black tracking-wider text-[10px]">
+                      <th className="pb-3">Date & ID</th>
                       <th className="pb-3">Boutique</th>
-                      <th className="pb-3">Type</th>
-                      <th className="pb-3">Message d&apos;Erreur</th>
-                      <th className="pb-3 text-right">Date</th>
+                      <th className="pb-3">Type d&apos;Usage</th>
+                      <th className="pb-3">Moteur / Modèle</th>
+                      <th className="pb-3">Tokens</th>
+                      <th className="pb-3">Durée</th>
+                      <th className="pb-3">Statut</th>
+                      <th className="pb-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {filteredFailures.map((failure) => (
-                      <tr key={failure.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 font-bold text-slate-900 dark:text-white">{failure.store_name}</td>
-                        <td className="py-3">
-                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                            {typeLabels[failure.type] || failure.type}
-                          </span>
-                        </td>
-                        <td className="py-3 text-red-600 dark:text-red-400 font-medium max-w-md truncate">
-                          {failure.error_message || 'Échec d’exécution IA'}
-                        </td>
-                        <td className="py-3 text-right text-slate-400 text-[11px]">
-                          {new Date(failure.created_at).toLocaleString('fr-TN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    ))}
+                    {historyJobs.map((job) => {
+                      const style = typeBadgeStyles[job.type] || {
+                        bg: 'bg-slate-100 dark:bg-slate-800',
+                        text: 'text-slate-700 dark:text-slate-300',
+                        border: 'border-slate-200',
+                      };
+
+                      return (
+                        <tr key={job.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3">
+                            <div>
+                              <p className="font-bold text-slate-900 dark:text-white">
+                                {new Date(job.created_at).toLocaleDateString('fr-TN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
+                                <span>
+                                  {new Date(job.created_at).toLocaleTimeString('fr-TN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                  })}
+                                </span>
+                                <span>·</span>
+                                <span className="truncate max-w-[90px]" title={job.id}>{job.id}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openHistoryForStore(job.store_id, job.store_name)}
+                                  className="font-bold text-slate-900 dark:text-white hover:text-[#B91C1C] hover:underline text-left"
+                                  title="Filtrer cette boutique"
+                                >
+                                  {job.store_name}
+                                </button>
+                                <Link
+                                  href={`/stores?search=${encodeURIComponent(job.store_name)}`}
+                                  target="_blank"
+                                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+                                  title="Voir boutique"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </Link>
+                              </div>
+                              {job.user_email && (
+                                <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{job.user_email}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${style.bg} ${style.text} ${style.border}`}>
+                              {typeLabels[job.type] || job.type}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                              {job.provider_label || 'Auto Moteur'}
+                            </span>
+                          </td>
+                          <td className="py-3 font-mono font-bold text-slate-800 dark:text-slate-200">
+                            {job.tokens_consumed > 0 ? (
+                              <span className="text-[#B91C1C] font-black">{job.tokens_consumed} <span className="text-[10px] text-slate-400 font-normal">tok</span></span>
+                            ) : (
+                              <span className="text-slate-400">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                            {job.duration_seconds !== null ? `${job.duration_seconds}s` : '—'}
+                          </td>
+                          <td className="py-3">
+                            {job.status === 'completed' ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <Check className="w-3 h-3" /> Succès
+                              </span>
+                            ) : job.status === 'failed' ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-950/50 px-2 py-0.5 text-[10px] font-black text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800" title={job.error_message || ''}>
+                                <X className="w-3 h-3" /> Échec
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 text-[10px] font-black text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                <Loader2 className="w-3 h-3 animate-spin" /> {job.status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => openInspection(job)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 hover:border-[#B91C1C] hover:text-[#B91C1C] transition-all shadow-xs"
+                            >
+                              <Code2 className="w-3.5 h-3.5 text-[#B91C1C]" />
+                              <span>Inspecter</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {historyPagination.total_pages > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs font-bold text-slate-500">
+                <div>
+                  Affichage de {(historyPagination.page - 1) * historyPagination.limit + 1} à{' '}
+                  {Math.min(historyPagination.page * historyPagination.limit, historyPagination.total)} sur{' '}
+                  {historyPagination.total} requêtes
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={historyPagination.page <= 1 || historyLoading}
+                    onClick={() => void fetchHistory(historyPagination.page - 1)}
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Précédent</span>
+                  </button>
+
+                  <span className="px-2 text-xs font-black text-slate-900 dark:text-white">
+                    Page {historyPagination.page} / {historyPagination.total_pages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={historyPagination.page >= historyPagination.total_pages || historyLoading}
+                    onClick={() => void fetchHistory(historyPagination.page + 1)}
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <span>Suivant</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1767,6 +2526,445 @@ export default function AiCostsDashboard() {
               >
                 {savingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SLIDE-OUT INSPECTION DRAWER: AI REQUEST & RESPONSE PAYLOAD AUDIT */}
+      {/* ========================================================================= */}
+      {inspectionDrawerOpen && selectedJob && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-2xl h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-[#B91C1C]">
+                  <Code2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white truncate">
+                      Inspection de la Requête IA
+                    </h3>
+                    {selectedJob.status === 'completed' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <Check className="w-3 h-3" /> Succès
+                      </span>
+                    ) : selectedJob.status === 'failed' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-950/50 px-2 py-0.5 text-[10px] font-black text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                        <X className="w-3 h-3" /> Échec
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 text-[10px] font-black text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <Loader2 className="w-3 h-3 animate-spin" /> {selectedJob.status}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-bold text-slate-500 font-mono">{selectedJob.id}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(selectedJob.id, 'job_id')}
+                      className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                      title="Copier l'ID de requête"
+                    >
+                      {copiedKey === 'job_id' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">·</span>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                      {selectedJob.store_name}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setInspectionDrawerOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Fermer le panneau d'inspection"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drawer Sub-nav Tabs */}
+            <div className="flex items-center gap-1 px-5 pt-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto text-xs font-bold">
+              {[
+                { key: 'overview', label: 'Vue Synthétique', icon: Eye },
+                { key: 'input', label: 'Requête & Prompt (Input)', icon: Terminal },
+                { key: 'output', label: 'Réponse Modèle (Output)', icon: Sparkles },
+                { key: 'trace', label: 'Diagnostic & Erreurs', icon: ShieldAlert },
+              ].map((tab) => {
+                const isActive = drawerTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setDrawerTab(tab.key as any)}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 border-b-2 transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'border-[#B91C1C] text-[#B91C1C] font-black'
+                        : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <tab.icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Drawer Content Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+              {/* TAB 1: OVERVIEW */}
+              {drawerTab === 'overview' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  {/* Key Metrics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Type d&apos;Usage</p>
+                      <p className="font-black text-slate-900 dark:text-white">
+                        {typeLabels[selectedJob.type] || selectedJob.type}
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Tokens Déduits</p>
+                      <p className="font-black text-[#B91C1C] text-sm font-mono">
+                        {selectedJob.tokens_consumed} <span className="text-[10px] text-slate-400 font-normal">tok</span>
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Durée d&apos;Exécution</p>
+                      <p className="font-black text-slate-900 dark:text-white font-mono text-sm">
+                        {selectedJob.duration_seconds !== null ? `${selectedJob.duration_seconds} s` : '—'}
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Moteur / Modèle IA</p>
+                      <p className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-[11px] truncate">
+                        {selectedJob.provider_label || 'Auto-Routing Prioritaire'}
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Boutique</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-black text-slate-900 dark:text-white truncate">
+                          {selectedJob.store_name}
+                        </p>
+                        <Link
+                          href={`/stores?search=${encodeURIComponent(selectedJob.store_name)}`}
+                          target="_blank"
+                          className="text-slate-400 hover:text-slate-700"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Utilisateur / Auteur</p>
+                      <p className="font-black text-slate-900 dark:text-white truncate">
+                        {selectedJob.user_name || selectedJob.user_email || selectedJob.user_id || 'Système'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Execution Timeline */}
+                  <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 p-4 space-y-3">
+                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">
+                      Chronologie d&apos;Exécution
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-400 block font-bold">1. Reçue / Créée</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-200">
+                          {new Date(selectedJob.created_at).toLocaleTimeString('fr-TN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-bold">2. Démarrée</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-200">
+                          {selectedJob.started_at
+                            ? new Date(selectedJob.started_at).toLocaleTimeString('fr-TN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })
+                            : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-bold">3. Terminée</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-200">
+                          {selectedJob.completed_at
+                            ? new Date(selectedJob.completed_at).toLocaleTimeString('fr-TN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Summary of Output */}
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                        {selectedJob.status === 'completed' ? 'Aperçu du Résultat IA' : 'Détail de l’Anomalie'}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerTab(selectedJob.status === 'completed' ? 'output' : 'trace')}
+                        className="text-[11px] font-bold text-[#B91C1C] hover:underline"
+                      >
+                        Voir tout →
+                      </button>
+                    </div>
+
+                    {selectedJob.status === 'failed' ? (
+                      <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 font-medium">
+                        {selectedJob.error_message || 'Échec de traitement par le moteur IA.'}
+                      </div>
+                    ) : selectedJob.output ? (
+                      <pre className="p-3.5 rounded-xl bg-slate-900 text-emerald-400 font-mono text-[11px] max-h-40 overflow-y-auto leading-relaxed">
+                        {JSON.stringify(selectedJob.output, null, 2)}
+                      </pre>
+                    ) : (
+                      <p className="text-slate-400 italic">Aucune donnée de sortie disponible.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: REQUEST & PROMPT PAYLOAD (INPUT) */}
+              {drawerTab === 'input' && (
+                <div className="space-y-5 animate-in fade-in duration-150">
+                  {/* Structured Parameters Breakdown */}
+                  {selectedJob.input_meta && Object.keys(selectedJob.input_meta).length > 0 && (
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+                      <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">
+                        Paramètres d&apos;Entrée Extraits
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {Object.entries(selectedJob.input_meta)
+                          .filter(([k]) => !['prompt', 'system_prompt'].includes(k))
+                          .map(([key, val]) => (
+                            <div key={key} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] font-bold uppercase text-slate-400 block">{key}</span>
+                              <span className="font-medium text-slate-900 dark:text-white truncate block">
+                                {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Raw Prompt Text if available */}
+                  {(selectedJob.input_meta as any)?.prompt && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-black text-slate-900 dark:text-white">Prompt Système & Instruction Modèle</h4>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard((selectedJob.input_meta as any).prompt, 'prompt_text')}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                        >
+                          {copiedKey === 'prompt_text' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKey === 'prompt_text' ? 'Copié !' : 'Copier le Prompt'}</span>
+                        </button>
+                      </div>
+                      <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap">
+                        {(selectedJob.input_meta as any).prompt}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Raw Input JSON */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-slate-900 dark:text-white">Payload d&apos;Entrée Complet (JSON)</h4>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(JSON.stringify(selectedJob.input_meta, null, 2), 'input_json')}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                      >
+                        {copiedKey === 'input_json' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedKey === 'input_json' ? 'Copié !' : 'Copier le JSON d\'Entrée'}</span>
+                      </button>
+                    </div>
+                    <pre className="p-4 rounded-2xl bg-slate-950 text-indigo-300 font-mono text-[11px] leading-relaxed max-h-80 overflow-y-auto">
+                      {JSON.stringify(selectedJob.input_meta, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: MODEL RESPONSE (OUTPUT) */}
+              {drawerTab === 'output' && (
+                <div className="space-y-5 animate-in fade-in duration-150">
+                  {/* Visual Renderings */}
+                  {selectedJob.output && (
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <h4 className="font-black text-slate-900 dark:text-white">Rendu Visuel de la Réponse IA</h4>
+                        <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                          JSON Structuré Valide
+                        </span>
+                      </div>
+
+                      {/* HTML Description preview */}
+                      {(selectedJob.output as any)?.description_html && (
+                        <div className="space-y-2">
+                          <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Aperçu Description HTML :</span>
+                          <div
+                            className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 prose prose-xs dark:prose-invert max-w-none text-slate-800 dark:text-slate-200"
+                            dangerouslySetInnerHTML={{ __html: (selectedJob.output as any).description_html }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Category Classification preview */}
+                      {((selectedJob.output as any)?.marketplace_category_name || (selectedJob.output as any)?.storefront_category_name) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50">
+                            <span className="text-[10px] font-bold text-blue-700 uppercase">Catégorie Marketplace</span>
+                            <p className="font-black text-slate-900 dark:text-white mt-1">
+                              {(selectedJob.output as any).marketplace_category_name || 'Non spécifiée'}
+                            </p>
+                            {(selectedJob.output as any).marketplace_subcategory_name && (
+                              <p className="text-[11px] text-blue-600 dark:text-blue-400">
+                                ↳ {(selectedJob.output as any).marketplace_subcategory_name}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50">
+                            <span className="text-[10px] font-bold text-emerald-700 uppercase">Vitrine Boutique (Storefront)</span>
+                            <p className="font-black text-slate-900 dark:text-white mt-1">
+                              {(selectedJob.output as any).storefront_category_name || 'Non spécifiée'}
+                            </p>
+                            {(selectedJob.output as any).storefront_subcategory_name && (
+                              <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                                ↳ {(selectedJob.output as any).storefront_subcategory_name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tags preview */}
+                      {Array.isArray((selectedJob.output as any)?.tags) && (
+                        <div className="space-y-2">
+                          <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Tags Sémantiques Extraits :</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(selectedJob.output as any).tags.map((t: string) => (
+                              <span
+                                key={t}
+                                className="rounded-md bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 text-[10px] font-bold text-cyan-700 dark:text-cyan-300"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Raw Output JSON */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-slate-900 dark:text-white">Réponse Brute du Moteur (JSON)</h4>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(JSON.stringify(selectedJob.output, null, 2), 'output_json')}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                      >
+                        {copiedKey === 'output_json' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedKey === 'output_json' ? 'Copié !' : 'Copier la Réponse JSON'}</span>
+                      </button>
+                    </div>
+                    <pre className="p-4 rounded-2xl bg-slate-950 text-emerald-400 font-mono text-[11px] leading-relaxed max-h-80 overflow-y-auto">
+                      {selectedJob.output ? JSON.stringify(selectedJob.output, null, 2) : 'null'}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: DIAGNOSTIC & TRACE */}
+              {drawerTab === 'trace' && (
+                <div className="space-y-5 animate-in fade-in duration-150">
+                  {selectedJob.status === 'failed' ? (
+                    <div className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/30 p-5 space-y-3">
+                      <div className="flex items-center gap-2.5 text-red-700 dark:text-red-300 font-black text-sm">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                        <span>Détails de l&apos;Échec d&apos;Exécution IA</span>
+                      </div>
+                      <p className="font-mono text-xs text-red-900 dark:text-red-200 bg-white/60 dark:bg-slate-900/60 p-3 rounded-xl border border-red-200 dark:border-red-900/40 whitespace-pre-wrap">
+                        {selectedJob.error_message || 'Aucun message d’erreur explicite fourni.'}
+                      </p>
+                      <div className="text-[11px] text-red-600 dark:text-red-400 space-y-1">
+                        <p>• Vérifiez le solde de tokens du vendeur dans son wallet PandaMarket.</p>
+                        <p>• Vérifiez la validité de la clé API du fournisseur dans l&apos;onglet Fournisseurs & Clés API.</p>
+                        <p>• Vérifiez si le modèle spécifié est accessible et répond aux quotas.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 p-5 flex items-center gap-3">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-black text-emerald-800 dark:text-emerald-300">Exécution Sans Anomalie</h4>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                          La requête a été achevée avec succès en {selectedJob.duration_seconds !== null ? `${selectedJob.duration_seconds}s` : 'quelques millisecondes'} et a consommé {selectedJob.tokens_consumed} tokens.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Full Job Raw JSON */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-slate-900 dark:text-white">Objet d&apos;Audit Complet (Diagnostic Brut)</h4>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(JSON.stringify(selectedJob, null, 2), 'job_full_json')}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                      >
+                        {copiedKey === 'job_full_json' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedKey === 'job_full_json' ? 'Copié !' : 'Copier l\'Audit Complet'}</span>
+                      </button>
+                    </div>
+                    <pre className="p-4 rounded-2xl bg-slate-950 text-slate-300 font-mono text-[11px] leading-relaxed max-h-72 overflow-y-auto">
+                      {JSON.stringify(selectedJob, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+              <span className="text-[11px] text-slate-400 font-mono">PandaMarket AI Governance Hub</span>
+              <button
+                type="button"
+                onClick={() => setInspectionDrawerOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 transition-colors"
+              >
+                Fermer
               </button>
             </div>
           </div>
