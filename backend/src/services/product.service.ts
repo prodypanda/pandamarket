@@ -1156,8 +1156,23 @@ export class ProductService {
          FROM pd_product sp
          WHERE sp.store_id = s.id AND sp.status = $3
        ) seller_stats ON true
-       WHERE p.store_id = $1 AND (p.slug = $2 OR p.id = $2) AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
-       LIMIT 1`,
+        WHERE p.store_id = $1
+          AND (
+            p.slug = $2
+            OR p.id = $2
+            OR TRIM(BOTH '-' FROM p.slug) = TRIM(BOTH '-' FROM $2)
+            OR p.slug LIKE $2 || '%'
+            OR $2 LIKE p.slug || '%'
+          )
+          AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
+        ORDER BY
+          CASE
+            WHEN p.slug = $2 THEN 1
+            WHEN TRIM(BOTH '-' FROM p.slug) = TRIM(BOTH '-' FROM $2) THEN 2
+            WHEN p.id = $2 THEN 3
+            ELSE 4
+          END ASC
+        LIMIT 1`,
       [storeId, slug, ProductStatus.Published],
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found');
