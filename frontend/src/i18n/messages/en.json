@@ -3164,7 +3164,12 @@
   "followedFeed": {
     "title": "My Followed Feed",
     "subtitle": "Real-time updates, price drops, and exclusive drops from stores you follow in Tunisia",
-    "allStores": "All Stores",
+    "allStores": "All Feeds",
+    "allStoresChip": "All Stores",
+    "followedStores": "My Followed Stores",
+    "carouselHint": "Select a store to isolate its posts or view active stories.",
+    "noFollowedStores": "You are not following any stores yet.",
+    "exploreHint": "Explore the marketplace and click « Follow » on your favorite creators to see their latest updates here.",
     "emptyFeed": "No recent updates this week in this filter.",
     "emptyFeedHint": "Try selecting « All Stores » or explore recommended stores below.",
     "addToCart": "Add to cart",
@@ -3174,7 +3179,13 @@
     "claimCoupon": "Claim coupon",
     "couponCopied": "Coupon code copied!",
     "recommendedForYou": "Recommended based on your interests",
-    "similarStores": "Similar stores to discover"
+    "similarStores": "Similar stores to discover",
+    "storyActive": "Active Story",
+    "flashDrop": "Flash Drop",
+    "copyCode": "Copy code",
+    "copied": "Copied!",
+    "exploreFeed": "Explore feed",
+    "vipOffer": "VIP Flash Drop"
   },
   "sellerLoyalty": {
     "title": "Subscribers & Loyalty",

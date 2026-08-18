@@ -3159,6 +3159,11 @@
     "title": "Mon Fil Panda",
     "subtitle": "Nouveautés, baisses de prix et exclusivités de vos boutiques suivies en Tunisie",
     "allStores": "Tous les flux",
+    "allStoresChip": "Tous les flux",
+    "followedStores": "Mes Boutiques Suivies",
+    "carouselHint": "Sélectionnez une boutique pour isoler ses publications ou visionner ses stories.",
+    "noFollowedStores": "Vous ne suivez aucune boutique pour le moment.",
+    "exploreHint": "Explorez le marché et cliquez sur « Suivre » sur vos créateurs favoris pour voir leurs nouveautés ici.",
     "emptyFeed": "Aucune nouveauté récente cette semaine dans ce filtre.",
     "emptyFeedHint": "Essayez de sélectionner « Tous les flux » ou explorez d'autres boutiques recommandées.",
     "addToCart": "Ajouter au panier",
@@ -3168,7 +3173,13 @@
     "claimCoupon": "Réclamer le coupon",
     "couponCopied": "Code coupon copié !",
     "recommendedForYou": "Recommandé selon vos intérêts",
-    "similarStores": "Boutiques similaires à découvrir"
+    "similarStores": "Boutiques similaires à découvrir",
+    "storyActive": "Story active",
+    "flashDrop": "Offre Flash",
+    "copyCode": "Copier le code",
+    "copied": "Copié !",
+    "exploreFeed": "Explorer son fil",
+    "vipOffer": "Offre Flash VIP"
   },
   "sellerLoyalty": {
     "title": "Abonnés & Fidélité",
