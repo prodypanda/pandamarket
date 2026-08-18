@@ -112,7 +112,7 @@ describe('followed feed production schema compatibility', () => {
     expect(response.body.followed_stores[0].subdomain).toBe('store-one');
     expect(response.body.timeline_products[0].image_url).toBe('/pd-product-images/product-1.jpg');
 
-    const sql = String(queryMock.mock.calls[0][0]);
+    const sql = queryMock.mock.calls.map((c: any) => String(c[0])).join('\n');
     expect(sql).toContain('p.compare_at_price');
     expect(sql).toContain('SELECT url FROM pd_product_image');
     expect(sql).not.toContain('SELECT image_url FROM pd_product_image');

@@ -28,18 +28,69 @@ router.get(
       limit: Number.isNaN(limit) ? 20 : limit,
     });
 
-    // Format followed_stores list for carousel
-    const followed_stores = result.subscriptions.map((s) => ({
-      id: s.store_id,
-      name: s.store_name,
-      subdomain: s.store_subdomain,
-      logo_url: s.store_logo_url || null,
-      unread_updates_count: s.unread_updates_count || 0,
-      is_verified: s.is_verified_buyer,
-    }));
-
-    // Fetch timeline products directly from all followed stores
+    // Fetch timeline products and active broadcasts from followed stores
     const followedStoreIds = result.subscriptions.map((s) => s.store_id);
+
+    // Fetch active broadcasts in the last 7 days for flash drops & stories
+    const activeBroadcastsByStore = new Map<string, { title: string; coupon_code: string; discount_value: any; discount_type: string }>();
+    if (followedStoreIds.length > 0) {
+      try {
+        const bRes = await query<{
+          store_id: string;
+          title: string;
+          coupon_code: string;
+          discount_value: any;
+          discount_type: string;
+        }>(
+          `SELECT DISTINCT ON (store_id) store_id, title, coupon_code, discount_value, discount_type
+           FROM pd_seller_broadcast
+           WHERE store_id = ANY($1::text[]) AND sent_at >= NOW() - INTERVAL '7 days'
+           ORDER BY store_id, sent_at DESC`,
+          [followedStoreIds]
+        );
+        for (const b of bRes.rows) {
+          activeBroadcastsByStore.set(b.store_id, b);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Format followed_stores list for carousel
+    const followed_stores = result.subscriptions.map((s) => {
+      const b = activeBroadcastsByStore.get(s.store_id);
+      let active_flash_drop: { title: string; discount: string } | null = null;
+
+      if (b) {
+        const discountStr = b.discount_value
+          ? (b.discount_type === 'fixed' ? `${b.discount_value} DT` : `${b.discount_value}%`)
+          : (b.coupon_code || 'VIP');
+        active_flash_drop = {
+          title: b.title || 'Flash Drop',
+          discount: discountStr,
+        };
+      } else if (s.latest_products && s.latest_products.some((p: any) => p.compare_at_price && p.compare_at_price > p.price)) {
+        const promoProd = s.latest_products.find((p: any) => p.compare_at_price && p.compare_at_price > p.price);
+        const pct = Math.round(((promoProd.compare_at_price - promoProd.price) / promoProd.compare_at_price) * 100);
+        active_flash_drop = {
+          title: promoProd.title,
+          discount: `-${pct}%`,
+        };
+      }
+
+      const has_active_story = s.unread_updates_count > 0 || !!active_flash_drop || (s.latest_products && s.latest_products.length > 0);
+
+      return {
+        id: s.store_id,
+        name: s.store_name,
+        subdomain: s.store_subdomain,
+        logo_url: s.store_logo_url || null,
+        unread_updates_count: s.unread_updates_count || 0,
+        is_verified: s.is_verified_buyer,
+        has_active_story,
+        active_flash_drop,
+      };
+    });
     let timeline_products: any[] = [];
 
     if (followedStoreIds.length > 0) {

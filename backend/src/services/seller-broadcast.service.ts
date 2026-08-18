@@ -302,7 +302,7 @@ export class SellerBroadcastService {
 
     if (opts.search && opts.search.trim()) {
       params.push(`%${opts.search.trim()}%`);
-      conditions.push(`(u.email ILIKE $${params.length} OR u.first_name ILIKE $${params.length} OR u.last_name ILIKE $${params.length} OR a.city ILIKE $${params.length})`);
+      conditions.push(`(u.email ILIKE $${params.length} OR u.first_name ILIKE $${params.length} OR u.last_name ILIKE $${params.length} OR COALESCE(a.city, u.governorate, '') ILIKE $${params.length})`);
     }
 
     const whereClause = conditions.join(' AND ');
@@ -311,7 +311,7 @@ export class SellerBroadcastService {
       `SELECT COUNT(DISTINCT s.id)::text AS count
        FROM pd_store_subscription s
        JOIN pd_user u ON u.id = s.buyer_id
-       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       LEFT JOIN pd_customer_address a ON a.customer_id = u.id AND a.is_default = true
        WHERE ${whereClause}`,
       params
     );
@@ -336,14 +336,14 @@ export class SellerBroadcastService {
          u.first_name,
          u.last_name,
          u.email,
-         a.city,
+         COALESCE(a.city, u.governorate, 'Tunisie') AS city,
          s.is_verified_buyer,
          s.notify_price_drops,
          s.notify_new_products,
          s.created_at
        FROM pd_store_subscription s
        JOIN pd_user u ON u.id = s.buyer_id
-       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       LEFT JOIN pd_customer_address a ON a.customer_id = u.id AND a.is_default = true
        WHERE ${whereClause}
        ORDER BY s.id, s.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -388,12 +388,12 @@ export class SellerBroadcastService {
          u.first_name,
          u.last_name,
          u.email,
-         a.city,
+         COALESCE(a.city, u.governorate, 'Tunisie') AS city,
          s.is_verified_buyer,
          s.created_at
        FROM pd_store_subscription s
        JOIN pd_user u ON u.id = s.buyer_id
-       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       LEFT JOIN pd_customer_address a ON a.customer_id = u.id AND a.is_default = true
        WHERE s.store_id = $1
        ORDER BY s.id, s.created_at DESC`,
       [storeId]
