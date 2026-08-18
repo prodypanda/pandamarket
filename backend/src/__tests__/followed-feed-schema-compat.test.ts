@@ -135,7 +135,8 @@ describe('followed feed production schema compatibility', () => {
 
   it('queries recommendations with pd_store.subdomain and pd_product_image.url', async () => {
     queryMock
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }) // pd_buyer_interest_profile
+      .mockResolvedValueOnce({ rows: [] }) // pd_store_subscription
       .mockResolvedValueOnce({
         rows: [
           {
@@ -173,13 +174,30 @@ describe('followed feed production schema compatibility', () => {
     expect(result.recommended_products[0].store_subdomain).toBe('store-one');
     expect(result.similar_stores[0].subdomain).toBe('store-one');
 
-    const productSql = String(queryMock.mock.calls[1][0]);
-    const storeSql = String(queryMock.mock.calls[2][0]);
-    expect(productSql).toContain('s.subdomain AS store_subdomain');
-    expect(productSql).toContain('p.compare_at_price');
-    expect(productSql).toContain('SELECT url FROM pd_product_image');
-    expect(productSql).not.toContain('s.slug');
-    expect(storeSql).toContain('s.subdomain');
-    expect(storeSql).not.toContain('s.slug');
+    const allQueries = queryMock.mock.calls.map((c: any) => String(c[0])).join('\n');
+    expect(allQueries).toContain('s.subdomain AS store_subdomain');
+    expect(allQueries).toContain('p.compare_at_price');
+    expect(allQueries).toContain('SELECT url FROM pd_product_image');
+    expect(allQueries).not.toContain('s.slug');
+    expect(allQueries).toContain('s.subdomain');
+  });
+
+  it('excludes already followed stores from cross-seller product and similar store recommendations', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ tag_weights: { artisanat: 5 } }] }) // pd_buyer_interest_profile
+      .mockResolvedValueOnce({ rows: [{ store_id: 'store-already-followed' }] }) // pd_store_subscription
+      .mockResolvedValueOnce({ rows: [] }) // products
+      .mockResolvedValueOnce({ rows: [] }); // stores
+
+    const service = new BuyerInterestService();
+    await service.getRecommendations('buyer-1');
+
+    const productQueryCall = queryMock.mock.calls.find((c: any) => String(c[0]).includes('FROM pd_product p'));
+    const storeQueryCall = queryMock.mock.calls.find((c: any) => String(c[0]).includes('FROM pd_store s'));
+
+    expect(String(productQueryCall[0])).toContain('NOT (p.store_id = ANY(');
+    expect(String(storeQueryCall[0])).toContain('NOT (s.id = ANY(');
+    expect(productQueryCall[1]).toContainEqual(['store-already-followed']);
+    expect(storeQueryCall[1]).toContainEqual(['store-already-followed']);
   });
 });

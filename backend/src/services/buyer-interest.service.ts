@@ -196,15 +196,24 @@ export class BuyerInterestService {
     }
 
     let topTags: string[] = [];
+    let followedStoreIds: string[] = [];
     if (buyerId) {
-      const profileRes = await query<{ tag_weights: Record<string, number> }>(
-        `SELECT tag_weights FROM pd_buyer_interest_profile WHERE buyer_id = $1`,
-        [buyerId]
-      );
+      const [profileRes, subsRes] = await Promise.all([
+        query<{ tag_weights: Record<string, number> }>(
+          `SELECT tag_weights FROM pd_buyer_interest_profile WHERE buyer_id = $1`,
+          [buyerId]
+        ),
+        query<{ store_id: string }>(
+          `SELECT store_id FROM pd_store_subscription WHERE buyer_id = $1`,
+          [buyerId]
+        ),
+      ]);
+
       if (profileRes.rows.length > 0 && profileRes.rows[0].tag_weights) {
         const weights = profileRes.rows[0].tag_weights;
         topTags = Object.keys(weights).sort((a, b) => weights[b] - weights[a]).slice(0, 5);
       }
+      followedStoreIds = subsRes.rows.map((r) => r.store_id);
     }
 
     // Default general popular tags if no profile yet
@@ -212,7 +221,14 @@ export class BuyerInterestService {
       topTags = ['artisanat', 'electronique', 'mode', 'deco', 'tunisie'];
     }
 
-    // 1. Recommended cross-seller products matching top tags
+    // 1. Recommended cross-seller products matching top tags (excluding already followed stores)
+    const productParams: any[] = [topTags];
+    let productWhere = `p.status = 'published' AND p.interest_tags && $1::text[]`;
+    if (followedStoreIds.length > 0) {
+      productParams.push(followedStoreIds);
+      productWhere += ` AND NOT (p.store_id = ANY($${productParams.length}::text[]))`;
+    }
+
     const productsRes = await query<any>(
       `SELECT p.id, p.store_id, s.name AS store_name, s.subdomain AS store_subdomain, p.title, p.slug, p.price,
               p.compare_at_price,
@@ -228,24 +244,29 @@ export class BuyerInterestService {
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
-       WHERE p.status = 'published'
-         AND p.interest_tags && $1::text[]
+       WHERE ${productWhere}
        ORDER BY (
          SELECT COUNT(*) FROM unnest(p.interest_tags) t WHERE t = ANY($1::text[])
        ) DESC, p.created_at DESC
        LIMIT 16`,
-      [topTags]
+      productParams
     );
 
-    // 2. Similar Stores matching top tags
+    // 2. Similar Stores matching top tags (excluding already followed stores)
+    const storeParams: any[] = [topTags];
+    let storeWhere = `p.status = 'published' AND p.interest_tags && $1::text[]`;
+    if (followedStoreIds.length > 0) {
+      storeParams.push(followedStoreIds);
+      storeWhere += ` AND NOT (s.id = ANY($${storeParams.length}::text[]))`;
+    }
+
     const storesRes = await query<any>(
       `SELECT DISTINCT s.id, s.name, s.subdomain, s.subscribers_count
        FROM pd_store s
        JOIN pd_product p ON p.store_id = s.id
-       WHERE p.status = 'published'
-         AND p.interest_tags && $1::text[]
+       WHERE ${storeWhere}
        LIMIT 6`,
-      [topTags]
+      storeParams
     );
 
     return {

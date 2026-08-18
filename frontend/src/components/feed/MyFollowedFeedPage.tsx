@@ -2,7 +2,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store, Sparkles, Tag } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Compass,
+  LogIn,
+  PackageSearch,
+  Radio,
+  RefreshCw,
+  Store,
+  Sparkles,
+  Tag,
+  ShoppingBag,
+  TrendingUp,
+} from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -45,6 +58,7 @@ export const MyFollowedFeedPage: React.FC<{
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'price_drops' | 'new_arrivals'>('all');
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(queryStoreId);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [claimedCouponToast, setClaimedCouponToast] = useState<string | null>(null);
 
   // Sync selectedStoreId when URL query param changes
@@ -70,9 +84,9 @@ export const MyFollowedFeedPage: React.FC<{
     window.setTimeout(() => setClaimedCouponToast(null), 3000);
   }, [cartContext]);
 
-  const handleAddToCart = useCallback((product: FeedTimelineProduct) => {
-    if (onAddToCart) {
-      onAddToCart(product);
+  const handleAddToCart = useCallback((product: FeedTimelineProduct | { id: string; store_id: string; store_name: string; title: string; price: number; image_url: string | null }) => {
+    if (onAddToCart && 'published_at' in product) {
+      onAddToCart(product as FeedTimelineProduct);
     } else if (cartContext?.addToCart) {
       cartContext.addToCart({
         product_id: product.id,
@@ -122,18 +136,28 @@ export const MyFollowedFeedPage: React.FC<{
   const handleSubscribeRecommended = async (store: SimilarStore) => {
     try {
       await fetchWithCsrf(`/api/pd/stores/${store.id}/subscribe`, { method: 'POST' });
-      setData((prev) => prev ? {
-        ...prev,
-        followed_stores: [...prev.followed_stores, {
+      // Optimistic update: Add to followed_stores and immediately filter out from similar_stores
+      setData((prev) => {
+        if (!prev) return prev;
+        const newStore: FollowedStoreItem = {
           id: store.id,
           name: store.name,
           subdomain: store.subdomain,
           logo_url: null,
           unread_updates_count: 0,
           is_verified: true,
-        }],
-        similar_stores: prev.similar_stores.filter((item) => item.id !== store.id),
-      } : prev);
+          has_active_story: false,
+          active_flash_drop: null,
+        };
+        return {
+          ...prev,
+          followed_stores: [...prev.followed_stores, newStore],
+          similar_stores: prev.similar_stores.filter((item) => item.id !== store.id),
+        };
+      });
+
+      // Background re-fetch to pull the newly followed store's products into timeline
+      void loadFeedData(true);
     } catch {
       setError('Erreur lors de l’abonnement à la boutique.');
     }
@@ -147,8 +171,25 @@ export const MyFollowedFeedPage: React.FC<{
   }), [data, activeFilter, selectedStoreId]);
 
   const followedStores = data?.followed_stores || [];
-  const recommendedProducts = data?.recommended_products || [];
-  const similarStores = data?.similar_stores || [];
+  
+  // Set of all followed store IDs for client-side deduplication guarantee
+  const followedStoreIds = useMemo(
+    () => new Set(followedStores.map((s) => s.id)),
+    [followedStores]
+  );
+
+  // Similar stores with followed stores excluded
+  const similarStores = useMemo(
+    () => (data?.similar_stores || []).filter((s) => !followedStoreIds.has(s.id)),
+    [data?.similar_stores, followedStoreIds]
+  );
+
+  // Recommended products with followed stores excluded (for pure discovery)
+  const recommendedProducts = useMemo(
+    () => (data?.recommended_products || []).filter((p) => !followedStoreIds.has(p.store_id)),
+    [data?.recommended_products, followedStoreIds]
+  );
+
   const updateCount = data?.timeline_products.length || 0;
   const selectedStore = useMemo(
     () => followedStores.find((s) => s.id === selectedStoreId) || null,
@@ -221,7 +262,7 @@ export const MyFollowedFeedPage: React.FC<{
         <main className="min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0b0f17] dark:text-white" data-testid="my-followed-feed-page">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             {/* Page Header */}
-            <header className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161a22]/90 sm:p-8">
+            <header className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 shadow-xs backdrop-blur-xl dark:border-white/10 dark:bg-[#161a22]/90 sm:p-8">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-[#087f5b] dark:bg-emerald-950/50 dark:text-emerald-400">
@@ -266,7 +307,7 @@ export const MyFollowedFeedPage: React.FC<{
                     onClick={() => void loadFeedData(true)}
                     disabled={isRefreshing}
                     data-testid="feed-refresh-btn"
-                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-xs font-black text-gray-800 shadow-sm transition hover:bg-gray-50 hover:shadow dark:border-white/10 dark:bg-[#1f242e] dark:text-white dark:hover:bg-[#282e3b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] disabled:opacity-60"
+                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-xs font-black text-gray-800 shadow-xs transition hover:bg-gray-50 hover:shadow dark:border-white/10 dark:bg-[#1f242e] dark:text-white dark:hover:bg-[#282e3b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] disabled:opacity-60"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-[#087f5b]' : ''}`} />
                     <span>Actualiser</span>
@@ -291,7 +332,7 @@ export const MyFollowedFeedPage: React.FC<{
                 className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border border-emerald-500/20 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div>
@@ -307,7 +348,7 @@ export const MyFollowedFeedPage: React.FC<{
                   type="button"
                   data-testid={`claim-coupon-${selectedStore.id}`}
                   onClick={() => handleClaimCoupon(`VIP_${selectedStore.subdomain.toUpperCase()}`)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-emerald-700 transition"
                 >
                   <Tag className="h-3.5 w-3.5" />
                   <span>{t('followedFeed.claimCoupon') || 'Réclamer le coupon'}</span>
@@ -336,11 +377,14 @@ export const MyFollowedFeedPage: React.FC<{
                 activeFilter={activeFilter}
                 onFilterChange={setActiveFilter}
                 onAddToCart={handleAddToCart}
+                selectedTag={selectedTag}
+                onSelectTag={setSelectedTag}
               />
               <DiscoverSimilarStores
                 similarStores={similarStores}
                 recommendedProducts={recommendedProducts}
                 onFollowStore={handleSubscribeRecommended}
+                onAddToCart={handleAddToCart}
               />
             </div>
           </div>
