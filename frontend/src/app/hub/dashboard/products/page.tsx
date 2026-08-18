@@ -580,6 +580,15 @@ export default function ProductsPage() {
     storefront_parent_id: string | null;
     storefront_parent_name: string | null;
     storefront_category_path: string;
+    storefront_hierarchy?: Array<{
+      level?: number;
+      name: string;
+      name_fr?: string | null;
+      name_ar?: string | null;
+      name_en?: string | null;
+      icon?: string | null;
+      id?: string | null;
+    }>;
     multilingual?: {
       name_fr?: string | null;
       name_ar?: string | null;
@@ -1494,122 +1503,102 @@ export default function ProductsPage() {
   };
 
   const handleApplyCandidate = async (candidate: AiCategoryCandidate, idx: number): Promise<string | null> => {
-    // 1. Set marketplace category
+    setError('');
+    setSuccess('');
+
+    // 1. Set marketplace category in form
     if (candidate.marketplace_category_id) {
       setForm((c) => ({ ...c, marketplace_category_id: candidate.marketplace_category_id }));
     }
 
-    // 2. Set or create storefront category
-    if (candidate.storefront_category_id) {
-      setForm((c) => ({ ...c, storefront_category_id: candidate.storefront_category_id! }));
-      setAppliedCandidateIndex(idx);
-      setSuccess(`Catégories appliquées : ${candidate.marketplace_category_name} & ${candidate.storefront_category_name}`);
-      return candidate.storefront_category_id;
-    }
-
-    // Check if storefront category already exists in store by exact name AND correct parent hierarchy
-    const candidateParentId = candidate.storefront_parent_id || null;
-    const candidateParentName = candidate.storefront_parent_name?.trim().toLowerCase() || null;
-    const targetCatName = candidate.storefront_category_name.trim().toLowerCase();
-
-    const existingCat = storefrontCategories.find((c) => {
-      if (c.is_default) return false;
-      const n = c.name.toLowerCase().trim();
-      if (n !== targetCatName) return false;
-      // If the candidate specifies a parent ID, only match category with that exact parent_id
-      if (candidateParentId) {
-        return c.parent_id === candidateParentId;
-      }
-      // If the candidate specifies a parent name, verify that the existing category's parent matches
-      if (candidateParentName && candidateParentName !== targetCatName) {
-        const parentOfC = c.parent_id ? storefrontCategories.find((p) => p.id === c.parent_id) : null;
-        return parentOfC ? parentOfC.name.toLowerCase().trim() === candidateParentName : false;
-      }
-      // If no parent was specified by the candidate, match top-level categories
-      return !c.parent_id;
-    });
-
-    if (existingCat) {
-      setForm((c) => ({ ...c, storefront_category_id: existingCat.id }));
-      candidate.storefront_category_id = existingCat.id;
-      candidate.is_existing_storefront = true;
-      setAppliedCandidateIndex(idx);
-      setSuccess(`Catégorie vitrine existante "${existingCat.name}" sélectionnée !`);
-      return existingCat.id;
-    }
-
-    // Create storefront category on demand with multilingual names, parent resolution, and SEO
-    try {
-      let parentId = candidate.storefront_parent_id || undefined;
-
-      // If parent category does not exist yet in store, create parent category first!
-      if (!parentId && candidate.storefront_parent_name && candidate.storefront_parent_name.trim().toLowerCase() !== candidate.storefront_category_name.trim().toLowerCase()) {
-        const existingParent = storefrontCategories.find((c) => {
-          if (c.is_default) return false;
-          const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-          const normTarget = candidate.storefront_parent_name!.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-          return normName === normTarget;
-        });
-
-        if (existingParent) {
-          parentId = existingParent.id;
-        } else {
-          // Create the parent category on the fly
-          try {
-            const parentRes = await fetchWithCsrf('/api/pd/stores/me/categories', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
+    // 2. Build multi-level storefront hierarchy chain (up to 5 levels)
+    const hierarchy = (candidate.storefront_hierarchy && candidate.storefront_hierarchy.length > 0)
+      ? candidate.storefront_hierarchy.slice(0, 5)
+      : [
+          ...(candidate.storefront_parent_name && candidate.storefront_parent_name.trim().toLowerCase() !== candidate.storefront_category_name.trim().toLowerCase()
+            ? [{
                 name: candidate.storefront_parent_name.trim(),
                 name_fr: candidate.parent_multilingual?.name_fr || candidate.storefront_parent_name.trim(),
-                name_ar: candidate.parent_multilingual?.name_ar || undefined,
-                name_en: candidate.parent_multilingual?.name_en || undefined,
-                icon: candidate.icon || undefined,
-              }),
-            });
-            const parentData = await parentRes.json();
-            if (parentRes.ok && parentData.category) {
-              parentId = parentData.category.id;
-              setStorefrontCategories((curr) => [parentData.category, ...curr]);
+                name_ar: candidate.parent_multilingual?.name_ar || null,
+                name_en: candidate.parent_multilingual?.name_en || null,
+                icon: candidate.icon || 'Folder',
+                id: candidate.storefront_parent_id || null,
+              }]
+            : []),
+          {
+            name: candidate.storefront_category_name.trim(),
+            name_fr: candidate.multilingual?.name_fr || candidate.storefront_category_name.trim(),
+            name_ar: candidate.multilingual?.name_ar || null,
+            name_en: candidate.multilingual?.name_en || null,
+            icon: candidate.icon || 'Tag',
+            id: candidate.storefront_category_id || null,
+          },
+        ];
+
+    try {
+      let currentParentId: string | null = null;
+      let currentCategoriesList = [...storefrontCategories];
+
+      for (let level = 0; level < hierarchy.length; level++) {
+        const item = hierarchy[level];
+        const isLeaf = level === hierarchy.length - 1;
+        const normItemName = item.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+        // Check if this category level already exists in the store under currentParentId
+        let existingNode = currentCategoriesList.find((c) => {
+          if (c.is_default) return false;
+          const normC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const matchesName = normC === normItemName;
+          const matchesParent = currentParentId ? c.parent_id === currentParentId : !c.parent_id;
+          return matchesName && matchesParent;
+        });
+
+        if (existingNode) {
+          currentParentId = existingNode.id;
+          if (isLeaf) {
+            setForm((c) => ({ ...c, storefront_category_id: existingNode.id }));
+            candidate.storefront_category_id = existingNode.id;
+            candidate.is_existing_storefront = true;
+          }
+        } else {
+          // Create this category level on demand with proper parent linkage
+          const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              name: item.name.trim(),
+              name_fr: item.name_fr || item.name.trim(),
+              name_ar: item.name_ar || undefined,
+              name_en: item.name_en || undefined,
+              parent_id: currentParentId || undefined,
+              icon: item.icon || candidate.icon || 'Tag',
+              seo_title: isLeaf ? (candidate.seo_title || `${item.name} | Boutique`) : undefined,
+              seo_description: isLeaf ? (candidate.seo_description || `Découvrez nos articles ${item.name}.`) : undefined,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.category) {
+            const created = data.category;
+            currentCategoriesList = [created, ...currentCategoriesList];
+            setStorefrontCategories(currentCategoriesList);
+            currentParentId = created.id;
+            if (isLeaf) {
+              setForm((c) => ({ ...c, storefront_category_id: created.id }));
+              candidate.storefront_category_id = created.id;
+              candidate.is_existing_storefront = true;
             }
-          } catch {}
+          } else {
+            throw new Error(data.error?.message || `Impossible de créer le rayon/sous-catégorie "${item.name}"`);
+          }
         }
       }
 
-      // Create the specific subcategory under the parent!
-      const res = await fetchWithCsrf('/api/pd/stores/me/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: candidate.storefront_category_name.trim(),
-          name_fr: candidate.multilingual?.name_fr || candidate.storefront_category_name.trim(),
-          name_ar: candidate.multilingual?.name_ar || undefined,
-          name_en: candidate.multilingual?.name_en || undefined,
-          parent_id: parentId || undefined,
-          icon: candidate.icon || undefined,
-          seo_title: candidate.seo_title || undefined,
-          seo_description: candidate.seo_description || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.category) {
-        const newCat = data.category;
-        setStorefrontCategories((curr) => [newCat, ...curr]);
-        setForm((c) => ({ ...c, storefront_category_id: newCat.id }));
-        candidate.storefront_category_id = newCat.id;
-        candidate.is_existing_storefront = true;
-        setAppliedCandidateIndex(idx);
-        setSuccess(`Arborescence vitrine "${candidate.storefront_parent_name ? candidate.storefront_parent_name + ' › ' : ''}${newCat.name}" créée et assignée !`);
-        return newCat.id;
-      } else {
-        const msg = data.error?.message || "Impossible de créer la catégorie vitrine";
-        setError(msg);
-        return null;
-      }
+      setAppliedCandidateIndex(idx);
+      setSuccess(`Option #${candidate.rank || idx + 1} appliquée : "${candidate.storefront_category_path}". Cliquez sur "Enregistrer les modifications" pour valider la fiche.`);
+      return currentParentId;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de création de la catégorie vitrine");
+      setError(err instanceof Error ? err.message : 'Échec de création de la catégorie vitrine');
       return null;
     }
   };
@@ -1671,15 +1660,11 @@ export default function ProductsPage() {
           ];
 
       setAiCategoryCandidates(candidates);
-
-      // Auto-apply top candidate
-      if (candidates.length > 0) {
-        await handleApplyCandidate(candidates[0], 0);
-      }
+      setAppliedCandidateIndex(null);
 
       // Update tokens balance
       void fetchAiCredits();
-      setSuccess(`3 suggestions taxonomiques générées avec succès (${data.tokens_consumed || 1} jeton IA consommé)`);
+      setSuccess(`3 options taxonomiques proposées. Choisissez celle de votre choix et cliquez sur "Appliquer".`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de classification IA");
     } finally {
@@ -4457,7 +4442,7 @@ export default function ProductsPage() {
                                     {isApplied ? (
                                       <><CheckCircle2 className="w-3.5 h-3.5 text-white" /> Sélectionné</>
                                     ) : (
-                                      <><Check className="w-3.5 h-3.5" /> Appliquer</>
+                                      <><Check className="w-3.5 h-3.5" /> Appliquer ce choix</>
                                     )}
                                   </button>
                                 </div>

@@ -657,7 +657,7 @@ function buildMarketplaceBreadcrumb(categoryId: string, flatCategories: Marketpl
 }
 
 // Helper: Build breadcrumb path for Storefront Categories
-function buildStorefrontBreadcrumb(item: { id?: string | null; name: string; parent_id?: string | null }, storefrontCategories: StorefrontCategoryRow[]): string {
+export function buildStorefrontBreadcrumb(item: { id?: string | null; name: string; parent_id?: string | null }, storefrontCategories: StorefrontCategoryRow[]): string {
   const catMap = new Map<string, StorefrontCategoryRow>(storefrontCategories.map((c) => [c.id, c]));
   const path: string[] = [item.name];
   let parentId = item.parent_id || (item.id ? catMap.get(item.id)?.parent_id : null);
@@ -728,27 +728,38 @@ router.post(
     } catch {}
 
     const formatStorefrontTree = (cats: StorefrontCategoryRow[]): string => {
-      const roots = cats.filter((c) => !c.parent_id && !c.is_default);
+      const activeCats = cats.filter((c) => !c.is_default);
+      if (activeCats.length === 0) {
+        return 'Aucune catégorie personnalisée dans la boutique';
+      }
+
       const childrenMap = new Map<string, StorefrontCategoryRow[]>();
-      cats.forEach((c) => {
+      const roots: StorefrontCategoryRow[] = [];
+
+      for (const c of activeCats) {
         if (c.parent_id) {
           const list = childrenMap.get(c.parent_id) || [];
           list.push(c);
           childrenMap.set(c.parent_id, list);
+        } else {
+          roots.push(c);
         }
-      });
-
-      if (roots.length === 0 && cats.filter((c) => !c.is_default).length === 0) {
-        return 'Aucune catégorie personnalisée dans la boutique';
       }
 
       const lines: string[] = [];
-      for (const root of roots) {
-        lines.push(`- ${root.name} (id: "${root.id}")`);
-        const subList = childrenMap.get(root.id) || [];
-        for (const sub of subList) {
-          lines.push(`  └─ ${sub.name} (id: "${sub.id}")`);
+      const renderNode = (node: StorefrontCategoryRow, depth = 0) => {
+        if (depth > 5) return;
+        const indent = '  '.repeat(depth);
+        const prefix = depth === 0 ? '- ' : '└─ ';
+        lines.push(`${indent}${prefix}${node.name} (id: "${node.id}")`);
+        const children = childrenMap.get(node.id) || [];
+        for (const child of children) {
+          renderNode(child, depth + 1);
         }
+      };
+
+      for (const root of roots) {
+        renderNode(root, 0);
       }
       return lines.join('\n');
     };
@@ -763,12 +774,19 @@ Pour chaque candidat :
    - Choisissez la catégorie ou sous-catégorie la plus spécifique parmi les catégories PandaMarket Hub fournies.
    - Renvoyez son "marketplace_category_id" exact et son "marketplace_category_name" exact.
 
-2. 🏪 TAXONOMIE VITRINE BOUTIQUE (ARBORESCENCE À 2 NIVEAUX : RAYON PARENT + SOUS-CATÉGORIE) :
-   - Rayon Principal (Parent) : Spécifiez "storefront_parent_name" (ex: "Épicerie Fine & Terroir Tunisien", "Mode & Prêt-à-Porter", "Maison & Décoration"). Si le vendeur possède déjà un rayon parent correspondant dans sa vitrine, fournissez "storefront_parent_category_id".
-   - Sous-catégorie Vitrine : Spécifiez "storefront_category_name" (ex: "Huiles d'Olive Vierge Extra", "Sneakers & Baskets", "Céramiques & Poteries").
-   - IMPORTANT : Si cette sous-catégorie existe DÉJÀ en tant qu'enfant direct de ce rayon parent chez le vendeur, fournissez son "storefront_category_id". Si elle n'existe pas encore sous ce rayon parent (même si une catégorie de nom similaire existe à la racine), laissez "storefront_category_id": null pour qu'elle soit créée sous son rayon parent.
-   - Fournissez également les traductions multilingues ("name_fr", "name_ar", "name_en" pour la sous-catégorie, et "parent_name_fr", "parent_name_ar", "parent_name_en" pour le rayon parent), une icône Lucide ("icon": "Utensils", "ShoppingBag", "Footprints", "Shirt", "Sparkles", etc.), un "seo_title" et une "seo_description".
-   - Donnez une explication concise du choix dans "reason".`;
+2. 🏪 TAXONOMIE VITRINE BOUTIQUE (ARBORESCENCE MULTI-NIVEAUX : JUSQU'À 5 NIVEAUX DE PROFONDEUR) :
+   - Vous devez structurer l'arborescence vitrine la plus précise et logique pour le vendeur, avec une profondeur allant de 1 à 5 niveaux (ex: Rayon ➔ Sous-rayon ➔ Sous-catégorie ➔ Sous-segment ➔ Spécialité).
+   - Fournissez le tableau "storefront_hierarchy" contenant les niveaux ordonnés de la racine (niveau 1) jusqu'à la sous-catégorie feuille finale (niveau N, max 5).
+   - Chaque niveau dans "storefront_hierarchy" contient :
+     * "level": numéro de 1 à 5
+     * "name": nom du niveau (ex: "Épicerie Fine & Terroir", "Huiles & Condiments", "Huile d'Olive Vierge Extra")
+     * "name_fr": nom en français
+     * "name_ar": nom en arabe
+     * "name_en": nom en anglais
+     * "id": ID existant de la boutique si ce niveau existe déjà chez le vendeur avec cette parenté, sinon null
+   - Renvoyez également "storefront_path": tableau ordonné des noms des niveaux (ex: ["Épicerie Fine & Terroir", "Huiles & Condiments", "Huile d'Olive Vierge Extra"]).
+   - Spécifiez "storefront_category_name": nom de la sous-catégorie feuille finale.
+   - Fournissez une icône Lucide ("icon": "Utensils", "ShoppingBag", "Footprints", "Shirt", "Sparkles", "Tag", etc.), un "seo_title", une "seo_description", et une explication dans "reason".`;
 
     const userPrompt = `📦 PRODUIT À CLASSIFIER :
 - Titre : ${title}
@@ -792,16 +810,37 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
       "rank": 1,
       "marketplace_category_id": "id exact de la catégorie Hub choisie",
       "marketplace_category_name": "Nom exact de la catégorie Hub",
-      "storefront_parent_name": "Nom du rayon principal vitrine (ex: Épicerie Fine & Terroir Tunisien)",
-      "storefront_parent_category_id": "id si le rayon parent existe déjà dans la vitrine du vendeur, sinon null",
-      "storefront_category_name": "Nom de la sous-catégorie vitrine spécifique (ex: Huiles d'Olive Vierge Extra)",
-      "storefront_category_id": "id si la sous-catégorie existe DÉJÀ sous ce rayon parent, sinon null",
-      "parent_name_fr": "Nom français du rayon parent",
-      "parent_name_ar": "الاسم بالعربية للقسم الرئيسي",
-      "parent_name_en": "English name of parent category",
-      "name_fr": "Nom français de la sous-catégorie",
-      "name_ar": "الاسم بالعربية للقسم الفرعي",
-      "name_en": "English name of subcategory",
+      "storefront_hierarchy": [
+        {
+          "level": 1,
+          "name": "Nom du Rayon Principal (ex: Épicerie Fine & Terroir)",
+          "name_fr": "Nom français niveau 1",
+          "name_ar": "الاسم بالعربية للمستوى 1",
+          "name_en": "English name level 1",
+          "id": "id si existant chez le vendeur, sinon null"
+        },
+        {
+          "level": 2,
+          "name": "Nom du Sous-Rayon (ex: Huiles & Condiments)",
+          "name_fr": "Nom français niveau 2",
+          "name_ar": "الاسم بالعربية للمستوى 2",
+          "name_en": "English name level 2",
+          "id": "id si existant, sinon null"
+        },
+        {
+          "level": 3,
+          "name": "Nom de la Sous-Catégorie Spécifique (ex: Huiles d'Olive Vierge Extra)",
+          "name_fr": "Nom français niveau 3",
+          "name_ar": "الاسم بالعربية للمستوى 3",
+          "name_en": "English name level 3",
+          "id": "id si existant, sinon null"
+        }
+      ],
+      "storefront_path": ["Épicerie Fine & Terroir", "Huiles & Condiments", "Huiles d'Olive Vierge Extra"],
+      "storefront_category_name": "Huiles d'Olive Vierge Extra",
+      "name_fr": "Huiles d'Olive Vierge Extra",
+      "name_ar": "زيت زيتون بكر ممتاز",
+      "name_en": "Extra Virgin Olive Oil",
       "icon": "Utensils",
       "seo_title": "Titre SEO",
       "seo_description": "Description SEO",
@@ -889,87 +928,133 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
 
         const mpPath = buildMarketplaceBreadcrumb(mpCat.id, flatCategories);
 
-        // 2. Resolve storefront category & parent
-        let sfMatch: StorefrontCategoryRow | undefined;
-        const sfName = (raw.storefront_category_name || raw.name_fr || mpCat.name).trim();
-        const normSfTarget = sfName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        // 2. Resolve multi-level storefront hierarchy (up to 5 levels)
+        let hierarchy: Array<{
+          name: string;
+          name_fr: string;
+          name_ar?: string | null;
+          name_en?: string | null;
+          icon?: string;
+          id?: string | null;
+        }> = [];
 
-        if (raw.storefront_category_id) {
-          const byId = storefrontCategories.find((c) => c.id === raw.storefront_category_id && !c.is_default);
-          if (byId) {
-            const normById = byId.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            if (normById === normSfTarget || normById.includes(normSfTarget) || normSfTarget.includes(normById)) {
-              sfMatch = byId;
-            }
-          }
-        }
-
-        if (!sfMatch && sfName) {
-          sfMatch = storefrontCategories.find((c) => {
-            if (c.is_default) return false;
-            const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return normName === normSfTarget || normName.includes(normSfTarget) || normSfTarget.includes(normName);
-          });
-        }
-
-        const sfParentName = (raw.storefront_parent_name || raw.parent_name_fr || '').trim();
-        let sfParentId = raw.storefront_parent_category_id || raw.storefront_parent_id || (sfMatch ? sfMatch.parent_id : null);
-        let parentMatch = sfParentId ? storefrontCategories.find((c) => c.id === sfParentId && !c.is_default) : undefined;
-        if (!parentMatch && sfParentName) {
-          const normParentTarget = sfParentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          parentMatch = storefrontCategories.find((c) => {
-            if (c.is_default) return false;
-            const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return normName === normParentTarget || normName.includes(normParentTarget) || normParentTarget.includes(normName);
-          });
-        }
-
-        const resolvedParentName = parentMatch ? parentMatch.name : (sfParentName || null);
-        const resolvedParentId = parentMatch ? parentMatch.id : null;
-
-        // If a parent is suggested and sfMatch is NOT an existing child of that parent,
-        // invalidate sfMatch so that a new subcategory is created under the parent.
-        if (sfMatch && resolvedParentName && resolvedParentName.trim().toLowerCase() !== sfName.trim().toLowerCase()) {
-          if (!resolvedParentId || sfMatch.parent_id !== resolvedParentId) {
-            sfMatch = undefined;
-          }
-        }
-
-        let sfPath = '';
-        if (resolvedParentName && sfName && resolvedParentName !== sfName) {
-          sfPath = `${resolvedParentName} › ${sfMatch?.name || sfName}`;
+        if (Array.isArray(raw.storefront_hierarchy) && raw.storefront_hierarchy.length > 0) {
+          hierarchy = raw.storefront_hierarchy.slice(0, 5).map((h: any) => ({
+            name: (h.name || h.name_fr || '').trim(),
+            name_fr: (h.name_fr || h.name || '').trim(),
+            name_ar: h.name_ar ? String(h.name_ar).trim() : null,
+            name_en: h.name_en ? String(h.name_en).trim() : null,
+            icon: h.icon || raw.icon || 'Tag',
+            id: h.id ? String(h.id) : null,
+          })).filter((h: { name: string }) => Boolean(h.name));
+        } else if (Array.isArray(raw.storefront_path) && raw.storefront_path.length > 0) {
+          hierarchy = raw.storefront_path.slice(0, 5).map((pName: any, pIdx: number) => {
+            const isLast = pIdx === raw.storefront_path.length - 1;
+            return {
+              name: String(pName).trim(),
+              name_fr: String(pName).trim(),
+              name_ar: isLast ? (raw.name_ar || null) : null,
+              name_en: isLast ? (raw.name_en || null) : null,
+              icon: raw.icon || 'Tag',
+              id: null,
+            };
+          }).filter((h: { name: string }) => Boolean(h.name));
         } else {
-          sfPath = buildStorefrontBreadcrumb(
-            { id: sfMatch?.id, name: sfName, parent_id: resolvedParentId },
-            storefrontCategories,
-          ) || sfName;
+          // Backward compatibility with 2-level parent + subcategory
+          const pName = (raw.storefront_parent_name || raw.parent_name_fr || '').trim();
+          const sName = (raw.storefront_category_name || raw.name_fr || mpCat.name).trim();
+          if (pName && pName.toLowerCase() !== sName.toLowerCase()) {
+            hierarchy = [
+              {
+                name: pName,
+                name_fr: raw.parent_name_fr || pName,
+                name_ar: raw.parent_name_ar || null,
+                name_en: raw.parent_name_en || null,
+                icon: raw.icon || 'Folder',
+                id: raw.storefront_parent_category_id || raw.storefront_parent_id || null,
+              },
+              {
+                name: sName,
+                name_fr: raw.name_fr || sName,
+                name_ar: raw.name_ar || null,
+                name_en: raw.name_en || null,
+                icon: raw.icon || 'Tag',
+                id: raw.storefront_category_id || null,
+              },
+            ];
+          } else {
+            hierarchy = [
+              {
+                name: sName,
+                name_fr: raw.name_fr || sName,
+                name_ar: raw.name_ar || null,
+                name_en: raw.name_en || null,
+                icon: raw.icon || 'Tag',
+                id: raw.storefront_category_id || null,
+              },
+            ];
+          }
         }
 
+        // Match existing category IDs along the hierarchy chain
+        let currentParentId: string | null = null;
+        for (let l = 0; l < hierarchy.length; l++) {
+          const item = hierarchy[l];
+          const normTarget = item.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+          let match: StorefrontCategoryRow | undefined;
+          if (item.id) {
+            match = storefrontCategories.find((c) => c.id === item.id && !c.is_default && (currentParentId ? c.parent_id === currentParentId : !c.parent_id));
+          }
+          if (!match) {
+            match = storefrontCategories.find((c) => {
+              if (c.is_default) return false;
+              const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+              const matchesName = normName === normTarget || normName.includes(normTarget) || normTarget.includes(normName);
+              const matchesParent = currentParentId ? c.parent_id === currentParentId : !c.parent_id;
+              return matchesName && matchesParent;
+            });
+          }
+
+          if (match) {
+            item.id = match.id;
+            item.name = match.name;
+            currentParentId = match.id;
+          } else {
+            item.id = null;
+            currentParentId = null; // downstream child nodes won't exist either
+          }
+        }
+
+        const leafNode = hierarchy[hierarchy.length - 1] || { name: 'Général', name_fr: 'Général', id: null, icon: 'Tag' };
+        const sfPath = hierarchy.map((h) => h.name_fr || h.name).join(' › ');
+        const parentNode = hierarchy.length > 1 ? hierarchy[hierarchy.length - 2] : null;
 
         return {
           rank: idx + 1,
           marketplace_category_id: mpCat.id,
           marketplace_category_name: mpCat.name,
           marketplace_category_path: mpPath || mpCat.name,
-          storefront_category_name: sfMatch ? sfMatch.name : sfName,
-          storefront_category_id: sfMatch ? sfMatch.id : null,
-          storefront_parent_id: resolvedParentId,
-          storefront_parent_name: resolvedParentName,
+          storefront_category_name: leafNode.name,
+          storefront_category_id: leafNode.id || null,
+          storefront_parent_id: parentNode?.id || null,
+          storefront_parent_name: parentNode?.name || null,
           storefront_category_path: sfPath,
+          storefront_hierarchy: hierarchy,
           multilingual: {
-            name_fr: raw.name_fr || sfName,
-            name_ar: raw.name_ar || null,
-            name_en: raw.name_en || null,
+            name_fr: leafNode.name_fr || leafNode.name,
+            name_ar: leafNode.name_ar || null,
+            name_en: leafNode.name_en || null,
           },
-          parent_multilingual: {
-            name_fr: raw.parent_name_fr || resolvedParentName,
-            name_ar: raw.parent_name_ar || null,
-            name_en: raw.parent_name_en || null,
-          },
-          icon: raw.icon || 'Tag',
-          seo_title: raw.seo_title || `${sfName} | Boutique`,
-          seo_description: raw.seo_description || `Découvrez nos articles dans la catégorie ${sfName}.`,
-          is_existing_storefront: Boolean(sfMatch),
+          parent_multilingual: parentNode ? {
+            name_fr: parentNode.name_fr || parentNode.name,
+            name_ar: parentNode.name_ar || null,
+            name_en: parentNode.name_en || null,
+          } : undefined,
+          icon: leafNode.icon || raw.icon || 'Tag',
+          seo_title: raw.seo_title || `${leafNode.name} | Boutique`,
+          seo_description: raw.seo_description || `Découvrez nos articles dans la catégorie ${leafNode.name}.`,
+          is_existing_storefront: Boolean(leafNode.id),
           confidence: typeof raw.confidence === 'number' ? Math.min(0.99, Math.max(0.4, raw.confidence)) : 0.85 - idx * 0.08,
           reason: raw.reason || `Classification recommandée pour '${mpCat.name}'.`,
         };
