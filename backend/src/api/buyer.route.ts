@@ -71,11 +71,15 @@ router.get(
         };
       } else if (s.latest_products && s.latest_products.some((p: any) => p.compare_at_price && p.compare_at_price > p.price)) {
         const promoProd = s.latest_products.find((p: any) => p.compare_at_price && p.compare_at_price > p.price);
-        const pct = Math.round(((promoProd.compare_at_price - promoProd.price) / promoProd.compare_at_price) * 100);
-        active_flash_drop = {
-          title: promoProd.title,
-          discount: `-${pct}%`,
-        };
+        if (promoProd && promoProd.compare_at_price) {
+          const orig = Number(promoProd.compare_at_price);
+          const curr = Number(promoProd.price);
+          const pct = Math.round(((orig - curr) / orig) * 100);
+          active_flash_drop = {
+            title: promoProd.title,
+            discount: `-${pct}%`,
+          };
+        }
       }
 
       const has_active_story = s.unread_updates_count > 0 || !!active_flash_drop || (s.latest_products && s.latest_products.length > 0);
