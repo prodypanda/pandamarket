@@ -17,6 +17,7 @@ import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 
 interface Product {
   id: string;
+  store_id?: string;
   title: string;
   price: number | string;
   compare_at_price?: number | string | null;
@@ -122,7 +123,7 @@ function ProductCard({
       price: typeof product.price === 'number' ? product.price : Number(product.price) || 0,
       base_price: typeof product.price === 'number' ? product.price : Number(product.price) || 0,
       quantity: 1,
-      store_id: product.id,
+      store_id: product.store_id || (product as any).storeId || (product as any).store?.id || product.store_subdomain || product.id,
       store_name: product.store_name || 'PandaMarket Store',
       store_subdomain: product.store_subdomain,
       image_url: image || null,

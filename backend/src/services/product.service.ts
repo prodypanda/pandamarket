@@ -235,6 +235,12 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     store_product_count: row.store_product_count !== undefined && row.store_product_count !== null ? Number(row.store_product_count) : null,
     average_rating: row.average_rating !== undefined && row.average_rating !== null ? Number(row.average_rating) : 0,
     review_count: row.review_count !== undefined && row.review_count !== null ? Number(row.review_count) : 0,
+    marketplace_category_slug: row.marketplace_category_slug ?? null,
+    marketplace_category_name: row.marketplace_category_name ?? null,
+    storefront_category_slug: row.storefront_category_slug ?? null,
+    storefront_category_name: row.storefront_category_name ?? null,
+    storefront_parent_category_slug: row.storefront_parent_category_slug ?? null,
+    storefront_parent_category_name: row.storefront_parent_category_name ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -909,12 +915,14 @@ export class ProductService {
               seller_stats.product_count AS store_product_count,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
+              parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
               COALESCE(v.variants, '[]'::json) AS variants
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
+       LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
        LEFT JOIN pd_product_rating pr ON pr.product_id = p.id
        LEFT JOIN LATERAL (
          SELECT json_agg(
@@ -952,7 +960,7 @@ export class ProductService {
          FROM pd_product sp
          WHERE sp.store_id = s.id AND sp.status = $3
        ) seller_stats ON true
-       WHERE p.store_id = $1 AND p.slug = $2 AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
+       WHERE p.store_id = $1 AND (p.slug = $2 OR p.id = $2) AND p.status = $3 AND s.status = 'verified' AND COALESCE(s.is_verified, false) = true
        LIMIT 1`,
       [storeId, slug, ProductStatus.Published],
     );

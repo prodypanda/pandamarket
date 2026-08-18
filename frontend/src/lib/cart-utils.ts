@@ -103,8 +103,13 @@ export function removeItem(items: CartItem[], id: string): CartItem[] {
   return items.filter((i) => i.id !== id);
 }
 
+export function normalizeStoreKey(item: CartItem): string {
+  return (item.store_id || item.store_subdomain || item.store_name || 'unknown_store').trim();
+}
+
 export function removeItemsByStore(items: CartItem[], storeId: string): CartItem[] {
-  return items.filter((item) => item.store_id !== storeId);
+  const target = storeId.trim();
+  return items.filter((item) => normalizeStoreKey(item) !== target && item.store_id !== target && item.store_subdomain !== target);
 }
 
 export function updateItemQuantity(items: CartItem[], id: string, quantity: number): CartItem[] {
@@ -130,10 +135,11 @@ export function getItemCount(items: CartItem[]): number {
 export function getItemsByStore(items: CartItem[]): Record<string, { store_name: string; items: CartItem[] }> {
   const grouped: Record<string, { store_name: string; items: CartItem[] }> = {};
   for (const item of items) {
-    if (!grouped[item.store_id]) {
-      grouped[item.store_id] = { store_name: item.store_name, items: [] };
+    const key = normalizeStoreKey(item);
+    if (!grouped[key]) {
+      grouped[key] = { store_name: item.store_name || 'Boutique Partenaire', items: [] };
     }
-    grouped[item.store_id].items.push(item);
+    grouped[key].items.push(item);
   }
   return grouped;
 }
@@ -143,7 +149,7 @@ export function isCartItemShippable(item: CartItem): boolean {
 }
 
 export function getShippableStoreCount(items: CartItem[]): number {
-  return new Set(items.filter(isCartItemShippable).map((item) => item.store_id)).size;
+  return new Set(items.filter(isCartItemShippable).map(normalizeStoreKey)).size;
 }
 
 export function getStoreShippingTotal(items: CartItem[], shippingPerStore: number): number {
@@ -153,3 +159,4 @@ export function getStoreShippingTotal(items: CartItem[], shippingPerStore: numbe
 export function getShippingTotalForItems(items: CartItem[], shippingPerStore: number): number {
   return getShippableStoreCount(items) * shippingPerStore;
 }
+

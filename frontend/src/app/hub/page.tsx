@@ -43,6 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 interface Product {
   id: string;
+  store_id?: string;
   title: string;
   slug?: string | null;
   price: number | string;
@@ -133,6 +134,7 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
     const rawList: any[] = data.products || data.data || [];
     const products: Product[] = rawList.map((p) => ({
       id: p.id,
+      store_id: p.store_id || p.store?.id || '',
       title: p.title,
       slug: p.slug,
       price: p.price,
@@ -163,6 +165,7 @@ async function getTrendingProducts(sortBy?: string): Promise<{ products: Product
           if (!existingIds.has(d.id)) {
             products.unshift({
               id: d.id,
+              store_id: d.store_id || d.store?.id || '',
               title: d.title,
               slug: d.slug,
               price: d.price,

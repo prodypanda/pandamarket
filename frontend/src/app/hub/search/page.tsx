@@ -35,6 +35,7 @@ import { StoreInfoBadge } from '../../../components/hub/home-template-shared';
 
 interface SearchProduct {
   id: string;
+  store_id?: string;
   type?: string | null;
   title: string;
   price: number | string;

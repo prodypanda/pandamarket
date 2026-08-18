@@ -132,8 +132,7 @@ export default async function StoreProductsPage({
 
   if (!store) notFound();
 
-  const isPublicStore = store.status === 'verified' && store.is_verified === true;
-  if (!isPublicStore) notFound();
+  if (store.status === 'suspended') notFound();
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
   const { products, meta } = await getStoreProducts(store.id, resolvedSearchParams);

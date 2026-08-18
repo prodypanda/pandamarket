@@ -9,6 +9,7 @@ import type { MarketplaceSettings } from '@/lib/marketplace-settings';
 
 export interface HomeProduct {
   id: string;
+  store_id?: string;
   title: string;
   slug?: string | null;
   price: number | string;
@@ -378,7 +379,7 @@ export function QuickAddToCartButton({
       price: toNumber(product.price),
       base_price: toNumber(product.price),
       quantity: 1,
-      store_id: product.id,
+      store_id: product.store_id || (product as any).storeId || (product as any).store?.id || product.store_subdomain || product.id,
       store_name: product.store_name || 'PandaMarket Store',
       store_subdomain: product.store_subdomain,
       image_url: image || null,
