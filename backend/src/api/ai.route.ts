@@ -763,11 +763,11 @@ Pour chaque candidat :
    - Choisissez la catégorie ou sous-catégorie la plus spécifique parmi les catégories PandaMarket Hub fournies.
    - Renvoyez son "marketplace_category_id" exact et son "marketplace_category_name" exact.
 
-2. 🏪 TAXONOMIE VITRINE BOUTIQUE :
-   - Examinez les catégories vitrine existantes du vendeur. Si l'une correspond fidèlement, réutilisez son nom et son id.
-   - Sinon, créez un nom de catégorie vitrine sur-mesure, élégant, attractif et spécifique au créneau du produit (ex: "Sneakers & Baskets Sportswear", "Huiles d'Olive & Terroir", "Céramiques & Poteries").
-   - Si le vendeur possède déjà une catégorie parente pertinente (ex: "Chaussures" ou "Maison"), spécifiez "storefront_parent_category_id".
-   - Fournissez également les traductions ("name_fr", "name_ar", "name_en"), une icône suggérée ("icon": Lucide icon name comme "ShoppingBag", "Footprints", "Shirt", "Sparkles", "Utensils", etc.), un "seo_title" et une "seo_description".
+2. 🏪 TAXONOMIE VITRINE BOUTIQUE (ARBORESCENCE À 2 NIVEAUX : RAYON PARENT + SOUS-CATÉGORIE) :
+   - Rayon Principal (Parent) : Spécifiez "storefront_parent_name" (ex: "Épicerie Fine & Terroir Tunisien", "Mode & Prêt-à-Porter", "Maison & Décoration"). Si le vendeur possède déjà un rayon parent correspondant dans sa vitrine, fournissez "storefront_parent_category_id".
+   - Sous-catégorie Vitrine : Spécifiez "storefront_category_name" (ex: "Huiles d'Olive Vierge Extra", "Sneakers & Baskets", "Céramiques & Poteries").
+   - IMPORTANT : Si cette sous-catégorie existe DÉJÀ en tant qu'enfant direct de ce rayon parent chez le vendeur, fournissez son "storefront_category_id". Si elle n'existe pas encore sous ce rayon parent (même si une catégorie de nom similaire existe à la racine), laissez "storefront_category_id": null pour qu'elle soit créée sous son rayon parent.
+   - Fournissez également les traductions multilingues ("name_fr", "name_ar", "name_en" pour la sous-catégorie, et "parent_name_fr", "parent_name_ar", "parent_name_en" pour le rayon parent), une icône Lucide ("icon": "Utensils", "ShoppingBag", "Footprints", "Shirt", "Sparkles", etc.), un "seo_title" et une "seo_description".
    - Donnez une explication concise du choix dans "reason".`;
 
     const userPrompt = `📦 PRODUIT À CLASSIFIER :
@@ -792,17 +792,21 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
       "rank": 1,
       "marketplace_category_id": "id exact de la catégorie Hub choisie",
       "marketplace_category_name": "Nom exact de la catégorie Hub",
-      "storefront_category_name": "Nom de la catégorie vitrine (existante ou sur-mesure)",
-      "storefront_category_id": "id si catégorie vitrine existante, sinon null",
-      "storefront_parent_category_id": "id catégorie parente existante si applicable, sinon null",
-      "name_fr": "Nom français",
-      "name_ar": "الاسم بالعربية",
-      "name_en": "English name",
-      "icon": "Footprints",
+      "storefront_parent_name": "Nom du rayon principal vitrine (ex: Épicerie Fine & Terroir Tunisien)",
+      "storefront_parent_category_id": "id si le rayon parent existe déjà dans la vitrine du vendeur, sinon null",
+      "storefront_category_name": "Nom de la sous-catégorie vitrine spécifique (ex: Huiles d'Olive Vierge Extra)",
+      "storefront_category_id": "id si la sous-catégorie existe DÉJÀ sous ce rayon parent, sinon null",
+      "parent_name_fr": "Nom français du rayon parent",
+      "parent_name_ar": "الاسم بالعربية للقسم الرئيسي",
+      "parent_name_en": "English name of parent category",
+      "name_fr": "Nom français de la sous-catégorie",
+      "name_ar": "الاسم بالعربية للقسم الفرعي",
+      "name_en": "English name of subcategory",
+      "icon": "Utensils",
       "seo_title": "Titre SEO",
       "seo_description": "Description SEO",
       "confidence": 0.96,
-      "reason": "Explication courte du choix NLP"
+      "reason": "Explication courte du choix taxonomique"
     }
   ]
 }`;
@@ -923,6 +927,14 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         const resolvedParentName = parentMatch ? parentMatch.name : (sfParentName || null);
         const resolvedParentId = parentMatch ? parentMatch.id : null;
 
+        // If a parent is suggested and sfMatch is NOT an existing child of that parent,
+        // invalidate sfMatch so that a new subcategory is created under the parent.
+        if (sfMatch && resolvedParentName && resolvedParentName.trim().toLowerCase() !== sfName.trim().toLowerCase()) {
+          if (!resolvedParentId || sfMatch.parent_id !== resolvedParentId) {
+            sfMatch = undefined;
+          }
+        }
+
         let sfPath = '';
         if (resolvedParentName && sfName && resolvedParentName !== sfName) {
           sfPath = `${resolvedParentName} › ${sfMatch?.name || sfName}`;
@@ -932,6 +944,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
             storefrontCategories,
           ) || sfName;
         }
+
 
         return {
           rank: idx + 1,

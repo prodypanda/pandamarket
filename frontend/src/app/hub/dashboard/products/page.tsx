@@ -1507,12 +1507,26 @@ export default function ProductsPage() {
       return candidate.storefront_category_id;
     }
 
-    // Check if storefront category already exists in store by exact name
+    // Check if storefront category already exists in store by exact name AND correct parent hierarchy
+    const candidateParentId = candidate.storefront_parent_id || null;
+    const candidateParentName = candidate.storefront_parent_name?.trim().toLowerCase() || null;
+    const targetCatName = candidate.storefront_category_name.trim().toLowerCase();
+
     const existingCat = storefrontCategories.find((c) => {
       if (c.is_default) return false;
-      const n1 = c.name.toLowerCase().trim();
-      const n2 = candidate.storefront_category_name.toLowerCase().trim();
-      return n1 === n2;
+      const n = c.name.toLowerCase().trim();
+      if (n !== targetCatName) return false;
+      // If the candidate specifies a parent ID, only match category with that exact parent_id
+      if (candidateParentId) {
+        return c.parent_id === candidateParentId;
+      }
+      // If the candidate specifies a parent name, verify that the existing category's parent matches
+      if (candidateParentName && candidateParentName !== targetCatName) {
+        const parentOfC = c.parent_id ? storefrontCategories.find((p) => p.id === c.parent_id) : null;
+        return parentOfC ? parentOfC.name.toLowerCase().trim() === candidateParentName : false;
+      }
+      // If no parent was specified by the candidate, match top-level categories
+      return !c.parent_id;
     });
 
     if (existingCat) {

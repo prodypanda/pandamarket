@@ -502,8 +502,15 @@ function generateFallbackCopywriting(prompt: string): string {
         return normSf === sfParentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       });
 
-      const sfName = matchedSf
-        ? matchedSf.name
+      // If matchedSf was found by name but equals the parent itself,
+      // invalidate it so the subcategory is generated as a child.
+      let resolvedSf = matchedSf;
+      if (resolvedSf && matchedParent && resolvedSf.id === matchedParent.id) {
+        resolvedSf = undefined;
+      }
+
+      const sfName = resolvedSf
+        ? resolvedSf.name
         : (idx === 0 && sfSug)
         ? sfSug.fr
         : mpCat.name;
@@ -524,9 +531,9 @@ function generateFallbackCopywriting(prompt: string): string {
         parent_name_ar: parentSug?.ar || null,
         parent_name_en: parentSug?.en || null,
         storefront_category_name: sfName,
-        storefront_category_id: matchedSf ? matchedSf.id : null,
+        storefront_category_id: resolvedSf ? resolvedSf.id : null,
         storefront_parent_category_id: matchedParent ? matchedParent.id : null,
-        created_new: !matchedSf,
+        created_new: !resolvedSf,
         name_fr: sfSug?.fr || sfName,
         name_ar: sfSug?.ar || null,
         name_en: sfSug?.en || null,
