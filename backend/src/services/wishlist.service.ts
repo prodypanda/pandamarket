@@ -9,6 +9,7 @@ import { query } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { PdErrorCode, PdNotFoundError } from '../errors';
 import { logger } from '../utils/logger';
+import { buyerInterestService } from './buyer-interest.service';
 
 export interface WishlistItemRow {
   id: string;
@@ -56,6 +57,7 @@ export class WishlistService {
         [customer_id, product_id],
       );
       logger.info({ customer_id, product_id }, 'Wishlist item removed');
+      buyerInterestService.syncBuyerProfile(customer_id).catch(() => {});
       return { added: false };
     }
 
@@ -66,6 +68,7 @@ export class WishlistService {
       [id, customer_id, product_id],
     );
     logger.info({ customer_id, product_id }, 'Wishlist item added');
+    buyerInterestService.syncBuyerProfile(customer_id).catch(() => {});
     return { added: true };
   }
 
@@ -86,6 +89,7 @@ export class WishlistService {
         'INSERT INTO pd_wishlist_item (id, customer_id, product_id) VALUES ($1, $2, $3) RETURNING *',
         [id, customer_id, product_id],
       );
+      buyerInterestService.syncBuyerProfile(customer_id).catch(() => {});
       return rows[0];
     } catch (err: unknown) {
       if ((err as { code?: string }).code === '23505') {
@@ -94,6 +98,7 @@ export class WishlistService {
           'SELECT * FROM pd_wishlist_item WHERE customer_id = $1 AND product_id = $2',
           [customer_id, product_id],
         );
+        buyerInterestService.syncBuyerProfile(customer_id).catch(() => {});
         return rows[0];
       }
       throw err;

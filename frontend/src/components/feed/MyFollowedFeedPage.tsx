@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { AlertTriangle, ArrowRight, Compass, LogIn, PackageSearch, Radio, RefreshCw, Store, Sparkles, Tag } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { HubNavbar } from '@/components/hub/HubNavbar';
 import { HubFooter } from '@/components/hub/HubFooter';
 import { FollowedStoresCarousel, type FollowedStoreItem } from './FollowedStoresCarousel';
@@ -25,6 +27,10 @@ export const MyFollowedFeedPage: React.FC<{
   onAddToCart?: (product: FeedTimelineProduct) => void;
   showNavAndFooter?: boolean;
 }> = ({ initialData = null, isAuthenticated = true, onAddToCart, showNavAndFooter = true }) => {
+  const { t, dir } = useLocale();
+  const searchParams = useSearchParams();
+  const queryStoreId = searchParams ? searchParams.get('store') : null;
+
   let cartContext: ReturnType<typeof useCart> | undefined;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -38,7 +44,27 @@ export const MyFollowedFeedPage: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'price_drops' | 'new_arrivals'>('all');
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(queryStoreId);
+  const [claimedCouponToast, setClaimedCouponToast] = useState<string | null>(null);
+
+  // Sync selectedStoreId when URL query param changes
+  useEffect(() => {
+    if (queryStoreId) {
+      setSelectedStoreId(queryStoreId);
+    }
+  }, [queryStoreId]);
+
+  const handleClaimCoupon = useCallback((code: string) => {
+    if (!code) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(code).catch(() => {});
+    }
+    if (cartContext?.applyCoupon) {
+      cartContext.applyCoupon(code).catch(() => {});
+    }
+    setClaimedCouponToast(code);
+    window.setTimeout(() => setClaimedCouponToast(null), 3000);
+  }, [cartContext]);
 
   const handleAddToCart = useCallback((product: FeedTimelineProduct) => {
     if (onAddToCart) {
@@ -120,6 +146,10 @@ export const MyFollowedFeedPage: React.FC<{
   const recommendedProducts = data?.recommended_products || [];
   const similarStores = data?.similar_stores || [];
   const updateCount = data?.timeline_products.length || 0;
+  const selectedStore = useMemo(
+    () => followedStores.find((s) => s.id === selectedStoreId) || null,
+    [followedStores, selectedStoreId]
+  );
 
   const content = (
     <>
@@ -249,6 +279,51 @@ export const MyFollowedFeedPage: React.FC<{
                 onSelectStore={setSelectedStoreId}
               />
             </div>
+
+            {/* 1-Click Interactive Coupon Claim Banner (3.4) */}
+            {selectedStore && (
+              <div
+                data-testid="store-coupon-banner"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border border-emerald-500/20 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      Offre réservée aux abonnés de {selectedStore.name}
+                    </p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      Cliquez pour réclamer et appliquer automatiquement votre réduction exclusive en caisse.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-testid={`claim-coupon-${selectedStore.id}`}
+                  onClick={() => handleClaimCoupon(`VIP_${selectedStore.subdomain.toUpperCase()}`)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition"
+                >
+                  <Tag className="h-3.5 w-3.5" />
+                  <span>{t('followedFeed.claimCoupon') || 'Réclamer le coupon'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* 1-Click Coupon Claim Toast Feedback (3.4) */}
+            {claimedCouponToast && (
+              <div
+                role="status"
+                data-testid="coupon-claimed-toast"
+                className="fixed bottom-6 end-6 z-50 flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-xs font-bold text-white shadow-2xl dark:bg-white dark:text-gray-900 animate-bounce"
+              >
+                <Tag className="h-4 w-4 text-emerald-400 dark:text-emerald-600" />
+                <span>
+                  {t('followedFeed.couponCopied') || 'Code coupon copié !'} ({claimedCouponToast}) — Réduction activée au panier !
+                </span>
+              </div>
+            )}
 
             {/* Feed Timeline + Discovery Sidebar */}
             <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(300px,0.86fr)]">

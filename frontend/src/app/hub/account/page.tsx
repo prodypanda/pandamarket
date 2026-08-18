@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FileText, Heart, Loader2, LogOut, MapPin, MessageSquare, Package, ShoppingBag, User } from 'lucide-react';
+import { FileText, Heart, Loader2, LogOut, MapPin, MessageSquare, Package, Rss, ShoppingBag, User } from 'lucide-react';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
@@ -101,6 +101,12 @@ export default function BuyerAccountPage() {
       description: 'Discuter avec les vendeurs ou contacter le support marketplace.',
       href: '/hub/messages',
       icon: MessageSquare,
+    },
+    {
+      title: 'Mon Fil Panda',
+      description: 'Nouveautés et baisses de prix de vos boutiques suivies.',
+      href: '/hub/my-followed-feed',
+      icon: Rss,
     },
     {
       title: 'Ma wishlist',

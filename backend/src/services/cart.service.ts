@@ -100,6 +100,41 @@ export class CartService {
       }
     } else if (coupon === 'FIDELITE5') {
       discountAmount = Math.round(subtotal * 0.05 * 1000) / 1000;
+    } else if (coupon) {
+      // Look up seller broadcast coupons for stores present in cart
+      const storeIds = Array.from(storeMap.keys());
+      if (storeIds.length > 0) {
+        const broadcastRes = await query<{
+          store_id: string;
+          discount_type: 'percentage' | 'fixed';
+          discount_value: number | string;
+        }>(
+          `SELECT store_id, discount_type, discount_value 
+           FROM pd_seller_broadcast 
+           WHERE UPPER(coupon_code) = $1 
+             AND store_id = ANY($2::text[])
+             AND (sent_at >= NOW() - INTERVAL '30 days')
+           ORDER BY sent_at DESC LIMIT 1`,
+          [coupon, storeIds]
+        );
+
+        if (broadcastRes.rows.length > 0) {
+          const row = broadcastRes.rows[0];
+          const storeInfo = storeMap.get(row.store_id);
+          if (storeInfo) {
+            const storeSubtotal = storeInfo.items.reduce(
+              (sum, it) => sum + (Number(it.unit_price ?? it.price) || 0) * Math.max(1, Number(it.quantity) || 1),
+              0
+            );
+            const val = Number(row.discount_value) || 0;
+            if (row.discount_type === 'percentage') {
+              discountAmount = Math.round(storeSubtotal * (val / 100) * 1000) / 1000;
+            } else {
+              discountAmount = Math.min(storeSubtotal, val);
+            }
+          }
+        }
+      }
     }
 
     const finalTotal = Math.max(0, subtotal - discountAmount) + shippingTotal;

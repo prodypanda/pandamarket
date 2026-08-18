@@ -28,6 +28,7 @@ import { config } from '../config';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 import { shippingService } from './shipping.service';
 import { adsService } from './ads.service';
+import { buyerInterestService } from './buyer-interest.service';
 
 interface CartLine {
   product_id: string;
@@ -611,6 +612,9 @@ export class OrderService {
         { order_id: orderId, customer_id: customerId, storefront_customer_id: storefrontCustomerId, total, stores: storeIds.length },
         'Order created',
       );
+      if (customerId) {
+        buyerInterestService.syncBuyerProfile(customerId).catch(() => {});
+      }
       return orderRows[0];
     });
   }
@@ -1707,6 +1711,9 @@ export class OrderService {
         PdErrorCode.PAY_ALREADY_CAPTURED,
         'Order not found or already paid',
       );
+    }
+    if (rows[0].customer_id) {
+      buyerInterestService.syncBuyerProfile(rows[0].customer_id).catch(() => {});
     }
     return rows[0];
   }

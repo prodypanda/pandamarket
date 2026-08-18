@@ -12,6 +12,8 @@
 import { query, transaction } from '../db/pool';
 import { PdValidationError, PdNotFoundError, PdForbiddenError } from '../errors';
 import { pdId } from '../utils/crypto';
+import { socketGateway } from '../realtime/socket-gateway';
+import { buyerInterestService } from './buyer-interest.service';
 
 export interface StoreSubscription {
   id: string;
@@ -146,12 +148,23 @@ export class StoreSubscriptionService {
       return res.rows[0];
     });
 
+    const finalSubCount = updateResult ? updateResult.subscribers_count : store.subscribers_count + 1;
+    const finalVerifiedCount = updateResult ? updateResult.verified_subscribers_count : store.verified_subscribers_count + (isVerified ? 1 : 0);
+
+    // Asynchronously synchronize buyer interest profile and broadcast real-time follower counter
+    buyerInterestService.syncBuyerProfile(cleanBuyerId).catch(() => {});
+    socketGateway.emitToAll('store:subscribers_updated', {
+      store_id: cleanStoreId,
+      subscribers_count: finalSubCount,
+      verified_subscribers_count: finalVerifiedCount,
+    });
+
     return {
       success: true,
       is_subscribed: true,
       is_verified_buyer: isVerified,
-      subscribers_count: updateResult ? updateResult.subscribers_count : store.subscribers_count + 1,
-      verified_subscribers_count: updateResult ? updateResult.verified_subscribers_count : store.verified_subscribers_count + (isVerified ? 1 : 0),
+      subscribers_count: finalSubCount,
+      verified_subscribers_count: finalVerifiedCount,
     };
   }
 
@@ -223,13 +236,24 @@ export class StoreSubscriptionService {
       return res.rows[0];
     });
 
+    const finalSubCount = updateResult ? updateResult.subscribers_count : Math.max(0, store.subscribers_count - 1);
+    const finalVerifiedCount = updateResult
+      ? updateResult.verified_subscribers_count
+      : Math.max(0, store.verified_subscribers_count - (existing.is_verified_buyer ? 1 : 0));
+
+    // Asynchronously synchronize buyer interest profile and broadcast real-time follower counter
+    buyerInterestService.syncBuyerProfile(cleanBuyerId).catch(() => {});
+    socketGateway.emitToAll('store:subscribers_updated', {
+      store_id: cleanStoreId,
+      subscribers_count: finalSubCount,
+      verified_subscribers_count: finalVerifiedCount,
+    });
+
     return {
       success: true,
       is_subscribed: false,
-      subscribers_count: updateResult ? updateResult.subscribers_count : Math.max(0, store.subscribers_count - 1),
-      verified_subscribers_count: updateResult
-        ? updateResult.verified_subscribers_count
-        : Math.max(0, store.verified_subscribers_count - (existing.is_verified_buyer ? 1 : 0)),
+      subscribers_count: finalSubCount,
+      verified_subscribers_count: finalVerifiedCount,
     };
   }
 

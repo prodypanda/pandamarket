@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export interface StoreSubscriptionStatus {
   is_subscribed: boolean;
@@ -45,6 +46,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
   onFollowChange,
   onRequireAuth,
 }) => {
+  const { t, dir } = useLocale();
   const [isSubscribed, setIsSubscribed] = useState(initialSubscribed);
   const [count, setCount] = useState(initialCount);
   const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount);
@@ -54,6 +56,64 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [notifyPriceDrops, setNotifyPriceDrops] = useState(true);
   const [notifyNewProducts, setNotifyNewProducts] = useState(true);
+
+  // Auto-fetch real subscription status on mount and when storeId changes
+  useEffect(() => {
+    let active = true;
+    async function fetchSubscriptionStatus() {
+      if (!storeId || storeId.trim() === '') return;
+      try {
+        const res = await fetch(`/api/pd/stores/${encodeURIComponent(storeId)}/subscription-status`, {
+          credentials: 'include',
+        });
+        if (res.ok && active) {
+          const data = await res.json();
+          if (typeof data.is_subscribed === 'boolean') {
+            setIsSubscribed(data.is_subscribed);
+          }
+          if (typeof data.subscribers_count === 'number') {
+            setCount(data.subscribers_count);
+          }
+          if (typeof data.verified_subscribers_count === 'number') {
+            setVerifiedCount(data.verified_subscribers_count);
+          }
+          if (typeof data.notify_price_drops === 'boolean') {
+            setNotifyPriceDrops(data.notify_price_drops);
+          }
+          if (typeof data.notify_new_products === 'boolean') {
+            setNotifyNewProducts(data.notify_new_products);
+          }
+        }
+      } catch {
+        // Fall back to initial props
+      }
+    }
+
+    fetchSubscriptionStatus();
+    return () => {
+      active = false;
+    };
+  }, [storeId]);
+
+  // Real-time live follower counter listener
+  useEffect(() => {
+    const handleLiveFollowerUpdate = (e: any) => {
+      const detail = e.detail || e;
+      if (detail?.store_id === storeId) {
+        if (typeof detail.subscribers_count === 'number') {
+          setCount(detail.subscribers_count);
+        }
+        if (typeof detail.verified_subscribers_count === 'number') {
+          setVerifiedCount(detail.verified_subscribers_count);
+        }
+      }
+    };
+
+    window.addEventListener('store:subscribers_updated' as any, handleLiveFollowerUpdate);
+    return () => {
+      window.removeEventListener('store:subscribers_updated' as any, handleLiveFollowerUpdate);
+    };
+  }, [storeId]);
 
   // Sync state if initial props change
   useEffect(() => {
@@ -110,7 +170,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
 
       if (!response.ok) {
         if (response.status === 429) {
-          throw new Error('Trop de requêtes. Veuillez patienter avant de modifier votre abonnement.');
+          throw new Error(t('storeFollow.rateLimit') || 'Trop de requêtes. Veuillez patienter avant de modifier votre abonnement.');
         }
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || `Erreur serveur (${response.status})`);
@@ -122,6 +182,19 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
       }
       if (typeof result.verified_subscribers_count === 'number') {
         setVerifiedCount(result.verified_subscribers_count);
+      }
+
+      // Notify other components on this page
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('store:subscribers_updated', {
+            detail: {
+              store_id: storeId,
+              subscribers_count: result.subscribers_count ?? nextCount,
+              verified_subscribers_count: result.verified_subscribers_count ?? nextVerifiedCount,
+            },
+          })
+        );
       }
     } catch (err: any) {
       // Rollback on error
@@ -147,7 +220,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
       });
       setShowPreferencesModal(false);
     } catch {
-      setErrorBanner('Impossible d’enregistrer les préférences.');
+      setErrorBanner(t('storeFollow.preferencesError') || 'Impossible d’enregistrer les préférences.');
     }
   };
 
@@ -163,14 +236,20 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
     directory_card: 'flex flex-col gap-2 p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-shadow',
   }[variant];
 
-  // Button Label Computation
-  let buttonLabel = isSubscribed ? 'Abonné' : 'Suivre';
+  // Dynamic translated labels
+  const followText = t('storeFollow.follow') || 'Suivre';
+  const followingText = t('storeFollow.following') || 'Abonné';
+  const unfollowText = t('storeFollow.unfollow') || 'Se désabonner';
+  const subscriberSuffix = count <= 1 ? (t('storeFollow.subscriber') || 'abonné') : (t('storeFollow.subscribers') || 'abonnés');
+  const verifiedBadgeText = t('storeFollow.verifiedBuyerBadge') || 'Badge Acheteur Vérifié';
+
+  let buttonLabel = isSubscribed ? followingText : followText;
   if (isSubscribed && isHovered) {
-    buttonLabel = 'Se désabonner';
+    buttonLabel = unfollowText;
   }
 
   return (
-    <div className={variantContainerClasses} data-testid={`store-follow-container-${storeId}`}>
+    <div className={variantContainerClasses} dir={dir} data-testid={`store-follow-container-${storeId}`}>
       {errorBanner && (
         <div role="alert" className="p-2 text-xs text-rose-700 bg-rose-50 rounded-md border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300">
           {errorBanner}
@@ -185,15 +264,15 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
           {showCount && (
             <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
               <span data-testid="subscriber-count" className="font-medium text-zinc-700 dark:text-zinc-300">
-                {count.toLocaleString()} {count <= 1 ? 'abonné' : 'abonnés'}
+                {count.toLocaleString()} {subscriberSuffix}
               </span>
               {showVerifiedBadge && verifiedCount > 0 && (
                 <span
                   data-testid="verified-buyer-badge"
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                  title={`${verifiedCount} acheteurs vérifiés`}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  title={t('storeFollow.verifiedBuyers', { count: verifiedCount }) || `${verifiedCount} acheteurs vérifiés`}
                 >
-                  ✓ Badge Acheteur Vérifié
+                  ✓ {verifiedBadgeText}
                 </span>
               )}
             </div>
@@ -219,15 +298,15 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
             } ${loading ? 'opacity-70 cursor-wait' : ''}`}
           >
             {loading ? (
-              <span data-testid="follow-spinner" className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              <span data-testid="follow-spinner" className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1" />
             ) : isSubscribed ? (
               isHovered ? (
-                <span className="mr-1 text-xs">✕</span>
+                <span className="me-1 text-xs">✕</span>
               ) : (
-                <span className="mr-1 text-xs text-emerald-600 dark:text-emerald-400">✓</span>
+                <span className="me-1 text-xs text-emerald-600 dark:text-emerald-400">✓</span>
               )
             ) : (
-              <span className="mr-1 text-xs">+</span>
+              <span className="me-1 text-xs">+</span>
             )}
             <span>{buttonLabel}</span>
           </button>
@@ -236,7 +315,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
             <button
               type="button"
               data-testid="notification-preferences-trigger"
-              aria-label="Préférences de notifications"
+              aria-label={t('storeFollow.alertsFor', { name: storeName }) || 'Préférences de notifications'}
               onClick={() => setShowPreferencesModal(true)}
               className="p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
@@ -251,27 +330,27 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl p-5 max-w-sm w-full shadow-2xl border border-zinc-200 dark:border-zinc-800">
             <h3 className="font-bold text-zinc-900 dark:text-zinc-100 text-base mb-3">
-              Alertes pour {storeName}
+              {t('storeFollow.alertsFor', { name: storeName }) || `Alertes pour ${storeName}`}
             </h3>
             <div className="space-y-3 mb-4">
-              <label className="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300">
-                <span>Baisses de prix</span>
+              <label className="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                <span>{t('storeFollow.priceDrops') || 'Baisses de prix'}</span>
                 <input
                   type="checkbox"
                   data-testid="toggle-price-drops"
                   checked={notifyPriceDrops}
                   onChange={(e) => setNotifyPriceDrops(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                  className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
                 />
               </label>
-              <label className="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300">
-                <span>Nouveaux produits publiés</span>
+              <label className="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                <span>{t('storeFollow.newProducts') || 'Nouveaux produits publiés'}</span>
                 <input
                   type="checkbox"
                   data-testid="toggle-new-products"
                   checked={notifyNewProducts}
                   onChange={(e) => setNotifyNewProducts(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                  className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
                 />
               </label>
             </div>
@@ -281,7 +360,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
                 onClick={() => setShowPreferencesModal(false)}
                 className="px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 rounded-lg dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                Annuler
+                {t('storeFollow.cancel') || 'Annuler'}
               </button>
               <button
                 type="button"
@@ -289,7 +368,7 @@ export const StoreFollowButton: React.FC<StoreFollowButtonProps> = ({
                 onClick={handleSavePreferences}
                 className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
               >
-                Enregistrer
+                {t('storeFollow.save') || 'Enregistrer'}
               </button>
             </div>
           </div>

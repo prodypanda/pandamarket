@@ -111,7 +111,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 export function useLocale(): LocaleContextValue {
   const ctx = useContext(LocaleContext);
   if (!ctx) {
-    throw new Error('useLocale must be used within a <LocaleProvider>');
+    return {
+      locale: DEFAULT_LOCALE,
+      setLocale: () => {},
+      dir: LOCALE_DIR[DEFAULT_LOCALE],
+      t: (key: string, params?: Record<string, string | number>) => translate(DEFAULT_LOCALE, key, params),
+    };
   }
   return ctx;
 }

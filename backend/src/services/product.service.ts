@@ -26,6 +26,7 @@ import { imageVariantService } from './image-variant.service';
 import { fileAssetService } from './file-asset.service';
 import { aiProductTaggerService } from './ai-product-tagger.service';
 import { notificationBatchService } from './notification-batch.service';
+import { backInStockService } from './back-in-stock.service';
 import { eventBus, PdEvent } from '../events/event-bus';
 import { logger } from '../utils/logger';
 import { marketplaceAnalyticsEventService } from './marketplace-analytics-event.service';
@@ -806,6 +807,15 @@ export class ProductService {
         price: !isNaN(publishPriceNum) ? publishPriceNum : 0,
       }).catch((err) => {
         logger.warn({ err, productId: id }, 'Failed to ingest new product notification batch event');
+      });
+    }
+
+    // Back in stock detection (inventory transitioning from 0 to > 0)
+    const prevStock = Number(previousProduct?.inventory_quantity) || 0;
+    const currentStock = Number(updatedProduct?.inventory_quantity) || 0;
+    if (prevStock <= 0 && currentStock > 0 && updatedProduct?.status === ProductStatus.Published) {
+      backInStockService.notifySubscribersOnRestock(id, currentStock).catch((err) => {
+        logger.warn({ err, productId: id }, 'Failed to trigger back in stock notification dispatch');
       });
     }
 

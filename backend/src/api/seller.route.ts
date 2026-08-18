@@ -131,3 +131,46 @@ sellerRouter.get(
     res.status(200).json({ broadcasts: history });
   })
 );
+
+/**
+ * GET /api/pd/seller/subscribers
+ * Get paginated list of followers with search and verified filter
+ */
+sellerRouter.get(
+  '/subscribers',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const search = req.query.search ? String(req.query.search) : undefined;
+    const verifiedOnly = req.query.verified_only === 'true' || req.query.verified === 'true';
+
+    const result = await sellerBroadcastService.getSubscribersList(storeId, {
+      page,
+      limit,
+      search,
+      verifiedOnly,
+    });
+    res.status(200).json(result);
+  })
+);
+
+/**
+ * GET /api/pd/seller/subscribers/export
+ * Export subscriber audience to CSV
+ */
+sellerRouter.get(
+  '/subscribers/export',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const csvContent = await sellerBroadcastService.exportSubscribersCsv(storeId);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="subscribers_${storeId}_${Date.now()}.csv"`);
+    res.status(200).send(csvContent);
+  })
+);

@@ -158,7 +158,7 @@ export class BuyerInterestService {
       `SELECT p.interest_tags, w.created_at
        FROM pd_wishlist_item w
        JOIN pd_product p ON p.id = w.product_id
-       WHERE w.user_id = $1`,
+       WHERE w.customer_id = $1`,
       [buyerId]
     );
 

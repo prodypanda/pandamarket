@@ -47,12 +47,14 @@ vi.mock('@/lib/api', () => ({
   fetchWithCsrf: vi.fn(),
 }));
 
+import { t as realTranslate } from '../i18n/utils';
+
 vi.mock('@/contexts/LocaleContext', () => ({
   useLocale: () => ({
     locale: 'fr',
     setLocale: vi.fn(),
     dir: 'ltr',
-    t: (key: string) => key,
+    t: (key: string, params?: any) => realTranslate('fr', key, params) || key,
   }),
   LocaleProvider: ({ children }: any) => children,
 }));
@@ -62,7 +64,7 @@ vi.mock('../../contexts/LocaleContext', () => ({
     locale: 'fr',
     setLocale: vi.fn(),
     dir: 'ltr',
-    t: (key: string) => key,
+    t: (key: string, params?: any) => realTranslate('fr', key, params) || key,
   }),
   LocaleProvider: ({ children }: any) => children,
 }));
@@ -72,7 +74,7 @@ vi.mock('../contexts/LocaleContext', () => ({
     locale: 'fr',
     setLocale: vi.fn(),
     dir: 'ltr',
-    t: (key: string) => key,
+    t: (key: string, params?: any) => realTranslate('fr', key, params) || key,
   }),
   LocaleProvider: ({ children }: any) => children,
 }));

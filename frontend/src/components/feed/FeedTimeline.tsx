@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Check, ListFilter, PackageOpen, ShoppingCart, Sparkles, TrendingDown, Store } from 'lucide-react';
 import { getResizedImageUrl } from '@/lib/image-url';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export interface FeedTimelineProduct {
   id: string;
@@ -25,19 +27,20 @@ export interface FeedTimelineProps {
   onAddToCart?: (product: FeedTimelineProduct) => void;
 }
 
-const filters = [
-  { id: 'all' as const, label: 'Tous les flux', icon: ListFilter },
-  { id: 'price_drops' as const, label: 'Baisses de prix', icon: TrendingDown },
-  { id: 'new_arrivals' as const, label: 'Nouveautés', icon: Sparkles },
-];
-
 export const FeedTimeline: React.FC<FeedTimelineProps> = ({
   products,
   activeFilter,
   onFilterChange,
   onAddToCart,
 }) => {
+  const { t, dir } = useLocale();
   const [cartSuccessId, setCartSuccessId] = useState<string | null>(null);
+
+  const filters = [
+    { id: 'all' as const, label: t('followedFeed.allStores') || 'Tous les flux', icon: ListFilter },
+    { id: 'price_drops' as const, label: t('storeFollow.priceDrops') || 'Baisses de prix', icon: TrendingDown },
+    { id: 'new_arrivals' as const, label: t('storeFollow.newProducts') || 'Nouveautés', icon: Sparkles },
+  ];
 
   const handleAddToCartClick = (product: FeedTimelineProduct) => {
     onAddToCart?.(product);
@@ -46,51 +49,37 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
   };
 
   return (
-    <section data-testid="section-feed-timeline" aria-labelledby="feed-timeline-title">
+    <section data-testid="section-feed-timeline" aria-labelledby="feed-timeline-title" dir={dir}>
       {/* Header & Filter Controls */}
-      <div className="flex flex-col gap-4 border-b border-gray-200/90 pb-5 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 id="feed-timeline-title" className="text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
-            Nouveautés &amp; Baisses de Prix
+          <h2 id="feed-timeline-title" className="text-xl font-black tracking-tight text-gray-900 dark:text-white sm:text-2xl">
+            {t('followedFeed.title') || 'Nouveautés & Offres'}
           </h2>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Le registre chronologique des publications de vos boutiques suivies.
+            {t('followedFeed.subtitle') || 'Activités récentes des boutiques que vous suivez.'}
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div
-          className="flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-gray-100/90 p-1 dark:bg-white/5"
-          data-testid="feed-filter-tabs"
-          aria-label="Filtrer le fil"
-        >
-          {filters.map(({ id, label, icon: Icon }) => {
-            const isActive = activeFilter === id;
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-gray-200/80 bg-gray-100/60 p-1 dark:border-white/10 dark:bg-white/5">
+          {filters.map((filter) => {
+            const Icon = filter.icon;
+            const isActive = activeFilter === filter.id;
             return (
               <button
-                key={id}
+                key={filter.id}
                 type="button"
-                data-testid={`filter-${id === 'price_drops' ? 'price-drops' : id === 'new_arrivals' ? 'new-arrivals' : 'all'}`}
-                aria-pressed={isActive}
-                onClick={() => onFilterChange(id)}
-                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-xs font-bold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${
+                data-testid={`filter-btn-${filter.id}`}
+                onClick={() => onFilterChange(filter.id)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-[#1f242e] dark:text-white'
                     : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                 }`}
               >
-                <Icon
-                  className={`h-3.5 w-3.5 ${
-                    isActive
-                      ? id === 'price_drops'
-                        ? 'text-red-500'
-                        : id === 'new_arrivals'
-                          ? 'text-blue-500'
-                          : 'text-[#087f5b]'
-                      : 'text-gray-400'
-                  }`}
-                />
-                {label}
+                <Icon className="h-3.5 w-3.5" />
+                <span>{filter.label}</span>
               </button>
             );
           })}
@@ -107,10 +96,10 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
             <PackageOpen className="h-7 w-7" />
           </div>
           <p className="mt-4 text-sm font-black text-gray-800 dark:text-gray-200">
-            Aucune nouveauté récente cette semaine dans ce filtre.
+            {t('followedFeed.emptyFeed') || 'Aucune nouveauté récente cette semaine dans ce filtre.'}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Essayez de sélectionner « Tous les flux » ou explorez d&apos;autres boutiques recommandées.
+            {t('followedFeed.emptyFeedHint') || 'Essayez de sélectionner « Tous les flux » ou explorez d\'autres boutiques recommandées.'}
           </p>
         </div>
       ) : (
@@ -125,6 +114,7 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
               : '';
             const isDiscounted = !!product.discount_percentage && product.discount_percentage > 0;
             const imageUrl = product.image_url ? getResizedImageUrl(product.image_url, 'medium') : null;
+            const productHref = `/hub/products/${encodeURIComponent(product.id)}`;
 
             return (
               <article
@@ -132,8 +122,11 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
                 data-testid={`timeline-item-${product.id}`}
                 className="group grid gap-4 py-5 transition-colors sm:grid-cols-[108px_minmax(0,1fr)_auto] sm:items-center sm:gap-6"
               >
-                {/* Product Thumbnail */}
-                <div className="relative aspect-square w-full sm:w-[108px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50 shadow-sm dark:border-white/10 dark:bg-[#161a22]">
+                {/* Product Thumbnail (Clickable Link) */}
+                <Link
+                  href={productHref}
+                  className="relative aspect-square w-full sm:w-[108px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50 shadow-sm transition-transform duration-300 hover:opacity-95 dark:border-white/10 dark:bg-[#161a22]"
+                >
                   {imageUrl ? (
                     <img
                       src={imageUrl}
@@ -154,7 +147,7 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
                       -{product.discount_percentage}%
                     </span>
                   )}
-                </div>
+                </Link>
 
                 {/* Details */}
                 <div className="min-w-0">
@@ -171,15 +164,17 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
 
                     {product.is_new_arrival && (
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                        NOUVEAU
+                        {t('followedFeed.newArrival') || 'NOUVEAU'}
                       </span>
                     )}
                   </div>
 
-                  {/* Title */}
-                  <h3 className="mt-1.5 text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-[#087f5b] dark:text-white dark:group-hover:text-emerald-400 sm:text-lg">
-                    {product.title}
-                  </h3>
+                  {/* Title (Clickable Link) */}
+                  <Link href={productHref} className="block">
+                    <h3 className="mt-1.5 text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-[#087f5b] dark:text-white dark:group-hover:text-emerald-400 sm:text-lg">
+                      {product.title}
+                    </h3>
+                  </Link>
 
                   {/* Price & Tags */}
                   <div className="mt-2.5 flex flex-wrap items-baseline gap-2.5">

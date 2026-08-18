@@ -18,6 +18,12 @@ export function startDailyDigestWorker(): Worker<NotificationBatchJobData> {
         logger.info({ jobId: job.id }, 'Processing daily email digest (7:00 PM)');
         const sentCount = await notificationBatchService.dispatchDailyDigest();
         logger.info({ sentCount }, 'Daily email digest completed successfully');
+      } else {
+        const { storeId, type } = job.data || {};
+        if (storeId && (type === 'price_drop' || type === 'new_product')) {
+          logger.info({ jobId: job.id, storeId, type }, 'Processing store batch in daily digest worker fallback');
+          await notificationBatchService.processBatch(storeId, type);
+        }
       }
     },
     {

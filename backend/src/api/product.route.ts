@@ -468,5 +468,57 @@ router.get(
   }),
 );
 
+/**
+ * POST /api/pd/products/:id/back-in-stock/subscribe
+ * Register customer to receive an automated notification when product is restocked
+ */
+router.post(
+  '/:id/back-in-stock/subscribe',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { backInStockService } = await import('../services/back-in-stock.service');
+    const email = req.body?.email || req.user?.email;
+    const buyerId = req.user?.id || null;
+
+    if (!email) {
+      throw new PdValidationError('Adresse email requise pour recevoir l’alerte de réassort.');
+    }
+
+    const result = await backInStockService.subscribeAlert(req.params.id, email, buyerId);
+    res.status(200).json(result);
+  })
+);
+
+/**
+ * GET /api/pd/products/:id/back-in-stock/status
+ * Check if the customer already has a pending restock alert for this product
+ */
+router.get(
+  '/:id/back-in-stock/status',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { backInStockService } = await import('../services/back-in-stock.service');
+    const email = (req.query.email as string) || req.user?.email || null;
+    const buyerId = req.user?.id || null;
+
+    const status = await backInStockService.getAlertStatus(req.params.id, email, buyerId);
+    res.status(200).json(status);
+  })
+);
+
+/**
+ * POST /api/pd/products/:id/back-in-stock/unsubscribe
+ * Cancel restock alert
+ */
+router.post(
+  '/:id/back-in-stock/unsubscribe',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { backInStockService } = await import('../services/back-in-stock.service');
+    const email = req.body?.email || req.user?.email || null;
+    const buyerId = req.user?.id || null;
+
+    const result = await backInStockService.unsubscribeAlert(req.params.id, email, buyerId);
+    res.status(200).json(result);
+  })
+);
+
 export default router;
 

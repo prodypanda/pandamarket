@@ -27,6 +27,7 @@ export interface SendBroadcastData {
   discount_pct?: number | null;
   discount_value?: string | number | null;
   discount_type?: 'percentage' | 'fixed' | null;
+  target_audience?: 'all' | 'verified_only';
   expires_at?: string | Date | null;
 }
 
@@ -39,6 +40,7 @@ export interface BroadcastHistoryItem {
   coupon_code: string;
   discount_value: string;
   discount_type?: 'percentage' | 'fixed';
+  target_audience?: 'all' | 'verified_only';
   recipients_count: number;
   claims_count: number;
   claim_rate_pct: number;
@@ -155,6 +157,11 @@ export class SellerBroadcastService {
       throw new PdValidationError('Invalid broadcast payload');
     }
 
+    const targetAudience: 'all' | 'verified_only' =
+      typeof dataOrMessage === 'object' && dataOrMessage.target_audience === 'verified_only'
+        ? 'verified_only'
+        : 'all';
+
     if (!message || message.trim() === '') {
       throw new PdValidationError('Message cannot be empty');
     }
@@ -168,8 +175,8 @@ export class SellerBroadcastService {
     }
 
     // Get store name and subscriber count
-    const storeRes = await query<{ name: string; subscribers_count: number }>(
-      `SELECT name, subscribers_count FROM pd_store WHERE id = $1`,
+    const storeRes = await query<{ name: string; subscribers_count: number; verified_subscribers_count: number }>(
+      `SELECT name, subscribers_count, verified_subscribers_count FROM pd_store WHERE id = $1`,
       [storeId]
     );
     if (storeRes.rows.length === 0) {
@@ -177,7 +184,10 @@ export class SellerBroadcastService {
     }
 
     const storeName = storeRes.rows[0].name;
-    const subscribersCount = storeRes.rows[0].subscribers_count || 0;
+    const subscribersCount =
+      targetAudience === 'verified_only'
+        ? (storeRes.rows[0].verified_subscribers_count || 0)
+        : (storeRes.rows[0].subscribers_count || 0);
     const cleanCouponCode = couponCode?.trim() ? couponCode.trim().toUpperCase() : null;
     const finalDiscountValue = discountValue !== undefined && discountValue > 0 ? discountValue : null;
 
@@ -185,8 +195,8 @@ export class SellerBroadcastService {
     const broadcastId = pdId('sbc');
     await query(
       `INSERT INTO pd_seller_broadcast (
-        id, store_id, coupon_code, discount_type, discount_value, message, sent_at, subscribers_count_at_send, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW())`,
+        id, store_id, coupon_code, discount_type, discount_value, message, target_audience, title, sent_at, subscribers_count_at_send, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, NOW())`,
       [
         broadcastId,
         storeId,
@@ -194,17 +204,21 @@ export class SellerBroadcastService {
         cleanCouponCode ? discountType : null,
         finalDiscountValue,
         message.trim(),
+        targetAudience,
+        title?.trim() || null,
         subscribersCount,
       ]
     );
 
-    // Find all store subscribers
+    // Find targeted store subscribers
     const subRes = await query<{ buyer_id: string }>(
-      `SELECT buyer_id FROM pd_store_subscription WHERE store_id = $1`,
+      targetAudience === 'verified_only'
+        ? `SELECT buyer_id FROM pd_store_subscription WHERE store_id = $1 AND is_verified_buyer = true`
+        : `SELECT buyer_id FROM pd_store_subscription WHERE store_id = $1`,
       [storeId]
     );
 
-    const notifTitle = title?.trim() || `🎁 Message exclusif de ${storeName}`;
+    const notifTitle = title?.trim() || (targetAudience === 'verified_only' ? `👑 Offre VIP Exclusif de ${storeName}` : `🎁 Message exclusif de ${storeName}`);
     const payloadData = {
       store_id: storeId,
       store_name: storeName,
@@ -212,6 +226,7 @@ export class SellerBroadcastService {
       coupon_code: cleanCouponCode,
       discount_value: finalDiscountValue ? (discountType === 'percentage' ? `${finalDiscountValue}%` : `${finalDiscountValue} TND`) : null,
       discount_type: cleanCouponCode ? discountType : null,
+      target_audience: targetAudience,
     };
 
     for (const sub of subRes.rows) {
@@ -240,7 +255,7 @@ export class SellerBroadcastService {
 
     const remainingQuota = Math.max(0, SellerBroadcastService.MAX_BROADCASTS_PER_WEEK - (weeklyCount + 1));
 
-    logger.info({ storeId, broadcastId, recipients: subRes.rows.length, remainingQuota }, 'Seller broadcast dispatched successfully');
+    logger.info({ storeId, broadcastId, targetAudience, recipients: subRes.rows.length, remainingQuota }, 'Seller broadcast dispatched successfully');
 
     return {
       success: true,
@@ -248,6 +263,157 @@ export class SellerBroadcastService {
       recipients_count: subRes.rows.length,
       remaining_quota: remainingQuota,
     };
+  }
+
+  /**
+   * Get paginated subscriber list for a store with filtering and search
+   */
+  public async getSubscribersList(
+    storeId: string,
+    opts: { page?: number; limit?: number; search?: string; verifiedOnly?: boolean } = {}
+  ): Promise<{
+    subscribers: Array<{
+      id: string;
+      buyer_id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string;
+      city: string | null;
+      is_verified_buyer: boolean;
+      notify_price_drops: boolean;
+      notify_new_products: boolean;
+      created_at: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  }> {
+    const page = Math.max(1, opts.page || 1);
+    const limit = Math.min(100, Math.max(1, opts.limit || 20));
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = ['s.store_id = $1'];
+    const params: any[] = [storeId];
+
+    if (opts.verifiedOnly) {
+      conditions.push('s.is_verified_buyer = true');
+    }
+
+    if (opts.search && opts.search.trim()) {
+      params.push(`%${opts.search.trim()}%`);
+      conditions.push(`(u.email ILIKE $${params.length} OR u.first_name ILIKE $${params.length} OR u.last_name ILIKE $${params.length} OR a.city ILIKE $${params.length})`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT s.id)::text AS count
+       FROM pd_store_subscription s
+       JOIN pd_user u ON u.id = s.buyer_id
+       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       WHERE ${whereClause}`,
+      params
+    );
+    const total = parseInt(countRes.rows[0]?.count || '0', 10);
+
+    params.push(limit, offset);
+    const rowsRes = await query<{
+      id: string;
+      buyer_id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string;
+      city: string | null;
+      is_verified_buyer: boolean;
+      notify_price_drops: boolean;
+      notify_new_products: boolean;
+      created_at: Date;
+    }>(
+      `SELECT DISTINCT ON (s.id)
+         s.id,
+         s.buyer_id,
+         u.first_name,
+         u.last_name,
+         u.email,
+         a.city,
+         s.is_verified_buyer,
+         s.notify_price_drops,
+         s.notify_new_products,
+         s.created_at
+       FROM pd_store_subscription s
+       JOIN pd_user u ON u.id = s.buyer_id
+       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       WHERE ${whereClause}
+       ORDER BY s.id, s.created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    return {
+      subscribers: rowsRes.rows.map((r) => ({
+        id: r.id,
+        buyer_id: r.buyer_id,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        email: r.email,
+        city: r.city,
+        is_verified_buyer: r.is_verified_buyer,
+        notify_price_drops: r.notify_price_drops,
+        notify_new_products: r.notify_new_products,
+        created_at: r.created_at.toISOString(),
+      })),
+      total,
+      page,
+      limit,
+      total_pages: Math.ceil(total / limit) || 1,
+    };
+  }
+
+  /**
+   * Export all subscribers to CSV format
+   */
+  public async exportSubscribersCsv(storeId: string): Promise<string> {
+    const res = await query<{
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string;
+      city: string | null;
+      is_verified_buyer: boolean;
+      created_at: Date;
+    }>(
+      `SELECT DISTINCT ON (s.id)
+         s.id,
+         u.first_name,
+         u.last_name,
+         u.email,
+         a.city,
+         s.is_verified_buyer,
+         s.created_at
+       FROM pd_store_subscription s
+       JOIN pd_user u ON u.id = s.buyer_id
+       LEFT JOIN pd_address a ON a.user_id = u.id AND a.is_default = true
+       WHERE s.store_id = $1
+       ORDER BY s.id, s.created_at DESC`,
+      [storeId]
+    );
+
+    const header = 'ID,Nom,Prenom,Email,Gouvernorat/Ville,Acheteur Verifie,Date Abonnement\n';
+    const rows = res.rows.map((r) => {
+      const escapeCsv = (val: string | null | undefined) => `"${(val || '').replace(/"/g, '""')}"`;
+      return [
+        escapeCsv(r.id),
+        escapeCsv(r.last_name),
+        escapeCsv(r.first_name),
+        escapeCsv(r.email),
+        escapeCsv(r.city || 'Tunisie'),
+        r.is_verified_buyer ? 'OUI' : 'NON',
+        r.created_at.toISOString().split('T')[0],
+      ].join(',');
+    }).join('\n');
+
+    return '\uFEFF' + header + rows;
   }
 
   /**

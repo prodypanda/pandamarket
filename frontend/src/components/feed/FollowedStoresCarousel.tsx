@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { Check, ChevronLeft, ChevronRight, Store, X, Sparkles } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Store, X, Sparkles, Flame, Zap } from 'lucide-react';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export interface FollowedStoreItem {
   id: string;
@@ -10,6 +11,11 @@ export interface FollowedStoreItem {
   logo_url: string | null;
   unread_updates_count: number;
   is_verified: boolean;
+  has_active_story?: boolean;
+  active_flash_drop?: {
+    title: string;
+    discount: string;
+  } | null;
 }
 
 export interface FollowedStoresCarouselProps {
@@ -30,6 +36,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
   selectedStoreId,
   onSelectStore,
 }) => {
+  const { t, dir } = useLocale();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -42,6 +49,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
     <section
       data-testid="section-followed-stores"
       aria-labelledby="followed-stores-title"
+      dir={dir}
       className="rounded-2xl border border-gray-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-[#161a22]/80"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -51,10 +59,10 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
           </div>
           <div>
             <h2 id="followed-stores-title" className="text-base font-black text-gray-900 dark:text-white sm:text-lg">
-              Mes Boutiques Suivies
+              {t('followedFeed.followedStores') || 'Mes Boutiques Suivies'}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Sélectionnez une boutique pour isoler ses dernières publications.
+              {t('followedFeed.carouselHint') || 'Sélectionnez une boutique pour isoler ses dernières publications.'}
             </p>
           </div>
         </div>
@@ -68,7 +76,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
               className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700 transition hover:bg-gray-200 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/15"
             >
               <X className="h-3.5 w-3.5" />
-              Afficher toutes les boutiques
+              {t('followedFeed.allStores') || 'Afficher toutes les boutiques'}
             </button>
           )}
 
@@ -104,10 +112,10 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
             <Store className="h-6 w-6" />
           </div>
           <p className="mt-3 text-sm font-bold text-gray-800 dark:text-gray-200">
-            Vous ne suivez aucune boutique pour le moment.
+            {t('followedFeed.noFollowedStores') || 'Vous ne suivez aucune boutique pour le moment.'}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Explorez le marché et cliquez sur « Suivre » sur vos créateurs favoris pour voir leurs nouveautés ici.
+            {t('followedFeed.exploreHint') || 'Explorez le marché et cliquez sur « Suivre » sur vos créateurs favoris pour voir leurs nouveautés ici.'}
           </p>
         </div>
       ) : (
@@ -118,6 +126,8 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
         >
           {followedStores.map((store) => {
             const selected = selectedStoreId === store.id;
+            const hasStory = store.has_active_story || store.unread_updates_count > 0;
+
             return (
               <button
                 key={store.id}
@@ -125,25 +135,33 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
                 data-testid={`store-chip-${store.id}`}
                 aria-pressed={selected}
                 onClick={() => onSelectStore(selected ? null : store.id)}
-                className={`group relative flex min-w-[220px] max-w-[260px] shrink-0 items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${
+                className={`group relative flex min-w-[220px] max-w-[260px] shrink-0 items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f5b] ${
                   selected
                     ? 'border-[#087f5b] bg-[#087f5b] text-white shadow-md shadow-emerald-900/20 ring-2 ring-[#087f5b]/30'
                     : 'border-gray-200/90 bg-white text-gray-900 shadow-sm hover:border-[#087f5b]/60 hover:shadow-md dark:border-white/10 dark:bg-[#12161f] dark:text-white dark:hover:border-emerald-500/50'
                 }`}
               >
-                {/* Store Avatar */}
+                {/* Store Avatar with Story Gradient Ring */}
                 <div
-                  className={`relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border font-black text-sm transition-transform duration-200 group-hover:scale-105 ${
-                    selected
-                      ? 'border-white/20 bg-white/20 text-white'
-                      : 'border-gray-100 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-800 dark:border-white/10 dark:from-emerald-950/60 dark:to-teal-900/40 dark:text-emerald-300'
+                  className={`relative flex shrink-0 items-center justify-center rounded-2xl p-0.5 ${
+                    hasStory && !selected
+                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500'
+                      : ''
                   }`}
                 >
-                  {store.logo_url ? (
-                    <img src={store.logo_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span>{getInitials(store.name)}</span>
-                  )}
+                  <div
+                    className={`relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] border font-black text-sm transition-transform duration-200 group-hover:scale-105 ${
+                      selected
+                        ? 'border-white/20 bg-white/20 text-white'
+                        : 'border-gray-100 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-800 dark:border-white/10 dark:from-emerald-950/60 dark:to-teal-900/40 dark:text-emerald-300'
+                    }`}
+                  >
+                    {store.logo_url ? (
+                      <img src={store.logo_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span>{getInitials(store.name)}</span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Info */}
@@ -172,8 +190,16 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
                   </span>
                 </div>
 
-                {/* Unread updates count */}
-                {store.unread_updates_count > 0 && (
+                {/* Flash Drop / Unread badge */}
+                {store.active_flash_drop ? (
+                  <span
+                    title={store.active_flash_drop.title}
+                    className="flex h-6 items-center gap-1 shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2 text-[10px] font-black text-white shadow-sm animate-pulse"
+                  >
+                    <Zap className="h-3 w-3" />
+                    <span>{store.active_flash_drop.discount}</span>
+                  </span>
+                ) : store.unread_updates_count > 0 ? (
                   <span
                     data-testid={`unread-badge-${store.id}`}
                     className={`flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums shadow-sm ${
@@ -182,7 +208,7 @@ export const FollowedStoresCarousel: React.FC<FollowedStoresCarouselProps> = ({
                   >
                     {store.unread_updates_count}
                   </span>
-                )}
+                ) : null}
               </button>
             );
           })}

@@ -161,6 +161,19 @@ router.post(
       res.status(400).json({ success: false, message: 'store_id is required' });
       return;
     }
+
+    // Verify ownership if not super_admin or admin
+    if (req.user?.role !== UserRole.SuperAdmin && req.user?.role !== UserRole.Admin) {
+      const { rows } = await query<{ id: string }>(
+        'SELECT id FROM pd_store WHERE id = $1 AND owner_id = $2',
+        [storeId, req.user!.id]
+      );
+      if (rows.length === 0 && req.user?.store_id !== storeId) {
+        res.status(403).json({ success: false, message: 'Forbidden: You do not own this store' });
+        return;
+      }
+    }
+
     const result = await notificationBatchService.flushStoreBatches(storeId);
     res.status(200).json({ success: true, ...result });
   }),
