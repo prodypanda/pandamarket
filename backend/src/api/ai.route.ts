@@ -908,13 +908,30 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
           });
         }
 
-        let sfParentId = raw.storefront_parent_category_id || (sfMatch ? sfMatch.parent_id : null);
-        let parentMatch = sfParentId ? storefrontCategories.find((c) => c.id === sfParentId) : undefined;
+        const sfParentName = (raw.storefront_parent_name || raw.parent_name_fr || '').trim();
+        let sfParentId = raw.storefront_parent_category_id || raw.storefront_parent_id || (sfMatch ? sfMatch.parent_id : null);
+        let parentMatch = sfParentId ? storefrontCategories.find((c) => c.id === sfParentId && !c.is_default) : undefined;
+        if (!parentMatch && sfParentName) {
+          const normParentTarget = sfParentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          parentMatch = storefrontCategories.find((c) => {
+            if (c.is_default) return false;
+            const normName = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return normName === normParentTarget || normName.includes(normParentTarget) || normParentTarget.includes(normName);
+          });
+        }
 
-        const sfPath = buildStorefrontBreadcrumb(
-          { id: sfMatch?.id, name: sfName, parent_id: parentMatch?.id || null },
-          storefrontCategories,
-        );
+        const resolvedParentName = parentMatch ? parentMatch.name : (sfParentName || null);
+        const resolvedParentId = parentMatch ? parentMatch.id : null;
+
+        let sfPath = '';
+        if (resolvedParentName && sfName && resolvedParentName !== sfName) {
+          sfPath = `${resolvedParentName} › ${sfMatch?.name || sfName}`;
+        } else {
+          sfPath = buildStorefrontBreadcrumb(
+            { id: sfMatch?.id, name: sfName, parent_id: resolvedParentId },
+            storefrontCategories,
+          ) || sfName;
+        }
 
         return {
           rank: idx + 1,
@@ -923,13 +940,18 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
           marketplace_category_path: mpPath || mpCat.name,
           storefront_category_name: sfMatch ? sfMatch.name : sfName,
           storefront_category_id: sfMatch ? sfMatch.id : null,
-          storefront_parent_id: parentMatch ? parentMatch.id : null,
-          storefront_parent_name: parentMatch ? parentMatch.name : null,
+          storefront_parent_id: resolvedParentId,
+          storefront_parent_name: resolvedParentName,
           storefront_category_path: sfPath,
           multilingual: {
             name_fr: raw.name_fr || sfName,
             name_ar: raw.name_ar || null,
             name_en: raw.name_en || null,
+          },
+          parent_multilingual: {
+            name_fr: raw.parent_name_fr || resolvedParentName,
+            name_ar: raw.parent_name_ar || null,
+            name_en: raw.parent_name_en || null,
           },
           icon: raw.icon || 'Tag',
           seo_title: raw.seo_title || `${sfName} | Boutique`,

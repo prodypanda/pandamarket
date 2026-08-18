@@ -248,6 +248,7 @@ function generateFallbackCopywriting(prompt: string): string {
       clusterId: string;
       categoryIds: string[];
       keywords: string[];
+      parentSuggestion: { fr: string; ar: string; en: string; icon: string };
       storefrontSuggestion: { fr: string; ar: string; en: string; icon: string };
     }
 
@@ -256,127 +257,148 @@ function generateFallbackCopywriting(prompt: string): string {
         clusterId: 'olive_oil',
         categoryIds: ['cat_market_olive_oil', 'cat_market_food', 'cat_market_harissa_spices'],
         keywords: ['huile', 'olive', 'olives', 'zit', 'zitoun', 'vierge', 'extra', 'romarin', 'piment', 'baklouti', 'aromatisee', 'infusee', 'terroir', 'bouteille', 'pressage', 'froid', 'bio', 'vinaigre', 'condiment', 'sauce', 'culinaire', 'huiles'],
-        storefrontSuggestion: { fr: "Huiles d'Olive & Terroir", ar: "زيت الزيتون والمنتجات المحلية", en: "Olive Oils & Local Terroir", icon: "Utensils" },
+        parentSuggestion: { fr: "Épicerie Fine & Terroir", ar: "البقالة الفاخرة والمنتجات المحلية", en: "Gourmet & Local Terroir", icon: "Utensils" },
+        storefrontSuggestion: { fr: "Huiles d'Olive Vierge Extra", ar: "زيت الزيتون البكر الممتاز", en: "Extra Virgin Olive Oils", icon: "Utensils" },
       },
       {
         clusterId: 'harissa_spices',
         categoryIds: ['cat_market_harissa_spices', 'cat_market_food', 'cat_market_olive_oil'],
         keywords: ['harissa', 'epice', 'epices', 'tabil', 'carvi', 'coriandre', 'cumin', 'poivre', 'safran', 'felfel', 'piment', 'sauce', 'assaisonnement', 'paprika', 'curcuma'],
+        parentSuggestion: { fr: "Épicerie Fine & Terroir", ar: "البقالة الفاخرة والمنتجات المحلية", en: "Gourmet & Local Terroir", icon: "Flame" },
         storefrontSuggestion: { fr: "Harissa Artisanale & Épices", ar: "هريسة وتوابل تقليدية", en: "Artisanal Harissa & Spices", icon: "Flame" },
       },
       {
         clusterId: 'dates_honey',
         categoryIds: ['cat_market_dates', 'cat_market_food'],
         keywords: ['datte', 'dattes', 'deglet', 'nour', 'miel', 'asel', 'bsissa', 'patisserie', 'confiture', 'amande', 'noisette', 'pistache', 'zrir', 'douceur', 'miels'],
+        parentSuggestion: { fr: "Épicerie Sucrée & Miels", ar: "حلويات وعسل طبيعي", en: "Sweets & Natural Honey", icon: "Sparkles" },
         storefrontSuggestion: { fr: "Dattes Deglet Nour & Miel", ar: "تمور دقلة النور وعسل طبيعي", en: "Deglet Nour Dates & Honey", icon: "Sparkles" },
       },
       {
         clusterId: 'coffee_tea',
         categoryIds: ['cat_market_coffee_tea', 'cat_market_food'],
         keywords: ['cafe', 'coffee', 'the', 'tea', 'boisson', 'boissons', 'tisane', 'infusion', 'jus', 'syrup', 'sirop', 'menthe', 'grains', 'moulu', 'capsule', 'espresso', 'nespresso'],
-        storefrontSuggestion: { fr: "Café, Thé & Boissons", ar: "قهوة وشاي ومشروبات", en: "Coffee, Tea & Beverages", icon: "Coffee" },
+        parentSuggestion: { fr: "Boissons & Cafés", ar: "مشروبات وقهوة", en: "Beverages & Coffee", icon: "Coffee" },
+        storefrontSuggestion: { fr: "Café, Thé & Infusions", ar: "قهوة وشاي ومشروبات", en: "Coffee, Tea & Infusions", icon: "Coffee" },
       },
       {
         clusterId: 'pottery_ceramics',
         categoryIds: ['cat_market_nabeul_pottery', 'cat_market_handmade', 'cat_market_home'],
         keywords: ['poterie', 'poteries', 'ceramique', 'ceramiques', 'nabeul', 'sejnane', 'argile', 'vase', 'plat', 'assiette', 'bol', 'tajine', 'artisanal', 'fait-main', 'sculpte', 'terrecuite'],
-        storefrontSuggestion: { fr: "Poteries & Céramiques Artisanales", ar: "فخار وخزف تقليدي", en: "Handmade Pottery & Ceramics", icon: "Palette" },
+        parentSuggestion: { fr: "Artisanat & Fait-Main", ar: "الصناعات التقليدية واليدوية", en: "Handicrafts & Handmade", icon: "Palette" },
+        storefrontSuggestion: { fr: "Poteries & Céramiques", ar: "فخار وخزف تقليدي", en: "Handmade Pottery & Ceramics", icon: "Palette" },
       },
       {
         clusterId: 'margoum_carpets',
         categoryIds: ['cat_market_margoum', 'cat_market_handmade', 'cat_market_decor', 'cat_market_home'],
         keywords: ['tapis', 'margoum', 'klim', 'kilim', 'zarbia', 'laine', 'tissage', 'berbere', 'traditionnel', 'tapisserie'],
+        parentSuggestion: { fr: "Artisanat & Fait-Main", ar: "الصناعات التقليدية واليدوية", en: "Handicrafts & Handmade", icon: "Layers" },
         storefrontSuggestion: { fr: "Tapis Margoum & Klim", ar: "زرابي ومرقوم تونسي", en: "Margoum & Klim Carpets", icon: "Layers" },
       },
       {
         clusterId: 'fouta_linens',
         categoryIds: ['cat_market_fouta', 'cat_market_handmade', 'cat_market_home'],
         keywords: ['fouta', 'foutas', 'serviette', 'bain', 'plage', 'peignoir', 'drap', 'lin', 'coton', 'tissage', 'plaid', 'linge'],
-        storefrontSuggestion: { fr: "Foutas & Linge de Maison", ar: "فوطة ونسيج تونسي", en: "Tunisian Foutas & Linens", icon: "Sparkles" },
+        parentSuggestion: { fr: "Linge de Maison & Bain", ar: "مفروشات ومستلزمات الحمام", en: "Home Linens & Bath", icon: "Sparkles" },
+        storefrontSuggestion: { fr: "Foutas Traditionnelles 100% Coton", ar: "فوطة تونسية قطن", en: "Tunisian Foutas & Throws", icon: "Sparkles" },
       },
       {
         clusterId: 'mens_fashion',
         categoryIds: ['cat_market_m_tops', 'cat_market_m_jeans', 'cat_market_m_suits', 'cat_market_m_jackets', 'cat_market_m_wallets', 'cat_market_mens_fashion'],
         keywords: ['homme', 'hommes', 'men', 'chemise', 't-shirt', 'polo', 'pantalon', 'jean', 'costume', 'blazer', 'veste', 'manteau', 'blouson', 'pull', 'sweat', 'hoodie', 'ceinture', 'casquette'],
-        storefrontSuggestion: { fr: "Mode Homme & Prêt-à-porter", ar: "أزياء رجالية", en: "Men's Fashion", icon: "Shirt" },
+        parentSuggestion: { fr: "Prêt-à-porter Homme", ar: "أزياء رجالية", en: "Men's Apparel", icon: "Shirt" },
+        storefrontSuggestion: { fr: "Hauts, Chemises & Polos", ar: "قمصان وبولو رجالي", en: "Men's Tops & Shirts", icon: "Shirt" },
       },
       {
         clusterId: 'womens_fashion',
         categoryIds: ['cat_market_w_dresses', 'cat_market_w_traditional', 'cat_market_w_tops', 'cat_market_womens_fashion'],
         keywords: ['femme', 'femmes', 'women', 'robe', 'robes', 'caftan', 'jebba', 'abaya', 'jupe', 'chemisier', 'top', 'combinaison', 'manteau', 'veste', 'tailleur', 'broderie', 'soie'],
-        storefrontSuggestion: { fr: "Mode Femme & Robes", ar: "أزياء نسائية وفساتين", en: "Women's Fashion & Dresses", icon: "Sparkles" },
+        parentSuggestion: { fr: "Prêt-à-porter Femme", ar: "أزياء نسائية", en: "Women's Apparel", icon: "Sparkles" },
+        storefrontSuggestion: { fr: "Robes, Caftans & Tenues de Soirée", ar: "فساتين وقفاطين مناسبات", en: "Dresses & Evening Caftans", icon: "Sparkles" },
       },
       {
         clusterId: 'shoes_sneakers',
         categoryIds: ['cat_market_m_sneakers', 'cat_market_w_sneakers', 'cat_market_m_formal_shoes', 'cat_market_shoes', 'cat_market_sportswear'],
         keywords: ['chaussure', 'chaussures', 'basket', 'baskets', 'sneaker', 'sneakers', 'sandale', 'sandales', 'talons', 'escarpin', 'mocassin', 'cuir', 'running', 'pointure'],
-        storefrontSuggestion: { fr: "Chaussures & Baskets", ar: "أحذية وسنيكرز", en: "Shoes & Sneakers", icon: "Footprints" },
+        parentSuggestion: { fr: "Chaussures & Maroquinerie", ar: "الأحذية والمنتجات الجلدية", en: "Shoes & Leather Goods", icon: "Footprints" },
+        storefrontSuggestion: { fr: "Sneakers & Baskets Sportswear", ar: "سنيكرز وأحذية رياضية", en: "Sneakers & Casual Shoes", icon: "Footprints" },
       },
       {
         clusterId: 'smartphones_telephony',
         categoryIds: ['cat_market_smartphones', 'cat_market_iphones', 'cat_market_samsung', 'cat_market_electronics'],
         keywords: ['smartphone', 'smartphones', 'telephone', 'telephonie', 'iphone', 'samsung', 'xiaomi', 'redmi', 'oppo', 'mobile', 'android', 'ios', '5g', 'dual sim', 'ecran oled'],
-        storefrontSuggestion: { fr: "Smartphones & Téléphonie", ar: "الهواتف الذكية والإكسسوارات", en: "Smartphones & Telephony", icon: "Smartphone" },
+        parentSuggestion: { fr: "High-Tech & Électronique", ar: "الإلكترونيات والتكنولوجيا", en: "High-Tech & Electronics", icon: "Smartphone" },
+        storefrontSuggestion: { fr: "Smartphones & Accessoires", ar: "الهواتف الذكية والإكسسوارات", en: "Smartphones & Accessories", icon: "Smartphone" },
       },
       {
         clusterId: 'laptops_computers',
         categoryIds: ['cat_market_laptops', 'cat_market_gaming_pc', 'cat_market_electronics'],
         keywords: ['pc', 'ordinateur', 'ordinateurs', 'laptop', 'laptops', 'macbook', 'asus', 'dell', 'hp', 'lenovo', 'gamer', 'gaming', 'bureau', 'clavier', 'souris', 'ram', 'ssd', 'intel', 'ryzen'],
-        storefrontSuggestion: { fr: "Informatique & Ordinateurs", ar: "حواسيب وإلكترونيات", en: "Laptops & Computers", icon: "Laptop" },
+        parentSuggestion: { fr: "Informatique & Bureautique", ar: "الحواسيب ومستلزمات المكتب", en: "Computers & Office", icon: "Laptop" },
+        storefrontSuggestion: { fr: "PC Portables & Ordinateurs", ar: "حواسيب محمولة ومكتبية", en: "Laptops & Computers", icon: "Laptop" },
       },
       {
         clusterId: 'audio_tv',
         categoryIds: ['cat_market_headphones', 'cat_market_audio_tv', 'cat_market_electronics'],
         keywords: ['casque', 'casques', 'ecouteurs', 'earbuds', 'airpods', 'bluetooth', 'audio', 'enceinte', 'soundbar', 'tv', 'television', 'smart tv', '4k', 'oled', 'projecteur', 'camera'],
-        storefrontSuggestion: { fr: "Audio, Casques & TV", ar: "صوتيات وتلفزيونات", en: "Audio, Headphones & TV", icon: "Headphones" },
+        parentSuggestion: { fr: "Audio, TV & Multimédia", ar: "الصوتيات والتلفزيون", en: "Audio & Television", icon: "Headphones" },
+        storefrontSuggestion: { fr: "Casques, Écouteurs & Enceintes", ar: "سماعات ومكبرات صوت", en: "Headphones & Speakers", icon: "Headphones" },
       },
       {
         clusterId: 'watches_jewelry',
         categoryIds: ['cat_market_m_watches', 'cat_market_w_watches', 'cat_market_gold', 'cat_market_silver', 'cat_market_watches_jewelry'],
         keywords: ['montre', 'montres', 'bijou', 'bijoux', 'bague', 'collier', 'bracelet', 'boucles', 'or', '18k', '24k', 'argent', 'silver', 'diamant', 'perle', 'horlogerie'],
-        storefrontSuggestion: { fr: "Bijouterie & Horlogerie", ar: "مجوهرات وساعات", en: "Jewelry & Watches", icon: "Watch" },
+        parentSuggestion: { fr: "Bijouterie & Horlogerie", ar: "المجوهرات والساعات", en: "Jewelry & Watches", icon: "Watch" },
+        storefrontSuggestion: { fr: "Montres & Bijoux Précieux", ar: "ساعات ومجوهرات فاخرة", en: "Watches & Fine Jewelry", icon: "Watch" },
       },
       {
         clusterId: 'beauty_perfumes',
         categoryIds: ['cat_market_w_perfumes', 'cat_market_m_colognes', 'cat_market_skincare', 'cat_market_makeup', 'cat_market_haircare', 'cat_market_beauty'],
         keywords: ['parfum', 'parfums', 'eau de parfum', 'oud', 'musk', 'fragrance', 'creme', 'serum', 'anti-age', 'hydratant', 'visage', 'peau', 'dermocosmetique', 'solaire', 'maquillage', 'rouge a levres', 'mascara', 'cheveux', 'shampoing'],
-        storefrontSuggestion: { fr: "Beauté, Soins & Parfums", ar: "عطور وعناية وجمال", en: "Beauty, Skincare & Perfumes", icon: "Heart" },
+        parentSuggestion: { fr: "Beauté, Parfums & Cosmétiques", ar: "الجمال والعطور ومستحضرات التجميل", en: "Beauty & Cosmetics", icon: "Heart" },
+        storefrontSuggestion: { fr: "Soins Visage & Parfumerie Fine", ar: "عناية بالبشرة وعطور فاخرة", en: "Skincare & Fine Fragrances", icon: "Heart" },
       },
       {
         clusterId: 'home_furniture',
         categoryIds: ['cat_market_sofas', 'cat_market_beds', 'cat_market_tables', 'cat_market_decor', 'cat_market_home'],
         keywords: ['salon', 'canape', 'fauteuil', 'table', 'chaise', 'lit', 'matelas', 'armoire', 'commode', 'meuble', 'meubles', 'deco', 'decoration', 'luminaire', 'lampe', 'miroir', 'coussin'],
-        storefrontSuggestion: { fr: "Mobilier & Décoration Maison", ar: "أثاث وديكور منزلي", en: "Home Furniture & Decor", icon: "Home" },
+        parentSuggestion: { fr: "Maison, Mobilier & Déco", ar: "المنزل والأثاث والديكور", en: "Home & Furniture", icon: "Home" },
+        storefrontSuggestion: { fr: "Mobilier & Décoration d'Intérieur", ar: "أثاث وديكور داخلي", en: "Furniture & Home Decor", icon: "Home" },
       },
       {
         clusterId: 'kitchen_cookware',
         categoryIds: ['cat_market_cookware', 'cat_market_home'],
         keywords: ['cuisine', 'poele', 'casserole', 'marmite', 'ustensile', 'ustensiles', 'couteau', 'planche', 'tajine', 'vaisselle', 'verre', 'tasse', 'inox', 'antiadhesif', 'granite'],
-        storefrontSuggestion: { fr: "Cuisine & Arts de la Table", ar: "أواني ومستلزمات المطبخ", en: "Kitchenware & Tableware", icon: "Utensils" },
+        parentSuggestion: { fr: "Maison & Cuisine", ar: "المنزل والمطبخ", en: "Home & Kitchen", icon: "Utensils" },
+        storefrontSuggestion: { fr: "Cuisine & Arts de la Table", ar: "أواني ومستلزمات المطبخ", en: "Kitchenware & Cookware", icon: "Utensils" },
       },
       {
         clusterId: 'appliances',
         categoryIds: ['cat_market_fridges', 'cat_market_washers', 'cat_market_air_fryers', 'cat_market_climatisation', 'cat_market_appliances'],
         keywords: ['refrigerateur', 'frigo', 'congelateur', 'lave-linge', 'machine a laver', 'climatiseur', 'climatisation', 'chauffage', 'air fryer', 'friteuse', 'cafetiere', 'micro-ondes', 'four', 'aspirateur'],
-        storefrontSuggestion: { fr: "Électroménager & Maison", ar: "أجهزة كهرومنزلية", en: "Home Appliances", icon: "Tv" },
+        parentSuggestion: { fr: "Électroménager", ar: "الأجهزة الكهرومنزلية", en: "Home Appliances", icon: "Tv" },
+        storefrontSuggestion: { fr: "Gros & Petit Électroménager", ar: "أجهزة كهرومنزلية متنوعة", en: "Major & Small Appliances", icon: "Tv" },
       },
       {
         clusterId: 'sports_fitness',
         categoryIds: ['cat_market_treadmills', 'cat_market_sportswear', 'cat_market_bicycles', 'cat_market_whey', 'cat_market_sports'],
         keywords: ['sport', 'sports', 'fitness', 'musculation', 'tapis roulant', 'velo', 'haltere', 'trottinette', 'randonnee', 'camping', 'proteine', 'whey', 'creatine', 'survetement'],
-        storefrontSuggestion: { fr: "Sport, Fitness & Nutrition", ar: "رياضة ولياقة بدنية", en: "Sports, Fitness & Nutrition", icon: "Activity" },
+        parentSuggestion: { fr: "Sport & Fitness", ar: "الرياضة واللياقة البدنية", en: "Sports & Fitness", icon: "Activity" },
+        storefrontSuggestion: { fr: "Équipements Sport & Musculation", ar: "معدات رياضية وبناء أجسام", en: "Fitness Equipment & Gym", icon: "Activity" },
       },
       {
         clusterId: 'baby_kids',
         categoryIds: ['cat_market_strollers', 'cat_market_lego_toys', 'cat_market_kids_fashion', 'cat_market_kids'],
         keywords: ['bebe', 'enfant', 'enfants', 'baby', 'kids', 'poussette', 'siege auto', 'lit bebe', 'biberon', 'jouet', 'jouets', 'lego', 'puzzle', 'peluche', 'vetement bebe'],
-        storefrontSuggestion: { fr: "Univers Bébé & Enfants", ar: "عالم الأطفال والرضع", en: "Baby & Kids", icon: "Baby" },
+        parentSuggestion: { fr: "Univers Bébé & Enfants", ar: "عالم الأطفال والرضع", en: "Baby & Kids", icon: "Baby" },
+        storefrontSuggestion: { fr: "Jouets, Éveil & Puériculture", ar: "ألعاب ومستلزمات أطفال", en: "Toys & Baby Essentials", icon: "Baby" },
       },
       {
         clusterId: 'auto_tools',
         categoryIds: ['cat_market_car_oils', 'cat_market_car_audio', 'cat_market_power_tools', 'cat_market_auto'],
         keywords: ['voiture', 'auto', 'moto', 'moteur', 'huile moteur', 'liquide', 'frein', 'pneu', 'dashcam', 'ecran android', 'gps', 'outillage', 'perceuse', 'visseuse', 'cle', 'boite a outils', 'bricolage'],
-        storefrontSuggestion: { fr: "Auto, Moto & Bricolage", ar: "لوازم السيارات والعدد", en: "Automotive & Tools", icon: "Wrench" },
+        parentSuggestion: { fr: "Auto, Moto & Bricolage", ar: "السيارات والعدد اليدوية", en: "Automotive & DIY", icon: "Wrench" },
+        storefrontSuggestion: { fr: "Entretien Auto & Outillage Pro", ar: "صيانة السيارات وأدوات احترافية", en: "Car Care & Power Tools", icon: "Wrench" },
       },
     ];
 
@@ -471,7 +493,15 @@ function generateFallbackCopywriting(prompt: string): string {
         ? Math.max(0.70, 0.85 - idx * 0.08)
         : Math.max(0.55, 0.65 - idx * 0.05);
 
+      const parentSug = matchedCluster?.parentSuggestion;
       const sfSug = matchedCluster?.storefrontSuggestion;
+
+      const sfParentName = parentSug ? parentSug.fr : (idx === 0 ? 'Rayon Principal' : 'Boutique');
+      const matchedParent = sfLines.find((s) => {
+        const normSf = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return normSf === sfParentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      });
+
       const sfName = matchedSf
         ? matchedSf.name
         : (idx === 0 && sfSug)
@@ -488,9 +518,14 @@ function generateFallbackCopywriting(prompt: string): string {
         rank: idx + 1,
         marketplace_category_id: mpCat.id,
         marketplace_category_name: mpCat.name,
+        storefront_parent_name: matchedParent ? matchedParent.name : sfParentName,
+        storefront_parent_id: matchedParent ? matchedParent.id : null,
+        parent_name_fr: parentSug?.fr || sfParentName,
+        parent_name_ar: parentSug?.ar || null,
+        parent_name_en: parentSug?.en || null,
         storefront_category_name: sfName,
         storefront_category_id: matchedSf ? matchedSf.id : null,
-        storefront_parent_category_id: null,
+        storefront_parent_category_id: matchedParent ? matchedParent.id : null,
         created_new: !matchedSf,
         name_fr: sfSug?.fr || sfName,
         name_ar: sfSug?.ar || null,
@@ -507,6 +542,11 @@ function generateFallbackCopywriting(prompt: string): string {
       rank: 1,
       marketplace_category_id: 'cat_market_uncategorized',
       marketplace_category_name: 'Autres Produits',
+      storefront_parent_name: 'Rayon Principal',
+      storefront_parent_id: null,
+      parent_name_fr: 'Rayon Principal',
+      parent_name_ar: null,
+      parent_name_en: null,
       storefront_category_name: 'Collection Produit',
       storefront_category_id: null,
       storefront_parent_category_id: null,

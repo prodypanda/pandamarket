@@ -172,6 +172,8 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
     const top1 = parsed.candidates[0];
     expect(top1.marketplace_category_id).toBe('cat_market_olive_oil');
     expect(top1.confidence).toBeGreaterThanOrEqual(0.85);
+    expect(top1.storefront_parent_name).toBeDefined();
+    expect(top1.storefront_parent_name).toContain('Épicerie');
     expect(top1.storefront_category_name).toContain('Huile');
     expect(top1.storefront_category_id).toBeNull();
     expect(top1.created_new).toBe(true);
