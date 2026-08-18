@@ -899,39 +899,56 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
     // Execute through the 3-tier cascade: Primary -> Fallback 1 -> Fallback 2
     for (const { id: providerId, label: tierLabel } of candidateTiers) {
       const { rows } = await query<ProviderRow>(
-        'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
+        'SELECT * FROM pd_ai_provider_config WHERE id = $1',
         [providerId],
       );
 
-      if (rows[0] && rows[0].api_key_encrypted) {
-        const apiKey = safeDecrypt(rows[0].api_key_encrypted);
-        if (apiKey) {
-          try {
-            const text = await generateWithProvider({
-              provider: rows[0].provider,
-              model: rows[0].model,
-              base_url: rows[0].base_url,
-              api_key: apiKey,
-              prompt,
-            });
-            if (text && text.trim()) {
-              return {
-                text,
-                provider: rows[0].provider,
-                provider_label: `${rows[0].label} (${purpose} — ${tierLabel})`,
-                source: 'platform',
-              };
-            }
-            throw new Error(`Le modèle "${rows[0].label}" a retourné une réponse vide.`);
-          } catch (err: any) {
-            const msg = err?.message || String(err);
-            purposeFailures.push(`[${tierLabel}: ${rows[0].label}]: ${msg}`);
-            logger.warn(
-              { purpose, tier: tierLabel, provider: rows[0].provider, model: rows[0].model, err: msg },
-              `Échec du ${tierLabel} pour '${purpose}'. Basculement automatique vers le modèle de secours suivant...`,
-            );
-          }
+      const provider = rows[0];
+      if (!provider) {
+        purposeFailures.push(`[${tierLabel}]: Le fournisseur IA sélectionné (ID: ${providerId}) n'existe pas en base.`);
+        continue;
+      }
+
+      if (!provider.is_enabled) {
+        purposeFailures.push(`[${tierLabel}: ${provider.label}]: Le fournisseur est actuellement désactivé dans l'onglet 'Fournisseurs & Clés API'.`);
+        continue;
+      }
+
+      if (!provider.api_key_encrypted) {
+        purposeFailures.push(`[${tierLabel}: ${provider.label}]: Aucune clé API n'a été configurée pour ce fournisseur.`);
+        continue;
+      }
+
+      const apiKey = safeDecrypt(provider.api_key_encrypted);
+      if (!apiKey) {
+        purposeFailures.push(`[${tierLabel}: ${provider.label}]: Clé API invalide ou impossible à déchiffrer. Veuillez réenregistrer la clé API dans l'onglet 'Fournisseurs & Clés API'.`);
+        continue;
+      }
+
+      try {
+        const text = await generateWithProvider({
+          provider: provider.provider,
+          model: provider.model,
+          base_url: provider.base_url,
+          api_key: apiKey,
+          prompt,
+        });
+        if (text && text.trim()) {
+          return {
+            text,
+            provider: provider.provider,
+            provider_label: `${provider.label} (${purpose} — ${tierLabel})`,
+            source: 'platform',
+          };
         }
+        throw new Error(`Le modèle "${provider.label}" a retourné une réponse vide.`);
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        purposeFailures.push(`[${tierLabel}: ${provider.label}]: ${msg}`);
+        logger.warn(
+          { purpose, tier: tierLabel, provider: provider.provider, model: provider.model, err: msg },
+          `Échec du ${tierLabel} pour '${purpose}'. Basculement automatique vers le modèle de secours suivant...`,
+        );
       }
     }
 
@@ -962,60 +979,76 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
 
     for (const { id: providerId, label: tierLabel } of candidateTiers) {
       const { rows } = await query<ProviderRow>(
-        'SELECT * FROM pd_ai_provider_config WHERE id = $1 AND is_enabled = true AND api_key_encrypted IS NOT NULL',
+        'SELECT * FROM pd_ai_provider_config WHERE id = $1',
         [providerId],
       );
 
-      if (rows[0] && rows[0].api_key_encrypted) {
-        const apiKey = safeDecrypt(rows[0].api_key_encrypted);
-        if (apiKey) {
-          const providerConfig = rows[0];
-          try {
-            if (providerConfig.provider === 'replicate') {
-              const url = `${(providerConfig.base_url || 'https://api.replicate.com').replace(/\/$/, '')}/v1/predictions`;
-              const { data } = await axios.post(
-                url,
-                {
-                  version: providerConfig.model,
-                  input: { prompt, image: imageUrl },
-                },
-                {
-                  headers: {
-                    Authorization: `Token ${apiKey}`,
-                    'Content-Type': 'application/json',
-                  },
-                },
-              );
-              const resultUrl = data.output?.[0] || data.output;
-              if (resultUrl) return resultUrl;
-              throw new Error('Réponse vide du modèle Replicate');
-            } else {
-              const url = `${(providerConfig.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/images/generations`;
-              const { data } = await axios.post(
-                url,
-                {
-                  model: providerConfig.model,
-                  prompt,
-                  n: 1,
-                  size: '1024x1024',
-                },
-                {
-                  headers: {
-                    Authorization: `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                  },
-                },
-              );
-              const resultUrl = data.data?.[0]?.url;
-              if (resultUrl) return resultUrl;
-              throw new Error('Réponse vide du modèle de génération d\'image');
-            }
-          } catch (err: any) {
-            const msg = err?.message || String(err);
-            imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: ${msg}`);
-            logger.warn({ purpose, tier: tierLabel, provider: providerConfig.provider, err: msg }, 'Échec génération image IA, basculement au secours');
-          }
+      const providerConfig = rows[0];
+      if (!providerConfig) {
+        imageFailures.push(`[${tierLabel}]: Le fournisseur d'image sélectionné n'existe pas.`);
+        continue;
+      }
+
+      if (!providerConfig.is_enabled) {
+        imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: Le fournisseur est désactivé.`);
+        continue;
+      }
+
+      if (!providerConfig.api_key_encrypted) {
+        imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: Aucune clé API n'a été configurée.`);
+        continue;
+      }
+
+      const apiKey = safeDecrypt(providerConfig.api_key_encrypted as string);
+      if (!apiKey) {
+        imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: Clé API invalide ou corrompue.`);
+        continue;
+      }
+
+      try {
+        if (providerConfig.provider === 'replicate') {
+          const url = `${(providerConfig.base_url || 'https://api.replicate.com').replace(/\/$/, '')}/v1/predictions`;
+          const { data } = await axios.post(
+            url,
+            {
+              version: providerConfig.model,
+              input: { prompt, image: imageUrl },
+            },
+            {
+              headers: {
+                Authorization: `Token ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+          const resultUrl = data.output?.[0] || data.output;
+          if (resultUrl) return resultUrl;
+          throw new Error('Réponse vide du modèle Replicate');
+        } else {
+          const url = `${(providerConfig.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/images/generations`;
+          const { data } = await axios.post(
+            url,
+            {
+              model: providerConfig.model,
+              prompt,
+              n: 1,
+              size: '1024x1024',
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+          const resultUrl = data.data?.[0]?.url;
+          if (resultUrl) return resultUrl;
+          throw new Error('Réponse vide du modèle de génération d\'image');
         }
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        imageFailures.push(`[${tierLabel}: ${providerConfig.label}]: ${msg}`);
+        logger.warn({ purpose, tier: tierLabel, provider: providerConfig.provider, err: msg }, 'Échec génération image IA, basculement au secours');
       }
     }
 
