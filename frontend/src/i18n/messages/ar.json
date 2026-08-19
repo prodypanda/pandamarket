@@ -3228,5 +3228,142 @@
     "bulkBeforeAfter": "مقارنة قبل ➔ بعد",
     "bulkApplyAll": "تطبيق على جميع المنتجات",
     "bulkClose": "إغلاق"
+  },
+  "productV2": {
+    "saveAmount": "وفّر {amount} د.ت",
+    "discountOff": "-{pct}%",
+    "liveViews": "🔥 {count} أشخاص يشاهدون هذا العرض حالياً",
+    "lowStockUrgency": "⚡ تبقّى {count} قطع فقط في المخزون !",
+    "outOfStock": "نفد من المخزون",
+    "inStockCount": "{count} متوفر في المخزون",
+    "deliveryEstimatorTitle": "تقدير موعد التوصيل في تونس",
+    "selectGovernorate": "اختر ولايتك",
+    "estimatedArrival": "التوصيل المتوقع : {date}",
+    "deliveryDelay": "شحن سريع خلال 24 إلى 48 ساعة",
+    "freeShippingEligible": "🎉 توصيل مجاني متوفر لهذا الطلب",
+    "tabs": {
+      "description": "الوصف المفصل",
+      "specs": "المواصفات والخصائص",
+      "reviews": "آراء العملاء ({count})",
+      "shipping": "التوصيل والإرجاع"
+    },
+    "specs": {
+      "title": "المواصفات الفنية للمنتج",
+      "brand": "العلامة / المتجر",
+      "category": "الفئة",
+      "reference": "رمز المرجع SKU",
+      "weight": "الوزن التقديري",
+      "productType": "نوع المنتج",
+      "origin": "المنشأ / الصنع"
+    },
+    "share": {
+      "title": "مشاركة هذا المنتج",
+      "shareWhatsapp": "مشاركة عبر واتساب",
+      "shareFacebook": "فيسبوك",
+      "copyLink": "نسخ الرابط",
+      "linkCopied": "تم نسخ الرابط إلى الحافظة !",
+      "whatsappMessage": "شاهد هذا العرض الرائع على PandaMarket : {title} بسعر {price} د.ت 👉 {url}"
+    },
+    "stickyBar": {
+      "addToCart": "أضف إلى السلة",
+      "selectOptions": "اختر الخيارات",
+      "inStock": "متوفر"
+    },
+    "reassurance": {
+      "securePaymentTitle": "دفع آمن 100%",
+      "securePaymentDesc": "بطاقة بنكية، فلوسي أو الدفع عند الاستلام",
+      "fastDeliveryTitle": "توصيل سريع في تونس",
+      "fastDeliveryDesc": "24 إلى 48 ساعة لكافة ولايات تونس مع تتبع الشحنة",
+      "easyReturnsTitle": "ضمان الإرجاع 7 أيام",
+      "easyReturnsDesc": "استرجاع المبلغ أو استبدال خلال 7 أيام عمل",
+      "verifiedSellerTitle": "بائع موثوق معتمد",
+      "verifiedSellerDesc": "متجر خاضع للرقابة وطلباتك محمية بالكامل"
+    },
+    "seller": {
+      "askQuestion": "طرح سؤال",
+      "responseRate": "نسبة الرد: 98%",
+      "followerCount": "{count} متابع",
+      "visitStore": "زيارة المتجر",
+      "verifiedStore": "متجر موثوق"
+    },
+    "wholesale": {
+      "title": "أسعار الجملة والكميات (B2B)",
+      "subtitle": "اطلب بالكمية واستفد من تخفيضات تصاعدية مميزة",
+      "buyBatch": "طلب دفعة من {qty} قطع",
+      "unitPrice": "{price} د.ت / قطعة",
+      "minQuantity": "الحد الأدنى للكمية : {qty} قطع"
+    },
+    "bundle": {
+      "includesTitle": "تحتوي هذه الباقة الحصرية على :",
+      "totalValue": "القيمة الإجمالية للمنتجات :",
+      "bundlePrice": "السعر الاستثنائي للباقة :",
+      "youSave": "إجمالي توفيرك :"
+    },
+    "crossSell": {
+      "frequentlyBoughtTogether": "يُشترى معاً عادةً",
+      "bundleOffers": "عروض وباقات هذا المتجر",
+      "similarProducts": "منتجات مشابهة",
+      "viewAllCategory": "عرض الفئة بالكامل"
+    },
+    "reviews": {
+      "averageRating": "التقييم العام",
+      "basedOn": "بناءً على {count} تقييم معتمد",
+      "filterByRating": "تصفية حسب التقييم",
+      "allRatings": "جميع التقييمات",
+      "verifiedBuyer": "مشتري موثوق من سوق باندا",
+      "noReviewsYet": "لا توجد تقييمات بعد. كن أول من يقيّم هذا المنتج !"
+    },
+    "shippingTab": {
+      "title": "طرق الشحن وسياسة الإرجاع",
+      "domesticDelivery": "التوصيل العادي : 24 إلى 48 ساعة عمل في تونس الكبرى وسوسة وصفاقس ونابل وبنزرت.",
+      "regionalDelivery": "الولايات الداخلية والجنوب : 48 إلى 72 ساعة عمل عبر شركة توصيل سريعة شريكة.",
+      "paymentMethods": "طرق الدفع المقبولة : الدفع عند الاستلام (نقداً)، بطاقة بنكية (GIM-TEL)، محفظة فلوسي أو كونكت.",
+      "returnPolicy": "مدة الإرجاع : 7 أيام تقويمية بعد الاستلام إذا كان المنتج غير مستخدم وبغلافه الأصلي."
+    }
+  },
+  "corePagesAdmin": {
+    "tabTitle": "الصفحات الرئيسية وصفحة المنتج",
+    "tabDescription": "إعدادات وتخصيص الصفحات الكبرى في السوق (صفحات المنتجات V1/V2، معارض الصور، بطاقات الثقة، أدوات زيادة المبيعات)",
+    "versionSelectorTitle": "الإصدار المفعّل لصفحة المنتج (Single Product Page)",
+    "versionSelectorSubtitle": "حدد نمط التصميم وتجربة الشراء الافتراضية عبر جميع صفحات المنتجات في السوق.",
+    "v1Title": "الإصدار 1 — كلاسيكي",
+    "v1Description": "تصميم تقليدي مرتب ببطاقات متتالية.",
+    "v2Title": "الإصدار 2 — عصري متطور عالي التحويل (موصى به)",
+    "v2Description": "تصميم حديث يعزز المبيعات : شريط شراء عائم عند التمرير، حاسبة التوصيل لـ 24 ولاية، إثبات اجتماعي مباشر، تبويبات تفاعلية، ومشاركة فورية عبر واتساب.",
+    "activeBadge": "مفعّل حالياً في السوق",
+    "activateV1": "تفعيل الإصدار 1",
+    "activateV2": "تفعيل الإصدار 2",
+    "previewLink": "معاينة واختبار",
+    "conversionSectionTitle": "أدوات تعزيز المبيعات والتفاعل الفوري",
+    "stickyCartBar": "شريط الشراء العائم أسفل الشاشة (Sticky Cart Bar)",
+    "stickyCartBarDesc": "يظهر شريط شراء سريع عند التمرير لأسفل لضمان سهولة الإضافة إلى السلة في أي لحظة.",
+    "deliveryEstimator": "حاسبة موعد التوصيل حسب الولاية",
+    "deliveryEstimatorDesc": "تتيح للمشترين معرفة التاريخ التقديري لوصول الشحنة إلى ولايتهم في تونس.",
+    "liveViews": "عداد المشاهدين في الوقت الفعلي (الإثبات الاجتماعي)",
+    "liveViewsDesc": "يعرض شارة تفاعلية بعدد الأشخاص المهتمين بالمنتج الآن.",
+    "stockUrgency": "مؤشر نفاد المخزون وتنبيه الكمية المحدودة",
+    "stockUrgencyDesc": "يعرض شريط تقدم باللون البرتقالي/الأحمر عند انخفاض الكمية عن الحد المحدد.",
+    "stockThreshold": "حد تنبيه المخزون المنخفض",
+    "shareButtons": "أزرار المشاركة الاجتماعية (واتساب بنقرة واحدة)",
+    "shareButtonsDesc": "تسمح للمشترين بمشاركة تفاصيل المنتج فوراً مع الأصدقاء والعائلة.",
+    "wholesaleCalc": "حاسبة أسعار الجملة التفاعلية",
+    "wholesaleCalcDesc": "تعرض أزرار طلب سريع للكميات للمنتجات ذات أسعار الجملة.",
+    "contactSeller": "زر التواصل المباشر مع المتجر",
+    "contactSellerDesc": "يفتح المحادثة الفورية مع البائع للاستفسار قبل إتمام الشراء.",
+    "reassuranceSectionTitle": "بطاقات الثقة والضمان للمشتري",
+    "reassuranceSectionDesc": "تخصيص ركائز الثقة الأربعة المعروضة في صفحة المنتج.",
+    "layoutSectionTitle": "طريقة العرض وهيكلة المحتوى",
+    "galleryLayout": "نمط معرض الصور",
+    "galleryLayoutSticky": "معرض تفاعلي مع تكبير وصور مصغرة (موصى به)",
+    "galleryLayoutMosaic": "شبكة صور عصرية (موزاييك)",
+    "galleryLayoutStacked": "صور متتالية رأسياً",
+    "detailsLayout": "عرض التفاصيل والمعلومات",
+    "detailsLayoutTabs": "تبويبات أفقية تفاعلية (موصى به)",
+    "detailsLayoutAccordions": "قوائم منسدلة قابلة للطي",
+    "detailsLayoutStacked": "أقسام مكدسة",
+    "sellerCardStyle": "نمط بطاقة المتجر والبائع",
+    "sellerCardStyleRich": "لافتة متقدمة مع الإحصائيات (موصى به)",
+    "sellerCardStyleCompact": "بطاقة مدمجة",
+    "sellerCardStyleGlass": "بطاقة زجاجية حديثة (Glassmorphism)"
   }
 }

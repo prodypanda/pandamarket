@@ -249,9 +249,24 @@ interface PlatformSettings {
   watermark_show_on_cards: boolean;
   watermark_show_on_lightbox: boolean;
   watermark_copy_protection: boolean;
+  single_product_page_version: 'v1_classic' | 'v2_modern_showcase';
+  single_product_gallery_layout: 'sticky_carousel' | 'grid_mosaic' | 'stacked';
+  single_product_sticky_cart_bar: boolean;
+  single_product_show_reassurance: boolean;
+  single_product_reassurance_items: string;
+  single_product_show_delivery_estimator: boolean;
+  single_product_show_stock_urgency: boolean;
+  single_product_stock_urgency_threshold: number;
+  single_product_show_share_buttons: boolean;
+  single_product_seller_card_style: 'compact' | 'rich_banner' | 'glass';
+  single_product_details_layout: 'tabs' | 'accordions' | 'stacked';
+  single_product_cross_sell_position: 'bottom' | 'sidebar' | 'both';
+  single_product_show_wholesale_calculator: boolean;
+  single_product_show_live_views: boolean;
+  single_product_show_contact_seller: boolean;
 }
 
-type SettingsTab = 'marketplace' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
+type SettingsTab = 'marketplace' | 'core_pages' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 interface SmtpConfigPublic {
@@ -502,6 +517,21 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   watermark_show_on_cards: true,
   watermark_show_on_lightbox: true,
   watermark_copy_protection: false,
+  single_product_page_version: 'v1_classic',
+  single_product_gallery_layout: 'sticky_carousel',
+  single_product_sticky_cart_bar: true,
+  single_product_show_reassurance: true,
+  single_product_reassurance_items: '[{"icon":"shield","title":"Paiement Sécurisé","desc":"Carte bancaire, Flouci ou à la livraison"},{"icon":"truck","title":"Livraison Rapide","desc":"24h à 48h partout en Tunisie"},{"icon":"rotate","title":"Retours Faciles","desc":"Satisfait ou remboursé sous 7 jours"},{"icon":"check","title":"Vendeur Vérifié","desc":"Boutiques auditées et certifiées"}]',
+  single_product_show_delivery_estimator: true,
+  single_product_show_stock_urgency: true,
+  single_product_stock_urgency_threshold: 5,
+  single_product_show_share_buttons: true,
+  single_product_seller_card_style: 'rich_banner',
+  single_product_details_layout: 'tabs',
+  single_product_cross_sell_position: 'bottom',
+  single_product_show_wholesale_calculator: true,
+  single_product_show_live_views: true,
+  single_product_show_contact_seller: true,
 };
 
 const DEFAULT_SMTP_FORM: SmtpFormData = {
@@ -527,6 +557,7 @@ const SMTP_PROVIDER_PRESETS: Record<string, { host: string; port: number; secure
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; description: string; icon: typeof Store }> = [
   { id: 'marketplace', label: 'Marketplace & Hero', description: 'Identity, branding, themes, megamenu & hero builder', icon: Globe2 },
+  { id: 'core_pages', label: '📄 Pages Clés & Fiche Produit', description: 'Configuration des pages maîtresses du Marketplace (Fiches produits V1/V2, Galeries, Réassurance, Widgets)', icon: LayoutGrid },
   { id: 'algorithm', label: '🤖 Algorithme & Flux Hub', description: 'Tri du catalogue, personnalisation IA & santé du tagging sémantique', icon: Sparkles },
   { id: 'commerce', label: 'Commerce & Catalog', description: 'Product rules, moderation, reviews, AI & builder', icon: SlidersHorizontal },
   { id: 'finance', label: 'Finance & Payments', description: 'Gateways, Flouci, Konnect, commissions & payouts', icon: CreditCard },
@@ -694,6 +725,7 @@ const NUMBER_SETTING_KEYS = [
   'hub_hero_carousel_max_categories',
   'hub_hero_carousel_interval',
   'watermark_opacity',
+  'single_product_stock_urgency_threshold',
 ] as const satisfies readonly NumberSettingKey[];
 
 const BOOLEAN_SETTING_KEYS = [
@@ -763,6 +795,14 @@ const BOOLEAN_SETTING_KEYS = [
   'watermark_show_on_lightbox',
   'watermark_copy_protection',
   'hub_search_sponsored_enabled',
+  'single_product_sticky_cart_bar',
+  'single_product_show_reassurance',
+  'single_product_show_delivery_estimator',
+  'single_product_show_stock_urgency',
+  'single_product_show_share_buttons',
+  'single_product_show_wholesale_calculator',
+  'single_product_show_live_views',
+  'single_product_show_contact_seller',
 ] as const satisfies readonly BooleanSettingKey[];
 
 const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSettings)[]> = {
@@ -854,6 +894,23 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'watermark_show_on_cards',
     'watermark_show_on_lightbox',
     'watermark_copy_protection',
+  ],
+  core_pages: [
+    'single_product_page_version',
+    'single_product_gallery_layout',
+    'single_product_sticky_cart_bar',
+    'single_product_show_reassurance',
+    'single_product_reassurance_items',
+    'single_product_show_delivery_estimator',
+    'single_product_show_stock_urgency',
+    'single_product_stock_urgency_threshold',
+    'single_product_show_share_buttons',
+    'single_product_seller_card_style',
+    'single_product_details_layout',
+    'single_product_cross_sell_position',
+    'single_product_show_wholesale_calculator',
+    'single_product_show_live_views',
+    'single_product_show_contact_seller',
   ],
   algorithm: [
     'hub_feed_base_sort',
@@ -3891,6 +3948,279 @@ export default function SuperAdminSettingsPage() {
             {renderTextInput('catalog_featured_category_slugs', 'Featured Category Slugs', 'electronics,beauty,home')}
           </div>
         </div>
+      </section>
+
+      {/* Core Pages & Single Product Page Studio Section */}
+      <section className={`${activeTab === 'core_pages' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40 space-y-8`} data-testid="core-pages-settings-section">
+        <SectionHeader
+          icon={<LayoutGrid className="h-5 w-5 text-emerald-600" />}
+          title={t('corePagesAdmin.tabTitle') || "Pages Clés & Fiche Produit"}
+          description={t('corePagesAdmin.tabDescription') || "Configuration des pages maîtresses du Marketplace (Fiches produits V1/V2, Galeries, Réassurance, Widgets)"}
+        />
+
+        {/* Dual Version Selector Cards */}
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-sm font-black text-slate-800">
+              {t('corePagesAdmin.versionSelectorTitle') || "Version active de la Fiche Produit (Single Product Page)"}
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {t('corePagesAdmin.versionSelectorSubtitle') || "Sélectionnez le style de mise en page et l'expérience d'achat sur toutes les fiches produits du Hub."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {/* Version 1 Card */}
+            <div
+              onClick={() => updateSetting('single_product_page_version', 'v1_classic')}
+              data-testid="version-card-v1"
+              className={`cursor-pointer rounded-2xl border-2 p-5 transition-all ${
+                settings.single_product_page_version === 'v1_classic'
+                  ? 'border-emerald-500 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 font-black text-slate-700">
+                    V1
+                  </div>
+                  <div>
+                    <h5 className="font-black text-slate-900">
+                      {t('corePagesAdmin.v1Title') || "Version 1 — Classique"}
+                    </h5>
+                    <span className="text-[11px] font-bold text-slate-400">Disposition Standard</span>
+                  </div>
+                </div>
+                {settings.single_product_page_version === 'v1_classic' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{t('corePagesAdmin.activeBadge') || "Actif"}</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateSetting('single_product_page_version', 'v1_classic');
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    {t('corePagesAdmin.activateV1') || "Activer"}
+                  </button>
+                )}
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                {t('corePagesAdmin.v1Description') || "Mise en page standard avec disposition épurée et cartes superposées."}
+              </p>
+              <div className="mt-4 flex items-center gap-2 pt-3 border-t border-slate-100 text-[11px] font-bold text-slate-400">
+                <span>⚡ Galerie simple</span>
+                <span>•</span>
+                <span>📦 Panneau d'achat classique</span>
+              </div>
+            </div>
+
+            {/* Version 2 Card */}
+            <div
+              onClick={() => updateSetting('single_product_page_version', 'v2_modern_showcase')}
+              data-testid="version-card-v2"
+              className={`cursor-pointer rounded-2xl border-2 p-5 transition-all ${
+                settings.single_product_page_version === 'v2_modern_showcase'
+                  ? 'border-emerald-500 bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-white shadow-md ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 font-black text-white shadow-sm">
+                    V2
+                  </div>
+                  <div>
+                    <h5 className="font-black text-slate-900 flex items-center gap-1.5">
+                      <span>{t('corePagesAdmin.v2Title') || "Version 2 — Moderne Impeccable"}</span>
+                      <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    </h5>
+                    <span className="text-[11px] font-bold text-emerald-700">Recommandé · Haute Conversion</span>
+                  </div>
+                </div>
+                {settings.single_product_page_version === 'v2_modern_showcase' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{t('corePagesAdmin.activeBadge') || "Actif"}</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateSetting('single_product_page_version', 'v2_modern_showcase');
+                    }}
+                    className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs hover:bg-emerald-500"
+                  >
+                    {t('corePagesAdmin.activateV2') || "Activer V2"}
+                  </button>
+                )}
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                {t('corePagesAdmin.v2Description') || "Design moderne à fort taux de conversion : Sticky Cart Bar, Estimateur Tunisie 24 gouvernorats, Preuve sociale en direct, Onglets interactifs et Partage WhatsApp 1-Click."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-[11px] font-bold text-emerald-800">
+                <span className="rounded-md bg-emerald-100/70 px-2 py-0.5">🛒 Sticky Cart</span>
+                <span className="rounded-md bg-emerald-100/70 px-2 py-0.5">🇹🇳 24 Gouvernorats</span>
+                <span className="rounded-md bg-emerald-100/70 px-2 py-0.5">🔥 Live Views</span>
+                <span className="rounded-md bg-emerald-100/70 px-2 py-0.5">💬 WhatsApp 1-Click</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Conversion Boosters & Micro-Interactions */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div>
+            <h4 className="text-sm font-black text-slate-800">
+              {t('corePagesAdmin.conversionSectionTitle') || "Boosters de conversion & Micro-interactions"}
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Activez ou désactivez les fonctionnalités interactives de la fiche produit selon votre stratégie marketing.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                key: 'single_product_sticky_cart_bar' as const,
+                label: t('corePagesAdmin.stickyCartBar') || "Sticky Cart Bar",
+                description: t('corePagesAdmin.stickyCartBarDesc') || "Affiche une barre d'achat flottante lors du défilement.",
+              },
+              {
+                key: 'single_product_show_delivery_estimator' as const,
+                label: t('corePagesAdmin.deliveryEstimator') || "Estimateur de livraison Tunisie",
+                description: t('corePagesAdmin.deliveryEstimatorDesc') || "Calculateur de date d'arrivée selon les 24 gouvernorats.",
+              },
+              {
+                key: 'single_product_show_live_views' as const,
+                label: t('corePagesAdmin.liveViews') || "Preuve sociale (Live Views)",
+                description: t('corePagesAdmin.liveViewsDesc') || "Badge animé indiquant le nombre de personnes consultant l'offre.",
+              },
+              {
+                key: 'single_product_show_stock_urgency' as const,
+                label: t('corePagesAdmin.stockUrgency') || "Jauge d'urgence stock faible",
+                description: t('corePagesAdmin.stockUrgencyDesc') || "Barre de progression rouge lorsque le stock est critique.",
+              },
+              {
+                key: 'single_product_show_share_buttons' as const,
+                label: t('corePagesAdmin.shareButtons') || "Partage WhatsApp & Réseaux",
+                description: t('corePagesAdmin.shareButtonsDesc') || "Boutons de partage rapide pour les acheteurs.",
+              },
+              {
+                key: 'single_product_show_wholesale_calculator' as const,
+                label: t('corePagesAdmin.wholesaleCalc') || "Calculateur de prix de gros",
+                description: t('corePagesAdmin.wholesaleCalcDesc') || "Paliers de commande par lot pour boutiques grossistes.",
+              },
+              {
+                key: 'single_product_show_contact_seller' as const,
+                label: t('corePagesAdmin.contactSeller') || "Chat direct vendeur",
+                description: t('corePagesAdmin.contactSellerDesc') || "Permet aux acheteurs de poser une question avant achat.",
+              },
+              {
+                key: 'single_product_show_reassurance' as const,
+                label: t('corePagesAdmin.reassuranceSectionTitle') || "Bloc de Réassurance & Confiance",
+                description: t('corePagesAdmin.reassuranceSectionDesc') || "Affiche les 4 piliers de garantie et sécurité.",
+              },
+            ].map(renderToggle)}
+          </div>
+
+          {/* Stock Urgency Threshold */}
+          {settings.single_product_show_stock_urgency && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 max-w-sm">
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                {t('corePagesAdmin.stockThreshold') || "Seuil d'alerte stock faible"}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={settings.single_product_stock_urgency_threshold || 5}
+                onChange={(e) => updateSetting('single_product_stock_urgency_threshold', Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Layout & Style Customization */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div>
+            <h4 className="text-sm font-black text-slate-800">
+              {t('corePagesAdmin.layoutSectionTitle') || "Disposition & Structure du contenu"}
+            </h4>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                {t('corePagesAdmin.galleryLayout') || "Style de la galerie d'images"}
+              </label>
+              <select
+                value={settings.single_product_gallery_layout || 'sticky_carousel'}
+                onChange={(e) => updateSetting('single_product_gallery_layout', e.target.value as any)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                <option value="sticky_carousel">Carrousel interactif avec zoom (Recommandé)</option>
+                <option value="grid_mosaic">Mosaïque moderne en grille</option>
+                <option value="stacked">Images empilées</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                {t('corePagesAdmin.detailsLayout') || "Présentation du contenu détaillé"}
+              </label>
+              <select
+                value={settings.single_product_details_layout || 'tabs'}
+                onChange={(e) => updateSetting('single_product_details_layout', e.target.value as any)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                <option value="tabs">Onglets horizontaux (Recommandé)</option>
+                <option value="accordions">Accordéons déroulants</option>
+                <option value="stacked">Sections empilées</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                {t('corePagesAdmin.sellerCardStyle') || "Style de la carte vendeur"}
+              </label>
+              <select
+                value={settings.single_product_seller_card_style || 'rich_banner'}
+                onChange={(e) => updateSetting('single_product_seller_card_style', e.target.value as any)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                <option value="rich_banner">Bannière enrichie avec stats (Recommandé)</option>
+                <option value="compact">Carte compacte</option>
+                <option value="glass">Carte effet verre (Glassmorphism)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Reassurance Editor */}
+        {settings.single_product_show_reassurance && (
+          <div className="space-y-3 pt-4 border-t border-slate-100">
+            <h4 className="text-sm font-black text-slate-800">
+              {t('corePagesAdmin.reassuranceSectionTitle') || "Cartes de réassurance & Confiance acheteur"}
+            </h4>
+            <p className="text-xs text-slate-500">
+              Structure JSON des 4 piliers de confiance affichés sur la fiche produit :
+            </p>
+            <textarea
+              rows={5}
+              value={settings.single_product_reassurance_items || ''}
+              onChange={(e) => updateSetting('single_product_reassurance_items', e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs p-3 text-slate-800 focus:bg-white"
+            />
+          </div>
+        )}
       </section>
 
       {/* Feature 20: Hub Feed & Algorithm Tuning Section */}

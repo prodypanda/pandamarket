@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 import { PdConflictError, PdErrorCode } from '../errors';
 
 export type PlatformSettingValue = string | number | boolean;
-export type PlatformSettingSection = 'marketplace' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
+export type PlatformSettingSection = 'marketplace' | 'core_pages' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
 const PLATFORM_CONFIG_CACHE_KEY = 'pd:platform-config:settings';
 const PLATFORM_CONFIG_CACHE_TTL_SECONDS = 60;
 const PLATFORM_CONFIG_INVALIDATION_CHANNEL = 'pd:platform-config:invalidate';
@@ -252,6 +252,21 @@ export const PLATFORM_SETTING_DEFAULTS = {
   watermark_show_on_cards: true,
   watermark_show_on_lightbox: true,
   watermark_copy_protection: false,
+  single_product_page_version: 'v1_classic',
+  single_product_gallery_layout: 'sticky_carousel',
+  single_product_sticky_cart_bar: true,
+  single_product_show_reassurance: true,
+  single_product_reassurance_items: '[{"icon":"shield","title":"Paiement Sécurisé","desc":"Carte bancaire, Flouci ou à la livraison"},{"icon":"truck","title":"Livraison Rapide","desc":"24h à 48h partout en Tunisie"},{"icon":"rotate","title":"Retours Faciles","desc":"Satisfait ou remboursé sous 7 jours"},{"icon":"check","title":"Vendeur Vérifié","desc":"Boutiques auditées et certifiées"}]',
+  single_product_show_delivery_estimator: true,
+  single_product_show_stock_urgency: true,
+  single_product_stock_urgency_threshold: 5,
+  single_product_show_share_buttons: true,
+  single_product_seller_card_style: 'rich_banner',
+  single_product_details_layout: 'tabs',
+  single_product_cross_sell_position: 'bottom',
+  single_product_show_wholesale_calculator: true,
+  single_product_show_live_views: true,
+  single_product_show_contact_seller: true,
 } satisfies Record<string, PlatformSettingValue>;
 
 export type PlatformSettingKey = keyof typeof PLATFORM_SETTING_DEFAULTS;
@@ -382,6 +397,21 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'watermark_show_on_cards',
   'watermark_show_on_lightbox',
   'watermark_copy_protection',
+  'single_product_page_version',
+  'single_product_gallery_layout',
+  'single_product_sticky_cart_bar',
+  'single_product_show_reassurance',
+  'single_product_reassurance_items',
+  'single_product_show_delivery_estimator',
+  'single_product_show_stock_urgency',
+  'single_product_stock_urgency_threshold',
+  'single_product_show_share_buttons',
+  'single_product_seller_card_style',
+  'single_product_details_layout',
+  'single_product_cross_sell_position',
+  'single_product_show_wholesale_calculator',
+  'single_product_show_live_views',
+  'single_product_show_contact_seller',
 ] as const satisfies readonly PlatformSettingKey[];
 
 export const PLATFORM_SETTING_SECTION_META: Array<{
@@ -390,6 +420,7 @@ export const PLATFORM_SETTING_SECTION_META: Array<{
   description: string;
 }> = [
   { id: 'marketplace', label: 'Marketplace & Hero', description: 'Identity, branding, themes, megamenu & hero builder' },
+  { id: 'core_pages', label: 'Pages Clés & Fiche Produit', description: 'Configuration des pages maîtresses du Marketplace (Fiches produits V1/V2, Galeries, Réassurance, Widgets)' },
   { id: 'algorithm', label: 'Algorithme & Flux Hub', description: 'Tri du catalogue, personnalisation IA & santé du tagging sémantique' },
   { id: 'commerce', label: 'Commerce & Catalog', description: 'Product rules, moderation, reviews, AI & builder' },
   { id: 'finance', label: 'Finance & Payments', description: 'Gateways, Flouci, Konnect, commissions & payouts' },
@@ -493,6 +524,23 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'watermark_show_on_cards',
     'watermark_show_on_lightbox',
     'watermark_copy_protection',
+  ],
+  core_pages: [
+    'single_product_page_version',
+    'single_product_gallery_layout',
+    'single_product_sticky_cart_bar',
+    'single_product_show_reassurance',
+    'single_product_reassurance_items',
+    'single_product_show_delivery_estimator',
+    'single_product_show_stock_urgency',
+    'single_product_stock_urgency_threshold',
+    'single_product_show_share_buttons',
+    'single_product_seller_card_style',
+    'single_product_details_layout',
+    'single_product_cross_sell_position',
+    'single_product_show_wholesale_calculator',
+    'single_product_show_live_views',
+    'single_product_show_contact_seller',
   ],
   algorithm: [
     'hub_feed_base_sort',
@@ -818,6 +866,7 @@ function pickSettings(settings: PlatformSettings, keys: readonly PlatformSetting
 function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
   return {
     marketplace: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.marketplace),
+    core_pages: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.core_pages),
     algorithm: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.algorithm),
     commerce: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.commerce),
     finance: pickSettings(settings, PLATFORM_SETTING_SECTION_KEYS.finance),

@@ -2442,6 +2442,21 @@ const globalSettingsSchema = z.object({
   watermark_show_on_cards: z.boolean().optional(),
   watermark_show_on_lightbox: z.boolean().optional(),
   watermark_copy_protection: z.boolean().optional(),
+  single_product_page_version: z.enum(['v1_classic', 'v2_modern_showcase']).optional(),
+  single_product_gallery_layout: z.enum(['sticky_carousel', 'grid_mosaic', 'stacked']).optional(),
+  single_product_sticky_cart_bar: z.boolean().optional(),
+  single_product_show_reassurance: z.boolean().optional(),
+  single_product_reassurance_items: z.coerce.string().optional(),
+  single_product_show_delivery_estimator: z.boolean().optional(),
+  single_product_show_stock_urgency: z.boolean().optional(),
+  single_product_stock_urgency_threshold: z.coerce.number().int().min(1).max(100).optional(),
+  single_product_show_share_buttons: z.boolean().optional(),
+  single_product_seller_card_style: z.enum(['compact', 'rich_banner', 'glass']).optional(),
+  single_product_details_layout: z.enum(['tabs', 'accordions', 'stacked']).optional(),
+  single_product_cross_sell_position: z.enum(['bottom', 'sidebar', 'both']).optional(),
+  single_product_show_wholesale_calculator: z.boolean().optional(),
+  single_product_show_live_views: z.boolean().optional(),
+  single_product_show_contact_seller: z.boolean().optional(),
   hub_feed_base_sort: z.enum(['random', 'newest', 'alphabetical', 'best_sellers']).optional(),
   hub_feed_personalization_pct: z.coerce.number().int().min(0).max(50).optional(),
   hub_feed_diversity_enabled: z.boolean().optional(),
@@ -2870,9 +2885,30 @@ const algorithmSettingsSchema = globalSettingsSchema
   })
   .strict();
 
+const corePagesSettingsSchema = globalSettingsSchema
+  .pick({
+    single_product_page_version: true,
+    single_product_gallery_layout: true,
+    single_product_sticky_cart_bar: true,
+    single_product_show_reassurance: true,
+    single_product_reassurance_items: true,
+    single_product_show_delivery_estimator: true,
+    single_product_show_stock_urgency: true,
+    single_product_stock_urgency_threshold: true,
+    single_product_show_share_buttons: true,
+    single_product_seller_card_style: true,
+    single_product_details_layout: true,
+    single_product_cross_sell_position: true,
+    single_product_show_wholesale_calculator: true,
+    single_product_show_live_views: true,
+    single_product_show_contact_seller: true,
+  })
+  .strict();
+
 const settingsSectionParamSchema = z.object({
   section: z.enum([
     'marketplace',
+    'core_pages',
     'algorithm',
     'commerce',
     'finance',
@@ -2885,6 +2921,7 @@ const settingsSectionParamSchema = z.object({
 
 const settingsSectionSchemas: Record<PlatformSettingSection, z.ZodTypeAny> = {
   marketplace: marketplaceSettingsSchema,
+  core_pages: corePagesSettingsSchema,
   algorithm: algorithmSettingsSchema,
   commerce: commerceSettingsSchema,
   finance: financeSettingsSchema,

@@ -3234,5 +3234,142 @@
     "bulkBeforeAfter": "Before ➔ After Comparison",
     "bulkApplyAll": "Apply to All Products",
     "bulkClose": "Close"
+  },
+  "productV2": {
+    "saveAmount": "Save {amount} TND",
+    "discountOff": "-{pct}%",
+    "liveViews": "🔥 {count} people are viewing this deal right now",
+    "lowStockUrgency": "⚡ Only {count} items left in stock!",
+    "outOfStock": "Out of stock",
+    "inStockCount": "{count} items in stock",
+    "deliveryEstimatorTitle": "Tunisia Delivery Estimation",
+    "selectGovernorate": "Select your governorate",
+    "estimatedArrival": "Estimated delivery: {date}",
+    "deliveryDelay": "Fast shipping within 24h to 48h",
+    "freeShippingEligible": "🎉 Free delivery available on this order",
+    "tabs": {
+      "description": "Detailed Description",
+      "specs": "Specifications & Details",
+      "reviews": "Verified Reviews ({count})",
+      "shipping": "Shipping & Returns"
+    },
+    "specs": {
+      "title": "Product Technical Specifications",
+      "brand": "Brand / Store",
+      "category": "Category",
+      "reference": "SKU Reference",
+      "weight": "Estimated Weight",
+      "productType": "Product Type",
+      "origin": "Origin / Manufacturing"
+    },
+    "share": {
+      "title": "Share this product",
+      "shareWhatsapp": "Share on WhatsApp",
+      "shareFacebook": "Facebook",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied to clipboard!",
+      "whatsappMessage": "Check out this deal on PandaMarket: {title} for {price} TND 👉 {url}"
+    },
+    "stickyBar": {
+      "addToCart": "Add to Cart",
+      "selectOptions": "Choose Options",
+      "inStock": "In Stock"
+    },
+    "reassurance": {
+      "securePaymentTitle": "100% Secure Payment",
+      "securePaymentDesc": "Credit card, Flouci, or cash on delivery",
+      "fastDeliveryTitle": "Fast Tunisia Delivery",
+      "fastDeliveryDesc": "24h to 48h nationwide with parcel tracking",
+      "easyReturnsTitle": "7-Day Return Guarantee",
+      "easyReturnsDesc": "Full refund or exchange within 7 business days",
+      "verifiedSellerTitle": "Panda Verified Seller",
+      "verifiedSellerDesc": "Audited merchant and buyer-protected orders"
+    },
+    "seller": {
+      "askQuestion": "Ask a question",
+      "responseRate": "Response rate: 98%",
+      "followerCount": "{count} followers",
+      "visitStore": "Visit store",
+      "verifiedStore": "Verified store"
+    },
+    "wholesale": {
+      "title": "Wholesale & Volume Pricing (B2B)",
+      "subtitle": "Order in bulk and unlock tiered discounts",
+      "buyBatch": "Order batch of {qty}",
+      "unitPrice": "{price} TND / unit",
+      "minQuantity": "Minimum quantity: {qty} units"
+    },
+    "bundle": {
+      "includesTitle": "This exclusive pack includes:",
+      "totalValue": "Total individual value:",
+      "bundlePrice": "Special pack price:",
+      "youSave": "Your total savings:"
+    },
+    "crossSell": {
+      "frequentlyBoughtTogether": "Frequently Bought Together",
+      "bundleOffers": "Packs & Promotions from this Store",
+      "similarProducts": "Similar Products",
+      "viewAllCategory": "View entire category"
+    },
+    "reviews": {
+      "averageRating": "Average Rating",
+      "basedOn": "Based on {count} verified customer reviews",
+      "filterByRating": "Filter by rating",
+      "allRatings": "All ratings",
+      "verifiedBuyer": "PandaMarket Verified Buyer",
+      "noReviewsYet": "No reviews yet. Be the first to leave a review!"
+    },
+    "shippingTab": {
+      "title": "Shipping Methods & Return Policies",
+      "domesticDelivery": "Standard Delivery: 24h to 48h business days across Greater Tunis, Sousse, Sfax, Nabeul, and Bizerte.",
+      "regionalDelivery": "Interior and Southern regions: 48h to 72h business days via express courier partner.",
+      "paymentMethods": "Accepted Payment Methods: Cash on Delivery, Bank Card (GIM-TEL), Flouci or Konnect Digital Wallets.",
+      "returnPolicy": "Return Policy: 7 calendar days after delivery if the product is unused and in original packaging."
+    }
+  },
+  "corePagesAdmin": {
+    "tabTitle": "Core Pages & Product Detail",
+    "tabDescription": "Configure marketplace flagship core pages (Product V1/V2, Galleries, Reassurance, Conversion Widgets)",
+    "versionSelectorTitle": "Active Single Product Page Version",
+    "versionSelectorSubtitle": "Select the default layout style and shopping experience across all product pages on the Hub.",
+    "v1Title": "Version 1 — Classic",
+    "v1Description": "Standard layout with clean cards and stacked sections.",
+    "v2Title": "Version 2 — Modern Impeccable Showcase (Recommended)",
+    "v2Description": "High-conversion modern design: Floating Sticky Cart Bar, 24-governorate Tunisia Estimator, Live Social Proof, Interactive Tabs, and 1-Click WhatsApp Share.",
+    "activeBadge": "Active on Marketplace",
+    "activateV1": "Activate Version 1",
+    "activateV2": "Activate Version 2",
+    "previewLink": "Test in Preview Mode",
+    "conversionSectionTitle": "Conversion Boosters & Micro-Interactions",
+    "stickyCartBar": "Floating Sticky Add-to-Cart Bar",
+    "stickyCartBarDesc": "Displays a bottom purchase bar when scrolling to keep the CTA accessible.",
+    "deliveryEstimator": "Governorate Delivery Date Estimator",
+    "deliveryEstimatorDesc": "Allows buyers to calculate the estimated delivery date based on their Tunisian region.",
+    "liveViews": "Real-time Viewers Counter (Social Proof)",
+    "liveViewsDesc": "Displays an animated badge showing live browsing interest for the product.",
+    "stockUrgency": "Urgency Meter & Low Stock Alert",
+    "stockUrgencyDesc": "Displays a countdown progress meter when inventory drops below threshold.",
+    "stockThreshold": "Low stock alert threshold",
+    "shareButtons": "Social Share Buttons (WhatsApp 1-Click, etc.)",
+    "shareButtonsDesc": "Allows buyers to instantly share product details with friends and family.",
+    "wholesaleCalc": "Interactive Wholesale Pricing Calculator",
+    "wholesaleCalcDesc": "Renders quick-order quantity chips for products with B2B wholesale tiers.",
+    "contactSeller": "Direct Seller Chat Button",
+    "contactSellerDesc": "Launches instant messaging for pre-purchase questions.",
+    "reassuranceSectionTitle": "Buyer Reassurance & Trust Cards",
+    "reassuranceSectionDesc": "Customize the 4 key trust pillars displayed on the product page.",
+    "layoutSectionTitle": "Layout & Content Structure",
+    "galleryLayout": "Image Gallery Style",
+    "galleryLayoutSticky": "Interactive zoom carousel with thumbnails (Recommended)",
+    "galleryLayoutMosaic": "Modern responsive grid mosaic",
+    "galleryLayoutStacked": "Vertically stacked images",
+    "detailsLayout": "Detailed Content Display",
+    "detailsLayoutTabs": "Interactive horizontal tabs (Recommended)",
+    "detailsLayoutAccordions": "Expandable accordions",
+    "detailsLayoutStacked": "Stacked cards",
+    "sellerCardStyle": "Seller Card Style",
+    "sellerCardStyleRich": "Rich banner with stats (Recommended)",
+    "sellerCardStyleCompact": "Compact card",
+    "sellerCardStyleGlass": "Glassmorphism card"
   }
 }

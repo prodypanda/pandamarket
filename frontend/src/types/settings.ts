@@ -222,9 +222,24 @@ export interface PlatformSettings {
   watermark_show_on_cards: boolean;
   watermark_show_on_lightbox: boolean;
   watermark_copy_protection: boolean;
+  single_product_page_version: 'v1_classic' | 'v2_modern_showcase';
+  single_product_gallery_layout: 'sticky_carousel' | 'grid_mosaic' | 'stacked';
+  single_product_sticky_cart_bar: boolean;
+  single_product_show_reassurance: boolean;
+  single_product_reassurance_items: string;
+  single_product_show_delivery_estimator: boolean;
+  single_product_show_stock_urgency: boolean;
+  single_product_stock_urgency_threshold: number;
+  single_product_show_share_buttons: boolean;
+  single_product_seller_card_style: 'compact' | 'rich_banner' | 'glass';
+  single_product_details_layout: 'tabs' | 'accordions' | 'stacked';
+  single_product_cross_sell_position: 'bottom' | 'sidebar' | 'both';
+  single_product_show_wholesale_calculator: boolean;
+  single_product_show_live_views: boolean;
+  single_product_show_contact_seller: boolean;
 }
 
-export type SettingsTab = 'marketplace' | 'commerce' | 'algorithm' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
+export type SettingsTab = 'marketplace' | 'core_pages' | 'commerce' | 'algorithm' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations' | 'plans' | 'email';
 export type PlatformSettingsTab = Exclude<SettingsTab, 'email' | 'plans'>;
 
 export interface SmtpConfigPublic {
@@ -475,6 +490,21 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   watermark_show_on_cards: true,
   watermark_show_on_lightbox: true,
   watermark_copy_protection: false,
+  single_product_page_version: 'v1_classic',
+  single_product_gallery_layout: 'sticky_carousel',
+  single_product_sticky_cart_bar: true,
+  single_product_show_reassurance: true,
+  single_product_reassurance_items: '[{"icon":"shield","title":"Paiement Sécurisé","desc":"Carte bancaire, Flouci ou à la livraison"},{"icon":"truck","title":"Livraison Rapide","desc":"24h à 48h partout en Tunisie"},{"icon":"rotate","title":"Retours Faciles","desc":"Satisfait ou remboursé sous 7 jours"},{"icon":"check","title":"Vendeur Vérifié","desc":"Boutiques auditées et certifiées"}]',
+  single_product_show_delivery_estimator: true,
+  single_product_show_stock_urgency: true,
+  single_product_stock_urgency_threshold: 5,
+  single_product_show_share_buttons: true,
+  single_product_seller_card_style: 'rich_banner',
+  single_product_details_layout: 'tabs',
+  single_product_cross_sell_position: 'bottom',
+  single_product_show_wholesale_calculator: true,
+  single_product_show_live_views: true,
+  single_product_show_contact_seller: true,
 };
 
 export const DEFAULT_SMTP_FORM: SmtpFormData = {

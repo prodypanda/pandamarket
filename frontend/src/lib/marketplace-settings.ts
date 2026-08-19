@@ -114,6 +114,21 @@ export interface MarketplaceSettings {
   watermark_show_on_cards?: boolean | string;
   watermark_show_on_lightbox?: boolean | string;
   watermark_copy_protection?: boolean | string;
+  single_product_page_version?: 'v1_classic' | 'v2_modern_showcase' | string;
+  single_product_gallery_layout?: 'sticky_carousel' | 'grid_mosaic' | 'stacked' | string;
+  single_product_sticky_cart_bar?: boolean | string;
+  single_product_show_reassurance?: boolean | string;
+  single_product_reassurance_items?: string;
+  single_product_show_delivery_estimator?: boolean | string;
+  single_product_show_stock_urgency?: boolean | string;
+  single_product_stock_urgency_threshold?: number | string;
+  single_product_show_share_buttons?: boolean | string;
+  single_product_seller_card_style?: 'compact' | 'rich_banner' | 'glass' | string;
+  single_product_details_layout?: 'tabs' | 'accordions' | 'stacked' | string;
+  single_product_cross_sell_position?: 'bottom' | 'sidebar' | 'both' | string;
+  single_product_show_wholesale_calculator?: boolean | string;
+  single_product_show_live_views?: boolean | string;
+  single_product_show_contact_seller?: boolean | string;
 }
 
 export const MARKETPLACE_SETTINGS_TAG = 'marketplace-settings';

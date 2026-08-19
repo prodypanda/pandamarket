@@ -3230,5 +3230,142 @@
     "bulkBeforeAfter": "Comparatif Avant ➔ Après",
     "bulkApplyAll": "Appliquer à tous les produits",
     "bulkClose": "Fermer"
+  },
+  "productV2": {
+    "saveAmount": "Économisez {amount} TND",
+    "discountOff": "-{pct}%",
+    "liveViews": "🔥 {count} personnes consultent cette offre en ce moment",
+    "lowStockUrgency": "⚡ Plus que {count} exemplaires en stock !",
+    "outOfStock": "Rupture de stock",
+    "inStockCount": "{count} exemplaires disponibles",
+    "deliveryEstimatorTitle": "Estimation de la livraison en Tunisie",
+    "selectGovernorate": "Sélectionnez votre gouvernorat",
+    "estimatedArrival": "Livraison estimée : {date}",
+    "deliveryDelay": "Expédition rapide sous 24h à 48h",
+    "freeShippingEligible": "🎉 Livraison gratuite offerte sur cette commande",
+    "tabs": {
+      "description": "Description détaillée",
+      "specs": "Caractéristiques & Spécifications",
+      "reviews": "Avis vérifiés ({count})",
+      "shipping": "Livraison & Retours"
+    },
+    "specs": {
+      "title": "Fiche technique du produit",
+      "brand": "Marque / Boutique",
+      "category": "Catégorie",
+      "reference": "Référence SKU",
+      "weight": "Poids estimé",
+      "productType": "Type de produit",
+      "origin": "Origine / Fabrication"
+    },
+    "share": {
+      "title": "Partager ce produit",
+      "shareWhatsapp": "Partager sur WhatsApp",
+      "shareFacebook": "Facebook",
+      "copyLink": "Copier le lien",
+      "linkCopied": "Lien copié dans le presse-papier !",
+      "whatsappMessage": "Regarde cette offre sur PandaMarket : {title} au prix de {price} TND 👉 {url}"
+    },
+    "stickyBar": {
+      "addToCart": "Ajouter au panier",
+      "selectOptions": "Choisir les options",
+      "inStock": "En stock"
+    },
+    "reassurance": {
+      "securePaymentTitle": "Paiement 100% Sécurisé",
+      "securePaymentDesc": "Carte bancaire, Flouci ou paiement à la livraison",
+      "fastDeliveryTitle": "Livraison Rapide Tunisie",
+      "fastDeliveryDesc": "24h à 48h partout en Tunisie avec suivi",
+      "easyReturnsTitle": "Garantie Retour 7 jours",
+      "easyReturnsDesc": "Satisfait ou remboursé sous 7 jours ouvrés",
+      "verifiedSellerTitle": "Vendeur Certifié Panda",
+      "verifiedSellerDesc": "Boutique auditée et commandes protégées"
+    },
+    "seller": {
+      "askQuestion": "Poser une question",
+      "responseRate": "Taux de réponse : 98%",
+      "followerCount": "{count} abonnés",
+      "visitStore": "Visiter la boutique",
+      "verifiedStore": "Boutique vérifiée"
+    },
+    "wholesale": {
+      "title": "Paliers de prix de gros (B2B)",
+      "subtitle": "Commandez en quantité et bénéficiez de réductions dégressives",
+      "buyBatch": "Commander par lot de {qty}",
+      "unitPrice": "{price} TND / unité",
+      "minQuantity": "Quantité minimale : {qty} unités"
+    },
+    "bundle": {
+      "includesTitle": "Ce pack exclusif contient :",
+      "totalValue": "Valeur totale des articles :",
+      "bundlePrice": "Prix exceptionnel du pack :",
+      "youSave": "Votre économie totale :"
+    },
+    "crossSell": {
+      "frequentlyBoughtTogether": "Souvent achetés ensemble",
+      "bundleOffers": "Packs & Promotions de cette boutique",
+      "similarProducts": "Produits Similaires",
+      "viewAllCategory": "Voir toute la catégorie"
+    },
+    "reviews": {
+      "averageRating": "Note moyenne",
+      "basedOn": "Basé sur {count} avis certifiés",
+      "filterByRating": "Filtrer par note",
+      "allRatings": "Toutes les notes",
+      "verifiedBuyer": "Acheteur vérifié PandaMarket",
+      "noReviewsYet": "Aucun avis pour l'instant. Soyez le premier à donner votre avis !"
+    },
+    "shippingTab": {
+      "title": "Modalités d'expédition & Retours",
+      "domesticDelivery": "Livraison standard : 24h à 48h ouvrables sur le Grand Tunis, Sousse, Sfax, Nabeul et Bizerte.",
+      "regionalDelivery": "Régions intérieures et Sud : 48h à 72h ouvrables via transporteur express partenaire.",
+      "paymentMethods": "Moyens de paiement acceptés : Paiement à la livraison (Espèces), Carte Bancaire (GIM-TEL), Portefeuille Flouci ou Konnect.",
+      "returnPolicy": "Délai de retour : 7 jours calendaires après réception si le produit est non utilisé et dans son emballage d'origine."
+    }
+  },
+  "corePagesAdmin": {
+    "tabTitle": "Pages Clés & Fiche Produit",
+    "tabDescription": "Configuration des pages maîtresses du Marketplace (Fiches produits V1/V2, Galeries, Réassurance, Widgets)",
+    "versionSelectorTitle": "Version active de la Fiche Produit (Single Product Page)",
+    "versionSelectorSubtitle": "Sélectionnez le style de mise en page et l'expérience d'achat sur toutes les fiches produits du Hub.",
+    "v1Title": "Version 1 — Classique",
+    "v1Description": "Mise en page standard avec disposition épurée et cartes superposées.",
+    "v2Title": "Version 2 — Moderne Impeccable Showcase (Recommandé)",
+    "v2Description": "Design moderne à fort taux de conversion : Sticky Cart Bar, Estimateur Tunisie 24 gouvernorats, Preuve sociale en direct, Onglets interactifs et Partage WhatsApp 1-Click.",
+    "activeBadge": "Actif sur la marketplace",
+    "activateV1": "Activer la Version 1",
+    "activateV2": "Activer la Version 2",
+    "previewLink": "Tester en prévisualisation",
+    "conversionSectionTitle": "Boosters de conversion & Micro-interactions",
+    "stickyCartBar": "Barre d'ajout au panier flottante (Sticky Cart Bar)",
+    "stickyCartBarDesc": "Affiche une barre d'achat en bas d'écran lors du défilement pour ne jamais perdre le CTA d'achat.",
+    "deliveryEstimator": "Estimateur de délai de livraison par gouvernorat",
+    "deliveryEstimatorDesc": "Permet aux acheteurs de calculer la date d'arrivée estimée selon leur région en Tunisie.",
+    "liveViews": "Compteur de visiteurs en temps réel (Preuve sociale)",
+    "liveViewsDesc": "Affiche un badge dynamique indiquant l'intérêt en direct pour ce produit.",
+    "stockUrgency": "Jauge d'urgence et alerte stock faible",
+    "stockUrgencyDesc": "Affiche une barre de progression rouge/orange lorsque le stock passe sous le seuil configuré.",
+    "stockThreshold": "Seuil d'alerte stock faible",
+    "shareButtons": "Boutons de partage social (WhatsApp 1-Click, etc.)",
+    "shareButtonsDesc": "Permet aux acheteurs de partager instantanément la fiche produit à leurs contacts.",
+    "wholesaleCalc": "Calculateur interactif de paliers grossiste",
+    "wholesaleCalcDesc": "Affiche des boutons de quantité rapide pour les produits avec tarifs de gros.",
+    "contactSeller": "Bouton de chat direct avec le vendeur",
+    "contactSellerDesc": "Ouvre la messagerie instantanée pour poser des questions avant achat.",
+    "reassuranceSectionTitle": "Cartes de réassurance & Confiance acheteur",
+    "reassuranceSectionDesc": "Personnalisez les 4 piliers de confiance affichés sur la fiche produit.",
+    "layoutSectionTitle": "Disposition & Structure du contenu",
+    "galleryLayout": "Style de la galerie d'images",
+    "galleryLayoutSticky": "Carrousel interactif avec zoom & miniatures (Recommandé)",
+    "galleryLayoutMosaic": "Mosaïque moderne en grille",
+    "galleryLayoutStacked": "Images empilées verticalement",
+    "detailsLayout": "Présentation du contenu détaillé",
+    "detailsLayoutTabs": "Onglets horizontaux interactifs (Recommandé)",
+    "detailsLayoutAccordions": "Accordéons déroulants",
+    "detailsLayoutStacked": "Sections empilées",
+    "sellerCardStyle": "Style de la carte vendeur",
+    "sellerCardStyleRich": "Bannière enrichie avec statistiques (Recommandé)",
+    "sellerCardStyleCompact": "Carte compacte",
+    "sellerCardStyleGlass": "Carte effet verre (Glassmorphism)"
   }
 }
