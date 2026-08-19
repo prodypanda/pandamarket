@@ -41,6 +41,16 @@ const seoOptimizeSchema = z.object({
   current_tags: z.union([z.array(z.string()), z.string()]).optional(),
 });
 
+const extractAttributesSchema = z.object({
+  title: z.string().trim().min(2, 'title is required').max(300),
+  description: z.string().trim().max(10000).optional(),
+  category: z.string().trim().max(200).optional(),
+  brand: z.string().trim().max(150).optional(),
+  price: z.union([z.number(), z.string()]).optional(),
+  current_attributes: z.any().optional(),
+  language: z.enum(['fr', 'ar', 'en']).optional().default('fr'),
+});
+
 const smartFillSchema = z.object({
   prompt: z.string().trim().max(10000).optional(),
   raw_input: z.string().trim().max(10000).optional(),
@@ -153,6 +163,38 @@ function parsePageCopyResponse(text: string, fallbackTitle: string): {
   }
 }
 
+function extractAttributesFromHtml(html: string): Array<{ name: string; value: string }> {
+  const results: Array<{ name: string; value: string }> = [];
+  const seen = new Set<string>();
+
+  // Matches <li><strong>Key:</strong> Value</li> or <li><b>Key:</b> Value</li>
+  const liRegex = /<li[^>]*>\s*<(?:strong|b)[^>]*>([^<:]+)[\s:]*<\/(?:strong|b)>\s*([^<]+)/gi;
+  let match;
+  while ((match = liRegex.exec(html)) !== null) {
+    const name = match[1].replace(/[:*_\-]/g, '').trim();
+    const value = match[2].replace(/^[:\s\-]+/, '').trim();
+    if (name && value && !seen.has(name.toLowerCase()) && name.length <= 60 && value.length <= 200) {
+      seen.add(name.toLowerCase());
+      results.push({ name, value });
+    }
+  }
+
+  // Matches <strong>Key :</strong> Value
+  if (results.length === 0) {
+    const strongRegex = /<(?:strong|b)[^>]*>([^<:]+)[\s:]*<\/(?:strong|b)>\s*([^<\n\r]+)/gi;
+    while ((match = strongRegex.exec(html)) !== null) {
+      const name = match[1].replace(/[:*_\-]/g, '').trim();
+      const value = match[2].replace(/^[:\s\-]+/, '').trim();
+      if (name && value && name.length <= 50 && value.length <= 150 && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        results.push({ name, value });
+      }
+    }
+  }
+
+  return results;
+}
+
 function parseDescriptionResponse(text: string): {
   description_html: string;
   summary: string;
@@ -182,6 +224,13 @@ function parseDescriptionResponse(text: string): {
         .filter((a) => a.name && a.value);
     }
 
+    const description_html = String(parsed.description_html || '').slice(0, 10000);
+
+    // Fallback: If JSON attributes were empty, extract them directly from HTML description
+    if (parsedAttributes.length === 0 && description_html) {
+      parsedAttributes = extractAttributesFromHtml(description_html);
+    }
+
     let parsedTags: string[] = [];
     if (Array.isArray(parsed.tags)) {
       parsedTags = parsed.tags.map((t) => String(t).trim()).filter(Boolean);
@@ -190,16 +239,17 @@ function parseDescriptionResponse(text: string): {
     }
 
     return {
-      description_html: String(parsed.description_html || '').slice(0, 10000),
+      description_html,
       summary: String(parsed.summary || '').slice(0, 300),
       attributes: parsedAttributes,
       tags: parsedTags,
     };
   } catch {
+    const description_html = text.slice(0, 10000);
     return {
-      description_html: text.slice(0, 10000),
+      description_html,
       summary: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300),
-      attributes: [],
+      attributes: extractAttributesFromHtml(description_html),
       tags: [],
     };
   }
@@ -716,6 +766,130 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
       res.status(200).json({ description, tokens_consumed: cost, job_id: job.id, provider: result.provider_label });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI product description failed';
+      await aiService.markFailed(job.id, message);
+      throw err;
+    }
+  }),
+);
+
+// Vendor: Instant AI Technical Attributes & Specifications Generator (1 token)
+router.post(
+  '/extract-attributes',
+  requireStore,
+  requireAiToolsEnabled,
+  validate(extractAttributesSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = req.user!.store_id!;
+    await assertAiFeature(storeId, 'has_ai_seo');
+
+    const language = (req.body.language || 'fr') as 'fr' | 'ar' | 'en';
+    const langName = { fr: 'French', ar: 'Arabic', en: 'English' }[language];
+    const title = req.body.title.trim();
+    const description = req.body.description ? req.body.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) : '';
+    const category = req.body.category?.trim() || '';
+    const brand = req.body.brand?.trim() || '';
+    const price = req.body.price ? `${req.body.price} TND` : '';
+
+    const systemPrompt = `Vous êtes un Expert Merchandiser et Taxonomiste Catalogue E-commerce d'Élite de PandaMarket Tunisie.
+Votre rôle est d'analyser le produit soumis et de générer entre 5 et 10 caractéristiques techniques et attributs précis, pertinents et professionnels (ex: Matière, Origine, Dimensions, Poids, Contenance, Coupe, Finition, Entretien, Garantie, Conseils de conservation, etc.).
+
+Règles de génération :
+1. Précision : Utilisez les termes techniques exacts et adaptés à la catégorie du produit.
+2. Clarté : Format "name" (Propriété concise en 1-3 mots) et "value" (Valeur claire et détaillée).
+3. Exhaustivité : Fournissez entre 5 et 10 attributs clés incontournables pour rassurer l'acheteur.
+4. Réponse JSON stricte : Renvoyez UNIQUEMENT un objet JSON valide avec "attributes" (tableau de { name, value }) et "tags" (tableau de 5 à 8 mots-clés sémantiques).`;
+
+    const userPrompt = `📦 PRODUIT À CARACTÉRISER :
+- Titre : ${title}
+- Catégorie : ${category || 'Général'}
+- Marque / Réf : ${brand || 'Non spécifiée'}
+- Prix : ${price || 'Non spécifié'}
+- Description : ${description || 'Non fournie'}
+- Langue : ${langName}
+
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE EXACTE :
+{
+  "attributes": [
+    { "name": "Matière / Composition", "value": "Exemple: 100% Cuir Véritable Italien" },
+    { "name": "Origine / Fabrication", "value": "Exemple: Fait main en Tunisie" },
+    { "name": "Dimensions / Format", "value": "Exemple: 42 x 30 x 12 cm" },
+    { "name": "Poids / Contenance", "value": "Exemple: 750 g" },
+    { "name": "Conseils d'entretien", "value": "Exemple: Nettoyage avec un chiffon doux" }
+  ],
+  "tags": ["motcle1", "motcle2", "motcle3", "motcle4", "motcle5"]
+}`;
+
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    const job = await aiService.startInlineJob({
+      type: AiJobType.ProductDescription,
+      store_id: storeId,
+      user_id: req.user!.id,
+      input_meta: {
+        title,
+        description,
+        category,
+        brand,
+        price,
+        language,
+        prompt,
+      },
+    });
+
+    try {
+      const cost = await aiConfigService.getFeaturePrice(AiJobType.ProductDescription);
+      const result = await aiConfigService.generateTextForPurpose('product_description', prompt, storeId);
+
+      let parsed: any = {};
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseErr) {
+        logger.warn({ text: result.text, err: parseErr }, 'Failed to parse AI attributes JSON response');
+      }
+
+      let attributes: Array<{ name: string; value: string }> = [];
+      if (Array.isArray(parsed.attributes)) {
+        attributes = parsed.attributes
+          .map((a: any) => ({
+            name: String(a.name || a.key || '').trim(),
+            value: String(a.value || a.val || '').trim(),
+          }))
+          .filter((a: { name: string; value: string }) => Boolean(a.name && a.value));
+      } else if (parsed.attributes && typeof parsed.attributes === 'object') {
+        attributes = Object.entries(parsed.attributes)
+          .map(([k, v]) => ({ name: k.trim(), value: String(v).trim() }))
+          .filter((a: { name: string; value: string }) => Boolean(a.name && a.value));
+      }
+
+      // Fallback if parsing failed
+      if (attributes.length === 0) {
+        attributes = extractAttributesFromHtml(result.text);
+      }
+
+      let tags: string[] = [];
+      if (Array.isArray(parsed.tags)) {
+        tags = parsed.tags.map((t: any) => String(t).trim()).filter(Boolean);
+      }
+
+      await creditsService.consume(storeId, cost);
+      await aiService.markCompleted(job.id, { attributes, tags, provider: result.provider_label }, cost, {
+        title,
+        language,
+        prompt,
+      });
+
+      res.status(200).json({
+        attributes,
+        tags,
+        tokens_consumed: cost,
+        job_id: job.id,
+        provider: result.provider_label,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI attribute generation failed';
       await aiService.markFailed(job.id, message);
       throw err;
     }

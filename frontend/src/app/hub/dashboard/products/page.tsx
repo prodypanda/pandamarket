@@ -585,6 +585,7 @@ export default function ProductsPage() {
   const [compressingImages, setCompressingImages] = useState(false);
   const [generatingSeo, setGeneratingSeo] = useState(false);
   const [enhancingDescription, setEnhancingDescription] = useState(false);
+  const [extractingAttributes, setExtractingAttributes] = useState(false);
 
   // Categories
   const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
@@ -1649,6 +1650,71 @@ export default function ProductsPage() {
       setError(err instanceof Error ? err.message : "Échec d'enrichissement de la description");
     } finally {
       setEnhancingDescription(false);
+    }
+  };
+
+  const handleExtractAttributesWithAi = async () => {
+    const title = form.title.trim();
+    if (!title) {
+      setError("Saisissez un titre de produit avant de générer les caractéristiques techniques.");
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setExtractingAttributes(true);
+    try {
+      const marketCategory = marketplaceCategories.find((category) => category.id === form.marketplace_category_id)?.name;
+      const res = await fetchWithCsrf('/api/pd/ai/extract-attributes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title,
+          description: form.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) || undefined,
+          category: marketCategory || undefined,
+          brand: form.product_reference?.trim() || undefined,
+          price: parseFloat(form.price) || undefined,
+          current_attributes: form.attributes
+            .map((a) => ({ name: a.name.trim(), value: a.value.trim() }))
+            .filter((a) => a.name && a.value),
+          language: locale === 'ar' ? 'ar' : locale === 'en' ? 'en' : 'fr',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await getErrorMessage(res, "Échec de génération des caractéristiques"));
+      }
+      const data = await res.json();
+      const generatedAttrs: Array<{ name: string; value: string }> = Array.isArray(data.attributes) ? data.attributes : [];
+
+      if (generatedAttrs.length === 0) {
+        throw new Error("L'IA n'a pas pu identifier de caractéristiques pour ce produit.");
+      }
+
+      setForm((current) => {
+        const currentValidAttrs = current.attributes.filter((a) => a.name.trim() && a.value.trim());
+        let merged: Array<{ name: string; value: string }> = [];
+
+        if (currentValidAttrs.length === 0) {
+          merged = generatedAttrs;
+        } else {
+          const existingNames = new Set(currentValidAttrs.map((a) => a.name.trim().toLowerCase()));
+          const newAttrsToAdd = generatedAttrs.filter((a) => !existingNames.has(a.name.trim().toLowerCase()));
+          merged = [...currentValidAttrs, ...newAttrsToAdd];
+        }
+
+        const next = { ...current, attributes: merged };
+        if (!current.tags.trim() && Array.isArray(data.tags) && data.tags.length > 0) {
+          next.tags = data.tags.join(', ');
+        }
+        return next;
+      });
+
+      void fetchAiCredits();
+      setSuccess(`✨ ${generatedAttrs.length} caractéristiques techniques générées et ajoutées avec succès par l'IA !`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de génération des attributs");
+    } finally {
+      setExtractingAttributes(false);
     }
   };
 
@@ -5173,12 +5239,12 @@ export default function ProductsPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => void handleEnhanceDescription()}
-                            disabled={enhancingDescription || !form.title}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors disabled:opacity-50 cursor-pointer"
+                            onClick={() => void handleExtractAttributesWithAi()}
+                            disabled={extractingAttributes || !form.title}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-black rounded-xl bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900 transition-all disabled:opacity-50 cursor-pointer shadow-xs"
                           >
-                            {enhancingDescription ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-purple-600" />}
-                            <span>Auto-Remplir par l'IA</span>
+                            {extractingAttributes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />}
+                            <span>✨ Générer les Attributs par l'IA</span>
                           </button>
                           <button
                             type="button"

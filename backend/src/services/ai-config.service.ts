@@ -664,67 +664,83 @@ export class AiConfigService {
       updated_at: Date;
     }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
 
-    if (!rows[0] && key === 'product_description') {
-      try {
-        await query(
-          `INSERT INTO pd_ai_prompt_templates (prompt_key, title, description, system_prompt, default_prompt, updated_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())
-           ON CONFLICT (prompt_key) DO NOTHING`,
-          [
-            'product_description',
-            "Sublimer avec l'IA — Description Produit & Points Forts",
-            "Rédige une description structurée en HTML avec points forts, bénéfices et accroche persuasive lors de l'utilisation du bouton 'Sublimer avec l'IA' par le vendeur.",
-            `Vous êtes l'Expert Copywriter E-commerce & Concepteur-Rédacteur Merchandising d'Élite de PandaMarket.
-Votre mission est de concevoir des fiches produits captivantes, vendeuses et hautement structurées, respectant les standards des plus grandes boutiques en ligne (Amazon A+, Shopify Plus, D2C).
+    if (key === 'product_description') {
+      const needsUpdate = !rows[0] || !rows[0].default_prompt.includes('"attributes"');
+      if (needsUpdate) {
+        try {
+          await query(
+            `INSERT INTO pd_ai_prompt_templates (prompt_key, title, description, system_prompt, default_prompt, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (prompt_key) DO UPDATE SET
+               system_prompt = EXCLUDED.system_prompt,
+               default_prompt = EXCLUDED.default_prompt,
+               title = EXCLUDED.title,
+               description = EXCLUDED.description,
+               updated_at = NOW()`,
+            [
+              'product_description',
+              "Sublimer avec l'IA — Description Produit & Points Forts",
+              "Rédige une description commerciale structurée en HTML avec points forts, attributs techniques et conseils d'utilisation, et extrait les caractéristiques techniques du produit.",
+              `Vous êtes l'Expert Copywriter E-commerce & Concepteur-Rédacteur Merchandising d'Élite de PandaMarket Tunisie.
+Votre mission est de concevoir des fiches produits captivantes, vendeuses, hautement structurées et complètes.
 
 Principes directeurs de rédaction :
-1. Psychologie d'achat : Traduisez systématiquement chaque caractéristique technique en un bénéfice concret, émotionnel et rassurant pour l'acheteur.
-2. Clarté & Hiérarchie Visuelle : Structurez le texte avec des balises HTML sémantiques strictes (<h3>, <p>, <strong>, <em>, <ul>, <li>) pour une lecture fluide et immédiate.
-3. Authenticité & Confiance : Adoptez un ton raffiné, percutant et professionnel sans formulations creuses ni superlatifs mensongers.
-4. Réponse JSON Stricte : Répondez TOUJOURS exclusivement par un objet JSON valide sans aucun texte additionnel.`,
-            `Rédigez une description e-commerce hautement persuasive et structurée en HTML pour le produit suivant :
+1. Psychologie d'achat : Traduisez systématiquement chaque caractéristique technique en un bénéfice concret pour l'acheteur.
+2. Clarté & Hiérarchie Visuelle : Structurez le texte avec des balises HTML sémantiques strictes (<h3>, <p>, <strong>, <em>, <ul>, <li>).
+3. Section Attributs Obligatoire : Incluez TOUJOURS la section <h3>📋 Attributs & Caractéristiques Techniques</h3> avec les spécifications clés.
+4. Réponse JSON Stricte : Répondez TOUJOURS exclusivement par un objet JSON valide contenant "description_html", "summary", "attributes" et "tags".`,
+              `Rédigez une description e-commerce persuasive et structurée en HTML pour le produit suivant :
 
 📦 INFORMATIONS PRODUIT :
 - Titre : {title}
 - Catégorie : {category}
-- Attributs & Spécifications : {attributes}
+- Attributs & Spécifications actuels : {attributes}
 - Description brute actuelle : {current_description}
 - Langue ciblée : {language}
-- Tonalité : {tone} (professionnel, élégant, séduisant et orienté conversion)
+- Tonalité : {tone} (professionnel, élégant, persuasif)
 
 🎯 STRUCTURE HTML OBLIGATOIRE (pour "description_html") :
 1. <p><strong>Accroche engageante :</strong> Mise en valeur du produit et de son bénéfice principal.</p>
-2. <h3>✨ Points Forts & Avantages Clés</h3>
+2. <h3>⭐ Points Forts & Avantages Clés</h3>
    <ul>
      <li><strong>Qualité & Conception :</strong> Confection soignée et matériaux de premier choix.</li>
      <li><strong>Praticité & Design :</strong> Utilisation intuitive et esthétique irréprochable.</li>
      <li><strong>Durabilité :</strong> Robuste et pensé pour durer dans le temps.</li>
    </ul>
-3. <h3>📋 Spécifications & Détails Techniques</h3>
+3. <h3>📋 Attributs & Caractéristiques Techniques</h3>
    <ul>
-     <li>Spécifications précises issues des attributs et dimensions.</li>
+     <li><strong>Matière / Composition :</strong> Spécification précise</li>
+     <li><strong>Origine / Fabrication :</strong> Origine et savoir-faire</li>
+     <li><strong>Dimensions / Contenance :</strong> Format précis</li>
    </ul>
-4. <h3>💡 Conseils & Utilisation</h3>
-   <p>Recommandations d'entretien, de mise en valeur ou conseils d'usage pratique.</p>
+4. <h3>💡 Conseils d'Utilisation & Entretien</h3>
+   <p>Recommandations d'entretien ou conseils pratiques.</p>
 
-RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE :
+RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE AVEC CETTE STRUCTURE :
 {
   "description_html": "<h3>...</h3><p>...</p><ul><li>...</li></ul>",
-  "summary": "Une phrase d'accroche percutante et mémorable résumant l'essence du produit pour la vitrine."
+  "summary": "Une phrase d'accroche percutante résumant l'essence du produit pour la vitrine.",
+  "attributes": [
+    { "name": "Matière", "value": "Composition détaillée" },
+    { "name": "Origine", "value": "Fabrication / Terroir" },
+    { "name": "Dimensions / Format", "value": "Valeur" }
+  ],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
 }`,
-          ],
-        );
-        const refetched = await query<{
-          prompt_key: string;
-          title: string;
-          description: string | null;
-          system_prompt: string;
-          default_prompt: string;
-          updated_at: Date;
-        }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
-        rows = refetched.rows;
-      } catch (err: any) {
-        logger.warn({ err: err?.message }, 'Failed to auto-seed product_description prompt template');
+            ],
+          );
+          const refetched = await query<{
+            prompt_key: string;
+            title: string;
+            description: string | null;
+            system_prompt: string;
+            default_prompt: string;
+            updated_at: Date;
+          }>('SELECT * FROM pd_ai_prompt_templates WHERE prompt_key = $1', [key]);
+          rows = refetched.rows;
+        } catch (err: any) {
+          logger.warn({ err: err?.message }, 'Failed to auto-update product_description prompt template');
+        }
       }
     }
 
