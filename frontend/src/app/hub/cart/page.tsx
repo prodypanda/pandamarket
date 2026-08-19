@@ -63,7 +63,10 @@ export default function CartPage() {
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
 
   const [inputCoupon, setInputCoupon] = useState('');
-  const [couponFeedback, setCouponFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
+  const [couponFeedback, setCouponFeedback] = useState<{
+    message: string;
+    isError?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     trackCartView();
@@ -89,8 +92,14 @@ export default function CartPage() {
   const storeIds = Object.keys(storeGroups);
   const subtotal = getCartTotal();
   const rawShippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
-  const finalShippingTotal = Math.max(0, rawShippingTotal - (couponCode === 'LIVRAISON_ZERO' ? rawShippingTotal : combinedShippingSavings));
-  const finalTotal = Math.max(0, subtotal - (couponCode === 'LIVRAISON_ZERO' ? 0 : discountAmount)) + finalShippingTotal;
+  const finalShippingTotal = Math.max(
+    0,
+    rawShippingTotal -
+      (couponCode === 'LIVRAISON_ZERO' ? rawShippingTotal : combinedShippingSavings),
+  );
+  const finalTotal =
+    Math.max(0, subtotal - (couponCode === 'LIVRAISON_ZERO' ? 0 : discountAmount)) +
+    finalShippingTotal;
 
   if (items.length === 0) {
     return (
@@ -101,13 +110,13 @@ export default function CartPage() {
           marketplaceTheme={settings.marketplace_theme}
         />
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-          <div className={`mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full ${classes.primarySoft}`}>
+          <div
+            className={`mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full ${classes.primarySoft}`}
+          >
             <ShoppingCart className="w-12 h-12" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('cart.empty')}</h1>
-          <p className="text-gray-500 mb-8">
-            {t('cart.emptySubtitle')}
-          </p>
+          <p className="text-gray-500 mb-8">{t('cart.emptySubtitle')}</p>
           <Link
             href="/hub"
             className={`inline-flex items-center gap-2 rounded-full px-8 py-3 font-black transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
@@ -141,7 +150,8 @@ export default function CartPage() {
                 {t('cart.title')} ({t('cart.itemCount', { count: getItemCount() })})
               </h1>
               <p className="mt-2 text-sm text-white/75">
-                {storeIds.length} boutique{storeIds.length !== 1 ? 's' : ''} partenaires · Expédition combinée · Paiement sécurisé
+                {storeIds.length} boutique{storeIds.length !== 1 ? 's' : ''} partenaires ·
+                Expédition combinée · Paiement sécurisé
               </p>
             </div>
             <div className="rounded-2xl bg-white/15 px-5 py-4 backdrop-blur">
@@ -163,7 +173,9 @@ export default function CartPage() {
                   🎉 Expédition Groupée Active sur {storeIds.length} Boutiques
                 </p>
                 <p className="text-xs text-emerald-800">
-                  PandaMarket optimise vos livraisons : <strong>-{formatPrice(combinedShippingSavings)}</strong> de remise automatique appliquée !
+                  PandaMarket optimise vos livraisons :{' '}
+                  <strong>-{formatPrice(combinedShippingSavings)}</strong> de remise automatique
+                  appliquée !
                 </p>
               </div>
             </div>
@@ -185,12 +197,11 @@ export default function CartPage() {
               const storeShippingTotal = getStoreShippingTotal(group.items, SHIPPING_PER_VENDOR);
 
               return (
-                <div
-                  key={storeId}
-                  className={`${classes.panel} overflow-hidden rounded-3xl`}
-                >
+                <div key={storeId} className={`${classes.panel} overflow-hidden rounded-3xl`}>
                   {/* Store Header */}
-                  <div className={`px-6 py-4 border-b flex items-center justify-between gap-2 ${isAliExpress ? 'border-orange-100 bg-orange-50/70' : 'border-gray-200 bg-gray-50'}`}>
+                  <div
+                    className={`px-6 py-4 border-b flex items-center justify-between gap-2 ${isAliExpress ? 'border-orange-100 bg-orange-50/70' : 'border-gray-200 bg-gray-50'}`}
+                  >
                     <div className="flex items-center gap-2">
                       <Store className={`w-4 h-4 ${classes.primaryText}`} />
                       <span className="font-bold text-gray-900">{group.store_name}</span>
@@ -208,7 +219,9 @@ export default function CartPage() {
                         <div className="w-20 h-20 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100">
                           {item.image_url ? (
                             <img
-                              src={item.image_url ? getResizedImageUrl(item.image_url, 'medium') : ''}
+                              src={
+                                item.image_url ? getResizedImageUrl(item.image_url, 'medium') : ''
+                              }
                               alt={item.title}
                               className="w-full h-full object-cover"
                             />
@@ -236,6 +249,7 @@ export default function CartPage() {
                         <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white shadow-xs">
                           <button
                             type="button"
+                            aria-label="Decrease quantity"
                             onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
@@ -246,6 +260,7 @@ export default function CartPage() {
                           </span>
                           <button
                             type="button"
+                            aria-label="Increase quantity"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className={`p-2 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
                           >
@@ -263,6 +278,7 @@ export default function CartPage() {
                         {/* Remove */}
                         <button
                           type="button"
+                          aria-label="Remove item"
                           onClick={() => removeFromCart(item.id)}
                           className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                           title="Supprimer l'article"
@@ -274,7 +290,9 @@ export default function CartPage() {
                   </div>
 
                   {/* Store Shipping + Subtotal */}
-                  <div className={`px-6 py-3 border-t flex items-center justify-between text-xs font-semibold ${isAliExpress ? 'border-orange-100 bg-orange-50/60' : 'border-gray-200 bg-gray-50'}`}>
+                  <div
+                    className={`px-6 py-3 border-t flex items-center justify-between text-xs font-semibold ${isAliExpress ? 'border-orange-100 bg-orange-50/60' : 'border-gray-200 bg-gray-50'}`}
+                  >
                     <span className="text-gray-500">
                       Livraison {group.store_name} : {formatPrice(storeShippingTotal)}
                     </span>
@@ -304,11 +322,14 @@ export default function CartPage() {
                     <div className="space-y-0.5">
                       <p className="font-mono font-black text-xs text-emerald-900">{couponCode}</p>
                       <p className="text-[10px] text-emerald-700 font-semibold">
-                        {discountAmount > 0 ? `-${formatPrice(discountAmount)} déduits` : 'Livraison 100% offerte'}
+                        {discountAmount > 0
+                          ? `-${formatPrice(discountAmount)} déduits`
+                          : 'Livraison 100% offerte'}
                       </p>
                     </div>
                     <button
                       type="button"
+                      aria-label="Remove coupon"
                       onClick={removeCoupon}
                       className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100"
                       title="Retirer le code"
@@ -334,7 +355,9 @@ export default function CartPage() {
                       </button>
                     </div>
                     {couponFeedback && (
-                      <p className={`text-[11px] font-bold ${couponFeedback.isError ? 'text-red-600' : 'text-emerald-600'}`}>
+                      <p
+                        className={`text-[11px] font-bold ${couponFeedback.isError ? 'text-red-600' : 'text-emerald-600'}`}
+                      >
                         {couponFeedback.message}
                       </p>
                     )}
@@ -346,12 +369,19 @@ export default function CartPage() {
               <div className="space-y-3 text-xs border-t border-slate-100 pt-4">
                 <div className="flex justify-between text-slate-600">
                   <span>Sous-total articles</span>
-                  <span className="font-bold text-slate-900 font-mono">{formatPrice(subtotal)}</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    {formatPrice(subtotal)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between text-slate-600">
-                  <span>Frais de livraison ({storeIds.length} boutique{storeIds.length !== 1 ? 's' : ''})</span>
-                  <span className="font-bold text-slate-900 font-mono">{formatPrice(rawShippingTotal)}</span>
+                  <span>
+                    Frais de livraison ({storeIds.length} boutique{storeIds.length !== 1 ? 's' : ''}
+                    )
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    {formatPrice(rawShippingTotal)}
+                  </span>
                 </div>
 
                 {combinedShippingSavings > 0 && (
