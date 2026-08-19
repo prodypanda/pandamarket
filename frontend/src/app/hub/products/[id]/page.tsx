@@ -43,11 +43,12 @@ const DEMO_PRODUCT: SingleProductData = {
   ],
   metadata: {
     wholesale_pricing: {
-      min_quantity: 5,
+      enabled: true,
+      min_quantity: 2,
       price_tiers: [
-        { min_quantity: 5, unit_price: 69.0 },
-        { min_quantity: 20, unit_price: 59.0 },
-        { min_quantity: 50, unit_price: 49.0 },
+        { min_quantity: 2, unit_price: 72.0 },
+        { min_quantity: 5, unit_price: 65.0 },
+        { min_quantity: 10, unit_price: 58.0 },
       ],
     },
   },

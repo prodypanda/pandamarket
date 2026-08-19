@@ -120,20 +120,54 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
     : null;
 
   const isPhysicalProduct = product.type === 'physical' || !product.type;
-  const stockQty = product.inventory_quantity ?? 0;
+  const stockQty =
+    typeof product.inventory_quantity === 'number'
+      ? product.inventory_quantity
+      : product.inventory_quantity !== undefined && product.inventory_quantity !== null && product.inventory_quantity !== ''
+      ? Number(product.inventory_quantity)
+      : null;
+
   const urgencyThreshold = Number(marketplaceSettings.single_product_stock_urgency_threshold || 5);
+  const showStockUrgencySetting =
+    marketplaceSettings.single_product_show_stock_urgency === true ||
+    marketplaceSettings.single_product_show_stock_urgency === 'true' ||
+    marketplaceSettings.single_product_show_stock_urgency === undefined;
   const showStockUrgency =
-    Boolean(marketplaceSettings.single_product_show_stock_urgency !== false) &&
+    showStockUrgencySetting &&
     isPhysicalProduct &&
+    stockQty !== null &&
     stockQty > 0 &&
     stockQty <= urgencyThreshold;
 
-  const showStickyCart = Boolean(marketplaceSettings.single_product_sticky_cart_bar !== false);
-  const showDeliveryEstimator = Boolean(marketplaceSettings.single_product_show_delivery_estimator !== false);
-  const showShareButtons = Boolean(marketplaceSettings.single_product_show_share_buttons !== false);
-  const showReassurance = Boolean(marketplaceSettings.single_product_show_reassurance !== false);
-  const showLiveViews = Boolean(marketplaceSettings.single_product_show_live_views !== false);
-  const showContactSeller = Boolean(marketplaceSettings.single_product_show_contact_seller !== false);
+  const showStickyCart =
+    marketplaceSettings.single_product_sticky_cart_bar === true ||
+    marketplaceSettings.single_product_sticky_cart_bar === 'true' ||
+    marketplaceSettings.single_product_sticky_cart_bar === undefined;
+  const showDeliveryEstimator =
+    marketplaceSettings.single_product_show_delivery_estimator === true ||
+    marketplaceSettings.single_product_show_delivery_estimator === 'true' ||
+    marketplaceSettings.single_product_show_delivery_estimator === undefined;
+  const showShareButtons =
+    marketplaceSettings.single_product_show_share_buttons === true ||
+    marketplaceSettings.single_product_show_share_buttons === 'true' ||
+    marketplaceSettings.single_product_show_share_buttons === undefined;
+  const showReassurance =
+    marketplaceSettings.single_product_show_reassurance === true ||
+    marketplaceSettings.single_product_show_reassurance === 'true' ||
+    marketplaceSettings.single_product_show_reassurance === undefined;
+  const showLiveViews =
+    marketplaceSettings.single_product_show_live_views === true ||
+    marketplaceSettings.single_product_show_live_views === 'true' ||
+    marketplaceSettings.single_product_show_live_views === undefined;
+  const showContactSeller =
+    marketplaceSettings.single_product_show_contact_seller === true ||
+    marketplaceSettings.single_product_show_contact_seller === 'true' ||
+    marketplaceSettings.single_product_show_contact_seller === undefined;
+  const showWholesaleCalculatorSetting =
+    marketplaceSettings.single_product_show_wholesale_calculator === true ||
+    marketplaceSettings.single_product_show_wholesale_calculator === 'true' ||
+    marketplaceSettings.single_product_show_wholesale_calculator === undefined;
+
   const galleryLayout: 'sticky_carousel' | 'grid_mosaic' | 'stacked' =
     marketplaceSettings.single_product_gallery_layout === 'grid_mosaic' ||
     marketplaceSettings.single_product_gallery_layout === 'stacked'
@@ -153,10 +187,24 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
     currentHost: requestHost,
   });
 
-  const wholesalePricing =
-    product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
-      ? getWholesalePricingFromMetadata(product.metadata)
-      : null;
+  const parsedWholesalePricing = getWholesalePricingFromMetadata(product.metadata);
+  const wholesalePricing = showWholesaleCalculatorSetting
+    ? parsedWholesalePricing ||
+      (product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
+        ? {
+            enabled: true,
+            min_quantity: 2,
+            price_tiers: [
+              { min_quantity: 2, unit_price: Math.max(0.1, Number((numericPrice * 0.9).toFixed(3))) },
+              { min_quantity: 5, unit_price: Math.max(0.1, Number((numericPrice * 0.8).toFixed(3))) },
+              { min_quantity: 10, unit_price: Math.max(0.1, Number((numericPrice * 0.7).toFixed(3))) },
+            ],
+          }
+        : null)
+    : null;
+
+  const minRequiredQty = wholesalePricing?.min_quantity || 1;
+  const inStock = isPhysicalProduct ? (stockQty === null ? true : stockQty >= (product.store_seller_type === 'wholesaler' ? minRequiredQty : 1)) : true;
 
   return (
     <div dir={dir} data-testid="product-detail-v2" className="space-y-10">
@@ -964,7 +1012,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
           price={numericPrice}
           compareAtPrice={compareAtPriceNum}
           thumbnail={mainImage}
-          inStock={isPhysicalProduct ? stockQty > 0 : true}
+          inStock={inStock}
           targetTriggerId="main-add-to-cart-btn"
         />
       )}

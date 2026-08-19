@@ -62,12 +62,47 @@ export function getWholesaleUnitPrice(basePrice: number, quantity: number, selle
   return activeTier ? activeTier.unit_price : basePrice;
 }
 
-export function getWholesalePricingFromMetadata(metadata?: Record<string, unknown> | null): WholesalePricing | null {
-  const pricing = metadata?.wholesale_pricing as WholesalePricing | undefined;
-  if (!pricing?.enabled || !Array.isArray(pricing.price_tiers)) {
+export function getWholesalePricingFromMetadata(metadata?: Record<string, unknown> | string | null): WholesalePricing | null {
+  if (!metadata) return null;
+  let parsed: unknown = metadata;
+  if (typeof metadata === 'string') {
+    try {
+      parsed = JSON.parse(metadata);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+
+  const rawPricing = ((parsed as Record<string, unknown>).wholesale_pricing ?? parsed) as Record<string, unknown>;
+  if (!rawPricing || typeof rawPricing !== 'object') return null;
+
+  const priceTiers =
+    rawPricing.price_tiers ||
+    rawPricing.tiers ||
+    (parsed as Record<string, unknown>).wholesale_tiers;
+
+  if (!Array.isArray(priceTiers) || priceTiers.length === 0) {
     return null;
   }
-  return pricing;
+
+  const validTiers: WholesalePriceTier[] = priceTiers
+    .map((tier: { min_quantity?: number | string; unit_price?: number | string }) => ({
+      min_quantity: Number(tier?.min_quantity || 0),
+      unit_price: Number(tier?.unit_price || 0),
+    }))
+    .filter((tier) => tier.min_quantity > 0 && tier.unit_price > 0)
+    .sort((a, b) => a.min_quantity - b.min_quantity);
+
+  if (validTiers.length === 0) return null;
+
+  const minQuantity = Number(rawPricing.min_quantity) || validTiers[0].min_quantity;
+
+  return {
+    enabled: rawPricing.enabled !== false,
+    min_quantity: minQuantity,
+    price_tiers: validTiers,
+  };
 }
 
 export function getCartItemUnitPrice(item: CartItem, quantity = item.quantity): number {
