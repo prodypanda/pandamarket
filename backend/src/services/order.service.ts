@@ -863,7 +863,22 @@ export class OrderService {
              'thumbnail', p.thumbnail,
              'slug', p.slug,
              'variant_sku', v.sku,
-             'variant_title', v.title
+             'variant_title', v.title,
+             'bundle_items', (
+               SELECT json_agg(
+                 json_build_object(
+                   'product_id', bi.product_id,
+                   'product_title', bp.title,
+                   'variant_title', bpv.title,
+                   'quantity', bi.quantity
+                 )
+                 ORDER BY bi.position ASC
+               )
+               FROM pd_product_bundle_item bi
+               JOIN pd_product bp ON bp.id = bi.product_id
+               LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+               WHERE bi.bundle_product_id = p.id
+             )
            )
            ORDER BY i.created_at ASC
          ) AS items

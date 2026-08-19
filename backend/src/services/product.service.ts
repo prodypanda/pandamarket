@@ -90,6 +90,9 @@ export function computeBundleAvailableStock(bundleItems?: ProductBundleItemRow[]
   if (!bundleItems || bundleItems.length === 0) return 0;
   let minStock = Infinity;
   for (const item of bundleItems) {
+    if (item.product_type && !usesInventory(item.product_type)) {
+      continue;
+    }
     const qty = Number(item.quantity) || 1;
     const itemStock = item.variant_inventory_quantity !== undefined && item.variant_inventory_quantity !== null
       ? Number(item.variant_inventory_quantity)
@@ -1776,21 +1779,27 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
               p.weight_grams, p.thumbnail, p.seo_title, p.seo_description, p.tags, p.attributes,
               p.metadata, p.created_at, p.updated_at,
               s.name AS store_name, s.subdomain AS store_subdomain, s.custom_domain AS store_custom_domain,
+              s.seller_type AS store_seller_type,
+              COALESCE(s.is_verified, false) AS store_is_verified,
+              COALESCE(pr.average_rating, 0)::real AS store_score,
               mc.name AS marketplace_category_name, mc.slug AS marketplace_category_slug,
               sc.name AS storefront_category_name, sc.slug AS storefront_category_slug,
               parent_sc.name AS storefront_parent_category_name, parent_sc.slug AS storefront_parent_category_slug,
               COALESCE(img.images, '[]'::json) AS images,
-              COALESCE(v.variants, '[]'::json) AS variants
+              COALESCE(v.variants, '[]'::json) AS variants,
+              COALESCE(b_items.bundle_items, '[]'::json) AS bundle_items
        FROM pd_product p
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN pd_marketplace_category mc ON mc.id = p.marketplace_category_id
        LEFT JOIN pd_storefront_category sc ON sc.id = p.storefront_category_id
        LEFT JOIN pd_storefront_category parent_sc ON parent_sc.id = sc.parent_id
+       LEFT JOIN pd_product_rating pr ON pr.product_id = p.id
        LEFT JOIN LATERAL (
          SELECT json_agg(
            json_build_object(
@@ -1822,6 +1831,36 @@ export class ProductService {
          FROM pd_product_variant pv
          WHERE pv.product_id = p.id AND pv.is_active = true
        ) v ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', bi.id,
+             'bundle_product_id', bi.bundle_product_id,
+             'product_id', bi.product_id,
+             'variant_id', bi.variant_id,
+             'quantity', bi.quantity,
+             'position', bi.position,
+             'product_title', bp.title,
+             'product_slug', bp.slug,
+             'product_price', bp.price,
+             'product_compare_at_price', bp.compare_at_price,
+             'product_thumbnail', bp.thumbnail,
+             'product_inventory_quantity', bp.inventory_quantity,
+             'product_type', bp.type,
+             'variant_title', bpv.title,
+             'variant_price', bpv.price,
+             'variant_compare_at_price', bpv.compare_at_price,
+             'variant_inventory_quantity', bpv.inventory_quantity,
+             'variant_sku', bpv.sku,
+             'variant_options', bpv.options
+           )
+           ORDER BY bi.position ASC
+         ) AS bundle_items
+         FROM pd_product_bundle_item bi
+         JOIN pd_product bp ON bp.id = bi.product_id
+         LEFT JOIN pd_product_variant bpv ON bpv.id = bi.variant_id
+         WHERE bi.bundle_product_id = p.id
+       ) b_items ON true
        WHERE ${where}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,

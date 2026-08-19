@@ -20,9 +20,11 @@ import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets'
 
 export interface StoreProduct {
   id: string;
+  type?: string | null;
   title: string;
   slug?: string | null;
   price: number | string;
+  compare_at_price?: number | string | null;
   images?: (string | { url: string })[];
   thumbnail?: string | null;
   category?: string | null;

@@ -57,7 +57,7 @@ const createProductSchema = z.object({
     options: z.record(z.string()).optional(),
   })).max(100).optional(),
   bundle_pricing_type: z.enum(['fixed', 'percentage']).nullable().optional(),
-  bundle_discount_value: z.number().min(0).max(100).nullable().optional(),
+  bundle_discount_value: z.number().min(0).max(1000000).nullable().optional(),
   bundle_items: z.array(z.object({
     product_id: z.string().min(1),
     variant_id: z.string().nullable().optional(),

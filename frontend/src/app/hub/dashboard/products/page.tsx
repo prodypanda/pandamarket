@@ -781,10 +781,11 @@ export default function ProductsPage() {
 
   const bundleMetrics = useMemo(() => {
     if (form.type !== 'bundle' || !form.bundle_items.length) {
-      return { originalSum: 0, packStock: 0, savingsAmount: 0, savingsPct: 0 };
+      return { originalSum: 0, packStock: 0, savingsAmount: 0, savingsPct: 0, bottleneckItem: null as BundleItemForm | null };
     }
     let originalSum = 0;
     let minStock = Infinity;
+    let bottleneck: BundleItemForm | null = null;
 
     for (const bi of form.bundle_items) {
       const itemPrice = bi.variant_price !== undefined && bi.variant_price !== null ? bi.variant_price : (bi.product_price || 0);
@@ -797,6 +798,7 @@ export default function ProductsPage() {
       const packs = Math.floor(Math.max(0, compStock) / qty);
       if (packs < minStock) {
         minStock = packs;
+        bottleneck = bi;
       }
     }
 
@@ -809,6 +811,7 @@ export default function ProductsPage() {
       packStock: Number.isFinite(minStock) ? minStock : 0,
       savingsAmount,
       savingsPct,
+      bottleneckItem: bottleneck,
     };
   }, [form.type, form.bundle_items, form.price]);
 
@@ -3911,10 +3914,29 @@ export default function ProductsPage() {
                           <h5 className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-200">
                             3. Tarification & Remise Promotionnelle du Pack
                           </h5>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                            bundleMetrics.packStock === 0
+                              ? 'bg-red-600 text-white'
+                              : bundleMetrics.packStock <= 3
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-purple-600 text-white'
+                          }`}>
                             📦 Stock Automatique : {bundleMetrics.packStock} packs
                           </span>
                         </div>
+
+                        {bundleMetrics.bottleneckItem && bundleMetrics.packStock <= 3 && (
+                          <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${
+                            bundleMetrics.packStock === 0
+                              ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                          }`}>
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            <span>
+                              <strong>Facteur limitant de stock :</strong> L&apos;article <em>« {bundleMetrics.bottleneckItem.product_title} »</em> (Stock : {bundleMetrics.bottleneckItem.variant_inventory_quantity !== undefined ? bundleMetrics.bottleneckItem.variant_inventory_quantity : (bundleMetrics.bottleneckItem.product_inventory_quantity || 0)}) plafonne la disponibilité du pack à {bundleMetrics.packStock} unité{bundleMetrics.packStock > 1 ? 's' : ''}.
+                            </span>
+                          </div>
+                        )}
 
                         {/* Discount Mode Selector */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

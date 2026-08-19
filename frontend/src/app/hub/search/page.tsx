@@ -489,6 +489,7 @@ function SearchContent() {
         <div className="grid grid-cols-2 gap-1">
           {[
             { value: '', label: 'Tous' },
+            { value: 'bundle', label: '📦 Pack Promo' },
             { value: 'physical', label: 'Physique' },
             { value: 'digital', label: 'Numérique' },
             { value: 'serial', label: 'Licence' },
@@ -875,11 +876,15 @@ function SearchContent() {
                         }`}
                       >
                         <div className="aspect-square bg-slate-50 relative overflow-hidden">
-                          {product.category && (
+                          {product.type === 'bundle' ? (
+                            <span className="absolute left-2.5 top-2.5 z-10 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 py-0.5 text-[10px] font-black text-white shadow-xs">
+                              📦 Pack Promo
+                            </span>
+                          ) : product.category ? (
                             <span className="absolute left-2.5 top-2.5 z-10 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-slate-700 shadow-xs backdrop-blur-xs">
                               {product.category}
                             </span>
-                          )}
+                          ) : null}
                           {getProductImage(product) ? (
                             <div
                               aria-label={product.title}

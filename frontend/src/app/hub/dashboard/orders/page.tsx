@@ -26,6 +26,37 @@ export interface CodVerification {
   updated_at: string;
 }
 
+interface OrderItem {
+  id?: string;
+  product_id?: string;
+  variant_id?: string | null;
+  product_title?: string | null;
+  quantity?: number | string | null;
+  unit_price?: number | string | null;
+  subtotal?: number | string | null;
+  product_type?: string | null;
+  thumbnail?: string | null;
+  variant_sku?: string | null;
+  variant_title?: string | null;
+  bundle_items?: Array<{
+    product_id?: string;
+    product_title?: string;
+    variant_title?: string | null;
+    quantity?: number;
+  }>;
+}
+
+interface SellerOrderNote {
+  id: string;
+  order_id: string;
+  store_id: string;
+  body: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CourierSettlement {
   id: string;
   store_id: string;
@@ -108,21 +139,6 @@ interface ShippingAddress {
 
 interface OrderItem {
   id?: string;
-  product_id?: string;
-  variant_id?: string | null;
-  product_title?: string | null;
-  quantity?: number | string | null;
-  unit_price?: number | string | null;
-  subtotal?: number | string | null;
-  product_type?: string | null;
-  thumbnail?: string | null;
-  variant_sku?: string | null;
-  variant_title?: string | null;
-}
-
-interface SellerOrderNote {
-  id: string;
-  order_id: string;
   store_id: string;
   body: string;
   created_by?: string | null;
