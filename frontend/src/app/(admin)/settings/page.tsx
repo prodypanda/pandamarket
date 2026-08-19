@@ -12,7 +12,7 @@ import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles, ExternalLink } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -4156,7 +4156,7 @@ export default function SuperAdminSettingsPage() {
             </h4>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="mb-1 block text-xs font-bold text-slate-700">
                 {t('corePagesAdmin.galleryLayout') || "Style de la galerie d'images"}
@@ -4164,7 +4164,7 @@ export default function SuperAdminSettingsPage() {
               <select
                 value={settings.single_product_gallery_layout || 'sticky_carousel'}
                 onChange={(e) => updateSetting('single_product_gallery_layout', e.target.value as any)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               >
                 <option value="sticky_carousel">Carrousel interactif avec zoom (Recommandé)</option>
                 <option value="grid_mosaic">Mosaïque moderne en grille</option>
@@ -4179,7 +4179,7 @@ export default function SuperAdminSettingsPage() {
               <select
                 value={settings.single_product_details_layout || 'tabs'}
                 onChange={(e) => updateSetting('single_product_details_layout', e.target.value as any)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               >
                 <option value="tabs">Onglets horizontaux (Recommandé)</option>
                 <option value="accordions">Accordéons déroulants</option>
@@ -4194,33 +4194,188 @@ export default function SuperAdminSettingsPage() {
               <select
                 value={settings.single_product_seller_card_style || 'rich_banner'}
                 onChange={(e) => updateSetting('single_product_seller_card_style', e.target.value as any)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               >
                 <option value="rich_banner">Bannière enrichie avec stats (Recommandé)</option>
                 <option value="compact">Carte compacte</option>
                 <option value="glass">Carte effet verre (Glassmorphism)</option>
               </select>
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700">
+                Position des suggestions & cross-sell
+              </label>
+              <select
+                value={settings.single_product_cross_sell_position || 'bottom'}
+                onChange={(e) => updateSetting('single_product_cross_sell_position', e.target.value as any)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="bottom">En bas de page (Recommandé)</option>
+                <option value="sidebar">Dans la barre latérale</option>
+                <option value="both">Barre latérale et bas de page</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Live Reassurance Editor */}
+        {/* Visual Reassurance Pillar Builder */}
         {settings.single_product_show_reassurance && (
-          <div className="space-y-3 pt-4 border-t border-slate-100">
-            <h4 className="text-sm font-black text-slate-800">
-              {t('corePagesAdmin.reassuranceSectionTitle') || "Cartes de réassurance & Confiance acheteur"}
-            </h4>
-            <p className="text-xs text-slate-500">
-              Structure JSON des 4 piliers de confiance affichés sur la fiche produit :
-            </p>
-            <textarea
-              rows={5}
-              value={settings.single_product_reassurance_items || ''}
-              onChange={(e) => updateSetting('single_product_reassurance_items', e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs p-3 text-slate-800 focus:bg-white"
-            />
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <span>{t('corePagesAdmin.reassuranceBuilderTitle') || "Constructeur visuel des piliers de réassurance"}</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('corePagesAdmin.reassuranceBuilderDesc') || "Modifiez ou personnalisez les 4 garanties de confiance affichées sur la fiche produit."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultItems = [
+                    { id: '1', icon: 'ShieldCheck', title: 'Paiement 100% Sécurisé', description: 'Carte bancaire, Flouci ou paiement à la livraison' },
+                    { id: '2', icon: 'Truck', title: 'Livraison Rapide Tunisie', description: '24h à 48h partout en Tunisie avec suivi' },
+                    { id: '3', icon: 'RotateCcw', title: 'Garantie Retour 7 jours', description: 'Satisfait ou remboursé sous 7 jours ouvrés' },
+                    { id: '4', icon: 'Award', title: 'Vendeur Certifié Panda', description: 'Boutique auditée et commandes protégées' },
+                  ];
+                  updateSetting('single_product_reassurance_items', JSON.stringify(defaultItems, null, 2));
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>{t('corePagesAdmin.resetDefault') || "Réinitialiser aux valeurs par défaut"}</span>
+              </button>
+            </div>
+
+            {/* Visual Cards Editor Grid */}
+            {(() => {
+              let parsedItems: Array<{ id: string; icon: string; title: string; description: string }> = [];
+              try {
+                parsedItems = settings.single_product_reassurance_items
+                  ? JSON.parse(settings.single_product_reassurance_items)
+                  : [];
+              } catch {
+                parsedItems = [];
+              }
+
+              if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+                parsedItems = [
+                  { id: '1', icon: 'ShieldCheck', title: 'Paiement 100% Sécurisé', description: 'Carte bancaire, Flouci ou paiement à la livraison' },
+                  { id: '2', icon: 'Truck', title: 'Livraison Rapide Tunisie', description: '24h à 48h partout en Tunisie avec suivi' },
+                  { id: '3', icon: 'RotateCcw', title: 'Garantie Retour 7 jours', description: 'Satisfait ou remboursé sous 7 jours ouvrés' },
+                  { id: '4', icon: 'Award', title: 'Vendeur Certifié Panda', description: 'Boutique auditée et commandes protégées' },
+                ];
+              }
+
+              const handleItemChange = (index: number, field: string, value: string) => {
+                const next = [...parsedItems];
+                next[index] = { ...next[index], [field]: value };
+                updateSetting('single_product_reassurance_items', JSON.stringify(next, null, 2));
+              };
+
+              return (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {parsedItems.map((item, idx) => (
+                    <div key={item.id || idx} className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-black uppercase text-emerald-800">Pilier #{idx + 1}</span>
+                        <select
+                          value={item.icon || 'ShieldCheck'}
+                          onChange={(e) => handleItemChange(idx, 'icon', e.target.value)}
+                          className="rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-bold text-emerald-900"
+                        >
+                          <option value="ShieldCheck">🛡️ Sécurité (Shield)</option>
+                          <option value="Truck">🚚 Livraison (Truck)</option>
+                          <option value="RotateCcw">🔄 Retours (Rotate)</option>
+                          <option value="Award">🏆 Certifié (Award)</option>
+                          <option value="CheckCircle2">✅ Vérifié (Check)</option>
+                          <option value="Zap">⚡ Rapidité (Zap)</option>
+                          <option value="Lock">🔒 Protection (Lock)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.title') || "Titre"}</label>
+                        <input
+                          type="text"
+                          value={item.title || ''}
+                          onChange={(e) => handleItemChange(idx, 'title', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.description') || "Description"}</label>
+                        <textarea
+                          rows={2}
+                          value={item.description || ''}
+                          onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Advanced JSON View Accordion */}
+            <details className="mt-2 text-xs text-slate-500">
+              <summary className="cursor-pointer font-bold text-slate-600 hover:text-slate-800">
+                Mode Avancé : Éditer le JSON brut de réassurance
+              </summary>
+              <textarea
+                rows={4}
+                value={settings.single_product_reassurance_items || ''}
+                onChange={(e) => updateSetting('single_product_reassurance_items', e.target.value)}
+                className="w-full mt-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs p-3 text-slate-800 focus:bg-white"
+              />
+            </details>
           </div>
         )}
+
+        {/* Sandbox Live Testing Suite */}
+        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-5 space-y-3 pt-4 border-t">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-emerald-600" />
+              <span>{t('corePagesAdmin.sandboxPreviewTitle') || "Bac à sable & Test en direct"}</span>
+            </h4>
+            <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-100/70 px-2.5 py-0.5 rounded-full">
+              Live Preview Studio
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {t('corePagesAdmin.sandboxPreviewDesc') || "Testez instantanément le rendu d'un produit avec le commutateur d'aperçu d'URL (?preview_version=v2 ou ?preview_version=v1) sans altérer la configuration de production."}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <a
+              href="/hub/products/demo?preview_version=v1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+            >
+              <span>{t('corePagesAdmin.openV1') || "Ouvrir Démo en Version 1 (Classique)"}</span>
+              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+            </a>
+
+            <a
+              href="/hub/products/demo?preview_version=v2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-xs hover:bg-emerald-500 transition"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{t('corePagesAdmin.openV2') || "Ouvrir Démo en Version 2 (Showcase)"}</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
       </section>
 
       {/* Feature 20: Hub Feed & Algorithm Tuning Section */}

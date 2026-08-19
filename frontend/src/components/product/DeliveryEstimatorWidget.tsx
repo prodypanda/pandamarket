@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Truck, MapPin, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { Truck, MapPin, Clock, Sparkles, Zap } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 
 export interface DeliveryEstimatorWidgetProps {
@@ -72,6 +72,12 @@ export const DeliveryEstimatorWidget: React.FC<DeliveryEstimatorWidgetProps> = (
     }
   }, [selectedGov, locale]);
 
+  const estimatedFee = useMemo(() => {
+    if (freeShippingEligible) return '0.000 TND';
+    const isRemote = selectedGov.region === 'south' || selectedGov.region === 'interior';
+    return isRemote ? '9.000 TND' : '7.000 TND';
+  }, [selectedGov, freeShippingEligible]);
+
   return (
     <div
       dir={dir}
@@ -86,12 +92,18 @@ export const DeliveryEstimatorWidget: React.FC<DeliveryEstimatorWidgetProps> = (
           <span>{t('productV2.deliveryEstimatorTitle')}</span>
         </div>
 
-        {freeShippingEligible && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black text-white shadow-2xs">
-            <Sparkles className="h-3 w-3" />
-            <span>{t('common.free')}</span>
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {freeShippingEligible ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black text-white shadow-2xs">
+              <Sparkles className="h-3 w-3" />
+              <span>{t('common.free')}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+              {estimatedFee}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr] items-center gap-3">
@@ -128,6 +140,12 @@ export const DeliveryEstimatorWidget: React.FC<DeliveryEstimatorWidgetProps> = (
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Same day dispatch banner */}
+      <div className="mt-2.5 flex items-center gap-1.5 pt-2 border-t border-emerald-100/60 text-[11px] font-semibold text-emerald-800 dark:border-white/5 dark:text-emerald-400">
+        <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 fill-amber-500" />
+        <span>{t('productV2.sameDayDispatchNote')}</span>
       </div>
     </div>
   );

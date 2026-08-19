@@ -31,6 +31,8 @@ interface ProductVariantPurchasePanelProps {
   inventoryQuantity?: number;
   variants?: ProductVariant[];
   isAliExpress?: boolean;
+  selectedQuantity?: number;
+  onQuantityChange?: (qty: number) => void;
 }
 
 function toNumber(value: string | number | null | undefined): number {
@@ -60,6 +62,8 @@ export function ProductVariantPurchasePanel({
   inventoryQuantity,
   variants = [],
   isAliExpress = false,
+  selectedQuantity,
+  onQuantityChange,
 }: ProductVariantPurchasePanelProps) {
   const activeVariants = useMemo(() => variants.filter((variant) => variant.id && variant.title), [variants]);
   const [selectedVariantId, setSelectedVariantId] = useState(activeVariants[0]?.id ?? '');
@@ -122,6 +126,8 @@ export function ProductVariantPurchasePanel({
           variant_id={selectedVariant?.id}
           variant={variantLabel}
           maxQuantity={maxQuantity}
+          controlledQuantity={selectedQuantity}
+          onQuantityChange={onQuantityChange}
         />
       </div>
     </div>

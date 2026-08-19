@@ -8,7 +8,7 @@ import { ProductDetailV1 } from '@/components/product/ProductDetailV1';
 import { DeliveryEstimatorWidget } from '@/components/product/DeliveryEstimatorWidget';
 import { ProductSocialShare } from '@/components/product/ProductSocialShare';
 import { ProductReassuranceBar } from '@/components/product/ProductReassuranceBar';
-import { StickyProductCartBar } from '@/components/product/StickyProductCartBar';
+import { ProductGallery } from '@/components/product/ProductGallery';
 import type { MarketplaceSettings } from '@/lib/marketplace-settings';
 
 const mockProduct = {
@@ -20,13 +20,22 @@ const mockProduct = {
   marketplace_category_slug: 'mode-vetements',
   product_reference: 'HD-2026-BLK',
   thumbnail: 'https://example.com/hoodie.jpg',
-  images: ['https://example.com/hoodie.jpg'],
+  images: ['https://example.com/hoodie.jpg', 'https://example.com/hoodie2.jpg'],
   inventory_quantity: 4,
   store_id: 'store_99',
   store_name: 'Panda Fashion Studio',
   store_subdomain: 'pandastudio',
   store_is_verified: true,
-  store_seller_type: 'retail',
+  store_seller_type: 'wholesaler',
+  metadata: {
+    wholesale_pricing: {
+      min_quantity: 5,
+      price_tiers: [
+        { min_quantity: 5, unit_price: 79.0 },
+        { min_quantity: 20, unit_price: 69.0 },
+      ],
+    },
+  },
   status: 'active',
   description: 'Un sweat à capuche en coton biologique ultra confortable conçu pour un style moderne.',
   attributes: [{ name: 'Matière', value: '100% Coton Bio' }],
@@ -44,6 +53,10 @@ const mockSettings: MarketplaceSettings = {
   single_product_show_reassurance: true,
   single_product_show_live_views: true,
   single_product_show_contact_seller: true,
+  single_product_gallery_layout: 'sticky_carousel',
+  single_product_details_layout: 'tabs',
+  single_product_seller_card_style: 'rich_banner',
+  single_product_cross_sell_position: 'bottom',
 };
 
 describe('Marketplace Single Product Page V2 Suite', () => {
@@ -82,7 +95,7 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     );
   };
 
-  it('renders DeliveryEstimatorWidget with 24 governorates and changes dynamic date', () => {
+  it('renders DeliveryEstimatorWidget with 24 governorates and dispatch cutoff notice', () => {
     renderWithProviders(<DeliveryEstimatorWidget freeShippingEligible={true} />);
 
     expect(screen.getByTestId('delivery-estimator-widget')).toBeInTheDocument();
@@ -113,6 +126,26 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     expect(copyBtn).toBeInTheDocument();
   });
 
+  it('renders ProductGallery in grid_mosaic and stacked layouts smoothly', () => {
+    const { container: mosaicContainer } = renderWithProviders(
+      <ProductGallery
+        title="Test Hoodie"
+        images={['https://example.com/1.jpg', 'https://example.com/2.jpg']}
+        layout="grid_mosaic"
+      />
+    );
+    expect(mosaicContainer.querySelectorAll('button').length).toBeGreaterThan(0);
+
+    const { container: stackedContainer } = renderWithProviders(
+      <ProductGallery
+        title="Test Hoodie"
+        images={['https://example.com/1.jpg', 'https://example.com/2.jpg']}
+        layout="stacked"
+      />
+    );
+    expect(stackedContainer.querySelectorAll('button').length).toBeGreaterThan(0);
+  });
+
   it('renders ProductReassuranceBar with 4 trust cards', () => {
     renderWithProviders(<ProductReassuranceBar />);
 
@@ -122,7 +155,7 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     expect(screen.getByText(/Livraison Rapide Tunisie|Fast Tunisia Delivery/i)).toBeInTheDocument();
   });
 
-  it('renders ProductDetailV2 with Impeccable high-conversion components', () => {
+  it('renders ProductDetailV2 with Impeccable high-conversion components and wholesale tiers', () => {
     renderWithProviders(
       <ProductDetailV2
         product={mockProduct}
@@ -161,6 +194,21 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     // Switch tab to shipping
     fireEvent.click(screen.getByTestId('tab-btn-shipping'));
     expect(screen.getByTestId('panel-shipping')).toBeInTheDocument();
+  });
+
+  it('renders ProductDetailV2 in accordions layout mode', () => {
+    renderWithProviders(
+      <ProductDetailV2
+        product={mockProduct}
+        similarProducts={[]}
+        ratingData={{ average_rating: 4.8, review_count: 12 }}
+        marketplaceSettings={{ ...mockSettings, single_product_details_layout: 'accordions' }}
+        locale="fr"
+      />
+    );
+
+    expect(screen.getByTestId('product-detail-v2')).toBeInTheDocument();
+    expect(screen.getByText('100% Coton Bio')).toBeInTheDocument();
   });
 
   it('renders ProductDetailV1 cleanly as backward compatible classic layout', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Star,
@@ -11,6 +11,7 @@ import {
   Zap,
   PackageCheck,
   ChevronRight,
+  ChevronDown,
   Flame,
   CheckCircle2,
   FileText,
@@ -23,6 +24,7 @@ import {
   Layers,
   ArrowRight,
   ShoppingBag,
+  ExternalLink,
 } from 'lucide-react';
 import { getHubProductHref } from '@/lib/product-links';
 import { ProductDescriptionRenderer } from '@/components/product/ProductDescription';
@@ -87,7 +89,17 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
   const { t, dir, locale: ctxLocale } = useLocale();
   const effectiveLocale: Locale = isValidLocale(locale) ? locale : isValidLocale(ctxLocale) ? ctxLocale : DEFAULT_LOCALE;
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'reviews' | 'shipping'>('description');
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({
+    description: true,
+    specs: true,
+    reviews: false,
+    shipping: false,
+  });
   const [selectedWholesaleQty, setSelectedWholesaleQty] = useState<number | null>(null);
+
+  const toggleAccordion = (key: string) => {
+    setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const classes = getMarketplaceThemeClasses(marketplaceSettings.marketplace_theme);
   const isAliExpress = classes.isAliExpress;
@@ -122,6 +134,14 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
   const showReassurance = Boolean(marketplaceSettings.single_product_show_reassurance !== false);
   const showLiveViews = Boolean(marketplaceSettings.single_product_show_live_views !== false);
   const showContactSeller = Boolean(marketplaceSettings.single_product_show_contact_seller !== false);
+  const galleryLayout: 'sticky_carousel' | 'grid_mosaic' | 'stacked' =
+    marketplaceSettings.single_product_gallery_layout === 'grid_mosaic' ||
+    marketplaceSettings.single_product_gallery_layout === 'stacked'
+      ? marketplaceSettings.single_product_gallery_layout
+      : 'sticky_carousel';
+  const detailsLayout = marketplaceSettings.single_product_details_layout || 'tabs';
+  const sellerCardStyle = marketplaceSettings.single_product_seller_card_style || 'rich_banner';
+  const crossSellPosition = marketplaceSettings.single_product_cross_sell_position || 'bottom';
 
   // Deterministic seed for live view count based on product id
   const pseudoLiveViewCount = (product.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 15) + 4;
@@ -187,6 +207,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               accentColor={accentHex}
               watermarkSettings={marketplaceSettings}
               storeName={product.store_name}
+              layout={galleryLayout}
             />
           </div>
 
@@ -223,7 +244,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               {product.type === 'bundle' && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-700 dark:text-amber-300">
                   <Sparkles className="h-3 w-3" />
-                  <span>Pack Promo</span>
+                  <span>{t('productV2.bundleBadge')}</span>
                 </span>
               )}
             </div>
@@ -276,7 +297,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                  Prix Marketplace
+                  {t('productV2.marketplacePrice')}
                 </span>
                 <div className="flex flex-wrap items-baseline gap-3 mt-1">
                   <span className="text-3xl sm:text-4xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
@@ -383,9 +404,17 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
             />
           )}
 
-          {/* Seller / Store Identity Card */}
+          {/* Seller / Store Identity Card (Rich, Compact, or Glass) */}
           {product.store_name && (
-            <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-4 space-y-3 dark:border-white/10 dark:bg-white/5">
+            <div
+              className={`rounded-2xl border transition-all ${
+                sellerCardStyle === 'glass'
+                  ? 'border-emerald-300/40 bg-white/40 shadow-lg backdrop-blur-lg dark:border-emerald-500/20 dark:bg-white/5'
+                  : sellerCardStyle === 'compact'
+                  ? 'border-gray-200/60 bg-gray-50/50 p-3 dark:border-white/10 dark:bg-white/5'
+                  : 'border-gray-200/80 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5'
+              } space-y-3`}
+            >
               <SellerHoverCard
                 name={product.store_name}
                 href={storeHref}
@@ -437,6 +466,8 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               inventoryQuantity={product.inventory_quantity}
               variants={product.variants}
               isAliExpress={isAliExpress}
+              selectedQuantity={selectedWholesaleQty || undefined}
+              onQuantityChange={(qty) => setSelectedWholesaleQty(qty)}
             />
             <WishlistButton productId={product.id} size="md" />
           </div>
@@ -447,176 +478,413 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               customItemsJson={marketplaceSettings.single_product_reassurance_items}
             />
           )}
+
+          {/* Cross-Sell in Sidebar if configured */}
+          {(crossSellPosition === 'sidebar' || crossSellPosition === 'both') && similarProducts.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-white/10">
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-500">
+                {t('productV2.crossSell.similarProducts')}
+              </h4>
+              <div className="space-y-2">
+                {similarProducts.slice(0, 3).map((sp) => (
+                  <Link
+                    key={sp.id}
+                    href={getHubProductHref(sp)}
+                    className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-2xs hover:shadow-xs transition dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="h-12 w-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0">
+                      {getImageUrl(sp.images?.[0]) || sp.thumbnail ? (
+                        <img
+                          src={getImageUrl(sp.images?.[0]) || sp.thumbnail || ''}
+                          alt={sp.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{sp.title}</p>
+                      <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{formatPrice(sp.price)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Tabbed Content Navigation (Description, Specs, Reviews, Shipping) */}
+      {/* Content Presentation Section (Tabs, Accordions, or Stacked) */}
       <section className="rounded-3xl border border-gray-200/80 bg-white p-6 sm:p-8 shadow-sm dark:border-white/10 dark:bg-[#161a22]">
-        {/* Tab Buttons */}
-        <div
-          role="tablist"
-          aria-label="Informations produit"
-          className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4 dark:border-white/10"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'description'}
-            onClick={() => setActiveTab('description')}
-            data-testid="tab-btn-description"
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
-              activeTab === 'description'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            <span>{t('productV2.tabs.description')}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'specs'}
-            onClick={() => setActiveTab('specs')}
-            data-testid="tab-btn-specs"
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
-              activeTab === 'specs'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
-            }`}
-          >
-            <Sliders className="h-4 w-4" />
-            <span>{t('productV2.tabs.specs')}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'reviews'}
-            onClick={() => setActiveTab('reviews')}
-            data-testid="tab-btn-reviews"
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
-              activeTab === 'reviews'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
-            }`}
-          >
-            <Star className="h-4 w-4" />
-            <span>{t('productV2.tabs.reviews', { count: reviewCount })}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'shipping'}
-            onClick={() => setActiveTab('shipping')}
-            data-testid="tab-btn-shipping"
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
-              activeTab === 'shipping'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
-            }`}
-          >
-            <Truck className="h-4 w-4" />
-            <span>{t('productV2.tabs.shipping')}</span>
-          </button>
-        </div>
-
-        {/* Tab Content Panels */}
-        <div className="pt-6">
-          {/* Tab 1: Description */}
-          {activeTab === 'description' && (
-            <div role="tabpanel" data-testid="panel-description" className="space-y-4 animate-fadeIn">
-              <ProductDescriptionRenderer value={product.description} />
+        {detailsLayout === 'accordions' ? (
+          /* ACCORDIONS LAYOUT */
+          <div className="space-y-4">
+            {/* Accordion 1: Description */}
+            <div className="rounded-2xl border border-gray-100 overflow-hidden dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('description')}
+                className="w-full flex items-center justify-between p-4 font-black text-sm bg-gray-50/70 hover:bg-gray-100/70 transition dark:bg-white/5"
+              >
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-emerald-600" />
+                  {t('productV2.tabs.description')}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${openAccordions.description ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordions.description && (
+                <div className="p-5 border-t border-gray-100 dark:border-white/10">
+                  <ProductDescriptionRenderer value={product.description} />
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Tab 2: Technical Specifications */}
-          {activeTab === 'specs' && (
-            <div role="tabpanel" data-testid="panel-specs" className="space-y-6 animate-fadeIn">
+            {/* Accordion 2: Specs */}
+            <div className="rounded-2xl border border-gray-100 overflow-hidden dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('specs')}
+                className="w-full flex items-center justify-between p-4 font-black text-sm bg-gray-50/70 hover:bg-gray-100/70 transition dark:bg-white/5"
+              >
+                <span className="flex items-center gap-2">
+                  <Sliders className="h-4 w-4 text-emerald-600" />
+                  {t('productV2.tabs.specs')}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${openAccordions.specs ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordions.specs && (
+                <div className="p-5 border-t border-gray-100 dark:border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                      <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.brand')}</span>
+                      <p className="mt-1 font-black text-gray-900 dark:text-white">{product.store_name || 'Panda Store'}</p>
+                    </div>
+                    {product.category && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.category')}</span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white">{product.category}</p>
+                      </div>
+                    )}
+                    {product.product_reference && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.reference')}</span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white font-mono">{product.product_reference}</p>
+                      </div>
+                    )}
+                    {product.attributes?.map((attr) => (
+                      <div key={`${attr.name}-${attr.value}`} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <span className="block text-xs font-bold uppercase text-gray-400">{attr.name}</span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white">{attr.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Accordion 3: Reviews */}
+            <div className="rounded-2xl border border-gray-100 overflow-hidden dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('reviews')}
+                className="w-full flex items-center justify-between p-4 font-black text-sm bg-gray-50/70 hover:bg-gray-100/70 transition dark:bg-white/5"
+              >
+                <span className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-emerald-600" />
+                  {t('productV2.tabs.reviews', { count: reviewCount })}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${openAccordions.reviews ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordions.reviews && (
+                <div className="p-5 border-t border-gray-100 dark:border-white/10">
+                  <ReviewSection productId={product.id} marketplaceTheme={marketplaceSettings.marketplace_theme} />
+                </div>
+              )}
+            </div>
+
+            {/* Accordion 4: Shipping */}
+            <div className="rounded-2xl border border-gray-100 overflow-hidden dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('shipping')}
+                className="w-full flex items-center justify-between p-4 font-black text-sm bg-gray-50/70 hover:bg-gray-100/70 transition dark:bg-white/5"
+              >
+                <span className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-emerald-600" />
+                  {t('productV2.tabs.shipping')}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${openAccordions.shipping ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordions.shipping && (
+                <div className="p-5 border-t border-gray-100 dark:border-white/10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+                        <Truck className="h-4 w-4" />
+                        <span>{t('productV2.deliveryTimelineTitle')}</span>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.domesticDelivery')}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.regionalDelivery')}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+                        <RotateCcw className="h-4 w-4" />
+                        <span>{t('productV2.paymentAndReturnsTitle')}</span>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.paymentMethods')}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.returnPolicy')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : detailsLayout === 'stacked' ? (
+          /* STACKED SECTIONS LAYOUT */
+          <div className="space-y-10">
+            {/* Section 1: Description */}
+            <div className="space-y-3">
+              <h3 className="flex items-center gap-2 text-base font-black text-gray-900 dark:text-white">
+                <FileText className="h-5 w-5 text-emerald-600" />
+                {t('productV2.tabs.description')}
+              </h3>
+              <div className="p-1">
+                <ProductDescriptionRenderer value={product.description} />
+              </div>
+            </div>
+
+            {/* Section 2: Specs */}
+            <div className="space-y-3 pt-6 border-t border-gray-100 dark:border-white/10">
+              <h3 className="flex items-center gap-2 text-base font-black text-gray-900 dark:text-white">
+                <Sliders className="h-5 w-5 text-emerald-600" />
+                {t('productV2.tabs.specs')}
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                  <span className="block text-xs font-bold uppercase text-gray-400">
-                    {t('productV2.specs.brand')}
-                  </span>
-                  <p className="mt-1 font-black text-gray-900 dark:text-white">
-                    {product.store_name || 'Panda Store'}
-                  </p>
+                  <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.brand')}</span>
+                  <p className="mt-1 font-black text-gray-900 dark:text-white">{product.store_name || 'Panda Store'}</p>
                 </div>
                 {product.category && (
                   <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                    <span className="block text-xs font-bold uppercase text-gray-400">
-                      {t('productV2.specs.category')}
-                    </span>
-                    <p className="mt-1 font-black text-gray-900 dark:text-white">
-                      {product.category}
-                    </p>
+                    <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.category')}</span>
+                    <p className="mt-1 font-black text-gray-900 dark:text-white">{product.category}</p>
                   </div>
                 )}
                 {product.product_reference && (
                   <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                    <span className="block text-xs font-bold uppercase text-gray-400">
-                      {t('productV2.specs.reference')}
-                    </span>
-                    <p className="mt-1 font-black text-gray-900 dark:text-white font-mono">
-                      {product.product_reference}
-                    </p>
+                    <span className="block text-xs font-bold uppercase text-gray-400">{t('productV2.specs.reference')}</span>
+                    <p className="mt-1 font-black text-gray-900 dark:text-white font-mono">{product.product_reference}</p>
                   </div>
                 )}
                 {product.attributes?.map((attr) => (
-                  <div
-                    key={`${attr.name}-${attr.value}`}
-                    className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5"
-                  >
+                  <div key={`${attr.name}-${attr.value}`} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
                     <span className="block text-xs font-bold uppercase text-gray-400">{attr.name}</span>
                     <p className="mt-1 font-black text-gray-900 dark:text-white">{attr.value}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Tab 3: Customer Reviews */}
-          {activeTab === 'reviews' && (
-            <div role="tabpanel" data-testid="panel-reviews" className="animate-fadeIn">
+            {/* Section 3: Reviews */}
+            <div className="space-y-3 pt-6 border-t border-gray-100 dark:border-white/10">
+              <h3 className="flex items-center gap-2 text-base font-black text-gray-900 dark:text-white">
+                <Star className="h-5 w-5 text-emerald-600" />
+                {t('productV2.tabs.reviews', { count: reviewCount })}
+              </h3>
               <ReviewSection productId={product.id} marketplaceTheme={marketplaceSettings.marketplace_theme} />
             </div>
-          )}
 
-          {/* Tab 4: Shipping & Returns FAQ */}
-          {activeTab === 'shipping' && (
-            <div role="tabpanel" data-testid="panel-shipping" className="space-y-4 animate-fadeIn">
+            {/* Section 4: Shipping */}
+            <div className="space-y-3 pt-6 border-t border-gray-100 dark:border-white/10">
+              <h3 className="flex items-center gap-2 text-base font-black text-gray-900 dark:text-white">
+                <Truck className="h-5 w-5 text-emerald-600" />
+                {t('productV2.tabs.shipping')}
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
                   <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
                     <Truck className="h-4 w-4" />
-                    <span>Délais de livraison</span>
+                    <span>{t('productV2.deliveryTimelineTitle')}</span>
                   </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {t('productV2.shippingTab.domesticDelivery')}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {t('productV2.shippingTab.regionalDelivery')}
-                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.domesticDelivery')}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.regionalDelivery')}</p>
                 </div>
-
                 <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
                   <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
                     <RotateCcw className="h-4 w-4" />
-                    <span>Paiements & Retours</span>
+                    <span>{t('productV2.paymentAndReturnsTitle')}</span>
                   </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {t('productV2.shippingTab.paymentMethods')}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {t('productV2.shippingTab.returnPolicy')}
-                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.paymentMethods')}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t('productV2.shippingTab.returnPolicy')}</p>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* TABS LAYOUT (DEFAULT) */
+          <>
+            {/* Tab Buttons */}
+            <div
+              role="tablist"
+              aria-label="Informations produit"
+              className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4 dark:border-white/10"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'description'}
+                onClick={() => setActiveTab('description')}
+                data-testid="tab-btn-description"
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
+                  activeTab === 'description'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                <span>{t('productV2.tabs.description')}</span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'specs'}
+                onClick={() => setActiveTab('specs')}
+                data-testid="tab-btn-specs"
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
+                  activeTab === 'specs'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+                }`}
+              >
+                <Sliders className="h-4 w-4" />
+                <span>{t('productV2.tabs.specs')}</span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'reviews'}
+                onClick={() => setActiveTab('reviews')}
+                data-testid="tab-btn-reviews"
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
+                  activeTab === 'reviews'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+                }`}
+              >
+                <Star className="h-4 w-4" />
+                <span>{t('productV2.tabs.reviews', { count: reviewCount })}</span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'shipping'}
+                onClick={() => setActiveTab('shipping')}
+                data-testid="tab-btn-shipping"
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition-all ${
+                  activeTab === 'shipping'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+                }`}
+              >
+                <Truck className="h-4 w-4" />
+                <span>{t('productV2.tabs.shipping')}</span>
+              </button>
+            </div>
+
+            {/* Tab Content Panels */}
+            <div className="pt-6">
+              {activeTab === 'description' && (
+                <div role="tabpanel" data-testid="panel-description" className="space-y-4 animate-fadeIn">
+                  <ProductDescriptionRenderer value={product.description} />
+                </div>
+              )}
+
+              {activeTab === 'specs' && (
+                <div role="tabpanel" data-testid="panel-specs" className="space-y-6 animate-fadeIn">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                      <span className="block text-xs font-bold uppercase text-gray-400">
+                        {t('productV2.specs.brand')}
+                      </span>
+                      <p className="mt-1 font-black text-gray-900 dark:text-white">
+                        {product.store_name || 'Panda Store'}
+                      </p>
+                    </div>
+                    {product.category && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <span className="block text-xs font-bold uppercase text-gray-400">
+                          {t('productV2.specs.category')}
+                        </span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white">
+                          {product.category}
+                        </p>
+                      </div>
+                    )}
+                    {product.product_reference && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <span className="block text-xs font-bold uppercase text-gray-400">
+                          {t('productV2.specs.reference')}
+                        </span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white font-mono">
+                          {product.product_reference}
+                        </p>
+                      </div>
+                    )}
+                    {product.attributes?.map((attr) => (
+                      <div
+                        key={`${attr.name}-${attr.value}`}
+                        className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5"
+                      >
+                        <span className="block text-xs font-bold uppercase text-gray-400">{attr.name}</span>
+                        <p className="mt-1 font-black text-gray-900 dark:text-white">{attr.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'reviews' && (
+                <div role="tabpanel" data-testid="panel-reviews" className="animate-fadeIn">
+                  <ReviewSection productId={product.id} marketplaceTheme={marketplaceSettings.marketplace_theme} />
+                </div>
+              )}
+
+              {activeTab === 'shipping' && (
+                <div role="tabpanel" data-testid="panel-shipping" className="space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+                        <Truck className="h-4 w-4" />
+                        <span>{t('productV2.deliveryTimelineTitle')}</span>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {t('productV2.shippingTab.domesticDelivery')}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {t('productV2.shippingTab.regionalDelivery')}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 space-y-2 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+                        <RotateCcw className="h-4 w-4" />
+                        <span>{t('productV2.paymentAndReturnsTitle')}</span>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {t('productV2.shippingTab.paymentMethods')}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {t('productV2.shippingTab.returnPolicy')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {/* Cross-Sell Bundle Widget */}
@@ -628,8 +896,8 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
         />
       )}
 
-      {/* Similar Products Recommendation Rail */}
-      {similarProducts.length > 0 && (
+      {/* Similar Products Recommendation Rail (at bottom if configured) */}
+      {(crossSellPosition === 'bottom' || crossSellPosition === 'both') && similarProducts.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-end justify-between">
             <div>
@@ -637,7 +905,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
                 {t('productV2.crossSell.similarProducts')}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Découvrez des articles similaires sélectionnés pour vous.
+                {t('productV2.similarSubtitle')}
               </p>
             </div>
             {product.category && (

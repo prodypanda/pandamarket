@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Minus, Plus, Check } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useMarketplaceTheme } from '../../hooks/useMarketplaceTheme';
@@ -23,6 +23,8 @@ interface AddToCartButtonProps {
   variant_id?: string;
   variant?: string;
   maxQuantity?: number;
+  controlledQuantity?: number;
+  onQuantityChange?: (qty: number) => void;
 }
 
 export function AddToCartButton({
@@ -42,12 +44,21 @@ export function AddToCartButton({
   variant_id,
   variant,
   maxQuantity,
+  controlledQuantity,
+  onQuantityChange,
 }: AddToCartButtonProps) {
   const { addToCart } = useCart();
   const { classes, isAliExpress } = useMarketplaceTheme();
   const minimumQuantity = getMinimumQuantityForSeller(seller_type, wholesale_pricing);
-  const [quantity, setQuantity] = useState(minimumQuantity);
+  const [quantity, setQuantity] = useState(controlledQuantity ?? minimumQuantity);
   const [added, setAdded] = useState(false);
+
+  // Sync if external controlled quantity changes (e.g. clicking wholesale tier)
+  useEffect(() => {
+    if (typeof controlledQuantity === 'number' && controlledQuantity > 0) {
+      setQuantity(controlledQuantity);
+    }
+  }, [controlledQuantity]);
   const stockLimit = product_type === 'physical' && typeof maxQuantity === 'number' && Number.isFinite(maxQuantity) ? Math.max(0, maxQuantity) : undefined;
   const isOutOfStock = stockLimit !== undefined && stockLimit < minimumQuantity;
   const unitPrice = getWholesaleUnitPrice(price, quantity, seller_type, wholesale_pricing);
@@ -82,7 +93,11 @@ export function AddToCartButton({
       {/* Quantity Selector */}
       <div className={`flex items-center overflow-hidden rounded-full border bg-white ${isAliExpress ? 'border-orange-200 shadow-sm shadow-orange-900/5' : 'border-gray-300'}`}>
         <button
-          onClick={() => setQuantity((q) => Math.max(minimumQuantity, q - 1))}
+          onClick={() => {
+            const next = Math.max(minimumQuantity, quantity - 1);
+            setQuantity(next);
+            onQuantityChange?.(next);
+          }}
           className={`p-3 transition-colors ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
         >
           <Minus className="w-4 h-4 text-gray-600" />
@@ -91,7 +106,11 @@ export function AddToCartButton({
           {quantity}
         </span>
         <button
-          onClick={() => setQuantity((q) => Math.min(stockLimit ?? q + 1, q + 1))}
+          onClick={() => {
+            const next = Math.min(stockLimit ?? quantity + 1, quantity + 1);
+            setQuantity(next);
+            onQuantityChange?.(next);
+          }}
           disabled={stockLimit !== undefined && quantity >= stockLimit}
           className={`p-3 transition-colors disabled:opacity-40 ${isAliExpress ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}`}
         >

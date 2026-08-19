@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Share2, Link as LinkIcon, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Share2, Link as LinkIcon, Check, Send } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 
 export interface ProductSocialShareProps {
@@ -19,6 +19,13 @@ export const ProductSocialShare: React.FC<ProductSocialShareProps> = ({
 }) => {
   const { t, dir } = useLocale();
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      setCanNativeShare(true);
+    }
+  }, []);
 
   const getShareUrl = () => {
     if (url) return url;
@@ -38,6 +45,20 @@ export const ProductSocialShare: React.FC<ProductSocialShareProps> = ({
       }
     } catch {
       // Fallback
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text: `${title} - ${formattedPrice} TND sur PandaMarket`,
+          url: shareUrl,
+        });
+      } catch {
+        // User dismissed or aborted
+      }
     }
   };
 
@@ -63,6 +84,20 @@ export const ProductSocialShare: React.FC<ProductSocialShareProps> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Native Mobile Share Sheet if available */}
+        {canNativeShare && (
+          <button
+            type="button"
+            onClick={handleNativeShare}
+            data-testid="share-native-btn"
+            aria-label={t('productV2.share.title')}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-gray-300"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t('productV2.share.title')}</span>
+          </button>
+        )}
+
         {/* WhatsApp 1-Click Share */}
         <a
           href={whatsappHref}
