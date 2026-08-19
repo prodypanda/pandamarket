@@ -187,21 +187,10 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
     currentHost: requestHost,
   });
 
-  const parsedWholesalePricing = getWholesalePricingFromMetadata(product.metadata);
-  const wholesalePricing = showWholesaleCalculatorSetting
-    ? parsedWholesalePricing ||
-      (product.store_seller_type === 'wholesaler' || product.store_seller_type === 'hybrid'
-        ? {
-            enabled: true,
-            min_quantity: 2,
-            price_tiers: [
-              { min_quantity: 2, unit_price: Math.max(0.1, Number((numericPrice * 0.9).toFixed(3))) },
-              { min_quantity: 5, unit_price: Math.max(0.1, Number((numericPrice * 0.8).toFixed(3))) },
-              { min_quantity: 10, unit_price: Math.max(0.1, Number((numericPrice * 0.7).toFixed(3))) },
-            ],
-          }
-        : null)
-    : null;
+  const parsedWholesalePricing =
+    getWholesalePricingFromMetadata(product.metadata) ||
+    getWholesalePricingFromMetadata(product.wholesale_pricing);
+  const wholesalePricing = showWholesaleCalculatorSetting ? parsedWholesalePricing : null;
 
   const minRequiredQty = wholesalePricing?.min_quantity || 1;
   const inStock = isPhysicalProduct ? (stockQty === null ? true : stockQty >= (product.store_seller_type === 'wholesaler' ? minRequiredQty : 1)) : true;

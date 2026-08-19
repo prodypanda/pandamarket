@@ -48,6 +48,7 @@ export interface SingleProductData {
   tags?: string[];
   attributes?: { name: string; value: string }[];
   metadata?: Record<string, unknown> | null;
+  wholesale_pricing?: any;
   inventory_quantity?: number;
   store_id: string;
   store_name?: string;

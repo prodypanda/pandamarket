@@ -226,6 +226,7 @@ export interface PublicProductRow {
   review_count?: number | null;
   price: string;
   compare_at_price?: string | number | null;
+  inventory_quantity?: number | string | null;
   in_stock: boolean;
   stock_status: 'in_stock' | 'out_of_stock';
   weight_grams: number | null;
@@ -261,6 +262,7 @@ export function formatPublicProductResponse(row: PublicProductRow) {
     category: row.category,
     price: Number(row.price),
     compare_at_price: row.compare_at_price ? Number(row.compare_at_price) : null,
+    ...(row.inventory_quantity !== undefined && row.inventory_quantity !== null ? { inventory_quantity: Number(row.inventory_quantity) } : {}),
     currency: 'TND',
     thumbnail: row.thumbnail,
     images: row.images ?? [],
@@ -965,6 +967,7 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.inventory_quantity,
               p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
@@ -1072,6 +1075,7 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.inventory_quantity,
               p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
@@ -1783,6 +1787,7 @@ export class ProductService {
     const { rows } = await query<PublicProductRow>(
       `SELECT p.id, p.store_id, p.type, p.status, p.title, p.slug, p.description, p.category,
               p.marketplace_category_id, p.storefront_category_id, p.price, p.compare_at_price,
+              p.inventory_quantity,
               p.bundle_pricing_type, p.bundle_discount_value,
               (p.inventory_quantity > 0) AS in_stock,
               CASE WHEN p.inventory_quantity > 0 THEN 'in_stock' ELSE 'out_of_stock' END AS stock_status,
