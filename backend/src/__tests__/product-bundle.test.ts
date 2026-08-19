@@ -66,4 +66,35 @@ describe('Product Bundles & Packs Logic', () => {
 
     expect(computeBundleAvailableStock(items)).toBe(0);
   });
+
+  it('should ignore non-inventory products like digital or service in stock computation', () => {
+    const items: ProductBundleItemRow[] = [
+      {
+        id: 'bi_1',
+        bundle_product_id: 'bundle_1',
+        product_id: 'prod_1',
+        variant_id: null,
+        quantity: 1,
+        position: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+        product_type: ProductType.Physical,
+        product_inventory_quantity: 15,
+      },
+      {
+        id: 'bi_2',
+        bundle_product_id: 'bundle_1',
+        product_id: 'prod_2',
+        variant_id: null,
+        quantity: 1,
+        position: 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+        product_type: ProductType.Digital,
+        product_inventory_quantity: 0, // Digital product with 0 physical stock
+      },
+    ];
+
+    expect(computeBundleAvailableStock(items)).toBe(15);
+  });
 });

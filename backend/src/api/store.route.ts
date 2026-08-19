@@ -143,6 +143,7 @@ const storeProductSchema = z.object({
   marketplace_category_id: z.string().nullable().optional(),
   storefront_category_id: z.string().nullable().optional(),
   price: z.number().min(0),
+  compare_at_price: z.number().min(0).nullable().optional(),
   inventory_quantity: z.number().min(0).optional(),
   weight_grams: z.number().min(0).optional(),
   thumbnail: urlOrPathSchema.nullable().optional(),
@@ -174,6 +175,14 @@ const storeProductSchema = z.object({
     inventory_quantity: z.number().int().min(0).optional(),
     options: z.record(z.string()).optional(),
   })).max(100).optional(),
+  bundle_pricing_type: z.enum(['fixed', 'percentage']).nullable().optional(),
+  bundle_discount_value: z.number().min(0).max(1000000).nullable().optional(),
+  bundle_items: z.array(z.object({
+    product_id: z.string().min(1),
+    variant_id: z.string().nullable().optional(),
+    quantity: z.number().int().min(1).default(1),
+    position: z.number().int().optional(),
+  })).max(50).optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 

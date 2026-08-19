@@ -86,6 +86,10 @@ export interface ProductBundleItemRow {
   available_stock?: number;
 }
 
+export function usesInventory(type: ProductType | string): boolean {
+  return type === ProductType.Physical || type === ProductType.Serial || type === 'physical' || type === 'serial';
+}
+
 export function computeBundleAvailableStock(bundleItems?: ProductBundleItemRow[]): number {
   if (!bundleItems || bundleItems.length === 0) return 0;
   let minStock = Infinity;
