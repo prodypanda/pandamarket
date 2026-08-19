@@ -772,6 +772,14 @@ const BOOLEAN_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'watermark_show_on_lightbox',
   'watermark_copy_protection',
   'hub_search_sponsored_enabled',
+  'single_product_sticky_cart_bar',
+  'single_product_show_reassurance',
+  'single_product_show_delivery_estimator',
+  'single_product_show_stock_urgency',
+  'single_product_show_share_buttons',
+  'single_product_show_wholesale_calculator',
+  'single_product_show_live_views',
+  'single_product_show_contact_seller',
 ]);
 
 const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
@@ -825,10 +833,12 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'hub_search_sponsored_columns',
   'hub_search_sponsored_count',
   'watermark_opacity',
+  'single_product_stock_urgency_threshold',
 ]);
 
 export function isPlatformSettingSection(value: string): value is PlatformSettingSection {
   return value === 'marketplace'
+    || value === 'core_pages'
     || value === 'algorithm'
     || value === 'commerce'
     || value === 'finance'
