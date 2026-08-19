@@ -541,6 +541,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               storeId={product.store_id}
               storeName={product.store_name || 'Store'}
               storeSubdomain={product.store_subdomain}
+              storePhone={typeof (product.store_settings as any)?.phone === 'string' ? (product.store_settings as any).phone : null}
               productType={product.type}
               imageUrl={mainImage || null}
               inventoryQuantity={product.inventory_quantity}
@@ -549,7 +550,6 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
               selectedQuantity={selectedWholesaleQty || undefined}
               onQuantityChange={(qty) => setSelectedWholesaleQty(qty)}
             />
-            <WishlistButton productId={product.id} size="md" />
           </div>
 
           {/* 4 Frosted-Glass Reassurance Cards */}

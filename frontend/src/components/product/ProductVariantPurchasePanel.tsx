@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Check, PackageCheck } from 'lucide-react';
 import { AddToCartButton } from '../hub/AddToCartButton';
+import { WishlistButton } from '../hub/WishlistButton';
+import { WhatsAppDirectOrderButton } from '../store/WhatsAppDirectOrderButton';
 import type { WholesalePricing } from '../../lib/cart-utils';
 
 interface ProductVariant {
@@ -26,12 +28,15 @@ interface ProductVariantPurchasePanelProps {
   storeId: string;
   storeName: string;
   storeSubdomain?: string | null;
+  storePhone?: string | null;
   productType?: string | null;
   imageUrl: string | null;
   inventoryQuantity?: number;
   variants?: ProductVariant[];
   isAliExpress?: boolean;
   selectedQuantity?: number;
+  showWishlistButton?: boolean;
+  showWhatsAppOrder?: boolean;
   onQuantityChange?: (qty: number) => void;
 }
 
@@ -57,16 +62,27 @@ export function ProductVariantPurchasePanel({
   storeId,
   storeName,
   storeSubdomain,
+  storePhone,
   productType,
   imageUrl,
   inventoryQuantity,
   variants = [],
   isAliExpress = false,
   selectedQuantity,
+  showWishlistButton = true,
+  showWhatsAppOrder = true,
   onQuantityChange,
 }: ProductVariantPurchasePanelProps) {
   const activeVariants = useMemo(() => variants.filter((variant) => variant.id && variant.title), [variants]);
   const [selectedVariantId, setSelectedVariantId] = useState(activeVariants[0]?.id ?? '');
+  const [currentQty, setCurrentQty] = useState(selectedQuantity ?? 1);
+
+  useEffect(() => {
+    if (typeof selectedQuantity === 'number' && selectedQuantity > 0) {
+      setCurrentQty(selectedQuantity);
+    }
+  }, [selectedQuantity]);
+
   const selectedVariant = activeVariants.find((variant) => variant.id === selectedVariantId);
   const price = selectedVariant ? toNumber(selectedVariant.price) : basePrice;
   const maxQuantity = selectedVariant ? Number(selectedVariant.inventory_quantity ?? 0) : inventoryQuantity;
@@ -108,27 +124,53 @@ export function ProductVariantPurchasePanel({
         </div>
       )}
 
-      <div className={`flex items-center gap-3 rounded-[1.75rem] p-3 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
-        <AddToCartButton
-          product_id={productId}
-          title={title}
-          slug={slug}
-          category={category}
-          marketplace_category_slug={marketplaceCategorySlug}
-          price={price}
-          seller_type={sellerType}
-          wholesale_pricing={wholesalePricing}
-          store_id={storeId}
-          store_name={storeName}
-          store_subdomain={storeSubdomain}
-          product_type={productType}
-          image_url={imageUrl}
-          variant_id={selectedVariant?.id}
-          variant={variantLabel}
-          maxQuantity={maxQuantity}
-          controlledQuantity={selectedQuantity}
-          onQuantityChange={onQuantityChange}
-        />
+      <div className={`space-y-3 rounded-[1.75rem] p-3 sm:p-4 ${isAliExpress ? 'bg-[#fff7f2]' : 'bg-gray-50'}`}>
+        {/* Row 1: Quantity Selector + Add to Cart + Wishlist Button */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0">
+            <AddToCartButton
+              product_id={productId}
+              title={title}
+              slug={slug}
+              category={category}
+              marketplace_category_slug={marketplaceCategorySlug}
+              price={price}
+              seller_type={sellerType}
+              wholesale_pricing={wholesalePricing}
+              store_id={storeId}
+              store_name={storeName}
+              store_subdomain={storeSubdomain}
+              product_type={productType}
+              image_url={imageUrl}
+              variant_id={selectedVariant?.id}
+              variant={variantLabel}
+              maxQuantity={maxQuantity}
+              controlledQuantity={selectedQuantity}
+              onQuantityChange={(qty) => {
+                setCurrentQty(qty);
+                onQuantityChange?.(qty);
+              }}
+            />
+          </div>
+          {showWishlistButton && (
+            <div className="shrink-0">
+              <WishlistButton productId={productId} size="md" />
+            </div>
+          )}
+        </div>
+
+        {/* Row 2: WhatsApp Direct Order Button (Full Width, Crisp & Responsive) */}
+        {showWhatsAppOrder && (
+          <WhatsAppDirectOrderButton
+            storeName={storeName}
+            storePhone={storePhone}
+            productTitle={title}
+            price={price}
+            quantity={currentQty}
+            variantTitle={variantLabel}
+            className="w-full"
+          />
+        )}
       </div>
     </div>
   );

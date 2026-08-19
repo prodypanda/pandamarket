@@ -57,11 +57,11 @@ export function WhatsAppDirectOrderButton({
       href={waHref}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3.5 text-xs font-black text-white hover:bg-[#20bd5a] transition-all duration-200 shadow-md hover:shadow-green-500/20 active:scale-98 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3 text-xs sm:text-sm font-black text-white hover:bg-[#20bd5a] transition-all duration-200 shadow-sm hover:shadow-green-500/20 active:scale-98 ${className}`}
       title="Commander directement auprès du vendeur via WhatsApp"
     >
-      <MessageSquare className="h-4 w-4" />
-      <span>Commander via WhatsApp 🟢</span>
+      <MessageSquare className="h-4 w-4 shrink-0" />
+      <span className="whitespace-nowrap">Commander via WhatsApp</span>
     </a>
   );
 }

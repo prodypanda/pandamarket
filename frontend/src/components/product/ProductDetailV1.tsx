@@ -237,7 +237,7 @@ export const ProductDetailV1: React.FC<ProductDetailProps> = ({
               {product.status}
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3 leading-tight">{product.title}</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-[1.75rem] font-black text-gray-900 mb-3 leading-snug">{product.title}</h1>
 
           {/* Rating */}
           <div
@@ -272,8 +272,8 @@ export const ProductDetailV1: React.FC<ProductDetailProps> = ({
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Marketplace price</p>
                 {Number(product.compare_at_price) > toNumber(product.price) ? (
                   <div className="mt-1 flex flex-wrap items-end gap-3">
-                    <p className={`text-4xl sm:text-5xl font-black ${accentText}`}>{formatPrice(product.price)}</p>
-                    <p className="text-lg font-bold text-gray-400 line-through">
+                    <p className={`text-2xl sm:text-3xl font-black tabular-nums ${accentText}`}>{formatPrice(product.price)}</p>
+                    <p className="text-base sm:text-lg font-bold text-gray-400 line-through tabular-nums">
                       {formatPrice(product.compare_at_price!)}
                     </p>
                     <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-black text-white">
@@ -287,7 +287,7 @@ export const ProductDetailV1: React.FC<ProductDetailProps> = ({
                     </span>
                   </div>
                 ) : (
-                  <p className={`mt-1 text-4xl sm:text-5xl font-black ${accentText}`}>{formatPrice(product.price)}</p>
+                  <p className={`mt-1 text-2xl sm:text-3xl font-black tabular-nums ${accentText}`}>{formatPrice(product.price)}</p>
                 )}
               </div>
               {isAliExpress && (
@@ -447,13 +447,13 @@ export const ProductDetailV1: React.FC<ProductDetailProps> = ({
               storeId={product.store_id}
               storeName={product.store_name || 'Store'}
               storeSubdomain={product.store_subdomain}
+              storePhone={typeof (product.store_settings as any)?.phone === 'string' ? (product.store_settings as any).phone : null}
               productType={product.type}
               imageUrl={mainImage || null}
               inventoryQuantity={product.inventory_quantity}
               variants={product.variants}
               isAliExpress={isAliExpress}
             />
-            <WishlistButton productId={product.id} size="md" />
           </div>
         </div>
       </div>
