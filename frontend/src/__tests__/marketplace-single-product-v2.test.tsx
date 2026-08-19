@@ -146,13 +146,27 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     expect(stackedContainer.querySelectorAll('button').length).toBeGreaterThan(0);
   });
 
-  it('renders ProductReassuranceBar with 4 trust cards', () => {
+  it('renders ProductReassuranceBar with 4 default trust cards', () => {
     renderWithProviders(<ProductReassuranceBar />);
 
     const reassuranceBar = screen.getByTestId('product-reassurance-bar');
     expect(reassuranceBar).toBeInTheDocument();
     expect(screen.getByText(/Paiement 100% Sécurisé|100% Secure Payment/i)).toBeInTheDocument();
     expect(screen.getByText(/Livraison Rapide Tunisie|Fast Tunisia Delivery/i)).toBeInTheDocument();
+  });
+
+  it('renders ProductReassuranceBar with custom added/edited pillars JSON', () => {
+    const customPillars = JSON.stringify([
+      { id: 'c1', icon: 'Zap', title: 'Expédition Éclair 24h', description: 'Commande traitée en priorité' },
+      { id: 'c2', icon: 'Heart', title: 'Support Dévoué', description: 'Assistance 7j/7 par téléphone' },
+      { id: 'c3', icon: 'Lock', title: 'Paiement SSL 256-bit', description: 'Vos coordonnées sont cryptées' },
+    ]);
+
+    renderWithProviders(<ProductReassuranceBar customItemsJson={customPillars} />);
+
+    expect(screen.getByText('Expédition Éclair 24h')).toBeInTheDocument();
+    expect(screen.getByText('Support Dévoué')).toBeInTheDocument();
+    expect(screen.getByText('Paiement SSL 256-bit')).toBeInTheDocument();
   });
 
   it('renders ProductDetailV2 with Impeccable high-conversion components and wholesale tiers', () => {
@@ -194,6 +208,20 @@ describe('Marketplace Single Product Page V2 Suite', () => {
     // Switch tab to shipping
     fireEvent.click(screen.getByTestId('tab-btn-shipping'));
     expect(screen.getByTestId('panel-shipping')).toBeInTheDocument();
+  });
+
+  it('respects single_product_show_reassurance toggle when turned off', () => {
+    renderWithProviders(
+      <ProductDetailV2
+        product={mockProduct}
+        similarProducts={[]}
+        ratingData={{ average_rating: 4.8, review_count: 12 }}
+        marketplaceSettings={{ ...mockSettings, single_product_show_reassurance: false }}
+        locale="fr"
+      />
+    );
+
+    expect(screen.queryByTestId('product-reassurance-bar')).not.toBeInTheDocument();
   });
 
   it('renders ProductDetailV2 in accordions layout mode', () => {

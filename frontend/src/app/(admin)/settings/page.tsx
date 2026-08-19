@@ -12,7 +12,7 @@ import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles, ExternalLink } from 'lucide-react';
+import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles, ExternalLink, Trash2, Plus, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
   getDirtySettingsKeys,
@@ -2280,6 +2280,7 @@ export default function SuperAdminSettingsPage() {
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'published' | 'failed'>('idle');
   const [lastSavedAuditInfo, setLastSavedAuditInfo] = useState<{ section: string; keys: string[]; timestamp: number } | null>(null);
   const [isPreviewLabOpen, setIsPreviewLabOpen] = useState(false);
+  const [sandboxProductInput, setSandboxProductInput] = useState('demo');
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -2309,7 +2310,6 @@ export default function SuperAdminSettingsPage() {
   }, [activeTab]);
 
   function updateSetting<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
-    if (!settingsLoadSucceeded) return;
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
   }
@@ -2338,7 +2338,12 @@ export default function SuperAdminSettingsPage() {
   function renderToggle({ key, label, description }: ToggleSetting) {
     const isChecked = Boolean(settings[key]);
     return (
-      <div id={`setting-${key}`} key={key} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-stone-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
+      <div
+        id={`setting-${key}`}
+        key={key}
+        onClick={() => updateSetting(key, !isChecked)}
+        className="group flex cursor-pointer select-none items-center justify-between gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-stone-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md active:scale-[0.99]"
+      >
         <div className="pr-4">
           <p className="text-sm font-bold text-slate-900">{label}</p>
           <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">{description}</p>
@@ -2348,7 +2353,10 @@ export default function SuperAdminSettingsPage() {
           role="switch"
           aria-checked={isChecked}
           aria-label={label}
-          onClick={() => updateSetting(key, !settings[key])}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateSetting(key, !isChecked);
+          }}
           className={`relative h-7 w-14 shrink-0 rounded-full transition-all duration-300 shadow-inner focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
             isChecked ? 'bg-[#B91C1C] shadow-red-900/20' : 'bg-slate-200'
           }`}
@@ -4222,36 +4230,6 @@ export default function SuperAdminSettingsPage() {
         {/* Visual Reassurance Pillar Builder */}
         {settings.single_product_show_reassurance && (
           <div className="space-y-4 pt-4 border-t border-slate-100">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                  <span>{t('corePagesAdmin.reassuranceBuilderTitle') || "Constructeur visuel des piliers de réassurance"}</span>
-                </h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {t('corePagesAdmin.reassuranceBuilderDesc') || "Modifiez ou personnalisez les 4 garanties de confiance affichées sur la fiche produit."}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const defaultItems = [
-                    { id: '1', icon: 'ShieldCheck', title: 'Paiement 100% Sécurisé', description: 'Carte bancaire, Flouci ou paiement à la livraison' },
-                    { id: '2', icon: 'Truck', title: 'Livraison Rapide Tunisie', description: '24h à 48h partout en Tunisie avec suivi' },
-                    { id: '3', icon: 'RotateCcw', title: 'Garantie Retour 7 jours', description: 'Satisfait ou remboursé sous 7 jours ouvrés' },
-                    { id: '4', icon: 'Award', title: 'Vendeur Certifié Panda', description: 'Boutique auditée et commandes protégées' },
-                  ];
-                  updateSetting('single_product_reassurance_items', JSON.stringify(defaultItems, null, 2));
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>{t('corePagesAdmin.resetDefault') || "Réinitialiser aux valeurs par défaut"}</span>
-              </button>
-            </div>
-
-            {/* Visual Cards Editor Grid */}
             {(() => {
               let parsedItems: Array<{ id: string; icon: string; title: string; description: string }> = [];
               try {
@@ -4277,70 +4255,190 @@ export default function SuperAdminSettingsPage() {
                 updateSetting('single_product_reassurance_items', JSON.stringify(next, null, 2));
               };
 
+              const handleAddItem = () => {
+                const newId = String(Date.now());
+                const next = [
+                  ...parsedItems,
+                  { id: newId, icon: 'ShieldCheck', title: 'Nouvelle Garantie', description: 'Description de la garantie offerte à vos acheteurs.' },
+                ];
+                updateSetting('single_product_reassurance_items', JSON.stringify(next, null, 2));
+              };
+
+              const handleRemoveItem = (index: number) => {
+                const next = parsedItems.filter((_, i) => i !== index);
+                updateSetting('single_product_reassurance_items', JSON.stringify(next, null, 2));
+              };
+
+              const handleMoveItem = (index: number, direction: 'left' | 'right') => {
+                const targetIndex = direction === 'left' ? index - 1 : index + 1;
+                if (targetIndex < 0 || targetIndex >= parsedItems.length) return;
+                const next = [...parsedItems];
+                const temp = next[index];
+                next[index] = next[targetIndex];
+                next[targetIndex] = temp;
+                updateSetting('single_product_reassurance_items', JSON.stringify(next, null, 2));
+              };
+
+              const handleResetDefaults = () => {
+                const defaultItems = [
+                  { id: '1', icon: 'ShieldCheck', title: 'Paiement 100% Sécurisé', description: 'Carte bancaire, Flouci ou paiement à la livraison' },
+                  { id: '2', icon: 'Truck', title: 'Livraison Rapide Tunisie', description: '24h à 48h partout en Tunisie avec suivi' },
+                  { id: '3', icon: 'RotateCcw', title: 'Garantie Retour 7 jours', description: 'Satisfait ou remboursé sous 7 jours ouvrés' },
+                  { id: '4', icon: 'Award', title: 'Vendeur Certifié Panda', description: 'Boutique auditée et commandes protégées' },
+                ];
+                updateSetting('single_product_reassurance_items', JSON.stringify(defaultItems, null, 2));
+              };
+
               return (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {parsedItems.map((item, idx) => (
-                    <div key={item.id || idx} className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-black uppercase text-emerald-800">Pilier #{idx + 1}</span>
-                        <select
-                          value={item.icon || 'ShieldCheck'}
-                          onChange={(e) => handleItemChange(idx, 'icon', e.target.value)}
-                          className="rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-bold text-emerald-900"
-                        >
-                          <option value="ShieldCheck">🛡️ Sécurité (Shield)</option>
-                          <option value="Truck">🚚 Livraison (Truck)</option>
-                          <option value="RotateCcw">🔄 Retours (Rotate)</option>
-                          <option value="Award">🏆 Certifié (Award)</option>
-                          <option value="CheckCircle2">✅ Vérifié (Check)</option>
-                          <option value="Zap">⚡ Rapidité (Zap)</option>
-                          <option value="Lock">🔒 Protection (Lock)</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.title') || "Titre"}</label>
-                        <input
-                          type="text"
-                          value={item.title || ''}
-                          onChange={(e) => handleItemChange(idx, 'title', e.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.description') || "Description"}</label>
-                        <textarea
-                          rows={2}
-                          value={item.description || ''}
-                          onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700"
-                        />
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                        <span>{t('corePagesAdmin.reassuranceBuilderTitle') || "Constructeur visuel des piliers de réassurance"}</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {t('corePagesAdmin.reassuranceBuilderDesc') || "Ajoutez, supprimez, réorganisez et personnalisez les piliers de confiance affichés sur la fiche produit."}
+                      </p>
                     </div>
-                  ))}
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-emerald-500 shadow-xs transition"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>{t('corePagesAdmin.addPillar') || "Ajouter un pilier"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResetDefaults}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span>{t('corePagesAdmin.resetDefault') || "Réinitialiser (4 piliers)"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cards Editor Grid */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {parsedItems.map((item, idx) => (
+                      <div key={item.id || idx} className="relative rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/20 p-4 space-y-3 shadow-xs transition hover:shadow-md">
+                        {/* Header with Index, Move Controls, and Delete */}
+                        <div className="flex items-center justify-between gap-1 border-b border-emerald-100 pb-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                            #{idx + 1}
+                          </span>
+
+                          <div className="flex items-center gap-1">
+                            {/* Move Left */}
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveItem(idx, 'left')}
+                              title="Déplacer à gauche"
+                              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                            >
+                              <ArrowLeft className="h-3 w-3" />
+                            </button>
+
+                            {/* Move Right */}
+                            <button
+                              type="button"
+                              disabled={idx === parsedItems.length - 1}
+                              onClick={() => handleMoveItem(idx, 'right')}
+                              title="Déplacer à droite"
+                              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                            >
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(idx)}
+                              title="Supprimer ce pilier"
+                              className="rounded-lg p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Icon Picker */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.icon') || "Icône"}</label>
+                          <select
+                            value={item.icon || 'ShieldCheck'}
+                            onChange={(e) => handleItemChange(idx, 'icon', e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-emerald-500"
+                          >
+                            <option value="ShieldCheck">🛡️ Sécurité (Shield)</option>
+                            <option value="Truck">🚚 Livraison Express (Truck)</option>
+                            <option value="RotateCcw">🔄 Retours Faciles (RotateCcw)</option>
+                            <option value="Award">🏆 Qualité Certifiée (Award)</option>
+                            <option value="CheckCircle2">✅ Vérifié Panda (CheckCircle)</option>
+                            <option value="Zap">⚡ Expédition Immédiate (Zap)</option>
+                            <option value="Lock">🔒 Paiement Crypté (Lock)</option>
+                            <option value="Heart">❤️ Service Client (Heart)</option>
+                            <option value="Sparkles">✨ Offres Exclusives (Sparkles)</option>
+                            <option value="PackageCheck">📦 Colis Soigné (PackageCheck)</option>
+                            <option value="Clock">⏱️ Support 24/7 (Clock)</option>
+                            <option value="CreditCard">💳 Multi-Paiements (CreditCard)</option>
+                          </select>
+                        </div>
+
+                        {/* Title Input */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.title') || "Titre"}</label>
+                          <input
+                            type="text"
+                            value={item.title || ''}
+                            onChange={(e) => handleItemChange(idx, 'title', e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-emerald-500"
+                            placeholder="Ex: 100% Sécurisé"
+                          />
+                        </div>
+
+                        {/* Description Textarea */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">{t('corePagesAdmin.description') || "Description"}</label>
+                          <textarea
+                            rows={2}
+                            value={item.description || ''}
+                            onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-500"
+                            placeholder="Ex: Paiement à la livraison ou par carte"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Advanced JSON Drawer */}
+                  <details className="mt-2 text-xs text-slate-500">
+                    <summary className="cursor-pointer font-bold text-slate-600 hover:text-slate-800">
+                      Mode Avancé : Éditer le JSON brut de réassurance
+                    </summary>
+                    <textarea
+                      rows={4}
+                      value={settings.single_product_reassurance_items || ''}
+                      onChange={(e) => updateSetting('single_product_reassurance_items', e.target.value)}
+                      className="w-full mt-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs p-3 text-slate-800 focus:bg-white"
+                    />
+                  </details>
                 </div>
               );
             })()}
-
-            {/* Advanced JSON View Accordion */}
-            <details className="mt-2 text-xs text-slate-500">
-              <summary className="cursor-pointer font-bold text-slate-600 hover:text-slate-800">
-                Mode Avancé : Éditer le JSON brut de réassurance
-              </summary>
-              <textarea
-                rows={4}
-                value={settings.single_product_reassurance_items || ''}
-                onChange={(e) => updateSetting('single_product_reassurance_items', e.target.value)}
-                className="w-full mt-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs p-3 text-slate-800 focus:bg-white"
-              />
-            </details>
           </div>
         )}
 
         {/* Sandbox Live Testing Suite */}
-        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-5 space-y-3 pt-4 border-t">
-          <div className="flex items-center justify-between">
+        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-5 space-y-4 pt-4 border-t">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-emerald-600" />
               <span>{t('corePagesAdmin.sandboxPreviewTitle') || "Bac à sable & Test en direct"}</span>
@@ -4349,31 +4447,47 @@ export default function SuperAdminSettingsPage() {
               Live Preview Studio
             </span>
           </div>
+
           <p className="text-xs text-slate-500 leading-relaxed">
-            {t('corePagesAdmin.sandboxPreviewDesc') || "Testez instantanément le rendu d'un produit avec le commutateur d'aperçu d'URL (?preview_version=v2 ou ?preview_version=v1) sans altérer la configuration de production."}
+            {t('corePagesAdmin.sandboxPreviewDesc') || "Testez instantanément le rendu de n'importe quel produit avec le commutateur d'aperçu (?preview_version=v2 ou ?preview_version=v1) sans altérer la configuration de production."}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <a
-              href="/hub/products/demo?preview_version=v1"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
-            >
-              <span>{t('corePagesAdmin.openV1') || "Ouvrir Démo en Version 1 (Classique)"}</span>
-              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-            </a>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="block text-[10px] font-black uppercase text-slate-500">
+                ID ou Slug du produit de test
+              </label>
+              <input
+                type="text"
+                value={sandboxProductInput}
+                onChange={(e) => setSandboxProductInput(e.target.value)}
+                placeholder="demo ou identifiant-produit"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
 
-            <a
-              href="/hub/products/demo?preview_version=v2"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-xs hover:bg-emerald-500 transition"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{t('corePagesAdmin.openV2') || "Ouvrir Démo en Version 2 (Showcase)"}</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+            <div className="flex flex-wrap items-end gap-2.5 pt-2 sm:pt-4">
+              <a
+                href={`/hub/products/${encodeURIComponent(sandboxProductInput.trim() || 'demo')}?preview_version=v1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+              >
+                <span>{t('corePagesAdmin.openV1') || "Ouvrir en V1 (Classique)"}</span>
+                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              </a>
+
+              <a
+                href={`/hub/products/${encodeURIComponent(sandboxProductInput.trim() || 'demo')}?preview_version=v2`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-xs hover:bg-emerald-500 transition"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t('corePagesAdmin.openV2') || "Ouvrir en V2 (Showcase)"}</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </div>
         </div>
       </section>
