@@ -208,10 +208,13 @@ export async function generateMetadata({
 
 export default async function StoreProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeHost: string; slug: string }>;
+  searchParams?: Promise<{ preview_version?: string }>;
 }) {
   const { storeHost, slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const decodedHost = decodeURIComponent(storeHost);
   const requestHost = (await headers()).get('host');
   const cookieStore = await cookies();
@@ -252,6 +255,7 @@ export default async function StoreProductPage({
         marketplaceSettings={marketplaceSettings}
         locale={locale}
         currentHost={requestHost}
+        previewVersion={resolvedSearchParams.preview_version}
       />
     );
   }

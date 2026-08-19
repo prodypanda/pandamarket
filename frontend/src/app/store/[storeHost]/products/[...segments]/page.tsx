@@ -101,6 +101,7 @@ export default async function PrettyStoreProductPage({
   if (product) {
     return StoreProductPage({
       params: Promise.resolve({ storeHost, slug: product.slug || lastSlug }),
+      searchParams: searchParams as any,
     });
   }
 

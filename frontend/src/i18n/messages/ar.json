@@ -3291,7 +3291,11 @@
       "subtitle": "اطلب بالكمية واستفد من تخفيضات تصاعدية مميزة",
       "buyBatch": "طلب دفعة من {qty} قطع",
       "unitPrice": "{price} د.ت / قطعة",
-      "minQuantity": "الحد الأدنى للكمية : {qty} قطع"
+      "minQuantity": "الحد الأدنى للكمية : {qty} قطع",
+      "minOrder": "الحد الأدنى {count} قطع",
+      "tierQty": "حزمة من {count}",
+      "lowStockTierTooltip": "المخزون غير كافٍ لهذا الخيار ({available} متوفر / {required} مطلوب)",
+      "outOfStockTier": "مخزون قليل"
     },
     "bundle": {
       "includesTitle": "تحتوي هذه الباقة الحصرية على :",

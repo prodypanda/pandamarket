@@ -234,8 +234,8 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
 
       {/* 2-Column Asymmetric Modern Hero */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.12fr_0.88fr] gap-8 lg:gap-10 items-start">
-        {/* Left Column: Visual Gallery & Social Sharing */}
-        <div className="space-y-5">
+        {/* Left Column: Sticky Visual Gallery & Social Sharing */}
+        <div className="lg:sticky lg:top-24 self-start space-y-5">
           <div className="rounded-3xl border border-gray-200/80 bg-white p-3 sm:p-4 shadow-sm dark:border-white/10 dark:bg-[#161a22]">
             <ProductGallery
               title={product.title}
@@ -265,8 +265,8 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
           />
         </div>
 
-        {/* Right Column: Sticky Purchase Hub & Trust Stack */}
-        <div className="lg:sticky lg:top-24 space-y-6 rounded-3xl border border-gray-200/80 bg-white/95 p-6 sm:p-8 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#161a22]/95">
+        {/* Right Column: Purchase Hub & Trust Stack */}
+        <div className="space-y-6 rounded-3xl border border-gray-200/80 bg-white/95 p-6 sm:p-8 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#161a22]/95">
           {/* Top Badges & Live Social Proof */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -300,7 +300,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
 
           {/* Product Title & Reference */}
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-[1.75rem] font-black tracking-tight text-gray-900 dark:text-white leading-snug">
               {product.title}
             </h1>
             {product.product_reference && (
@@ -337,11 +337,11 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
                   {t('productV2.marketplacePrice')}
                 </span>
                 <div className="flex flex-wrap items-baseline gap-3 mt-1">
-                  <span className="text-3xl sm:text-4xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
                     {formatPrice(product.price)}
                   </span>
                   {isDiscounted && (
-                    <span className="text-lg font-bold text-gray-400 line-through tabular-nums">
+                    <span className="text-base sm:text-lg font-bold text-gray-400 line-through tabular-nums">
                       {formatPrice(product.compare_at_price!)}
                     </span>
                   )}
@@ -386,11 +386,17 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
 
           {/* Wholesaler Interactive Pricing Calculator */}
           {wholesalePricing && wholesalePricing.price_tiers && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div
+              data-testid="wholesale-calculator-card"
+              className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+            >
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-300">
-                  {t('productV2.wholesale.title')}
-                </h4>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                  <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-300">
+                    {t('productV2.wholesale.title')}
+                  </h4>
+                </div>
                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                   {t('productV2.wholesale.minQuantity', { qty: wholesalePricing.min_quantity ?? 1 })}
                 </span>
@@ -399,25 +405,61 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
                 {t('productV2.wholesale.subtitle')}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {wholesalePricing.price_tiers.map((tier) => (
-                  <button
-                    key={tier.min_quantity}
-                    type="button"
-                    onClick={() => setSelectedWholesaleQty(tier.min_quantity)}
-                    className={`flex flex-col items-start rounded-xl p-2.5 text-start transition border ${
-                      selectedWholesaleQty === tier.min_quantity
-                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
-                        : 'border-emerald-200 bg-white text-gray-800 hover:border-emerald-400 dark:border-white/10 dark:bg-white/5 dark:text-white'
-                    }`}
-                  >
-                    <span className="text-[10px] font-black uppercase opacity-80">
-                      {t('productV2.wholesale.buyBatch', { qty: tier.min_quantity })}
-                    </span>
-                    <span className="text-xs font-black tabular-nums mt-0.5">
-                      {Number(tier.unit_price).toFixed(3)} TND
-                    </span>
-                  </button>
-                ))}
+                {wholesalePricing.price_tiers.map((tier) => {
+                  const isInsufficientStock =
+                    isPhysicalProduct &&
+                    stockQty !== null &&
+                    stockQty < tier.min_quantity;
+                  const isSelected = selectedWholesaleQty === tier.min_quantity;
+                  const tooltipText = t('productV2.wholesale.lowStockTierTooltip', {
+                    available: stockQty ?? 0,
+                    required: tier.min_quantity,
+                  });
+
+                  return (
+                    <div key={tier.min_quantity} className="relative group">
+                      <button
+                        type="button"
+                        disabled={isInsufficientStock}
+                        onClick={() => {
+                          if (!isInsufficientStock) {
+                            setSelectedWholesaleQty(tier.min_quantity);
+                          }
+                        }}
+                        title={isInsufficientStock ? tooltipText : undefined}
+                        className={`w-full flex flex-col items-start rounded-xl p-2.5 text-start transition border ${
+                          isInsufficientStock
+                            ? 'cursor-not-allowed opacity-50 border-gray-200 bg-gray-100 dark:border-white/5 dark:bg-white/5 text-gray-400'
+                            : isSelected
+                            ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/20'
+                            : 'border-emerald-200 bg-white text-gray-800 hover:border-emerald-400 dark:border-white/10 dark:bg-white/5 dark:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-[10px] font-black uppercase opacity-80">
+                            {t('productV2.wholesale.buyBatch', { qty: tier.min_quantity })}
+                          </span>
+                          {isInsufficientStock && (
+                            <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">
+                              {t('productV2.wholesale.outOfStockTier')}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-black tabular-nums mt-0.5 ${
+                          isInsufficientStock ? 'text-gray-400' : isSelected ? 'text-white' : 'text-emerald-700 dark:text-emerald-400'
+                        }`}>
+                          {Number(tier.unit_price).toFixed(3)} TND
+                        </span>
+                      </button>
+                      {isInsufficientStock && (
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1 text-[11px] font-medium text-white shadow-xl dark:bg-gray-100 dark:text-gray-900">
+                          {tooltipText}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-100" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -479,6 +521,7 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
                   storeName={product.store_name}
                   variant="action_bar"
                   size="md"
+                  showVerifiedBadge={false}
                 />
               </div>
             </div>

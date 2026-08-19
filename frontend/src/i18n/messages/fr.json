@@ -3293,7 +3293,11 @@
       "subtitle": "Commandez en quantité et bénéficiez de réductions dégressives",
       "buyBatch": "Commander par lot de {qty}",
       "unitPrice": "{price} TND / unité",
-      "minQuantity": "Quantité minimale : {qty} unités"
+      "minQuantity": "Quantité minimale : {qty} unités",
+      "minOrder": "Min. {count} unités",
+      "tierQty": "Lot de {count}",
+      "lowStockTierTooltip": "Stock insuffisant pour ce palier ({available} disponibles / {required} requis)",
+      "outOfStockTier": "Stock faible"
     },
     "bundle": {
       "includesTitle": "Ce pack exclusif contient :",

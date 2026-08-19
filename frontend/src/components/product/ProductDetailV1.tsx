@@ -350,7 +350,13 @@ export const ProductDetailV1: React.FC<ProductDetailProps> = ({
                 subject={product.title}
                 isAliExpress={isAliExpress}
               />
-              <StoreFollowButton storeId={product.store_id} storeName={product.store_name} variant="action_bar" size="md" />
+              <StoreFollowButton
+                storeId={product.store_id}
+                storeName={product.store_name}
+                variant="action_bar"
+                size="md"
+                showVerifiedBadge={false}
+              />
             </div>
           )}
 
