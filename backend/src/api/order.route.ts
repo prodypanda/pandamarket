@@ -43,6 +43,8 @@ const checkoutSchema = z.object({
   ).min(1),
   shipping_address: shippingAddressSchema.nullable().optional(),
   payment_gateway: z.nativeEnum(PaymentGateway),
+  quote_id: z.string().trim().min(8).max(100).optional(),
+  coupon_code: z.string().trim().max(64).optional(),
   ads_attribution: z.object({
     campaign_id: z.string().min(8).max(100),
     creative_id: z.string().min(8).max(100),

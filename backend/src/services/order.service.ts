@@ -25,11 +25,11 @@ import {
 } from '@pandamarket/types';
 import { roundTnd } from '../utils/money';
 import { logger } from '../utils/logger';
-import { config } from '../config';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 import { shippingService } from './shipping.service';
 import { adsService } from './ads.service';
 import { buyerInterestService } from './buyer-interest.service';
+import { checkoutQuoteService } from './checkout-quote.service';
 
 interface CartLine {
   product_id: string;
@@ -58,6 +58,12 @@ export interface OrderRow {
   payment_reference: string | null;
   subtotal: string;
   shipping_total: string;
+  gross_subtotal?: string;
+  discount_total?: string;
+  tax_total?: string;
+  coupon_code?: string | null;
+  quote_id?: string | null;
+  quote_version?: number | null;
   total: string;
   currency: string;
   shipping_address: IAddress | null;
@@ -220,14 +226,15 @@ export interface StoreOrderSummary {
   fulfillment_sla_rate: number;
 }
 
-const FLAT_SHIPPING_PER_STORE = 7; // TND — placeholder until Aramex integration
+export const FLAT_SHIPPING_PER_STORE = 7; // TND — fallback until a live carrier quote is available
+export const COMBINED_SHIPPING_REBATE_PER_ADDITIONAL_STORE = 3;
 
-function numberSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: number) {
+export function numberSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: number) {
   const value = Number(settings[key]);
   return Number.isFinite(value) ? value : fallback;
 }
 
-function stringSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: string) {
+export function stringSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: string) {
   const value = settings[key];
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
@@ -242,7 +249,7 @@ function countryCode(value?: string | null) {
   return /^[A-Z]{2}$/.test(trimmed) ? trimmed : 'TN';
 }
 
-function normalizeCity(value?: string | null) {
+export function normalizeCity(value?: string | null) {
   return (value || '').trim().toLowerCase();
 }
 
@@ -250,7 +257,7 @@ function configuredCities(value: string) {
   return value.split(',').map(normalizeCity).filter(Boolean);
 }
 
-function configuredShippingRate(settings: PlatformSettings, destinationCity?: string | null) {
+export function configuredShippingRate(settings: PlatformSettings, destinationCity?: string | null) {
   const city = normalizeCity(destinationCity);
   const remoteCities = configuredCities(stringSetting(settings, 'shipping_remote_zone_cities', ''));
   const domesticCities = configuredCities(stringSetting(settings, 'shipping_domestic_zone_cities', ''));
@@ -259,7 +266,7 @@ function configuredShippingRate(settings: PlatformSettings, destinationCity?: st
   return numberSetting(settings, 'shipping_platform_flat_rate_tnd', FLAT_SHIPPING_PER_STORE);
 }
 
-function usesInventory(type: ProductType): boolean {
+export function usesInventory(type: ProductType): boolean {
   return type === ProductType.Physical;
 }
 
@@ -308,11 +315,11 @@ async function restoreOrderItemStock(
   }
 }
 
-function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
+export function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
   return sellerType === SellerType.Wholesaler || sellerType === SellerType.Hybrid;
 }
 
-function getWholesaleUnitPrice(basePrice: number, quantity: number, sellerType: SellerType | null, metadata: Record<string, unknown> | null): number {
+export function getWholesaleUnitPrice(basePrice: number, quantity: number, sellerType: SellerType | null, metadata: Record<string, unknown> | null): number {
   if (!isWholesaleCapableSeller(sellerType)) {
     return basePrice;
   }
@@ -355,6 +362,8 @@ export class OrderService {
     storefront_customer_id?: string | null;
     store_id?: string | null;
     idempotency_key?: string | null;
+    quote_id?: string | null;
+    coupon_code?: string | null;
     items: CartLine[];
     shipping_address?: IAddress | null;
     payment_gateway: PaymentGateway;
@@ -370,6 +379,15 @@ export class OrderService {
     const platformSettings = await platformConfigService.getSettings();
 
     return transaction(async (c) => {
+      const quote = opts.quote_id
+        ? await checkoutQuoteService.lockForCheckout(
+          c,
+          opts.quote_id,
+          opts.customer_id,
+          opts.storefront_customer_id,
+        )
+        : null;
+
       // Lock affected products and variants in deterministic ascending ID order to prevent deadlocks
       const uniqueProductIds = Array.from(new Set(opts.items.map((it) => it.product_id))).sort();
       if (uniqueProductIds.length > 0) {
@@ -539,19 +557,36 @@ export class OrderService {
       const storeIds = Array.from(new Set(prepared.map((p) => p.store_id)));
       const shippableStoreIds = Array.from(new Set(prepared.filter((p) => p.product_type === ProductType.Physical).map((p) => p.store_id)));
       const fulfillmentStoreIds = shippableStoreIds;
-      const subtotal = roundTnd(prepared.reduce((s, it) => s + it.subtotal, 0));
-      const shippingPerStore = platformSettings.shipping_enabled
-        ? configuredShippingRate(platformSettings, opts.shipping_address?.city)
-        : 0;
-      const freeShippingThreshold = numberSetting(platformSettings, 'shipping_free_shipping_threshold_tnd', 0);
-      const shippingTotal = roundTnd(freeShippingThreshold > 0 && subtotal >= freeShippingThreshold ? 0 : shippableStoreIds.length * shippingPerStore);
-      const total = roundTnd(subtotal + shippingTotal);
       if (shippableStoreIds.length > 0 && !opts.shipping_address) {
         throw new PdValidationError('Shipping address is required for physical products');
       }
       if (opts.payment_gateway === PaymentGateway.Cod && shippableStoreIds.length === 0) {
         throw new PdValidationError('Cash on delivery is only available for physical products');
       }
+
+      const quoteTotals = await checkoutQuoteService.calculateTotals(
+        c,
+        prepared,
+        platformSettings,
+        opts.shipping_address,
+        quote?.coupon_code ?? opts.coupon_code,
+      );
+      if (quote) {
+        checkoutQuoteService.assertMatches(quote, {
+          owner_user_id: opts.customer_id,
+          owner_storefront_customer_id: opts.storefront_customer_id,
+          store_id: opts.store_id,
+          items: opts.items,
+          shipping_address: opts.shipping_address,
+          coupon_code: quote?.coupon_code ?? opts.coupon_code,
+          totals: quoteTotals,
+        });
+      }
+      const grossSubtotal = quoteTotals.subtotal;
+      const subtotal = roundTnd(grossSubtotal - quoteTotals.product_discount_total);
+      const shippingTotal = quoteTotals.shipping_total;
+      const taxTotal = quoteTotals.tax_total;
+      const total = quoteTotals.total;
 
       // ----- Create order -----
       const orderId = pdId('order');
@@ -571,9 +606,10 @@ export class OrderService {
       try {
         const res = await c.query<OrderRow>(
           `INSERT INTO pd_order
-            (id, customer_id, storefront_customer_id, status, payment_gateway, subtotal,
-             shipping_total, total, currency, shipping_address, idempotency_key)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, customer_id, storefront_customer_id, status, payment_gateway, gross_subtotal,
+             subtotal, discount_total, shipping_total, tax_total, total, currency, shipping_address,
+             idempotency_key, quote_id, quote_version, coupon_code, discount_breakdown, quote_snapshot)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
            RETURNING *`,
           [
             orderId,
@@ -581,12 +617,20 @@ export class OrderService {
             storefrontCustomerId,
             initialStatus,
             opts.payment_gateway,
+            grossSubtotal,
             subtotal,
+            quoteTotals.discount_total,
             shippingTotal,
+            taxTotal,
             total,
-            config.defaultCurrency,
+            quoteTotals.currency,
             opts.shipping_address ? JSON.stringify(opts.shipping_address) : null,
             opts.idempotency_key ?? null,
+            quote?.id ?? null,
+            quote?.quote_version ?? null,
+            quote?.coupon_code ?? opts.coupon_code?.trim().toUpperCase() ?? null,
+            JSON.stringify(quoteTotals.breakdown),
+            JSON.stringify(quoteTotals.snapshot),
           ],
         );
         orderRows = res.rows;
@@ -599,11 +643,15 @@ export class OrderService {
       }
 
       // ----- Create order items -----
-      for (const item of prepared) {
+      for (const [itemIndex, item] of prepared.entries()) {
+        const pricedLine = quoteTotals.lines[itemIndex];
+        const itemDiscount = roundTnd(pricedLine?.discount_amount || 0);
+        const netItemSubtotal = roundTnd(item.subtotal - itemDiscount);
         await c.query(
           `INSERT INTO pd_order_item
-            (id, order_id, product_id, variant_id, store_id, title, quantity, unit_price, subtotal)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            (id, order_id, product_id, variant_id, store_id, title, quantity, unit_price,
+             gross_subtotal, discount_amount, discount_breakdown, subtotal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             pdId('oitem'),
             orderId,
@@ -612,8 +660,11 @@ export class OrderService {
             item.store_id,
             item.title,
             item.quantity,
-            item.unit_price,
+            roundTnd(netItemSubtotal / item.quantity),
             item.subtotal,
+            itemDiscount,
+            JSON.stringify(pricedLine?.discount_breakdown || {}),
+            netItemSubtotal,
           ],
         );
         // Guarded atomic stock decrement
@@ -729,8 +780,12 @@ export class OrderService {
         await c.query(
           `INSERT INTO pd_fulfillment (id, order_id, store_id, shipping_total)
            VALUES ($1, $2, $3, $4)`,
-          [pdId('ful'), orderId, sid, shippableStoreIds.includes(sid) && shippingTotal > 0 ? shippingPerStore : 0],
+          [pdId('ful'), orderId, sid, quoteTotals.shipping_by_store[sid] || 0],
         );
+      }
+
+      if (quote) {
+        await checkoutQuoteService.consume(c, quote.id, orderId);
       }
 
       logger.info(

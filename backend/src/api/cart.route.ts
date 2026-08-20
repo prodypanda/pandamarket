@@ -13,9 +13,11 @@ import {
   asyncHandler,
   optionalAuth,
   requireAuth,
+  requireStorefrontCustomer,
   validate,
 } from '../middlewares';
 import { cartService } from '../services/cart.service';
+import { checkoutQuoteService } from '../services/checkout-quote.service';
 
 const router = Router();
 
@@ -52,6 +54,27 @@ const syncCartSchema = z.object({
   coupon_code: z.string().optional(),
   customer_email: z.string().email().optional(),
   customer_phone: z.string().optional(),
+});
+
+const quoteAddressSchema = z.object({
+  first_name: z.string().trim().min(1).max(100),
+  last_name: z.string().trim().min(1).max(100),
+  phone: z.string().trim().min(6).max(30),
+  address_line_1: z.string().trim().min(1).max(200),
+  address_line_2: z.string().trim().max(200).optional(),
+  city: z.string().trim().min(1).max(100),
+  postal_code: z.string().trim().min(1).max(20),
+  country: z.string().trim().length(2).default('TN'),
+});
+
+const checkoutQuoteSchema = z.object({
+  items: z.array(z.object({
+    product_id: z.string().trim().min(1),
+    variant_id: z.string().trim().min(1).optional(),
+    quantity: z.number().int().positive(),
+  })).min(1).max(200),
+  shipping_address: quoteAddressSchema.nullable().optional(),
+  coupon_code: z.string().trim().max(64).optional(),
 });
 
 const gamifiedLeadSchema = z.object({
@@ -98,6 +121,43 @@ router.post(
       session_token: sessionToken,
     });
     res.json({ data: cart });
+  }),
+);
+
+/**
+ * POST /cart/quote — Create an authoritative Hub checkout quote.
+ */
+router.post(
+  '/quote',
+  requireAuth,
+  validate(checkoutQuoteSchema),
+  asyncHandler(async (req, res) => {
+    const quote = await checkoutQuoteService.createQuote({
+      owner_user_id: req.user!.id,
+      items: req.body.items,
+      shipping_address: req.body.shipping_address,
+      coupon_code: req.body.coupon_code,
+    });
+    res.status(201).json({ data: quote });
+  }),
+);
+
+/**
+ * POST /cart/storefront/quote — Create a tenant-scoped checkout quote.
+ */
+router.post(
+  '/storefront/quote',
+  requireStorefrontCustomer,
+  validate(checkoutQuoteSchema),
+  asyncHandler(async (req, res) => {
+    const quote = await checkoutQuoteService.createQuote({
+      owner_storefront_customer_id: req.storefrontCustomer!.id,
+      store_id: req.storefrontCustomer!.store_id,
+      items: req.body.items,
+      shipping_address: req.body.shipping_address,
+      coupon_code: req.body.coupon_code,
+    });
+    res.status(201).json({ data: quote });
   }),
 );
 
