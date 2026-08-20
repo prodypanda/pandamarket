@@ -40,23 +40,32 @@ vi.mock('../services/order.service', () => ({
   },
 }));
 
+vi.mock('../plugins/payment', () => ({
+  getPaymentProvider: vi.fn(),
+  decryptVendorConfig: vi.fn(),
+}));
+
 vi.mock('../services/store.service', () => ({
   storeService: {
     getById: vi.fn(),
   },
 }));
 
-vi.mock('../plugins/payment', () => ({
-  getPaymentProvider: vi.fn(),
-  decryptVendorConfig: vi.fn(),
-}));
-
-const mockPlatformSettings = vi.hoisted(() => ({
-  getSettings: vi.fn(),
-}));
 vi.mock('../services/platform-config.service', () => ({
   platformConfigService: {
-    getSettings: mockPlatformSettings.getSettings,
+    getSettings: vi.fn().mockResolvedValue({
+      payment_vendor_direct_enabled: false,
+      payment_platform_credentials_source: 'environment',
+    }),
+  },
+}));
+
+const capabilityMocks = vi.hoisted(() => ({
+  assertOrderGatewayAvailable: vi.fn(),
+}));
+vi.mock('../services/payment-capability.service', () => ({
+  paymentCapabilityService: {
+    assertOrderGatewayAvailable: capabilityMocks.assertOrderGatewayAvailable,
   },
 }));
 
@@ -69,32 +78,28 @@ vi.mock('../services/ads.service', () => ({
 import { query, transaction } from '../db/pool';
 import { PaymentService } from '../services/payment.service';
 import { orderService } from '../services/order.service';
-import { storeService } from '../services/store.service';
 import { getPaymentProvider, decryptVendorConfig } from '../plugins/payment';
+import { storeService } from '../services/store.service';
 import { PaymentGateway } from '@pandamarket/types';
 
 const mockQuery = vi.mocked(query);
 const mockTransaction = vi.mocked(transaction);
 const mockGetProvider = vi.mocked(getPaymentProvider);
-const mockDecryptConfig = vi.mocked(decryptVendorConfig);
 const mockOrderService = vi.mocked(orderService);
 const mockStoreService = vi.mocked(storeService);
+const mockDecryptConfig = vi.mocked(decryptVendorConfig);
 
 describe('PaymentService', () => {
   let paymentService: PaymentService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Re-establish persistent platform settings mock
-    mockPlatformSettings.getSettings.mockResolvedValue({
-      payment_flouci_enabled: true,
-      payment_konnect_enabled: true,
-      payment_paypal_enabled: true,
-      payment_mandat_enabled: true,
-      payment_cod_enabled: true,
-      payment_vendor_direct_enabled: false,
-      payment_platform_credentials_source: 'platform',
+    capabilityMocks.assertOrderGatewayAvailable.mockResolvedValue({
+      capability_version: `pcv1_${'a'.repeat(64)}`,
+      merchant_account_id: null,
     });
+    mockStoreService.getById.mockResolvedValue({ payment_config: null } as any);
+    mockDecryptConfig.mockReturnValue(null);
     paymentService = new PaymentService();
   });
 
@@ -126,13 +131,8 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
-      // Single-store order with no payment config (escrow mode)
-      mockQuery.mockResolvedValueOnce({ rows: [{ store_id: 'pd_store_1' }], rowCount: 1 } as any);
-      mockStoreService.getById.mockResolvedValue({
-        id: 'pd_store_1',
-        payment_config: null,
-      } as any);
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any); // UPDATE order
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any); // INSERT attempt
 
       const result = await paymentService.initPayment(
         mockOrder,
@@ -163,28 +163,16 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
-      // Enable vendor direct payment for this test
-      mockPlatformSettings.getSettings.mockResolvedValueOnce({
-        payment_flouci_enabled: true,
-        payment_konnect_enabled: true,
-        payment_paypal_enabled: true,
-        payment_mandat_enabled: true,
-        payment_cod_enabled: true,
-        payment_vendor_direct_enabled: true,
-        payment_platform_credentials_source: 'platform',
-      });
-
-      // Single-store order with payment config (direct mode)
-      mockQuery.mockResolvedValueOnce({ rows: [{ store_id: 'pd_store_pro' }], rowCount: 1 } as any);
-      mockStoreService.getById.mockResolvedValue({
-        id: 'pd_store_pro',
-        payment_config: 'encrypted_config_data',
-      } as any);
-      mockDecryptConfig.mockReturnValue({
-        flouci_app_token: 'vendor_token',
-        flouci_app_secret: 'vendor_secret',
+      capabilityMocks.assertOrderGatewayAvailable.mockResolvedValueOnce({
+        capability_version: `pcv1_${'b'.repeat(64)}`,
+        merchant_account_id: 'vendor_token',
+        vendor_credentials: {
+          flouci_app_token: 'vendor_token',
+          flouci_app_secret: 'vendor_secret',
+        },
       });
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any); // UPDATE order
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any); // INSERT attempt
 
       const result = await paymentService.initPayment(
         mockOrder,

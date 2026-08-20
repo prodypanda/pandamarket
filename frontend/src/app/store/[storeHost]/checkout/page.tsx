@@ -184,7 +184,22 @@ export default function StoreCheckoutPage() {
     { id: 'manual_mandat', name: 'Mandat Minute', icon: Banknote, desc: 'Payez à la poste et uploadez votre reçu.' },
     { id: 'cod', name: 'Cash on Delivery', icon: Truck, desc: 'Paiement à la livraison.' },
   ];
-  const availableGateways = gateways.filter((gateway) => hasShippableItems || gateway.id !== 'cod');
+  const paymentCapabilities = useMemo(
+    () => quote?.payment_capabilities.methods || [],
+    [quote?.payment_capabilities.methods],
+  );
+  const paymentOptions = gateways.map((gateway) => ({
+    ...gateway,
+    capability: paymentCapabilities.find((method) => method.gateway === gateway.id),
+  }));
+  const hasAvailableGateway = paymentOptions.some((option) => option.capability?.available);
+
+  useEffect(() => {
+    if (!quote) return;
+    const current = paymentCapabilities.find((method) => method.gateway === selectedGateway);
+    if (current?.available) return;
+    setSelectedGateway(paymentCapabilities.find((method) => method.available)?.gateway || '');
+  }, [paymentCapabilities, quote, selectedGateway]);
 
   const handleCheckout = async () => {
     setError('');
@@ -199,8 +214,11 @@ export default function StoreCheckoutPage() {
       return;
     }
 
-    if (!hasShippableItems && selectedGateway === 'cod') {
-      setError('Le paiement à la livraison est réservé aux produits physiques.');
+    const selectedCapability = quote?.payment_capabilities.methods.find(
+      (method) => method.gateway === selectedGateway,
+    );
+    if (!selectedCapability?.available) {
+      setError(selectedCapability?.buyer_message || 'Sélectionnez un moyen de paiement disponible.');
       return;
     }
 
@@ -262,6 +280,7 @@ export default function StoreCheckoutPage() {
         items: quoteItems,
         shippingAddress: normalizedAddress,
         paymentGateway: selectedGateway,
+        paymentCapabilityVersion: quoteForOrder.payment_capabilities.capability_version,
         couponCode,
       });
       trackCheckoutPaymentStarted(orderId, selectedGateway);
@@ -596,11 +615,14 @@ export default function StoreCheckoutPage() {
           <legend className="w-full text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Mode de paiement</legend>
 
           <div className="space-y-4" role="radiogroup" aria-label="Mode de paiement">
-            {availableGateways.map((g) => (
+            {paymentOptions.map((g) => {
+              const isAvailable = g.capability?.available === true;
+              const descriptionId = `payment_gateway_${g.id}_description`;
+              return (
               <label
                 key={g.id}
                 htmlFor={`payment_gateway_${g.id}`}
-                className="relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 hover:border-opacity-70 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2"
+                className={`relative flex items-start p-4 rounded-xl border-2 transition-all duration-200 hover:border-opacity-70 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                 style={{
                   borderColor: selectedGateway === g.id ? primaryColor : borderColor,
                   backgroundColor: selectedGateway === g.id ? `${primaryColor}0D` : pageBackground,
@@ -612,6 +634,8 @@ export default function StoreCheckoutPage() {
                   name="payment_gateway"
                   value={g.id}
                   checked={selectedGateway === g.id}
+                  disabled={!isAvailable}
+                  aria-describedby={descriptionId}
                   onChange={() => setSelectedGateway(g.id)}
                   className="sr-only peer"
                 />
@@ -633,15 +657,24 @@ export default function StoreCheckoutPage() {
                     />
                     <h3 className="font-bold" style={{ color: textColor }}>{g.name}</h3>
                   </div>
-                  <p className="mt-1 text-sm" style={{ color: mutedTextColor }}>{g.desc}</p>
+                  <p id={descriptionId} className="mt-1 text-sm" style={{ color: mutedTextColor }}>
+                    {isAvailable ? g.desc : g.capability?.buyer_message || 'Disponibilité en cours de vérification.'}
+                  </p>
                 </div>
               </label>
-            ))}
+              );
+            })}
           </div>
+
+          {quote && !hasAvailableGateway && (
+            <p role="alert" className="mt-4 text-sm font-medium text-red-700">
+              Aucun moyen de paiement n&apos;est disponible pour cette commande. Vérifiez la livraison ou réessayez plus tard.
+            </p>
+          )}
 
           <button
             type="submit"
-            disabled={isProcessing || quoteLoading}
+            disabled={isProcessing || quoteLoading || !selectedGateway || !hasAvailableGateway}
             className="w-full mt-8 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:opacity-90 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center"
             style={{ backgroundColor: primaryColor }}
           >

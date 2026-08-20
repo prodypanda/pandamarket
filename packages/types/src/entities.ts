@@ -209,6 +209,7 @@ export interface IOrder {
   status: OrderStatus;
   payment_gateway: PaymentGateway;
   payment_status: PaymentStatus;
+  payment_capability_version?: string | null;
   subtotal: number;
   shipping_total: number;
   total: number;

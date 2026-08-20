@@ -35,6 +35,7 @@ vi.mock('../config', () => ({
 vi.mock('../services/platform-config.service', () => ({
   platformConfigService: {
     getSettings: mocks.getSettings,
+    getSettingsFresh: mocks.getSettings,
   },
 }));
 

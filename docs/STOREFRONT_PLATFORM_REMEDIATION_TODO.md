@@ -33,7 +33,7 @@ This is the canonical execution checklist for the current remediation backlog. O
 | --- | --- | --- | --- |
 | M0 | Canonical checklist and dependency map | Checklist committed and pushed | [x] |
 | M1 | Authoritative cart/order quote | Quote parity and stale rejection tests pass | [-] |
-| M2 | Payment capability and compensation | Unsupported methods rejected before order persistence | [ ] |
+| M2 | Payment capability and compensation | Unsupported methods rejected before order persistence | [-] |
 | M3 | Checkout semantics and keyboard accessibility | Form and focus tests pass on Hub and tenant flows | [ ] |
 | M4 | Tenant URL state, authentication recovery, and SEO | Canonical/robots/sitemap/JSON-LD/noindex matrix verified | [ ] |
 | M5 | Security headers, CSP, consent, and step-up auth | Header and policy regression suite passes | [ ] |
@@ -54,7 +54,7 @@ This is the canonical execution checklist for the current remediation backlog. O
 - [-] Add quote expiry and reject expired, unknown, already-consumed, or version-mismatched quotes with a machine-readable error. Unknown, expired, consumed, and stale quotes are covered; explicit unsupported-version handling still needs coverage.
 - [x] Revalidate the quote in the same transaction that reserves inventory and creates the order. Recheck price, promotion, shipping, tax, seller/store state, and line availability.
 - [-] Make quote consumption idempotent so retries cannot create a second order or consume a discount twice. Sequential retries are protected; identical concurrent submissions still need a deterministic existing-order response test.
-- [-] Return a refreshed quote path when address, quantity, coupon, or payment method changes. Address, quantity, and coupon changes refresh automatically; payment-sensitive refresh belongs to the P0-02 capability contract.
+- [x] Return a refreshed quote path when address, quantity, coupon, or payment method changes. Address, quantity, and coupon changes refresh automatically; payment-sensitive changes are represented by the P0-02 capability version and stale-capability rejection.
 - [ ] Acceptance: adversarial tests prove that changed client prices, shipping, coupon values, deleted products, and stale quotes cannot alter the persisted total.
 
 **Dependencies:** inventory reservation, shipping capability, tax policy.  
@@ -64,13 +64,17 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P0-02 — Payment method availability and initialization
 
-- [ ] Add a store/cart-scoped gateway capability contract that evaluates platform toggles, seller plan, direct credentials, escrow/direct mode, store state, product types, destination, COD rules, and provider readiness.
-- [ ] Expose capabilities to both checkout surfaces, including disabled reasons safe for buyers and a capability/configuration version.
-- [ ] Validate the selected capability again immediately before order persistence; never create a pending order for an unavailable gateway.
+- [x] Add a store/cart-scoped gateway capability contract that evaluates platform toggles, seller plan, direct credentials, escrow/direct mode, store state, product types, destination, COD rules, shipping mode, currency, and provider readiness.
+- [x] Expose capabilities to both checkout surfaces, including disabled reasons safe for buyers and a deterministic capability/configuration version.
+- [x] Validate the selected capability again immediately before order persistence; never create a pending order for an unavailable gateway. The transaction locks affected stores/subscription rows and refreshes finance/shipping settings under section locks.
 - [ ] Add payment-attempt idempotency keys and bind attempts to the quote/order total and currency.
 - [ ] Add compensation for payment initialization failures: mark the attempt failed, release an unstarted order/inventory hold according to policy, and enqueue reconciliation when provider state is unknown.
 - [ ] Add retry/backoff and a reconciliation job for provider timeouts and browser interruptions.
 - [ ] Acceptance: unsupported gateway, changed capability, duplicate submit, provider timeout, and callback replay tests pass.
+
+**Milestone evidence (2026-08-20):** Capability DTOs/reason codes, migration `080_payment_capabilities`, quote exposure on Hub and tenant endpoints, deterministic `pcv1_<sha256>` versions, checkout-time re-evaluation, and persisted order versions are implemented. Hub and tenant checkout disable unavailable methods, show buyer-safe reasons, submit the capability version, and reject stale capability versions. Focused backend coverage is 41 passing tests across 7 files; the frontend quote suite is 7 passing tests. Backend/frontend builds and changed-file lint pass. Full backend lint remains blocked by the repository's pre-existing unrelated lint errors; payment-attempt idempotency, compensation, retries, reconciliation, and their acceptance cases remain open.
+
+**Migration/rollout notes:** Apply `080_payment_capabilities.sql` after `079_checkout_quotes.sql`; the new order column is nullable for legacy clients and old orders. Roll back with `080_payment_capabilities.down.sql` only before relying on persisted capability versions, or use a forward migration after deployment. Do not expose `payment_capability_version` as a secret; it is a non-secret digest.
 
 ## P1 — frontend correctness, accessibility, and discoverability
 

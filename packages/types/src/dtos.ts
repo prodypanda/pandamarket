@@ -110,8 +110,40 @@ export interface CartItemDto {
 
 export interface CheckoutDto {
   items: CartItemDto[];
-  shipping_address: IAddress;
+  shipping_address?: IAddress | null;
   payment_gateway: PaymentGateway;
+  quote_id?: string;
+  payment_capability_version?: string;
+}
+
+export type PaymentCapabilityReasonCode =
+  | 'gateway_disabled'
+  | 'provider_unavailable'
+  | 'seller_unavailable'
+  | 'direct_payment_unavailable'
+  | 'direct_credentials_unavailable'
+  | 'multi_store_unsupported'
+  | 'physical_items_required'
+  | 'shipping_address_required'
+  | 'destination_unsupported'
+  | 'shipping_unavailable'
+  | 'currency_unsupported'
+  | 'mandat_unavailable';
+
+export interface IPaymentMethodCapability {
+  gateway: PaymentGateway;
+  available: boolean;
+  reason_code?: PaymentCapabilityReasonCode;
+  buyer_message?: string;
+  requires_redirect: boolean;
+}
+
+export interface IPaymentCapabilities {
+  quote_id: string;
+  quote_version: number;
+  capability_version: string;
+  currency: string;
+  methods: IPaymentMethodCapability[];
 }
 
 // =====================================================

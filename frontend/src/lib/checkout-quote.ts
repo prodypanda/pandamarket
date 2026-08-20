@@ -64,6 +64,22 @@ export interface CheckoutQuoteBreakdown {
   items?: Array<Record<string, unknown>>;
 }
 
+export interface CheckoutPaymentMethodCapability {
+  gateway: string;
+  available: boolean;
+  reason_code?: string;
+  buyer_message?: string;
+  requires_redirect: boolean;
+}
+
+export interface CheckoutPaymentCapabilities {
+  quote_id: string;
+  quote_version: number;
+  capability_version: string;
+  currency: string;
+  methods: CheckoutPaymentMethodCapability[];
+}
+
 export interface CheckoutQuote {
   id: string;
   quote_version: number;
@@ -78,6 +94,7 @@ export interface CheckoutQuote {
   tax_total: number;
   total: number;
   breakdown: CheckoutQuoteBreakdown;
+  payment_capabilities: CheckoutPaymentCapabilities;
   expires_at: string;
   consumed_at: string | null;
   consumed_order_id: string | null;
@@ -95,6 +112,8 @@ export const RECOVERABLE_QUOTE_ERROR_CODES = new Set([
   'PD_ORDER_QUOTE_NOT_FOUND',
   'PD_ORDER_QUOTE_EXPIRED',
   'PD_ORDER_QUOTE_STALE',
+  'PD_PAY_CAPABILITY_STALE',
+  'PD_PAY_GATEWAY_UNAVAILABLE',
 ]);
 
 export class CheckoutRequestError extends Error {
@@ -127,8 +146,11 @@ function requestError(response: Response, payload: unknown, fallback: string): C
 function isQuotePayload(value: unknown): value is CheckoutQuote {
   if (!value || typeof value !== 'object') return false;
   const quote = value as Partial<CheckoutQuote>;
+  const paymentCapabilities = quote.payment_capabilities;
+  const paymentMethods = paymentCapabilities?.methods;
   return Boolean(
     quote.id &&
+    Number.isInteger(quote.quote_version) &&
     Array.isArray(quote.items) &&
     typeof quote.currency === 'string' &&
     typeof quote.subtotal === 'number' &&
@@ -137,6 +159,19 @@ function isQuotePayload(value: unknown): value is CheckoutQuote {
     typeof quote.tax_total === 'number' &&
     typeof quote.total === 'number' &&
     Boolean(quote.breakdown && typeof quote.breakdown === 'object') &&
+    paymentCapabilities
+    && paymentCapabilities.quote_id === quote.id
+    && paymentCapabilities.quote_version === quote.quote_version
+    && paymentCapabilities.currency === quote.currency
+    && /^pcv1_[a-f0-9]{64}$/.test(paymentCapabilities.capability_version)
+    && Array.isArray(paymentMethods)
+    && paymentMethods.length > 0
+    && paymentMethods.every((method) => Boolean(
+      method
+      && typeof method.gateway === 'string'
+      && typeof method.available === 'boolean'
+      && typeof method.requires_redirect === 'boolean',
+    )) &&
     typeof quote.expires_at === 'string',
   );
 }
@@ -194,6 +229,8 @@ export function checkoutQuoteTotalsMatch(left: CheckoutQuote | null, right: Chec
   if (!left) return false;
   return left.currency === right.currency
     && left.coupon_code === right.coupon_code
+    && left.payment_capabilities.capability_version
+      === right.payment_capabilities.capability_version
     && Math.abs(left.subtotal - right.subtotal) <= 0.001
     && Math.abs(left.discount_total - right.discount_total) <= 0.001
     && Math.abs(left.shipping_total - right.shipping_total) <= 0.001
@@ -259,6 +296,7 @@ export async function submitCheckoutOrder(input: {
   items: CheckoutItemInput[];
   shippingAddress: CheckoutAddress | null;
   paymentGateway: string;
+  paymentCapabilityVersion: string;
   couponCode?: string | null;
   adsAttribution?: { campaign_id: string; creative_id: string; event_key: string };
 }): Promise<{ orderId: string; order: Record<string, unknown> }> {
@@ -277,6 +315,7 @@ export async function submitCheckoutOrder(input: {
       items: input.items,
       shipping_address: input.shippingAddress,
       payment_gateway: input.paymentGateway,
+      payment_capability_version: input.paymentCapabilityVersion,
       ...(input.couponCode ? { coupon_code: input.couponCode } : {}),
       ...(input.adsAttribution ? { ads_attribution: input.adsAttribution } : {}),
     }),

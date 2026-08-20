@@ -47,14 +47,24 @@ vi.mock('../services/platform-config.service', () => ({
   },
 }));
 
+const capabilityMocks = vi.hoisted(() => ({
+  assertOrderGatewayAvailable: vi.fn(),
+}));
+vi.mock('../services/payment-capability.service', () => ({
+  paymentCapabilityService: {
+    assertOrderGatewayAvailable: capabilityMocks.assertOrderGatewayAvailable,
+  },
+}));
+
 vi.mock('../services/order.service', () => ({
-  orderService: {
-    getById: vi.fn().mockResolvedValue({
-      id: 'ord_123',
-      total: '85.000',
-      currency: 'TND',
-      payment_status: 'pending',
-    }),
+    orderService: {
+      getById: vi.fn().mockResolvedValue({
+        id: 'ord_123',
+        total: '85.000',
+        currency: 'TND',
+        payment_gateway: PaymentGateway.Flouci,
+        payment_status: 'pending',
+      }),
     markPaid: vi.fn().mockResolvedValue({
       id: 'ord_123',
       payment_status: 'captured',
@@ -108,17 +118,14 @@ app.use(errorHandler);
 describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    capabilityMocks.assertOrderGatewayAvailable.mockResolvedValue({
+      capability_version: `pcv1_${'a'.repeat(64)}`,
+      merchant_account_id: null,
+    });
   });
 
   describe('PaymentService.initPayment', () => {
     it('creates a payment attempt in pd_payment_attempt with expected amount in minor units', async () => {
-      mockedQuery.mockResolvedValueOnce({
-        rows: [{ store_id: 'store_1' }],
-        rowCount: 1,
-        command: 'SELECT',
-        oid: 0,
-        fields: [],
-      }); // store_id query
       mockedQuery.mockResolvedValueOnce({
         rows: [],
         rowCount: 1,
@@ -138,6 +145,7 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
         id: 'ord_123',
         total: '85.000',
         currency: 'TND',
+        payment_gateway: PaymentGateway.Flouci,
       } as any;
 
       const result = await paymentService.initPayment(order, PaymentGateway.Flouci, 'buyer@example.com');

@@ -3,6 +3,10 @@ import express from 'express';
 import request from 'supertest';
 import { PaymentGateway, ProductStatus, ProductType, StoreStatus, UserRole } from '@pandamarket/types';
 
+const capabilityMocks = vi.hoisted(() => ({
+  assertGatewayAvailable: vi.fn(),
+}));
+
 vi.mock('../db/pool', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   transaction: vi.fn((cb: any) => cb({
@@ -39,6 +43,15 @@ vi.mock('../services/platform-config.service', () => ({
     getSettings: vi.fn().mockResolvedValue({
       shipping_enabled: false,
     }),
+    getSettingsFresh: vi.fn().mockResolvedValue({
+      shipping_enabled: false,
+    }),
+  },
+}));
+
+vi.mock('../services/payment-capability.service', () => ({
+  paymentCapabilityService: {
+    assertGatewayAvailable: capabilityMocks.assertGatewayAvailable,
   },
 }));
 
@@ -61,6 +74,7 @@ import { query, transaction } from '../db/pool';
 import { orderService } from '../services/order.service';
 import orderRouter from '../api/order.route';
 import { errorHandler } from '../middlewares';
+import { PdConflictError, PdErrorCode } from '../errors';
 
 const mockedQuery = vi.mocked(query);
 const mockedTransaction = vi.mocked(transaction);
@@ -74,6 +88,10 @@ describe('Checkout Idempotency & Inventory Concurrency (GAP-P0-004 & GAP-P0-005)
   beforeEach(() => {
     vi.clearAllMocks();
     mockedQuery.mockResolvedValue({ rows: [], rowCount: 0 } as any);
+    capabilityMocks.assertGatewayAvailable.mockResolvedValue({
+      capability_version: `pcv1_${'a'.repeat(64)}`,
+      merchant_account_id: null,
+    });
   });
 
   describe('POST /api/pd/orders/storefront/checkout Idempotency-Key Header', () => {
@@ -121,6 +139,56 @@ describe('Checkout Idempotency & Inventory Concurrency (GAP-P0-004 & GAP-P0-005)
   });
 
   describe('Guarded Inventory Decrement in OrderService.checkout', () => {
+    it('does not insert an order when the selected payment gateway is unavailable', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+      const mockClient = { query: vi.fn() };
+      mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'prod_1' }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{
+          id: 'prod_1',
+          store_id: 'store_1',
+          title: 'Test T-Shirt',
+          price: '50.000',
+          inventory_quantity: 1,
+          status: ProductStatus.Published,
+          type: ProductType.Physical,
+          metadata: {},
+          seller_type: 'retailer',
+          store_status: StoreStatus.Verified,
+          store_is_verified: true,
+        }],
+      });
+      mockedTransaction.mockImplementationOnce(async (cb: any) => cb(mockClient));
+      capabilityMocks.assertGatewayAvailable.mockRejectedValueOnce(
+        new PdConflictError(
+          PdErrorCode.PAY_GATEWAY_UNAVAILABLE,
+          'Gateway unavailable',
+          { gateway: PaymentGateway.Flouci },
+        ),
+      );
+
+      await expect(orderService.checkout({
+        storefront_customer_id: 'sfc_1',
+        idempotency_key: 'idem_gateway_unavailable',
+        items: [{ product_id: 'prod_1', quantity: 1 }],
+        payment_gateway: PaymentGateway.Flouci,
+        shipping_address: {
+          first_name: 'John',
+          last_name: 'Doe',
+          phone: '21699999999',
+          address_line_1: 'Street 1',
+          city: 'Tunis',
+          postal_code: '1000',
+          country: 'TN',
+        },
+      })).rejects.toMatchObject({ code: PdErrorCode.PAY_GATEWAY_UNAVAILABLE });
+
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO pd_order'),
+        expect.anything(),
+      );
+    });
+
     it('uses atomic guarded UPDATE with inventory_quantity >= requested_quantity', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any); // idempotency check
 

@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { query, transaction } from '../db/pool';
 import { getRedis, withRedisTimeout } from '../db/redis';
 import { logger } from '../utils/logger';
@@ -887,6 +888,13 @@ function groupSettings(settings: PlatformSettings): PlatformSettingsBySection {
   };
 }
 
+function sectionsForKeys(keys: PlatformSettingKey[]): PlatformSettingSection[] {
+  const requested = new Set(keys);
+  return (Object.keys(PLATFORM_SETTING_SECTION_KEYS) as PlatformSettingSection[])
+    .filter((section) => PLATFORM_SETTING_SECTION_KEYS[section].some((key) => requested.has(key)))
+    .sort();
+}
+
 function versionValue(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -965,6 +973,37 @@ class PlatformConfigService {
     return settings;
   }
 
+  async getSettingsFresh(
+    client?: Pick<PoolClient, 'query'>,
+    lockSections: PlatformSettingSection[] = [],
+  ): Promise<PlatformSettings> {
+    if (client) {
+      for (const section of Array.from(new Set(lockSections)).sort()) {
+        await client.query(
+          'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
+          [`pd_platform_settings:${section}`],
+        );
+      }
+    }
+
+    const result = client
+      ? await client.query<{ key: string; value: string }>(
+        `SELECT key, value FROM pd_platform_config WHERE key = ANY($1::text[]) ORDER BY key`,
+        [PLATFORM_SETTING_KEYS],
+      )
+      : await query<{ key: string; value: string }>(
+        `SELECT key, value FROM pd_platform_config WHERE key = ANY($1::text[]) ORDER BY key`,
+        [PLATFORM_SETTING_KEYS],
+      );
+    const settings = { ...PLATFORM_SETTING_DEFAULTS } as PlatformSettings;
+    for (const row of result.rows) {
+      if (isPlatformSettingKey(row.key)) {
+        settings[row.key] = coerceSettingValue(row.key, row.value);
+      }
+    }
+    return settings;
+  }
+
   async getGroupedSettings() {
     const settings = await this.getSettings();
     const sectionVersions = await this.getSectionVersions();
@@ -1016,6 +1055,11 @@ class PlatformConfigService {
     );
 
     await transaction(async (client) => {
+      for (const section of sectionsForKeys(entries.map(([key]) => key))) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+          `pd_platform_settings:${section}`,
+        ]);
+      }
       for (const [key, value] of entries) {
         await client.query(
           `INSERT INTO pd_platform_config (key, value, updated_by, updated_at)

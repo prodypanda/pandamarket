@@ -90,7 +90,22 @@ export default function CheckoutPage() {
     { id: 'manual_mandat', name: t('checkout.payment.mandat'), icon: Banknote, desc: t('checkout.payment.mandatInstructions') },
     { id: 'cod', name: t('checkout.payment.cod'), icon: Truck, desc: t('checkout.payment.codInstructions') },
   ];
-  const availableGateways = gateways.filter((gateway) => hasShippableItems || gateway.id !== 'cod');
+  const paymentCapabilities = useMemo(
+    () => quote?.payment_capabilities.methods || [],
+    [quote?.payment_capabilities.methods],
+  );
+  const paymentOptions = gateways.map((gateway) => ({
+    ...gateway,
+    capability: paymentCapabilities.find((method) => method.gateway === gateway.id),
+  }));
+  const hasAvailableGateway = paymentOptions.some((option) => option.capability?.available);
+
+  useEffect(() => {
+    if (!quote) return;
+    const current = paymentCapabilities.find((method) => method.gateway === selectedGateway);
+    if (current?.available) return;
+    setSelectedGateway(paymentCapabilities.find((method) => method.available)?.gateway || '');
+  }, [paymentCapabilities, quote, selectedGateway]);
 
   const handleCheckout = async () => {
     setError('');
@@ -105,8 +120,11 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!hasShippableItems && selectedGateway === 'cod') {
-      setError('Cash on delivery is only available for physical products.');
+    const selectedCapability = quote?.payment_capabilities.methods.find(
+      (method) => method.gateway === selectedGateway,
+    );
+    if (!selectedCapability?.available) {
+      setError(selectedCapability?.buyer_message || 'Select an available payment method.');
       return;
     }
 
@@ -152,6 +170,7 @@ export default function CheckoutPage() {
         items: quoteItems,
         shippingAddress: normalizedAddress,
         paymentGateway: selectedGateway,
+        paymentCapabilityVersion: quoteForOrder.payment_capabilities.capability_version,
         couponCode,
         adsAttribution,
       });
@@ -422,11 +441,14 @@ export default function CheckoutPage() {
           <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</legend>
 
           <div className="space-y-4" role="radiogroup" aria-label={t('checkout.payment.title')}>
-            {availableGateways.map((g) => (
+            {paymentOptions.map((g) => {
+              const isAvailable = g.capability?.available === true;
+              const descriptionId = `hub_payment_gateway_${g.id}_description`;
+              return (
               <label
                 key={g.id}
                 htmlFor={`hub_payment_gateway_${g.id}`}
-                className={`relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${
+                className={`relative flex items-start p-4 rounded-xl border-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${
                   selectedGateway === g.id 
                     ? `${classes.primaryBorder} ${classes.primarySoft}` 
                     : isAliExpress ? 'border-gray-200 hover:border-orange-200 bg-white hover:bg-orange-50/40' : 'border-gray-200 hover:border-[#16C784]/50 bg-white'
@@ -438,6 +460,8 @@ export default function CheckoutPage() {
                   type="radio"
                   value={g.id}
                   checked={selectedGateway === g.id}
+                  disabled={!isAvailable}
+                  aria-describedby={descriptionId}
                   onChange={() => setSelectedGateway(g.id)}
                   className="sr-only peer"
                 />
@@ -453,15 +477,24 @@ export default function CheckoutPage() {
                     <g.icon className={`w-5 h-5 mr-2 ${selectedGateway === g.id ? classes.primaryText : 'text-gray-400'}`} />
                     <h3 className="font-bold text-gray-900">{g.name}</h3>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">{g.desc}</p>
+                  <p id={descriptionId} className="mt-1 text-sm text-gray-500">
+                    {isAvailable ? g.desc : g.capability?.buyer_message || 'Availability is being checked.'}
+                  </p>
                 </div>
               </label>
-            ))}
+              );
+            })}
           </div>
+
+          {quote && !hasAvailableGateway && (
+            <p role="alert" className="mt-4 text-sm font-medium text-red-700">
+              No payment method is available for this order. Review the delivery details or try again later.
+            </p>
+          )}
 
           <button 
             type="submit"
-            disabled={isProcessing || quoteLoading}
+            disabled={isProcessing || quoteLoading || !selectedGateway || !hasAvailableGateway}
             className={`w-full mt-8 text-white font-black text-lg py-4 rounded-full shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center ${classes.primaryGradient}`}
           >
             {isProcessing ? t('checkout.processing') : quoteLoading ? 'Calculating total...' : t('checkout.confirm')}

@@ -30,6 +30,7 @@ import { shippingService } from './shipping.service';
 import { adsService } from './ads.service';
 import { buyerInterestService } from './buyer-interest.service';
 import { checkoutQuoteService } from './checkout-quote.service';
+import { paymentCapabilityService } from './payment-capability.service';
 
 interface CartLine {
   product_id: string;
@@ -64,6 +65,7 @@ export interface OrderRow {
   coupon_code?: string | null;
   quote_id?: string | null;
   quote_version?: number | null;
+  payment_capability_version?: string | null;
   total: string;
   currency: string;
   shipping_address: IAddress | null;
@@ -363,6 +365,7 @@ export class OrderService {
     store_id?: string | null;
     idempotency_key?: string | null;
     quote_id?: string | null;
+    payment_capability_version?: string | null;
     coupon_code?: string | null;
     items: CartLine[];
     shipping_address?: IAddress | null;
@@ -376,9 +379,11 @@ export class OrderService {
       const existing = await this.getByIdempotencyKey(opts.idempotency_key);
       if (existing) return existing;
     }
-    const platformSettings = await platformConfigService.getSettings();
-
     return transaction(async (c) => {
+      const platformSettings = await platformConfigService.getSettingsFresh(
+        c,
+        ['finance', 'shipping'],
+      );
       const quote = opts.quote_id
         ? await checkoutQuoteService.lockForCheckout(
           c,
@@ -560,10 +565,6 @@ export class OrderService {
       if (shippableStoreIds.length > 0 && !opts.shipping_address) {
         throw new PdValidationError('Shipping address is required for physical products');
       }
-      if (opts.payment_gateway === PaymentGateway.Cod && shippableStoreIds.length === 0) {
-        throw new PdValidationError('Cash on delivery is only available for physical products');
-      }
-
       const quoteTotals = await checkoutQuoteService.calculateTotals(
         c,
         prepared,
@@ -588,6 +589,24 @@ export class OrderService {
       const taxTotal = quoteTotals.tax_total;
       const total = quoteTotals.total;
 
+      const paymentSelection = await paymentCapabilityService.assertGatewayAvailable({
+        executor: c,
+        lock_stores: true,
+        settings: platformSettings,
+        gateway: opts.payment_gateway,
+        expected_version: opts.payment_capability_version,
+        context: {
+          quote_id: quote?.id ?? null,
+          quote_version: quote?.quote_version ?? null,
+          currency: quoteTotals.currency,
+          items: prepared.map((item) => ({
+            store_id: item.store_id,
+            product_type: item.product_type,
+          })),
+          shipping_address: opts.shipping_address ?? null,
+        },
+      });
+
       // ----- Create order -----
       const orderId = pdId('order');
       const initialStatus =
@@ -608,8 +627,9 @@ export class OrderService {
           `INSERT INTO pd_order
             (id, customer_id, storefront_customer_id, status, payment_gateway, gross_subtotal,
              subtotal, discount_total, shipping_total, tax_total, total, currency, shipping_address,
-             idempotency_key, quote_id, quote_version, coupon_code, discount_breakdown, quote_snapshot)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+             idempotency_key, quote_id, quote_version, payment_capability_version, coupon_code,
+             discount_breakdown, quote_snapshot)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
            RETURNING *`,
           [
             orderId,
@@ -628,6 +648,7 @@ export class OrderService {
             opts.idempotency_key ?? null,
             quote?.id ?? null,
             quote?.quote_version ?? null,
+            paymentSelection.capability_version,
             quote?.coupon_code ?? opts.coupon_code?.trim().toUpperCase() ?? null,
             JSON.stringify(quoteTotals.breakdown),
             JSON.stringify(quoteTotals.snapshot),

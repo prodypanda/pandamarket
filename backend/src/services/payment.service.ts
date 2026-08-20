@@ -21,9 +21,10 @@ import { getPaymentProvider, decryptVendorConfig } from '../plugins/payment';
 import { PaymentInitResult, PaymentVerifyResult } from '../plugins/payment/payment-provider.interface';
 import { pdId } from '../utils/crypto';
 import { PdConflictError, PdErrorCode, PdValidationError } from '../errors';
-import { platformConfigService, type PlatformSettings } from './platform-config.service';
+import { platformConfigService } from './platform-config.service';
 import { adsService } from './ads.service';
 import { toMinorUnits } from '../utils/money';
+import { paymentCapabilityService } from './payment-capability.service';
 
 export class PaymentService {
   /**
@@ -36,25 +37,12 @@ export class PaymentService {
     customerEmail: string,
     returnOrigin?: string,
   ): Promise<PaymentInitResult> {
-    const platformSettings = await platformConfigService.getSettings();
-    this.assertGatewayEnabled(gateway, platformSettings);
     const provider = getPaymentProvider(gateway);
-
-    // Determine if this store uses direct payment (Pro+ with own credentials)
-    let vendorCredentials: Record<string, string> | undefined;
-    const storeIds = await this.getStoreIdsForOrder(order.id);
-    if (platformSettings.payment_vendor_direct_enabled && storeIds.length === 1) {
-      // Single-vendor order — check for direct payment config
-      const store = await storeService.getById(storeIds[0]);
-      if (store.payment_config) {
-        const decrypted = decryptVendorConfig(store.payment_config);
-        if (decrypted) vendorCredentials = decrypted;
-      }
-    }
-
-    if (platformSettings.payment_platform_credentials_source === 'vendor_direct_only' && !vendorCredentials) {
-      throw new PdValidationError('This payment gateway requires vendor direct credentials');
-    }
+    const paymentSelection = await paymentCapabilityService.assertOrderGatewayAvailable(
+      order,
+      gateway,
+    );
+    const vendorCredentials = paymentSelection.vendor_credentials;
 
     const hubDomain = config.hubDomain.startsWith('http')
       ? config.hubDomain
@@ -88,9 +76,7 @@ export class PaymentService {
     const attemptId = pdId('pa');
     const currency = (order.currency ?? config.defaultCurrency).toUpperCase();
     const expectedAmountMinor = toMinorUnits(parseFloat(order.total), currency).toString();
-    const merchantAccountId = vendorCredentials
-      ? (vendorCredentials.flouci_app_token || vendorCredentials.konnect_receiver_wallet || vendorCredentials.paypal_client_id || null)
-      : null;
+    const merchantAccountId = paymentSelection.merchant_account_id;
 
     await query(
       `INSERT INTO pd_payment_attempt
@@ -209,7 +195,6 @@ export class PaymentService {
     // 3. Verify payment with payment provider
     const provider = getPaymentProvider(opts.gateway);
     const platformSettings = await platformConfigService.getSettings();
-    this.assertGatewayEnabled(opts.gateway, platformSettings);
     let verifyResult: PaymentVerifyResult;
 
     try {
@@ -334,24 +319,6 @@ export class PaymentService {
     return rows.map((r) => r.store_id);
   }
 
-  private assertGatewayEnabled(gateway: PaymentGateway, settings: PlatformSettings) {
-    const gatewayEnabled =
-      gateway === PaymentGateway.Flouci
-        ? settings.payment_flouci_enabled
-        : gateway === PaymentGateway.Konnect
-          ? settings.payment_konnect_enabled
-          : gateway === PaymentGateway.PayPal
-            ? settings.payment_paypal_enabled
-            : gateway === PaymentGateway.ManualMandat
-              ? settings.payment_mandat_enabled
-              : gateway === PaymentGateway.Cod
-                ? settings.payment_cod_enabled
-                : false;
-
-    if (!gatewayEnabled) {
-      throw new PdValidationError('Payment gateway is disabled', { gateway });
-    }
-  }
 }
 
 export const paymentService = new PaymentService();

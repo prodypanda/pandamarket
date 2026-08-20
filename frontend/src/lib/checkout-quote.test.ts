@@ -29,6 +29,16 @@ const quote: CheckoutQuote = {
   tax_total: 0,
   total: 97,
   breakdown: {},
+  payment_capabilities: {
+    quote_id: 'quote_12345678',
+    quote_version: 1,
+    capability_version: `pcv1_${'a'.repeat(64)}`,
+    currency: 'TND',
+    methods: [
+      { gateway: 'flouci', available: true, requires_redirect: true },
+      { gateway: 'cod', available: false, reason_code: 'physical_items_required', requires_redirect: false },
+    ],
+  },
   expires_at: '2026-08-20T12:15:00.000Z',
   consumed_at: null,
   consumed_order_id: null,
@@ -75,6 +85,21 @@ describe('checkout quote client', () => {
     );
   });
 
+  it('rejects a quote response with an incomplete payment capability contract', async () => {
+    mockedFetchWithCsrf.mockResolvedValue(new Response(JSON.stringify({
+      data: {
+        ...quote,
+        payment_capabilities: { ...quote.payment_capabilities, methods: [] },
+      },
+    }), { status: 201 }));
+
+    await expect(requestCheckoutQuote({
+      scope: 'hub',
+      items: [{ product_id: 'prod_1', quantity: 1 }],
+      shippingAddress: null,
+    })).rejects.toThrow('checkout quote response was incomplete');
+  });
+
   it('submits the authoritative quote and reuses the supplied idempotency key', async () => {
     mockedFetchWithCsrf.mockResolvedValue(new Response(JSON.stringify({ order: { id: 'order_1' } }), { status: 201 }));
     const idempotencyKey = 'checkout_storefront_stable-key';
@@ -86,6 +111,7 @@ describe('checkout quote client', () => {
       items: [{ product_id: 'prod_1', quantity: 1 }],
       shippingAddress: null,
       paymentGateway: 'flouci',
+      paymentCapabilityVersion: quote.payment_capabilities.capability_version,
       couponCode: quote.coupon_code,
     });
 
@@ -96,6 +122,7 @@ describe('checkout quote client', () => {
       quote_id: quote.id,
       coupon_code: 'PANDA10',
       payment_gateway: 'flouci',
+      payment_capability_version: quote.payment_capabilities.capability_version,
     }));
   });
 
@@ -140,6 +167,13 @@ describe('checkout quote client', () => {
   it('detects any payable quote change before confirmation', () => {
     expect(checkoutQuoteTotalsMatch(quote, { ...quote })).toBe(true);
     expect(checkoutQuoteTotalsMatch(quote, { ...quote, shipping_total: 9, total: 99 })).toBe(false);
+    expect(checkoutQuoteTotalsMatch(quote, {
+      ...quote,
+      payment_capabilities: {
+        ...quote.payment_capabilities,
+        capability_version: `pcv1_${'b'.repeat(64)}`,
+      },
+    })).toBe(false);
     expect(checkoutQuoteTotalsMatch(null, quote)).toBe(false);
     expect(createCheckoutIdempotencyKey('hub')).toMatch(/^checkout_hub_/);
   });

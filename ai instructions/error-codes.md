@@ -80,6 +80,8 @@
 | `PD_PAY_MANDAT_UPLOAD_FAILED` | 400 | Échec de l'upload de la preuve | `{ reason }` |
 | `PD_PAY_MANDAT_ALREADY_REVIEWED` | 409 | Ce mandat a déjà été traité | `{ proof_id, status }` |
 | `PD_PAY_INVALID_GATEWAY` | 400 | Passerelle de paiement invalide | `{ valid: ["flouci","konnect","mandat","cod"] }` |
+| `PD_PAY_GATEWAY_UNAVAILABLE` | 409 | Ce moyen de paiement n'est pas disponible pour cette commande | `{ gateway, reason_code, capability_version, quote_id }` |
+| `PD_PAY_CAPABILITY_STALE` | 409 | La disponibilité des moyens de paiement a changé | `{ expected_version, current_version, quote_id }` |
 
 ## 7. Wallet (PD_WALLET_*)
 

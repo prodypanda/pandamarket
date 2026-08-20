@@ -18,6 +18,7 @@ import {
 } from '../middlewares';
 import { cartService } from '../services/cart.service';
 import { checkoutQuoteService } from '../services/checkout-quote.service';
+import { paymentCapabilityService } from '../services/payment-capability.service';
 
 const router = Router();
 
@@ -138,7 +139,8 @@ router.post(
       shipping_address: req.body.shipping_address,
       coupon_code: req.body.coupon_code,
     });
-    res.status(201).json({ data: quote });
+    const paymentCapabilities = await paymentCapabilityService.getForQuote(quote);
+    res.status(201).json({ data: { ...quote, payment_capabilities: paymentCapabilities } });
   }),
 );
 
@@ -157,7 +159,8 @@ router.post(
       shipping_address: req.body.shipping_address,
       coupon_code: req.body.coupon_code,
     });
-    res.status(201).json({ data: quote });
+    const paymentCapabilities = await paymentCapabilityService.getForQuote(quote);
+    res.status(201).json({ data: { ...quote, payment_capabilities: paymentCapabilities } });
   }),
 );
 
