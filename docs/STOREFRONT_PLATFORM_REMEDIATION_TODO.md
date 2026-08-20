@@ -1,0 +1,191 @@
+# PandaMarket Storefront Platform Remediation Checklist
+
+> **Status:** Active development checklist  
+> **Owner:** PandaMarket engineering  
+> **Created:** 2026-08-20  
+> **Scope:** Platform behavior and production readiness of the Hub, tenant storefronts, buyer checkout, seller operations, and marketplace services.  
+> **Out of scope:** Test products, placeholder copy, demo accounts, category/content suitability, and other development fixtures.
+
+This is the canonical execution checklist for the current remediation backlog. Older planning documents remain historical references; current code, migrations, and tests take precedence. Every item must have an owner, a migration/rollback story where data is involved, focused automated coverage, and an explicit acceptance check before it is marked complete.
+
+## Working rules
+
+- Never trust prices, discounts, shipping, tax, inventory, payment availability, or seller ownership supplied by the browser.
+- Keep Hub routes and tenant storefront routes separate while sharing contracts and domain services.
+- Preserve store-scoped cart behavior. A tenant checkout must not clear another store's cart lines.
+- Use additive migrations and backwards-compatible API responses. Document rollout order and rollback behavior.
+- Run focused type-check, lint, unit/integration tests, and a manual smoke check for every affected surface.
+- Commit and push each major milestone to `github/main`; verify the relevant Render/Vercel deployment after the push.
+- Do not commit credentials, production data exports, screenshots, generated audit logs, or temporary test artifacts.
+- Meilisearch is intentionally deferred until it is configured. Do not make it a prerequisite for checkout or storefront correctness.
+- Object storage is planned to move from the generic S3 abstraction to Cloudflare R2. Treat this as a separate migration milestone with dual-read/rollback support.
+
+## Priority and status legend
+
+- **P0:** launch-blocking integrity or security risk.
+- **P1:** high-risk correctness, accessibility, discoverability, or operations gap.
+- **P2:** important completeness, scale, or quality improvement.
+- Statuses: `[ ]` planned, `[-]` in progress, `[x]` verified complete, `[~]` intentionally deferred.
+
+## Milestone index
+
+| Milestone | Scope | Exit gate | Status |
+| --- | --- | --- | --- |
+| M0 | Canonical checklist and dependency map | Checklist committed and pushed | [x] |
+| M1 | Authoritative cart/order quote | Quote parity and stale rejection tests pass | [-] |
+| M2 | Payment capability and compensation | Unsupported methods rejected before order persistence | [ ] |
+| M3 | Checkout semantics and keyboard accessibility | Form and focus tests pass on Hub and tenant flows | [ ] |
+| M4 | Tenant URL state, authentication recovery, and SEO | Canonical/robots/sitemap/JSON-LD/noindex matrix verified | [ ] |
+| M5 | Security headers, CSP, consent, and step-up auth | Header and policy regression suite passes | [ ] |
+| M6 | Shipping carriers and fulfillment lifecycle | Quote/create/track/cancel/reconcile adapters pass | [ ] |
+| M7 | Inventory, returns, refunds, and tax compliance | State-machine and concurrency acceptance suite passes | [ ] |
+| M8 | Support operations and analytics | SLA jobs and consent-aware event taxonomy verified | [ ] |
+| M9 | Hub expansion and merchandising scale | Configurable layout regression suite passes | [ ] |
+| M10 | Storage migration and image delivery | R2 dual-read, variants, CORS, rollback verified | [~] |
+
+## P0 — checkout and payment integrity
+
+### P0-01 — Authoritative cart and order quotes
+
+- [ - ] Define a versioned quote contract: `quote_id`, `quote_version`, `issued_at`, `expires_at`, currency, normalized lines, per-line prices/discounts, coupon breakdown, shipping by fulfillment group, tax, and grand total.
+- [ - ] Add a server quote endpoint that accepts only product/variant IDs, quantities, destination, store context, and coupon code. Re-read catalog, seller rules, promotions, shipping configuration, and inventory from the database.
+- [ - ] Store a tamper-evident quote snapshot or digest. Do not use browser totals as an input to order persistence.
+- [ - ] Persist applied coupon code and a structured discount breakdown on the order and order items.
+- [ - ] Add quote expiry and reject expired, unknown, already-consumed, or version-mismatched quotes with a machine-readable error.
+- [ - ] Revalidate the quote in the same transaction that reserves inventory and creates the order. Recheck price, promotion, shipping, tax, seller/store state, and line availability.
+- [ - ] Make quote consumption idempotent so retries cannot create a second order or consume a discount twice.
+- [ - ] Return a refreshed quote path when address, quantity, coupon, or payment method changes.
+- [ ] Acceptance: adversarial tests prove that changed client prices, shipping, coupon values, deleted products, and stale quotes cannot alter the persisted total.
+
+**Dependencies:** inventory reservation, shipping capability, tax policy.  
+**Affected areas:** `backend/src/services/cart.service.ts`, `backend/src/services/order.service.ts`, order/cart routes, Hub checkout, tenant checkout, migrations.
+
+### P0-02 — Payment method availability and initialization
+
+- [ ] Add a store/cart-scoped gateway capability contract that evaluates platform toggles, seller plan, direct credentials, escrow/direct mode, store state, product types, destination, COD rules, and provider readiness.
+- [ ] Expose capabilities to both checkout surfaces, including disabled reasons safe for buyers and a capability/configuration version.
+- [ ] Validate the selected capability again immediately before order persistence; never create a pending order for an unavailable gateway.
+- [ ] Add payment-attempt idempotency keys and bind attempts to the quote/order total and currency.
+- [ ] Add compensation for payment initialization failures: mark the attempt failed, release an unstarted order/inventory hold according to policy, and enqueue reconciliation when provider state is unknown.
+- [ ] Add retry/backoff and a reconciliation job for provider timeouts and browser interruptions.
+- [ ] Acceptance: unsupported gateway, changed capability, duplicate submit, provider timeout, and callback replay tests pass.
+
+## P1 — frontend correctness, accessibility, and discoverability
+
+### P1-04 — Frontend security headers and CSP
+
+- [ ] Add environment-aware HSTS, `Content-Security-Policy`, `X-Content-Type-Options`, frame policy, referrer policy, and permissions policy at the frontend boundary.
+- [ ] Build an explicit source inventory for API, payment redirect, analytics, image, font, Page Builder, and R2 domains; keep preview/localhost policy usable.
+- [ ] Add CSP report-only rollout, report collection, and a tested enforcement switch.
+- [ ] Add regression tests around Page Builder embeds, payment initialization/redirects, image delivery, and tenant custom domains.
+
+### P1-06 — Semantic checkout forms
+
+- [ ] Use real `form`, `fieldset`, `legend`, labels, `name`, `autocomplete`, `inputMode`, `required`, and `aria-invalid` semantics for address/contact fields.
+- [ ] Use one accessible radio group for payment methods with visible focus and a clear selected state.
+- [ ] Connect field errors to controls and move focus to the first invalid field without losing the user's input.
+- [ ] Cover keyboard navigation, drawer/dialog focus traps, loading/disabled states, and screen-reader labels on Hub and tenant checkout.
+
+### P1-07 — One URL-driven search/category state model
+
+- [ ] Extract a shared parser/serializer for query, category, sort, page, and filter state.
+- [ ] Make every theme consume the same URL state and preserve it across pagination, navigation, refresh, and back/forward.
+- [ ] Remove duplicated theme-local search/category state and add parity tests for all registered themes.
+
+### P1-08 — Tenant authentication recovery
+
+- [ ] Add tenant-aware forgot-password, reset-password, email-verification, resend, expiry, and invalid-token UI.
+- [ ] Preserve tenant host/store ID through every auth link and redirect; prevent cross-tenant token use.
+- [ ] Add rate limits, generic responses, audit events, and tests for token replay/tenant mismatch.
+
+### P1-09 — Tenant SEO metadata
+
+- [ ] Emit tenant canonical URLs using the resolved host and path, including custom domains.
+- [ ] Generate tenant robots and sitemaps with store status, visibility, and product/page URLs.
+- [ ] Add Product JSON-LD on PDPs and Organization/OnlineStore JSON-LD on tenant homepages.
+- [ ] Apply `noindex` to preview, maintenance, suspended, and empty stores; test canonical and alternate-host behavior.
+
+### P1-10 — Real carrier integrations
+
+- [ ] Define a carrier adapter interface for rates, label creation, tracking, cancellation, webhook verification, and capability health.
+- [ ] Replace simulated shipment creation with feature-flagged adapters and explicit fallback behavior.
+- [ ] Add retry/backoff, cancellation, tracking sync, webhook deduplication, and reconciliation jobs.
+- [ ] Add return-to-origin states and COD risk/confirmation handling.
+
+## P2 — storefront scale and test health
+
+### P2-01 — Intentional product merchandising limits
+
+- [ ] Replace silent `limit=100` storefront loads with server pagination or an admin-configured merchandising window.
+- [ ] Expose total/next-page metadata and preserve category/search ordering.
+- [ ] Add large-catalog performance and pagination regression tests.
+
+### P2-02 — Follow-button test isolation
+
+- [ ] Configure deterministic DOM cleanup after each test.
+- [ ] Scope multi-instance assertions to their render container and explicitly unmount intentional repeated renders.
+- [ ] Keep adversarial isolation tests and add a regression for leaked listeners/state.
+
+### P2-03 — Stable full backend test runs
+
+- [ ] Record the supported Node/Vitest runtime and enforce it in CI.
+- [ ] Investigate worker exits, open handles, database/Redis teardown, and parallel resource pressure.
+- [ ] Add a serial diagnostic command and make the normal CI run deterministic with bounded workers.
+
+## Commerce and fulfillment completion
+
+- [ ] Multi-warehouse inventory model, allocation rules, split fulfillment, and warehouse-aware shipping.
+- [ ] Inventory reservation/hold expiry for long checkout sessions, with release on quote expiry/payment failure.
+- [ ] Returns/RMA state machine with eligibility, labels, inspection, restock, partial returns, and seller/admin permissions.
+- [ ] Refund and replacement workflows tied to order/payment/fulfillment state, including idempotent provider refunds.
+- [ ] Invoice numbering, tax calculation, consumer-policy disclosures, and Tunisia-specific legal verification.
+- [ ] Reconciliation dashboards for orders, payments, inventory, shipments, COD collections, refunds, and payouts.
+
+## Support and operations
+
+- [ ] Support-ticket SLA policy model (priority/channel/store plan), first-response and resolution timers, business hours, pause reasons, breach jobs, escalation routing, and audit trail.
+- [ ] Link order, shipment, payment, RMA, and refund context into support tickets without leaking cross-tenant data.
+- [ ] Add operational runbooks, alert thresholds, dead-letter handling, and replay procedures.
+
+## Analytics and consent
+
+- [ ] Add per-store analytics configuration with platform allow-listing and environment separation.
+- [ ] Add consent categories (necessary, preferences, analytics, marketing), persisted choices, withdrawal, and region-aware defaults.
+- [ ] Load analytics only after the applicable consent decision; never send payment/contact secrets.
+- [ ] Standardize the ecommerce event taxonomy: `view_item`, `select_item`, `add_to_cart`, `remove_from_cart`, `view_cart`, `begin_checkout`, `add_payment_info`, `purchase`, `refund`, and `search`.
+- [ ] Define event schemas, deduplication keys, currency/value rules, tenant/store identifiers, and server/client ownership for each event.
+
+## Marketplace Hub expansion
+
+- [ ] Complete configurable mega-category navigation with admin-managed hierarchy, visibility, ordering, and mobile behavior.
+- [ ] Finish robust admin-managed hero carousel with scheduling, accessibility, safe media, and fallback selection.
+- [ ] Add top-seller rails based on real, time-windowed metrics with privacy and stock safeguards.
+- [ ] Add recently viewed products with consent/storage limits and tenant isolation.
+- [ ] Define recommendation contracts, ranking inputs, explanation labels, fallback behavior, and experiment/version metadata.
+- [ ] Add configurable header variants and a marketplace footer mega-grid with responsive keyboard navigation.
+- [ ] Add layout-selection regression tests for every supported Hub template.
+
+## Security and compliance hardening
+
+- [ ] Add step-up authentication for payouts, payment configuration, API-key rotation, and ownership transfer.
+- [ ] Review seller-provided HTML/CSS/JS in Page Builder: sanitize, isolate, enforce CSP, block SSRF/navigation escapes, and log moderation decisions.
+- [ ] Threat-model tenant custom domains, preview links, payment callbacks, file uploads, webhooks, and admin impersonation.
+- [ ] Add dependency, secret, migration, and permission checks to CI.
+
+## Cloudflare R2 migration (deferred infrastructure decision)
+
+- [ ] Replace MinIO-only readiness probes with `HeadBucket` or a signed sentinel-object check.
+- [ ] Add R2 endpoint/bucket/public-domain configuration without exposing credentials to the browser.
+- [ ] Define private/public policy, signed upload/download URLs, CORS, lifecycle rules, and abuse limits.
+- [ ] Standardize image variants and responsive delivery; update Next image domains and CSP sources.
+- [ ] Run dual-read/dual-write migration, checksum verification, rollback, and orphan cleanup before cutover.
+
+## Definition of done
+
+- [ ] Acceptance criteria and negative-path tests pass.
+- [ ] Database migrations are applied in a disposable environment and have a documented rollback or forward-fix plan.
+- [ ] Hub and tenant behavior are both verified, including custom-domain/preview/maintenance states where relevant.
+- [ ] Type-check, lint, focused tests, and the relevant build pass.
+- [ ] No secrets or production data were added to the diff.
+- [ ] Milestone commit is pushed to `github/main`; remote deployment status and health are recorded in the milestone notes.
+
