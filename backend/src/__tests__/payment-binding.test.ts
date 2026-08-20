@@ -5,13 +5,12 @@ import { PaymentGateway } from '@pandamarket/types';
 
 vi.mock('../db/pool', () => ({
   query: vi.fn(),
-  transaction: vi.fn((cb: any) => cb({
-    query: vi.fn().mockResolvedValue({ rowCount: 1 }),
-  })),
+  transaction: vi.fn(),
 }));
 
 vi.mock('../utils/crypto', () => ({
   pdId: vi.fn((prefix: string) => `pd_${prefix}_test123`),
+  sha256: vi.fn(() => 'f'.repeat(64)),
 }));
 
 vi.mock('../utils/logger', () => ({
@@ -118,6 +117,8 @@ app.use(errorHandler);
 describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedQuery.mockReset();
+    mockedTransaction.mockReset();
     capabilityMocks.assertOrderGatewayAvailable.mockResolvedValue({
       capability_version: `pcv1_${'a'.repeat(64)}`,
       merchant_account_id: null,
@@ -126,20 +127,39 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
 
   describe('PaymentService.initPayment', () => {
     it('creates a payment attempt in pd_payment_attempt with expected amount in minor units', async () => {
-      mockedQuery.mockResolvedValueOnce({
-        rows: [],
-        rowCount: 1,
-        command: 'UPDATE',
-        oid: 0,
-        fields: [],
-      }); // update order payment_reference
-      mockedQuery.mockResolvedValueOnce({
-        rows: [],
-        rowCount: 1,
-        command: 'INSERT',
-        oid: 0,
-        fields: [],
-      }); // insert payment attempt
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+      const reservationQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+      const finalizeQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'pd_pa_test123',
+            order_id: 'ord_123',
+            gateway: PaymentGateway.Flouci,
+            gateway_reference: 'pending_pd_pa_test123',
+            expected_amount_minor: '85000',
+            expected_currency: 'TND',
+            merchant_account_id: null,
+            status: 'initializing',
+            idempotency_key: 'payment-init-key',
+            request_fingerprint: 'f'.repeat(64),
+            capability_version: `pcv1_${'a'.repeat(64)}`,
+            quote_id: null,
+            quote_version: null,
+            provider_response: null,
+            failure_code: null,
+            failure_message: null,
+          }],
+          rowCount: 1,
+        })
+        .mockResolvedValueOnce({ rows: [{ id: 'ord_123' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+      mockedTransaction
+        .mockImplementationOnce(async (cb: any) => cb({ query: reservationQuery }))
+        .mockImplementationOnce(async (cb: any) => cb({ query: finalizeQuery }));
 
       const order = {
         id: 'ord_123',
@@ -148,12 +168,18 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
         payment_gateway: PaymentGateway.Flouci,
       } as any;
 
-      const result = await paymentService.initPayment(order, PaymentGateway.Flouci, 'buyer@example.com');
+      const result = await paymentService.initPayment(
+        order,
+        PaymentGateway.Flouci,
+        'buyer@example.com',
+        undefined,
+        'payment-init-key',
+      );
 
       expect(result.gateway_reference).toBe('ref_flouci_123');
-      expect(mockedQuery).toHaveBeenCalledWith(
+      expect(reservationQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO pd_payment_attempt'),
-        expect.arrayContaining(['ord_123', PaymentGateway.Flouci, 'ref_flouci_123', '85000', 'TND']),
+        expect.arrayContaining(['ord_123', PaymentGateway.Flouci, '85000', 'TND', 'payment-init-key']),
       );
     });
   });

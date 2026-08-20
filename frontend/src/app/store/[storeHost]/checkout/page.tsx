@@ -294,7 +294,10 @@ export default function StoreCheckoutPage() {
 
       const paymentRes = await fetchWithCsrf('/api/pd/payments/storefront/init', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `${idempotencyKeyRef.current.slice(0, 119)}:payment`,
+        },
         credentials: 'include',
         body: JSON.stringify({
           store_id: store.id,

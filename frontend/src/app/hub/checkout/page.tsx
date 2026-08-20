@@ -195,7 +195,10 @@ export default function CheckoutPage() {
       // Step 3: Initialize payment for Flouci/Konnect
       const paymentRes = await fetchWithCsrf('/api/pd/payments/init', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `${idempotencyKeyRef.current.slice(0, 119)}:payment`,
+        },
         credentials: 'include',
         body: JSON.stringify({
           order_id: orderId,

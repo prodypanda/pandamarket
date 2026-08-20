@@ -108,6 +108,7 @@ export class PayPalProvider implements PaymentProvider {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            ...(ctx.idempotency_key ? { 'PayPal-Request-Id': ctx.idempotency_key } : {}),
           },
           timeout: 10_000,
         },
@@ -156,7 +157,7 @@ export class PayPalProvider implements PaymentProvider {
       });
 
       const orderStatus = getRes.data?.status;
-      let capturedAmount = Number(getRes.data?.purchase_units?.[0]?.amount?.value ?? 0);
+      const capturedAmount = Number(getRes.data?.purchase_units?.[0]?.amount?.value ?? 0);
 
       if (orderStatus === 'COMPLETED') {
         return {

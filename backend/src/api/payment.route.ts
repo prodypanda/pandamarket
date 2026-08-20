@@ -9,6 +9,7 @@ import { PaymentGateway, MandatUploader, UserRole } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { query as dbQuery } from '../db/pool';
+import { PdValidationError } from '../errors';
 
 const router = Router();
 
@@ -29,6 +30,14 @@ const mandatUploadSchema = z.object({
   order_id: z.string(),
   image_url: z.string().min(1),
 });
+
+function paymentIdempotencyKey(req: Request): string {
+  const value = req.headers['idempotency-key'] || req.headers['x-idempotency-key'];
+  if (typeof value !== 'string' || value.trim().length < 8 || value.trim().length > 128) {
+    throw new PdValidationError('A valid Idempotency-Key header is required for payment initialization');
+  }
+  return value.trim();
+}
 
 // =====================================================
 // HMAC Signature Verification Helpers
@@ -99,6 +108,7 @@ router.post(
   validate(initPaymentSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { order_id, gateway, return_origin } = req.body;
+    const idempotencyKey = paymentIdempotencyKey(req);
     const order = await orderService.getById(order_id);
 
     // Verify order belongs to user
@@ -119,6 +129,7 @@ router.post(
       gateway as PaymentGateway,
       customerEmail,
       return_origin,
+      idempotencyKey,
     );
 
     res.status(200).json({
@@ -135,6 +146,7 @@ router.post(
   validate(initPaymentSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { order_id, gateway, return_origin } = req.body;
+    const idempotencyKey = paymentIdempotencyKey(req);
     const order = await orderService.getById(order_id);
 
     if (order.storefront_customer_id !== req.storefrontCustomer!.id) {
@@ -159,6 +171,7 @@ router.post(
       gateway as PaymentGateway,
       customerEmail,
       return_origin,
+      idempotencyKey,
     );
 
     res.status(200).json({

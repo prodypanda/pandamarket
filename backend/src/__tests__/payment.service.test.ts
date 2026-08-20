@@ -14,6 +14,7 @@ vi.mock('../db/pool', () => ({
 
 vi.mock('../utils/crypto', () => ({
   pdId: vi.fn(() => 'test-event-id'),
+  sha256: vi.fn(() => 'f'.repeat(64)),
 }));
 
 vi.mock('../utils/logger', () => ({
@@ -81,6 +82,7 @@ import { orderService } from '../services/order.service';
 import { getPaymentProvider, decryptVendorConfig } from '../plugins/payment';
 import { storeService } from '../services/store.service';
 import { PaymentGateway } from '@pandamarket/types';
+import { PdError, PdErrorCode } from '../errors';
 
 const mockQuery = vi.mocked(query);
 const mockTransaction = vi.mocked(transaction);
@@ -92,8 +94,47 @@ const mockDecryptConfig = vi.mocked(decryptVendorConfig);
 describe('PaymentService', () => {
   let paymentService: PaymentService;
 
+  function mockSuccessfulInitPersistence() {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+    const reservationQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    const finalizeQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 'test-event-id',
+          order_id: 'pd_order_123',
+          gateway: PaymentGateway.Flouci,
+          gateway_reference: 'pending_test-event-id',
+          expected_amount_minor: '85000',
+          expected_currency: 'TND',
+          merchant_account_id: null,
+          status: 'initializing',
+          idempotency_key: 'payment-init-key',
+          request_fingerprint: 'f'.repeat(64),
+          capability_version: `pcv1_${'a'.repeat(64)}`,
+          quote_id: null,
+          quote_version: null,
+          provider_response: null,
+          failure_code: null,
+          failure_message: null,
+        }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ id: 'pd_order_123' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    mockTransaction
+      .mockImplementationOnce(async (cb: any) => cb({ query: reservationQuery }))
+      .mockImplementationOnce(async (cb: any) => cb({ query: finalizeQuery }));
+    return { reservationQuery, finalizeQuery };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockQuery.mockReset();
+    mockTransaction.mockReset();
     capabilityMocks.assertOrderGatewayAvailable.mockResolvedValue({
       capability_version: `pcv1_${'a'.repeat(64)}`,
       merchant_account_id: null,
@@ -131,13 +172,14 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any); // UPDATE order
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any); // INSERT attempt
+      mockSuccessfulInitPersistence();
 
       const result = await paymentService.initPayment(
         mockOrder,
         PaymentGateway.Flouci,
         'customer@test.tn',
+        undefined,
+        'payment-init-key',
       );
 
       expect(result.redirect_url).toBe('https://flouci.com/pay/abc');
@@ -171,13 +213,14 @@ describe('PaymentService', () => {
           flouci_app_secret: 'vendor_secret',
         },
       });
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any); // UPDATE order
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any); // INSERT attempt
+      mockSuccessfulInitPersistence();
 
       const result = await paymentService.initPayment(
         mockOrder,
         PaymentGateway.Flouci,
         'customer@test.tn',
+        undefined,
+        'payment-init-key',
       );
 
       expect(result.redirect_url).toBe('https://flouci.com/pay/vendor');
@@ -188,6 +231,151 @@ describe('PaymentService', () => {
             flouci_app_secret: 'vendor_secret',
           },
         }),
+      );
+    });
+
+    it('replays the stored provider session without rechecking capability or calling the provider', async () => {
+      const storedResult = {
+        redirect_url: 'https://flouci.com/pay/replayed',
+        gateway_reference: 'flouci_ref_replayed',
+        metadata: { provider: 'flouci' },
+      };
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pa_replay',
+          order_id: mockOrder.id,
+          gateway: PaymentGateway.Flouci,
+          gateway_reference: storedResult.gateway_reference,
+          expected_amount_minor: '85000',
+          expected_currency: 'TND',
+          merchant_account_id: null,
+          status: 'initialized',
+          idempotency_key: 'payment-replay-key',
+          request_fingerprint: 'f'.repeat(64),
+          capability_version: `pcv1_${'a'.repeat(64)}`,
+          quote_id: null,
+          quote_version: null,
+          provider_response: storedResult,
+          failure_code: null,
+          failure_message: null,
+        }],
+        rowCount: 1,
+      } as any);
+      const provider = { init: vi.fn(), verify: vi.fn() };
+      mockGetProvider.mockReturnValue(provider);
+
+      await expect(paymentService.initPayment(
+        mockOrder,
+        PaymentGateway.Flouci,
+        'customer@test.tn',
+        undefined,
+        'payment-replay-key',
+      )).resolves.toEqual(storedResult);
+
+      expect(capabilityMocks.assertOrderGatewayAvailable).not.toHaveBeenCalled();
+      expect(provider.init).not.toHaveBeenCalled();
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects reuse of an idempotency key when the bound payment details changed', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pa_conflict',
+          order_id: mockOrder.id,
+          gateway: PaymentGateway.Flouci,
+          gateway_reference: 'flouci_ref_existing',
+          expected_amount_minor: '85000',
+          expected_currency: 'TND',
+          merchant_account_id: null,
+          status: 'initialized',
+          idempotency_key: 'payment-conflict-key',
+          request_fingerprint: 'e'.repeat(64),
+          capability_version: `pcv1_${'a'.repeat(64)}`,
+          quote_id: null,
+          quote_version: null,
+          provider_response: {
+            redirect_url: 'https://flouci.com/pay/existing',
+            gateway_reference: 'flouci_ref_existing',
+          },
+          failure_code: null,
+          failure_message: null,
+        }],
+        rowCount: 1,
+      } as any);
+
+      await expect(paymentService.initPayment(
+        { ...mockOrder, total: '86.000' },
+        PaymentGateway.Flouci,
+        'customer@test.tn',
+        undefined,
+        'payment-conflict-key',
+      )).rejects.toMatchObject({ code: PdErrorCode.PAY_IDEMPOTENCY_CONFLICT });
+
+      expect(capabilityMocks.assertOrderGatewayAvailable).not.toHaveBeenCalled();
+    });
+
+    it('returns an in-progress conflict for a duplicate request that is still initializing', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pa_initializing',
+          order_id: mockOrder.id,
+          gateway: PaymentGateway.Flouci,
+          gateway_reference: 'pending_pa_initializing',
+          expected_amount_minor: '85000',
+          expected_currency: 'TND',
+          merchant_account_id: null,
+          status: 'initializing',
+          idempotency_key: 'payment-progress-key',
+          request_fingerprint: 'f'.repeat(64),
+          capability_version: `pcv1_${'a'.repeat(64)}`,
+          quote_id: null,
+          quote_version: null,
+          provider_response: null,
+          failure_code: null,
+          failure_message: null,
+        }],
+        rowCount: 1,
+      } as any);
+
+      await expect(paymentService.initPayment(
+        mockOrder,
+        PaymentGateway.Flouci,
+        'customer@test.tn',
+        undefined,
+        'payment-progress-key',
+      )).rejects.toMatchObject({ code: PdErrorCode.PAY_INIT_IN_PROGRESS });
+    });
+
+    it('records provider initialization failures against the reserved attempt', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+      const reservationQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+      mockTransaction.mockImplementationOnce(async (cb: any) => cb({ query: reservationQuery }));
+      const providerError = new PdError(
+        PdErrorCode.PAY_INIT_FAILED,
+        'Provider unavailable',
+        502,
+      );
+      const provider = {
+        init: vi.fn().mockRejectedValue(providerError),
+        verify: vi.fn(),
+      };
+      mockGetProvider.mockReturnValue(provider);
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await expect(paymentService.initPayment(
+        mockOrder,
+        PaymentGateway.Flouci,
+        'customer@test.tn',
+        undefined,
+        'payment-failure-key',
+      )).rejects.toBe(providerError);
+
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        expect.stringContaining("status = 'initialization_failed'"),
+        expect.arrayContaining(['test-event-id', PdErrorCode.PAY_INIT_FAILED, 'Provider unavailable']),
       );
     });
   });

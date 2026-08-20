@@ -10,6 +10,8 @@ export interface PaymentInitContext {
   amount: number;        // TND, 3 decimals
   currency: string;      // 'TND'
   customer_email: string;
+  /** Stable local idempotency key for provider implementations that support it. */
+  idempotency_key?: string;
   success_url: string;
   fail_url: string;
   /** Optional vendor-side credentials (Pro+ direct payment mode). */
