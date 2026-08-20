@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CreditCard, Banknote, Truck, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
@@ -9,23 +9,31 @@ import { useLocale } from '../../../contexts/LocaleContext';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
-import { getCartLineTotal, getShippableStoreCount, getShippingTotalForItems } from '../../../lib/cart-utils';
+import { getShippableStoreCount } from '../../../lib/cart-utils';
+import {
+  checkoutQuoteTotalsMatch,
+  createCheckoutIdempotencyKey,
+  formatCheckoutMoney,
+  getQuoteProductDiscount,
+  getQuoteShippingSavings,
+  isCheckoutAddressComplete,
+  isRecoverableQuoteError,
+  normalizeCheckoutAddress,
+  submitCheckoutOrder,
+  toCheckoutItems,
+} from '../../../lib/checkout-quote';
+import { useCheckoutQuote } from '../../../hooks/useCheckoutQuote';
 import { trackCheckoutStarted, trackCheckoutPaymentStarted, trackCheckoutPaymentCompleted, trackCheckoutFailed, trackCheckoutAddressSubmitted } from '../../../lib/marketplace-analytics';
-
-const SHIPPING_PER_VENDOR = 7;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getCartTotal, clearCart } = useCart();
+  const { items, couponCode, clearCart } = useCart();
   const { t } = useLocale();
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
   const [selectedGateway, setSelectedGateway] = useState('flouci');
-
-  function formatPrice(price: number): string {
-    return `${price.toFixed(3)} ${t('common.currency')}`;
-  }
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const idempotencyKeyRef = useRef(createCheckoutIdempotencyKey('hub'));
 
   // Shipping address
   const [address, setAddress] = useState({
@@ -36,12 +44,44 @@ export default function CheckoutPage() {
     phone: '',
   });
 
-  const subtotal = getCartTotal();
-  const shippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
   const shippableStoreCount = getShippableStoreCount(items);
   const hasShippableItems = shippableStoreCount > 0;
-  const total = subtotal + shippingTotal;
+  const quoteItems = useMemo(() => toCheckoutItems(items), [items]);
+  const normalizedAddress = useMemo(
+    () => hasShippableItems && isCheckoutAddressComplete(address) ? normalizeCheckoutAddress(address) : null,
+    [address, hasShippableItems],
+  );
+  const quoteEnabled = items.length > 0 && (!hasShippableItems || Boolean(normalizedAddress));
+  const {
+    quote,
+    error: quoteError,
+    isLoading: quoteLoading,
+    refresh: refreshQuote,
+  } = useCheckoutQuote({
+    scope: 'hub',
+    items: quoteItems,
+    shippingAddress: normalizedAddress,
+    couponCode,
+    enabled: quoteEnabled,
+  });
+  const quoteCurrency = quote?.currency || t('common.currency');
+  const formatPrice = (price: number) => formatCheckoutMoney(price, quoteCurrency);
+  const quoteProductDiscount = quote ? getQuoteProductDiscount(quote) : 0;
+  const quoteShippingSavings = quote ? getQuoteShippingSavings(quote) : 0;
+  const quoteTotalLabel = quote
+    ? formatPrice(quote.total)
+    : hasShippableItems && !normalizedAddress
+      ? '—'
+      : quoteLoading
+        ? 'Calculating...'
+        : '—';
   const inputClass = `w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-4 outline-none transition ${classes.focus}`;
+
+  useEffect(() => {
+    if (quoteError?.status === 401) {
+      router.replace(`/login?next=${encodeURIComponent('/hub/checkout')}`);
+    }
+  }, [quoteError, router]);
 
   const gateways = [
     { id: 'flouci', name: t('checkout.payment.flouci'), icon: CreditCard, desc: t('checkout.payment.flouci') },
@@ -55,8 +95,8 @@ export default function CheckoutPage() {
   const handleCheckout = async () => {
     setError('');
 
-    if (hasShippableItems && (!address.full_name || !address.address_line || !address.city || !address.phone)) {
-      setError(t('errors.forbidden'));
+    if (hasShippableItems && !isCheckoutAddressComplete(address)) {
+      setError('Complete the required delivery address fields before continuing.');
       return;
     }
 
@@ -72,50 +112,49 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
     trackCheckoutStarted();
-    const normalizedAddress = hasShippableItems
-      ? (() => {
-        const [firstName = '', ...lastNameParts] = address.full_name.trim().split(/\s+/).filter(Boolean);
-        return {
-          first_name: firstName,
-          last_name: lastNameParts.join(' ') || firstName,
-          phone: address.phone.trim(),
-          address_line_1: address.address_line.trim(),
-          city: address.city.trim(),
-          postal_code: address.postal_code.trim(),
-          country: 'TN',
-        };
-      })()
-      : null;
+    if (hasShippableItems) trackCheckoutAddressSubmitted();
+    if (!quote) {
+      try {
+        await refreshQuote();
+        setError('The total was refreshed. Please review it and confirm again.');
+      } catch (quoteRefreshError) {
+        setError((quoteRefreshError as Error)?.message || 'Unable to calculate the order total');
+      }
+      setIsProcessing(false);
+      return;
+    }
+
+    let quoteForOrder = quote;
+    if (new Date(quote.expires_at).getTime() <= Date.now() + 15_000) {
+      try {
+        const refreshedQuote = await refreshQuote();
+        if (!checkoutQuoteTotalsMatch(quote, refreshedQuote)) {
+          setError('The total changed. Please review the updated amount and confirm again.');
+          setIsProcessing(false);
+          return;
+        }
+        quoteForOrder = refreshedQuote;
+      } catch (quoteRefreshError) {
+        setError((quoteRefreshError as Error)?.message || 'Unable to refresh the order total');
+        setIsProcessing(false);
+        return;
+      }
+    }
 
     try {
       let adsAttribution: {campaign_id:string;creative_id:string;event_key:string}|undefined;
       try { const raw=localStorage.getItem('pd_ads_attribution'); if(raw){const parsed=JSON.parse(raw);if(parsed.created_at>Date.now()-7*86400000)adsAttribution={campaign_id:parsed.campaign_id,creative_id:parsed.creative_id,event_key:parsed.event_key};else localStorage.removeItem('pd_ads_attribution');} } catch { localStorage.removeItem('pd_ads_attribution'); }
-      // Step 1: Create order
-      const orderRes = await fetchWithCsrf('/api/pd/orders/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            product_id: item.product_id,
-            variant_id: item.variant_id,
-            quantity: item.quantity,
-          })),
-          shipping_address: normalizedAddress,
-          payment_gateway: selectedGateway,
-          ads_attribution: adsAttribution,
-        }),
+      // Step 1: Create the order from the server-authoritative quote.
+      const { orderId } = await submitCheckoutOrder({
+        scope: 'hub',
+        idempotencyKey: idempotencyKeyRef.current,
+        quoteId: quoteForOrder.id,
+        items: quoteItems,
+        shippingAddress: normalizedAddress,
+        paymentGateway: selectedGateway,
+        couponCode,
+        adsAttribution,
       });
-
-      if (!orderRes.ok) {
-        const data = await orderRes.json();
-        setError(data.error?.message || 'Erreur lors de la création de la commande');
-        setIsProcessing(false);
-        return;
-      }
-
-      const orderData = await orderRes.json();
-      const orderId = orderData.order?.id || orderData.order_id;
       if (adsAttribution) localStorage.removeItem('pd_ads_attribution');
       trackCheckoutPaymentStarted(orderId, selectedGateway);
 
@@ -163,8 +202,17 @@ export default function CheckoutPage() {
         clearCart();
         router.push(`/hub/checkout/success?order_id=${orderId}`);
       }
-    } catch {
-      setError(t('errors.networkError'));
+    } catch (checkoutError) {
+      if (isRecoverableQuoteError(checkoutError)) {
+        try {
+          await refreshQuote();
+          setError('The order total changed. Please review the refreshed quote and confirm again.');
+        } catch (quoteRefreshError) {
+          setError((quoteRefreshError as Error)?.message || checkoutError.message);
+        }
+      } else {
+        setError(checkoutError instanceof Error ? checkoutError.message : t('errors.networkError'));
+      }
       trackCheckoutFailed(undefined, 'network_error');
       setIsProcessing(false);
     }
@@ -214,91 +262,154 @@ export default function CheckoutPage() {
               </p>
             </div>
             <div className="rounded-2xl bg-white/15 px-5 py-4 backdrop-blur">
-              <p className="text-2xl font-black">{formatPrice(total)}</p>
+              <p className="text-2xl font-black" aria-live="polite">{quoteTotalLabel}</p>
               <p className="text-xs font-semibold text-white/70">{t('cart.total')}</p>
             </div>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
+        {(error || quoteError) && (
+          <div role="alert" aria-live="polite" className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            {error}
+            {error || quoteError?.message}
           </div>
         )}
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleCheckout();
+          }}
+        >
 
         {/* Order Summary */}
         <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
           <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('cart.title')}</h2>
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between items-center mb-3">
-              <span className="text-gray-600">
-                {item.title} x{item.quantity}
-              </span>
-              <span className="font-medium">{formatPrice(getCartLineTotal(item))}</span>
+          {items.map((item) => {
+            const line = quote?.items.find(
+              (quoteLine) => quoteLine.product_id === item.product_id
+                && quoteLine.variant_id === (item.variant_id || null),
+            );
+            return (
+              <div key={item.id} className="flex justify-between items-center gap-4 mb-3">
+                <span className="min-w-0 break-words text-gray-600">
+                  {item.title} x{item.quantity}
+                </span>
+                <span className="shrink-0 font-medium">{line ? formatPrice(line.subtotal) : '—'}</span>
+              </div>
+            );
+          })}
+          <div className="flex justify-between items-center gap-4 mb-3">
+            <span className="text-gray-600">Merchandise subtotal</span>
+            <span className="shrink-0 font-medium">{quote ? formatPrice(quote.subtotal) : '—'}</span>
+          </div>
+          {quoteProductDiscount > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
+              <span>Product discount{quote?.coupon_code ? ` (${quote.coupon_code})` : ''}</span>
+              <span className="shrink-0 font-medium">−{formatPrice(quoteProductDiscount)}</span>
             </div>
-          ))}
+          )}
           <div className="flex justify-between items-center mb-3">
             <span className="text-gray-600">{t('cart.shipping')} ({shippableStoreCount})</span>
-            <span className="font-medium">{formatPrice(shippingTotal)}</span>
+            <span className="font-medium">{quote ? formatPrice(quote.shipping_total) : '—'}</span>
           </div>
+          {quoteShippingSavings > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
+              <span>Shipping savings</span>
+              <span className="shrink-0 font-medium">−{formatPrice(quoteShippingSavings)}</span>
+            </div>
+          )}
+          {quote && quote.tax_total > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3">
+              <span className="text-gray-600">Tax</span>
+              <span className="shrink-0 font-medium">{formatPrice(quote.tax_total)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-4 border-t border-gray-100">
             <span className="text-lg font-bold text-gray-900">{t('cart.total')}</span>
-            <span className={`text-2xl font-black ${classes.primaryText}`}>{formatPrice(total)}</span>
+            <span className={`text-2xl font-black ${classes.primaryText}`} aria-live="polite">{quoteTotalLabel}</span>
           </div>
+          {!quote && hasShippableItems && !normalizedAddress && (
+            <p className="mt-4 text-sm text-gray-500">Complete the delivery address to calculate the authoritative total.</p>
+          )}
+          {quoteLoading && (
+            <p className="mt-4 text-sm text-gray-500" aria-live="polite">Calculating the latest price, discounts, shipping, and tax...</p>
+          )}
         </div>
 
         {hasShippableItems ? (
-          <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
-            <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</h2>
+          <fieldset className={`${classes.panel} p-6 sm:p-8 mb-8`}>
+            <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
+                <label htmlFor="hub_checkout_full_name" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
                 <input
+                  id="hub_checkout_full_name"
+                  name="full_name"
                   type="text"
                   value={address.full_name}
                   onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
                   className={inputClass}
+                  autoComplete="name"
+                  required
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
+                <label htmlFor="hub_checkout_address_line" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
                 <input
+                  id="hub_checkout_address_line"
+                  name="address_line"
                   type="text"
                   value={address.address_line}
                   onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
                   className={inputClass}
+                  autoComplete="street-address"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
+                <label htmlFor="hub_checkout_city" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
                 <input
+                  id="hub_checkout_city"
+                  name="city"
                   type="text"
                   value={address.city}
                   onChange={(e) => setAddress({ ...address, city: e.target.value })}
                   className={inputClass}
+                  autoComplete="address-level2"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
+                <label htmlFor="hub_checkout_postal_code" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
                 <input
+                  id="hub_checkout_postal_code"
+                  name="postal_code"
                   type="text"
                   value={address.postal_code}
                   onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
                   className={inputClass}
+                  autoComplete="postal-code"
+                  inputMode="numeric"
+                  required
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
+                <label htmlFor="hub_checkout_phone" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
                 <input
+                  id="hub_checkout_phone"
+                  name="phone"
                   type="tel"
                   value={address.phone}
                   onChange={(e) => setAddress({ ...address, phone: e.target.value })}
                   className={inputClass}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
                 />
               </div>
             </div>
-          </div>
+          </fieldset>
         ) : (
           <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Digital delivery</h2>
@@ -307,21 +418,30 @@ export default function CheckoutPage() {
         )}
 
         {/* Payment Method */}
-        <div className={`${classes.panel} p-6 sm:p-8`}>
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</h2>
+        <fieldset className={`${classes.panel} p-6 sm:p-8`}>
+          <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</legend>
 
-          <div className="space-y-4">
+          <div className="space-y-4" role="radiogroup" aria-label={t('checkout.payment.title')}>
             {availableGateways.map((g) => (
-              <div
+              <label
                 key={g.id}
-                onClick={() => setSelectedGateway(g.id)}
-                className={`relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${
+                htmlFor={`hub_payment_gateway_${g.id}`}
+                className={`relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${
                   selectedGateway === g.id 
                     ? `${classes.primaryBorder} ${classes.primarySoft}` 
                     : isAliExpress ? 'border-gray-200 hover:border-orange-200 bg-white hover:bg-orange-50/40' : 'border-gray-200 hover:border-[#16C784]/50 bg-white'
                 }`}
               >
-                <div className="flex items-center h-5">
+                <input
+                  id={`hub_payment_gateway_${g.id}`}
+                  name="payment_gateway"
+                  type="radio"
+                  value={g.id}
+                  checked={selectedGateway === g.id}
+                  onChange={() => setSelectedGateway(g.id)}
+                  className="sr-only peer"
+                />
+                <div className="flex items-center h-5" aria-hidden="true">
                   <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                     selectedGateway === g.id ? classes.primaryBorder : 'border-gray-300'
                   }`}>
@@ -335,18 +455,19 @@ export default function CheckoutPage() {
                   </div>
                   <p className="mt-1 text-sm text-gray-500">{g.desc}</p>
                 </div>
-              </div>
+              </label>
             ))}
           </div>
 
           <button 
-            onClick={handleCheckout}
-            disabled={isProcessing}
+            type="submit"
+            disabled={isProcessing || quoteLoading}
             className={`w-full mt-8 text-white font-black text-lg py-4 rounded-full shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center ${classes.primaryGradient}`}
           >
-            {isProcessing ? t('checkout.processing') : t('checkout.confirm')}
+            {isProcessing ? t('checkout.processing') : quoteLoading ? 'Calculating total...' : t('checkout.confirm')}
           </button>
-        </div>
+        </fieldset>
+        </form>
       </div>
       <HubFooter {...settings} />
     </div>

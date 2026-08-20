@@ -47,18 +47,20 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P0-01 — Authoritative cart and order quotes
 
-- [ - ] Define a versioned quote contract: `quote_id`, `quote_version`, `issued_at`, `expires_at`, currency, normalized lines, per-line prices/discounts, coupon breakdown, shipping by fulfillment group, tax, and grand total.
-- [ - ] Add a server quote endpoint that accepts only product/variant IDs, quantities, destination, store context, and coupon code. Re-read catalog, seller rules, promotions, shipping configuration, and inventory from the database.
-- [ - ] Store a tamper-evident quote snapshot or digest. Do not use browser totals as an input to order persistence.
-- [ - ] Persist applied coupon code and a structured discount breakdown on the order and order items.
-- [ - ] Add quote expiry and reject expired, unknown, already-consumed, or version-mismatched quotes with a machine-readable error.
-- [ - ] Revalidate the quote in the same transaction that reserves inventory and creates the order. Recheck price, promotion, shipping, tax, seller/store state, and line availability.
-- [ - ] Make quote consumption idempotent so retries cannot create a second order or consume a discount twice.
-- [ - ] Return a refreshed quote path when address, quantity, coupon, or payment method changes.
+- [-] Define a versioned quote contract: `quote_id`, `quote_version`, `issued_at`, `expires_at`, currency, normalized lines, per-line prices/discounts, coupon breakdown, shipping by fulfillment group, tax, and grand total. The v1 response is implemented; expose `issued_at` explicitly and document forward-version rejection before closing this item.
+- [x] Add a server quote endpoint that accepts only product/variant IDs, quantities, destination, store context, and coupon code. Re-read catalog, seller rules, promotions, shipping configuration, and inventory from the database.
+- [-] Store a tamper-evident quote snapshot or digest. Do not use browser totals as an input to order persistence. A stable SHA-256 snapshot digest is implemented; decide and test keyed HMAC protection if privileged database tampering is in scope.
+- [x] Persist applied coupon code and a structured discount breakdown on the order and order items.
+- [-] Add quote expiry and reject expired, unknown, already-consumed, or version-mismatched quotes with a machine-readable error. Unknown, expired, consumed, and stale quotes are covered; explicit unsupported-version handling still needs coverage.
+- [x] Revalidate the quote in the same transaction that reserves inventory and creates the order. Recheck price, promotion, shipping, tax, seller/store state, and line availability.
+- [-] Make quote consumption idempotent so retries cannot create a second order or consume a discount twice. Sequential retries are protected; identical concurrent submissions still need a deterministic existing-order response test.
+- [-] Return a refreshed quote path when address, quantity, coupon, or payment method changes. Address, quantity, and coupon changes refresh automatically; payment-sensitive refresh belongs to the P0-02 capability contract.
 - [ ] Acceptance: adversarial tests prove that changed client prices, shipping, coupon values, deleted products, and stale quotes cannot alter the persisted total.
 
 **Dependencies:** inventory reservation, shipping capability, tax policy.  
 **Affected areas:** `backend/src/services/cart.service.ts`, `backend/src/services/order.service.ts`, order/cart routes, Hub checkout, tenant checkout, migrations.
+
+**Milestone evidence (2026-08-20):** Backend quote contract and migration are in `33e69ed`. Hub and tenant checkout now submit identifier-only carts with `quote_id` and a stable `Idempotency-Key`, display only authoritative totals, refresh stale/near-expiry quotes without losing buyer input, preserve carts on payment-initialization failure, and keep tenant cart clearing store-scoped. Frontend type-check, changed-file ESLint, production build, Impeccable detector, and 19 focused tests pass.
 
 ### P0-02 — Payment method availability and initialization
 
@@ -81,8 +83,8 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-06 — Semantic checkout forms
 
-- [ ] Use real `form`, `fieldset`, `legend`, labels, `name`, `autocomplete`, `inputMode`, `required`, and `aria-invalid` semantics for address/contact fields.
-- [ ] Use one accessible radio group for payment methods with visible focus and a clear selected state.
+- [-] Use real `form`, `fieldset`, `legend`, labels, `name`, `autocomplete`, `inputMode`, `required`, and `aria-invalid` semantics for address/contact fields. Structural and native validation semantics are implemented on both checkout surfaces; field-level invalid/error wiring remains.
+- [x] Use one accessible radio group for payment methods with visible focus and a clear selected state.
 - [ ] Connect field errors to controls and move focus to the first invalid field without losing the user's input.
 - [ ] Cover keyboard navigation, drawer/dialog focus traps, loading/disabled states, and screen-reader labels on Hub and tenant checkout.
 
@@ -188,4 +190,3 @@ This is the canonical execution checklist for the current remediation backlog. O
 - [ ] Type-check, lint, focused tests, and the relevant build pass.
 - [ ] No secrets or production data were added to the diff.
 - [ ] Milestone commit is pushed to `github/main`; remote deployment status and health are recorded in the milestone notes.
-

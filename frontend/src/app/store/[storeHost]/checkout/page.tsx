@@ -1,23 +1,30 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import React, { useState, useEffect } from 'react';
-import { CreditCard, Banknote, Truck, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { CreditCard, Banknote, Truck, AlertCircle, ArrowLeft, CheckCircle, LoaderCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '../../../../contexts/CartContext';
 import Link from 'next/link';
 import { isMarketplaceHost } from '../../../../lib/store-hosts';
 import { getHubAbsoluteUrl } from '../../../../lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../lib/themes';
-import { getCartLineTotal, getStoreShippingTotal } from '../../../../lib/cart-utils';
+import { isCartItemShippable } from '../../../../lib/cart-utils';
+import {
+  checkoutQuoteTotalsMatch,
+  createCheckoutIdempotencyKey,
+  formatCheckoutMoney,
+  getQuoteProductDiscount,
+  getQuoteShippingSavings,
+  isCheckoutAddressComplete,
+  isRecoverableQuoteError,
+  normalizeCheckoutAddress,
+  submitCheckoutOrder,
+  toCheckoutItems,
+} from '../../../../lib/checkout-quote';
+import { useCheckoutQuote } from '../../../../hooks/useCheckoutQuote';
 import { MarketplaceBrand } from '../../../../components/MarketplaceBrand';
 import { trackCheckoutStarted, trackCheckoutPaymentStarted, trackCheckoutPaymentCompleted, trackCheckoutFailed } from '../../../../lib/marketplace-analytics';
-
-function formatPrice(price: number): string {
-  return `${price.toFixed(3)} TND`;
-}
-
-const SHIPPING_PER_VENDOR = 7;
 
 interface StoreData {
   id: string;
@@ -49,7 +56,7 @@ export default function StoreCheckoutPage() {
   const router = useRouter();
   const params = useParams();
   const storeHost = decodeURIComponent(params.storeHost as string);
-  const { items, removeStoreItems } = useCart();
+  const { items, couponCode, removeStoreItems } = useCart();
 
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +66,7 @@ export default function StoreCheckoutPage() {
   const [storeError, setStoreError] = useState('');
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
+  const idempotencyKeyRef = useRef(createCheckoutIdempotencyKey('storefront'));
 
   useEffect(() => {
     if (isMarketplaceHost(window.location.host)) {
@@ -128,11 +136,46 @@ export default function StoreCheckoutPage() {
   const storeBaseHref = '';
 
   // Filter items to only this store
-  const storeItems = store ? items.filter((item) => item.store_id === store.id) : [];
-  const subtotal = storeItems.reduce((sum, item) => sum + getCartLineTotal(item), 0);
-  const shippingTotal = getStoreShippingTotal(storeItems, SHIPPING_PER_VENDOR);
-  const hasShippableItems = shippingTotal > 0;
-  const total = subtotal + shippingTotal;
+  const storeItems = useMemo(
+    () => store ? items.filter((item) => item.store_id === store.id) : [],
+    [items, store],
+  );
+  const hasShippableItems = storeItems.some(isCartItemShippable);
+  const quoteItems = useMemo(() => toCheckoutItems(storeItems), [storeItems]);
+  const normalizedAddress = useMemo(
+    () => hasShippableItems && isCheckoutAddressComplete(address) ? normalizeCheckoutAddress(address) : null,
+    [address, hasShippableItems],
+  );
+  const quoteEnabled = Boolean(store) && storeItems.length > 0 && (!hasShippableItems || Boolean(normalizedAddress));
+  const {
+    quote,
+    error: quoteError,
+    isLoading: quoteLoading,
+    refresh: refreshQuote,
+  } = useCheckoutQuote({
+    scope: 'storefront',
+    items: quoteItems,
+    shippingAddress: normalizedAddress,
+    couponCode,
+    enabled: quoteEnabled,
+  });
+  const quoteCurrency = quote?.currency || 'TND';
+  const formatPrice = (price: number) => formatCheckoutMoney(price, quoteCurrency);
+  const quoteProductDiscount = quote ? getQuoteProductDiscount(quote) : 0;
+  const quoteShippingSavings = quote ? getQuoteShippingSavings(quote) : 0;
+  const quoteTotalLabel = quote
+    ? formatPrice(quote.total)
+    : hasShippableItems && !normalizedAddress
+      ? '—'
+      : quoteLoading
+        ? 'Calcul en cours...'
+        : '—';
+
+  useEffect(() => {
+    if (quoteError?.status === 401) {
+      router.replace(`/login?next=${encodeURIComponent('/checkout')}`);
+    }
+  }, [quoteError, router]);
 
   const gateways = [
     { id: 'flouci', name: 'Flouci', icon: CreditCard, desc: 'Paiement sécurisé par carte bancaire ou wallet Flouci.' },
@@ -146,8 +189,8 @@ export default function StoreCheckoutPage() {
   const handleCheckout = async () => {
     setError('');
 
-    if (hasShippableItems && (!address.full_name || !address.address_line || !address.city || !address.phone)) {
-      setError("Veuillez remplir tous les champs d'adresse");
+    if (hasShippableItems && !isCheckoutAddressComplete(address)) {
+      setError("Veuillez remplir tous les champs obligatoires de l'adresse, y compris le code postal.");
       return;
     }
 
@@ -169,54 +212,58 @@ export default function StoreCheckoutPage() {
       return;
     }
 
-    const authRes = await fetchWithCsrf(`/api/pd/storefront/auth/me?store_id=${encodeURIComponent(store.id)}`);
-    if (!authRes.ok) {
-      router.push(`/login?next=${encodeURIComponent('/checkout')}`);
+    try {
+      const authRes = await fetchWithCsrf(`/api/pd/storefront/auth/me?store_id=${encodeURIComponent(store.id)}`);
+      if (!authRes.ok) {
+        router.push(`/login?next=${encodeURIComponent('/checkout')}`);
+        setIsProcessing(false);
+        return;
+      }
+    } catch {
+      setError('Impossible de vérifier votre session. Veuillez réessayer.');
+      trackCheckoutFailed(undefined, 'auth_check_failed');
       setIsProcessing(false);
       return;
     }
 
-    const normalizedAddress = hasShippableItems
-      ? (() => {
-        const [firstName = '', ...lastNameParts] = address.full_name.trim().split(/\s+/).filter(Boolean);
-        return {
-          first_name: firstName,
-          last_name: lastNameParts.join(' ') || firstName,
-          phone: address.phone.trim(),
-          address_line_1: address.address_line.trim(),
-          city: address.city.trim(),
-          postal_code: address.postal_code.trim(),
-          country: 'TN',
-        };
-      })()
-      : null;
+    if (!quote) {
+      try {
+        await refreshQuote();
+        setError('Le total a été actualisé. Vérifiez-le puis confirmez à nouveau.');
+      } catch (quoteRefreshError) {
+        setError((quoteRefreshError as Error)?.message || 'Impossible de calculer le total de la commande.');
+      }
+      setIsProcessing(false);
+      return;
+    }
 
-    try {
-      const orderRes = await fetchWithCsrf('/api/pd/orders/storefront/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          store_id: store.id,
-          items: storeItems.map((item) => ({
-            product_id: item.product_id,
-            variant_id: item.variant_id,
-            quantity: item.quantity,
-          })),
-          shipping_address: normalizedAddress,
-          payment_gateway: selectedGateway,
-        }),
-      });
-
-      if (!orderRes.ok) {
-        const data = await orderRes.json();
-        setError(data.error?.message || 'Erreur lors de la création de la commande');
+    let quoteForOrder = quote;
+    if (new Date(quote.expires_at).getTime() <= Date.now() + 15_000) {
+      try {
+        const refreshedQuote = await refreshQuote();
+        if (!checkoutQuoteTotalsMatch(quote, refreshedQuote)) {
+          setError('Le total a changé. Vérifiez le montant actualisé puis confirmez à nouveau.');
+          setIsProcessing(false);
+          return;
+        }
+        quoteForOrder = refreshedQuote;
+      } catch (quoteRefreshError) {
+        setError((quoteRefreshError as Error)?.message || 'Impossible d’actualiser le total de la commande.');
         setIsProcessing(false);
         return;
       }
+    }
 
-      const orderData = await orderRes.json();
-      const orderId = orderData.order?.id || orderData.order_id;
+    try {
+      const { orderId } = await submitCheckoutOrder({
+        scope: 'storefront',
+        idempotencyKey: idempotencyKeyRef.current,
+        quoteId: quoteForOrder.id,
+        items: quoteItems,
+        shippingAddress: normalizedAddress,
+        paymentGateway: selectedGateway,
+        couponCode,
+      });
       trackCheckoutPaymentStarted(orderId, selectedGateway);
 
       if (selectedGateway === 'manual_mandat' || selectedGateway === 'cod') {
@@ -255,8 +302,17 @@ export default function StoreCheckoutPage() {
       } else {
         setOrderSuccess(orderId);
       }
-    } catch {
-      setError('Erreur réseau. Veuillez réessayer.');
+    } catch (checkoutError) {
+      if (isRecoverableQuoteError(checkoutError)) {
+        try {
+          await refreshQuote();
+          setError('Le total de la commande a changé. Vérifiez le nouveau montant puis confirmez à nouveau.');
+        } catch (quoteRefreshError) {
+          setError((quoteRefreshError as Error)?.message || checkoutError.message);
+        }
+      } else {
+        setError(checkoutError instanceof Error ? checkoutError.message : 'Erreur réseau. Veuillez réessayer.');
+      }
       trackCheckoutFailed(undefined, 'network_error');
       setIsProcessing(false);
     }
@@ -265,7 +321,7 @@ export default function StoreCheckoutPage() {
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: pageBackground }}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: primaryColor }} />
+        <LoaderCircle className="h-8 w-8 animate-spin" style={{ color: primaryColor }} aria-label="Chargement" />
       </div>
     );
   }
@@ -375,42 +431,84 @@ export default function StoreCheckoutPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-extrabold mb-8 text-center" style={{ color: textColor }}>Checkout</h1>
 
-        {error && (
+        {(error || quoteError) && (
           <div role="alert" aria-live="polite" className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            {error}
+            {error || quoteError?.message}
           </div>
         )}
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleCheckout();
+          }}
+        >
 
         {/* Order Summary */}
         <div className="rounded-2xl shadow-sm border p-8 mb-8" style={{ backgroundColor: secondaryColor, borderColor }}>
           <h2 className="text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Résumé de la commande</h2>
-          {storeItems.map((item) => (
-            <div key={item.id} className="flex justify-between items-center mb-3">
-              <span style={{ color: mutedTextColor }}>
-                {item.title} x{item.quantity}
-              </span>
-              <span className="font-medium">{formatPrice(getCartLineTotal(item))}</span>
+          {storeItems.map((item) => {
+            const line = quote?.items.find(
+              (quoteLine) => quoteLine.product_id === item.product_id
+                && quoteLine.variant_id === (item.variant_id || null),
+            );
+            return (
+              <div key={item.id} className="flex justify-between items-center gap-4 mb-3">
+                <span className="min-w-0 break-words" style={{ color: mutedTextColor }}>
+                  {item.title} x{item.quantity}
+                </span>
+                <span className="shrink-0 font-medium">{line ? formatPrice(line.subtotal) : '—'}</span>
+              </div>
+            );
+          })}
+          <div className="flex justify-between items-center gap-4 mb-3">
+            <span style={{ color: mutedTextColor }}>Sous-total marchandises</span>
+            <span className="shrink-0 font-medium">{quote ? formatPrice(quote.subtotal) : '—'}</span>
+          </div>
+          {quoteProductDiscount > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
+              <span>Remise produit{quote?.coupon_code ? ` (${quote.coupon_code})` : ''}</span>
+              <span className="shrink-0 font-medium">−{formatPrice(quoteProductDiscount)}</span>
             </div>
-          ))}
+          )}
           <div className="flex justify-between items-center mb-3">
             <span style={{ color: mutedTextColor }}>Livraison</span>
-            <span className="font-medium">{formatPrice(shippingTotal)}</span>
+            <span className="font-medium">{quote ? formatPrice(quote.shipping_total) : '—'}</span>
           </div>
+          {quoteShippingSavings > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
+              <span>Économies de livraison</span>
+              <span className="shrink-0 font-medium">−{formatPrice(quoteShippingSavings)}</span>
+            </div>
+          )}
+          {quote && quote.tax_total > 0 && (
+            <div className="flex justify-between items-center gap-4 mb-3">
+              <span style={{ color: mutedTextColor }}>Taxes</span>
+              <span className="shrink-0 font-medium">{formatPrice(quote.tax_total)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor }}>
             <span className="text-lg font-bold" style={{ color: textColor }}>Total</span>
-            <span className="text-2xl font-black" style={{ color: primaryColor }}>{formatPrice(total)}</span>
+            <span className="text-2xl font-black" style={{ color: primaryColor }} aria-live="polite">{quoteTotalLabel}</span>
           </div>
+          {!quote && hasShippableItems && !normalizedAddress && (
+            <p className="mt-4 text-sm" style={{ color: mutedTextColor }}>Complétez l&apos;adresse pour calculer le total définitif.</p>
+          )}
+          {quoteLoading && (
+            <p className="mt-4 text-sm" style={{ color: mutedTextColor }} aria-live="polite">Calcul du dernier prix, des remises, de la livraison et des taxes...</p>
+          )}
         </div>
 
         {hasShippableItems ? (
-          <div className="rounded-2xl shadow-sm border p-8 mb-8" style={{ backgroundColor: secondaryColor, borderColor }}>
-            <h2 className="text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Adresse de livraison</h2>
+          <fieldset className="rounded-2xl shadow-sm border p-8 mb-8" style={{ backgroundColor: secondaryColor, borderColor }}>
+            <legend className="w-full text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Adresse de livraison</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label htmlFor="checkout_full_name" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Nom complet</label>
                 <input
                   id="checkout_full_name"
+                  name="full_name"
                   type="text"
                   value={address.full_name}
                   onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
@@ -418,58 +516,74 @@ export default function StoreCheckoutPage() {
                   style={{ '--tw-ring-color': primaryColor, borderColor: undefined } as React.CSSProperties}
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
+                  autoComplete="name"
+                  required
                 />
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="checkout_address_line" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Adresse</label>
                 <input
                   id="checkout_address_line"
+                  name="address_line"
                   type="text"
                   value={address.address_line}
                   onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
+                  autoComplete="street-address"
+                  required
                 />
               </div>
               <div>
                 <label htmlFor="checkout_city" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Ville</label>
                 <input
                   id="checkout_city"
+                  name="city"
                   type="text"
                   value={address.city}
                   onChange={(e) => setAddress({ ...address, city: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
+                  autoComplete="address-level2"
+                  required
                 />
               </div>
               <div>
                 <label htmlFor="checkout_postal_code" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Code postal</label>
                 <input
                   id="checkout_postal_code"
+                  name="postal_code"
                   type="text"
                   value={address.postal_code}
                   onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
+                  autoComplete="postal-code"
+                  inputMode="numeric"
+                  required
                 />
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="checkout_phone" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Téléphone</label>
                 <input
                   id="checkout_phone"
+                  name="phone"
                   type="tel"
                   value={address.phone}
                   onChange={(e) => setAddress({ ...address, phone: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
                 />
               </div>
             </div>
-          </div>
+          </fieldset>
         ) : (
           <div className="rounded-2xl shadow-sm border p-8 mb-8" style={{ backgroundColor: secondaryColor, borderColor }}>
             <h2 className="text-xl font-bold mb-2" style={{ color: textColor }}>Livraison numérique</h2>
@@ -478,15 +592,15 @@ export default function StoreCheckoutPage() {
         )}
 
         {/* Payment Method */}
-        <div className="rounded-2xl shadow-sm border p-8" style={{ backgroundColor: secondaryColor, borderColor }}>
-          <h2 className="text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Mode de paiement</h2>
+        <fieldset className="rounded-2xl shadow-sm border p-8" style={{ backgroundColor: secondaryColor, borderColor }}>
+          <legend className="w-full text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Mode de paiement</legend>
 
           <div className="space-y-4" role="radiogroup" aria-label="Mode de paiement">
             {availableGateways.map((g) => (
               <label
                 key={g.id}
                 htmlFor={`payment_gateway_${g.id}`}
-                className="relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 hover:border-opacity-70"
+                className="relative flex items-start p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 hover:border-opacity-70 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2"
                 style={{
                   borderColor: selectedGateway === g.id ? primaryColor : borderColor,
                   backgroundColor: selectedGateway === g.id ? `${primaryColor}0D` : pageBackground,
@@ -499,9 +613,9 @@ export default function StoreCheckoutPage() {
                   value={g.id}
                   checked={selectedGateway === g.id}
                   onChange={() => setSelectedGateway(g.id)}
-                  className="sr-only"
+                  className="sr-only peer"
                 />
-                <div className="flex items-center h-5">
+                <div className="flex items-center h-5" aria-hidden="true">
                   <div
                     className="w-5 h-5 rounded-full border flex items-center justify-center"
                     style={{ borderColor: selectedGateway === g.id ? primaryColor : '#d1d5db' }}
@@ -526,14 +640,15 @@ export default function StoreCheckoutPage() {
           </div>
 
           <button
-            onClick={handleCheckout}
-            disabled={isProcessing}
+            type="submit"
+            disabled={isProcessing || quoteLoading}
             className="w-full mt-8 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:opacity-90 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center"
             style={{ backgroundColor: primaryColor }}
           >
-            {isProcessing ? 'Traitement en cours...' : 'Confirmer et payer'}
+            {isProcessing ? 'Traitement en cours...' : quoteLoading ? 'Calcul du total...' : 'Confirmer et payer'}
           </button>
-        </div>
+        </fieldset>
+        </form>
       </div>
 
       {/* Footer */}
