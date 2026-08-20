@@ -7,6 +7,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 export interface ProductSocialShareProps {
   title: string;
   price: number | string;
+  currency?: string;
   url?: string;
   className?: string;
 }
@@ -14,6 +15,7 @@ export interface ProductSocialShareProps {
 export const ProductSocialShare: React.FC<ProductSocialShareProps> = ({
   title,
   price,
+  currency = 'TND',
   url,
   className = '',
 }) => {
