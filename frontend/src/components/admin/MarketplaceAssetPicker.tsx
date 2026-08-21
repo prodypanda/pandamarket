@@ -2,7 +2,18 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
-import { FileText, ImageIcon, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
+import {
+  FileText,
+  ImageIcon,
+  Loader2,
+  Search,
+  Upload,
+  X,
+  Zap,
+  CheckCircle2,
+  Folder,
+  Trash2,
+} from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface FileAsset {
@@ -39,7 +50,13 @@ function formatSize(value?: string | number | null) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function MarketplaceAssetPicker({ open, title = 'Media library', type = 'image', onClose, onSelect }: MarketplaceAssetPickerProps) {
+export function MarketplaceAssetPicker({
+  open,
+  title = 'Media library',
+  type = 'image',
+  onClose,
+  onSelect,
+}: MarketplaceAssetPickerProps) {
   const [assets, setAssets] = useState<FileAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -49,7 +66,9 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
 
   // Optimization, Drag&Drop & Folder State
   const [autoOptimize, setAutoOptimize] = useState(true);
-  const [selectedFolder, setSelectedFolder] = useState<'categories' | 'branding' | 'banners' | 'general' | 'all'>('categories');
+  const [selectedFolder, setSelectedFolder] = useState<
+    'categories' | 'branding' | 'banners' | 'general' | 'all'
+  >('categories');
   const [optimizingId, setOptimizingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -73,7 +92,10 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     setLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/admin/assets?type=${type}&folder=${selectedFolder}&limit=80`, { credentials: 'include' });
+      const res = await fetchWithCsrf(
+        `/api/pd/admin/assets?type=${type}&folder=${selectedFolder}&limit=80`,
+        { credentials: 'include' },
+      );
       if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to load media library'));
       const data = await res.json();
       setAssets(data.data || []);
@@ -91,7 +113,11 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
   const filteredAssets = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return assets.filter((asset) => {
-      if (needle && !asset.filename.toLowerCase().includes(needle) && !asset.url.toLowerCase().includes(needle)) {
+      if (
+        needle &&
+        !asset.filename.toLowerCase().includes(needle) &&
+        !asset.url.toLowerCase().includes(needle)
+      ) {
         return false;
       }
       return true;
@@ -117,7 +143,8 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
         }),
       });
 
-      if (!presignRes.ok) throw new Error(await getErrorMessage(presignRes, 'Failed to prepare upload'));
+      if (!presignRes.ok)
+        throw new Error(await getErrorMessage(presignRes, 'Failed to prepare upload'));
       const presignData = await presignRes.json();
 
       const uploadRes = await fetch(presignData.upload_url, {
@@ -131,7 +158,11 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
       const finalUrl = presignData.public_url;
 
       // Auto-Optimize if enabled and asset is an image
-      if (autoOptimize && (file.type.startsWith('image/') || type === 'image') && presignData.file_key) {
+      if (
+        autoOptimize &&
+        (file.type.startsWith('image/') || type === 'image') &&
+        presignData.file_key
+      ) {
         setNotification('⚡ Optimizing and compressing uploaded picture...');
         try {
           const optRes = await fetchWithCsrf('/api/pd/admin/platform-media/optimize', {
@@ -222,7 +253,9 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
 
       if (!res.ok) throw new Error('Failed to compress image');
       const optJson = await res.json();
-      setNotification(`⚡ Picture compressed! Saved ${optJson.saved_percentage}% space (${formatSize(optJson.original_size)} ➔ ${formatSize(optJson.new_size)})`);
+      setNotification(
+        `⚡ Picture compressed! Saved ${optJson.saved_percentage}% space (${formatSize(optJson.original_size)} ➔ ${formatSize(optJson.new_size)})`,
+      );
       setAssets((prev) =>
         prev.map((item) =>
           item.id === asset.id || item.url === asset.url || item.key === rawKey
@@ -284,7 +317,8 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
             </div>
             <h3 className="text-xl font-black text-slate-900">Drop Picture Here</h3>
             <p className="text-xs font-bold text-slate-500">
-              Uploads and auto-compresses into folder: <strong className="text-[#ff6a00] uppercase font-black">{selectedFolder}</strong>
+              Uploads and auto-compresses into folder:{' '}
+              <strong className="text-[#ff6a00] uppercase font-black">{selectedFolder}</strong>
             </p>
           </div>
         </div>
@@ -304,13 +338,22 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
               Drag & drop picture anywhere onto popup or select from gallery.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-700">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="rounded-xl p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-4 p-6">
-          {error && <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-700">{error}</div>}
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-700">
+              {error}
+            </div>
+          )}
           {notification && (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -366,9 +409,19 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
 
               {/* Upload Button */}
               <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-[#ff6a00] px-4 py-2.5 text-xs font-black text-white shadow-md hover:bg-orange-600 transition-transform active:scale-95">
-                {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                {uploading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
                 {uploading ? 'Uploading...' : 'Upload File'}
-                <input type="file" accept={type === 'image' ? 'image/*' : undefined} onChange={uploadAsset} disabled={uploading} className="hidden" />
+                <input
+                  type="file"
+                  accept={type === 'image' ? 'image/*' : undefined}
+                  onChange={uploadAsset}
+                  disabled={uploading}
+                  className="hidden"
+                />
               </label>
             </div>
           </div>
@@ -420,7 +473,11 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                             className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md hover:bg-amber-300"
                             title="Compress & Convert to WebP"
                           >
-                            {isOptimizingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                            {isOptimizingThis ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Zap className="h-4 w-4" />
+                            )}
                           </button>
                         )}
                         <button
@@ -430,13 +487,22 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                           className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
                           title="Delete Picture Asset"
                         >
-                          {isDeletingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          {isDeletingThis ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
 
                     <div className="space-y-1 p-3">
-                      <p className="truncate text-xs font-black text-gray-900" title={asset.filename}>{asset.filename}</p>
+                      <p
+                        className="truncate text-xs font-black text-gray-900"
+                        title={asset.filename}
+                      >
+                        {asset.filename}
+                      </p>
                       <p className="flex items-center justify-between text-[10px] font-bold text-gray-400">
                         <span>{asset.content_type.split('/')[1] || asset.content_type}</span>
                         <span>{formatSize(asset.file_size)}</span>
