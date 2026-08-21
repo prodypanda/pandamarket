@@ -47,6 +47,17 @@ export interface StorefrontSessionRow {
   created_at: Date;
 }
 
+interface StorefrontRecoveryContext {
+  ip?: string | null;
+  user_agent?: string | null;
+}
+
+interface StorefrontLinks {
+  store_url: string;
+  verify_url: (token: string) => string;
+  reset_url: (token: string) => string;
+}
+
 function toPublicCustomer(customer: StorefrontCustomerRow): PublicStorefrontCustomer {
   return {
     id: customer.id,
@@ -66,6 +77,69 @@ function hashToken(rawToken: string): string {
 }
 
 export class StorefrontAuthService {
+  private getHubOrigin(): string {
+    const configured = (config.hubDomain || 'pandamarket.local:3000').trim().replace(/\/$/, '');
+    if (/^https?:\/\//i.test(configured)) return configured;
+    const protocol = config.env === 'production' && !/(localhost|127\.0\.0\.1|\.local)(?::|$)/i.test(configured)
+      ? 'https'
+      : 'http';
+    return `${protocol}://${configured}`;
+  }
+
+  private async getStorefrontLinks(storeId: string): Promise<StorefrontLinks> {
+    const { rows } = await query<{ subdomain: string | null; custom_domain: string | null }>(
+      'SELECT subdomain, custom_domain FROM pd_store WHERE id = $1',
+      [storeId],
+    );
+    const store = rows[0];
+    let storeUrl = `${this.getHubOrigin()}/store/${encodeURIComponent(storeId)}`;
+
+    if (store?.custom_domain?.trim()) {
+      storeUrl = `https://${store.custom_domain.trim().toLowerCase()}`;
+    } else if (store?.subdomain?.trim()) {
+      try {
+        const hub = new URL(this.getHubOrigin());
+        storeUrl = `${hub.protocol}//${store.subdomain.trim().toLowerCase()}.${hub.host}`;
+      } catch {
+        storeUrl = `${this.getHubOrigin()}/store/${encodeURIComponent(storeId)}`;
+      }
+    }
+
+    const storeQuery = `store_id=${encodeURIComponent(storeId)}`;
+    return {
+      store_url: storeUrl,
+      verify_url: (token) => `${storeUrl}/verify-email?${storeQuery}&token=${encodeURIComponent(token)}`,
+      reset_url: (token) => `${storeUrl}/reset-password?${storeQuery}&token=${encodeURIComponent(token)}`,
+    };
+  }
+
+  private recordRecoveryAudit(input: {
+    action: string;
+    storeId: string;
+    customerId?: string | null;
+    email?: string | null;
+    success: boolean;
+    context?: StorefrontRecoveryContext;
+  }): void {
+    query(
+      `INSERT INTO pd_audit_log
+        (id, actor_id, actor_role, action, resource_type, resource_id, ip, user_agent, metadata)
+       VALUES ($1, NULL, 'customer', $2, 'storefront_customer', $3, $4::inet, $5, $6::jsonb)`,
+      [
+        pdId('audit'),
+        input.action,
+        input.customerId || input.storeId,
+        input.context?.ip ?? null,
+        input.context?.user_agent ?? null,
+        JSON.stringify({
+          store_id: input.storeId,
+          email: input.email?.trim().toLowerCase() || null,
+          success: input.success,
+        }),
+      ],
+    ).catch((err) => logger.warn({ err, action: input.action, store_id: input.storeId }, 'Storefront recovery audit failed'));
+  }
+
   private async assertPublicStore(storeId: string): Promise<void> {
     const { rows } = await query<{ status: string; is_verified: boolean }>(
       'SELECT status, is_verified FROM pd_store WHERE id = $1',
@@ -125,13 +199,17 @@ export class StorefrontAuthService {
       [pdId('sfctok'), id, storeId, tokenHash, expiresAt],
     );
 
+    const links = await this.getStorefrontLinks(storeId);
+
     logger.info({ storefront_customer_id: id, store_id: storeId }, 'Storefront customer registered');
     emailQueue.add('welcome_customer', {
       to: email,
       template: 'welcome_customer',
       variables: {
         name: opts.first_name,
-        store_url: `https://pandamarket.tn/store/${storeId}`,
+        store_url: links.store_url,
+        verify_url: links.verify_url(rawVerifyToken),
+        store_id: storeId,
         verify_token: rawVerifyToken,
       },
       scope: 'store',
@@ -233,7 +311,7 @@ export class StorefrontAuthService {
     return { access_token, refresh_token: newRefreshToken };
   }
 
-  async verifyEmail(storeId: string, rawToken: string): Promise<void> {
+  async verifyEmail(storeId: string, rawToken: string, context?: StorefrontRecoveryContext): Promise<void> {
     const tokenHash = hashToken(rawToken);
 
     const { rows: tokenRows } = await query<{ id: string; customer_id: string }>(
@@ -243,6 +321,12 @@ export class StorefrontAuthService {
     );
     const token = tokenRows[0];
     if (!token) {
+      this.recordRecoveryAudit({
+        action: 'storefront.auth.email_verification_failed',
+        storeId,
+        success: false,
+        context,
+      });
       throw new PdValidationError('Invalid or expired verification token');
     }
 
@@ -250,16 +334,32 @@ export class StorefrontAuthService {
       await client.query('UPDATE pd_storefront_customer SET email_verified = true WHERE id = $1', [token.customer_id]);
       await client.query('DELETE FROM pd_storefront_customer_token WHERE id = $1', [token.id]);
     });
+    this.recordRecoveryAudit({
+      action: 'storefront.auth.email_verification_completed',
+      storeId,
+      customerId: token.customer_id,
+      success: true,
+      context,
+    });
   }
 
-  async forgotPassword(storeId: string, email: string): Promise<string | undefined> {
+  async forgotPassword(storeId: string, email: string, context?: StorefrontRecoveryContext): Promise<string | undefined> {
     const normalizedEmail = email.trim().toLowerCase();
     const { rows } = await query<StorefrontCustomerRow>(
       'SELECT id, first_name FROM pd_storefront_customer WHERE store_id = $1 AND email = $2 AND is_active = true',
       [storeId, normalizedEmail],
     );
     const customer = rows[0];
-    if (!customer) return undefined; // Silent failure to prevent email enumeration
+    if (!customer) {
+      this.recordRecoveryAudit({
+        action: 'storefront.auth.password_reset_requested',
+        storeId,
+        email: normalizedEmail,
+        success: true,
+        context,
+      });
+      return undefined; // Silent failure to prevent email enumeration
+    }
 
     const rawResetToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashToken(rawResetToken);
@@ -271,21 +371,35 @@ export class StorefrontAuthService {
       [pdId('sfctok'), customer.id, storeId, tokenHash, expiresAt],
     );
 
+    const links = await this.getStorefrontLinks(storeId);
+
     emailQueue.add('password_reset', {
       to: normalizedEmail,
       template: 'password_reset',
       variables: {
         name: customer.first_name || 'Client',
+        store_url: links.store_url,
+        reset_url: links.reset_url(rawResetToken),
+        store_id: storeId,
         reset_token: rawResetToken,
       },
       scope: 'store',
       store_id: storeId,
     }).catch((err) => logger.warn({ err, store_id: storeId }, 'Password reset email enqueue failed'));
 
+    this.recordRecoveryAudit({
+      action: 'storefront.auth.password_reset_requested',
+      storeId,
+      customerId: customer.id,
+      email: normalizedEmail,
+      success: true,
+      context,
+    });
+
     return rawResetToken;
   }
 
-  async resetPassword(storeId: string, rawToken: string, newPassword: string): Promise<void> {
+  async resetPassword(storeId: string, rawToken: string, newPassword: string, context?: StorefrontRecoveryContext): Promise<void> {
     if (newPassword.length < 8) {
       throw new PdValidationError('Password must be at least 8 characters', { field: 'password' });
     }
@@ -298,6 +412,12 @@ export class StorefrontAuthService {
     );
     const token = tokenRows[0];
     if (!token) {
+      this.recordRecoveryAudit({
+        action: 'storefront.auth.password_reset_failed',
+        storeId,
+        success: false,
+        context,
+      });
       throw new PdValidationError('Invalid or expired password reset token');
     }
 
@@ -309,6 +429,76 @@ export class StorefrontAuthService {
       // Revoke all existing sessions
       await client.query('UPDATE pd_storefront_customer_session SET is_revoked = true WHERE customer_id = $1', [token.customer_id]);
     });
+    this.recordRecoveryAudit({
+      action: 'storefront.auth.password_reset_completed',
+      storeId,
+      customerId: token.customer_id,
+      success: true,
+      context,
+    });
+  }
+
+  async resendVerification(storeId: string, email: string, context?: StorefrontRecoveryContext): Promise<string | undefined> {
+    const normalizedStoreId = storeId.trim();
+    await this.assertPublicStore(normalizedStoreId);
+    const normalizedEmail = email.trim().toLowerCase();
+    const { rows } = await query<Pick<StorefrontCustomerRow, 'id' | 'first_name' | 'email_verified'>>(
+      `SELECT id, first_name, email_verified
+       FROM pd_storefront_customer
+       WHERE store_id = $1 AND email = $2 AND is_active = true`,
+      [normalizedStoreId, normalizedEmail],
+    );
+    const customer = rows[0];
+    if (!customer || customer.email_verified) {
+      this.recordRecoveryAudit({
+        action: 'storefront.auth.email_verification_resent',
+        storeId: normalizedStoreId,
+        email: normalizedEmail,
+        success: true,
+        context,
+      });
+      return undefined;
+    }
+
+    await query(
+      `DELETE FROM pd_storefront_customer_token
+       WHERE customer_id = $1 AND store_id = $2 AND type = 'email_verify'`,
+      [customer.id, normalizedStoreId],
+    );
+    const rawVerifyToken = crypto.randomBytes(32).toString('hex');
+    await query(
+      `INSERT INTO pd_storefront_customer_token (id, customer_id, store_id, token_hash, type, expires_at)
+       VALUES ($1, $2, $3, $4, 'email_verify', $5)`,
+      [
+        pdId('sfctok'),
+        customer.id,
+        normalizedStoreId,
+        hashToken(rawVerifyToken),
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+      ],
+    );
+    const links = await this.getStorefrontLinks(normalizedStoreId);
+    emailQueue.add('email_verification', {
+      to: normalizedEmail,
+      template: 'email_verification',
+      variables: {
+        name: customer.first_name || 'Client',
+        store_url: links.store_url,
+        verify_url: links.verify_url(rawVerifyToken),
+        store_id: normalizedStoreId,
+      },
+      scope: 'store',
+      store_id: normalizedStoreId,
+    }).catch((err) => logger.warn({ err, store_id: normalizedStoreId }, 'Verification email enqueue failed'));
+    this.recordRecoveryAudit({
+      action: 'storefront.auth.email_verification_resent',
+      storeId: normalizedStoreId,
+      customerId: customer.id,
+      email: normalizedEmail,
+      success: true,
+      context,
+    });
+    return rawVerifyToken;
   }
 
   async listSessions(customerId: string, storeId: string): Promise<StorefrontSessionRow[]> {

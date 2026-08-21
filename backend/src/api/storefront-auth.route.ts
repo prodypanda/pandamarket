@@ -30,6 +30,11 @@ const storefrontForgotPasswordSchema = z.object({
   email: z.string().email(),
 });
 
+const storefrontResendVerificationSchema = z.object({
+  store_id: z.string().min(1),
+  email: z.string().email(),
+});
+
 const storefrontResetPasswordSchema = z.object({
   store_id: z.string().min(1),
   token: z.string().min(1),
@@ -84,9 +89,13 @@ router.post(
 
 router.post(
   '/verify-email',
+  authRateLimit,
   validate(storefrontVerifyEmailSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    await storefrontAuthService.verifyEmail(req.body.store_id, req.body.token);
+    await storefrontAuthService.verifyEmail(req.body.store_id, req.body.token, {
+      ip: req.ip,
+      user_agent: req.headers['user-agent'],
+    });
     res.status(200).json({ success: true, message: 'Email verified successfully' });
   }),
 );
@@ -96,8 +105,24 @@ router.post(
   authRateLimit,
   validate(storefrontForgotPasswordSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    await storefrontAuthService.forgotPassword(req.body.store_id, req.body.email);
+    await storefrontAuthService.forgotPassword(req.body.store_id, req.body.email, {
+      ip: req.ip,
+      user_agent: req.headers['user-agent'],
+    });
     res.status(200).json({ success: true, message: 'If an account exists, a password reset email has been sent.' });
+  }),
+);
+
+router.post(
+  '/resend-verification',
+  authRateLimit,
+  validate(storefrontResendVerificationSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    await storefrontAuthService.resendVerification(req.body.store_id, req.body.email, {
+      ip: req.ip,
+      user_agent: req.headers['user-agent'],
+    });
+    res.status(200).json({ success: true, message: 'If the account exists and is not verified, a verification email has been sent.' });
   }),
 );
 
@@ -106,7 +131,10 @@ router.post(
   authRateLimit,
   validate(storefrontResetPasswordSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    await storefrontAuthService.resetPassword(req.body.store_id, req.body.token, req.body.password);
+    await storefrontAuthService.resetPassword(req.body.store_id, req.body.token, req.body.password, {
+      ip: req.ip,
+      user_agent: req.headers['user-agent'],
+    });
     res.clearCookie('pd_storefront_at');
     res.clearCookie('pd_storefront_rt');
     res.status(200).json({ success: true, message: 'Password has been reset successfully. Please log in.' });

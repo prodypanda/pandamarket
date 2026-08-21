@@ -122,7 +122,7 @@ function layout(title: string, body: string, branding: EmailBranding): string {
 }
 
 function cta(label: string, url: string): string {
-  return `<p style="margin:24px 0;"><a href="${url}" style="background:${PRIMARY};color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;display:inline-block;">${label}</a></p>`;
+  return `<p style="margin:24px 0;"><a href="${escapeHtml(url)}" style="background:${PRIMARY};color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;display:inline-block;">${escapeHtml(label)}</a></p>`;
 }
 
 function v(vars: Record<string, unknown>, key: string, fallback = ''): string {
@@ -137,10 +137,36 @@ async function render(template: string, vars: Record<string, unknown>, opts: { s
   switch (template) {
     case 'welcome_customer': {
       const subject = `Bienvenue sur ${branding.name}, ${v(vars, 'name', '')} !`;
+      const storeUrl = v(vars, 'store_url', branding.publicUrl);
+      const verifyUrl = v(vars, 'verify_url');
       const body = `<h1 style="margin-top:0;">Bienvenue 👋</h1>
         <p>Bonjour ${v(vars, 'name')},</p>
-        <p>Votre compte est prêt. Découvrez les milliers de produits proposés par les vendeurs tunisiens.</p>
-        ${cta('Explorer le Hub', 'https://pandamarket.tn')}`;
+        <p>Votre compte client est prêt. Vérifiez votre adresse email pour finaliser votre inscription dans la boutique.</p>
+        ${verifyUrl ? cta('Vérifier mon adresse email', verifyUrl) : ''}
+        ${cta('Accéder à la boutique', storeUrl)}`;
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
+      break;
+    }
+
+    case 'email_verification': {
+      const subject = `Vérifiez votre adresse email — ${branding.name}`;
+      const verifyUrl = v(vars, 'verify_url', v(vars, 'store_url', branding.publicUrl));
+      const body = `<h1 style="margin-top:0;">Vérification de votre email</h1>
+        <p>Bonjour ${v(vars, 'name', 'Client')},</p>
+        <p>Utilisez le bouton ci-dessous pour vérifier votre adresse email. Ce lien expire dans 24 heures.</p>
+        ${cta('Vérifier mon adresse email', verifyUrl)}`;
+      rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
+      break;
+    }
+
+    case 'password_reset': {
+      const subject = `Réinitialisation de votre mot de passe — ${branding.name}`;
+      const resetUrl = v(vars, 'reset_url', v(vars, 'store_url', branding.publicUrl));
+      const body = `<h1 style="margin-top:0;">Réinitialiser votre mot de passe</h1>
+        <p>Bonjour ${v(vars, 'name', 'Client')},</p>
+        <p>Une demande de réinitialisation a été reçue pour votre compte client. Le lien expire dans une heure.</p>
+        ${cta('Choisir un nouveau mot de passe', resetUrl)}
+        <p style="font-size:13px;color:#6B7280;">Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>`;
       rendered = { subject, html: layout(subject, body, branding), text: stripTags(body) };
       break;
     }

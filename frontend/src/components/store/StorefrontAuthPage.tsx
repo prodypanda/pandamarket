@@ -82,14 +82,27 @@ export function StorefrontAuthPage({ mode }: StorefrontAuthPageProps) {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => null) as {
+        error?: { message?: string };
+        verify_token?: string;
+      } | null;
+
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
         setError(data?.error?.message || 'Impossible de continuer.');
         setSubmitting(false);
         return;
       }
 
-      router.replace(next.startsWith('/') ? next : `${routeBase}/checkout`);
+      if (mode === 'register' && data?.verify_token) {
+        const query = new URLSearchParams({
+          store_id: store.id,
+          token: data.verify_token,
+          next: next.startsWith('/') ? next : `${routeBase}/checkout`,
+        });
+        router.replace(`${routeBase}/verify-email?${query.toString()}`);
+      } else {
+        router.replace(next.startsWith('/') ? next : `${routeBase}/checkout`);
+      }
       router.refresh();
     } catch {
       setError('Erreur réseau. Veuillez réessayer.');
@@ -160,6 +173,17 @@ export function StorefrontAuthPage({ mode }: StorefrontAuthPageProps) {
               placeholder="votre@email.com"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-950 outline-none focus:ring-2"
             />
+            {mode === 'login' && (
+              <div className="mt-2 text-right">
+                <Link
+                  href={`${routeBase}/forgot-password?next=${encodeURIComponent(next)}`}
+                  className="text-xs font-semibold"
+                  style={{ color: primaryColor }}
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+            )}
           </div>
           <div>
             <label htmlFor="auth_password" className="block text-xs font-semibold text-slate-700 mb-1">Mot de passe</label>

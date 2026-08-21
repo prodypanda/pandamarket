@@ -110,9 +110,11 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-08 — Tenant authentication recovery
 
-- [ ] Add tenant-aware forgot-password, reset-password, email-verification, resend, expiry, and invalid-token UI.
-- [ ] Preserve tenant host/store ID through every auth link and redirect; prevent cross-tenant token use.
-- [ ] Add rate limits, generic responses, audit events, and tests for token replay/tenant mismatch.
+- [x] Add tenant-aware forgot-password, reset-password, email-verification, resend, expiry, and invalid-token UI.
+- [x] Preserve tenant host/store ID through every auth link and redirect; prevent cross-tenant token use.
+- [x] Add rate limits, generic responses, audit events, and tests for token replay/tenant mismatch.
+
+**P1-08 evidence (2026-08-22):** Tenant routes now exist at `/store/[storeHost]/forgot-password`, `/reset-password`, and `/verify-email`, with a shared recovery component that loads the current store, rejects `store_id`/host mismatches before token submission, preserves safe `next` redirects, handles missing/expired tokens, and offers rate-limited verification resend. Registration redirects into tenant email verification, and login exposes tenant-aware password recovery. Backend recovery links resolve the store custom domain/subdomain, include the tenant `store_id`, and remain bound by the existing hashed token queries. Verification, forgot, resend, and reset endpoints use generic responses where enumeration matters; verification is now rate-limited. Recovery actions write redacted append-only audit rows without storing raw tokens. Focused backend auth tests passed 9 tests; focused frontend recovery/catalog/checkout tests passed 26 tests; backend build/type-check, frontend TypeScript, frontend targeted ESLint, production frontend build (101 pages), and `git diff --check` passed.
 
 ### P1-09 — Tenant SEO metadata
 

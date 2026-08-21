@@ -74,10 +74,12 @@ vi.mock('../services/system-log.service', () => ({
 }));
 
 import { query } from '../db/pool';
+import { emailQueue } from '../queues/email-queue';
 import storefrontAuthRouter from '../api/storefront-auth.route';
 import { errorHandler } from '../middlewares';
 
 const mockedQuery = vi.mocked(query);
+const mockedEmailAdd = vi.mocked(emailQueue.add);
 
 const app = express();
 app.use(express.json());
@@ -229,5 +231,77 @@ describe('Storefront Auth & Customer Security (GAP-P1-002 & GAP-P2-001)', () => 
 
     expect(res.status).toBe(200);
     expect(res.body.message).toContain('If an account exists');
+  });
+
+  it('queues a tenant-bound reset link without exposing the raw token in the URL context', async () => {
+    mockedQuery.mockResolvedValueOnce({
+      rows: [{ id: 'sfcust_123', first_name: 'Jane' }],
+      rowCount: 1,
+    } as any);
+    mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+    mockedQuery.mockResolvedValueOnce({
+      rows: [{ subdomain: 'boutique1', custom_domain: null }],
+      rowCount: 1,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/pd/storefront/auth/forgot-password')
+      .send({ store_id: 'store_1', email: 'buyer@test.com' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('If an account exists');
+    expect(mockedEmailAdd).toHaveBeenCalledWith('password_reset', expect.objectContaining({
+      scope: 'store',
+      store_id: 'store_1',
+      variables: expect.objectContaining({
+        store_id: 'store_1',
+        reset_url: expect.stringContaining('boutique1.pandamarket.local'),
+      }),
+    }));
+    const job = mockedEmailAdd.mock.calls.at(-1)?.[1] as { variables: Record<string, unknown> };
+    expect(String(job.variables.reset_url)).toContain('token=');
+    expect(String(job.variables.reset_url)).not.toContain('undefined');
+  });
+
+  it('keeps verification resend generic and tenant-scoped', async () => {
+    mockedQuery.mockResolvedValueOnce({
+      rows: [{ status: 'verified', is_verified: true }],
+      rowCount: 1,
+    } as any);
+    mockedQuery.mockResolvedValueOnce({
+      rows: [{ id: 'sfcust_123', first_name: 'Jane', email_verified: false }],
+      rowCount: 1,
+    } as any);
+    mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+    mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+    mockedQuery.mockResolvedValueOnce({
+      rows: [{ subdomain: 'boutique1', custom_domain: null }],
+      rowCount: 1,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/pd/storefront/auth/resend-verification')
+      .send({ store_id: 'store_1', email: 'buyer@test.com' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('If the account exists');
+    expect(mockedEmailAdd).toHaveBeenCalledWith('email_verification', expect.objectContaining({
+      store_id: 'store_1',
+      variables: expect.objectContaining({
+        store_id: 'store_1',
+        verify_url: expect.stringContaining('/verify-email?store_id=store_1&token='),
+      }),
+    }));
+  });
+
+  it('rejects a verification token when the token is not valid for the requested tenant', async () => {
+    mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+
+    const res = await request(app)
+      .post('/api/pd/storefront/auth/verify-email')
+      .send({ store_id: 'store_other', token: 'token-from-store-1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toContain('Invalid or expired verification token');
   });
 });
