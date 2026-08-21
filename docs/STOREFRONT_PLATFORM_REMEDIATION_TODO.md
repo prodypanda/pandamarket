@@ -93,10 +93,12 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-06 — Semantic checkout forms
 
-- [-] Use real `form`, `fieldset`, `legend`, labels, `name`, `autocomplete`, `inputMode`, `required`, and `aria-invalid` semantics for address/contact fields. Structural and native validation semantics are implemented on both checkout surfaces; field-level invalid/error wiring remains.
+- [x] Use real `form`, `fieldset`, `legend`, labels, `name`, `autocomplete`, `inputMode`, `required`, and `aria-invalid` semantics for address/contact fields. Structural, native, and field-level error semantics are implemented on both checkout surfaces.
 - [x] Use one accessible radio group for payment methods with visible focus and a clear selected state.
-- [ ] Connect field errors to controls and move focus to the first invalid field without losing the user's input.
-- [ ] Cover keyboard navigation, drawer/dialog focus traps, loading/disabled states, and screen-reader labels on Hub and tenant checkout.
+- [x] Connect field errors to controls and move focus to the first invalid field without losing the user's input.
+- [x] Cover keyboard navigation, payment-group focus, loading/disabled states, and screen-reader labels on Hub and tenant checkout. Full deployed-browser/device matrix remains a release acceptance check.
+
+**Checkout accessibility evidence (2026-08-22):** `frontend/src/lib/checkout-quote.ts` now exposes one shared address error contract and deterministic first-invalid ordering, and `isCheckoutAddressComplete()` uses the same rules. Hub and tenant checkout preserve native `required`/autocomplete/input-mode semantics while wiring `aria-invalid`, `aria-describedby`, inline field messages, native `onInvalid` handling, first-invalid focus, preserved values, payment-group error focus, `aria-busy`, and disabled processing states. Payment radios remain one named, labelled group with visible focus styling and disabled unavailable methods. The rendered accessibility suite passed 10 Hub/tenant tests; the quote/helper suite passed 8 tests; the combined focused frontend/security regression run passed 8 files/45 tests; frontend TypeScript and changed-source ESLint passed with no new warnings; and `git diff --check` passed. Deployed browser/device and screen-reader acceptance remain open.
 
 ### P1-07 — One URL-driven search/category state model
 

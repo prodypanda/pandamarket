@@ -17,10 +17,14 @@ import {
   getQuoteProductDiscount,
   getQuoteShippingSavings,
   isCheckoutAddressComplete,
+  firstCheckoutAddressError,
   isRecoverableQuoteError,
   normalizeCheckoutAddress,
   submitCheckoutOrder,
   toCheckoutItems,
+  validateCheckoutAddress,
+  type CheckoutAddressErrors,
+  type CheckoutAddressField,
 } from '../../../lib/checkout-quote';
 import { useCheckoutQuote } from '../../../hooks/useCheckoutQuote';
 import { trackCheckoutStarted, trackCheckoutPaymentStarted, trackCheckoutPaymentCompleted, trackCheckoutFailed, trackCheckoutAddressSubmitted } from '../../../lib/marketplace-analytics';
@@ -33,6 +37,16 @@ export default function CheckoutPage() {
   const [selectedGateway, setSelectedGateway] = useState('flouci');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [addressErrors, setAddressErrors] = useState<CheckoutAddressErrors>({});
+  const [paymentError, setPaymentError] = useState('');
+  const addressRefs = useRef<Record<CheckoutAddressField, HTMLInputElement | null>>({
+    full_name: null,
+    address_line: null,
+    city: null,
+    postal_code: null,
+    phone: null,
+  });
+  const paymentGroupRef = useRef<HTMLDivElement | null>(null);
   const idempotencyKeyRef = useRef(createCheckoutIdempotencyKey('hub'));
 
   // Shipping address
@@ -77,6 +91,54 @@ export default function CheckoutPage() {
         : '—';
   const inputClass = `w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-4 outline-none transition ${classes.focus}`;
 
+  const addressErrorMessage = (field: CheckoutAddressField): string => {
+    if (addressErrors[field] === 'invalid' && field === 'phone') return 'Enter a valid phone number.';
+    return 'This field is required.';
+  };
+
+  const setAddressField = (field: CheckoutAddressField, value: string) => {
+    setAddress((current) => ({ ...current, [field]: value }));
+    setAddressErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const focusFirstInvalid = (errors: CheckoutAddressErrors) => {
+    const firstField = firstCheckoutAddressError(errors);
+    if (firstField) {
+      window.requestAnimationFrame(() => addressRefs.current[firstField]?.focus());
+    }
+  };
+
+  const handleNativeInvalid = (event: React.InvalidEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    const field = event.currentTarget.name as CheckoutAddressField;
+    const currentErrors = validateCheckoutAddress(address);
+    const nextErrors = { ...currentErrors, [field]: currentErrors[field] || 'required' } as CheckoutAddressErrors;
+    setAddressErrors(nextErrors);
+    focusFirstInvalid(nextErrors);
+  };
+
+  const validateForm = (): boolean => {
+    const nextAddressErrors = hasShippableItems ? validateCheckoutAddress(address) : {};
+    setAddressErrors(nextAddressErrors);
+    if (Object.keys(nextAddressErrors).length > 0) {
+      focusFirstInvalid(nextAddressErrors);
+      return false;
+    }
+    if (quote && (!selectedGateway || !hasAvailableGateway)) {
+      const message = 'Select an available payment method.';
+      setPaymentError(message);
+      window.requestAnimationFrame(() => paymentGroupRef.current?.focus());
+      return false;
+    }
+    setPaymentError('');
+    return true;
+  };
+
   useEffect(() => {
     if (quoteError?.status === 401) {
       router.replace(`/login?next=${encodeURIComponent('/hub/checkout')}`);
@@ -99,6 +161,7 @@ export default function CheckoutPage() {
     capability: paymentCapabilities.find((method) => method.gateway === gateway.id),
   }));
   const hasAvailableGateway = paymentOptions.some((option) => option.capability?.available);
+  const paymentHasError = Boolean(paymentError || (quote && !hasAvailableGateway));
 
   useEffect(() => {
     if (!quote) return;
@@ -109,11 +172,9 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     setError('');
+    setPaymentError('');
 
-    if (hasShippableItems && !isCheckoutAddressComplete(address)) {
-      setError('Complete the required delivery address fields before continuing.');
-      return;
-    }
+    if (!validateForm()) return;
 
     if (items.length === 0) {
       setError(t('cart.empty'));
@@ -124,7 +185,9 @@ export default function CheckoutPage() {
       (method) => method.gateway === selectedGateway,
     );
     if (!selectedCapability?.available) {
-      setError(selectedCapability?.buyer_message || 'Select an available payment method.');
+      const message = selectedCapability?.buyer_message || 'Select an available payment method.';
+      setPaymentError(message);
+      window.requestAnimationFrame(() => paymentGroupRef.current?.focus());
       return;
     }
 
@@ -278,7 +341,7 @@ export default function CheckoutPage() {
               <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-wide text-white/80">
                 Protected checkout
               </div>
-              <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{t('checkout.title')}</h1>
+              <h1 id="hub_checkout_title" className="text-3xl font-black tracking-tight sm:text-4xl">{t('checkout.title')}</h1>
               <p className="mt-2 max-w-xl text-sm text-white/75">
                 Secure payment, vendor grouped delivery, and marketplace buyer protection.
               </p>
@@ -298,6 +361,8 @@ export default function CheckoutPage() {
         )}
 
         <form
+          aria-labelledby="hub_checkout_title"
+          aria-busy={isProcessing || quoteLoading ? 'true' : undefined}
           onSubmit={(event) => {
             event.preventDefault();
             void handleCheckout();
@@ -370,11 +435,16 @@ export default function CheckoutPage() {
                   name="full_name"
                   type="text"
                   value={address.full_name}
-                  onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
+                  onChange={(e) => setAddressField('full_name', e.target.value)}
+                  ref={(node) => { addressRefs.current.full_name = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.full_name ? 'true' : 'false'}
+                  aria-describedby={addressErrors.full_name ? 'hub_checkout_full_name_error' : undefined}
                   className={inputClass}
                   autoComplete="name"
                   required
                 />
+                {addressErrors.full_name && <p id="hub_checkout_full_name_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('full_name')}</p>}
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="hub_checkout_address_line" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
@@ -383,11 +453,16 @@ export default function CheckoutPage() {
                   name="address_line"
                   type="text"
                   value={address.address_line}
-                  onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
+                  onChange={(e) => setAddressField('address_line', e.target.value)}
+                  ref={(node) => { addressRefs.current.address_line = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.address_line ? 'true' : 'false'}
+                  aria-describedby={addressErrors.address_line ? 'hub_checkout_address_line_error' : undefined}
                   className={inputClass}
                   autoComplete="street-address"
                   required
                 />
+                {addressErrors.address_line && <p id="hub_checkout_address_line_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('address_line')}</p>}
               </div>
               <div>
                 <label htmlFor="hub_checkout_city" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
@@ -396,11 +471,16 @@ export default function CheckoutPage() {
                   name="city"
                   type="text"
                   value={address.city}
-                  onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                  onChange={(e) => setAddressField('city', e.target.value)}
+                  ref={(node) => { addressRefs.current.city = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.city ? 'true' : 'false'}
+                  aria-describedby={addressErrors.city ? 'hub_checkout_city_error' : undefined}
                   className={inputClass}
                   autoComplete="address-level2"
                   required
                 />
+                {addressErrors.city && <p id="hub_checkout_city_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('city')}</p>}
               </div>
               <div>
                 <label htmlFor="hub_checkout_postal_code" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
@@ -409,12 +489,17 @@ export default function CheckoutPage() {
                   name="postal_code"
                   type="text"
                   value={address.postal_code}
-                  onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
+                  onChange={(e) => setAddressField('postal_code', e.target.value)}
+                  ref={(node) => { addressRefs.current.postal_code = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.postal_code ? 'true' : 'false'}
+                  aria-describedby={addressErrors.postal_code ? 'hub_checkout_postal_code_error' : undefined}
                   className={inputClass}
                   autoComplete="postal-code"
                   inputMode="numeric"
                   required
                 />
+                {addressErrors.postal_code && <p id="hub_checkout_postal_code_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('postal_code')}</p>}
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="hub_checkout_phone" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
@@ -423,12 +508,17 @@ export default function CheckoutPage() {
                   name="phone"
                   type="tel"
                   value={address.phone}
-                  onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                  onChange={(e) => setAddressField('phone', e.target.value)}
+                  ref={(node) => { addressRefs.current.phone = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.phone ? 'true' : 'false'}
+                  aria-describedby={addressErrors.phone ? 'hub_checkout_phone_error' : undefined}
                   className={inputClass}
                   autoComplete="tel"
                   inputMode="tel"
                   required
                 />
+                {addressErrors.phone && <p id="hub_checkout_phone_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('phone')}</p>}
               </div>
             </div>
           </fieldset>
@@ -443,7 +533,15 @@ export default function CheckoutPage() {
         <fieldset className={`${classes.panel} p-6 sm:p-8`}>
           <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</legend>
 
-          <div className="space-y-4" role="radiogroup" aria-label={t('checkout.payment.title')}>
+          <div
+            ref={paymentGroupRef}
+            className="space-y-4"
+            role="radiogroup"
+            aria-label={t('checkout.payment.title')}
+            aria-invalid={paymentHasError ? 'true' : 'false'}
+            aria-describedby={paymentHasError ? 'hub_checkout_payment_error' : undefined}
+            tabIndex={-1}
+          >
             {paymentOptions.map((g) => {
               const isAvailable = g.capability?.available === true;
               const descriptionId = `hub_payment_gateway_${g.id}_description`;
@@ -489,9 +587,9 @@ export default function CheckoutPage() {
             })}
           </div>
 
-          {quote && !hasAvailableGateway && (
-            <p role="alert" className="mt-4 text-sm font-medium text-red-700">
-              No payment method is available for this order. Review the delivery details or try again later.
+          {(paymentError || (quote && !hasAvailableGateway)) && (
+            <p id="hub_checkout_payment_error" role="alert" className="mt-4 text-sm font-medium text-red-700">
+              {paymentError || 'No payment method is available for this order. Review the delivery details or try again later.'}
             </p>
           )}
 

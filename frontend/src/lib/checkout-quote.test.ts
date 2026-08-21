@@ -8,6 +8,8 @@ import {
   requestCheckoutQuote,
   submitCheckoutOrder,
   toCheckoutItems,
+  firstCheckoutAddressError,
+  validateCheckoutAddress,
   type CheckoutQuote,
 } from './checkout-quote';
 
@@ -162,6 +164,32 @@ describe('checkout quote client', () => {
     });
     expect(isCheckoutAddressComplete(address)).toBe(true);
     expect(isCheckoutAddressComplete({ ...address, postal_code: '' })).toBe(false);
+  });
+
+  it('returns stable field error codes in the same order used for first-invalid focus', () => {
+    const errors = validateCheckoutAddress({
+      full_name: '',
+      address_line: '',
+      city: '',
+      postal_code: '',
+      phone: '123',
+    });
+
+    expect(errors).toEqual({
+      full_name: 'required',
+      address_line: 'required',
+      city: 'required',
+      postal_code: 'required',
+      phone: 'invalid',
+    });
+    expect(firstCheckoutAddressError(errors)).toBe('full_name');
+    expect(firstCheckoutAddressError(validateCheckoutAddress({
+      full_name: 'Amira Ben Salah',
+      address_line: '12 Rue de Tunis',
+      city: 'Tunis',
+      postal_code: '1000',
+      phone: '22111222',
+    }))).toBeNull();
   });
 
   it('detects any payable quote change before confirmation', () => {

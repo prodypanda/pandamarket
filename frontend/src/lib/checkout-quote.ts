@@ -10,6 +10,10 @@ export interface CheckoutAddressForm {
   phone: string;
 }
 
+export type CheckoutAddressField = keyof CheckoutAddressForm;
+export type CheckoutAddressFieldError = 'required' | 'invalid';
+export type CheckoutAddressErrors = Partial<Record<CheckoutAddressField, CheckoutAddressFieldError>>;
+
 export interface CheckoutAddress {
   first_name: string;
   last_name: string;
@@ -193,15 +197,31 @@ export function normalizeCheckoutAddress(address: CheckoutAddressForm): Checkout
 }
 
 export function isCheckoutAddressComplete(address: CheckoutAddressForm): boolean {
+  return Object.keys(validateCheckoutAddress(address)).length === 0;
+}
+
+/**
+ * Keep client feedback aligned with the server's required checkout fields.
+ * The returned codes are translated by each checkout surface so Hub and
+ * tenant storefronts can preserve their local language without duplicating
+ * the validation rules.
+ */
+export function validateCheckoutAddress(address: CheckoutAddressForm): CheckoutAddressErrors {
   const normalized = normalizeCheckoutAddress(address);
-  return Boolean(
-    normalized.first_name &&
-    normalized.last_name &&
-    normalized.phone.length >= 6 &&
-    normalized.address_line_1 &&
-    normalized.city &&
-    normalized.postal_code,
-  );
+  const errors: CheckoutAddressErrors = {};
+
+  if (!normalized.first_name) errors.full_name = 'required';
+  if (!normalized.address_line_1) errors.address_line = 'required';
+  if (!normalized.city) errors.city = 'required';
+  if (!normalized.postal_code) errors.postal_code = 'required';
+  if (normalized.phone.length < 6) errors.phone = normalized.phone ? 'invalid' : 'required';
+
+  return errors;
+}
+
+export function firstCheckoutAddressError(errors: CheckoutAddressErrors): CheckoutAddressField | null {
+  const fields: CheckoutAddressField[] = ['full_name', 'address_line', 'city', 'postal_code', 'phone'];
+  return fields.find((field) => Boolean(errors[field])) || null;
 }
 
 export function toCheckoutItems(

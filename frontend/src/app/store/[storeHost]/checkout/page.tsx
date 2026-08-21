@@ -13,6 +13,7 @@ import { isCartItemShippable } from '../../../../lib/cart-utils';
 import {
   checkoutQuoteTotalsMatch,
   createCheckoutIdempotencyKey,
+  firstCheckoutAddressError,
   formatCheckoutMoney,
   getQuoteProductDiscount,
   getQuoteShippingSavings,
@@ -21,6 +22,9 @@ import {
   normalizeCheckoutAddress,
   submitCheckoutOrder,
   toCheckoutItems,
+  validateCheckoutAddress,
+  type CheckoutAddressErrors,
+  type CheckoutAddressField,
 } from '../../../../lib/checkout-quote';
 import { useCheckoutQuote } from '../../../../hooks/useCheckoutQuote';
 import { MarketplaceBrand } from '../../../../components/MarketplaceBrand';
@@ -63,10 +67,20 @@ export default function StoreCheckoutPage() {
   const [selectedGateway, setSelectedGateway] = useState('flouci');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [addressErrors, setAddressErrors] = useState<CheckoutAddressErrors>({});
+  const [paymentError, setPaymentError] = useState('');
   const [storeError, setStoreError] = useState('');
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
   const [marketplaceSettings, setMarketplaceSettings] = useState<MarketplaceSettings>({});
   const idempotencyKeyRef = useRef(createCheckoutIdempotencyKey('storefront'));
+  const addressRefs = useRef<Record<CheckoutAddressField, HTMLInputElement | null>>({
+    full_name: null,
+    address_line: null,
+    city: null,
+    postal_code: null,
+    phone: null,
+  });
+  const paymentGroupRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isMarketplaceHost(window.location.host)) {
@@ -171,6 +185,54 @@ export default function StoreCheckoutPage() {
         ? 'Calcul en cours...'
         : '—';
 
+  const addressErrorMessage = (field: CheckoutAddressField): string => {
+    if (addressErrors[field] === 'invalid' && field === 'phone') return 'Saisissez un numéro de téléphone valide.';
+    return 'Ce champ est obligatoire.';
+  };
+
+  const setAddressField = (field: CheckoutAddressField, value: string) => {
+    setAddress((current) => ({ ...current, [field]: value }));
+    setAddressErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const focusFirstInvalid = (errors: CheckoutAddressErrors) => {
+    const firstField = firstCheckoutAddressError(errors);
+    if (firstField) {
+      window.requestAnimationFrame(() => addressRefs.current[firstField]?.focus());
+    }
+  };
+
+  const handleNativeInvalid = (event: React.InvalidEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    const field = event.currentTarget.name as CheckoutAddressField;
+    const currentErrors = validateCheckoutAddress(address);
+    const nextErrors = { ...currentErrors, [field]: currentErrors[field] || 'required' } as CheckoutAddressErrors;
+    setAddressErrors(nextErrors);
+    focusFirstInvalid(nextErrors);
+  };
+
+  const validateForm = (): boolean => {
+    const nextAddressErrors = hasShippableItems ? validateCheckoutAddress(address) : {};
+    setAddressErrors(nextAddressErrors);
+    if (Object.keys(nextAddressErrors).length > 0) {
+      focusFirstInvalid(nextAddressErrors);
+      return false;
+    }
+    if (quote && (!selectedGateway || !hasAvailableGateway)) {
+      const message = 'Sélectionnez un moyen de paiement disponible.';
+      setPaymentError(message);
+      window.requestAnimationFrame(() => paymentGroupRef.current?.focus());
+      return false;
+    }
+    setPaymentError('');
+    return true;
+  };
+
   useEffect(() => {
     if (quoteError?.status === 401) {
       router.replace(`/login?next=${encodeURIComponent('/checkout')}`);
@@ -193,6 +255,7 @@ export default function StoreCheckoutPage() {
     capability: paymentCapabilities.find((method) => method.gateway === gateway.id),
   }));
   const hasAvailableGateway = paymentOptions.some((option) => option.capability?.available);
+  const paymentHasError = Boolean(paymentError || (quote && !hasAvailableGateway));
 
   useEffect(() => {
     if (!quote) return;
@@ -203,11 +266,9 @@ export default function StoreCheckoutPage() {
 
   const handleCheckout = async () => {
     setError('');
+    setPaymentError('');
 
-    if (hasShippableItems && !isCheckoutAddressComplete(address)) {
-      setError("Veuillez remplir tous les champs obligatoires de l'adresse, y compris le code postal.");
-      return;
-    }
+    if (!validateForm()) return;
 
     if (storeItems.length === 0) {
       setError('Votre panier est vide');
@@ -218,7 +279,9 @@ export default function StoreCheckoutPage() {
       (method) => method.gateway === selectedGateway,
     );
     if (!selectedCapability?.available) {
-      setError(selectedCapability?.buyer_message || 'Sélectionnez un moyen de paiement disponible.');
+      const message = selectedCapability?.buyer_message || 'Sélectionnez un moyen de paiement disponible.';
+      setPaymentError(message);
+      window.requestAnimationFrame(() => paymentGroupRef.current?.focus());
       return;
     }
 
@@ -451,7 +514,7 @@ export default function StoreCheckoutPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-extrabold mb-8 text-center" style={{ color: textColor }}>Checkout</h1>
+        <h1 id="storefront_checkout_title" className="text-3xl font-extrabold mb-8 text-center" style={{ color: textColor }}>Checkout</h1>
 
         {(error || quoteError) && (
           <div role="alert" aria-live="polite" className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2">
@@ -461,6 +524,8 @@ export default function StoreCheckoutPage() {
         )}
 
         <form
+          aria-labelledby="storefront_checkout_title"
+          aria-busy={isProcessing || quoteLoading ? 'true' : undefined}
           onSubmit={(event) => {
             event.preventDefault();
             void handleCheckout();
@@ -533,7 +598,11 @@ export default function StoreCheckoutPage() {
                   name="full_name"
                   type="text"
                   value={address.full_name}
-                  onChange={(e) => setAddress({ ...address, full_name: e.target.value })}
+                  onChange={(e) => setAddressField('full_name', e.target.value)}
+                  ref={(node) => { addressRefs.current.full_name = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.full_name ? 'true' : 'false'}
+                  aria-describedby={addressErrors.full_name ? 'checkout_full_name_error' : undefined}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   style={{ '--tw-ring-color': primaryColor, borderColor: undefined } as React.CSSProperties}
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
@@ -541,6 +610,7 @@ export default function StoreCheckoutPage() {
                   autoComplete="name"
                   required
                 />
+                {addressErrors.full_name && <p id="checkout_full_name_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('full_name')}</p>}
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="checkout_address_line" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Adresse</label>
@@ -549,13 +619,18 @@ export default function StoreCheckoutPage() {
                   name="address_line"
                   type="text"
                   value={address.address_line}
-                  onChange={(e) => setAddress({ ...address, address_line: e.target.value })}
+                  onChange={(e) => setAddressField('address_line', e.target.value)}
+                  ref={(node) => { addressRefs.current.address_line = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.address_line ? 'true' : 'false'}
+                  aria-describedby={addressErrors.address_line ? 'checkout_address_line_error' : undefined}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
                   autoComplete="street-address"
                   required
                 />
+                {addressErrors.address_line && <p id="checkout_address_line_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('address_line')}</p>}
               </div>
               <div>
                 <label htmlFor="checkout_city" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Ville</label>
@@ -564,13 +639,18 @@ export default function StoreCheckoutPage() {
                   name="city"
                   type="text"
                   value={address.city}
-                  onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                  onChange={(e) => setAddressField('city', e.target.value)}
+                  ref={(node) => { addressRefs.current.city = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.city ? 'true' : 'false'}
+                  aria-describedby={addressErrors.city ? 'checkout_city_error' : undefined}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
                   autoComplete="address-level2"
                   required
                 />
+                {addressErrors.city && <p id="checkout_city_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('city')}</p>}
               </div>
               <div>
                 <label htmlFor="checkout_postal_code" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Code postal</label>
@@ -579,7 +659,11 @@ export default function StoreCheckoutPage() {
                   name="postal_code"
                   type="text"
                   value={address.postal_code}
-                  onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
+                  onChange={(e) => setAddressField('postal_code', e.target.value)}
+                  ref={(node) => { addressRefs.current.postal_code = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.postal_code ? 'true' : 'false'}
+                  aria-describedby={addressErrors.postal_code ? 'checkout_postal_code_error' : undefined}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
@@ -587,6 +671,7 @@ export default function StoreCheckoutPage() {
                   inputMode="numeric"
                   required
                 />
+                {addressErrors.postal_code && <p id="checkout_postal_code_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('postal_code')}</p>}
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="checkout_phone" className="block text-sm font-medium mb-1" style={{ color: textColor }}>Téléphone</label>
@@ -595,7 +680,11 @@ export default function StoreCheckoutPage() {
                   name="phone"
                   type="tel"
                   value={address.phone}
-                  onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                  onChange={(e) => setAddressField('phone', e.target.value)}
+                  ref={(node) => { addressRefs.current.phone = node; }}
+                  onInvalid={handleNativeInvalid}
+                  aria-invalid={addressErrors.phone ? 'true' : 'false'}
+                  aria-describedby={addressErrors.phone ? 'checkout_phone_error' : undefined}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-1 outline-none"
                   onFocus={(e) => (e.target.style.borderColor = primaryColor)}
                   onBlur={(e) => (e.target.style.borderColor = '#d1d5db')}
@@ -603,6 +692,7 @@ export default function StoreCheckoutPage() {
                   inputMode="tel"
                   required
                 />
+                {addressErrors.phone && <p id="checkout_phone_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('phone')}</p>}
               </div>
             </div>
           </fieldset>
@@ -617,7 +707,15 @@ export default function StoreCheckoutPage() {
         <fieldset className="rounded-2xl shadow-sm border p-8" style={{ backgroundColor: secondaryColor, borderColor }}>
           <legend className="w-full text-xl font-bold mb-6 border-b pb-4" style={{ color: textColor, borderColor }}>Mode de paiement</legend>
 
-          <div className="space-y-4" role="radiogroup" aria-label="Mode de paiement">
+          <div
+            ref={paymentGroupRef}
+            className="space-y-4"
+            role="radiogroup"
+            aria-label="Mode de paiement"
+            aria-invalid={paymentHasError ? 'true' : 'false'}
+            aria-describedby={paymentHasError ? 'checkout_payment_error' : undefined}
+            tabIndex={-1}
+          >
             {paymentOptions.map((g) => {
               const isAvailable = g.capability?.available === true;
               const descriptionId = `payment_gateway_${g.id}_description`;
@@ -669,9 +767,9 @@ export default function StoreCheckoutPage() {
             })}
           </div>
 
-          {quote && !hasAvailableGateway && (
-            <p role="alert" className="mt-4 text-sm font-medium text-red-700">
-              Aucun moyen de paiement n&apos;est disponible pour cette commande. Vérifiez la livraison ou réessayez plus tard.
+          {(paymentError || (quote && !hasAvailableGateway)) && (
+            <p id="checkout_payment_error" role="alert" className="mt-4 text-sm font-medium text-red-700">
+              {paymentError || 'Aucun moyen de paiement n&apos;est disponible pour cette commande. Vérifiez la livraison ou réessayez plus tard.'}
             </p>
           )}
 
