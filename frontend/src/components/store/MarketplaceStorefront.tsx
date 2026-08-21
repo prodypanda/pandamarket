@@ -118,11 +118,19 @@ function formatSellerScore(value?: number | string | null): string {
   return Number.isFinite(score) && score > 0 ? score.toFixed(1) : 'New';
 }
 
-function safeGoogleMapEmbedUrl(value?: string | null): string {
+const GOOGLE_MAP_EMBED_HOSTS = new Set([
+  'www.google.com',
+  'maps.google.com',
+  'maps.googleapis.com',
+]);
+
+export function safeGoogleMapEmbedUrl(value?: string | null): string {
   if (!value) return '';
   try {
     const url = new URL(value.trim());
-    const isGoogleMaps = url.protocol === 'https:' && /(^|\\.)google\\.[a-z.]+$/i.test(url.hostname) && url.pathname.startsWith('/maps/embed');
+    const isGoogleMaps = url.protocol === 'https:'
+      && GOOGLE_MAP_EMBED_HOSTS.has(url.hostname.toLowerCase())
+      && url.pathname.startsWith('/maps/embed');
     return isGoogleMaps ? url.toString() : '';
   } catch {
     return '';

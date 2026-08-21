@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
+import { getFrontendSecurityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        // Covers Hub, tenant/custom-domain storefronts, admin, previews, and
+        // static assets. API routes remain intentionally outside middleware,
+        // but still receive the same browser-facing policy.
+        source: '/(.*)',
+        headers: getFrontendSecurityHeaders(),
+      },
+    ];
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://pandamarket-backend-fjom.onrender.com';

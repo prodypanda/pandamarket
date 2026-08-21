@@ -84,10 +84,12 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-04 — Frontend security headers and CSP
 
-- [ ] Add environment-aware HSTS, `Content-Security-Policy`, `X-Content-Type-Options`, frame policy, referrer policy, and permissions policy at the frontend boundary.
-- [ ] Build an explicit source inventory for API, payment redirect, analytics, image, font, Page Builder, and R2 domains; keep preview/localhost policy usable.
-- [ ] Add CSP report-only rollout, report collection, and a tested enforcement switch.
-- [ ] Add regression tests around Page Builder embeds, payment initialization/redirects, image delivery, and tenant custom domains.
+- [x] Add environment-aware HSTS, `Content-Security-Policy`, `X-Content-Type-Options`, frame policy, referrer policy, and permissions policy at the frontend boundary.
+- [x] Build an explicit source inventory for API, payment redirect, analytics, image, font, Page Builder, and R2 domains; keep preview/localhost policy usable.
+- [x] Add CSP report-only rollout, report collection, and a tested enforcement switch.
+- [-] Add regression tests around Page Builder embeds, payment initialization/redirects, image delivery, and tenant custom domains. Static policy/source and report-endpoint contracts pass; browser-level header checks on deployed preview/custom domains remain.
+
+**Frontend security-header evidence (2026-08-22):** `frontend/next.config.ts` now applies an environment-aware policy to every browser response, including Hub, tenant/custom-domain rewrites, admin, previews, API routes, and static assets. `frontend/src/lib/security-headers.ts` inventories backend/WebSocket, analytics, payment, Google Maps, font, image, storage, and local-development sources; production emits HSTS and `upgrade-insecure-requests`, while preview/local development avoids HSTS and permits local Next/WebSocket tooling and loopback assets. `PD_CSP_REPORT_ONLY=true` switches to report-only mode, and `/api/csp-report` accepts bounded reports while stripping query strings before logging. Explicit `PD_CSP_IMAGE_SOURCES` and `PD_CSP_MEDIA_SOURCES` allow approved deployment-specific CDNs without falling back to a wildcard HTTPS source. `safeGoogleMapEmbedUrl()` now accepts only HTTPS embeds from the CSP-approved `www.google.com`, `maps.google.com`, and `maps.googleapis.com` hosts. The focused suite passed 6 files/27 tests (`security-headers`, `csp-report`, `next-security-config`, `MarketplaceStorefront`, `dynamic-blocks`, and `page-builder-renderer-analytics`); frontend TypeScript passed; changed-source ESLint passed with one pre-existing `publicStorageUrl` warning; and `npm run build` passed with 101 generated pages including `/api/csp-report`. A built-server boundary check on `http://127.0.0.1:3100/favicon.ico` confirmed CSP, HSTS, `nosniff`, frame, referrer, and permissions headers; a POST to `/api/csp-report` returned `204` with `Cache-Control: no-store` and redacted query strings. Deployed browser checks on preview/custom domains remain open before closing P1-04.
 
 ### P1-06 — Semantic checkout forms
 
