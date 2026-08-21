@@ -1879,11 +1879,140 @@ export class OrderService {
   }
 
   /**
+   * Cancel an order created for payment only when no provider session can be
+   * captured. The row lock and active-attempt guard make compensation safe
+   * against a concurrent webhook or a second payment initialization request.
+   */
+  async cancelUnstartedPaymentOrder(
+    orderId: string,
+    reason: string,
+    failedAttemptId?: string,
+  ): Promise<'cancelled' | 'already_paid' | 'active_attempt' | 'not_found'> {
+    const result = await transaction(async (c) => {
+      const { rows: orderRows } = await c.query<{
+        status: OrderStatus;
+        payment_status: PaymentStatus;
+        payment_reference: string | null;
+      }>(
+        `SELECT status, payment_status, payment_reference
+         FROM pd_order
+         WHERE id = $1
+         FOR UPDATE`,
+        [orderId],
+      );
+      const order = orderRows[0];
+      if (!order) return 'not_found' as const;
+      if (order.payment_status === PaymentStatus.Captured) return 'already_paid' as const;
+      if (order.status === OrderStatus.Cancelled) return 'cancelled' as const;
+
+      if (![OrderStatus.PaymentRequired, OrderStatus.Pending].includes(order.status)) {
+        return 'active_attempt' as const;
+      }
+
+      // A stale order status must not allow compensation to undo a shipment.
+      // Fulfillment state is authoritative for whether inventory can still be
+      // returned to available stock.
+      const { rows: fulfillmentRows } = await c.query<{ started: string }>(
+        `SELECT COUNT(*) FILTER (WHERE status IN ('shipped', 'delivered'))::text AS started
+         FROM pd_fulfillment
+         WHERE order_id = $1`,
+        [orderId],
+      );
+      if (Number(fulfillmentRows[0]?.started || 0) > 0) {
+        return 'active_attempt' as const;
+      }
+
+      let failedReference: string | null = null;
+      if (failedAttemptId) {
+        const { rows: failedAttemptRows } = await c.query<{ gateway_reference: string; status: string }>(
+          `SELECT gateway_reference, status
+           FROM pd_payment_attempt
+           WHERE id = $1 AND order_id = $2`,
+          [failedAttemptId, orderId],
+        );
+        if (failedAttemptRows[0]?.status === 'initialization_failed') {
+          failedReference = failedAttemptRows[0].gateway_reference;
+        }
+      }
+      if (order.payment_reference && order.payment_reference !== failedReference) {
+        return 'active_attempt' as const;
+      }
+
+      const { rowCount: activeAttemptCount } = await c.query(
+        `SELECT 1
+         FROM pd_payment_attempt
+         WHERE order_id = $1
+           AND status IN ('initializing', 'initialization_unknown', 'initialized', 'captured')
+           AND ($2::text IS NULL OR id <> $2)
+         LIMIT 1`,
+        [orderId, failedAttemptId ?? null],
+      );
+      if (activeAttemptCount) return 'active_attempt' as const;
+
+      await c.query(
+        `UPDATE pd_order
+         SET status = 'cancelled', cancelled_at = NOW(), cancelled_reason = $2
+         WHERE id = $1 AND payment_status != 'captured' AND status != 'cancelled'`,
+        [orderId, reason],
+      );
+      if (failedReference && order.payment_reference === failedReference) {
+        await c.query(
+          `UPDATE pd_order SET payment_reference = NULL WHERE id = $1 AND payment_reference = $2`,
+          [orderId, failedReference],
+        );
+      }
+      await c.query(
+        `UPDATE pd_fulfillment
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE order_id = $1 AND status = 'pending'`,
+        [orderId],
+      );
+
+      const { rows: items } = await c.query<{
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        product_type: ProductType;
+      }>(
+        `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+         FROM pd_order_item i
+         JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = $1`,
+        [orderId],
+      );
+      for (const item of items) {
+        await restoreOrderItemStock(c, item);
+        if (item.product_type === ProductType.Serial) {
+          await c.query(
+            `UPDATE pd_license_key
+             SET order_id = NULL, assigned_at = NULL
+             WHERE product_id = $1 AND order_id = $2 AND is_used = false`,
+            [item.product_id, orderId],
+          );
+        }
+      }
+      return 'cancelled' as const;
+    });
+
+    logger.info({ order_id: orderId, reason, result }, 'Unstarted payment order compensation evaluated');
+    return result;
+  }
+
+  /**
    * Mark an order as paid (called after payment capture).
    * Triggers the payment-captured event for downstream wallet credit.
    */
   async markPaid(orderId: string, gateway: PaymentGateway, reference: string): Promise<OrderRow> {
-    const { rows } = await query<OrderRow>(
+    return transaction((client) => this.markPaidInTransaction(client, orderId, gateway, reference));
+  }
+
+  async markPaidInTransaction(
+    client: Pick<PoolClient, 'query'>,
+    orderId: string,
+    gateway: PaymentGateway,
+    reference: string,
+  ): Promise<OrderRow> {
+    const { rows } = await client.query<OrderRow>(
       `UPDATE pd_order
        SET payment_status = 'captured',
            payment_gateway = $2,
@@ -1897,20 +2026,37 @@ export class OrderService {
              WHEN status = 'payment_required' THEN 'pending'
              ELSE status
            END
-       WHERE id = $1 AND payment_status != 'captured'
+       WHERE id = $1 AND payment_status != 'captured' AND status NOT IN ('cancelled', 'refunded')
        RETURNING *`,
       [orderId, gateway, reference],
     );
-    if (!rows[0]) {
-      throw new PdConflictError(
-        PdErrorCode.PAY_ALREADY_CAPTURED,
-        'Order not found or already paid',
-      );
+    if (rows[0]) {
+      if (rows[0].customer_id) {
+        buyerInterestService.syncBuyerProfile(rows[0].customer_id).catch(() => {});
+      }
+      return rows[0];
     }
-    if (rows[0].customer_id) {
-      buyerInterestService.syncBuyerProfile(rows[0].customer_id).catch(() => {});
+
+    const { rows: currentRows } = await client.query<OrderRow>(
+      'SELECT * FROM pd_order WHERE id = $1 FOR UPDATE',
+      [orderId],
+    );
+    const current = currentRows[0];
+    if (
+      current
+      && current.payment_status === PaymentStatus.Captured
+      && current.payment_gateway === gateway
+      && current.payment_reference === reference
+    ) {
+      return current;
     }
-    return rows[0];
+    throw new PdConflictError(
+      PdErrorCode.PAY_ALREADY_CAPTURED,
+      current ? 'Order cannot accept this payment capture' : 'Order not found',
+      current
+        ? { order_id: orderId, status: current.status, payment_status: current.payment_status }
+        : { order_id: orderId },
+    );
   }
 
   // -----------------------------------------------------------------------

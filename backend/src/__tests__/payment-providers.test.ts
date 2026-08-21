@@ -344,13 +344,24 @@ describe('KonnectProvider', () => {
   describe('verify()', () => {
     it('should return captured for completed payment', async () => {
       mockAxios.get.mockResolvedValueOnce({
-        data: { payment: { status: 'completed', amount: 85000 } },
+        data: { payment: { status: 'completed', amount: 85000, token: 'tnd' } },
       });
 
       const result = await provider.verify('konnect_ref_123');
 
       expect(result.status).toBe('captured');
       expect(result.amount).toBe(85); // millimes → TND
+      expect(result.metadata?.currency).toBe('TND');
+    });
+
+    it('falls back to TND when Konnect returns malformed currency metadata', async () => {
+      mockAxios.get.mockResolvedValueOnce({
+        data: { payment: { status: 'completed', amount: 85000, token: { code: 'TND' } } },
+      });
+
+      const result = await provider.verify('konnect_ref_malformed_currency');
+
+      expect(result.metadata?.currency).toBe('TND');
     });
 
     it('should return pending for pending payment', async () => {

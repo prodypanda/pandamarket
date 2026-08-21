@@ -25,6 +25,10 @@ import { platformConfigService } from './platform-config.service';
 import { adsService } from './ads.service';
 import { toMinorUnits } from '../utils/money';
 import { paymentCapabilityService } from './payment-capability.service';
+import {
+  enqueuePaymentCompensation,
+  enqueuePaymentReconciliation,
+} from '../queues/payment-reconciliation-queue';
 
 interface PaymentAttemptRow {
   id: string;
@@ -43,6 +47,11 @@ interface PaymentAttemptRow {
   provider_response: PaymentInitResult | null;
   failure_code: string | null;
   failure_message: string | null;
+  provider_state?: string | null;
+  reconciliation_status?: string | null;
+  compensation_status?: string | null;
+  provider_expected_amount_minor?: string | null;
+  provider_expected_currency?: string | null;
 }
 
 const PAYMENT_INIT_LOCK_PREFIX = 'pd_payment_init:';
@@ -79,6 +88,67 @@ function parseStoredPaymentInit(row: PaymentAttemptRow): PaymentInitResult | nul
   return row.provider_response;
 }
 
+function throwMissingPaymentReplay(orderId: string, gateway: PaymentGateway): never {
+  throw new PdConflictError(
+    PdErrorCode.PAY_RECONCILIATION_PENDING,
+    'The stored payment session is missing replay data and must be reconciled',
+    { order_id: orderId, gateway, retry_after_seconds: 60 },
+  );
+}
+
+function nullableEqual(left: string | number | null | undefined, right: string | number | null | undefined): boolean {
+  return (left ?? null) === (right ?? null);
+}
+
+/**
+ * A second browser request may use a different local idempotency key while it
+ * is still trying to resume the same checkout. It may reuse an already-created
+ * provider session only when the immutable financial binding is identical.
+ * Gateway, merchant account, quote identity, amount, and currency are all part
+ * of that binding; capability versions are deliberately not compared here
+ * because availability can change after a provider session has been created.
+ */
+function attemptMatchesPayment(
+  attempt: PaymentAttemptRow,
+  order: OrderRow,
+  gateway: PaymentGateway,
+  expectedAmountMinor: string,
+  currency: string,
+  merchantAccountId?: string | null,
+): boolean {
+  return attempt.gateway === gateway
+    && attempt.expected_amount_minor === expectedAmountMinor
+    && attempt.expected_currency.toUpperCase() === currency.toUpperCase()
+    && nullableEqual(attempt.quote_id, order.quote_id)
+    && nullableEqual(attempt.quote_version, order.quote_version)
+    && (merchantAccountId === undefined
+      || nullableEqual(attempt.merchant_account_id, merchantAccountId));
+}
+
+function providerPaymentBinding(
+  result: PaymentInitResult,
+  fallbackAmountMinor: string,
+  fallbackCurrency: string,
+): { amountMinor: string; currency: string } {
+  const metadata = result.metadata || {};
+  const currency = typeof metadata.currency === 'string'
+    ? metadata.currency.toUpperCase()
+    : fallbackCurrency;
+  const convertedAmount = Number(metadata.converted_amount);
+  const amountMinor = Number.isFinite(convertedAmount) && convertedAmount >= 0
+    ? toMinorUnits(convertedAmount, currency).toString()
+    : fallbackAmountMinor;
+  return { amountMinor, currency };
+}
+
+function initProviderState(error: unknown): 'not_created' | 'unknown' {
+  if (error instanceof PdError) {
+    const state = error.details?.provider_state;
+    if (state === 'unknown' || state === 'not_created') return state;
+  }
+  return 'unknown';
+}
+
 export class PaymentService {
   /**
    * Initialize a payment session for any supported gateway.
@@ -104,8 +174,9 @@ export class PaymentService {
       `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor,
               expected_currency, merchant_account_id, status, idempotency_key,
               request_fingerprint, capability_version, quote_id, quote_version,
-              provider_response,
-              failure_code, failure_message
+              provider_response, provider_state, reconciliation_status,
+              compensation_status, provider_expected_amount_minor,
+              provider_expected_currency, failure_code, failure_message
        FROM pd_payment_attempt
        WHERE order_id = $1 AND idempotency_key = $2`,
       [order.id, normalizedKey],
@@ -137,12 +208,22 @@ export class PaymentService {
         }
       }
       const stored = parseStoredPaymentInit(existing);
-      if (stored && ['initialized', 'captured'].includes(existing.status)) return stored;
+      if (stored && existing.status === 'captured') return stored;
+      if (['initialized', 'captured'].includes(existing.status) && !stored) {
+        throwMissingPaymentReplay(order.id, gateway);
+      }
       if (existing.status === 'initializing') {
         throw new PdConflictError(
           PdErrorCode.PAY_INIT_IN_PROGRESS,
           'Payment initialization is already in progress',
           { order_id: order.id, retry_after_seconds: 10 },
+        );
+      }
+      if (existing.status === 'initialization_unknown') {
+        throw new PdConflictError(
+          PdErrorCode.PAY_RECONCILIATION_PENDING,
+          'Payment state is being reconciled before another attempt can start',
+          { order_id: order.id, retry_after_seconds: 60 },
         );
       }
       if (existing.failure_code || existing.failure_message) {
@@ -154,30 +235,49 @@ export class PaymentService {
         );
       }
     }
+    if (order.payment_status === 'captured' || ['cancelled', 'refunded'].includes(String(order.status))) {
+      throw new PdValidationError('This order is no longer payable', { order_id: order.id });
+    }
 
-    const paymentSelection = await paymentCapabilityService.assertOrderGatewayAvailable(
-      order,
-      gateway,
-    );
-    const vendorCredentials = paymentSelection.vendor_credentials;
-    const requestFingerprint = paymentInitFingerprint({
-      order,
-      gateway,
-      amountMinor: expectedAmountMinor,
-      currency,
-      capabilityVersion: paymentSelection.capability_version,
-      returnOrigin: normalizedReturnOrigin,
-    });
-    const lockKey = `${PAYMENT_INIT_LOCK_PREFIX}${order.id}:${normalizedKey}`;
-
+    const lockKey = `${PAYMENT_INIT_LOCK_PREFIX}order:${order.id}`;
     const reservation = await transaction(async (client) => {
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
+      const { rows: orderRows } = await client.query<OrderRow>(
+        'SELECT * FROM pd_order WHERE id = $1 FOR UPDATE',
+        [order.id],
+      );
+      const lockedOrder = orderRows[0];
+      if (!lockedOrder) {
+        throw new PdValidationError('Payment order was not found', { order_id: order.id });
+      }
+      if (
+        lockedOrder.payment_status === 'captured'
+        || ['cancelled', 'refunded'].includes(String(lockedOrder.status))
+      ) {
+        throw new PdValidationError('This order is no longer payable', { order_id: order.id });
+      }
+      const lockedCurrency = (lockedOrder.currency || config.defaultCurrency).toUpperCase();
+      const lockedAmountMinor = toMinorUnits(parseFloat(lockedOrder.total), lockedCurrency).toString();
+      if (
+        lockedOrder.payment_gateway !== gateway
+        || lockedCurrency !== currency
+        || lockedAmountMinor !== expectedAmountMinor
+        || !nullableEqual(lockedOrder.quote_id, order.quote_id)
+        || !nullableEqual(lockedOrder.quote_version, order.quote_version)
+      ) {
+        throw new PdConflictError(
+          PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+          'The order payment details changed before initialization',
+          { order_id: order.id, gateway },
+        );
+      }
       const { rows } = await client.query<PaymentAttemptRow>(
         `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor,
                 expected_currency, merchant_account_id, status, idempotency_key,
                 request_fingerprint, capability_version, quote_id, quote_version,
-                provider_response,
-                failure_code, failure_message
+                provider_response, provider_state, reconciliation_status,
+                compensation_status, provider_expected_amount_minor,
+                provider_expected_currency, failure_code, failure_message
          FROM pd_payment_attempt
          WHERE order_id = $1 AND idempotency_key = $2
          FOR UPDATE`,
@@ -185,9 +285,26 @@ export class PaymentService {
       );
       const existingReservation = rows[0];
       if (existingReservation) {
+        if (existingReservation.gateway !== gateway) {
+          throw new PdConflictError(
+            PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+            'This payment idempotency key is bound to another gateway',
+            { order_id: order.id, gateway, existing_gateway: existingReservation.gateway },
+          );
+        }
+        const replayFingerprint = existingReservation.capability_version
+          ? paymentInitFingerprint({
+            order: lockedOrder,
+            gateway,
+            amountMinor: lockedAmountMinor,
+            currency: lockedCurrency,
+            capabilityVersion: existingReservation.capability_version,
+            returnOrigin: normalizedReturnOrigin,
+          })
+          : null;
         if (
           existingReservation.request_fingerprint
-          && existingReservation.request_fingerprint !== requestFingerprint
+          && replayFingerprint !== existingReservation.request_fingerprint
         ) {
           throw new PdConflictError(
             PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
@@ -197,13 +314,31 @@ export class PaymentService {
         }
         const stored = parseStoredPaymentInit(existingReservation);
         if (stored && ['initialized', 'captured'].includes(existingReservation.status)) {
-          return { attemptId: existingReservation.id, replay: stored };
+          return {
+            attemptId: existingReservation.id,
+            replay: stored,
+            vendorCredentials: undefined,
+            requestFingerprint: existingReservation.request_fingerprint || '',
+            expectedAmountMinor: lockedAmountMinor,
+            currency: lockedCurrency,
+            amount: parseFloat(lockedOrder.total),
+          };
+        }
+        if (['initialized', 'captured'].includes(existingReservation.status) && !stored) {
+          throwMissingPaymentReplay(order.id, gateway);
         }
         if (existingReservation.status === 'initializing') {
           throw new PdConflictError(
             PdErrorCode.PAY_INIT_IN_PROGRESS,
             'Payment initialization is already in progress',
             { order_id: order.id, retry_after_seconds: 10 },
+          );
+        }
+        if (existingReservation.status === 'initialization_unknown') {
+          throw new PdConflictError(
+            PdErrorCode.PAY_RECONCILIATION_PENDING,
+            'Payment state is being reconciled before another attempt can start',
+            { order_id: order.id, retry_after_seconds: 60 },
           );
         }
         if (existingReservation.failure_code || existingReservation.failure_message) {
@@ -215,6 +350,83 @@ export class PaymentService {
           );
         }
       }
+
+      const { rows: activeRows } = await client.query<PaymentAttemptRow>(
+        `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor,
+                expected_currency, merchant_account_id, status, idempotency_key,
+                request_fingerprint, capability_version, quote_id, quote_version,
+                provider_response, provider_state, reconciliation_status,
+                compensation_status, provider_expected_amount_minor,
+                provider_expected_currency, failure_code, failure_message
+         FROM pd_payment_attempt
+         WHERE order_id = $1
+           AND status IN ('initializing', 'initialization_unknown', 'initialized', 'captured')
+           AND ($2::text IS NULL OR id <> $2)
+         ORDER BY created_at DESC
+         FOR UPDATE`,
+        [order.id, existingReservation?.id ?? null],
+      );
+      const active = activeRows[0];
+      if (active) {
+        const stored = parseStoredPaymentInit(active);
+        if (
+          stored
+          && ['initialized', 'captured'].includes(active.status)
+          && attemptMatchesPayment(
+            active,
+            lockedOrder,
+            gateway,
+            lockedAmountMinor,
+            lockedCurrency,
+          )
+        ) {
+          return {
+            attemptId: active.id,
+            replay: stored,
+            vendorCredentials: undefined,
+            requestFingerprint: active.request_fingerprint || '',
+            expectedAmountMinor: lockedAmountMinor,
+            currency: lockedCurrency,
+            amount: parseFloat(lockedOrder.total),
+          };
+        }
+        if (['initialized', 'captured'].includes(active.status) && !stored) {
+          throwMissingPaymentReplay(order.id, gateway);
+        }
+        if (active.status === 'initialization_unknown') {
+          throw new PdConflictError(
+            PdErrorCode.PAY_RECONCILIATION_PENDING,
+            'Payment state is being reconciled before another attempt can start',
+            { order_id: order.id, retry_after_seconds: 60 },
+          );
+        }
+        if (active.status === 'initializing') {
+          throw new PdConflictError(
+            PdErrorCode.PAY_INIT_IN_PROGRESS,
+            'Another payment initialization is already in progress for this order',
+            { order_id: order.id, retry_after_seconds: 10 },
+          );
+        }
+        throw new PdConflictError(
+          PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+          'This order already has a different active payment session',
+          { order_id: order.id, gateway, existing_gateway: active.gateway },
+        );
+      }
+
+      const paymentSelection = await paymentCapabilityService.assertOrderGatewayAvailable(
+        lockedOrder,
+        gateway,
+        { executor: client, lock_stores: true },
+      );
+      const requestFingerprint = paymentInitFingerprint({
+        order: lockedOrder,
+        gateway,
+        amountMinor: lockedAmountMinor,
+        currency: lockedCurrency,
+        capabilityVersion: paymentSelection.capability_version,
+        returnOrigin: normalizedReturnOrigin,
+      });
 
       const attemptId = pdId('pa');
       const pendingReference = `${PENDING_REFERENCE_PREFIX}${attemptId}`;
@@ -230,20 +442,30 @@ export class PaymentService {
           order.id,
           gateway,
           pendingReference,
-          expectedAmountMinor,
-          currency,
+          lockedAmountMinor,
+          lockedCurrency,
           paymentSelection.merchant_account_id,
           normalizedKey,
           requestFingerprint,
           paymentSelection.capability_version,
-          order.quote_id ?? null,
-          order.quote_version ?? null,
+          lockedOrder.quote_id ?? null,
+          lockedOrder.quote_version ?? null,
         ],
       );
-      return { attemptId, replay: null as PaymentInitResult | null };
+      return {
+        attemptId,
+        replay: null as PaymentInitResult | null,
+        vendorCredentials: paymentSelection.vendor_credentials,
+        requestFingerprint,
+        expectedAmountMinor: lockedAmountMinor,
+        currency: lockedCurrency,
+        amount: parseFloat(lockedOrder.total),
+      };
     });
 
     if (reservation.replay) return reservation.replay;
+    const vendorCredentials = reservation.vendorCredentials;
+    const requestFingerprint = reservation.requestFingerprint;
 
     const hubDomain = config.hubDomain.startsWith('http')
       ? config.hubDomain
@@ -261,8 +483,8 @@ export class PaymentService {
     try {
       result = await provider.init({
         order_id: order.id,
-        amount: parseFloat(order.total),
-        currency,
+        amount: reservation.amount,
+        currency: reservation.currency,
         customer_email: customerEmail,
         idempotency_key: normalizedKey,
         success_url: successUrl,
@@ -274,92 +496,220 @@ export class PaymentService {
           PdErrorCode.PAY_INIT_FAILED,
           'Payment provider returned an incomplete initialization response',
           502,
-          { gateway },
+          { gateway, provider_state: 'unknown', retryable: true },
         );
       }
     } catch (err) {
-      await query(
-        `UPDATE pd_payment_attempt
-         SET status = 'initialization_failed',
-             failed_at = NOW(),
-             failure_code = $2,
-             failure_message = $3,
-             updated_at = NOW()
-         WHERE id = $1 AND status = 'initializing'`,
-        [
-          reservation.attemptId,
-          (err as { code?: string }).code || PdErrorCode.PAY_INIT_FAILED,
-          (err as Error).message || 'Payment provider initialization failed',
-        ],
-      ).catch((updateError) => {
+      const providerState = initProviderState(err);
+      const attemptStatus = providerState === 'unknown'
+        ? 'initialization_unknown'
+        : 'initialization_failed';
+      try {
+        await query(
+          `UPDATE pd_payment_attempt
+           SET status = $2,
+               provider_state = $3,
+               reconciliation_status = CASE WHEN $3 = 'unknown' THEN 'queued' ELSE 'resolved' END,
+               next_reconciliation_at = CASE WHEN $3 = 'unknown' THEN NOW() ELSE NULL END,
+               compensation_status = CASE WHEN $3 = 'not_created' THEN 'pending' ELSE 'not_required' END,
+               failed_at = NOW(),
+               failure_code = $4,
+               failure_message = $5,
+               updated_at = NOW()
+           WHERE id = $1 AND status = 'initializing'`,
+          [
+            reservation.attemptId,
+            attemptStatus,
+            providerState,
+            (err as { code?: string }).code || PdErrorCode.PAY_INIT_FAILED,
+            (err as Error).message || 'Payment provider initialization failed',
+          ],
+        );
+      } catch (updateError) {
         logger.error(
           { err: updateError, attempt_id: reservation.attemptId },
           'Failed to persist payment initialization failure',
         );
-      });
+      }
+      if (providerState === 'unknown') {
+        try {
+          await enqueuePaymentReconciliation(reservation.attemptId);
+        } catch (queueError) {
+          logger.error(
+            { err: queueError, attempt_id: reservation.attemptId },
+            'Failed to enqueue payment initialization reconciliation',
+          );
+        }
+      } else {
+        const compensation = await this.compensateFailedInitialization(
+          reservation.attemptId,
+          order.id,
+          'Payment provider rejected initialization',
+        );
+        if (err instanceof PdError) {
+          throw new PdError(err.code, err.message, err.httpStatus, {
+            ...err.details,
+            order_released: compensation === 'cancelled',
+            compensation_status: compensation,
+          });
+        }
+      }
       throw err;
     }
 
-    await transaction(async (client) => {
-      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
-      const { rows } = await client.query<PaymentAttemptRow>(
-        `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor,
-                expected_currency, merchant_account_id, status, idempotency_key,
-                request_fingerprint, capability_version, quote_id, quote_version,
-                provider_response,
-                failure_code, failure_message
-         FROM pd_payment_attempt
-         WHERE id = $1
-         FOR UPDATE`,
-        [reservation.attemptId],
-      );
-      const attempt = rows[0];
-      if (!attempt) throw new PdValidationError('Payment attempt reservation disappeared');
-      if (attempt.request_fingerprint !== requestFingerprint) {
-        throw new PdConflictError(
-          PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
-          'Payment attempt binding changed while initializing',
-          { order_id: order.id, gateway },
+    const providerBinding = providerPaymentBinding(
+      result,
+      reservation.expectedAmountMinor,
+      reservation.currency,
+    );
+    try {
+      await transaction(async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
+        const { rows: orderRows } = await client.query<{
+          status: string;
+          payment_status: string;
+          payment_reference: string | null;
+        }>(
+          `SELECT status, payment_status, payment_reference
+           FROM pd_order
+           WHERE id = $1
+           FOR UPDATE`,
+          [order.id],
         );
-      }
-      if (attempt.status === 'initialized' || attempt.status === 'captured') return;
-      if (attempt.status !== 'initializing') {
-        throw new PdError(
-          PdErrorCode.PAY_INIT_FAILED,
-          attempt.failure_message || 'Payment attempt is no longer initializable',
-          502,
-          { gateway, order_id: order.id },
+        const currentOrder = orderRows[0];
+        if (
+          !currentOrder
+          || currentOrder.payment_status === 'captured'
+          || ['cancelled', 'refunded'].includes(currentOrder.status)
+        ) {
+          throw new PdConflictError(
+            PdErrorCode.PAY_RECONCILIATION_PENDING,
+            'The provider session was created after the order stopped being payable',
+            { order_id: order.id, gateway },
+          );
+        }
+        const { rows } = await client.query<PaymentAttemptRow>(
+          `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor,
+                  expected_currency, merchant_account_id, status, idempotency_key,
+                  request_fingerprint, capability_version, quote_id, quote_version,
+                  provider_response, provider_state, reconciliation_status,
+                  compensation_status, provider_expected_amount_minor,
+                  provider_expected_currency, failure_code, failure_message
+           FROM pd_payment_attempt
+           WHERE id = $1
+           FOR UPDATE`,
+          [reservation.attemptId],
         );
-      }
+        const attempt = rows[0];
+        if (!attempt) throw new PdValidationError('Payment attempt reservation disappeared');
+        if (attempt.request_fingerprint !== requestFingerprint) {
+          throw new PdConflictError(
+            PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+            'Payment attempt binding changed while initializing',
+            { order_id: order.id, gateway },
+          );
+        }
+        if (attempt.status === 'initialized' || attempt.status === 'captured') return;
+        if (attempt.status !== 'initializing') {
+          throw new PdError(
+            PdErrorCode.PAY_INIT_FAILED,
+            attempt.failure_message || 'Payment attempt is no longer initializable',
+            502,
+            { gateway, order_id: order.id },
+          );
+        }
 
-      const orderUpdate = await client.query(
-        `UPDATE pd_order
-         SET payment_reference = $2
-         WHERE id = $1 AND (payment_reference IS NULL OR payment_reference = $2)
-         RETURNING id`,
-        [order.id, result.gateway_reference],
-      );
-      if (!orderUpdate.rowCount) {
-        throw new PdConflictError(
-          PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
-          'The order already has a different payment reference',
-          { order_id: order.id, gateway },
+        const orderUpdate = await client.query(
+          `UPDATE pd_order
+           SET payment_reference = $2
+           WHERE id = $1 AND (payment_reference IS NULL OR payment_reference = $2)
+           RETURNING id`,
+          [order.id, result.gateway_reference],
+        );
+        if (!orderUpdate.rowCount) {
+          throw new PdConflictError(
+            PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+            'The order already has a different payment reference',
+            { order_id: order.id, gateway },
+          );
+        }
+
+        const attemptUpdate = await client.query(
+          `UPDATE pd_payment_attempt
+           SET gateway_reference = $2,
+               status = 'initialized',
+               provider_state = 'created',
+               provider_response = $3::jsonb,
+               provider_expected_amount_minor = $4,
+               provider_expected_currency = $5,
+               reconciliation_status = 'none',
+               compensation_status = 'not_required',
+               initialized_at = NOW(),
+               failure_code = NULL,
+               failure_message = NULL,
+               updated_at = NOW()
+           WHERE id = $1 AND status = 'initializing' AND request_fingerprint = $6`,
+          [
+            reservation.attemptId,
+            result.gateway_reference,
+            JSON.stringify(result),
+            providerBinding.amountMinor,
+            providerBinding.currency,
+            requestFingerprint,
+          ],
+        );
+        if (!attemptUpdate.rowCount) {
+          throw new PdConflictError(
+            PdErrorCode.PAY_IDEMPOTENCY_CONFLICT,
+            'Payment attempt could not be finalized',
+            { order_id: order.id, gateway },
+          );
+        }
+      });
+    } catch (err) {
+      try {
+        await query(
+          `UPDATE pd_payment_attempt
+           SET gateway_reference = $2,
+               status = 'initialization_unknown',
+               provider_state = 'unknown',
+               provider_response = $3::jsonb,
+               provider_expected_amount_minor = $4,
+               provider_expected_currency = $5,
+               reconciliation_status = 'queued',
+               next_reconciliation_at = NOW(),
+               last_reconciliation_error = $6,
+               updated_at = NOW()
+           WHERE id = $1 AND status = 'initializing'`,
+          [
+            reservation.attemptId,
+            result.gateway_reference,
+            JSON.stringify(result),
+            providerBinding.amountMinor,
+            providerBinding.currency,
+            (err as Error).message || 'Payment attempt finalization failed',
+          ],
+        );
+      } catch (updateError) {
+        logger.error(
+          { err: updateError, attempt_id: reservation.attemptId },
+          'Failed to persist unknown payment initialization state',
         );
       }
-
-      await client.query(
-        `UPDATE pd_payment_attempt
-         SET gateway_reference = $2,
-             status = 'initialized',
-             provider_response = $3::jsonb,
-             initialized_at = NOW(),
-             failure_code = NULL,
-             failure_message = NULL,
-             updated_at = NOW()
-         WHERE id = $1 AND status = 'initializing' AND request_fingerprint = $4`,
-        [reservation.attemptId, result.gateway_reference, JSON.stringify(result), requestFingerprint],
+      try {
+        await enqueuePaymentReconciliation(reservation.attemptId);
+      } catch (queueError) {
+        logger.error(
+          { err: queueError, attempt_id: reservation.attemptId },
+          'Failed to enqueue payment finalization reconciliation',
+        );
+      }
+      throw new PdConflictError(
+        PdErrorCode.PAY_RECONCILIATION_PENDING,
+        'Payment state is being reconciled after provider initialization',
+        { order_id: order.id, retry_after_seconds: 60 },
       );
-    });
+    }
 
     logger.info(
       {
@@ -373,6 +723,53 @@ export class PaymentService {
     );
 
     return result;
+  }
+
+  private async compensateFailedInitialization(
+    attemptId: string,
+    orderId: string,
+    reason: string,
+  ): Promise<'cancelled' | 'already_paid' | 'active_attempt' | 'not_found' | 'manual_review'> {
+    try {
+      const result = await orderService.cancelUnstartedPaymentOrder(orderId, reason, attemptId);
+      const completed = result === 'cancelled';
+      // An already-paid order needs no release. A concurrent active attempt,
+      // however, is an unresolved race and must remain visible for review.
+      const noReleaseRequired = result === 'already_paid';
+      await query(
+        `UPDATE pd_payment_attempt
+         SET compensation_status = $2,
+             compensated_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE compensated_at END,
+             compensation_reason = $3,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          attemptId,
+          completed || noReleaseRequired ? 'completed' : 'manual_review',
+          `${reason}: ${result}`,
+        ],
+      );
+      return result;
+    } catch (err) {
+      try {
+        await query(
+          `UPDATE pd_payment_attempt
+           SET compensation_status = 'pending',
+               compensation_reason = $2,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [attemptId, `${reason}: ${(err as Error).message}`],
+        );
+      } catch {
+        // The reconciliation sweep will still find the original pending row.
+      }
+      try {
+        await enqueuePaymentCompensation(attemptId);
+      } catch (queueError) {
+        logger.error({ err: queueError, attempt_id: attemptId }, 'Failed to enqueue payment compensation');
+      }
+      return 'manual_review';
+    }
   }
 
   /**
@@ -405,10 +802,13 @@ export class PaymentService {
       gateway_reference: string;
       expected_amount_minor: string;
       expected_currency: string;
+      provider_expected_amount_minor: string | null;
+      provider_expected_currency: string | null;
       merchant_account_id: string | null;
       status: string;
     }>(
-      `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor, expected_currency, merchant_account_id, status
+      `SELECT id, order_id, gateway, gateway_reference, expected_amount_minor, expected_currency,
+              provider_expected_amount_minor, provider_expected_currency, merchant_account_id, status
        FROM pd_payment_attempt
        WHERE gateway = $1 AND gateway_reference = $2`,
       [opts.gateway, opts.gatewayEventId],
@@ -469,7 +869,7 @@ export class PaymentService {
       const order = await orderService.getById(boundOrderId);
       const storeIds = await this.getStoreIdsForOrder(order.id);
       let vendorCredentials: Record<string, string> | undefined;
-      if (platformSettings.payment_vendor_direct_enabled && storeIds.length === 1) {
+      if (attempt.merchant_account_id && platformSettings.payment_vendor_direct_enabled && storeIds.length === 1) {
         const store = await storeService.getById(storeIds[0]);
         if (store.payment_config) {
           const decrypted = decryptVendorConfig(store.payment_config);
@@ -477,15 +877,21 @@ export class PaymentService {
         }
       }
 
-      if (platformSettings.payment_platform_credentials_source === 'vendor_direct_only' && !vendorCredentials) {
+      if (attempt.merchant_account_id && !vendorCredentials) {
+        throw new PdValidationError('The payment merchant credentials are no longer available');
+      }
+      if (!attempt.merchant_account_id
+        && platformSettings.payment_platform_credentials_source === 'vendor_direct_only') {
         throw new PdValidationError('This payment gateway requires vendor direct credentials');
       }
 
       if (attempt.merchant_account_id) {
-        const currentMerchantAccount = vendorCredentials
-          ? (vendorCredentials.flouci_app_token || vendorCredentials.konnect_receiver_wallet || vendorCredentials.paypal_client_id)
-          : null;
-        if (currentMerchantAccount && currentMerchantAccount !== attempt.merchant_account_id) {
+        const currentMerchantAccount = opts.gateway === PaymentGateway.Flouci
+          ? vendorCredentials?.flouci_app_token
+          : opts.gateway === PaymentGateway.Konnect
+            ? vendorCredentials?.konnect_receiver_wallet
+            : vendorCredentials?.paypal_client_id;
+        if (!currentMerchantAccount || currentMerchantAccount !== attempt.merchant_account_id) {
           throw new PdValidationError('Merchant account mismatch');
         }
       }
@@ -502,8 +908,22 @@ export class PaymentService {
     if (verifyResult.status === 'captured') {
       // 4. Validate currency and amount (minor units match)
       const verifyAmount = verifyResult.amount ?? 0;
-      const verifiedAmountMinor = toMinorUnits(verifyAmount, attempt.expected_currency);
-      const expectedAmountMinor = BigInt(attempt.expected_amount_minor);
+      const providerCurrency = attempt.provider_expected_currency || attempt.expected_currency;
+      const verifiedCurrency = typeof verifyResult.metadata?.currency === 'string'
+        ? verifyResult.metadata.currency.toUpperCase()
+        : providerCurrency;
+      if (verifiedCurrency !== providerCurrency.toUpperCase()) {
+        const msg = `Payment currency mismatch: expected ${providerCurrency}, got ${verifiedCurrency}`;
+        await query(
+          `UPDATE pd_payment_event SET status = 'failed', error_message = $2, processed_at = NOW() WHERE id = $1`,
+          [eventId, msg],
+        );
+        throw new PdValidationError(msg);
+      }
+      const verifiedAmountMinor = toMinorUnits(verifyAmount, providerCurrency);
+      const expectedAmountMinor = BigInt(
+        attempt.provider_expected_amount_minor || attempt.expected_amount_minor,
+      );
 
       if (verifiedAmountMinor < expectedAmountMinor) {
         const msg = `Payment amount mismatch: underpayment detected (expected ${expectedAmountMinor}, got ${verifiedAmountMinor})`;
@@ -515,16 +935,44 @@ export class PaymentService {
         throw new PdValidationError(msg);
       }
 
-      // 5. Transactional Compare-and-Set from initialized -> captured on pd_payment_attempt
-      const isAttemptUpdated = await transaction(async (client) => {
-        const { rowCount } = await client.query(
-          `UPDATE pd_payment_attempt
-           SET status = 'captured', updated_at = NOW()
-           WHERE id = $1 AND status = 'initialized'`,
-          [attempt.id],
+      // 5. Capture the attempt and order in one transaction. A webhook retry
+      // must never observe an attempt as captured while the order is unpaid.
+      let isAttemptUpdated: boolean;
+      try {
+        isAttemptUpdated = await transaction(async (client) => {
+          await client.query(
+            'SELECT id FROM pd_order WHERE id = $1 FOR UPDATE',
+            [boundOrderId],
+          );
+          const { rowCount } = await client.query(
+            `UPDATE pd_payment_attempt
+             SET status = 'captured', provider_state = 'captured', updated_at = NOW()
+             WHERE id = $1 AND status IN ('initialized', 'initialization_unknown')`,
+            [attempt.id],
+          );
+          if (rowCount !== 1) return false;
+          await orderService.markPaidInTransaction(
+            client,
+            boundOrderId,
+            opts.gateway,
+            attempt.gateway_reference,
+          );
+          return true;
+        });
+      } catch (err) {
+        if (err instanceof PdConflictError && err.code === PdErrorCode.PAY_ALREADY_CAPTURED) {
+          await query(
+            `UPDATE pd_payment_event SET status = 'duplicate', processed_at = NOW() WHERE id = $1`,
+            [eventId],
+          );
+          return false;
+        }
+        await query(
+          `UPDATE pd_payment_event SET status = 'failed', error_message = $2, processed_at = NOW() WHERE id = $1`,
+          [eventId, (err as Error).message],
         );
-        return rowCount === 1;
-      });
+        throw err;
+      }
 
       if (!isAttemptUpdated) {
         logger.warn(
@@ -538,9 +986,9 @@ export class PaymentService {
         return false;
       }
 
-      // 6. Mark order as paid
+      // 6. Downstream effects are retried independently after the atomic
+      // payment/order state transition succeeds.
       try {
-        await orderService.markPaid(boundOrderId, opts.gateway, attempt.gateway_reference);
         await adsService.recognizeOrderConversion(boundOrderId);
         await query(
           `UPDATE pd_payment_event SET status = 'processed', amount = $2, processed_at = NOW() WHERE id = $1`,

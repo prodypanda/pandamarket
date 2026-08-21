@@ -69,7 +69,7 @@ BEGIN
   IF OLD.gateway_reference IS DISTINCT FROM NEW.gateway_reference
      AND NOT (
        OLD.status = 'initializing'
-       AND NEW.status = 'initialized'
+       AND NEW.status IN ('initialized', 'initialization_unknown')
        AND OLD.gateway_reference LIKE 'pending_%'
      )
   THEN

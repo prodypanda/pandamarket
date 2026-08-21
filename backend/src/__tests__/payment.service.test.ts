@@ -38,8 +38,16 @@ vi.mock('../services/order.service', () => ({
   orderService: {
     getById: vi.fn(),
     markPaid: vi.fn(),
+    markPaidInTransaction: vi.fn(),
+    cancelUnstartedPaymentOrder: vi.fn(),
   },
 }));
+
+const reconciliationQueueMocks = vi.hoisted(() => ({
+  enqueuePaymentCompensation: vi.fn().mockResolvedValue(undefined),
+  enqueuePaymentReconciliation: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../queues/payment-reconciliation-queue', () => reconciliationQueueMocks);
 
 vi.mock('../plugins/payment', () => ({
   getPaymentProvider: vi.fn(),
@@ -98,10 +106,29 @@ describe('PaymentService', () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
     const reservationQuery = vi.fn()
       .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{
+        id: 'pd_order_123',
+        customer_id: 'pd_user_456',
+        total: '85.000',
+        currency: 'TND',
+        status: 'pending',
+        payment_gateway: PaymentGateway.Flouci,
+        payment_status: 'pending',
+        payment_reference: null,
+        subtotal: '78.000',
+        shipping_total: '7.000',
+        shipping_address: null,
+      }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const finalizeQuery = vi.fn()
       .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{
+        id: 'pd_order_123',
+        status: 'pending',
+        payment_status: 'pending',
+        payment_reference: null,
+      }], rowCount: 1 })
       .mockResolvedValueOnce({
         rows: [{
           id: 'test-event-id',
@@ -118,6 +145,11 @@ describe('PaymentService', () => {
           quote_id: null,
           quote_version: null,
           provider_response: null,
+          provider_state: 'not_created',
+          reconciliation_status: 'none',
+          compensation_status: 'not_required',
+          provider_expected_amount_minor: null,
+          provider_expected_currency: null,
           failure_code: null,
           failure_message: null,
         }],
@@ -141,6 +173,8 @@ describe('PaymentService', () => {
     });
     mockStoreService.getById.mockResolvedValue({ payment_config: null } as any);
     mockDecryptConfig.mockReturnValue(null);
+    mockOrderService.markPaidInTransaction.mockResolvedValue({ id: 'pd_order_123' } as any);
+    mockOrderService.cancelUnstartedPaymentOrder.mockResolvedValue('cancelled' as any);
     paymentService = new PaymentService();
   });
 
@@ -240,8 +274,14 @@ describe('PaymentService', () => {
         gateway_reference: 'flouci_ref_replayed',
         metadata: { provider: 'flouci' },
       };
-      mockQuery.mockResolvedValueOnce({
-        rows: [{
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+      const reservationQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{
+          ...mockOrder,
+          payment_reference: storedResult.gateway_reference,
+        }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{
           id: 'pa_replay',
           order_id: mockOrder.id,
           gateway: PaymentGateway.Flouci,
@@ -256,11 +296,15 @@ describe('PaymentService', () => {
           quote_id: null,
           quote_version: null,
           provider_response: storedResult,
+          provider_state: 'created',
+          reconciliation_status: 'none',
+          compensation_status: 'not_required',
+          provider_expected_amount_minor: '85000',
+          provider_expected_currency: 'TND',
           failure_code: null,
           failure_message: null,
-        }],
-        rowCount: 1,
-      } as any);
+        }], rowCount: 1 });
+      mockTransaction.mockImplementationOnce(async (cb: any) => cb({ query: reservationQuery }));
       const provider = { init: vi.fn(), verify: vi.fn() };
       mockGetProvider.mockReturnValue(provider);
 
@@ -274,7 +318,7 @@ describe('PaymentService', () => {
 
       expect(capabilityMocks.assertOrderGatewayAvailable).not.toHaveBeenCalled();
       expect(provider.init).not.toHaveBeenCalled();
-      expect(mockTransaction).not.toHaveBeenCalled();
+      expect(mockTransaction).toHaveBeenCalledOnce();
     });
 
     it('rejects reuse of an idempotency key when the bound payment details changed', async () => {
@@ -346,10 +390,55 @@ describe('PaymentService', () => {
       )).rejects.toMatchObject({ code: PdErrorCode.PAY_INIT_IN_PROGRESS });
     });
 
+    it('requires reconciliation when an initialized attempt has no replay payload', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{
+          id: 'pa_missing_replay',
+          order_id: mockOrder.id,
+          gateway: PaymentGateway.Flouci,
+          gateway_reference: 'flouci_ref_missing_replay',
+          expected_amount_minor: '85000',
+          expected_currency: 'TND',
+          merchant_account_id: null,
+          status: 'initialized',
+          idempotency_key: 'payment-missing-replay-key',
+          request_fingerprint: 'f'.repeat(64),
+          capability_version: `pcv1_${'a'.repeat(64)}`,
+          quote_id: null,
+          quote_version: null,
+          provider_response: null,
+          failure_code: null,
+          failure_message: null,
+        }],
+        rowCount: 1,
+      } as any);
+
+      await expect(paymentService.initPayment(
+        mockOrder,
+        PaymentGateway.Flouci,
+        'customer@test.tn',
+        undefined,
+        'payment-missing-replay-key',
+      )).rejects.toMatchObject({ code: PdErrorCode.PAY_RECONCILIATION_PENDING });
+    });
+
     it('records provider initialization failures against the reserved attempt', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
       const reservationQuery = vi.fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{
+          id: 'pd_order_123',
+          customer_id: 'pd_user_456',
+          total: '85.000',
+          currency: 'TND',
+          status: 'pending',
+          payment_gateway: PaymentGateway.Flouci,
+          payment_status: 'pending',
+          payment_reference: null,
+          subtotal: '78.000',
+          shipping_total: '7.000',
+          shipping_address: null,
+        }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
       mockTransaction.mockImplementationOnce(async (cb: any) => cb({ query: reservationQuery }));
@@ -373,10 +462,13 @@ describe('PaymentService', () => {
         'payment-failure-key',
       )).rejects.toBe(providerError);
 
-      expect(mockQuery).toHaveBeenLastCalledWith(
-        expect.stringContaining("status = 'initialization_failed'"),
-        expect.arrayContaining(['test-event-id', PdErrorCode.PAY_INIT_FAILED, 'Provider unavailable']),
-      );
+      expect(mockQuery.mock.calls.some(([sql, params]) =>
+        String(sql).includes("status = $2")
+        && Array.isArray(params)
+        && params.includes('test-event-id')
+        && params.includes(PdErrorCode.PAY_INIT_FAILED)
+        && params.includes('Provider unavailable')),
+      ).toBe(true);
     });
   });
 
@@ -417,12 +509,11 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
-      // 4. Transactional CAS on pd_payment_attempt (initialized -> captured)
-      const clientQuery = vi.fn().mockResolvedValue({ rowCount: 1 });
+      // 4. Transactional capture: lock order, capture attempt, capture order.
+      const clientQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'pd_order_123' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
       mockTransaction.mockImplementation(async (cb: any) => cb({ query: clientQuery }));
-
-      // markPaid succeeds
-      mockOrderService.markPaid.mockResolvedValue({ id: 'pd_order_123' } as any);
 
       // 5. UPDATE pd_payment_event status to processed
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
@@ -436,7 +527,8 @@ describe('PaymentService', () => {
       });
 
       expect(result).toBe(true);
-      expect(mockOrderService.markPaid).toHaveBeenCalledWith(
+      expect(mockOrderService.markPaidInTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
         'pd_order_123',
         PaymentGateway.Flouci,
         'flouci_payment_abc',
@@ -486,13 +578,15 @@ describe('PaymentService', () => {
       };
       mockGetProvider.mockReturnValue(mockProvider);
 
-      // 4. Transactional CAS on pd_payment_attempt (initialized -> captured)
-      const clientQuery = vi.fn().mockResolvedValue({ rowCount: 1 });
+      // 4. Transactional capture: lock order, capture attempt, capture order.
+      const clientQuery = vi.fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'pd_order_123' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
       mockTransaction.mockImplementation(async (cb: any) => cb({ query: clientQuery }));
 
-      // markPaid throws PAY_ALREADY_CAPTURED
+      // markPaidInTransaction throws PAY_ALREADY_CAPTURED
       const { PdConflictError, PdErrorCode } = await import('../errors');
-      mockOrderService.markPaid.mockRejectedValue(
+      mockOrderService.markPaidInTransaction.mockRejectedValue(
         new PdConflictError(PdErrorCode.PAY_ALREADY_CAPTURED, 'Already paid'),
       );
 

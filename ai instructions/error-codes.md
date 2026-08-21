@@ -84,6 +84,7 @@
 | `PD_PAY_CAPABILITY_STALE` | 409 | La disponibilité des moyens de paiement a changé | `{ expected_version, current_version, quote_id }` |
 | `PD_PAY_IDEMPOTENCY_CONFLICT` | 409 | La clé d'idempotence est déjà liée à une autre tentative de paiement | `{ order_id, gateway }` |
 | `PD_PAY_INIT_IN_PROGRESS` | 409 | L'initialisation du paiement est déjà en cours | `{ order_id, retry_after_seconds }` |
+| `PD_PAY_RECONCILIATION_PENDING` | 409 | L'état du paiement est en cours de vérification | `{ order_id, retry_after_seconds }` |
 
 ## 7. Wallet (PD_WALLET_*)
 

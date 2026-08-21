@@ -93,4 +93,35 @@ describe('OrderService storefront checkout visibility', () => {
     );
     expect(mocks.clientQuery).toHaveBeenCalledTimes(2);
   });
+
+  it('refuses payment-failure compensation after a fulfillment has shipped', async () => {
+    const { OrderService } = await import('../services/order.service');
+    const orderService = new OrderService();
+
+    mocks.clientQuery
+      .mockResolvedValueOnce({
+        rows: [{
+          status: 'pending',
+          payment_status: 'pending',
+          payment_reference: null,
+        }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({
+        rows: [{ started: '1' }],
+        rowCount: 1,
+      });
+
+    await expect(orderService.cancelUnstartedPaymentOrder(
+      'ord_shipped',
+      'provider rejected initialization',
+      'pa_failed',
+    )).resolves.toBe('active_attempt');
+
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(2);
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("SET status = 'cancelled'"),
+      expect.anything(),
+    );
+  });
 });

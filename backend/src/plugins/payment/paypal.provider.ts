@@ -13,6 +13,7 @@ import {
 import { config } from '../../config';
 import { platformConfigService } from '../../services/platform-config.service';
 import { PdError, PdErrorCode } from '../../errors';
+import { providerInitFailure } from './provider-errors';
 import { PaymentGateway } from '@pandamarket/types';
 import { logger } from '../../utils/logger';
 
@@ -69,9 +70,9 @@ export class PayPalProvider implements PaymentProvider {
   }
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
-    const creds = await this.getCredentials(ctx.vendor_credentials);
-
+    let requestStarted = false;
     try {
+      const creds = await this.getCredentials(ctx.vendor_credentials);
       const accessToken = await this.getAccessToken(creds.clientId, creds.clientSecret, creds.baseUrl);
 
       let currencyCode = (ctx.currency || 'USD').toUpperCase();
@@ -83,6 +84,7 @@ export class PayPalProvider implements PaymentProvider {
         amountValue = Math.round(ctx.amount * creds.fxRate * 100) / 100;
       }
 
+      requestStarted = true;
       const { data } = await axios.post(
         `${creds.baseUrl}/v2/checkout/orders`,
         {
@@ -134,11 +136,11 @@ export class PayPalProvider implements PaymentProvider {
       };
     } catch (err) {
       logger.error({ err: (err as Error).message }, 'PayPal init failed');
-      throw new PdError(
-        PdErrorCode.PAY_INIT_FAILED,
+      throw providerInitFailure(
+        'paypal',
         'Failed to initialise PayPal payment',
-        502,
-        { gateway: 'paypal' },
+        err,
+        requestStarted,
       );
     }
   }
@@ -163,7 +165,10 @@ export class PayPalProvider implements PaymentProvider {
         return {
           status: 'captured',
           amount: capturedAmount,
-          metadata: { provider_status: orderStatus },
+          metadata: {
+            provider_status: orderStatus,
+            currency: getRes.data?.purchase_units?.[0]?.amount?.currency_code,
+          },
         };
       }
 
@@ -184,14 +189,20 @@ export class PayPalProvider implements PaymentProvider {
         return {
           status: captured ? 'captured' : 'failed',
           amount: capturedAmount,
-          metadata: { provider_status: captureStatus },
+          metadata: {
+            provider_status: captureStatus,
+            currency: getRes.data?.purchase_units?.[0]?.amount?.currency_code,
+          },
         };
       }
 
       return {
         status: 'failed',
         amount: capturedAmount,
-        metadata: { provider_status: orderStatus },
+        metadata: {
+          provider_status: orderStatus,
+          currency: getRes.data?.purchase_units?.[0]?.amount?.currency_code,
+        },
       };
     } catch (err) {
       logger.error({ err: (err as Error).message, reference }, 'PayPal verify failed');

@@ -14,6 +14,7 @@
     "seed:medina": "tsx data/seed-atelier-medina-catalog.ts",
     "worker:ai": "tsx src/workers/ai-runner.ts",
     "worker:email": "tsx src/workers/email-runner.ts",
+    "worker:payment-reconciliation": "tsx src/workers/payment-reconciliation-runner.ts",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "test": "vitest run",

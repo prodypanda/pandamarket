@@ -64,12 +64,23 @@ vi.mock('../services/order.service', () => ({
         payment_gateway: PaymentGateway.Flouci,
         payment_status: 'pending',
       }),
+    markPaidInTransaction: vi.fn().mockResolvedValue({
+      id: 'ord_123',
+      payment_status: 'captured',
+    }),
+    cancelUnstartedPaymentOrder: vi.fn().mockResolvedValue('cancelled'),
     markPaid: vi.fn().mockResolvedValue({
       id: 'ord_123',
       payment_status: 'captured',
     }),
   },
 }));
+
+const reconciliationQueueMocks = vi.hoisted(() => ({
+  enqueuePaymentCompensation: vi.fn().mockResolvedValue(undefined),
+  enqueuePaymentReconciliation: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../queues/payment-reconciliation-queue', () => reconciliationQueueMocks);
 
 vi.mock('../services/ads.service', () => ({
   adsService: {
@@ -130,10 +141,25 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
       mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
       const reservationQuery = vi.fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{
+          id: 'ord_123',
+          total: '85.000',
+          currency: 'TND',
+          payment_gateway: PaymentGateway.Flouci,
+          payment_status: 'pending',
+          status: 'pending',
+          payment_reference: null,
+        }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
       const finalizeQuery = vi.fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{
+          id: 'ord_123',
+          status: 'pending',
+          payment_status: 'pending',
+          payment_reference: null,
+        }], rowCount: 1 })
         .mockResolvedValueOnce({
           rows: [{
             id: 'pd_pa_test123',
@@ -150,6 +176,11 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
             quote_id: null,
             quote_version: null,
             provider_response: null,
+            provider_state: 'not_created',
+            reconciliation_status: 'none',
+            compensation_status: 'not_required',
+            provider_expected_amount_minor: null,
+            provider_expected_currency: null,
             failure_code: null,
             failure_message: null,
           }],
@@ -381,7 +412,13 @@ describe('Payment Attempt Binding & Webhook Security (GAP-P0-003)', () => {
       });
 
       expect(result).toBe(true);
-      expect(mockedOrderService.markPaid).toHaveBeenCalledWith('ord_123', PaymentGateway.Flouci, 'ref_flouci_123');
+      expect(mockedOrderService.markPaidInTransaction).toHaveBeenCalledWith(
+        expect.any(Object),
+        'ord_123',
+        PaymentGateway.Flouci,
+        'ref_flouci_123',
+      );
+      expect(mockedOrderService.markPaid).not.toHaveBeenCalled();
     });
   });
 

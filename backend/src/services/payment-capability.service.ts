@@ -225,6 +225,10 @@ export class PaymentCapabilityService {
   async assertOrderGatewayAvailable(
     order: CapabilityOrder,
     gateway: PaymentGateway,
+    options: {
+      executor?: SqlExecutor;
+      lock_stores?: boolean;
+    } = {},
   ): Promise<PaymentGatewaySelection> {
     if (order.payment_gateway !== gateway) {
       throw new PdConflictError(
@@ -238,7 +242,8 @@ export class PaymentCapabilityService {
       );
     }
 
-    const { rows } = await query<PaymentCapabilityItem>(
+    const executor = options.executor || { query };
+    const { rows } = await executor.query<PaymentCapabilityItem>(
       `SELECT oi.store_id, p.type AS product_type
        FROM pd_order_item oi
        JOIN pd_product p ON p.id = oi.product_id
@@ -258,6 +263,8 @@ export class PaymentCapabilityService {
       },
       gateway,
       expected_version: order.payment_capability_version,
+      executor: options.executor,
+      lock_stores: options.lock_stores,
     });
   }
 
@@ -316,7 +323,10 @@ export class PaymentCapabilityService {
     const storeIds = Array.from(new Set(context.items.map((item) => item.store_id))).sort();
     if (!storeIds.length) throw new PdValidationError('Cart does not contain a store');
 
-    const settings = opts.settings || await platformConfigService.getSettingsFresh();
+    const settings = opts.settings || await platformConfigService.getSettingsFresh(
+      opts.executor as unknown as Pick<import('pg').PoolClient, 'query'> | undefined,
+      opts.executor ? ['finance', 'shipping'] : [],
+    );
     const stores = await this.loadStores(storeIds, opts.executor, opts.lock_stores === true);
     const storesById = new Map(stores.map((store) => [store.id, store]));
     const allStoresPresent = storeIds.every((storeId) => storesById.has(storeId));

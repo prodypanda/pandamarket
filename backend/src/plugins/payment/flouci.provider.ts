@@ -12,6 +12,7 @@ import {
 } from './payment-provider.interface';
 import { config } from '../../config';
 import { PdError, PdErrorCode } from '../../errors';
+import { providerInitFailure } from './provider-errors';
 import { PaymentGateway } from '@pandamarket/types';
 import { logger } from '../../utils/logger';
 import { tndToMillimes } from '../../utils/money';
@@ -23,7 +24,9 @@ export class FlouciProvider implements PaymentProvider {
     const token = ctx.vendor_credentials?.flouci_app_token ?? config.flouci.appToken;
     const secret = ctx.vendor_credentials?.flouci_app_secret ?? config.flouci.appSecret;
 
+    let requestStarted = false;
     try {
+      requestStarted = true;
       const { data } = await axios.post(
         `${config.flouci.baseUrl}/generate_payment`,
         {
@@ -50,11 +53,11 @@ export class FlouciProvider implements PaymentProvider {
       };
     } catch (err) {
       logger.error({ err: (err as Error).message }, 'Flouci init failed');
-      throw new PdError(
-        PdErrorCode.PAY_INIT_FAILED,
+      throw providerInitFailure(
+        'flouci',
         'Failed to initialise Flouci payment',
-        502,
-        { gateway: 'flouci' },
+        err,
+        requestStarted,
       );
     }
   }
@@ -79,7 +82,7 @@ export class FlouciProvider implements PaymentProvider {
       return {
         status: successful ? 'captured' : 'failed',
         amount: amountMillimes / 1000,
-        metadata: { provider_status: status },
+        metadata: { provider_status: status, currency: 'TND' },
       };
     } catch (err) {
       logger.error({ err: (err as Error).message, reference }, 'Flouci verify failed');

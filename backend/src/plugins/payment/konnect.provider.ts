@@ -13,6 +13,7 @@ import {
 } from './payment-provider.interface';
 import { config } from '../../config';
 import { PdError, PdErrorCode } from '../../errors';
+import { providerInitFailure } from './provider-errors';
 import { PaymentGateway } from '@pandamarket/types';
 import { logger } from '../../utils/logger';
 import { millimesToTnd, tndToMillimes } from '../../utils/money';
@@ -23,7 +24,9 @@ export class KonnectProvider implements PaymentProvider {
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
     const apiKey = ctx.vendor_credentials?.konnect_api_key ?? config.konnect.apiKey;
     const wallet = ctx.vendor_credentials?.konnect_receiver_wallet ?? config.konnect.receiverWallet;
+    let requestStarted = false;
     try {
+      requestStarted = true;
       const { data } = await axios.post(
         `${config.konnect.baseUrl}/payments/init-payment`,
         {
@@ -55,11 +58,11 @@ export class KonnectProvider implements PaymentProvider {
       };
     } catch (err) {
       logger.error({ err: (err as Error).message }, 'Konnect init failed');
-      throw new PdError(
-        PdErrorCode.PAY_INIT_FAILED,
+      throw providerInitFailure(
+        'konnect',
         'Failed to initialise Konnect payment',
-        502,
-        { gateway: 'konnect' },
+        err,
+        requestStarted,
       );
     }
   }
@@ -77,10 +80,14 @@ export class KonnectProvider implements PaymentProvider {
       const status: string = data?.payment?.status ?? '';
       const amountMillimes = Number(data?.payment?.amount ?? 0);
       const completed = status === 'completed';
+      const rawCurrency = data?.payment?.token;
+      const currency = typeof rawCurrency === 'string' && /^[A-Za-z]{3}$/.test(rawCurrency.trim())
+        ? rawCurrency.trim().toUpperCase()
+        : 'TND';
       return {
         status: completed ? 'captured' : status === 'pending' ? 'pending' : 'failed',
         amount: millimesToTnd(amountMillimes),
-        metadata: { provider_status: status },
+        metadata: { provider_status: status, currency },
       };
     } catch (err) {
       logger.error({ err: (err as Error).message, reference }, 'Konnect verify failed');
