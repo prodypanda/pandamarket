@@ -118,10 +118,12 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-09 — Tenant SEO metadata
 
-- [ ] Emit tenant canonical URLs using the resolved host and path, including custom domains.
-- [ ] Generate tenant robots and sitemaps with store status, visibility, and product/page URLs.
-- [ ] Add Product JSON-LD on PDPs and Organization/OnlineStore JSON-LD on tenant homepages.
-- [ ] Apply `noindex` to preview, maintenance, suspended, and empty stores; test canonical and alternate-host behavior.
+- [x] Emit tenant canonical URLs using the resolved host and path, including custom domains.
+- [x] Generate tenant robots and sitemaps with store status, visibility, and product/page URLs.
+- [x] Add Product JSON-LD on PDPs and Organization/OnlineStore JSON-LD on tenant homepages.
+- [x] Apply `noindex` to preview, maintenance, suspended, and empty stores; test canonical and alternate-host behavior.
+
+**P1-09 evidence (2026-08-22):** `frontend/src/lib/storefront-seo.ts` now owns canonical host resolution, public/empty-store policy, query-bearing catalog detection, Organization/Product JSON-LD contracts, and safe JSON-LD serialization. Tenant home, catalog, pretty-category, product, and Page Builder metadata emit canonical URLs and noindex preview, non-public, suspended, empty, and filtered/paginated variants. Product JSON-LD is emitted on both standard themed and marketplace-style PDPs; Organization JSON-LD is emitted on default, Page Builder, and marketplace-style tenant home branches. Dynamic tenant `/robots.txt` and `/sitemap.xml` routes exclude private paths and noindex content. Root metadata routes inspect the request host so custom domains and storefront subdomains receive tenant robots/sitemap output while marketplace hosts retain marketplace output. The SEO contract suite passed 4 tests; changed SEO sources type-check and lint with zero errors; frontend production build passed with 99 generated routes; and `git diff --check` passed. Deployed custom-domain and crawler acceptance checks remain a release verification step.
 
 ### P1-10 — Real carrier integrations
 

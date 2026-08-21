@@ -1,12 +1,25 @@
 import StoreProductPage, { generateMetadata as generateProductMetadata } from '../../product/[slug]/page';
 import StoreProductsPage from '../page';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
+import {
+  getStorefrontCanonicalUrl,
+  hasStorefrontQueryParams,
+  isEmptyStore,
+  isPublicStore,
+  type StorefrontSearchParams,
+} from '../../../../../lib/storefront-seo';
 
 interface StoreData {
   id: string;
   name: string;
+  subdomain?: string | null;
+  custom_domain?: string | null;
+  description?: string | null;
   status?: string | null;
+  is_verified?: boolean | null;
+  product_count?: number | string | null;
 }
 
 async function getStoreByHost(host: string): Promise<StoreData | null> {
@@ -46,10 +59,13 @@ function getSlug(segments: string[]): string {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeHost: string; segments: string[] }>;
-}) {
+  searchParams?: Promise<StorefrontSearchParams>;
+}): Promise<Metadata> {
   const { storeHost, segments } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const decodedHost = decodeURIComponent(storeHost);
   const store = await getStoreByHost(decodedHost);
   if (!store) return { title: 'Boutique introuvable' };
@@ -59,12 +75,20 @@ export async function generateMetadata({
   if (product) {
     return generateProductMetadata({
       params: Promise.resolve({ storeHost, slug: product.slug || lastSlug }),
+      searchParams: Promise.resolve(resolvedSearchParams || {}),
     });
   }
 
+  const categoryPath = segments.map((segment) => encodeURIComponent(decodeURIComponent(segment))).join('/');
+  const canonicalUrl = getStorefrontCanonicalUrl(decodedHost, store, `/products/${categoryPath}`);
+  const categoryName = lastSlug.replace(/-/g, ' ');
+  const noindex = !isPublicStore(store) || isEmptyStore(store) || hasStorefrontQueryParams(resolvedSearchParams);
+
   return {
-    title: `${lastSlug.replace(/-/g, ' ')} — ${store.name}`,
-    description: `Découvrez nos produits dans la catégorie ${lastSlug.replace(/-/g, ' ')} chez ${store.name}.`,
+    title: `${categoryName} — ${store.name}`,
+    description: `Découvrez nos produits dans la catégorie ${categoryName} chez ${store.name}.`,
+    alternates: { canonical: canonicalUrl },
+    robots: noindex ? { index: false, follow: false } : undefined,
   };
 }
 
@@ -101,7 +125,7 @@ export default async function PrettyStoreProductPage({
   if (product) {
     return StoreProductPage({
       params: Promise.resolve({ storeHost, slug: product.slug || lastSlug }),
-      searchParams: searchParams as any,
+      searchParams,
     });
   }
 
@@ -115,4 +139,3 @@ export default async function PrettyStoreProductPage({
     }),
   });
 }
-

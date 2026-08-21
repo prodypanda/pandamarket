@@ -43,6 +43,8 @@ import { selectLogoForSurface } from '../../../lib/public-assets';
 import { StorefrontAnalyticsTracker } from '../../../components/store/StorefrontAnalyticsTracker';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../components/themes/ThemeWrapper';
+import { StorefrontSeoJsonLd } from '../../../components/store/StorefrontSeoJsonLd';
+import { getStorefrontCanonicalUrl, isPublicStore, type StorefrontSeoStore } from '../../../lib/storefront-seo';
 
 interface StoreBranding {
   store_id?: string;
@@ -71,12 +73,15 @@ interface StoreBranding {
 interface StoreData {
   id: string;
   name: string;
+  subdomain?: string | null;
+  custom_domain?: string | null;
   theme_id: ThemeId;
   description?: string;
   seller_type?: string | null;
   is_verified?: boolean | null;
   status?: string | null;
   created_at?: string | null;
+  product_count?: number | string | null;
   shipping_mode?: string | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
@@ -258,7 +263,7 @@ export async function generateMetadata({
   const marketplaceName = marketplaceSettings.marketplace_name || 'PandaMarket';
 
   if (!store) {
-    return { title: `Boutique introuvable | ${marketplaceName}` };
+    return { title: `Boutique introuvable | ${marketplaceName}`, robots: { index: false, follow: false } };
   }
 
   const fallbackDescription = store.description
@@ -275,15 +280,22 @@ export async function generateMetadata({
   const title = homepageOverride?.seo_title || `${store.name} — Boutique en ligne`;
   const description = homepageOverride?.seo_description || fallbackDescription;
   const imageUrl = homepageOverride?.og_image || logoUrl;
+  const canonicalUrl = getStorefrontCanonicalUrl(decodeURIComponent(storeHost), store, '/');
+  const storeIsPublic = isPublicStore(store);
+  const emptyStore = store.product_count !== null && store.product_count !== undefined && Number(store.product_count) === 0;
 
   return {
     title,
     description: description.slice(0, 160),
-    robots: previewToken || homepageOverride?.noindex ? { index: false, follow: false } : undefined,
+    alternates: { canonical: canonicalUrl },
+    robots: previewToken || homepageOverride?.noindex || !storeIsPublic || emptyStore
+      ? { index: false, follow: false }
+      : undefined,
     openGraph: {
       title,
       description,
       type: 'website',
+      url: canonicalUrl,
       ...(imageUrl ? { images: [{ url: imageUrl, width: 400, height: 400, alt: title }] } : {}),
     },
     twitter: {
@@ -366,14 +378,20 @@ export default async function StorePage({
     const requestHost = (await headers()).get('host');
 
     return (
-      <MarketplaceSellerPage
-        storeHost={storeHost}
-        store={store}
-        products={products}
-        categories={categories}
-        marketplaceSettings={marketplaceSettings}
-        currentHost={requestHost}
-      />
+      <>
+        <StorefrontSeoJsonLd
+          store={store as StorefrontSeoStore}
+          canonicalUrl={getStorefrontCanonicalUrl(decodedHost, store, '/')}
+        />
+        <MarketplaceSellerPage
+          storeHost={storeHost}
+          store={store}
+          products={products}
+          categories={categories}
+          marketplaceSettings={marketplaceSettings}
+          currentHost={requestHost}
+        />
+      </>
     );
   }
 
@@ -417,7 +435,12 @@ export default async function StorePage({
     const footerPages = pageLinks.filter((link) => link.show_in_footer && link.id !== homepageOverride.id);
 
     return (
-      <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
+      <>
+        <StorefrontSeoJsonLd
+          store={store as StorefrontSeoStore}
+          canonicalUrl={getStorefrontCanonicalUrl(decodedHost, store, '/')}
+        />
+        <div className={`min-h-screen ${activeTheme.typography.fontFamily}`} style={{ backgroundColor: resolvedColors.background, color: resolvedColors.text }}>
         {/* Minimal Store Header for Page Builder pages */}
         <header
           className="h-16 border-b flex items-center justify-between px-6"
@@ -522,7 +545,8 @@ export default async function StorePage({
             />
           </span>
         </footer>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -566,6 +590,10 @@ export default async function StorePage({
 
   return (
     <>
+      <StorefrontSeoJsonLd
+        store={store as StorefrontSeoStore}
+        canonicalUrl={getStorefrontCanonicalUrl(decodedHost, store, '/')}
+      />
       <StorefrontAnalyticsTracker storeId={store.id} />
       {renderStorefrontTheme(themeProps)}
     </>

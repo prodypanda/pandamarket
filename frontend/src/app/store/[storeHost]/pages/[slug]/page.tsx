@@ -17,6 +17,7 @@ import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } fro
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../../components/themes/ThemeWrapper';
+import { getStorefrontCanonicalUrl, isPublicStore } from '../../../../../lib/storefront-seo';
 
 /**
  * Storefront Custom Page Renderer
@@ -205,8 +206,8 @@ export async function generateMetadata({
   const previewToken = getSearchParam(resolvedSearchParams, 'pb_preview');
   const store = await getStoreByHost(decodeURIComponent(storeHost));
   if (!store) return { title: 'Page introuvable' };
-  const isPublicStore = store.status === 'verified' && store.is_verified === true;
-  if (!previewToken && !isPublicStore) {
+  const storeIsPublic = isPublicStore(store);
+  if (!previewToken && !storeIsPublic) {
     return { title: 'Page introuvable', robots: { index: false, follow: false } };
   }
 
@@ -217,6 +218,11 @@ export async function generateMetadata({
 
   const title = page.seo_title || `${page.title} — ${store.name}`;
   const description = page.seo_description || store.description || `Découvrez ${page.title} chez ${store.name}.`;
+  const canonicalUrl = getStorefrontCanonicalUrl(
+    decodeURIComponent(storeHost),
+    store,
+    `/pages/${encodeURIComponent(page.slug || slug)}`,
+  );
   const activeTheme = themes[store.theme_id] || themes.classic;
   const logoUrl = selectLogoForSurface({
     logo_url: store.settings?.logo_url,
@@ -228,11 +234,13 @@ export async function generateMetadata({
   return {
     title,
     description,
-    robots: previewToken || page.noindex ? { index: false, follow: false } : undefined,
+    alternates: { canonical: canonicalUrl },
+    robots: previewToken || page.noindex || !storeIsPublic ? { index: false, follow: false } : undefined,
     openGraph: {
       title,
       description,
       type: 'website',
+      url: canonicalUrl,
       ...(imageUrl ? { images: [{ url: imageUrl, alt: title }] } : {}),
     },
     twitter: {

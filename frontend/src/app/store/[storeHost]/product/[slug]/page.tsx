@@ -16,7 +16,7 @@ import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } fro
 import { MarketplaceStoreProductDetail } from '../../../../../components/store/MarketplaceStoreProductDetail';
 import type { StoreBranding, StoreSocialLinks } from '../../../../../components/themes/shared';
 import { getWholesalePricingFromMetadata } from '../../../../../lib/cart-utils';
-import { ProductBundleDetails } from '../../../../../components/product/ProductBundleDetails';
+import { ProductBundleDetails, type BundleComponentItem } from '../../../../../components/product/ProductBundleDetails';
 import { BundleCrossPromotionWidget } from '../../../../../components/product/BundleCrossPromotionWidget';
 import { t as translate } from '../../../../../i18n/utils';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isValidLocale } from '../../../../../i18n/config';
@@ -24,6 +24,16 @@ import { cookies, headers } from 'next/headers';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../../components/themes/ThemeWrapper';
+import { StorefrontSeoJsonLd } from '../../../../../components/store/StorefrontSeoJsonLd';
+import {
+  getStorefrontCanonicalUrl,
+  hasStorefrontQueryParams,
+  isEmptyStore,
+  isPublicStore,
+  type StorefrontSearchParams,
+  type StorefrontSeoProduct,
+  type StorefrontSeoStore,
+} from '../../../../../lib/storefront-seo';
 
 interface Product {
   id: string;
@@ -63,7 +73,7 @@ interface Product {
   store_product_count?: string | number | null;
   bundle_pricing_type?: 'fixed' | 'percentage' | null;
   bundle_discount_value?: number | null;
-  bundle_items?: any[];
+  bundle_items?: BundleComponentItem[];
   status: string;
 }
 
@@ -168,10 +178,13 @@ async function getProductRating(productId: string): Promise<{ average_rating: nu
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeHost: string; slug: string }>;
+  searchParams?: Promise<StorefrontSearchParams>;
 }): Promise<Metadata> {
   const { storeHost, slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const store = await getStoreByHost(decodeURIComponent(storeHost));
   if (!store) return { title: 'Produit introuvable' };
 
@@ -187,14 +200,24 @@ export async function generateMetadata({
   const imageUrl = product.images?.[0]?.url || product.thumbnail || logoUrl;
   const description = product.description?.slice(0, 160)
     || `Achetez ${product.title} chez ${store.name} — ${formatPrice(product.price)}`;
+  const canonicalUrl = getStorefrontCanonicalUrl(
+    decodeURIComponent(storeHost),
+    store,
+    `/product/${encodeURIComponent(product.slug || slug)}`,
+  );
 
   return {
     title: `${product.title} — ${store.name}`,
     description,
+    alternates: { canonical: canonicalUrl },
+    robots: !isPublicStore(store) || isEmptyStore(store) || hasStorefrontQueryParams(resolvedSearchParams)
+      ? { index: false, follow: false }
+      : undefined,
     openGraph: {
       title: product.title,
       description,
       type: 'website',
+      url: canonicalUrl,
       ...(imageUrl ? { images: [{ url: imageUrl, width: 800, height: 800, alt: product.title }] } : {}),
     },
     twitter: {
@@ -211,10 +234,13 @@ export default async function StoreProductPage({
   searchParams,
 }: {
   params: Promise<{ storeHost: string; slug: string }>;
-  searchParams?: Promise<{ preview_version?: string }>;
+  searchParams?: Promise<StorefrontSearchParams>;
 }) {
   const { storeHost, slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  const previewVersion = Array.isArray(resolvedSearchParams.preview_version)
+    ? resolvedSearchParams.preview_version[0]
+    : resolvedSearchParams.preview_version;
   const decodedHost = decodeURIComponent(storeHost);
   const requestHost = (await headers()).get('host');
   const cookieStore = await cookies();
@@ -246,17 +272,28 @@ export default async function StoreProductPage({
 
   if (isMarketplaceStoreRoute) {
     return (
-      <MarketplaceStoreProductDetail
-        storeHost={storeHost}
-        store={store}
-        product={product}
-        relatedProducts={relatedProducts}
-        ratingData={ratingData}
-        marketplaceSettings={marketplaceSettings}
-        locale={locale}
-        currentHost={requestHost}
-        previewVersion={resolvedSearchParams.preview_version}
-      />
+      <>
+        <StorefrontSeoJsonLd
+          store={store as StorefrontSeoStore}
+          product={product as StorefrontSeoProduct}
+          canonicalUrl={getStorefrontCanonicalUrl(
+            decodedHost,
+            store,
+            `/product/${encodeURIComponent(product.slug || slug)}`,
+          )}
+        />
+        <MarketplaceStoreProductDetail
+          storeHost={storeHost}
+          store={store}
+          product={product}
+          relatedProducts={relatedProducts}
+          ratingData={ratingData}
+          marketplaceSettings={marketplaceSettings}
+          locale={locale}
+          currentHost={requestHost}
+          previewVersion={previewVersion}
+        />
+      </>
     );
   }
 
@@ -314,7 +351,17 @@ export default async function StoreProductPage({
     products: relatedProducts,
     branding: storeBranding,
     children: (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <>
+        <StorefrontSeoJsonLd
+          store={store as StorefrontSeoStore}
+          product={product as StorefrontSeoProduct}
+          canonicalUrl={getStorefrontCanonicalUrl(
+            decodedHost,
+            store,
+            `/product/${encodeURIComponent(product.slug || slug)}`,
+          )}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
           <Link href={storePathBase || '/'} className="hover:opacity-80 transition-opacity" style={{ color: primaryColor }}>
@@ -468,7 +515,8 @@ export default async function StoreProductPage({
             </div>
           </section>
         )}
-      </div>
+        </div>
+      </>
     ),
   });
 }

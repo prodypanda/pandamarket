@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { themes, type ThemeCustomization, type ThemeId, resolveThemeColors } from '../../../../lib/themes';
@@ -9,15 +10,25 @@ import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../components/themes/ThemeWrapper';
 import { CatalogControls, type CatalogPaginationMeta } from '../../../../components/store/CatalogControls';
+import {
+  getStorefrontCanonicalUrl,
+  hasStorefrontQueryParams,
+  isEmptyStore,
+  isPublicStore,
+  type StorefrontSearchParams,
+} from '../../../../lib/storefront-seo';
 
 interface StoreData {
   id: string;
   name: string;
+  subdomain?: string | null;
+  custom_domain?: string | null;
   theme_id: ThemeId;
-  description?: string;
+  description?: string | null;
   seller_type?: string | null;
   is_verified?: boolean | null;
   status?: string | null;
+  product_count?: number | string | null;
   created_at?: string | null;
   settings?: {
     colors?: { primary?: string; secondary?: string };
@@ -99,6 +110,41 @@ async function getMarketplaceCategories(locale: string = 'fr'): Promise<Marketpl
   } catch {
     return [];
   }
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeHost: string }>;
+  searchParams?: Promise<StorefrontSearchParams>;
+}): Promise<Metadata> {
+  const { storeHost } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const decodedHost = decodeURIComponent(storeHost);
+  const store = await getStoreByHost(decodedHost);
+
+  if (!store) {
+    return { title: 'Boutique introuvable', robots: { index: false, follow: false } };
+  }
+
+  const canonicalUrl = getStorefrontCanonicalUrl(decodedHost, store, '/products');
+  const title = `Produits — ${store.name}`;
+  const description = (store.description || store.settings?.store_description || `Découvrez les produits de ${store.name}.`).slice(0, 160);
+  const noindex = !isPublicStore(store) || isEmptyStore(store) || hasStorefrontQueryParams(resolvedSearchParams);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    robots: noindex ? { index: false, follow: false } : undefined,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+    },
+  };
 }
 
 function toThemeProducts(products: MarketplaceStoreProduct[]): ThemeStoreProduct[] {
